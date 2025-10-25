@@ -6020,3 +6020,367 @@ git commit -m "fix(bulletins): pré-sélection professeurs dans modal edit-profe
 ---
 
 *Dernière mise à jour: 25 octobre 2025 - Fix Pré-Sélection Professeurs Modal*
+
+---
+
+## 🐛 Fix Critique: Professeurs Non Persistants - 3 Bugs Majeurs (25 Octobre 2025)
+
+### Vue d'ensemble
+
+Résolution complète d'un problème critique empêchant la persistance des professeurs assignés aux matières dans les bulletins. Le problème se manifestait sur deux pages :
+
+1. **Modal classe-edit** (`/esbtp/resultats/classe/5/edit`) : Professeurs disparaissaient après refresh
+2. **Page edit-professeurs** (`/esbtp-special/bulletins/edit-professeurs`) : Fonctionnait correctement
+
+**Symptômes initiaux** :
+- ✅ Message de succès : "38 bulletin(s) mis à jour"
+- ❌ Base de données : Aucun changement (updated_at inchangé)
+- ❌ Modal : Dropdowns vides après refresh
+- ❌ Logs : `affected:false` malgré `update() → true`
+
+### Bug #1: Modal Sans Pré-Sélection
+
+**Problème** : Après assignation et refresh de la page, les professeurs n'apparaissaient pas comme pré-sélectionnés dans le modal.
+
+**Cause Racine** :
+1. Controller ne passait pas les données professeurs à la vue
+2. Modal n'avait pas d'attribut `selected` sur les options
+3. Bulletin stocke `{"matiere_id": "Teacher Name"}` mais modal a besoin de `teacher_id`
+
+**Solution** : Mapping teacher name → teacher ID
+
+**Fichier** : `app/Http/Controllers/ESBTPBulletinController.php`
+
+**Méthode** : `editResultatsClasse()` (lignes 3189-3258)
+
+```php
+// Récupérer les professeurs déjà assignés depuis les bulletins pour pré-remplir le modal
+$professeursGroupes = [];
+
+// Prendre un bulletin exemple pour cette classe/période (peu importe l'étudiant car professeurs identiques)
+$sampleBulletin = ESBTPBulletin::where('classe_id', $classe_id)
+    ->when($periode, function($query) use ($periode) {
+        return $query->where('periode', $periode);
+    })
+    ->when($annee_universitaire_id, function($query) use ($annee_universitaire_id) {
+        return $query->where('annee_universitaire_id', $annee_universitaire_id);
+    })
+    ->whereNotNull('professeurs')
+    ->first();
+
+if ($sampleBulletin && $sampleBulletin->professeurs) {
+    // Décode le JSON: {"matiere_id": "Teacher Name", ...}
+    $professeursJson = json_decode($sampleBulletin->professeurs, true) ?: [];
+
+    \Log::info('📋 Professeurs déjà assignés récupérés depuis bulletin', [
+        'bulletin_id' => $sampleBulletin->id,
+        'professeurs_json' => $professeursJson
+    ]);
+
+    // Mapper les noms vers les IDs des enseignants
+    foreach ($professeursJson as $matiereId => $teacherName) {
+        // Ignorer les valeurs null ou vides
+        if (empty($teacherName)) {
+            continue;
+        }
+
+        // Chercher l'enseignant par nom dans la liste des enseignants disponibles pour cette matière
+        $enseignantsDeMatiere = $enseignantsParMatiere[$matiereId] ?? collect();
+
+        $foundTeacher = $enseignantsDeMatiere->first(function($enseignant) use ($teacherName) {
+            return $enseignant->user && $enseignant->user->name === $teacherName;
+        });
+
+        if ($foundTeacher) {
+            $professeursGroupes[$matiereId] = $foundTeacher->id;
+            \Log::debug("✅ Mapped matiere {$matiereId}: '{$teacherName}' → teacher_id {$foundTeacher->id}");
+        } else {
+            \Log::warning("⚠️ Could not find teacher_id for matiere {$matiereId}: '{$teacherName}'");
+        }
+    }
+
+    \Log::info('🔄 Mapping professeurs groupés final', [
+        'professeursGroupes' => $professeursGroupes
+    ]);
+}
+
+return view('esbtp.resultats.classe-edit', compact(
+    // ... autres variables ...
+    'professeursGroupes',  // ← NOUVEAU
+    // ...
+));
+```
+
+**Fichier** : `resources/views/esbtp/resultats/modals/edit-professeurs.blade.php` (lignes 103-104)
+
+```blade
+<option value="{{ $enseignant->id }}"
+    {{ (isset($professeursGroupes[$matiere->id]) && $professeursGroupes[$matiere->id] == $enseignant->id) ? 'selected' : '' }}>
+    {{ $enseignant->user->name ?? 'Enseignant #' . $enseignant->id }}
+    @if($enseignant->specialites_string)
+        - {{ Str::limit($enseignant->specialites_string, 25) }}
+    @endif
+</option>
+```
+
+**Résultat Test** : 4/5 matières pré-sélectionnées (GRV était null, ce qui était normal initialement)
+
+**Feedback utilisateur** : "Toujours la même erreur regarde les logs" - indiquait que le fix n'était pas complet
+
+**Commit** : `35aa8a8` - fix(bulletins): pré-sélection professeurs dans modal edit-professeurs
+
+---
+
+### Bug #2: Corruption JSON par array_merge()
+
+**Problème** : Logs montraient le JSON se transformant d'objet en tableau indexé :
+
+```
+AVANT: {"2":"BAMBA Marie","21":null}
+APRÈS: ["BAMBA Marie",null,...]  ← Clés perdues !
+```
+
+**Cause Racine** : `array_merge($professeursExistants, $professeursMap)` convertit les tableaux associatifs avec clés numériques en tableaux indexés.
+
+**Comportement PHP** :
+```php
+$arr1 = ["2" => "BAMBA Marie", "21" => null];
+$arr2 = ["21" => "KOUASSI Jean"];
+
+// ❌ array_merge() - Perd les clés
+$result = array_merge($arr1, $arr2);
+// Résultat: [0 => "BAMBA Marie", 1 => null, 2 => "KOUASSI Jean"]
+
+// ✅ array_replace() - Préserve les clés
+$result = array_replace($arr1, $arr2);
+// Résultat: ["2" => "BAMBA Marie", "21" => "KOUASSI Jean"]
+```
+
+**Solution** : Remplacer `array_merge()` par `array_replace()`
+
+**Fichier** : `app/Http/Controllers/ESBTPBulletinController.php`
+
+**Méthode** : `bulkUpdateProfesseurs()` (lignes 3578-3630)
+
+```php
+// Décoder le JSON existant
+$professeursExistants = json_decode($bulletin->professeurs, true) ?: [];
+
+// ✅ array_replace pour que les nouvelles valeurs écrasent les anciennes SANS perdre les clés
+$professeursFusionnes = array_replace($professeursExistants, $professeursMap);
+
+// Encoder en JSON - préserver format objet même si toutes les clés sont nulles
+$professeursJson = json_encode($professeursFusionnes);
+// Si c'est un tableau vide [], le forcer en objet {}
+if ($professeursJson === '[]') {
+    $professeursJson = '{}';
+}
+```
+
+**Résultat Test** : Structure JSON préservée dans les logs, mais base de données toujours pas mise à jour.
+
+**Feedback utilisateur** : "Toujours la même erreur" - fix insuffisant
+
+**Commit** : `2848432` - fix(bulletins): corruption JSON array_merge → array_replace
+
+---
+
+### Bug #3: Eloquent Cache Empêchant Writes BDD (BUG CRITIQUE)
+
+**Problème** : Le plus grave des trois bugs
+
+**Symptômes** :
+- ✅ Logs : "38 bulletins updated"
+- ❌ Base de données : `updated_at: 2025-10-25 13:51:49` (timestamp ancien)
+- ❌ Tinker : `ESBTPBulletin::find(415)->professeurs` → `{"21":null}` (inchangé)
+- ❌ SQL direct : `SELECT professeurs FROM esbtp_bulletins WHERE id=415` → `{"21":null}` (inchangé)
+
+**Investigation avec Debug Logs** :
+
+```php
+\Log::debug('🔍 wasChanged()', ['changed' => $bulletin->wasChanged()]);
+// Résultat: false
+
+\Log::debug('🔍 affected rows', ['affected' => $affected]);
+// Résultat: false
+```
+
+**Logs critiques montrant le problème** :
+
+```
+[2025-10-25 14:30:45] local.INFO: 📝 BEFORE update
+{"bulletin_id":415,"professeurs_before":"{\"21\":null}"}
+
+[2025-10-25 14:30:45] local.INFO: 📝 AFTER update
+{"bulletin_id":415,"professeurs_after":"{\"21\":\"KOUASSI Jean\"}","affected":false}
+```
+
+**Cause Racine** : Cache Eloquent et dirty checking
+
+Eloquent maintient un état interne du modèle. Quand on appelle `$bulletin->update()`, Eloquent :
+1. Compare l'état actuel en mémoire avec l'état original
+2. Si `wasChanged()` retourne `false`, **SKIP le SQL UPDATE**
+3. Retourne quand même `true` (comportement trompeur)
+
+Dans notre cas, le modèle en mémoire avait déjà été modifié avant l'appel à `update()`, donc Eloquent pensait qu'il n'y avait rien à faire.
+
+**Preuve** :
+```
+"before":"{\"21\":null}"
+"after":"{\"21\":\"KOUASSI Jean\"}"
+"affected":false  ← Eloquent skip le UPDATE !
+```
+
+**Solution DÉFINITIVE** : Bypass Eloquent, utiliser Query Builder
+
+**Code avant (ne fonctionnait pas)** :
+
+```php
+$bulletin->update([
+    'professeurs' => json_encode($professeursFusionnes, JSON_FORCE_OBJECT),
+    'updated_by' => auth()->id()
+]);
+```
+
+**Code après (fonctionne)** :
+
+```php
+// FORCE update avec Query Builder au lieu d'Eloquent pour éviter le cache
+$affected = \DB::table('esbtp_bulletins')
+    ->where('id', $bulletin->id)
+    ->update([
+        'professeurs' => $professeursJson,
+        'updated_by' => auth()->id(),
+        'updated_at' => now()
+    ]);
+
+\Log::info('📝 Update result', [
+    'bulletin_id' => $bulletin->id,
+    'affected_rows' => $affected,
+    'professeurs_json_length' => strlen($professeursJson)
+]);
+```
+
+**Pourquoi ça fonctionne** :
+
+Query Builder (`DB::table()`) :
+- ✅ Bypass complètement le cache Eloquent
+- ✅ Exécute TOUJOURS le SQL UPDATE
+- ✅ Retourne le nombre réel de lignes affectées
+- ✅ Force l'écriture en base même si dirty checking échoue
+
+**Fichier** : `app/Http/Controllers/ESBTPBulletinController.php`
+
+**Méthode** : `bulkUpdateProfesseurs()` (lignes 3614-3627)
+
+**Résultat Test** :
+
+```bash
+# Test avec tinker AVANT le fix
+php artisan tinker
+>>> ESBTPBulletin::find(415)->professeurs
+=> "{"21":null}"
+
+# Assignation GRV → KOUASSI Jean via interface
+# Logs: "38 bulletins updated"
+
+>>> ESBTPBulletin::find(415)->professeurs
+=> "{"21":null}"  ← TOUJOURS NULL !
+
+# Test APRÈS le fix avec Query Builder
+# Assignation GRV → KOUASSI Jean via interface
+# Logs: "affected_rows: 1"
+
+>>> ESBTPBulletin::find(415)->professeurs
+=> "{"21":"KOUASSI Jean"}"  ← SUCCESS ! ✅
+```
+
+**Feedback utilisateur** : **"Ok tu peux voir les logs encore, ça a marché cela"** - ✅ SUCCÈS CONFIRMÉ
+
+**Commit** : `097028c` - fix(bulletins): forcer update professeurs avec DB::table pour éviter cache Eloquent
+
+---
+
+### Résumé Technique
+
+**3 Bugs Critiques Résolus** :
+
+| Bug | Symptôme | Cause | Solution | Commit |
+|-----|----------|-------|----------|--------|
+| #1 Modal | Dropdowns vides après refresh | Pas de mapping name→ID | Teacher name→ID mapping + `selected` attribute | 35aa8a8 |
+| #2 JSON | `{"2":"X"}` → `["X"]` | `array_merge()` perd les clés | `array_replace()` | 2848432 |
+| #3 Cache | `update() → true` mais BDD inchangée | Cache Eloquent + dirty checking | `DB::table()->update()` bypass Eloquent | 097028c |
+
+**Logs de Debug Ajoutés** :
+
+```php
+// Dans bulkUpdateProfesseurs()
+\Log::info('🔵 START bulkUpdateProfesseurs');
+\Log::info('✅ Teacher found', ['teacher_id', 'name']);
+\Log::info('🔄 professeursMap', ['map' => $professeursMap]);
+\Log::info('📝 Bulletin update', ['id', 'before', 'after']);
+\Log::info('📝 Update result', ['affected_rows', 'json_length']);
+\Log::info('✅ bulkUpdateProfesseurs - SUCCESS', ['updated' => $count]);
+
+// Dans editResultatsClasse()
+\Log::info('📋 Professeurs déjà assignés récupérés depuis bulletin');
+\Log::debug("✅ Mapped matiere {$id}: '{$name}' → teacher_id {$id}");
+\Log::warning("⚠️ Could not find teacher_id for matiere {$id}");
+\Log::info('🔄 Mapping professeurs groupés final');
+
+// Dans editProfesseurs()
+\Log::info('📋 Professeurs from bulletin', ['bulletin_id', 'professeurs']);
+```
+
+**Workflow Final Fonctionnel** :
+
+1. Admin ouvre modal assignation (`classe/5/edit`)
+2. Sélectionne KOUASSI Jean pour matière GRV
+3. Clique "Enregistrer les assignations"
+4. ✅ Backend : `DB::table()->update()` écrit en base
+5. ✅ Logs : `affected_rows: 1`
+6. ✅ BDD : `professeurs: {"21":"KOUASSI Jean"}`
+7. Refresh la page
+8. ✅ Modal se pré-remplit automatiquement avec KOUASSI Jean pour GRV
+
+**Leçon Apprise** :
+
+> ⚠️ **ATTENTION** : Eloquent's `update()` peut retourner `true` sans écrire en base si le dirty checking détecte "pas de changement". Dans des workflows complexes avec modifications multiples du même modèle, utiliser `DB::table()->update()` pour garantir l'écriture.
+
+**Pattern Recommandé** :
+
+```php
+// ❌ ÉVITER en cas de cache issues
+$model->update(['field' => $value]);
+
+// ✅ UTILISER pour forcer l'écriture
+\DB::table('table_name')
+    ->where('id', $model->id)
+    ->update([
+        'field' => $value,
+        'updated_at' => now()
+    ]);
+```
+
+**Fichiers Modifiés** :
+
+1. ✅ `app/Http/Controllers/ESBTPBulletinController.php`
+   - `editResultatsClasse()` : Récupération + mapping professeurs
+   - `bulkUpdateProfesseurs()` : Fix JSON corruption + bypass Eloquent cache
+   - `editProfesseurs()` : Logs détaillés (déjà fonctionnel)
+
+2. ✅ `resources/views/esbtp/resultats/modals/edit-professeurs.blade.php`
+   - Ajout attribut `selected` basé sur `$professeursGroupes`
+
+**Commits** :
+
+```bash
+35aa8a8 - fix(bulletins): pré-sélection professeurs dans modal edit-professeurs
+2848432 - fix(bulletins): corruption JSON array_merge → array_replace
+ef5d715 - debug: ajout logs wasChanged() pour diagnostic cache Eloquent
+097028c - fix(bulletins): forcer update professeurs avec DB::table pour éviter cache Eloquent
+```
+
+---
+
+*Dernière mise à jour: 25 octobre 2025 - Fix 3 Bugs Critiques Professeurs Bulletins*
