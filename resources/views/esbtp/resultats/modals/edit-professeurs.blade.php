@@ -99,7 +99,7 @@
                                                     onfocus="this.style.borderColor='#17a2b8'; this.style.boxShadow='0 0 0 0.2rem rgba(23, 162, 184, 0.25)'"
                                                     onblur="this.style.borderColor='#bee5eb'; this.style.boxShadow='none'">
                                                 <option value="">-- Sélectionner un enseignant --</option>
-                                                @foreach($enseignants as $enseignant)
+                                                @foreach(($enseignantsParMatiere[$matiere->id] ?? []) as $enseignant)
                                                     <option value="{{ $enseignant->id }}">
                                                         {{ $enseignant->user->name ?? 'Enseignant #' . $enseignant->id }}
                                                         @if($enseignant->specialites_string)

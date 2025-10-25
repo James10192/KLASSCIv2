@@ -3060,9 +3060,9 @@ class ESBTPBulletinController extends Controller
             ->unique();
 
         // Récupérer les enseignants avec leurs infos complètes
-        $enseignants = \App\Models\ESBTPEnseignantProfile::with('user')
+        $enseignants = \App\Models\ESBTPTeacher::with('user')
             ->whereIn('id', $enseignantIdsFromPlanning)
-            ->actif()
+            ->where('is_active', true)
             ->get();
 
         // Fallback: si aucun enseignant trouvé dans planning général, prendre tous les actifs
@@ -3072,7 +3072,7 @@ class ESBTPBulletinController extends Controller
                 'filiere_id' => $classe->filiere_id,
                 'niveau_id' => $classe->niveau_etude_id
             ]);
-            $enseignants = \App\Models\ESBTPEnseignantProfile::with('user')->actif()->get();
+            $enseignants = \App\Models\ESBTPTeacher::with('user')->where('is_active', true)->get();
         }
 
         // Get all matieres for the class based on filiere + niveau combination
@@ -3156,11 +3156,42 @@ class ESBTPBulletinController extends Controller
                 : 0
         ];
 
+        // Récupérer les enseignants spécifiques à chaque matière depuis planning général
+        $enseignantsParMatiere = [];
+        foreach ($matieres as $matiere) {
+            // Récupérer la planification pour cette matière + combinaison classe
+            $planification = \DB::table('esbtp_planifications_academiques')
+                ->where('matiere_id', $matiere->id)
+                ->where('filiere_id', $classe->filiere_id)
+                ->where('niveau_etude_id', $classe->niveau_etude_id)
+                ->where('annee_universitaire_id', $annee_universitaire_id)
+                ->first();
+
+            if ($planification) {
+                // Récupérer les enseignants assignés dans cette planification
+                $enseignantIds = \DB::table('esbtp_planification_teachers')
+                    ->where('planification_id', $planification->id)
+                    ->pluck('teacher_id');
+
+                // Récupérer les enseignants avec leurs infos complètes
+                $enseignantsMatiere = \App\Models\ESBTPTeacher::with('user')
+                    ->whereIn('id', $enseignantIds)
+                    ->where('is_active', true)
+                    ->get();
+
+                $enseignantsParMatiere[$matiere->id] = $enseignantsMatiere;
+            } else {
+                // Fallback: utiliser tous les enseignants si planning non configuré
+                $enseignantsParMatiere[$matiere->id] = $enseignants;
+            }
+        }
+
         return view('esbtp.resultats.classe-edit', compact(
             'classe',
             'students',
             'matieres',
             'enseignants',
+            'enseignantsParMatiere',
             'resultats',
             'absences',
             'semestre',
