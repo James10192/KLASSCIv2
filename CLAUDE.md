@@ -1,5 +1,57 @@
 # KLASSCI - Documentation Système SaaS Multi-Tenant
 
+---
+
+## ⚠️ RÈGLES IMPORTANTES POUR IA - DOCUMENTATION API
+
+### 📚 EMPLACEMENT DOCUMENTATION API : `docs/api/`
+
+**RÈGLE ABSOLUE** : Toute documentation d'API REST doit être placée dans le dossier `docs/api/`.
+
+#### Quand CRÉER une NOUVELLE documentation :
+- ✅ Nouvelle API créée → Créer `docs/api/NOM_API.md`
+- ✅ Nommer le fichier selon l'entité principale (ex: `LMS_ENSEIGNANTS.md`, `LMS_CLASSES.md`, `LMS_EVALUATIONS.md`)
+- ✅ Utiliser le template standard avec sections : Vue d'ensemble, Authentification, Endpoints, Paramètres, Exemples, Cas d'usage, Performance
+
+#### Quand ENRICHIR une documentation EXISTANTE :
+- ✅ API existante modifiée/enrichie → Mettre à jour `docs/api/NOM_API.md` correspondant
+- ✅ Ajouter section "Historique des modifications" avec date
+- ✅ Garder rétrocompatibilité documentée (breaking changes marqués clairement)
+
+#### Structure recommandée `docs/api/NOM_API.md` :
+```markdown
+# 📚 API - [Nom de l'API]
+
+## Vue d'ensemble
+[Description courte]
+
+## Authentification
+[Méthode, tokens, permissions]
+
+## Endpoints
+
+### Endpoint 1
+**Méthode** : GET/POST/PUT/DELETE
+**URL** : `/api/...`
+[Paramètres, réponse, exemples]
+
+## Cas d'usage
+[Exemples pratiques]
+
+## Performance
+[Métriques]
+
+## Historique des modifications
+- [Date] : [Description changement]
+```
+
+#### Ce dossier servira à :
+- 🌐 Générer un site de documentation API public/privé
+- 📖 Référence pour développeurs externes (LMS, mobile apps, etc.)
+- 🔄 Maintenir la cohérence des APIs
+
+---
+
 ## 🎯 Vue d'ensemble
 
 **Architecture** : 2 applications distinctes
@@ -6957,7 +7009,7 @@ Coordonner les enseignants d'une même matière.
 ### Fichiers Modifiés
 
 1. ✅ [app/Http/Controllers/API/LMSDataController.php](app/Http/Controllers/API/LMSDataController.php:677-943) - Méthode `enseignants()` enrichie
-2. ✅ `API_LMS_ENSEIGNANTS_DOCUMENTATION.md` - Documentation complète pour collègue LMS
+2. ✅ [docs/api/LMS_ENSEIGNANTS.md](docs/api/LMS_ENSEIGNANTS.md) - Documentation API complète (pour site documentation)
 
 ### Commit
 
@@ -6970,7 +7022,7 @@ feat(api-lms): enrichir endpoint /enseignants avec classes, matières et volume 
 - Calcul volume horaire: heures prévues/effectuées/restantes + taux réalisation
 - Filtres: filiere_id, niveau_id, classe_id, matiere_id
 - Performance: format simple ~14ms, enrichi ~30ms
-- Documentation complète: API_LMS_ENSEIGNANTS_DOCUMENTATION.md
+- Documentation complète: docs/api/LMS_ENSEIGNANTS.md
 ```
 
 ---

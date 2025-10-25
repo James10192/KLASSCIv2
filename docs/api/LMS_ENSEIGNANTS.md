@@ -390,4 +390,25 @@ curl -X GET "http://localhost:8000/api/lms/enseignants?with_details=true&matiere
 
 ---
 
+## Historique des modifications
+
+### Version 2.0 - 25 octobre 2025
+
+**Type** : Enhancement (backward compatible)
+
+**Changements** :
+- ✅ Ajout paramètre `?with_details=true` pour format enrichi
+- ✅ Inclusion classes enseignées (via séances année courante)
+- ✅ Inclusion matières avec dual-source (pivot + planning général)
+- ✅ Calcul volume horaire complet (prévues/effectuées/restantes)
+- ✅ Statistiques globales par enseignant
+- ✅ Filtres avancés : filiere_id, niveau_id, classe_id, matiere_id
+- ✅ Performance optimisée : 14ms (simple), 30ms (enrichi)
+
+**Breaking changes** : Aucun (format simple inchangé)
+
+**Migration** : Aucune action requise, opt-in via paramètre
+
+---
+
 *Dernière mise à jour: 25 octobre 2025*
