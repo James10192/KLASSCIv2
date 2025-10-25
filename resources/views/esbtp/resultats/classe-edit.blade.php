@@ -330,6 +330,13 @@
             $('#absencesTableBody').empty();
             console.log('✅ Modal absences nettoyé');
         });
+
+        // Modal professeurs : réinitialiser le contenu à la fermeture
+        $('#modalEditProfesseurs').on('hidden.bs.modal', function() {
+            // Vider le tableau des professeurs
+            $('#professeursTableBody').empty();
+            console.log('✅ Modal professeurs nettoyé');
+        });
     }
 
     // Initialize filter form AJAX submission
