@@ -3454,6 +3454,10 @@ class ESBTPBulletinController extends Controller
      */
     public function bulkUpdateProfesseurs(Request $request)
     {
+        \Log::info('🔵 bulkUpdateProfesseurs - START', [
+            'request_data' => $request->all()
+        ]);
+
         $this->validate($request, [
             'classe_id' => 'required|exists:esbtp_classes,id',
             'periode' => 'required|in:semestre1,semestre2',
@@ -3473,9 +3477,20 @@ class ESBTPBulletinController extends Controller
                     $teacher = \App\Models\ESBTPTeacher::with('user')->find($profData['enseignant_id']);
                     if ($teacher && $teacher->user) {
                         $professeursMap[$profData['matiere_id']] = $teacher->user->name;
+                        \Log::info('✅ Teacher found', [
+                            'matiere_id' => $profData['matiere_id'],
+                            'teacher_id' => $profData['enseignant_id'],
+                            'teacher_name' => $teacher->user->name
+                        ]);
                     }
                 }
             }
+
+            \Log::info('📋 professeursMap created', [
+                'count' => count($professeursMap),
+                'data' => $professeursMap
+            ]);
+
 
             // Récupérer TOUS les étudiants actifs de la classe
             $etudiants = \App\Models\ESBTPEtudiant::whereHas('inscriptions', function($q) use ($request) {
@@ -3508,6 +3523,13 @@ class ESBTPBulletinController extends Controller
                     $professeursExistants = json_decode($bulletin->professeurs, true) ?: [];
                     $professeursFusionnes = array_merge($professeursExistants, $professeursMap);
 
+                    \Log::info('📝 Updating bulletin', [
+                        'bulletin_id' => $bulletin->id,
+                        'etudiant_id' => $etudiant->id,
+                        'before' => $bulletin->professeurs,
+                        'after' => json_encode($professeursFusionnes)
+                    ]);
+
                     $bulletin->update([
                         'professeurs' => json_encode($professeursFusionnes),
                         'updated_by' => auth()->id()
@@ -3515,11 +3537,23 @@ class ESBTPBulletinController extends Controller
 
                     $updated++;
                 } else {
+                    \Log::info('🆕 Created bulletin', [
+                        'bulletin_id' => $bulletin->id,
+                        'etudiant_id' => $etudiant->id,
+                        'professeurs' => $bulletin->professeurs
+                    ]);
                     $created++;
                 }
             }
 
             \DB::commit();
+
+            \Log::info('✅ bulkUpdateProfesseurs - SUCCESS', [
+                'created' => $created,
+                'updated' => $updated,
+                'total_students' => $etudiants->count(),
+                'professeurs_count' => count($professeursMap)
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -6244,6 +6278,16 @@ class ESBTPBulletinController extends Controller
         $professeurs = [];
         if ($bulletin && $bulletin->professeurs) {
             $professeurs = json_decode($bulletin->professeurs, true) ?: [];
+            \Log::info('📋 Professeurs from bulletin', [
+                'bulletin_id' => $bulletin->id,
+                'professeurs' => $professeurs
+            ]);
+        } else {
+            \Log::warning('⚠️ No bulletin or professeurs found', [
+                'etudiant_id' => $etudiant_id,
+                'classe_id' => $classe_id,
+                'periode' => $periode
+            ]);
         }
 
         // Récupérer les enseignants depuis planning général pour chaque matière
