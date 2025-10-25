@@ -675,9 +675,22 @@ class LMSDataController extends BaseApiController
     }
 
     /**
-     * Liste des enseignants actifs
+     * Liste des enseignants actifs avec leurs classes, matières et volume horaire
      *
      * Endpoint: GET /api/lms/enseignants
+     *
+     * Retourne pour chaque enseignant :
+     * - Informations de base (id, nom, email, role)
+     * - Classes où il enseigne (via séances emploi du temps année courante)
+     * - Matières enseignées avec volume horaire (via séances OU planning général)
+     * - Statistiques globales (heures prévues/effectuées, taux réalisation)
+     *
+     * Filtres optionnels :
+     * - ?filiere_id=X : Enseignants de cette filière
+     * - ?niveau_id=X : Enseignants de ce niveau
+     * - ?matiere_id=X : Enseignants de cette matière
+     * - ?classe_id=X : Enseignants de cette classe
+     * - ?with_details=true : Inclure les détails (classes, matières, statistiques)
      *
      * @param Request $request
      * @return JsonResponse
@@ -685,7 +698,10 @@ class LMSDataController extends BaseApiController
     public function enseignants(Request $request): JsonResponse
     {
         $startTime = microtime(true);
-        \Log::info('🚀 LMS Enseignants API - Starting request');
+        \Log::info('🚀 LMS Enseignants API - Starting request', [
+            'with_details' => $request->input('with_details', 'false'),
+            'filters' => $request->only(['filiere_id', 'niveau_id', 'matiere_id', 'classe_id'])
+        ]);
 
         $annee = $this->getAnneeCouraante();
         $anneeTime = microtime(true);
@@ -695,20 +711,207 @@ class LMSDataController extends BaseApiController
             return $this->errorResponse('Aucune année universitaire courante trouvée');
         }
 
-        // Récupérer les enseignants actifs (simplifié pour l'instant)
-        $query = User::where('role', 'enseignant');
+        $withDetails = $request->input('with_details', 'false') === 'true';
 
-        $enseignants = $query->get();
+        // Récupérer enseignants via esbtp_teachers (teacher_id dans séances référence esbtp_teachers.id)
+        $teachersQuery = \App\Models\ESBTPTeacher::with(['user'])
+            ->where('is_active', true)
+            ->whereNull('deleted_at');
+
+        // Appliquer filtres optionnels via séances (année courante seulement)
+        if ($request->has('filiere_id') || $request->has('niveau_id') || $request->has('classe_id') || $request->has('matiere_id')) {
+            $teachersQuery->whereHas('seancesCours', function($q) use ($request, $annee) {
+                // Séances de l'année courante uniquement
+                $q->whereHas('emploiTemps', function($etq) use ($annee) {
+                    $etq->where('annee_universitaire_id', $annee->id);
+                });
+
+                if ($request->has('classe_id')) {
+                    $q->where('classe_id', $request->classe_id);
+                }
+
+                if ($request->has('matiere_id')) {
+                    $q->where('matiere_id', $request->matiere_id);
+                }
+
+                if ($request->has('filiere_id') || $request->has('niveau_id')) {
+                    $q->whereHas('classe', function($cq) use ($request) {
+                        if ($request->has('filiere_id')) {
+                            $cq->where('filiere_id', $request->filiere_id);
+                        }
+                        if ($request->has('niveau_id')) {
+                            $cq->where('niveau_etude_id', $request->niveau_id);
+                        }
+                    });
+                }
+            });
+        }
+
+        $teachers = $teachersQuery->get();
         $queryTime = microtime(true);
-        \Log::info('📊 Query executed in: ' . round(($queryTime - $anneeTime) * 1000, 2) . 'ms - Found ' . $enseignants->count() . ' enseignants');
+        \Log::info('📊 Query executed in: ' . round(($queryTime - $anneeTime) * 1000, 2) . 'ms - Found ' . $teachers->count() . ' enseignants');
 
-        $data = $enseignants->map(function ($enseignant) {
-            return [
-                'id' => $enseignant->id,
-                'nom' => $enseignant->name,
-                'email' => $enseignant->email,
-                'role' => $enseignant->role
+        // Mapper données
+        $data = $teachers->map(function ($teacher) use ($annee, $request, $withDetails) {
+            // Format de base (compatible avec ancien format)
+            $enseignantData = [
+                'id' => $teacher->user_id, // user_id pour compatibilité
+                'teacher_id' => $teacher->id, // teacher_id (esbtp_teachers.id) pour séances
+                'nom' => $teacher->user ? $teacher->user->name : 'N/A',
+                'email' => $teacher->email ?: ($teacher->user ? $teacher->user->email : null),
+                'role' => $teacher->user ? $teacher->user->role : 'enseignant',
+                'matricule' => $teacher->matricule,
+                'specialization' => $teacher->specialization,
+                'status' => $teacher->status
             ];
+
+            // Si with_details=true, enrichir avec classes, matières et stats
+            if ($withDetails) {
+                // Récupérer séances de l'enseignant (année courante via emploi_temps)
+                $seancesQuery = \App\Models\ESBTPSeanceCours::with(['matiere', 'classe.filiere', 'classe.niveau'])
+                    ->where('teacher_id', $teacher->id)
+                    ->whereHas('emploiTemps', function($q) use ($annee) {
+                        $q->where('annee_universitaire_id', $annee->id);
+                    });
+
+                // Appliquer mêmes filtres que requête principale
+                if ($request->has('classe_id')) {
+                    $seancesQuery->where('classe_id', $request->classe_id);
+                }
+                if ($request->has('matiere_id')) {
+                    $seancesQuery->where('matiere_id', $request->matiere_id);
+                }
+                if ($request->has('filiere_id') || $request->has('niveau_id')) {
+                    $seancesQuery->whereHas('classe', function($cq) use ($request) {
+                        if ($request->has('filiere_id')) {
+                            $cq->where('filiere_id', $request->filiere_id);
+                        }
+                        if ($request->has('niveau_id')) {
+                            $cq->where('niveau_etude_id', $request->niveau_id);
+                        }
+                    });
+                }
+
+                $seances = $seancesQuery->get();
+
+                // Grouper séances par matière
+                $matiereGroups = $seances->groupBy('matiere_id');
+
+                $matieres = [];
+                $totalHeuresPrevues = 0;
+                $totalHeuresEffectuees = 0;
+                $totalSeances = 0;
+                $totalSeancesEffectuees = 0;
+                $classesUniques = collect();
+
+                foreach ($matiereGroups as $matiereId => $seancesMatiere) {
+                    $matiere = $seancesMatiere->first()->matiere;
+                    if (!$matiere) continue;
+
+                    // Calcul heures planifiées (basé sur durée séances)
+                    $heuresPlanifiees = 0;
+                    foreach ($seancesMatiere as $seance) {
+                        if ($seance->heure_debut && $seance->heure_fin) {
+                            $debut = strtotime($seance->heure_debut);
+                            $fin = strtotime($seance->heure_fin);
+                            $heures = ($fin - $debut) / 3600;
+                            $heuresPlanifiees += $heures;
+                        }
+                    }
+
+                    // Source 1: Heures prévues depuis pivot esbtp_enseignant_matiere
+                    $pivotData = \DB::table('esbtp_enseignant_matiere')
+                        ->where('enseignant_id', $teacher->user_id)
+                        ->where('matiere_id', $matiereId)
+                        ->where('annee_universitaire_id', $annee->id)
+                        ->where('is_active', true)
+                        ->first();
+
+                    // Source 2: Heures prévues depuis planning général
+                    $planningData = \DB::table('esbtp_planifications_academiques')
+                        ->join('esbtp_planification_teachers', 'esbtp_planifications_academiques.id', '=', 'esbtp_planification_teachers.planification_id')
+                        ->where('esbtp_planification_teachers.teacher_id', $teacher->id)
+                        ->where('esbtp_planifications_academiques.matiere_id', $matiereId)
+                        ->where('esbtp_planifications_academiques.annee_universitaire_id', $annee->id)
+                        ->first();
+
+                    // Priorité: pivot > planning > séances
+                    $heuresPrevues = $pivotData ? (float)$pivotData->heures_prevues :
+                                   ($planningData ? (float)$planningData->volume_horaire_total : $heuresPlanifiees);
+
+                    $heuresEffectueesDb = $pivotData ? (float)$pivotData->heures_effectuees : 0;
+
+                    // Calcul heures effectuées depuis attendances
+                    $seanceIdsMatiere = $seancesMatiere->pluck('id');
+                    $attendancesCount = \App\Models\ESBTPTeacherAttendance::where('teacher_id', $teacher->id)
+                        ->whereIn('course_id', $seanceIdsMatiere)
+                        ->whereIn('status', ['present', 'late'])
+                        ->where('type', 'start')
+                        ->count();
+
+                    // Estimer heures effectuées = (nb attendances * durée moyenne séance)
+                    $dureeMoyenne = $seancesMatiere->count() > 0 ? ($heuresPlanifiees / $seancesMatiere->count()) : 0;
+                    $heuresEffectuees = $attendancesCount * $dureeMoyenne;
+
+                    // Utiliser max entre DB et calcul
+                    $heuresEffectuees = max($heuresEffectuees, $heuresEffectueesDb);
+
+                    // Classes pour cette matière
+                    $classesMatiere = $seancesMatiere->groupBy('classe_id')->map(function($seancesClasse) {
+                        $classe = $seancesClasse->first()->classe;
+                        return [
+                            'id' => $classe->id,
+                            'nom' => $classe->name,
+                            'filiere' => $classe->filiere->name ?? 'N/A',
+                            'niveau' => $classe->niveau->name ?? 'N/A',
+                            'nb_seances' => $seancesClasse->count()
+                        ];
+                    })->values();
+
+                    $classesUniques = $classesUniques->merge($classesMatiere);
+
+                    $heuresRestantes = max(0, $heuresPrevues - $heuresEffectuees);
+                    $tauxRealisation = $heuresPrevues > 0 ? ($heuresEffectuees / $heuresPrevues) * 100 : 0;
+
+                    $matieres[] = [
+                        'id' => $matiere->id,
+                        'nom' => $matiere->name,
+                        'code' => $matiere->code,
+                        'heures_prevues' => round($heuresPrevues, 1),
+                        'heures_effectuees' => round($heuresEffectuees, 1),
+                        'heures_restantes' => round($heuresRestantes, 1),
+                        'taux_realisation' => round($tauxRealisation, 1),
+                        'nb_seances' => $seancesMatiere->count(),
+                        'nb_seances_effectuees' => $attendancesCount,
+                        'classes' => $classesMatiere
+                    ];
+
+                    $totalHeuresPrevues += $heuresPrevues;
+                    $totalHeuresEffectuees += $heuresEffectuees;
+                    $totalSeances += $seancesMatiere->count();
+                    $totalSeancesEffectuees += $attendancesCount;
+                }
+
+                $classesUniques = $classesUniques->unique('id');
+                $tauxRealisationGlobal = $totalHeuresPrevues > 0
+                    ? ($totalHeuresEffectuees / $totalHeuresPrevues) * 100
+                    : 0;
+
+                // Ajouter détails
+                $enseignantData['matieres'] = $matieres;
+                $enseignantData['statistiques'] = [
+                    'total_classes' => $classesUniques->count(),
+                    'total_matieres' => count($matieres),
+                    'total_heures_prevues' => round($totalHeuresPrevues, 1),
+                    'total_heures_effectuees' => round($totalHeuresEffectuees, 1),
+                    'total_heures_restantes' => round(max(0, $totalHeuresPrevues - $totalHeuresEffectuees), 1),
+                    'taux_realisation_global' => round($tauxRealisationGlobal, 1),
+                    'nb_seances_total' => $totalSeances,
+                    'nb_seances_effectuees' => $totalSeancesEffectuees
+                ];
+            }
+
+            return $enseignantData;
         });
 
         $mapTime = microtime(true);
@@ -719,7 +922,18 @@ class LMSDataController extends BaseApiController
 
         return $this->successResponse($data, 'Enseignants récupérés avec succès', [
             'total' => $data->count(),
-            'annee_universitaire' => $annee->nom,
+            'annee_universitaire' => [
+                'id' => $annee->id,
+                'nom' => $annee->nom,
+                'is_current' => true
+            ],
+            'filters_applied' => [
+                'filiere_id' => $request->input('filiere_id'),
+                'niveau_id' => $request->input('niveau_id'),
+                'matiere_id' => $request->input('matiere_id'),
+                'classe_id' => $request->input('classe_id'),
+                'with_details' => $withDetails
+            ],
             'performance' => [
                 'total_time_ms' => round(($totalTime - $startTime) * 1000, 2),
                 'query_time_ms' => round(($queryTime - $anneeTime) * 1000, 2),

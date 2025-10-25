@@ -6536,3 +6536,443 @@ public function getConfigMatieres($classeId)
 ---
 
 *Dernière mise à jour: 25 octobre 2025 - Édition Résultats Classe - Fixes Modal Config Matières*
+
+---
+
+## 🎓 API LMS - Endpoint Enseignants Enrichi (25 Octobre 2025)
+
+### Vue d'ensemble
+
+Enrichissement de l'endpoint API `/api/lms/enseignants` pour retourner les classes, matières enseignées et statistiques de volume horaire des enseignants.
+
+**Requête utilisateur** : "Mon collegue pour le LMS me demande cette API : une liste des enseignant avec la classe enseignant les matiere enseigné le volume d'heure etc"
+
+**Approche choisie** : Enrichir l'endpoint existant avec paramètre opt-in `with_details=true` pour éviter tout breaking change.
+
+### Architecture Technique
+
+#### 1. Source des Données
+
+**Classes** :
+- Source : Séances de cours (`esbtp_seance_cours`) via `emploi_temps`
+- Filtre : Année universitaire courante (`is_current=true`)
+- Logique : Une classe est listée si l'enseignant a ≥1 séance dans cette classe (passée OU future)
+
+**Matières - Double Source avec Priorité** :
+
+```php
+// Priorité 1: Pivot table enseignant-matière
+$pivotData = DB::table('esbtp_enseignant_matiere')
+    ->where('enseignant_id', $teacher->user_id)
+    ->where('matiere_id', $matiereId)
+    ->where('annee_universitaire_id', $annee->id)
+    ->first();
+
+// Priorité 2: Planning général
+$planningData = DB::table('esbtp_planifications_academiques')
+    ->join('esbtp_planification_teachers', ...)
+    ->where('teacher_id', $teacher->id)
+    ->where('matiere_id', $matiereId)
+    ->first();
+
+// Priorité 3: Fallback - Somme durées séances planifiées
+$heuresPlanifiees = $seances->sum(function($s) {
+    return Carbon::parse($s->heure_fin)->diffInHours(Carbon::parse($s->heure_debut));
+});
+
+// Résultat final
+$heuresPrevues = $pivotData ? $pivotData->heures_prevues :
+               ($planningData ? $planningData->volume_horaire_total : $heuresPlanifiees);
+```
+
+**Pourquoi double source ?**
+> Permet d'avoir l'historique complet de l'enseignant par matière (via `esbtp_enseignant_matiere` ET `esbtp_planifications_academiques`) ET les séances passées/à venir (via `esbtp_seance_cours`), même si la planification n'est pas encore finalisée.
+
+#### 2. Calcul Volume Horaire
+
+**Heures effectuées** :
+```php
+// Compter les attendances effectives
+$attendancesCount = ESBTPTeacherAttendance::where('teacher_id', $teacher->id)
+    ->whereIn('course_id', $seanceIdsMatiere)
+    ->whereIn('status', ['present', 'late'])  // Présent ou retard = effectué
+    ->where('type', 'start')                  // Émargement de début uniquement
+    ->count();
+
+// Estimer heures = nb attendances × durée moyenne par séance
+$dureeMoyenne = $seancesMatiere->count() > 0 ? ($heuresPlanifiees / $seancesMatiere->count()) : 0;
+$heuresEffectuees = $attendancesCount * $dureeMoyenne;
+```
+
+**Statistiques globales** :
+- `total_heures_prevues` : Somme des heures prévues pour toutes les matières
+- `total_heures_effectuees` : Somme des heures effectuées
+- `total_heures_restantes` : Prévues - Effectuées
+- `taux_realisation_global` : (Effectuées / Prévues) × 100
+
+#### 3. Filtrage par Année Universitaire
+
+**Crucial** : Toutes les données sont filtrées par année courante via `emploi_temps.annee_universitaire_id`
+
+```php
+$teachersQuery->whereHas('seancesCours', function($q) use ($annee) {
+    // Séances de l'année courante uniquement via emploi du temps
+    $q->whereHas('emploiTemps', function($etq) use ($annee) {
+        $etq->where('annee_universitaire_id', $annee->id);
+    });
+});
+```
+
+Résultat : Pas de pollution avec des classes/matières d'années précédentes.
+
+### Endpoint API
+
+#### Format Simple (Backward Compatible)
+
+**GET** `/api/lms/enseignants`
+
+Retourne le format original sans modification (aucun breaking change).
+
+**Réponse** :
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1634,
+      "teacher_id": 1,
+      "nom": "KOUASSI Jean",
+      "email": "kouassi.jean@esbtp.ci",
+      "role": "etudiant",
+      "matricule": "ENS1634",
+      "specialization": "Mathématiques et Physique",
+      "status": "permanent"
+    }
+  ]
+}
+```
+
+#### Format Enrichi (Nouveau)
+
+**GET** `/api/lms/enseignants?with_details=true`
+
+Retourne les données complètes avec classes, matières et statistiques.
+
+**Réponse** :
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1634,
+      "teacher_id": 1,
+      "nom": "KOUASSI Jean",
+      "email": "kouassi.jean@esbtp.ci",
+      "role": "etudiant",
+      "matricule": "ENS1634",
+      "specialization": "Mathématiques et Physique",
+      "status": "permanent",
+      "classes": [
+        {
+          "id": 15,
+          "nom": "L3 GC - 2024/2025",
+          "filiere": { "id": 1, "nom": "Génie Civil" },
+          "niveau": { "id": 3, "nom": "Licence 3" }
+        }
+      ],
+      "matieres": [
+        {
+          "id": 42,
+          "nom": "Mathématiques Appliquées",
+          "code": "MATH301",
+          "heures_prevues": 40,
+          "heures_effectuees": 28,
+          "heures_restantes": 12,
+          "taux_realisation": 70,
+          "nb_seances_total": 20,
+          "nb_seances_effectuees": 14,
+          "classes": [{ "id": 15, "nom": "L3 GC" }],
+          "seances": [
+            {
+              "id": 123,
+              "date_seance": "2025-10-25",
+              "heure_debut": "08:00:00",
+              "heure_fin": "10:00:00",
+              "classe": "L3 GC",
+              "salle": "A101",
+              "status": "effectuee"
+            }
+          ]
+        }
+      ],
+      "statistiques": {
+        "total_classes": 3,
+        "total_matieres": 5,
+        "total_heures_prevues": 120,
+        "total_heures_effectuees": 85,
+        "total_heures_restantes": 35,
+        "taux_realisation_global": 70.83,
+        "nb_seances_total": 60,
+        "nb_seances_effectuees": 42
+      }
+    }
+  ]
+}
+```
+
+### Paramètres de Filtrage
+
+| Paramètre | Type | Description | Exemple |
+|-----------|------|-------------|---------|
+| `with_details` | boolean | Activer format enrichi | `?with_details=true` |
+| `filiere_id` | integer | Filtrer par filière | `?filiere_id=1` |
+| `niveau_id` | integer | Filtrer par niveau | `?niveau_id=3` |
+| `classe_id` | integer | Filtrer par classe | `?classe_id=15` |
+| `matiere_id` | integer | Filtrer par matière | `?matiere_id=42` |
+
+**Exemple combiné** :
+```bash
+# Enseignants qui enseignent Mathématiques en L3 Génie Civil
+GET /api/lms/enseignants?with_details=true&filiere_id=1&niveau_id=3&matiere_id=42
+```
+
+### Implémentation - Code Clé
+
+**Fichier** : [app/Http/Controllers/API/LMSDataController.php](app/Http/Controllers/API/LMSDataController.php:677-943)
+
+#### Changement Data Source (lignes 716-719)
+
+```php
+// OLD: User::where('role', 'enseignant')
+// NEW: Via model ESBTPTeacher pour accès aux relations séances
+$teachersQuery = \App\Models\ESBTPTeacher::with(['user'])
+    ->where('is_active', true)
+    ->whereNull('deleted_at');
+```
+
+#### Filtrage Séances avec Année Courante (lignes 722-748)
+
+```php
+if ($request->has('filiere_id') || $request->has('niveau_id') ||
+    $request->has('classe_id') || $request->has('matiere_id')) {
+
+    $teachersQuery->whereHas('seancesCours', function($q) use ($request, $annee) {
+        // ✅ Séances de l'année courante uniquement via emploi du temps
+        $q->whereHas('emploiTemps', function($etq) use ($annee) {
+            $etq->where('annee_universitaire_id', $annee->id);
+        });
+
+        if ($request->has('classe_id')) {
+            $q->where('classe_id', $request->classe_id);
+        }
+
+        if ($request->has('matiere_id')) {
+            $q->where('matiere_id', $request->matiere_id);
+        }
+
+        if ($request->has('filiere_id') || $request->has('niveau_id')) {
+            $q->whereHas('classe', function($cq) use ($request) {
+                if ($request->has('filiere_id')) {
+                    $cq->where('filiere_id', $request->filiere_id);
+                }
+                if ($request->has('niveau_id')) {
+                    $cq->where('niveau_etude_id', $request->niveau_id);
+                }
+            });
+        }
+    });
+}
+```
+
+#### Extraction Classes (lignes 775-797)
+
+```php
+// Récupérer toutes les séances de l'enseignant (année courante uniquement)
+$seances = \App\Models\ESBTPSeanceCours::where('teacher_id', $teacher->id)
+    ->whereHas('emploiTemps', function($q) use ($annee) {
+        $q->where('annee_universitaire_id', $annee->id);
+    })
+    ->with(['classe.filiere', 'classe.niveau', 'matiere'])
+    ->get();
+
+// Grouper par classe
+$classeIds = $seances->pluck('classe_id')->unique();
+$classesData = $seances->whereIn('classe_id', $classeIds)
+    ->map(function($seance) {
+        return [
+            'id' => $seance->classe_id,
+            'nom' => $seance->classe->name ?? 'N/A',
+            'filiere' => [
+                'id' => $seance->classe->filiere_id,
+                'nom' => $seance->classe->filiere->name ?? 'N/A'
+            ],
+            'niveau' => [
+                'id' => $seance->classe->niveau_etude_id,
+                'nom' => $seance->classe->niveau->name ?? 'N/A'
+            ]
+        ];
+    })
+    ->unique('id')
+    ->values();
+```
+
+#### Dual-Source Matières (lignes 822-840)
+
+```php
+// Source 1: Heures prévues depuis pivot esbtp_enseignant_matiere
+$pivotData = \DB::table('esbtp_enseignant_matiere')
+    ->where('enseignant_id', $teacher->user_id)
+    ->where('matiere_id', $matiereId)
+    ->where('annee_universitaire_id', $annee->id)
+    ->where('is_active', true)
+    ->first();
+
+// Source 2: Heures prévues depuis planning général
+$planningData = \DB::table('esbtp_planifications_academiques')
+    ->join('esbtp_planification_teachers', 'esbtp_planifications_academiques.id', '=', 'esbtp_planification_teachers.planification_id')
+    ->where('esbtp_planification_teachers.teacher_id', $teacher->id)
+    ->where('esbtp_planifications_academiques.matiere_id', $matiereId)
+    ->where('esbtp_planifications_academiques.annee_universitaire_id', $annee->id)
+    ->first();
+
+// Priorité: pivot > planning > séances
+$heuresPrevues = $pivotData ? (float)$pivotData->heures_prevues :
+               ($planningData ? (float)$planningData->volume_horaire_total : $heuresPlanifiees);
+```
+
+#### Calcul Volume Horaire (lignes 844-857)
+
+```php
+// Heures planifiées = somme durées séances
+$heuresPlanifiees = $seancesMatiere->sum(function($seance) {
+    if (!$seance->heure_debut || !$seance->heure_fin) return 0;
+    return \Carbon\Carbon::parse($seance->heure_fin)
+        ->diffInHours(\Carbon\Carbon::parse($seance->heure_debut));
+});
+
+// Heures effectuées = attendances present/late × durée moyenne
+$seanceIdsMatiere = $seancesMatiere->pluck('id');
+$attendancesCount = \App\Models\ESBTPTeacherAttendance::where('teacher_id', $teacher->id)
+    ->whereIn('course_id', $seanceIdsMatiere)
+    ->whereIn('status', ['present', 'late'])
+    ->where('type', 'start')
+    ->count();
+
+$dureeMoyenne = $seancesMatiere->count() > 0 ? ($heuresPlanifiees / $seancesMatiere->count()) : 0;
+$heuresEffectuees = $attendancesCount * $dureeMoyenne;
+
+// Utiliser max entre calcul et DB pour précision
+$heuresEffectuees = max($heuresEffectuees, $heuresEffectueesDb);
+```
+
+### Tests & Performance
+
+#### Tests Effectués
+
+**Test 1 - Format simple** :
+```bash
+curl -X GET "http://localhost:8000/api/lms/enseignants" \
+  -H "Authorization: Bearer 1|f6YPZ03RycdHZtQWOtpa0D9HkgX4G3h9QdYM0oyX7657280d"
+```
+
+**Résultat** : ✅ Success (14.31ms total, 9.87ms query)
+
+**Test 2 - Format enrichi** :
+```bash
+curl -X GET "http://localhost:8000/api/lms/enseignants?with_details=true" \
+  -H "Authorization: Bearer 1|f6YPZ03RycdHZtQWOtpa0D9HkgX4G3h9QdYM0oyX7657280d"
+```
+
+**Résultat** : ✅ Success (29.35ms total, 20.32ms mapping)
+
+#### Logs de Performance
+
+```
+[2025-10-25 19:20:52] local.INFO: 🚀 LMS Enseignants API - Starting request
+{"with_details":"false","filters":[]}
+
+[2025-10-25 19:20:52] local.INFO: ⏱️ Got current year in: 3.32ms
+
+[2025-10-25 19:20:52] local.INFO: 📊 Query executed in: 9.87ms - Found 2 enseignants
+
+[2025-10-25 19:20:52] local.INFO: 🔄 Data mapping completed in: 0.8ms
+
+[2025-10-25 19:20:52] local.INFO: ✅ LMS Enseignants API - Total time: 14.31ms
+
+---
+
+[2025-10-25 19:21:01] local.INFO: 🚀 LMS Enseignants API - Starting request
+{"with_details":"true","filters":[]}
+
+[2025-10-25 19:21:01] local.INFO: ⏱️ Got current year in: 2.5ms
+
+[2025-10-25 19:21:01] local.INFO: 📊 Query executed in: 6.2ms - Found 2 enseignants
+
+[2025-10-25 19:21:01] local.INFO: 🔄 Data mapping completed in: 20.32ms
+
+[2025-10-25 19:21:01] local.INFO: ✅ LMS Enseignants API - Total time: 29.35ms
+```
+
+**Optimisations appliquées** :
+- Eager loading des relations avec `with()`
+- Queries groupées pour statistiques
+- Cache des calculs répétitifs
+- Logs de performance détaillés
+
+### Rétrocompatibilité
+
+✅ **Aucun breaking change** : Le format simple reste identique à l'API originale.
+
+**Stratégie de migration progressive** :
+1. Anciens clients LMS continuent d'utiliser `GET /api/lms/enseignants` sans changement
+2. Nouveaux développements utilisent `GET /api/lms/enseignants?with_details=true`
+3. Pas de période de transition nécessaire
+
+### Cas d'Usage
+
+#### 1. Dashboard Enseignant (LMS)
+```bash
+GET /api/lms/enseignants?with_details=true
+```
+Afficher classes, matières et statistiques dans le tableau de bord enseignant.
+
+#### 2. Planning - Enseignants d'une Classe
+```bash
+GET /api/lms/enseignants?with_details=true&classe_id=15
+```
+Voir les enseignants qui enseignent dans une classe spécifique avec leurs matières.
+
+#### 3. Statistiques par Filière/Niveau
+```bash
+GET /api/lms/enseignants?with_details=true&filiere_id=1&niveau_id=3
+```
+Analyser la charge de travail des enseignants en Génie Civil L3.
+
+#### 4. Suivi d'une Matière
+```bash
+GET /api/lms/enseignants?with_details=true&matiere_id=42
+```
+Coordonner les enseignants d'une même matière.
+
+### Fichiers Modifiés
+
+1. ✅ [app/Http/Controllers/API/LMSDataController.php](app/Http/Controllers/API/LMSDataController.php:677-943) - Méthode `enseignants()` enrichie
+2. ✅ `API_LMS_ENSEIGNANTS_DOCUMENTATION.md` - Documentation complète pour collègue LMS
+
+### Commit
+
+```bash
+feat(api-lms): enrichir endpoint /enseignants avec classes, matières et volume horaire
+
+- Ajout paramètre opt-in ?with_details=true (backward compatible)
+- Data source: ESBTPTeacher → seancesCours (année courante uniquement)
+- Dual-source matières: esbtp_enseignant_matiere + esbtp_planifications_academiques
+- Calcul volume horaire: heures prévues/effectuées/restantes + taux réalisation
+- Filtres: filiere_id, niveau_id, classe_id, matiere_id
+- Performance: format simple ~14ms, enrichi ~30ms
+- Documentation complète: API_LMS_ENSEIGNANTS_DOCUMENTATION.md
+```
+
+---
+
+*Dernière mise à jour: 25 octobre 2025 - API LMS Enseignants Enrichi*
