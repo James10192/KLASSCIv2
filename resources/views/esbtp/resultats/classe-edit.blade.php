@@ -827,6 +827,12 @@
     }
 
     function openProfesseursModal() {
+        // Validation obligatoire du semestre
+        if (!semestre || semestre === null || semestre === '') {
+            showToast('⚠️ Veuillez sélectionner un semestre avant d\'assigner les professeurs', 'error');
+            return;
+        }
+
         $('#modalEditProfesseurs').modal('show');
     }
 
