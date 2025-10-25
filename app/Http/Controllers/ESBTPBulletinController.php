@@ -3477,37 +3477,57 @@ class ESBTPBulletinController extends Controller
                 }
             }
 
-            // Récupérer TOUS les bulletins des étudiants de cette classe/periode/annee
-            $bulletins = \App\Models\ESBTPBulletin::where('classe_id', $request->classe_id)
-                ->where('periode', $request->periode)
-                ->where('annee_universitaire_id', $request->annee_universitaire_id)
-                ->whereNotNull('etudiant_id')  // Seulement les bulletins étudiants
-                ->get();
+            // Récupérer TOUS les étudiants actifs de la classe
+            $etudiants = \App\Models\ESBTPEtudiant::whereHas('inscriptions', function($q) use ($request) {
+                $q->where('classe_id', $request->classe_id)
+                  ->where('annee_universitaire_id', $request->annee_universitaire_id)
+                  ->where('status', 'active');
+            })->get();
 
             $updated = 0;
-            foreach ($bulletins as $bulletin) {
-                // Récupérer les professeurs existants
-                $professeursExistants = json_decode($bulletin->professeurs, true) ?: [];
+            $created = 0;
 
-                // Fusionner avec les nouveaux professeurs
-                $professeursFusionnes = array_merge($professeursExistants, $professeursMap);
+            foreach ($etudiants as $etudiant) {
+                // Récupérer ou créer le bulletin pour cet étudiant
+                $bulletin = \App\Models\ESBTPBulletin::firstOrCreate(
+                    [
+                        'etudiant_id' => $etudiant->id,
+                        'classe_id' => $request->classe_id,
+                        'periode' => $request->periode,
+                        'annee_universitaire_id' => $request->annee_universitaire_id
+                    ],
+                    [
+                        'professeurs' => json_encode($professeursMap),
+                        'created_by' => auth()->id(),
+                        'updated_by' => auth()->id()
+                    ]
+                );
 
-                // Mettre à jour le bulletin
-                $bulletin->update([
-                    'professeurs' => json_encode($professeursFusionnes),
-                    'updated_by' => auth()->id()
-                ]);
+                // Si le bulletin existait déjà, fusionner les professeurs
+                if (!$bulletin->wasRecentlyCreated) {
+                    $professeursExistants = json_decode($bulletin->professeurs, true) ?: [];
+                    $professeursFusionnes = array_merge($professeursExistants, $professeursMap);
 
-                $updated++;
+                    $bulletin->update([
+                        'professeurs' => json_encode($professeursFusionnes),
+                        'updated_by' => auth()->id()
+                    ]);
+
+                    $updated++;
+                } else {
+                    $created++;
+                }
             }
 
             \DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => "✅ Professeurs assignés avec succès pour " . count($professeursMap) . " matière(s) sur $updated bulletin(s)",
+                'message' => "✅ Professeurs assignés avec succès pour " . count($professeursMap) . " matière(s) - $created bulletin(s) créé(s), $updated bulletin(s) mis à jour",
                 'stats' => [
+                    'created_bulletins' => $created,
                     'updated_bulletins' => $updated,
+                    'total_students' => $etudiants->count(),
                     'updated_matieres' => count($professeursMap)
                 ]
             ]);
