@@ -3041,7 +3041,9 @@ class ESBTPBulletinController extends Controller
             }
         })->with('user');
 
-        $students = $studentsQuery->get();
+        $students = $studentsQuery->get()->sortBy(function($student) {
+            return $student->nom . ' ' . $student->prenoms;
+        })->values();
 
         // Get all enseignants for professeur assignment
         $enseignants = \App\Models\ESBTPEnseignantProfile::with('user')->actif()->get();
@@ -3159,7 +3161,7 @@ class ESBTPBulletinController extends Controller
             'matiere_id' => 'nullable|exists:esbtp_matieres,id',
             'matiere_ids' => 'nullable|array',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-            'semestre' => 'nullable|in:1,2',
+            'semestre' => 'required|in:1,2', // OBLIGATOIRE
             'etudiant_ids' => 'required|array'
         ]);
 
@@ -3271,7 +3273,7 @@ class ESBTPBulletinController extends Controller
         $this->validate($request, [
             'classe_id' => 'required|exists:esbtp_classes,id',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-            'semestre' => 'nullable|in:1,2',
+            'semestre' => 'required|in:1,2', // OBLIGATOIRE
             'etudiant_ids' => 'required|array'
         ]);
 

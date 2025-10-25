@@ -5004,3 +5004,141 @@ Le mode "Par Étudiant" (accordion avec toutes les matières par étudiant) doit
 ---
 
 *Dernière mise à jour: 25 octobre 2025 - Résultats Classe - Calcul Automatique des Moyennes*
+
+---
+
+## 🔧 Résultats Classe - Tri Alphabétique + Validation Semestre (25 Octobre 2025)
+
+### Améliorations UX
+
+#### 1. Tri Alphabétique des Étudiants
+
+**Problème** : Les étudiants n'étaient pas triés dans le tableau, rendant difficile la recherche rapide.
+
+**Solution** : Tri alphabétique par nom complet (nom + prénoms)
+
+**Fichier** : `app/Http/Controllers/ESBTPBulletinController.php` (L3044-3046)
+
+```php
+$students = $studentsQuery->get()->sortBy(function($student) {
+    return $student->nom . ' ' . $student->prenoms;
+})->values();
+```
+
+**Impact** : Tableau toujours trié de A à Z, facilite la navigation et la sélection.
+
+#### 2. Validation Obligatoire du Semestre
+
+**Problème** : Les modals "Éditer moyennes" et "Éditer absences" s'ouvraient même sans semestre sélectionné, causant :
+- Erreur "Call to a member function getRelationExistenceQuery() on null" (absences)
+- Comportement incohérent (moyennes s'affichait quand même)
+- Pas de message clair pour l'utilisateur
+
+**Solution Multi-Niveau** :
+
+##### A. Validation Frontend (JavaScript)
+
+Ajout de vérification au début de `openMoyennesModal()` et `openAbsencesModal()`
+
+**Fichier** : `resources/views/esbtp/resultats/classe-edit.blade.php`
+
+**openMoyennesModal()** (L556-559) :
+```javascript
+// Validation obligatoire du semestre
+if (!semestre || semestre === null || semestre === '') {
+    showToast('⚠️ Veuillez sélectionner un semestre avant d\'éditer les moyennes', 'error');
+    return;
+}
+```
+
+**openAbsencesModal()** (L828-831) :
+```javascript
+// Validation obligatoire du semestre
+if (!semestre || semestre === null || semestre === '') {
+    showToast('⚠️ Veuillez sélectionner un semestre avant d\'éditer les absences', 'error');
+    return;
+}
+```
+
+##### B. Validation Backend (Controller)
+
+Changement de `nullable` à `required` dans les validations Laravel
+
+**Fichier** : `app/Http/Controllers/ESBTPBulletinController.php`
+
+**getMoyennes()** (L3164) :
+```php
+'semestre' => 'required|in:1,2', // OBLIGATOIRE (était: nullable)
+```
+
+**getAbsences()** (L3276) :
+```php
+'semestre' => 'required|in:1,2', // OBLIGATOIRE (était: nullable)
+```
+
+**bulkUpdateMoyennes()** (L3320) :
+```php
+'semestre' => 'required|in:1,2', // OBLIGATOIRE (déjà présent)
+```
+
+### Workflow Utilisateur
+
+**Avant** :
+1. Ouvre page sans sélectionner semestre
+2. Sélectionne étudiants
+3. Clique "Éditer moyennes" → Modal s'ouvre (comportement incohérent)
+4. Clique "Éditer absences" → Erreur 500 (getRelationExistenceQuery)
+
+**Après** :
+1. Ouvre page sans sélectionner semestre
+2. Sélectionne étudiants
+3. Clique "Éditer moyennes" → Toast "⚠️ Veuillez sélectionner un semestre" (blocage clair)
+4. Clique "Éditer absences" → Toast "⚠️ Veuillez sélectionner un semestre" (blocage clair)
+5. Sélectionne semestre 1 ou 2
+6. Clique "Éditer moyennes" ✅ Modal s'ouvre
+7. Clique "Éditer absences" ✅ Modal s'ouvre
+
+### Messages d'Erreur
+
+**Toast JavaScript** :
+- 🟠 Moyennes : "⚠️ Veuillez sélectionner un semestre avant d'éditer les moyennes"
+- 🟠 Absences : "⚠️ Veuillez sélectionner un semestre avant d'éditer les absences"
+
+**Validation Laravel** (si contournement frontend) :
+- 🔴 "The semestre field is required."
+- 🔴 "The selected semestre is invalid."
+
+### Erreur Corrigée
+
+**Erreur** : `Call to a member function getRelationExistenceQuery() on null`
+
+**Cause** : Tentative de requête avec `$periode = null` causant problème dans les relations Eloquent
+
+**Fix** :
+1. Frontend empêche l'envoi de requête sans semestre
+2. Backend rejette requête si semestre manquant (validation `required`)
+3. Double protection : frontend UX + backend sécurité
+
+### Fichiers Modifiés
+
+1. **app/Http/Controllers/ESBTPBulletinController.php**
+   - L3044-3046 : Tri alphabétique étudiants
+   - L3164 : Semestre required dans getMoyennes()
+   - L3276 : Semestre required dans getAbsences()
+
+2. **resources/views/esbtp/resultats/classe-edit.blade.php**
+   - L556-559 : Validation semestre dans openMoyennesModal()
+   - L828-831 : Validation semestre dans openAbsencesModal()
+
+### Tests de Validation
+
+- [x] Tri alphabétique : Étudiants triés de A à Z dans tableau
+- [x] Sans semestre + clic "Éditer moyennes" → Toast "Veuillez sélectionner un semestre"
+- [x] Sans semestre + clic "Éditer absences" → Toast "Veuillez sélectionner un semestre"
+- [x] Avec semestre 1 + clic "Éditer moyennes" → Modal s'ouvre ✅
+- [x] Avec semestre 1 + clic "Éditer absences" → Modal s'ouvre ✅
+- [x] Plus d'erreur "getRelationExistenceQuery" ✅
+
+---
+
+*Dernière mise à jour: 25 octobre 2025 - Résultats Classe - Tri Alphabétique + Validation Semestre*

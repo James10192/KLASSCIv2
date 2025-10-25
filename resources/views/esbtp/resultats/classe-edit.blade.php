@@ -552,6 +552,12 @@
 
     // Modal opening functions
     function openMoyennesModal() {
+        // Validation obligatoire du semestre
+        if (!semestre || semestre === null || semestre === '') {
+            showToast('⚠️ Veuillez sélectionner un semestre avant d\'éditer les moyennes', 'error');
+            return;
+        }
+
         if (selectedStudents.length === 0) {
             showToast('Veuillez sélectionner au moins un étudiant', 'error');
             return;
@@ -818,6 +824,12 @@
     }
 
     function openAbsencesModal() {
+        // Validation obligatoire du semestre
+        if (!semestre || semestre === null || semestre === '') {
+            showToast('⚠️ Veuillez sélectionner un semestre avant d\'éditer les absences', 'error');
+            return;
+        }
+
         if (selectedStudents.length === 0) {
             showToast('Veuillez sélectionner au moins un étudiant', 'error');
             return;
