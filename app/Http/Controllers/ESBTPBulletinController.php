@@ -3460,37 +3460,55 @@ class ESBTPBulletinController extends Controller
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
             'professeurs' => 'required|array',
             'professeurs.*.matiere_id' => 'required|exists:esbtp_matieres,id',
-            'professeurs.*.enseignant_id' => 'nullable|exists:esbtp_enseignants,id'
+            'professeurs.*.enseignant_id' => 'nullable|exists:esbtp_teachers,id'  // Table correcte: esbtp_teachers
         ]);
 
         \DB::beginTransaction();
         try {
-            $updated = 0;
-
+            // Créer un tableau associatif matiere_id => teacher_name
+            $professeursMap = [];
             foreach ($request->professeurs as $profData) {
-                if (!$profData['enseignant_id']) {
-                    continue;
+                if (isset($profData['enseignant_id']) && $profData['enseignant_id']) {
+                    // Récupérer le nom du professeur depuis esbtp_teachers
+                    $teacher = \App\Models\ESBTPTeacher::with('user')->find($profData['enseignant_id']);
+                    if ($teacher && $teacher->user) {
+                        $professeursMap[$profData['matiere_id']] = $teacher->user->name;
+                    }
                 }
+            }
 
-                // Update all resultats for this matiere in this classe/periode/annee
-                $affected = \App\Models\ESBTPResultat::where('classe_id', $request->classe_id)
-                    ->where('matiere_id', $profData['matiere_id'])
-                    ->where('periode', $request->periode)
-                    ->where('annee_universitaire_id', $request->annee_universitaire_id)
-                    ->update([
-                        'enseignant_id' => $profData['enseignant_id']
-                    ]);
+            // Récupérer TOUS les bulletins des étudiants de cette classe/periode/annee
+            $bulletins = \App\Models\ESBTPBulletin::where('classe_id', $request->classe_id)
+                ->where('periode', $request->periode)
+                ->where('annee_universitaire_id', $request->annee_universitaire_id)
+                ->whereNotNull('etudiant_id')  // Seulement les bulletins étudiants
+                ->get();
 
-                $updated += $affected;
+            $updated = 0;
+            foreach ($bulletins as $bulletin) {
+                // Récupérer les professeurs existants
+                $professeursExistants = json_decode($bulletin->professeurs, true) ?: [];
+
+                // Fusionner avec les nouveaux professeurs
+                $professeursFusionnes = array_merge($professeursExistants, $professeursMap);
+
+                // Mettre à jour le bulletin
+                $bulletin->update([
+                    'professeurs' => json_encode($professeursFusionnes),
+                    'updated_by' => auth()->id()
+                ]);
+
+                $updated++;
             }
 
             \DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => "✅ Professeurs mis à jour avec succès. ($updated résultats modifiés)",
+                'message' => "✅ Professeurs assignés avec succès pour " . count($professeursMap) . " matière(s) sur $updated bulletin(s)",
                 'stats' => [
-                    'updated' => $updated
+                    'updated_bulletins' => $updated,
+                    'updated_matieres' => count($professeursMap)
                 ]
             ]);
 
