@@ -249,9 +249,25 @@ class ChatbotNavigationService
             $query->whereDoesntHave('paiements');
         }
 
+        // Gérer le filtre "classe" (nom de classe → classe_id)
+        if (isset($filters['classe'])) {
+            $classeName = $filters['classe'];
+            $classe = \DB::table('esbtp_classes')
+                ->where('name', 'like', '%' . $classeName . '%')
+                ->orWhere('code', 'like', '%' . $classeName . '%')
+                ->first();
+
+            if ($classe) {
+                $query->where('classe_id', $classe->id);
+            } else {
+                // Classe introuvable → retourner 0 résultats
+                $query->whereRaw('1 = 0');
+            }
+        }
+
         // Appliquer autres filtres simples
         foreach ($filters as $key => $value) {
-            if (in_array($key, ['search', 'page', 'per_page', 'limit', '_raw_message', 'without_paiements'])) {
+            if (in_array($key, ['search', 'page', 'per_page', 'limit', '_raw_message', 'without_paiements', 'classe'])) {
                 continue;
             }
             $query->where($key, $value);
@@ -275,6 +291,9 @@ class ChatbotNavigationService
                     default => $filters['status']
                 };
                 $criteriaParts[] = "statut : $statusLabel";
+            }
+            if (isset($filters['classe'])) {
+                $criteriaParts[] = "classe : " . $filters['classe'];
             }
 
             if (!empty($criteriaParts)) {
