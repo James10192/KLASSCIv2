@@ -6384,3 +6384,155 @@ ef5d715 - debug: ajout logs wasChanged() pour diagnostic cache Eloquent
 ---
 
 *Dernière mise à jour: 25 octobre 2025 - Fix 3 Bugs Critiques Professeurs Bulletins*
+
+## 🔧 Édition Résultats Classe - Fixes Modal Config Matières (25 Octobre 2025)
+
+### Problématique
+
+La modal "Configuration des Matières" sur la page `/esbtp/resultats/classe/{classe}/edit` ne chargeait pas correctement les données au refresh, causant plusieurs problèmes :
+
+1. ❌ **Accordéons vides** : Les accordéons des matières affichaient "Aucune matière disponible" même après avoir modifié des coefficients
+2. ❌ **Données pas à jour** : Les modifications de coefficients/types ne se reflétaient pas après save sans reload complet
+3. ❌ **Log manquant** : Aucun log `📚 getConfigMatieres()` dans Laravel lors du refresh AJAX
+
+### Causes Identifiées
+
+**1. Route inexistante**
+```php
+// ❌ Appelé dans le JS mais n'existait pas dans web.php
+Route::get('/classe/{classe}/config-matieres', ...)->name('esbtp.resultats.get-config-matieres');
+```
+
+**2. Méthode controller manquante**
+```php
+// ❌ Méthode getConfigMatieres() n'existait pas dans ESBTPBulletinController
+public function getConfigMatieres($classeId) { ... }
+```
+
+**3. HTML généré côté serveur**
+- Le partial `modals/edit-matieres.blade.php` utilisait des boucles Blade pour générer les accordéons
+- Problème : après save AJAX, le partial n'était pas re-rendu → accordéons vides
+
+### Solutions Implémentées
+
+#### 1. Création Route + Méthode Controller
+
+**Route** (`routes/web.php` L1094-1095) :
+```php
+Route::get('/classe/{classe}/config-matieres', [ESBTPBulletinController::class, 'getConfigMatieres'])
+    ->name('esbtp.resultats.get-config-matieres');
+```
+
+**Méthode** (`ESBTPBulletinController.php` L3042-3125) :
+```php
+public function getConfigMatieres($classeId)
+{
+    \Log::info('📚 getConfigMatieres() - START', ['classe_id' => $classeId]);
+
+    $classe = ESBTPClasse::findOrFail($classeId);
+
+    // Récupérer matières via combinaisons globales (filière + niveau)
+    $matieres = ESBTPMatiere::where('is_active', true)
+        ->whereHas('filieres', function ($q) use ($classe) {
+            $q->where('esbtp_filieres.id', $classe->filiere_id);
+        })
+        ->whereHas('niveaux', function ($q) use ($classe) {
+            $q->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
+        })
+        ->with(['filieres', 'niveaux'])
+        ->orderBy('nom')
+        ->get();
+
+    $matieresData = [];
+    foreach ($matieres as $matiere) {
+        // Récupérer config existante
+        $config = ESBTPConfigMatiere::where('classe_id', $classe->id)
+            ->where('matiere_id', $matiere->id)
+            ->first();
+
+        $matieresData[] = [
+            'id' => $matiere->id,
+            'nom' => $matiere->nom ?? $matiere->name,
+            'code' => $matiere->code,
+            'coefficient' => $config->coefficient ?? $matiere->coefficient ?? 1,
+            'type_enseignement' => $config->type_enseignement ?? 'général'
+        ];
+    }
+
+    return response()->json([
+        'success' => true,
+        'matieres' => $matieresData,
+        'classe' => [
+            'id' => $classe->id,
+            'nom' => $classe->name,
+            'filiere' => $classe->filiere->name ?? 'N/A',
+            'niveau' => $classe->niveau->name ?? 'N/A'
+        ]
+    ]);
+}
+```
+
+#### 2. Modification JavaScript Refresh
+
+**Workflow complet** :
+
+1. **Utilisateur clique "Enregistrer" dans modal Config Matières**
+2. **AJAX POST** vers `bulkUpdateMatieresConfig()`
+3. **Backend** : Sauvegarde coefficients + types dans `esbtp_config_matiere`
+4. **Success callback** : Appel endpoint JSON `/classe/{classe}/config-matieres`
+5. **Endpoint JSON** : Retourne matières avec configs mises à jour
+6. **JavaScript** : Reconstruit les accordéons avec nouvelles données
+7. **Animation** : Toast success + accordéons rafraîchis visuellement
+
+**Résultat utilisateur** :
+- ✅ Accordéons affichent les nouvelles valeurs immédiatement
+- ✅ Badges "Coef: X" et "Général/Technique" mis à jour
+- ✅ Inputs pré-remplis avec nouvelles valeurs
+- ✅ Pas de reload complet de la page
+
+### Données Retournées
+
+**Exemple réponse JSON** :
+```json
+{
+  "success": true,
+  "matieres": [
+    {
+      "id": 42,
+      "nom": "Mathématiques",
+      "code": "MATH101",
+      "coefficient": 3.5,
+      "type_enseignement": "général"
+    }
+  ],
+  "classe": {
+    "id": 5,
+    "nom": "BATIMENT F",
+    "filiere": "BTS Bâtiment",
+    "niveau": "Première Année"
+  }
+}
+```
+
+### Tests de Validation
+
+| Test | Action | Attendu | Résultat |
+|------|--------|---------|----------|
+| 1 | Modifier coef Math 3→3.5 + Save | Accordéon Math affiche "Coef: 3.5" | ✅ |
+| 2 | Changer type Tech général→technique | Badge "Technique" orange | ✅ |
+| 3 | Save sans modification | Accordéons inchangés | ✅ |
+| 4 | Logs Laravel | `📚 getConfigMatieres()` visible | ✅ |
+
+### Fichiers Modifiés
+
+1. ✅ `routes/web.php` (L1094-1095) - Route GET `get-config-matieres`
+2. ✅ `app/Http/Controllers/ESBTPBulletinController.php` (L3042-3125) - Méthode `getConfigMatieres()`
+3. ✅ `resources/views/esbtp/resultats/classe-edit.blade.php` (L1144-1200) - Reconstruction accordéons AJAX
+
+### Commits
+
+✅ `feat(resultats): endpoint GET config-matieres + refresh modal AJAX dynamique`
+
+---
+
+*Dernière mise à jour: 25 octobre 2025 - Édition Résultats Classe - Fixes Modal Config Matières*

@@ -5893,82 +5893,53 @@ class ESBTPBulletinController extends Controller
             return back()->with('error', 'Données introuvables.');
         }
 
-        // Initialiser une collection vide pour les matières
-        $matieres = collect();
-
-        // APPROCHE 1: Récupérer les matières basées sur les résultats de l'étudiant
+        // Récupérer les matières basées sur la combinaison filière + niveau de la classe
+        // NOTE: On utilise UNIQUEMENT l'approche filière+niveau car c'est la source fiable.
+        // L'approche basée sur esbtp_resultats peut être incomplète si toutes les notes n'ont pas été saisies.
         try {
-            // Récupérer les résultats de l'étudiant pour la classe, période et année universitaire
-            $resultats = ESBTPResultat::where('etudiant_id', $etudiant_id)
-                ->where('classe_id', $classe_id)
-                ->where('periode', $periode)
-                ->where('annee_universitaire_id', $annee_universitaire_id)
-                ->get();
+            $classeFiliereId = $classe->filiere_id;
+            $classeNiveauId = $classe->niveau_etude_id;
 
-            if ($resultats->isNotEmpty()) {
-                // Extraire les IDs des matières directement des résultats
-                $matieresIds = $resultats->pluck('matiere_id')->unique()->toArray();
-                if (!empty($matieresIds)) {
-                    $matieres = ESBTPMatiere::whereIn('id', $matieresIds)->get();
-                    \Log::info('Matières récupérées depuis les résultats de l\'étudiant', [
-                        'count' => $matieres->count(),
-                        'matiere_ids' => $matieresIds
-                    ]);
-                }
-            }
-        } catch (\Exception $e) {
-            \Log::error('Erreur lors de la récupération des matières via les résultats de l\'étudiant', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+            $matieres = \App\Models\ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get()
+                ->filter(function ($matiere) use ($classeFiliereId, $classeNiveauId) {
+                    if (!$classeFiliereId || !$classeNiveauId) {
+                        return false;
+                    }
+                    return $matiere->filieres->pluck('id')->contains($classeFiliereId)
+                        && $matiere->niveaux->pluck('id')->contains($classeNiveauId);
+                })
+                ->values();
+
+            \Log::info('📚 Matières récupérées basées sur filière + niveau de la classe (config-matieres)', [
+                'count' => $matieres->count(),
+                'filiere_id' => $classeFiliereId,
+                'niveau_id' => $classeNiveauId,
+                'matiere_ids' => $matieres->pluck('id')->toArray()
             ]);
-        }
 
-        // APPROCHE 2: Si aucune matière n'est trouvée, récupérer les matières basées sur la combinaison filière + niveau de la classe
-        if ($matieres->isEmpty()) {
-            try {
-                $classeFiliereId = $classe->filiere_id;
-                $classeNiveauId = $classe->niveau_etude_id;
-
-                $matieres = \App\Models\ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
-                    ->where('is_active', true)
-                    ->orderBy('name')
-                    ->get()
-                    ->filter(function ($matiere) use ($classeFiliereId, $classeNiveauId) {
-                        if (!$classeFiliereId || !$classeNiveauId) {
-                            return false;
-                        }
-                        return $matiere->filieres->pluck('id')->contains($classeFiliereId)
-                            && $matiere->niveaux->pluck('id')->contains($classeNiveauId);
-                    })
-                    ->values();
-
-                \Log::info('Matières récupérées basées sur la combinaison filière + niveau de la classe', [
-                    'count' => $matieres->count(),
-                    'filiere_id' => $classeFiliereId,
-                    'niveau_id' => $classeNiveauId
-                ]);
-
-                if ($matieres->isEmpty()) {
-                    // Rediriger vers la page des résultats avec message explicite
-                    return redirect()->route('esbtp.resultats.etudiant', [
-                        'etudiant' => $etudiant_id,
-                        'classe_id' => $classe_id,
-                        'periode' => $periode == 'semestre1' ? '1' : ($periode == 'semestre2' ? '2' : $periode),
-                        'annee_universitaire_id' => $annee_universitaire_id
-                    ])->with('error', 'Les absences ont été enregistrées avec succès. Cependant, le bulletin ne peut pas être généré car aucune matière n\'a été trouvée pour cette classe. Veuillez d\'abord "Modifier les moyennes" pour configurer les notes.');
-                }
-            } catch (\Exception $e) {
-                \Log::error('Erreur lors de la récupération des matières depuis la classe', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
+            if ($matieres->isEmpty()) {
+                // Rediriger vers la page des résultats avec message explicatif
                 return redirect()->route('esbtp.resultats.etudiant', [
                     'etudiant' => $etudiant_id,
                     'classe_id' => $classe_id,
                     'periode' => $periode == 'semestre1' ? '1' : ($periode == 'semestre2' ? '2' : $periode),
                     'annee_universitaire_id' => $annee_universitaire_id
-                ])->with('error', 'Les absences ont été enregistrées avec succès. Cependant, une erreur est survenue lors de la génération du bulletin : ' . $e->getMessage());
+                ])->with('error', 'Le bulletin ne peut pas être généré car aucune matière n\'a été trouvée pour cette classe. Veuillez configurer les matières de la classe (filière + niveau).');
             }
+        } catch (\Exception $e) {
+            \Log::error('❌ Erreur lors de la récupération des matières depuis la classe', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->route('esbtp.resultats.etudiant', [
+                'etudiant' => $etudiant_id,
+                'classe_id' => $classe_id,
+                'periode' => $periode == 'semestre1' ? '1' : ($periode == 'semestre2' ? '2' : $periode),
+                'annee_universitaire_id' => $annee_universitaire_id
+            ])->with('error', 'Une erreur est survenue lors de la génération du bulletin : ' . $e->getMessage());
         }
 
         // Récupérer les configurations existantes
