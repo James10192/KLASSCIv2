@@ -744,6 +744,9 @@ class ChatbotService
         $deepLinkFilters = $this->sanitizeFiltersForDeepLink($data['filters'] ?? []);
         $deepLink = $this->buildDeepLink($knowledge->deep_link_pattern, $deepLinkFilters);
 
+        // Construire le label du bouton deep link
+        $deepLinkLabel = $this->buildDeepLinkLabel($data['filters'] ?? [], $knowledge->intent);
+
         $introText = $text ?? "Voici les " . count($data['results']) . " premiers résultats :";
 
         return [
@@ -759,6 +762,7 @@ class ChatbotService
                 'total_count' => count($data['results']),
                 'total_available' => $data['total_count'],
                 'deep_link' => $deepLink,
+                'deep_link_label' => $deepLinkLabel,
                 'follow_up' => $followUp,
             ],
             'deep_link' => $deepLink,
@@ -1097,6 +1101,19 @@ class ChatbotService
     {
         $link = $pattern;
 
+        // Si le filtre 'classe' est présent, convertir en filiere + niveau (IDs directs pour URL)
+        if (isset($filters['classe']) && !isset($filters['filiere'])) {
+            $classe = \DB::table('esbtp_classes')
+                ->where('name', 'like', '%' . $filters['classe'] . '%')
+                ->orWhere('code', 'like', '%' . $filters['classe'] . '%')
+                ->first();
+
+            if ($classe) {
+                $filters['filiere'] = $classe->filiere_id;
+                $filters['niveau'] = $classe->niveau_etude_id;
+            }
+        }
+
         foreach ($filters as $key => $value) {
             if (is_array($value)) {
                 // Pour month qui a 'column' et 'value'
@@ -1294,5 +1311,29 @@ class ChatbotService
         }
 
         return implode(', ', $parts);
+    }
+
+    /**
+     * Construire le label du bouton deep link de manière explicite
+     */
+    protected function buildDeepLinkLabel(array $filters, string $intent): string
+    {
+        // Si le filtre 'classe' est présent, récupérer filière et niveau
+        if (isset($filters['classe'])) {
+            $classe = \DB::table('esbtp_classes')
+                ->select('esbtp_classes.*', 'esbtp_filieres.name as filiere_name', 'esbtp_niveau_etudes.name as niveau_name')
+                ->leftJoin('esbtp_filieres', 'esbtp_classes.filiere_id', '=', 'esbtp_filieres.id')
+                ->leftJoin('esbtp_niveau_etudes', 'esbtp_classes.niveau_etude_id', '=', 'esbtp_niveau_etudes.id')
+                ->where('esbtp_classes.name', 'like', '%' . $filters['classe'] . '%')
+                ->orWhere('esbtp_classes.code', 'like', '%' . $filters['classe'] . '%')
+                ->first();
+
+            if ($classe && $classe->filiere_name && $classe->niveau_name) {
+                return "Voir la page (Filière : {$classe->filiere_name}, Niveau : {$classe->niveau_name})";
+            }
+        }
+
+        // Sinon, label par défaut
+        return "Ouvrir la page";
     }
 }
