@@ -253,8 +253,10 @@ class ChatbotNavigationService
         if (isset($filters['classe'])) {
             $classeName = $filters['classe'];
             $classe = \DB::table('esbtp_classes')
-                ->where('name', 'like', '%' . $classeName . '%')
-                ->orWhere('code', 'like', '%' . $classeName . '%')
+                ->where(function ($q) use ($classeName) {
+                    $q->where('name', 'like', '%' . $classeName . '%')
+                      ->orWhere('code', 'like', '%' . $classeName . '%');
+                })
                 ->first();
 
             if ($classe) {

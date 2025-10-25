@@ -632,8 +632,10 @@ class ChatbotService
         if (isset($filters['classe'])) {
             $classeName = $filters['classe'];
             $classe = \DB::table('esbtp_classes')
-                ->where('name', 'like', '%' . $classeName . '%')
-                ->orWhere('code', 'like', '%' . $classeName . '%')
+                ->where(function ($q) use ($classeName) {
+                    $q->where('name', 'like', '%' . $classeName . '%')
+                      ->orWhere('code', 'like', '%' . $classeName . '%');
+                })
                 ->first();
 
             if ($classe) {
@@ -1324,8 +1326,10 @@ class ChatbotService
                 ->select('esbtp_classes.*', 'esbtp_filieres.name as filiere_name', 'esbtp_niveau_etudes.name as niveau_name')
                 ->leftJoin('esbtp_filieres', 'esbtp_classes.filiere_id', '=', 'esbtp_filieres.id')
                 ->leftJoin('esbtp_niveau_etudes', 'esbtp_classes.niveau_etude_id', '=', 'esbtp_niveau_etudes.id')
-                ->where('esbtp_classes.name', 'like', '%' . $filters['classe'] . '%')
-                ->orWhere('esbtp_classes.code', 'like', '%' . $filters['classe'] . '%')
+                ->where(function ($q) use ($filters) {
+                    $q->where('esbtp_classes.name', 'like', '%' . $filters['classe'] . '%')
+                      ->orWhere('esbtp_classes.code', 'like', '%' . $filters['classe'] . '%');
+                })
                 ->first();
 
             if ($classe && $classe->filiere_name && $classe->niveau_name) {
