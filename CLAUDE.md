@@ -3654,14 +3654,15 @@ $pendingPaymentsCount = DB::table('esbtp_paiements')
     ->count();
 ```
 
-**Après** : Compte les **inscriptions** dans l'un de ces deux cas :
+**Après** : Compte le **stock cumulatif** d'inscriptions dans l'un de ces deux cas :
 1. **Aucun paiement** dans `esbtp_paiements`
 2. **Paiements en attente uniquement** (aucun validé)
 
 ```php
+// STOCK CUMULATIF : toutes les inscriptions créées AVANT fin du mois
+$endOfMonth = (clone $date)->endOfMonth();
 $pendingPaymentsCount = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
-    ->whereYear('created_at', $date->year)
-    ->whereMonth('created_at', $date->month)
+    ->where('created_at', '<=', $endOfMonth)  // ← Changement clé : stock cumulatif
     ->where(function($query) {
         // Cas 1: Aucun paiement existe
         $query->whereDoesntHave('paiements')
@@ -3687,10 +3688,13 @@ $pendingPaymentsCount = ESBTPInscription::where('annee_universitaire_id', $annee
 - Exemple Avril 2025 : 508 validées (18 validées plus tard)
 - Exemple Octobre 2025 : 395 validées (validations tardives d'inscriptions créées en avril/mai)
 
-**🟧 Courbe orange - Inscriptions en attente de paiement**
-- Moment : Basée sur `created_at` de l'inscription
+**🟧 Courbe orange - Inscriptions en attente de paiement (STOCK CUMULATIF)**
+- Type : **Stock cumulatif** (toutes les inscriptions créées jusqu'à la fin du mois)
 - Condition : Inscription sans paiement OU avec paiements en attente uniquement
-- Exemple Avril 2025 : 526 (toutes sans paiement)
+- Exemple Avril 2025 : 526 au total
+- Exemple Mai 2025 : 1049 au total (526 avril + 523 mai)
+- Exemple Octobre 2025 : 1423 au total (accumulation visible ⚠️)
+- Avantage : Montre le **travail restant** et détecte si situation empire
 - Disparaît quand : Un paiement avec `status='validé'` est ajouté
 
 ### Workflow Dynamique
@@ -3751,12 +3755,36 @@ $avril = ESBTPInscription::whereYear('created_at', 2025)
 🟧 Inscriptions en attente de paiement
 ```
 
+### Choix STOCK vs FLUX pour Courbe Orange
+
+**Décision** : Utilisation du **STOCK CUMULATIF** (recommandé pour gestion d'école)
+
+**Comparaison** :
+
+| Aspect | FLUX (nouvelles par mois) | STOCK (cumulatif) ✅ |
+|--------|---------------------------|---------------------|
+| **Question répondue** | "Combien de nouvelles inscriptions sans paiement ce mois ?" | "Combien d'inscriptions doivent encore payer ?" |
+| **Exemple Avril** | 526 | 526 |
+| **Exemple Mai** | 523 | 1049 (cumul) |
+| **Exemple Juin** | 0 | 1049 (même chose) |
+| **Visibilité problème** | ❌ Masque l'accumulation | ✅ Alerte visible |
+| **Utilité métier** | ❌ Incomplet | ✅ Montre travail restant |
+| **Détection tendance** | ❌ Difficile | ✅ Évident (courbe monte/descend) |
+
+**Exemple d'utilisation** :
+```
+Octobre : 1423 en attente → "Il faut relancer 1423 familles !"
+```
+
+**Note explicative ajoutée** : Un encadré orange sous le graphique explique la logique STOCK aux utilisateurs.
+
 ### Notes Importantes
 
 - ✅ La colonne `date_validation` existe et est remplie dans `esbtp_inscriptions`
 - ✅ La relation `paiements()` existe dans le modèle `ESBTPInscription`
 - ✅ Les trois courbes utilisent des dates/logiques différentes → **visibles distinctement**
-- ⚠️ Si aucun paiement n'existe, courbe orange = courbe bleue (toutes en attente)
+- ✅ Courbe orange = STOCK cumulatif (meilleure visibilité du travail restant)
+- ⚠️ Si aucun paiement n'existe, courbe orange croissante = alerte problème
 
 ---
 

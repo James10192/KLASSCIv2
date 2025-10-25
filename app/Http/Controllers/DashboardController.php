@@ -376,11 +376,11 @@ class DashboardController extends Controller
                     ->whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();
-                // Courbe orange: inscriptions avec paiement en attente
-                // (soit sans paiement, soit avec paiement status='en_attente' uniquement)
+                // Courbe orange: STOCK d'inscriptions en attente de paiement à la fin du mois
+                // = Toutes les inscriptions créées AVANT fin du mois qui n'ont toujours pas de paiement validé
+                $endOfMonth = (clone $date)->endOfMonth();
                 $pendingPaymentsCount = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
-                    ->whereYear('created_at', $date->year)
-                    ->whereMonth('created_at', $date->month)
+                    ->where('created_at', '<=', $endOfMonth)  // Créées avant ou pendant ce mois
                     ->where(function($query) {
                         // Cas 1: Aucun paiement existe
                         $query->whereDoesntHave('paiements')
@@ -404,10 +404,10 @@ class DashboardController extends Controller
                 $inscriptionsCount = ESBTPInscription::whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();
-                // Courbe orange: inscriptions avec paiement en attente
-                // (soit sans paiement, soit avec paiement status='en_attente' uniquement)
-                $pendingPaymentsCount = ESBTPInscription::whereYear('created_at', $date->year)
-                    ->whereMonth('created_at', $date->month)
+                // Courbe orange: STOCK d'inscriptions en attente de paiement à la fin du mois
+                // = Toutes les inscriptions créées AVANT fin du mois qui n'ont toujours pas de paiement validé
+                $endOfMonth = (clone $date)->endOfMonth();
+                $pendingPaymentsCount = ESBTPInscription::where('created_at', '<=', $endOfMonth)
                     ->where(function($query) {
                         // Cas 1: Aucun paiement existe
                         $query->whereDoesntHave('paiements')
@@ -944,11 +944,11 @@ class DashboardController extends Controller
                     ->whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();
-                // Courbe orange: inscriptions avec paiement en attente
-                // (soit sans paiement, soit avec paiement status='en_attente' uniquement)
+                // Courbe orange: STOCK d'inscriptions en attente de paiement à la fin du mois
+                // = Toutes les inscriptions créées AVANT fin du mois qui n'ont toujours pas de paiement validé
+                $endOfMonth = (clone $date)->endOfMonth();
                 $pendingPaymentsCount = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
-                    ->whereYear('created_at', $date->year)
-                    ->whereMonth('created_at', $date->month)
+                    ->where('created_at', '<=', $endOfMonth)  // Créées avant ou pendant ce mois
                     ->where(function($query) {
                         // Cas 1: Aucun paiement existe
                         $query->whereDoesntHave('paiements')
@@ -972,10 +972,10 @@ class DashboardController extends Controller
                 $inscriptionsCount = ESBTPInscription::whereYear('created_at', $date->year)
                     ->whereMonth('created_at', $date->month)
                     ->count();
-                // Courbe orange: inscriptions avec paiement en attente
-                // (soit sans paiement, soit avec paiement status='en_attente' uniquement)
-                $pendingPaymentsCount = ESBTPInscription::whereYear('created_at', $date->year)
-                    ->whereMonth('created_at', $date->month)
+                // Courbe orange: STOCK d'inscriptions en attente de paiement à la fin du mois
+                // = Toutes les inscriptions créées AVANT fin du mois qui n'ont toujours pas de paiement validé
+                $endOfMonth = (clone $date)->endOfMonth();
+                $pendingPaymentsCount = ESBTPInscription::where('created_at', '<=', $endOfMonth)
                     ->where(function($query) {
                         // Cas 1: Aucun paiement existe
                         $query->whereDoesntHave('paiements')

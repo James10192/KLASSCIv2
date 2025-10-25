@@ -251,6 +251,21 @@
                 <div class="chart-container">
                     <canvas id="inscriptionsChart"></canvas>
                 </div>
+
+                <!-- Note explicative -->
+                <div class="mt-md" style="padding: var(--space-md); background-color: rgba(245, 158, 11, 0.05); border-left: 4px solid var(--warning); border-radius: var(--radius-small);">
+                    <div style="display: flex; align-items: start; gap: var(--space-sm);">
+                        <i class="fas fa-info-circle" style="color: var(--warning); margin-top: 2px;"></i>
+                        <div style="flex: 1;">
+                            <strong style="color: var(--warning);">Note sur la courbe orange :</strong>
+                            <p style="margin: var(--space-xs) 0 0 0; color: var(--text-secondary); font-size: var(--text-small);">
+                                Cette courbe affiche le <strong>stock cumulatif</strong> d'inscriptions en attente de paiement à la fin de chaque mois
+                                (toutes les inscriptions créées jusqu'à cette date qui n'ont pas encore de paiement validé).
+                                Elle montre le <strong>travail restant</strong> et permet de détecter si la situation s'améliore ou empire dans le temps.
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="col-xl-4 mb-lg">
