@@ -58,46 +58,18 @@
                                                 <td>{{ $matiere->code }}</td>
                                             </tr>
                                             <tr>
-                                                <th>Coefficient :</th>
-                                                <td>{{ $matiere->coefficient_default }}</td>
-                                            </tr>
-                                            <tr>
                                                 <th>Volume horaire :</th>
                                                 <td>
-                                                    @if(isset($parametresPlanning) && $parametresPlanning['volume_horaire_total'] > 0)
-                                                        {{ $parametresPlanning['volume_horaire_total'] }} heures
-                                                        <small class="text-success">(Planning général)</small>
+                                                    @if(isset($planifications) && $planifications->count() > 0)
+                                                        @foreach($planifications as $planification)
+                                                            <div class="mb-2">
+                                                                <strong>{{ $planification->filiere->name ?? 'N/A' }} - {{ $planification->niveauEtude->name ?? 'N/A' }} :</strong>
+                                                                <span class="text-primary">{{ $planification->volume_horaire_total ?? 0 }}h</span>
+                                                                <small class="text-success d-block">(Planning général)</small>
+                                                            </div>
+                                                        @endforeach
                                                     @else
-                                                        {{ $matiere->total_heures_default ?? 0 }} heures
-                                                        <small class="text-muted">(Par défaut)</small>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th>Répartition :</th>
-                                                <td>
-                                                    @if(isset($parametresPlanning) && $parametresPlanning['planifications_count'] > 0)
-                                                        <span class="badge bg-info">CM : {{ $parametresPlanning['heures_cm'] ?? 0 }}h</span>
-                                                        <span class="badge bg-success">TD : {{ $parametresPlanning['heures_td'] ?? 0 }}h</span>
-                                                        <span class="badge bg-warning">TP : {{ $parametresPlanning['heures_tp'] ?? 0 }}h</span>
-                                                        <small class="d-block text-success mt-1">(Depuis planning général)</small>
-                                                    @else
-                                                        <span class="badge bg-info">CM : {{ $matiere->heures_cm_default ?? 0 }}h</span>
-                                                        <span class="badge bg-success">TD : {{ $matiere->heures_td_default ?? 0 }}h</span>
-                                                        <span class="badge bg-warning">TP : {{ $matiere->heures_tp_default ?? 0 }}h</span>
-                                                        <small class="d-block text-muted mt-1">(Valeurs par défaut)</small>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <th>Unité d'enseignement :</th>
-                                                <td>
-                                                    @if($matiere->uniteEnseignement)
-                                                        <a href="{{ route('esbtp.unites-enseignement.show', ['uniteEnseignement' => $matiere->uniteEnseignement->id]) }}">
-                                                            {{ $matiere->uniteEnseignement->name }} ({{ $matiere->uniteEnseignement->code }})
-                                                        </a>
-                                                    @else
-                                                        <span class="text-muted">Non assignée</span>
+                                                        <span class="text-muted">Aucune configuration dans le planning général</span>
                                                     @endif
                                                 </td>
                                             </tr>
@@ -140,51 +112,22 @@
                     </p>
                 </div>
                 <div class="main-card-body">
-                    <div class="row mb-3">
-                        <div class="col-6">
-                            <label class="form-label text-muted">Coefficient</label>
-                            <div class="h5 text-primary mb-0">{{ $matiere->coefficient_default }}</div>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label text-muted">Total heures</label>
-                            <div class="h5 text-primary mb-0">
-                                @if(isset($parametresPlanning) && $parametresPlanning['volume_horaire_total'] > 0)
-                                    {{ $parametresPlanning['volume_horaire_total'] }}h
-                                    <small class="text-success d-block" style="font-size: 0.7rem;">(Planning général)</small>
-                                @else
-                                    {{ $matiere->total_heures_default }}h
-                                    <small class="text-muted d-block" style="font-size: 0.7rem;">(Valeur par défaut)</small>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                    
                     <div class="mb-3">
-                        <label class="form-label text-muted">Répartition horaire</label>
-                        <div class="d-flex flex-wrap gap-2">
-                            @if(isset($parametresPlanning) && $parametresPlanning['planifications_count'] > 0)
-                                <span class="badge bg-info">CM : {{ $parametresPlanning['heures_cm'] }}h</span>
-                                <span class="badge bg-success">TD : {{ $parametresPlanning['heures_td'] }}h</span>
-                                <span class="badge bg-warning">TP : {{ $parametresPlanning['heures_tp'] }}h</span>
-                                <span class="badge bg-secondary">Stage : {{ $parametresPlanning['heures_stage'] }}h</span>
-                                <span class="badge bg-primary">Perso : {{ $parametresPlanning['heures_perso'] }}h</span>
-                            @else
-                                <span class="badge bg-info">CM : {{ $matiere->heures_cm_default ?? 0 }}h</span>
-                                <span class="badge bg-success">TD : {{ $matiere->heures_td_default ?? 0 }}h</span>
-                                <span class="badge bg-warning">TP : {{ $matiere->heures_tp_default ?? 0 }}h</span>
-                                <span class="badge bg-secondary">Stage : {{ $matiere->heures_stage_default ?? 0 }}h</span>
-                                <span class="badge bg-primary">Perso : {{ $matiere->heures_perso_default ?? 0 }}h</span>
-                            @endif
-                        </div>
-                        @if(isset($parametresPlanning) && $parametresPlanning['planifications_count'] > 0)
-                            <small class="text-success mt-1 d-block">
-                                <i class="fas fa-check-circle me-1"></i>Configuré dans {{ $parametresPlanning['planifications_count'] }} planification(s)
-                            </small>
+                        <label class="form-label text-muted">Volume horaire par combinaison</label>
+                        @if(isset($planifications) && $planifications->count() > 0)
+                            @foreach($planifications as $planification)
+                                <div class="mb-2">
+                                    <strong>{{ $planification->filiere->name ?? 'N/A' }} - {{ $planification->niveauEtude->name ?? 'N/A' }} :</strong>
+                                    <span class="text-primary">{{ $planification->volume_horaire_total ?? 0 }}h</span>
+                                    <small class="text-success d-block">(Planning général)</small>
+                                </div>
+                            @endforeach
                         @else
-                            <small class="text-warning mt-1 d-block">
-                                <i class="fas fa-exclamation-triangle me-1"></i>Utilise les valeurs par défaut -
-                                <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="text-primary">Configurer dans le Planning Général</a>
-                            </small>
+                            <div class="text-muted">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Aucune configuration dans le planning général -
+                                <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="text-primary">Configurer maintenant</a>
+                            </div>
                         @endif
                     </div>
 

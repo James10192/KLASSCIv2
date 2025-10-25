@@ -308,6 +308,7 @@ class ESBTPMatiereController extends Controller
         // Récupérer les données de planification académique pour cette matière
         $enseignantsAssignes = collect();
         $parametresPlanning = [];
+        $planifications = collect(); // Initialiser comme collection vide
 
         if ($anneeUniversitaireCourante) {
             // Récupérer toutes les planifications pour cette matière et année
@@ -381,7 +382,7 @@ class ESBTPMatiereController extends Controller
                 ->get();
         }
 
-        return view('esbtp.matieres.show', compact('matiere', 'evaluations', 'enseignantsAssignes', 'anneeUniversitaireCourante', 'parametresPlanning', 'seances'));
+        return view('esbtp.matieres.show', compact('matiere', 'evaluations', 'enseignantsAssignes', 'anneeUniversitaireCourante', 'parametresPlanning', 'seances', 'planifications'));
     }
 
     /**

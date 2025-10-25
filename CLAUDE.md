@@ -4678,4 +4678,104 @@ DB::table('esbtp_planification_teachers')->truncate();
 
 ---
 
-*Dernière mise à jour: 25 octobre 2025 - Multi-sélection Enseignants Planning Général*
+## 📚 Matières - Page Détails (25 Octobre 2025)
+
+### Modifications Appliquées
+
+**Page** : `/esbtp/matieres/{id}` (ex: http://localhost:8000/esbtp/matieres/7)
+
+**Objectif** : Clarifier que les configurations proviennent du **planning général** et sont spécifiques à des combinaisons filière/niveau.
+
+#### Suppressions Effectuées
+
+1. ✅ **Ligne "Coefficient"** - Supprimée car non configurée dans planning général
+2. ✅ **Ligne "Répartition (CM/TD/TP)"** - Supprimée temporairement (à réimplémenter plus tard)
+3. ✅ **Ligne "Unité d'enseignement"** - Supprimée car non utilisée actuellement
+
+#### Modification Volume Horaire
+
+**Avant** :
+```
+Volume horaire : 50 heures (Planning général)
+```
+
+**Après** :
+```
+Volume horaire :
+  BTS Bâtiment - Première Année : 50h (Planning général)
+  BTS Bâtiment - Deuxième Année : 45h (Planning général)
+  Génie Civil - Licence 3 : 60h (Planning général)
+```
+
+**Logique** :
+- Affiche chaque combinaison filière/niveau avec son volume horaire spécifique
+- Si aucune configuration : "Aucune configuration dans le planning général"
+- Les données proviennent de `esbtp_planifications_academiques`
+
+#### Fichiers Modifiés
+
+1. **Controller** : `app/Http/Controllers/ESBTPMatiereController.php`
+   - Ligne 311 : Ajout `$planifications = collect();` (initialisation)
+   - Ligne 385 : Ajout de `'planifications'` au compact()
+
+2. **Vue** : `resources/views/esbtp/matieres/show.blade.php`
+   - Lignes 60-75 : Modification de la ligne "Volume horaire" avec loop sur planifications
+   - Suppression : lignes "Coefficient", "Répartition", "Unité d'enseignement"
+
+### Fonctionnalités À Implémenter Plus Tard
+
+#### 1. Répartition CM/TD/TP dans Planning Général
+
+**Objectif** : Ajouter la configuration de la répartition des heures (CM/TD/TP) lors de la configuration des volumes horaires dans le planning général.
+
+**Localisation** : `/esbtp/planning-general` - Modal de configuration matière
+
+**Données existantes en BDD** :
+- Table : `esbtp_planifications_academiques`
+- Colonnes : `volume_horaire_cm`, `volume_horaire_td`, `volume_horaire_tp`
+
+**À implémenter** :
+```php
+// Dans le modal de configuration planning général
+<div class="form-group">
+    <label>Répartition des heures</label>
+    <div class="row">
+        <div class="col-md-4">
+            <label>CM (Cours Magistral)</label>
+            <input type="number" name="heures_cm[{matiere_id}]" class="form-control" min="0">
+        </div>
+        <div class="col-md-4">
+            <label>TD (Travaux Dirigés)</label>
+            <input type="number" name="heures_td[{matiere_id}]" class="form-control" min="0">
+        </div>
+        <div class="col-md-4">
+            <label>TP (Travaux Pratiques)</label>
+            <input type="number" name="heures_tp[{matiere_id}]" class="form-control" min="0">
+        </div>
+    </div>
+    <small class="text-muted">Total : <span class="total-hours">0</span>h</small>
+</div>
+```
+
+**Validation** :
+- CM + TD + TP doit égaler le volume horaire total configuré
+- Afficher erreur si somme ≠ total
+
+**Affichage dans matieres.show** :
+Une fois configuré, réafficher dans la page détails matière :
+```
+Volume horaire :
+  BTS Bâtiment - Première Année : 50h
+    └─ CM: 20h | TD: 20h | TP: 10h
+```
+
+**Priorité** : Moyenne (après les fonctionnalités critiques)
+
+#### 2. Coefficient par Combinaison
+
+**Note** : Actuellement le coefficient est stocké uniquement dans `esbtp_config_matieres` (pour les bulletins).
+Si besoin de coefficient dans planning général → à discuter selon les besoins métier.
+
+---
+
+*Dernière mise à jour: 25 octobre 2025 - Page Détails Matières*
