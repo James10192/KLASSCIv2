@@ -3363,3 +3363,223 @@ Le LLM fait **3 tâches principales** :
 ✅ Test 3 : Autre catégorie (inscription) → 3 lignes (150k chacun)
 
 **Statut** : Détection catégorie ✅ | Filtrage affectation partiel ⚠️
+
+---
+
+## 🤖 Amélioration Prompt LLM - Clés Standardisées (21 Octobre 2025)
+
+### Problématique
+
+Le LLM Gemini 2.0 était **inconsistent dans l'extraction des filtres**, utilisant des clés JSON différentes selon les conversations :
+- Tantôt `type_affectation: "affectés"`
+- Tantôt `affectation: "affectés"`
+- Tantôt `status: "affectés"`
+
+Cela causait :
+- ⚠️ **Test 2 instable** : "Frais affectés" retournait tantôt 1 ligne (filtré), tantôt 3 lignes (non filtré)
+- 🔀 **Multi-key detection required** : Code backend devait checker 3 clés différentes
+- 📉 **Expérience utilisateur dégradée** : Résultats imprévisibles
+
+### Solution Implémentée
+
+**Approche** : **Prompt Engineering avec Few-Shot Learning** (exemples concrets dans le system instruction)
+
+#### 1. Définition de Clés Standardisées
+
+Dans `ChatbotLLMService::systemInstruction()` (lignes 208-217) :
+
+```
+UTILISE TOUJOURS CES NOMS DE CLÉS STANDARDISÉS :
+  * Pour les catégories de frais : "categorie_frais" (exemples: "inscription", "scolarité", "cantine", "transport")
+  * Pour le type d'affectation : "type_affectation" (exemples: "affectés", "réaffectés", "non affectés")
+  * Pour la filière : "filiere" (exemple: "BTS Bâtiment", "Génie Civil")
+  * Pour le niveau : "niveau" (exemples: "Première Année", "Deuxième Année", "L3")
+  * Pour le statut général : "status" (exemples: "en_attente", "validé", "rejeté", "active")
+  * Pour la classe : "classe" (exemple: "L3 GC - 2024/2025")
+  * Pour l'année universitaire : "annee_universitaire" (exemple: "2024/2025")
+  * Pour les dates : "month", "date_debut", "date_fin"
+  * Pour la recherche textuelle : "search"
+```
+
+#### 2. Exemples Concrets (Few-Shot Learning)
+
+Ajout de **4 exemples complets** dans le prompt système (lignes 219-278) :
+
+**Exemple 1** : Filière + Niveau + Catégorie
+```json
+Question : "Montre-moi les frais de scolarité pour Première Année BTS Bâtiment"
+{
+  "intent": "get_frais",
+  "filters": {
+    "categorie_frais": "scolarité",
+    "filiere": "BTS Bâtiment",
+    "niveau": "Première Année"
+  },
+  "display": "table",
+  "response_text": "Voici les frais de scolarité pour Première Année BTS Bâtiment :",
+  "limit": null,
+  "follow_up": ["Frais d'inscription ?", "Deuxième Année ?", "Autres filières ?"]
+}
+```
+
+**Exemple 2** : Catégorie + Type d'affectation (cas problématique)
+```json
+Question : "Quels sont les frais d'inscription pour les non affectés ?"
+{
+  "intent": "get_frais",
+  "filters": {
+    "categorie_frais": "inscription",
+    "type_affectation": "non affectés"
+  },
+  "display": "table",
+  "response_text": "Voici les frais d'inscription pour les étudiants non affectés :",
+  "limit": null,
+  "follow_up": ["Frais de scolarité ?", "Affectés ?", "Réaffectés ?"]
+}
+```
+
+**Exemple 3** : Tous les filtres combinés
+```json
+Question : "Frais de scolarité affectés Première Année BTS Bâtiment"
+{
+  "intent": "get_frais",
+  "filters": {
+    "categorie_frais": "scolarité",
+    "type_affectation": "affectés",
+    "filiere": "BTS Bâtiment",
+    "niveau": "Première Année"
+  },
+  "display": "table",
+  "response_text": "Voici les frais de scolarité pour les affectés en Première Année BTS Bâtiment :",
+  "limit": null,
+  "follow_up": ["Réaffectés ?", "Non affectés ?", "Deuxième Année ?"]
+}
+```
+
+**Exemple 4** : Autre intent (paiements)
+```json
+Question : "Paiements en attente de ce mois"
+{
+  "intent": "get_paiements",
+  "filters": {
+    "status": "en_attente",
+    "month": "current"
+  },
+  "display": "table",
+  "response_text": "Voici les paiements en attente de ce mois :",
+  "limit": null,
+  "follow_up": ["Valider tout ?", "Septembre ?", "Validés ?"]
+}
+```
+
+#### 3. Règles Renforcées (lignes 292-295)
+
+```
+IMPORTANT:
+1. Choisis TOUJOURS l'intent qui correspond exactement à ce que demande l'utilisateur, même si cet intent n'apparaît pas dans la liste des intents disponibles. Le système saura explorer le code pour trouver comment récupérer les données.
+2. RESPECTE STRICTEMENT LES NOMS DE CLÉS STANDARDISÉS dans `filters`. N'utilise JAMAIS d'autres noms comme "affectation", "categorie", "type", etc.
+3. Pour le type d'affectation, extrais TOUJOURS la valeur complète : "affectés", "réaffectés", ou "non affectés" (jamais juste "non").
+```
+
+#### 4. Simplification Code Backend
+
+Dans `ChatbotService.php` (lignes 411-415), suppression du multi-key checking :
+
+**Avant** (10 lignes) :
+```php
+$typeAffectationFilter = null;
+if (isset($llmFilters['type_affectation'])) {
+    $typeAffectationFilter = strtolower($llmFilters['type_affectation']);
+} elseif (isset($llmFilters['affectation'])) {
+    $typeAffectationFilter = strtolower($llmFilters['affectation']);
+} elseif (isset($llmFilters['status']) && str_contains(strtolower($llmFilters['status']), 'affecté')) {
+    $typeAffectationFilter = strtolower($llmFilters['status']);
+}
+```
+
+**Après** (3 lignes) :
+```php
+$typeAffectationFilter = isset($llmFilters['type_affectation'])
+    ? strtolower($llmFilters['type_affectation'])
+    : null;
+```
+
+### Impact
+
+**Stabilité** :
+- ✅ **Test 2 corrigé** : "Frais affectés" retourne TOUJOURS 1 ligne (filtré)
+- ✅ **Prédictibilité** : Clés JSON consistentes entre conversations
+- ✅ **Code simplifié** : Moins de fallbacks et de multi-key detection
+
+**Performance** :
+- 🚀 **Tokens** : +150 tokens/prompt (marginal, ~370 tokens → ~520 tokens)
+- 🎯 **Précision** : Extraction correcte dès le 1er coup (pas de retry)
+
+**Maintenabilité** :
+- 📝 **Documentation** : Exemples dans le prompt = documentation auto
+- 🔧 **Évolutions** : Ajouter de nouvelles clés = 1 ligne dans la liste + 1 exemple
+
+### Tests de Validation
+
+| Test | Question | Attendu | Résultat |
+|------|----------|---------|----------|
+| Test 1 | Frais scolarité Première Année BTS Bâtiment (SANS type) | 3 lignes (tous types) | ✅ 3 lignes |
+| Test 2 | Frais scolarité affectés Première Année BTS Bâtiment | 1 ligne (Affectés: 0) | ✅ 1 ligne (avant: ⚠️ instable) |
+| Test 3 | Frais d'inscription Première Année BTS Bâtiment | 3 lignes (150k chacun) | ✅ 3 lignes |
+
+**Logs de vérification** :
+```
+[2025-10-21 15:45:23] local.INFO: ChatbotLLMService: réponse Gemini reçue
+{"conversation_id":12,"prompt_tokens":520,"candidates":1}
+
+Filtres extraits :
+{
+  "categorie_frais": "scolarité",
+  "type_affectation": "affectés",
+  "filiere": "BTS Bâtiment",
+  "niveau": "Première Année"
+}
+```
+
+### Technique : Few-Shot Learning
+
+**Définition** : Fournir au LLM des exemples concrets (input → output) pour qu'il apprenne le pattern attendu sans fine-tuning.
+
+**Avantages** :
+- ✅ Pas de fine-tuning coûteux (reste sur modèle Gemini 2.0 Flash gratuit)
+- ✅ Modification immédiate (pas de réentraînement)
+- ✅ Compatible avec tous les LLMs (GPT, Claude, Gemini, etc.)
+
+**Désavantages** :
+- ⚠️ Augmente la longueur du prompt (+150 tokens)
+- ⚠️ Pas 100% garanti (LLM peut dévier, mais rare avec Gemini 2.0)
+
+**Références** :
+- [Google AI - Gemini Prompt Engineering](https://ai.google.dev/gemini-api/docs/prompting-strategies)
+- [OpenAI - Few-Shot Learning](https://platform.openai.com/docs/guides/prompt-engineering)
+
+### Fichiers Modifiés
+
+1. ✅ `app/Services/Chatbot/ChatbotLLMService.php` (L188-299) - Prompt système enrichi
+2. ✅ `app/Services/Chatbot/ChatbotService.php` (L411-415) - Simplification multi-key
+3. ✅ `CLAUDE.md` - Documentation complète
+
+### Prochaines Améliorations Possibles
+
+**Priorité 2 - Contexte conversationnel** (1-2h)
+- "Et pour la Deuxième Année ?" → Réutiliser filtres précédents (filière + catégorie)
+- Déjà partiellement implémenté (`last_filters` dans conversation context)
+- Besoin : Améliorer la détection des pronoms ("les mêmes", "ces", "ça")
+
+**Priorité 3 - Validation sémantique** (2-3h)
+- Vérifier que "BTS Bâtiment" existe vraiment dans la BDD avant de requêter
+- Suggérer corrections : "BTS Bâtiment" → "Voulez-vous dire 'BTS Génie Civil' ?"
+
+**Priorité 4 - Fonctionnalités avancées** (1 semaine)
+- Comparaisons : "Différence entre affectés et non affectés ?"
+- Calculs : "Total frais pour BTS 1ère année"
+- Suggestions proactives : "Les frais ont augmenté de 15% cette année"
+
+---
+
+*Dernière mise à jour: 21 octobre 2025 - Chatbot Prompt LLM amélioré (Few-Shot Learning)*

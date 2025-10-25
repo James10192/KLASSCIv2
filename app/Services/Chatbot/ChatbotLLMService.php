@@ -205,7 +205,77 @@ Règles :
   Si la question porte sur les paiements effectués, utilise "get_paiements".
   Mets null uniquement si la question est purement conversationnelle (salutation, aide, etc.).
 
-- `filters` est un objet JSON avec les filtres utiles (ex: {"status":"en_attente","limit":5}). Mets {} si aucun filtre.
+- `filters` est un objet JSON avec les filtres utiles. UTILISE TOUJOURS CES NOMS DE CLÉS STANDARDISÉS :
+  * Pour les catégories de frais : "categorie_frais" (exemples: "inscription", "scolarité", "cantine", "transport")
+  * Pour le type d'affectation : "type_affectation" (exemples: "affectés", "réaffectés", "non affectés")
+  * Pour la filière : "filiere" (exemple: "BTS Bâtiment", "Génie Civil")
+  * Pour le niveau : "niveau" (exemples: "Première Année", "Deuxième Année", "L3")
+  * Pour le statut général : "status" (exemples: "en_attente", "validé", "rejeté", "active")
+  * Pour la classe : "classe" (exemple: "L3 GC - 2024/2025")
+  * Pour l'année universitaire : "annee_universitaire" (exemple: "2024/2025")
+  * Pour les dates : "month", "date_debut", "date_fin"
+  * Pour la recherche textuelle : "search"
+
+EXEMPLES D'EXTRACTION DE FILTRES :
+
+Exemple 1 - Question : "Montre-moi les frais de scolarité pour Première Année BTS Bâtiment"
+Réponse correcte :
+{
+  "intent": "get_frais",
+  "filters": {
+    "categorie_frais": "scolarité",
+    "filiere": "BTS Bâtiment",
+    "niveau": "Première Année"
+  },
+  "display": "table",
+  "response_text": "Voici les frais de scolarité pour Première Année BTS Bâtiment :",
+  "limit": null,
+  "follow_up": ["Frais d'inscription ?", "Deuxième Année ?", "Autres filières ?"]
+}
+
+Exemple 2 - Question : "Quels sont les frais d'inscription pour les non affectés ?"
+Réponse correcte :
+{
+  "intent": "get_frais",
+  "filters": {
+    "categorie_frais": "inscription",
+    "type_affectation": "non affectés"
+  },
+  "display": "table",
+  "response_text": "Voici les frais d'inscription pour les étudiants non affectés :",
+  "limit": null,
+  "follow_up": ["Frais de scolarité ?", "Affectés ?", "Réaffectés ?"]
+}
+
+Exemple 3 - Question : "Frais de scolarité affectés Première Année BTS Bâtiment"
+Réponse correcte :
+{
+  "intent": "get_frais",
+  "filters": {
+    "categorie_frais": "scolarité",
+    "type_affectation": "affectés",
+    "filiere": "BTS Bâtiment",
+    "niveau": "Première Année"
+  },
+  "display": "table",
+  "response_text": "Voici les frais de scolarité pour les affectés en Première Année BTS Bâtiment :",
+  "limit": null,
+  "follow_up": ["Réaffectés ?", "Non affectés ?", "Deuxième Année ?"]
+}
+
+Exemple 4 - Question : "Paiements en attente de ce mois"
+Réponse correcte :
+{
+  "intent": "get_paiements",
+  "filters": {
+    "status": "en_attente",
+    "month": "current"
+  },
+  "display": "table",
+  "response_text": "Voici les paiements en attente de ce mois :",
+  "limit": null,
+  "follow_up": ["Valider tout ?", "Septembre ?", "Validés ?"]
+}
 
 - `display` = "cards" pour les inscriptions, "table" pour paiements/étudiants/frais, "text" si réponse purement conversationnelle.
 
@@ -213,13 +283,16 @@ Règles :
 
 - `limit` borne le nombre de résultats (ex: 5) ou null.
 
-- `follow_up` est un tableau de suggestions (peut être vide).
+- `follow_up` est un tableau de suggestions courtes (3-4 mots max par suggestion, peut être vide).
 
 - Ne renvoie aucun texte hors JSON, pas de commentaire, pas de Markdown.
 
 - Utilise le contexte précédent s'il existe (intent + filtres) pour interpréter les pronoms ("ces", "les mêmes", etc.).
 
-IMPORTANT: Choisis TOUJOURS l'intent qui correspond exactement à ce que demande l'utilisateur, même si cet intent n'apparaît pas dans la liste des intents disponibles. Le système saura explorer le code pour trouver comment récupérer les données.
+IMPORTANT:
+1. Choisis TOUJOURS l'intent qui correspond exactement à ce que demande l'utilisateur, même si cet intent n'apparaît pas dans la liste des intents disponibles. Le système saura explorer le code pour trouver comment récupérer les données.
+2. RESPECTE STRICTEMENT LES NOMS DE CLÉS STANDARDISÉS dans `filters`. N'utilise JAMAIS d'autres noms comme "affectation", "categorie", "type", etc.
+3. Pour le type d'affectation, extrais TOUJOURS la valeur complète : "affectés", "réaffectés", ou "non affectés" (jamais juste "non").
 PROMPT;
 
         return Content::parse($text, Role::MODEL);

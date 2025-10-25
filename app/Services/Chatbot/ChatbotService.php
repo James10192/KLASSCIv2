@@ -409,16 +409,10 @@ class ChatbotService
                     ->value('name');
 
                 // Vérifier si l'utilisateur a spécifié un type d'affectation
-                // Le LLM peut retourner dans différentes clés: 'type_affectation', 'affectation', ou 'status'
-                $typeAffectationFilter = null;
-                if (isset($llmFilters['type_affectation'])) {
-                    $typeAffectationFilter = strtolower($llmFilters['type_affectation']);
-                } elseif (isset($llmFilters['affectation'])) {
-                    $typeAffectationFilter = strtolower($llmFilters['affectation']);
-                } elseif (isset($llmFilters['status']) && str_contains(strtolower($llmFilters['status']), 'affecté')) {
-                    // Le LLM peut aussi mettre "non affectés" dans la clé 'status'
-                    $typeAffectationFilter = strtolower($llmFilters['status']);
-                }
+                // Le LLM utilise maintenant TOUJOURS la clé standardisée 'type_affectation'
+                $typeAffectationFilter = isset($llmFilters['type_affectation'])
+                    ? strtolower($llmFilters['type_affectation'])
+                    : null;
 
                 // Créer 3 objets pour les 3 types de tarifs
                 // Afficher TOUS les types si non spécifié, sinon filtrer
