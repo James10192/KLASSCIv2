@@ -5142,3 +5142,225 @@ Changement de `nullable` à `required` dans les validations Laravel
 ---
 
 *Dernière mise à jour: 25 octobre 2025 - Résultats Classe - Tri Alphabétique + Validation Semestre*
+
+---
+
+## 👥 Assignation Professeurs - Intégration Planning Général (25 Octobre 2025)
+
+### Problématique
+
+Deux pages d'assignation des professeurs aux matières ne récupéraient **pas les enseignants du planning général** :
+
+1. **Page bulletin individuel** : `/esbtp-special/bulletins/edit-professeurs`
+2. **Modal résultats classe** : `/esbtp/resultats/classe/{id}/edit` → "Assigner Professeurs"
+
+**Problème** : Ces pages affichaient TOUS les enseignants actifs au lieu de filtrer selon :
+- La combinaison **filière + niveau** de la classe
+- Les enseignants assignés dans le **planning général** (`esbtp_planifications_academiques` + `esbtp_planification_teachers`)
+
+### Architecture Planning Général
+
+**Tables impliquées** :
+
+```
+esbtp_planifications_academiques
+├── id
+├── matiere_id
+├── filiere_id
+├── niveau_etude_id
+├── annee_universitaire_id
+└── volume_horaire_total
+
+esbtp_planification_teachers (pivot many-to-many)
+├── planification_id
+├── teacher_id
+└── created_at
+```
+
+**Relation** :
+- Une planification = **1 matière** + **1 filière** + **1 niveau** + **N enseignants**
+- Exemple : "Mathématiques - L3 Génie Civil - 2024/2025" → 2 enseignants (KOUASSI + BAMBA)
+
+### Solution 1 : Modal Professeurs (Résultats Classe)
+
+**Fichier** : `app/Http/Controllers/ESBTPBulletinController.php` (L3048-3076)
+
+**Méthode** : `editResultatsClasse()`
+
+#### Avant (INCORRECT)
+
+```php
+// Récupère TOUS les enseignants actifs (pas de filtrage)
+$enseignants = \App\Models\ESBTPEnseignantProfile::with('user')->actif()->get();
+```
+
+#### Après (CORRECT)
+
+```php
+// 1. Récupérer les planifications pour filière + niveau de cette classe
+$planifications = \DB::table('esbtp_planifications_academiques')
+    ->where('filiere_id', $classe->filiere_id)
+    ->where('niveau_etude_id', $classe->niveau_etude_id)
+    ->where('annee_universitaire_id', $annee_universitaire_id)
+    ->pluck('id');
+
+// 2. Récupérer les enseignants assignés dans ces planifications
+$enseignantIdsFromPlanning = \DB::table('esbtp_planification_teachers')
+    ->whereIn('planification_id', $planifications)
+    ->pluck('teacher_id')
+    ->unique();
+
+// 3. Récupérer enseignants avec infos complètes
+$enseignants = \App\Models\ESBTPEnseignantProfile::with('user')
+    ->whereIn('id', $enseignantIdsFromPlanning)
+    ->actif()
+    ->get();
+
+// 4. Fallback: si aucun dans planning général, tous actifs
+if ($enseignants->isEmpty()) {
+    \Log::warning('Aucun enseignant dans planning général', [...]);
+    $enseignants = \App\Models\ESBTPEnseignantProfile::with('user')->actif()->get();
+}
+```
+
+**Logique** :
+1. Trouve toutes les planifications de la combinaison classe (filière + niveau)
+2. Récupère les teacher_id dans la table pivot
+3. Charge les enseignants complets
+4. Fallback si planning général pas configuré
+
+### Solution 2 : Page Bulletin Individuel
+
+**Fichier** : `app/Http/Controllers/ESBTPBulletinController.php` (L6113-6153)
+
+**Méthode** : `editProfesseurs()`
+
+#### Avant (INCORRECT)
+
+```php
+// Récupère enseignants via relation globale matière → enseignants
+$enseignants = $matiereModel->enseignants()
+    ->wherePivot('annee_universitaire_id', $annee_universitaire_id)
+    ->get(['users.id', 'users.name', 'users.email']);
+```
+
+**Problème** : La relation globale `matiere->enseignants()` ne filtre PAS par combinaison filière/niveau.
+
+#### Après (CORRECT)
+
+```php
+foreach ($matieres as $matiere) {
+    // 1. Récupérer planification pour matière + combinaison classe
+    $planification = \DB::table('esbtp_planifications_academiques')
+        ->where('matiere_id', $matiere['id'])
+        ->where('filiere_id', $classe->filiere_id)
+        ->where('niveau_etude_id', $classe->niveau_etude_id)
+        ->where('annee_universitaire_id', $annee_universitaire_id)
+        ->first();
+
+    if ($planification) {
+        // 2. Enseignants de cette planification
+        $enseignantIds = \DB::table('esbtp_planification_teachers')
+            ->where('planification_id', $planification->id)
+            ->pluck('teacher_id');
+
+        // 3. Infos complètes via users
+        $enseignants = \DB::table('esbtp_teachers')
+            ->join('users', 'esbtp_teachers.user_id', '=', 'users.id')
+            ->whereIn('esbtp_teachers.id', $enseignantIds)
+            ->where('esbtp_teachers.is_active', true)
+            ->select('users.id', 'users.name', 'users.email')
+            ->get();
+
+        $enseignantsParMatiere[$matiere['id']] = $enseignants;
+    } else {
+        // Fallback: relation globale
+        $enseignants = $matiereModel->enseignants()
+            ->wherePivot('annee_universitaire_id', $annee_universitaire_id)
+            ->get(['users.id', 'users.name', 'users.email']);
+    }
+}
+```
+
+**Logique** :
+- **Par matière** : Trouve la planification spécifique à la combinaison
+- Récupère les enseignants assignés à CETTE planification précise
+- Fallback si planning général pas configuré
+
+### Différences Clés
+
+| Aspect | Avant | Après |
+|--------|-------|-------|
+| **Source enseignants** | Table globale `esbtp_enseignant_matiere` | Table planning `esbtp_planification_teachers` |
+| **Filtrage** | Par matière + année uniquement | Par matière + filière + niveau + année |
+| **Précision** | ❌ Tous enseignants de la matière | ✅ Enseignants pour cette combinaison |
+| **Cohérence** | ❌ Incohérent avec planning général | ✅ Cohérent avec planning général |
+
+### Exemple Concret
+
+**Contexte** :
+- Classe : L3 Génie Civil (`filiere_id=1`, `niveau_id=3`)
+- Matière : Mathématiques (`matiere_id=42`)
+- Planning général configuré :
+  - L3 GC - Math → KOUASSI + BAMBA
+  - L2 GC - Math → TRAORE + KONE
+
+**Avant** : Liste enseignants = [KOUASSI, BAMBA, TRAORE, KONE] (tous)
+
+**Après** : Liste enseignants = [KOUASSI, BAMBA] (seulement L3 GC)
+
+### Workflow Utilisateur
+
+1. **Admin configure planning général** : Assigne KOUASSI + BAMBA à "Math - L3 GC"
+2. **Coordinateur édite résultats classe L3 GC** : Ouvre modal "Assigner Professeurs"
+3. **Système affiche** : Seulement KOUASSI et BAMBA dans dropdown
+4. **Coordinateur assigne** : Choisit KOUASSI pour Math
+5. **Propagation** : KOUASSI assigné à TOUS les étudiants de L3 GC
+
+### Fallback Sécuritaire
+
+Si le planning général **n'est pas encore configuré** pour une classe :
+- ✅ Affiche TOUS les enseignants actifs (comportement original)
+- ⚠️ Log warning pour alerter admin
+- 💡 Encourage à configurer le planning général
+
+**Message log** :
+```
+Aucun enseignant trouvé dans planning général pour classe
+classe_id: 10, filiere_id: 1, niveau_id: 3
+```
+
+### Bénéfices
+
+1. ✅ **Cohérence** : Assignation professeurs alignée avec planning général
+2. ✅ **Précision** : Seuls enseignants pertinents affichés
+3. ✅ **UX** : Liste plus courte et pertinente
+4. ✅ **Source unique** : Planning général = source de vérité
+5. ✅ **Compatibilité** : Fallback si planning non configuré
+
+### Fichiers Modifiés
+
+1. **app/Http/Controllers/ESBTPBulletinController.php**
+   - L3048-3076 : `editResultatsClasse()` - Enseignants modal professeurs
+   - L6113-6153 : `editProfesseurs()` - Enseignants bulletin individuel
+
+### Tests de Validation
+
+- [ ] Modal professeurs : Affiche seulement enseignants planning général
+- [ ] Bulletin individuel : Dropdown matière affiche bons enseignants
+- [ ] Classe sans planning : Fallback tous enseignants actifs
+- [ ] Log warning : Visible quand planning non configuré
+- [ ] Assignation : Propagation correcte à tous étudiants classe
+
+### Relation avec Documentation Existante
+
+**Voir** : Section "Amélioration Sélection Multiple Enseignants - Planning Général" (L4431-4629)
+
+Cette modification **complète le workflow planning général** :
+1. ✅ Admin configure volumes horaires + enseignants (planning général)
+2. ✅ **NOUVEAU** : Coordinateur assigne professeurs (bulletins/résultats)
+3. ✅ Système génère bulletins avec professeurs corrects
+
+---
+
+*Dernière mise à jour: 25 octobre 2025 - Assignation Professeurs - Intégration Planning Général*
