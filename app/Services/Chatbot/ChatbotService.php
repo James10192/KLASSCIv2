@@ -150,10 +150,19 @@ class ChatbotService
             $data = $this->executeDataRetrieval($knowledge, $message, $user, $llmFilters, $requestedLimit, $verification);
 
             if (empty($data['results'])) {
+                // Construire un message explicite avec les critères recherchés
+                $criteriaText = $this->buildCriteriaText($intent, $data['filters'] ?? $llmFilters);
+                $noResultMessage = "Je n'ai trouvé aucun résultat pour votre recherche";
+                if ($criteriaText) {
+                    $noResultMessage .= " : " . $criteriaText . ".";
+                } else {
+                    $noResultMessage .= ".";
+                }
+
                 $assistantMessage = ChatbotMessage::create([
                     'conversation_id' => $conversation->id,
                     'role' => 'assistant',
-                    'content' => "Aucun résultat trouvé pour votre recherche.",
+                    'content' => $noResultMessage,
                     'display_type' => 'text',
                 ]);
 
@@ -629,6 +638,12 @@ class ChatbotService
             $studentId = $filters['etudiant_id'];
             $query->where('etudiant_id', $studentId);
             $applied['etudiant_id'] = $studentId;
+        }
+
+        // Filtre spécial : inscriptions SANS paiements
+        if (isset($filters['without_paiements']) && $filters['without_paiements'] === true) {
+            $query->whereDoesntHave('paiements');
+            $applied['without_paiements'] = true;
         }
 
         if (isset($filters['payment_status'])) {
@@ -1204,5 +1219,64 @@ class ChatbotService
             'success' => true,
             'messages' => $messages,
         ];
+    }
+
+    /**
+     * Construire un texte lisible des critères de recherche
+     */
+    protected function buildCriteriaText(string $intent, array $filters): string
+    {
+        $parts = [];
+
+        // Pour "get_inscriptions"
+        if ($intent === 'get_inscriptions') {
+            if (isset($filters['without_paiements']) && $filters['without_paiements'] === true) {
+                $parts[] = "inscriptions sans aucun paiement";
+            }
+            if (isset($filters['status'])) {
+                $statusLabel = match($filters['status']) {
+                    'en_attente' => 'en attente',
+                    'validé' => 'validées',
+                    'rejeté' => 'rejetées',
+                    'active' => 'actives',
+                    default => $filters['status']
+                };
+                $parts[] = "statut : $statusLabel";
+            }
+        }
+
+        // Pour "get_paiements"
+        if ($intent === 'get_paiements') {
+            if (isset($filters['status'])) {
+                $statusLabel = match($filters['status']) {
+                    'en_attente' => 'en attente',
+                    'validé' => 'validés',
+                    'rejeté' => 'rejetés',
+                    default => $filters['status']
+                };
+                $parts[] = "paiements $statusLabel";
+            }
+            if (isset($filters['month'])) {
+                $parts[] = "mois : " . ($filters['month']['value'] ?? 'actuel');
+            }
+        }
+
+        // Pour "get_frais"
+        if ($intent === 'get_frais') {
+            if (isset($filters['categorie_frais'])) {
+                $parts[] = "catégorie : " . $filters['categorie_frais'];
+            }
+            if (isset($filters['filiere'])) {
+                $parts[] = "filière : " . $filters['filiere'];
+            }
+            if (isset($filters['niveau'])) {
+                $parts[] = "niveau : " . $filters['niveau'];
+            }
+            if (isset($filters['type_affectation'])) {
+                $parts[] = "type : " . $filters['type_affectation'];
+            }
+        }
+
+        return implode(', ', $parts);
     }
 }

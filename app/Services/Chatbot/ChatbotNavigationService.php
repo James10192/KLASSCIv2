@@ -241,8 +241,31 @@ class ChatbotNavigationService
      */
     protected function verifyInscriptionsHierarchy(array $filters, ChatbotKnowledgeBase $knowledge): array
     {
-        // TODO: Implémenter vérification inscriptions
-        return $this->verifySimple($filters, $knowledge);
+        $modelClass = "App\\Models\\ESBTPInscription";
+        $query = $modelClass::query();
+
+        // Gérer le filtre spécial "without_paiements"
+        if (isset($filters['without_paiements']) && $filters['without_paiements'] === true) {
+            $query->whereDoesntHave('paiements');
+        }
+
+        // Appliquer autres filtres simples
+        foreach ($filters as $key => $value) {
+            if (in_array($key, ['search', 'page', 'per_page', 'limit', '_raw_message', 'without_paiements'])) {
+                continue;
+            }
+            $query->where($key, $value);
+        }
+
+        $count = $query->count();
+
+        return [
+            'exists' => $count > 0,
+            'level' => 1,
+            'data' => $count > 0 ? $query->limit(5)->get() : null,
+            'suggestion' => $count === 0 ? "Aucune inscription trouvée pour ces critères." : null,
+            'deep_link' => $knowledge->deep_link_pattern,
+        ];
     }
 
     /**

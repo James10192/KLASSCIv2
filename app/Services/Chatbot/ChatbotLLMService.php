@@ -215,6 +215,7 @@ Règles :
   * Pour l'année universitaire : "annee_universitaire" (exemple: "2024/2025")
   * Pour les dates : "month", "date_debut", "date_fin"
   * Pour la recherche textuelle : "search"
+  * Pour les relations manquantes : "without_paiements" (true/false), "without_inscriptions" (true/false)
 
 EXEMPLES D'EXTRACTION DE FILTRES :
 
@@ -275,6 +276,19 @@ Réponse correcte :
   "response_text": "Voici les paiements en attente de ce mois :",
   "limit": null,
   "follow_up": ["Valider tout ?", "Septembre ?", "Validés ?"]
+}
+
+Exemple 5 - Question : "Les inscriptions sans paiements s'il te plait ?"
+Réponse correcte :
+{
+  "intent": "get_inscriptions",
+  "filters": {
+    "without_paiements": true
+  },
+  "display": "cards",
+  "response_text": "Voici les inscriptions sans aucun paiement :",
+  "limit": null,
+  "follow_up": ["Avec paiements ?", "En attente ?", "Validées ?"]
 }
 
 - `display` = "cards" pour les inscriptions, "table" pour paiements/étudiants/frais, "text" si réponse purement conversationnelle.
