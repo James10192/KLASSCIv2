@@ -2854,6 +2854,79 @@ GEMINI_MODEL=gemini-1.5-flash
 4. **Catégories Frais** - Liste frais configurés
 5. **Classes** - Voir étudiants d'une classe, stats (effectif, places restantes)
 
+### 📊 État d'avancement Intents (25 Octobre 2025)
+
+#### ✅ **Intents COMPLÉTÉS et TESTÉS** (2/5)
+
+| Intent | Fonctionnalité | État | Tests | Filtres supportés | Deep Link |
+|--------|---------------|------|-------|-------------------|-----------|
+| **get_inscriptions** | Consulter inscriptions | ✅ **100%** | ✅ Validé | `classe`, `filiere`, `niveau`, `status`, `without_paiements`, `annee_universitaire` | ✅ Fonctionnel (`filiere={filiere}&niveau={niveau}&status={status}`) |
+| **get_frais** | Liste frais/catégories | ✅ **100%** | ✅ Validé | `categorie_frais` (inscription/scolarité/cantine/transport), `type_affectation` (affectés/réaffectés/non affectés), `filiere`, `niveau` | ✅ Fonctionnel |
+
+**Corrections appliquées `get_inscriptions`** :
+- ✅ Fuzzy search classe → classe_id avec `whereNull('deleted_at')`
+- ✅ Support `without_paiements: true` via `whereDoesntHave('paiements')`
+- ✅ WHERE clause grouping correct `where(function($q) {...})`
+- ✅ Deep link placeholder replacement avec concat `'{' . $key . '}'`
+- ✅ Conversion classe → filiere + niveau pour URL
+- ✅ Message critères explicite via `buildCriteriaText()`
+- ✅ Deep link label descriptif via `buildDeepLinkLabel()`
+
+**Corrections appliquées `get_frais`** :
+- ✅ Filtres `categorie_frais` et `type_affectation` standardisés
+- ✅ Few-Shot Learning avec exemples 1-3 dans prompt LLM
+- ✅ Affichage tableau frais avec combinaisons filière/niveau
+- ✅ Support détection automatique "frais de scolarité" vs "frais d'inscription"
+
+#### 🔄 **Intents EXPLORÉS mais NON TESTÉS** (1/5)
+
+| Intent | Fonctionnalité | État | Route | Model |
+|--------|---------------|------|-------|-------|
+| **get_paiements** | Consulter paiements | 🟡 **Exploré** | `esbtp.paiements.index` | `ESBTPPaiement` |
+
+**Détails** :
+- ✅ Knowledge base créée automatiquement par exploration
+- ✅ Deep link pattern : `http://localhost:8000/esbtp/paiements?status={status}&date_debut={date_debut}&date_fin={date_fin}`
+- ✅ Filtres détectés : `status`, `month`, `date_debut`, `date_fin`, `etudiant_id`, `filiere_id`, `niveau_id`, `category_id`, `mode_paiement`
+- ⏳ **Reste à faire** : Tester avec questions utilisateur
+
+#### ❌ **Intents NON COMMENCÉS** (2/5)
+
+| Intent | Fonctionnalité | Priorité | Complexité | Temps estimé |
+|--------|---------------|----------|------------|--------------|
+| **get_etudiants** | Liste étudiants | 🔴 Haute | Moyenne | 1-2h |
+| **get_classes** | Stats classes | 🟡 Moyenne | Faible | 30min-1h |
+
+**get_etudiants** - À implémenter :
+- Route cible : `esbtp.etudiants.index`
+- Filtres : `classe` (fuzzy search → classe_id), `status`, `search` (nom/prénom/matricule), `filiere`, `niveau`
+- Deep link : `http://localhost:8000/esbtp/etudiants?classe_id={classe_id}&search={search}&status={status}`
+- Template : `etudiants_table` (déjà seedé)
+
+**get_classes** - À implémenter :
+- Route cible : `esbtp.classes.index`
+- Filtres : `filiere`, `niveau`, `search`, `has_capacity` (places restantes > 0)
+- Deep link : `http://localhost:8000/esbtp/classes?filiere_id={filiere_id}&niveau_id={niveau_id}`
+- Template : `cards_generic`
+- Données : Nom classe, effectif/capacité, places restantes, nb matières
+
+#### 📈 Statistiques Globales
+
+```
+Scope Phase 1 : 5 intents prioritaires
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Complétés et testés : 2/5 (40%)
+🟡 Explorés non testés : 1/5 (20%)
+❌ Non commencés      : 2/5 (40%)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Progress total : 60% (3/5 intents ont du code fonctionnel)
+```
+
+**Usage count** (via `chatbot_knowledge_base.usage_count`) :
+- `get_inscriptions` : 5 utilisations réussies
+- `get_frais` : Testé et validé
+- `get_paiements` : 0 utilisations (non testé)
+
 ### Fichiers Créés
 
 ```
@@ -4261,7 +4334,69 @@ $link = preg_replace('/[?&]\w+={[^}]+}/', '', $link);  // Aussi corrigé regex
 **Fichiers modifiés** :
 - `public/css/chatbot-widget.css` (L82-86) - Règle CSS wildcard `*`
 
-**Commit** : À venir
+**Commit** : `632d49d` - fix(chatbot): exclure classes supprimées + widget CSS pointer-events
+
+### Problème 5 : Classes Supprimées (deleted_at) Retournées
+
+**Symptôme** : Question "BATIMENT A" retournait classe supprimée (ID 1) au lieu de classe active (ID 10)
+
+**Cause** : Aucun filtre `whereNull('deleted_at')` dans les 4 requêtes fuzzy search classe
+```php
+// Classes en BDD:
+// - Classe ID 1: BATIMENT A (deleted_at: 2025-04-16, 0 inscriptions)
+// - Classe ID 10: BATIMENT A (deleted_at: NULL, 45 inscriptions sans paiements)
+
+// ❌ AVANT : Retournait ID 1 (supprimée)
+$classe = \DB::table('esbtp_classes')
+    ->where(function ($q) use ($classeName) {
+        $q->where('name', 'like', '%' . $classeName . '%')
+          ->orWhere('code', 'like', '%' . $classeName . '%');
+    })
+    ->first();  // Retourne la première = ID 1 (deleted)
+```
+
+**Solution** : Ajout `whereNull('deleted_at')` dans toutes les requêtes classe
+```php
+// ✅ CORRECT : Retourne ID 10 (active)
+$classe = \DB::table('esbtp_classes')
+    ->where(function ($q) use ($classeName) {
+        $q->where('name', 'like', '%' . $classeName . '%')
+          ->orWhere('code', 'like', '%' . $classeName . '%');
+    })
+    ->whereNull('deleted_at')  // Exclure supprimées
+    ->first();  // Retourne ID 10 (active)
+```
+
+**Fichiers modifiés** :
+1. `app/Services/Chatbot/ChatbotNavigationService.php` (L260) - `verifyInscriptionsHierarchy()`
+2. `app/Services/Chatbot/ChatbotService.php` (L639) - `applyFiltersToQuery()`
+3. `app/Services/Chatbot/ChatbotService.php` (L1114) - `buildDeepLink()`
+4. `app/Services/Chatbot/ChatbotService.php` (L1338) - `buildDeepLinkLabel()`
+
+**Tests de validation** :
+```bash
+php artisan tinker --execute="
+\$classe = \DB::table('esbtp_classes')
+    ->where(function (\$q) {
+        \$q->where('name', 'like', '%BATIMENT A%')
+          ->orWhere('code', 'like', '%BATIMENT A%');
+    })
+    ->whereNull('deleted_at')
+    ->first();
+echo \"Classe trouvée: ID {\$classe->id} (Name: {\$classe->name})\";
+
+\$inscriptions = \DB::table('esbtp_inscriptions')
+    ->where('classe_id', \$classe->id)
+    ->whereNull('deleted_at')
+    ->count();
+echo \"\nInscriptions: \$inscriptions\";
+"
+# Output:
+# Classe trouvée: ID 10 (Name: BATIMENT A)
+# Inscriptions: 45
+```
+
+**Commit** : `632d49d` - fix(chatbot): exclure classes supprimées (deleted_at) + widget CSS pointer-events
 
 ### Résultat Final
 
