@@ -5328,16 +5328,35 @@ class ESBTPBulletinController extends Controller
             ];
         }
 
+        // Récupérer filière et niveau de la classe pour filtrer les matières
+        $classeFiliereIdForNotes = $classe->filiere_id;
+        $classeNiveauIdForNotes = $classe->niveau_etude_id;
+
         // Si des moyennes calculées n'ont pas de résultat correspondant, les ajouter
+        // MAIS seulement si la matière correspond à la combinaison filière+niveau de la classe
         foreach ($notesByMatiere as $matiereId => $matiereData) {
             if (!isset($resultatsData[$matiereId])) {
                 // CORRECTION AMÉLIORÉE: Récupérer systématiquement l'objet matière directement
                 // depuis la base de données en utilisant l'ID
-                $matiere = \App\Models\ESBTPMatiere::find($matiereId);
+                $matiere = \App\Models\ESBTPMatiere::with(['filieres', 'niveaux'])->find($matiereId);
 
                 if (!$matiere) {
                     \Log::warning("Matiere with ID {$matiereId} not found when adding calculated averages - skipping");
                     continue; // Ignorer cette entrée si la matière n'existe pas
+                }
+
+                // Vérifier que la matière correspond à la combinaison filière+niveau de la classe
+                if (!$classeFiliereIdForNotes || !$classeNiveauIdForNotes) {
+                    \Log::warning("Classe {$classeId} missing filiere_id or niveau_etude_id - skipping matiere {$matiereId}");
+                    continue;
+                }
+
+                $matchesFiliere = $matiere->filieres->pluck('id')->contains($classeFiliereIdForNotes);
+                $matchesNiveau = $matiere->niveaux->pluck('id')->contains($classeNiveauIdForNotes);
+
+                if (!$matchesFiliere || !$matchesNiveau) {
+                    \Log::debug("Matiere {$matiereId} ({$matiere->name}) skipped - does not match classe filiere/niveau combination");
+                    continue; // Ignorer les matières qui ne correspondent pas à la combinaison
                 }
 
                 $resultatsData[$matiereId] = [

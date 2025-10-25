@@ -5824,8 +5824,28 @@ Le filtrage est maintenant **identique** à celui de la page d'édition groupée
 ### Commits
 
 1. `d9a8ec7` - docs(chatbot): ajout tableau récapitulatif état d'avancement intents
-2. [À créer] - fix(bulletins): filtrage matières par filière+niveau dans moyennes-preview
-3. [À créer] - fix(bulletins): filtrage matières par filière+niveau dans config-matieres
+2. `5a4db17` - fix(bulletins): filtrage matières par filière+niveau dans moyennes-preview et config-matieres
+3. `bf30e37` - feat(bulletins): ajout boutons gestion matières dans 3 pages individuelles
+4. [À créer] - fix(bulletins): filtrage matières avec notes dans moyennes-preview
+
+### Note Importante - Différence moyennes-preview vs autres pages
+
+**Particularité `moyennes-preview`** : Cette page affiche les matières provenant de **2 sources** :
+1. **Matières avec notes existantes** (depuis évaluations) - ligne 5332-5371
+2. **Matières de la classe** (combinaison filière+niveau) - ligne 5377-5393
+
+**Problème initial** : La source 1 n'était PAS filtrée par filière+niveau, donc affichait toutes les matières ayant des évaluations (17 matières au lieu de 5).
+
+**Exemple concret** :
+- Étudiant 409, classe TRAVAUX PUBLICS C (Génie Civil TP + Première année)
+- Matières correctes : 5 (Maths, Info, Anglais, Matériaux, GRV)
+- Matières avec notes : 17 (incluant OGC, VRD, Hydraulique, etc. - matières d'autres classes)
+
+**Solution appliquée** : Ajout du même filtrage filière+niveau dans la boucle qui traite `$notesByMatiere` (ligne 5337-5371).
+
+**Résultat** :
+- Avant : 17 matières affichées (4 correctes + 13 incorrectes)
+- Après : 5 matières affichées (4 avec notes + 1 sans notes = toutes correctes)
 
 ---
 
