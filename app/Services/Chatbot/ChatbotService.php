@@ -1106,8 +1106,10 @@ class ChatbotService
         // Si le filtre 'classe' est présent, convertir en filiere + niveau (IDs directs pour URL)
         if (isset($filters['classe']) && !isset($filters['filiere'])) {
             $classe = \DB::table('esbtp_classes')
-                ->where('name', 'like', '%' . $filters['classe'] . '%')
-                ->orWhere('code', 'like', '%' . $filters['classe'] . '%')
+                ->where(function ($q) use ($filters) {
+                    $q->where('name', 'like', '%' . $filters['classe'] . '%')
+                      ->orWhere('code', 'like', '%' . $filters['classe'] . '%');
+                })
                 ->first();
 
             if ($classe) {
@@ -1117,16 +1119,17 @@ class ChatbotService
         }
 
         foreach ($filters as $key => $value) {
+            $placeholder = '{' . $key . '}';
             if (is_array($value)) {
                 // Pour month qui a 'column' et 'value'
-                $link = str_replace("{{$key}}", $value['value'], $link);
+                $link = str_replace($placeholder, $value['value'], $link);
             } else {
-                $link = str_replace("{{$key}}", $value, $link);
+                $link = str_replace($placeholder, $value, $link);
             }
         }
 
         // Supprimer les placeholders non remplacés
-        $link = preg_replace('/[?&]\w+={{\w+}}/', '', $link);
+        $link = preg_replace('/[?&]\w+={[^}]+}/', '', $link);
 
         return $link;
     }
