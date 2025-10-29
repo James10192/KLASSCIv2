@@ -9,7 +9,7 @@
         background: white;
         border: 1px solid #e5e7eb;
         border-radius: 18px;
-        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+        box-shadow: 0 8px 24px rgba(4, 83, 203, 0.08);
         padding: 1.5rem;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         position: relative;
@@ -19,7 +19,7 @@
         content: '';
         position: absolute;
         inset: 0;
-        background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(14, 165, 233, 0.05));
+        background: linear-gradient(135deg, rgba(4, 83, 203, 0.12), rgba(94, 145, 222, 0.08));
         pointer-events: none;
     }
     .kpi-card:hover {
@@ -29,7 +29,7 @@
     .kpi-value {
         font-size: 2.5rem;
         font-weight: 700;
-        color: #2563eb;
+        color: #0453cb;
         margin-bottom: 0.25rem;
     }
     .kpi-title {
@@ -45,13 +45,13 @@
     }
 
     .school-card {
-        background: linear-gradient(135deg, #2563eb, #1e3a8a);
+        background: linear-gradient(135deg, #0453cb, #5e91de);
         color: white;
         border-radius: 20px;
         padding: 2rem;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 20px 40px rgba(30, 64, 175, 0.25);
+        box-shadow: 0 20px 40px rgba(4, 83, 203, 0.28);
     }
     .school-card::after {
         content: '';
@@ -124,7 +124,7 @@
         position: relative;
     }
     .timetable-grid thead th {
-        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        background: linear-gradient(135deg, #0453cb, #5e91de);
         color: white;
         font-size: 0.85rem;
         text-transform: uppercase;
@@ -228,7 +228,7 @@
     }
     .stat-list-item .badge {
         font-size: 0.8rem;
-        background: #2563eb;
+        background: #0453cb;
         color: white;
         padding: 0.35rem 0.65rem;
         border-radius: 999px;
@@ -373,7 +373,7 @@
                                         <strong>{{ $label }}</strong>
                                         <span>{{ $count }} séance{{ $count > 1 ? 's' : '' }}</span>
                                     </div>
-                                    <div class="badge" style="background: {{ $style['bg'] }}; color: {{ $style['text'] }};">
+                    <div class="badge" style="background: {{ $style['bg'] }}; color: {{ $style['text'] }};">
                                         {{ number_format($count / max(1, $totalSeances) * 100, 0) }}%
                                     </div>
                                 </li>
