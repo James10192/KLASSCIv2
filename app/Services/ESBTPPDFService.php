@@ -184,56 +184,42 @@ class ESBTPPDFService
     public function genererEmploiTempsPDF(ESBTPEmploiTemps $emploiTemps)
     {
         try {
-            // Augmenter le timeout pour éviter les erreurs de génération
-            set_time_limit(300); // 5 minutes
+            set_time_limit(300);
             ini_set('memory_limit', '512M');
-            
-            \Log::info('PDF Generation - Starting emploi temps PDF generation', ['id' => $emploiTemps->id]);
-            
-            // Charger les séances pour cet emploi du temps
+
             $emploiTemps->load([
                 'seances.matiere',
                 'classe',
                 'classe.filiere',
                 'classe.niveau',
-                'annee'
+                'annee',
             ]);
-            
-            \Log::info('PDF Generation - Relations loaded successfully');
 
-        // Grouper les séances par jour
-        $seancesParJour = $emploiTemps->getSeancesParJour();
+            $seancesParJour = $emploiTemps->getSeancesParJour();
 
-        // Récupérer les heures de début et de fin pour l'affichage (créneaux d'une heure)
-        $heuresDebut = [];
-        $heuresFin = [];
-        for ($heure = 8; $heure < 18; $heure++) {
-            $heuresDebut[] = sprintf('%02d:00', $heure);
-            $heuresFin[] = sprintf('%02d:00', $heure + 1);
-        }
+            $heuresDebut = [];
+            $heuresFin = [];
+            for ($heure = 8; $heure < 18; $heure++) {
+                $heuresDebut[] = sprintf('%02d:00', $heure);
+                $heuresFin[] = sprintf('%02d:00', $heure + 1);
+            }
 
-        // Noms des jours pour l'affichage
-        $joursNoms = [
-            1 => 'Lundi',
-            2 => 'Mardi',
-            3 => 'Mercredi',
-            4 => 'Jeudi',
-            5 => 'Vendredi',
-            6 => 'Samedi',
-        ];
+            $joursNoms = [
+                1 => 'Lundi',
+                2 => 'Mardi',
+                3 => 'Mercredi',
+                4 => 'Jeudi',
+                5 => 'Vendredi',
+                6 => 'Samedi',
+            ];
 
-        // Créer les variables $timeSlots et $days pour la vue
-        $timeSlots = $heuresDebut;
-        $days = array_keys($joursNoms);
+            $timeSlots = $heuresDebut;
+            $days = array_keys($joursNoms);
 
-        // Calcul des statistiques par matière
             $matiereStats = [];
             foreach ($emploiTemps->seances as $seance) {
                 $matiereName = $seance->matiere ? $seance->matiere->name : 'Non définie';
-                if (!isset($matiereStats[$matiereName])) {
-                    $matiereStats[$matiereName] = 0;
-                }
-                $matiereStats[$matiereName]++;
+                $matiereStats[$matiereName] = ($matiereStats[$matiereName] ?? 0) + 1;
             }
             $matiereStats = collect($matiereStats)->sortDesc();
 
@@ -384,15 +370,8 @@ class ESBTPPDFService
                 'etablissement' => $etablissementInfo,
             ];
 
-            \Log::info('PDF Generation - Data prepared successfully', ['data_keys' => array_keys($data)]);
-
-            // Utiliser un template PDF simplifié pour éviter les timeouts
-            \Log::info('PDF Generation - About to load view');
             $pdf = PDF::loadView('pdf.emploi-temps', $data);
-            \Log::info('PDF Generation - View loaded successfully');
-            
             $pdf->setPaper('A4', 'landscape');
-            \Log::info('PDF Generation - Paper format set successfully');
 
             return $pdf;
         } catch (\Exception $e) {
@@ -400,7 +379,7 @@ class ESBTPPDFService
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
         }
