@@ -44,6 +44,22 @@
         $defaultTimeSlots[] = sprintf('%02d:00', $hour);
     }
 
+    $normalizeTimeString = function ($timeValue) {
+        if ($timeValue instanceof Carbon) {
+            return $timeValue->format('H:i');
+        }
+
+        if ($timeValue instanceof \DateTimeInterface) {
+            return $timeValue->format('H:i');
+        }
+
+        if (is_string($timeValue) && strlen($timeValue) >= 4) {
+            return substr($timeValue, 0, 5);
+        }
+
+        return null;
+    };
+
     $normalizedSlots = empty($timeSlots) ? $defaultTimeSlots : array_values($timeSlots);
     $normalizedSlots = array_values(array_unique($normalizedSlots));
     sort($normalizedSlots);
@@ -81,60 +97,88 @@
     }
 
     $occupiedCells = [];
+    $cellsCovered = [];
+    $seanceLookup = [];
     foreach ($normalizedDays as $dayInfo) {
         foreach ($normalizedSlots as $slotIndex => $slot) {
             $occupiedCells[$dayInfo['slug']][$slotIndex] = false;
+            $cellsCovered[$dayInfo['slug']][$slotIndex] = false;
         }
     }
 
-    $seancesWithRowspans = [];
     if ($seances && $seances->count()) {
+        $seancesParJour = [];
         foreach ($seances as $seance) {
             $jourNumeric = $seance->jour;
             $jourSlug = isset($jourMapping[$jourNumeric]) ? $jourMapping[$jourNumeric] : null;
             if (!$jourSlug || !isset($occupiedCells[$jourSlug])) {
                 continue;
             }
+            $seancesParJour[$jourSlug][] = $seance;
+        }
 
-            $heureDebut = $seance->heure_debut instanceof Carbon
-                ? $seance->heure_debut->format('H:i')
-                : ($seance->heure_debut ? Carbon::parse($seance->heure_debut)->format('H:i') : null);
-            $heureFin = $seance->heure_fin instanceof Carbon
-                ? $seance->heure_fin->format('H:i')
-                : ($seance->heure_fin ? Carbon::parse($seance->heure_fin)->format('H:i') : null);
+        foreach ($seancesParJour as $jourSlug => $listeSeances) {
+            usort($listeSeances, function ($a, $b) use ($timeToMinutes, $normalizeTimeString) {
+                $startA = $timeToMinutes($normalizeTimeString($a->heure_debut ?? null));
+                $startB = $timeToMinutes($normalizeTimeString($b->heure_debut ?? null));
+                return $startA <=> $startB;
+            });
 
-            if (!$heureDebut || !$heureFin) {
-                continue;
-            }
+            foreach ($listeSeances as $index => $seance) {
+                $heureDebut = $normalizeTimeString($seance->heure_debut ?? null);
+                $heureFin = $normalizeTimeString($seance->heure_fin ?? null);
 
-            $startMinutes = $timeToMinutes($heureDebut);
-            $endMinutes = $timeToMinutes($heureFin);
-            if ($endMinutes <= $startMinutes) {
-                $endMinutes = $startMinutes + $intervalMinutes;
-            }
+                if (!$heureDebut || !$heureFin) {
+                    continue;
+                }
 
-            $startSlotIndex = (int) floor(($startMinutes - $firstSlotMinutes) / $intervalMinutes);
-            $startSlotIndex = max(0, $startSlotIndex);
+                $startMinutes = $timeToMinutes($heureDebut);
+                $endMinutes = $timeToMinutes($heureFin);
 
-            $endSlotIndex = (int) ceil(($endMinutes - $firstSlotMinutes) / $intervalMinutes) - 1;
-            $endSlotIndex = max($endSlotIndex, $startSlotIndex);
-            $endSlotIndex = min($endSlotIndex, count($normalizedSlots) - 1);
+                if ($endMinutes <= $startMinutes) {
+                    $endMinutes = $startMinutes + $intervalMinutes;
+                }
 
-            $rowspan = $endSlotIndex - $startSlotIndex + 1;
-            if ($rowspan < 1) {
-                $rowspan = 1;
-            }
+                $startSlotIndex = (int) floor(($startMinutes - $firstSlotMinutes) / $intervalMinutes);
+                $startSlotIndex = max(0, min($startSlotIndex, count($normalizedSlots) - 1));
 
-            $seancesWithRowspans[] = [
-                'seance' => $seance,
-                'jour' => $jourSlug,
-                'startSlotIndex' => $startSlotIndex,
-                'endSlotIndex' => $endSlotIndex,
-                'rowspan' => $rowspan,
-            ];
+                $endSlotIndex = (int) ceil(($endMinutes - $firstSlotMinutes) / $intervalMinutes) - 1;
+                $endSlotIndex = max($endSlotIndex, $startSlotIndex);
+                $endSlotIndex = min($endSlotIndex, count($normalizedSlots) - 1);
 
-            for ($i = $startSlotIndex; $i <= $endSlotIndex; $i++) {
-                $occupiedCells[$jourSlug][$i] = true;
+                if (isset($listeSeances[$index + 1])) {
+                    $nextSeance = $listeSeances[$index + 1];
+                    $nextStartString = $normalizeTimeString($nextSeance->heure_debut ?? null);
+                    if ($nextStartString) {
+                        $nextStartMinutes = $timeToMinutes($nextStartString);
+                        $nextStartSlotIndex = (int) floor(($nextStartMinutes - $firstSlotMinutes) / $intervalMinutes);
+                        $nextStartSlotIndex = max(0, min($nextStartSlotIndex, count($normalizedSlots) - 1));
+
+                        if ($nextStartSlotIndex <= $endSlotIndex && $nextStartSlotIndex >= $startSlotIndex) {
+                            $adjustedEnd = max($startSlotIndex, $nextStartSlotIndex - 1);
+                            if ($adjustedEnd < $startSlotIndex) {
+                                $adjustedEnd = $startSlotIndex;
+                            }
+                            $endSlotIndex = $adjustedEnd;
+                        }
+                    }
+                }
+
+                $rowspan = max(1, $endSlotIndex - $startSlotIndex + 1);
+
+                $seanceLookup[$jourSlug][$startSlotIndex] = [
+                    'seance' => $seance,
+                    'rowspan' => $rowspan,
+                    'startSlotIndex' => $startSlotIndex,
+                    'endSlotIndex' => $endSlotIndex,
+                ];
+
+                for ($i = $startSlotIndex; $i <= $endSlotIndex; $i++) {
+                    $occupiedCells[$jourSlug][$i] = true;
+                    if ($i !== $startSlotIndex) {
+                        $cellsCovered[$jourSlug][$i] = true;
+                    }
+                }
             }
         }
     }
@@ -153,6 +197,44 @@
         $style['text'] = $style['text'] ?? '#ffffff';
         return $style;
     };
+
+    $computeTextColor = function ($hexColor, $fallback = '#ffffff') {
+        if (!$hexColor) {
+            return $fallback;
+        }
+
+        $hex = ltrim($hexColor, '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        }
+
+        if (strlen($hex) !== 6) {
+            return $fallback;
+        }
+
+        $r = hexdec(substr($hex, 0, 2)) / 255;
+        $g = hexdec(substr($hex, 2, 2)) / 255;
+        $b = hexdec(substr($hex, 4, 2)) / 255;
+
+        $luminance = 0.299 * $r + 0.587 * $g + 0.114 * $b;
+        return $luminance > 0.6 ? '#0f172a' : '#ffffff';
+    };
+
+    $swatchMap = [];
+    if ($seances && $seances->count()) {
+        foreach ($seances as $seance) {
+            $type = $seance->type ?? ESBTPSeanceCours::TYPE_COURSE;
+            if (!isset($swatchMap[$type])) {
+                $swatchMap[$type] = $seance->color ?: $getSessionStyle($type)['bg'];
+            }
+        }
+    }
+    foreach ($labelMap as $type => $_) {
+        if (!isset($swatchMap[$type])) {
+            $swatch = $getSessionStyle($type);
+            $swatchMap[$type] = $swatch['bg'];
+        }
+    }
 @endphp
 
 <div class="timetable-wrapper timetable-variant-{{ $variant }}">
@@ -173,21 +255,15 @@
                         @php
                             $daySlug = $dayInfo['slug'];
                             $cellOccupied = $occupiedCells[$daySlug][$slotIndex] ?? false;
-
-                            $seanceToDisplay = null;
-                            $rowspan = 1;
-
-                            foreach ($seancesWithRowspans as $seanceData) {
-                                if ($seanceData['jour'] === $daySlug && $seanceData['startSlotIndex'] === $slotIndex) {
-                                    $seanceToDisplay = $seanceData['seance'];
-                                    $rowspan = $seanceData['rowspan'];
-                                    break;
-                                }
-                            }
+                            $cellCovered = $cellsCovered[$daySlug][$slotIndex] ?? false;
+                            $seanceData = $seanceLookup[$daySlug][$slotIndex] ?? null;
                         @endphp
 
-                        @if($seanceToDisplay && $cellOccupied)
+                        @if($seanceData && $cellOccupied)
                             @php
+                                $seanceToDisplay = $seanceData['seance'];
+                                $rowspan = $seanceData['rowspan'] ?? 1;
+
                                 $type = $seanceToDisplay->type ?? ESBTPSeanceCours::TYPE_COURSE;
                                 $style = $getSessionStyle($type);
                                 $matiere = $seanceToDisplay->matiere->name ?? 'Matière';
@@ -205,9 +281,11 @@
                                 }
                                 $notes = $seanceToDisplay->description;
                                 $typeLabel = strtoupper($labelMap[$type] ?? 'Séance');
+                                $backgroundColor = $seanceToDisplay->color ?: $style['bg'];
+                                $textColor = $computeTextColor($backgroundColor, $style['text']);
                             @endphp
                             <td class="timetable-session-cell" rowspan="{{ $rowspan }}">
-                                <div class="tt-session type-{{ $type }}" style="background: {{ $style['bg'] }}; color: {{ $style['text'] }};">
+                                <div class="tt-session type-{{ $type }}" style="background: {{ $backgroundColor }}; color: {{ $textColor }};">
                                     <div class="tt-session-type" style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85;">
                                         {{ $typeLabel }}
                                     </div>
@@ -226,7 +304,9 @@
                                     @endif
                                 </div>
                             </td>
-                        @elseif(!$cellOccupied)
+                        @elseif($cellCovered)
+                            @continue
+                        @else
                             <td class="timetable-empty-cell"></td>
                         @endif
                     @endforeach

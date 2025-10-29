@@ -56,6 +56,22 @@
         return 0;
     };
 
+    $normalizeTimeString = function ($timeValue) {
+        if ($timeValue instanceof \Carbon\CarbonInterface) {
+            return $timeValue->format('H:i');
+        }
+
+        if ($timeValue instanceof \DateTimeInterface) {
+            return $timeValue->format('H:i');
+        }
+
+        if (is_string($timeValue) && strlen($timeValue) >= 4) {
+            return substr($timeValue, 0, 5);
+        }
+
+        return null;
+    };
+
     $intervalMinutes = 60;
     if (count($timeSlots) > 1) {
         $intervalMinutes = max(1, $timeToMinutes($timeSlots[1]) - $timeToMinutes($timeSlots[0]));
@@ -63,61 +79,94 @@
 
     $firstSlotMinutes = $timeToMinutes($timeSlots[0] ?? '08:00');
 
-    // Créer une grille pour suivre les cellules occupées par des rowspans
+    // Préparer les structures de données pour suivre les cellules occupées
     $occupiedCells = [];
+    $cellsCovered = [];
+    $seanceLookup = [];
+
     foreach ($days as $day) {
         foreach ($timeSlots as $slotIndex => $slot) {
             $occupiedCells[$day][$slotIndex] = false;
+            $cellsCovered[$day][$slotIndex] = false;
         }
     }
 
-    // Pré-traiter les séances pour déterminer les rowspans
-    $seancesWithRowspans = [];
     if ($seances && $seances->count() > 0) {
+        $seancesParJour = [];
+
         foreach ($seances as $seance) {
-            // Convertir le jour numérique en nom de jour
             $jourNumeric = $seance->jour;
-            $jour = isset($jourMapping[$jourNumeric]) ? $jourMapping[$jourNumeric] : null;
-            
-            if (!$jour) continue; // Skip si on ne peut pas mapper le jour
-            
-            $heureDebut = $seance->heure_debut ? $seance->heure_debut->format('H:i') : null;
-            $heureFin = $seance->heure_fin ? $seance->heure_fin->format('H:i') : null;
+            $jourSlug = isset($jourMapping[$jourNumeric]) ? $jourMapping[$jourNumeric] : null;
 
-            if (!$heureDebut || !$heureFin) continue;
-
-            $startMinutes = $timeToMinutes($heureDebut);
-            $endMinutes = $timeToMinutes($heureFin);
-
-            if ($endMinutes <= $startMinutes) {
-                $endMinutes = $startMinutes + $intervalMinutes;
+            if (!$jourSlug || !array_key_exists($jourSlug, $occupiedCells)) {
+                continue;
             }
 
-            $startSlotIndex = (int) floor(($startMinutes - $firstSlotMinutes) / $intervalMinutes);
-            $startSlotIndex = max(0, $startSlotIndex);
+            $seancesParJour[$jourSlug][] = $seance;
+        }
 
-            $endSlotIndex = (int) ceil(($endMinutes - $firstSlotMinutes) / $intervalMinutes) - 1;
-            $endSlotIndex = max($endSlotIndex, $startSlotIndex);
-            $endSlotIndex = min($endSlotIndex, count($timeSlots) - 1);
+        foreach ($seancesParJour as $jourSlug => $listeSeances) {
+            usort($listeSeances, function ($a, $b) use ($timeToMinutes, $normalizeTimeString) {
+                $startA = $timeToMinutes($normalizeTimeString($a->heure_debut ?? null));
+                $startB = $timeToMinutes($normalizeTimeString($b->heure_debut ?? null));
+                return $startA <=> $startB;
+            });
 
-            $rowspan = $endSlotIndex - $startSlotIndex + 1;
-            if ($rowspan < 1) {
-                $rowspan = 1;
-            }
+            foreach ($listeSeances as $index => $seance) {
+                $heureDebut = $normalizeTimeString($seance->heure_debut ?? null);
+                $heureFin = $normalizeTimeString($seance->heure_fin ?? null);
 
-            // Stocker les informations
-            $seancesWithRowspans[] = [
-                'seance' => $seance,
-                'jour' => $jour,
-                'startSlotIndex' => $startSlotIndex,
-                'endSlotIndex' => $endSlotIndex,
-                'rowspan' => $rowspan
-            ];
+                if (!$heureDebut || !$heureFin) {
+                    continue;
+                }
 
-            // Marquer les cellules comme occupées
-            for ($i = $startSlotIndex; $i <= $endSlotIndex; $i++) {
-                if (isset($occupiedCells[$jour][$i])) {
-                    $occupiedCells[$jour][$i] = true;
+                $startMinutes = $timeToMinutes($heureDebut);
+                $endMinutes = $timeToMinutes($heureFin);
+
+                if ($endMinutes <= $startMinutes) {
+                    $endMinutes = $startMinutes + $intervalMinutes;
+                }
+
+                $startSlotIndex = (int) floor(($startMinutes - $firstSlotMinutes) / $intervalMinutes);
+                $startSlotIndex = max(0, min($startSlotIndex, count($timeSlots) - 1));
+
+                $endSlotIndex = (int) ceil(($endMinutes - $firstSlotMinutes) / $intervalMinutes) - 1;
+                $endSlotIndex = max($endSlotIndex, $startSlotIndex);
+                $endSlotIndex = min($endSlotIndex, count($timeSlots) - 1);
+
+                if (isset($listeSeances[$index + 1])) {
+                    $nextSeance = $listeSeances[$index + 1];
+                    $nextStartString = $normalizeTimeString($nextSeance->heure_debut ?? null);
+
+                    if ($nextStartString) {
+                        $nextStartMinutes = $timeToMinutes($nextStartString);
+                        $nextStartSlotIndex = (int) floor(($nextStartMinutes - $firstSlotMinutes) / $intervalMinutes);
+                        $nextStartSlotIndex = max(0, min($nextStartSlotIndex, count($timeSlots) - 1));
+
+                        if ($nextStartSlotIndex <= $endSlotIndex && $nextStartSlotIndex >= $startSlotIndex) {
+                            $adjustedEnd = max($startSlotIndex, $nextStartSlotIndex - 1);
+                            if ($adjustedEnd < $startSlotIndex) {
+                                $adjustedEnd = $startSlotIndex;
+                            }
+                            $endSlotIndex = $adjustedEnd;
+                        }
+                    }
+                }
+
+                $rowspan = max(1, $endSlotIndex - $startSlotIndex + 1);
+
+                $seanceLookup[$jourSlug][$startSlotIndex] = [
+                    'seance' => $seance,
+                    'rowspan' => $rowspan,
+                    'startSlotIndex' => $startSlotIndex,
+                    'endSlotIndex' => $endSlotIndex,
+                ];
+
+                for ($i = $startSlotIndex; $i <= $endSlotIndex; $i++) {
+                    $occupiedCells[$jourSlug][$i] = true;
+                    if ($i !== $startSlotIndex) {
+                        $cellsCovered[$jourSlug][$i] = true;
+                    }
                 }
             }
         }
@@ -175,31 +224,21 @@
                     @foreach($timeSlots as $slotIndex => $timeSlot)
                     <tr>
                         <td class="text-center time-column">{{ $timeSlot }}</td>
-                        @foreach($days as $day)
+                    @foreach($days as $day)
                             @php
-                            // Vérifier si cette cellule est occupée par un rowspan d'une ligne précédente
-                            $cellOccupied = $occupiedCells[$day][$slotIndex];
-
-                            // Trouver la séance à afficher dans cette cellule (s'il y en a une)
-                            $seanceToDisplay = null;
-                            $rowspan = 1;
-
-                            foreach ($seancesWithRowspans as $seanceData) {
-                                if ($seanceData['jour'] == $day && $seanceData['startSlotIndex'] == $slotIndex) {
-                                    $seanceToDisplay = $seanceData['seance'];
-                                    $rowspan = $seanceData['rowspan'];
-                                    break;
-                                }
-                            }
+                                $cellOccupied = $occupiedCells[$day][$slotIndex] ?? false;
+                                $cellCovered = $cellsCovered[$day][$slotIndex] ?? false;
+                                $seanceData = $seanceLookup[$day][$slotIndex] ?? null;
                             @endphp
 
-                            @if($seanceToDisplay && $cellOccupied)
+                            @if($seanceData && $cellOccupied)
                                 @php
-                                    // Déterminer le type de séance pour l'affichage
+                                    $seanceToDisplay = $seanceData['seance'];
+                                    $rowspan = $seanceData['rowspan'] ?? 1;
+
                                     $typeSeance = $seanceToDisplay->type ?? 'course';
                                     $isBreakType = in_array($typeSeance, ['break', 'lunch']);
                                     
-                                    // Mapping des couleurs par type (selon les constantes du modèle)
                                     $colorsByType = [
                                         'course' => 'var(--primary)',      // Bleu pour les cours
                                         'homework' => 'var(--success)',    // Vert pour les devoirs
@@ -278,7 +317,7 @@
                                         </div>
                                     </div>
                                 </td>
-                            @elseif(!$cellOccupied)
+                            @elseif(!$cellOccupied && !$cellCovered)
                                 <td>
                                     @if($emploiTemps)
                                         @php

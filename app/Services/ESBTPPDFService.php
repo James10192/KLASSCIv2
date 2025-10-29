@@ -269,6 +269,22 @@ class ESBTPPDFService
                 ->count()
                 ->toArray();
 
+            $sessionTypeSwatches = [];
+            foreach ($emploiTemps->seances as $seance) {
+                $type = $seance->type ?? ESBTPSeanceCours::TYPE_COURSE;
+                if (!isset($sessionTypeSwatches[$type])) {
+                    $sessionTypeSwatches[$type] = [
+                        'bg' => $seance->color ?: ($sessionTypeColors[$type]['bg'] ?? $sessionTypeColors['default']['bg']),
+                        'text' => $sessionTypeColors[$type]['text'] ?? '#ffffff',
+                    ];
+                }
+            }
+            foreach ($sessionTypeLabels as $type => $label) {
+                if (!isset($sessionTypeSwatches[$type])) {
+                    $sessionTypeSwatches[$type] = $sessionTypeColors[$type] ?? $sessionTypeColors['default'];
+                }
+            }
+
             $uniqueMatieres = $matiereStats->count();
             $uniqueTeachers = $emploiTemps->seances
                 ->map(function ($seance) {
@@ -361,6 +377,7 @@ class ESBTPPDFService
                 'logoBase64' => $logoBase64,
                 'sessionTypeColors' => $sessionTypeColors,
                 'sessionTypeLabels' => $sessionTypeLabels,
+                'sessionTypeSwatches' => $sessionTypeSwatches,
                 'sessionTypeStats' => $sessionTypeStats,
                 'summaryStats' => $summaryStats,
                 'totalSeances' => $totalSeances,

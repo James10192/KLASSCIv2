@@ -36,10 +36,30 @@
                                         </div>
                                     </td>
                                     <td>
+                                        @php
+                                            $enseignantsDisponibles = $matiere['enseignants_selectables'] ?? collect();
+                                        @endphp
                                         @if($matiere['enseignant_affiche'])
-                                            <small><i class="fas fa-user-tie text-secondary me-1"></i>{{ $matiere['enseignant_affiche']->name }}</small>
+                                            <small>
+                                                <i class="fas fa-user-tie text-secondary me-1"></i>
+                                                {{ $matiere['enseignant_affiche']->name }}
+                                            </small>
                                         @else
-                                            <small class="text-muted"><i class="fas fa-user-slash me-1"></i>Non assigné</small>
+                                            <small class="text-muted">
+                                                <i class="fas fa-user-slash me-1"></i>Non assigné
+                                            </small>
+                                        @endif
+                                        @if($enseignantsDisponibles->count() > 0)
+                                            <div class="d-flex flex-wrap gap-1 mt-1">
+                                                @foreach($enseignantsDisponibles as $enseignant)
+                                                    @php
+                                                        $enseignantNom = optional($enseignant->user)->name ?? $enseignant->name ?? 'Enseignant';
+                                                    @endphp
+                                                    <span class="badge bg-light text-dark border">
+                                                        {{ $enseignantNom }}
+                                                    </span>
+                                                @endforeach
+                                            </div>
                                         @endif
                                     </td>
                                     <td class="text-center">

@@ -275,6 +275,19 @@ class ESBTPEmploiTempsController extends Controller
         $matieresPlanifiees = collect();
         $enseignantsIds = collect();
         $teacherCache = [];
+        $getTeacherModel = function ($userId) use (&$teacherCache) {
+            if (!$userId) {
+                return null;
+            }
+
+            if (!array_key_exists($userId, $teacherCache)) {
+                $teacherCache[$userId] = ESBTPTeacher::with(['user', 'availabilities'])
+                    ->where('user_id', $userId)
+                    ->first();
+            }
+
+            return $teacherCache[$userId];
+        };
         
         foreach ($planifications as $planification) {
             // Utiliser les heures effectuées basées sur les émargements validés
@@ -340,21 +353,31 @@ class ESBTPEmploiTempsController extends Controller
                 $enseignantAffiche = $planification->enseignantPrincipal;
             }
             
-            $enseignantsSelectables = $planification->teachers ? $planification->teachers->filter()->values() : collect();
+            $enseignantsSelectables = collect();
+            if ($planification->teachers && $planification->teachers->count() > 0) {
+                $planification->teachers->each(function ($teacher) {
+                    $teacher?->loadMissing(['user', 'availabilities']);
+                });
+                $enseignantsSelectables = $planification->teachers->filter()->values();
+            }
 
             if ($planification->enseignantPrincipal) {
-                $principalUserId = $planification->enseignantPrincipal->id;
-
-                if (!array_key_exists($principalUserId, $teacherCache)) {
-                    $teacherCache[$principalUserId] = ESBTPTeacher::with(['user', 'availabilities'])->where('user_id', $principalUserId)->first();
-                }
-
-                $principalTeacherModel = $teacherCache[$principalUserId];
-
+                $principalTeacherModel = $getTeacherModel($planification->enseignantPrincipal->id);
                 if ($principalTeacherModel && !$enseignantsSelectables->contains('id', $principalTeacherModel->id)) {
                     $enseignantsSelectables->push($principalTeacherModel);
                 }
             }
+
+            if (!empty($planification->enseignants_secondaires)) {
+                foreach ($planification->enseignants_secondaires as $secondaryUserId) {
+                    $secondaryTeacherModel = $getTeacherModel($secondaryUserId);
+                    if ($secondaryTeacherModel && !$enseignantsSelectables->contains('id', $secondaryTeacherModel->id)) {
+                        $enseignantsSelectables->push($secondaryTeacherModel);
+                    }
+                }
+            }
+
+            $enseignantsSelectables = $enseignantsSelectables->filter()->unique('id')->values();
 
             $matieresPlanifiees->push([
                 'planification_id' => $planification->id,
@@ -1405,6 +1428,23 @@ class ESBTPEmploiTempsController extends Controller
                 'default' => ['bg' => '#5e91de', 'text' => '#ffffff'],
             ];
 
+            $sessionTypeSwatches = [];
+            foreach ($emploiTemps->seances as $seance) {
+                $type = $seance->type ?? ESBTPSeanceCours::TYPE_COURSE;
+                if (!isset($sessionTypeSwatches[$type])) {
+                    $background = $seance->color ?: ($sessionTypeColors[$type]['bg'] ?? $sessionTypeColors['default']['bg']);
+                    $sessionTypeSwatches[$type] = [
+                        'bg' => $background,
+                        'text' => $this->calculateTextColor($background, $sessionTypeColors[$type]['text'] ?? '#ffffff'),
+                    ];
+                }
+            }
+            foreach ($sessionTypeLabels as $type => $label) {
+                if (!isset($sessionTypeSwatches[$type])) {
+                    $sessionTypeSwatches[$type] = $sessionTypeColors[$type] ?? $sessionTypeColors['default'];
+                }
+            }
+
             $sessionTypeStats = $emploiTemps->seances
                 ->groupBy(function ($seance) {
                     return $seance->type ?? ESBTPSeanceCours::TYPE_COURSE;
@@ -1477,6 +1517,7 @@ class ESBTPEmploiTempsController extends Controller
                 'sessionTypeStats' => $sessionTypeStats,
                 'sessionTypeLabels' => $sessionTypeLabels,
                 'sessionTypeColors' => $sessionTypeColors,
+                'sessionTypeSwatches' => $sessionTypeSwatches,
                 'totalHoursFormatted' => $totalHoursFormatted,
                 'totalSeances' => $totalSeances,
                 'daysCovered' => $daysCovered,
@@ -1537,5 +1578,25 @@ class ESBTPEmploiTempsController extends Controller
         }
         
         return $availability;
+    }
+
+    private function calculateTextColor(string $hex, string $fallback = '#ffffff'): string
+    {
+        $hex = ltrim($hex, '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+        }
+
+        if (strlen($hex) !== 6) {
+            return $fallback;
+        }
+
+        $r = hexdec(substr($hex, 0, 2)) / 255;
+        $g = hexdec(substr($hex, 2, 2)) / 255;
+        $b = hexdec(substr($hex, 4, 2)) / 255;
+
+        $luminance = 0.299 * $r + 0.587 * $g + 0.114 * $b;
+
+        return $luminance > 0.6 ? '#0f172a' : '#ffffff';
     }
 }

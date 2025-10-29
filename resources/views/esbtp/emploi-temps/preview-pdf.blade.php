@@ -441,7 +441,7 @@
                 <div class="session-legend">
                     @foreach($sessionTypeLabels as $type => $label)
                         @php
-                            $style = $sessionTypeColors[$type] ?? $sessionTypeColors['default'];
+                            $style = $sessionTypeSwatches[$type] ?? ($sessionTypeColors[$type] ?? $sessionTypeColors['default']);
                         @endphp
                         <div class="session-legend-item">
                             <span class="session-legend-color" style="background: {{ $style['bg'] }};"></span>
