@@ -172,6 +172,7 @@
             'days' => $days,
             'dayLabels' => $joursNoms,
             'sessionStyles' => $sessionTypeColors,
+            'sessionLabels' => $sessionTypeLabels,
             'variant' => 'pdf',
         ])
     </div>

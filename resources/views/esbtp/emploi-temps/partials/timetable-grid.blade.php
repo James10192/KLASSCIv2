@@ -4,6 +4,7 @@
     'days' => [],
     'dayLabels' => [],
     'sessionStyles' => [],
+    'sessionLabels' => [],
     'variant' => 'web',
 ])
 
@@ -138,6 +139,14 @@
         }
     }
 
+    $defaultLabels = [
+        ESBTPSeanceCours::TYPE_COURSE => 'Cours',
+        ESBTPSeanceCours::TYPE_HOMEWORK => 'Devoir',
+        ESBTPSeanceCours::TYPE_BREAK => 'Récréation',
+        ESBTPSeanceCours::TYPE_LUNCH => 'Pause déjeuner',
+    ];
+    $labelMap = array_merge($defaultLabels, $sessionLabels ?? []);
+
     $getSessionStyle = function ($type) use ($sessionStyles) {
         $style = $sessionStyles[$type] ?? ($sessionStyles['default'] ?? ['bg' => '#0ea5e9', 'text' => '#ffffff']);
         $style['bg'] = $style['bg'] ?? '#0ea5e9';
@@ -195,9 +204,13 @@
                                     $timeRange = $startHour . ' - ' . $endHour;
                                 }
                                 $notes = $seanceToDisplay->description;
+                                $typeLabel = strtoupper($labelMap[$type] ?? 'Séance');
                             @endphp
                             <td class="timetable-session-cell" rowspan="{{ $rowspan }}">
                                 <div class="tt-session type-{{ $type }}" style="background: {{ $style['bg'] }}; color: {{ $style['text'] }};">
+                                    <div class="tt-session-type" style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85;">
+                                        {{ $typeLabel }}
+                                    </div>
                                     <div class="tt-session-subject">{{ $matiere }}</div>
                                     @if($enseignant)
                                         <div class="tt-session-teacher"><i class="fas fa-user-tie"></i> {{ $enseignant }}</div>
