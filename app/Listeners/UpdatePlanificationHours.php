@@ -44,6 +44,14 @@ class UpdatePlanificationHours
                 return;
             }
 
+            if (!$seance->isCourse()) {
+                Log::info('Émargement ignoré pour une séance non cours', [
+                    'seance_id' => $seance->id,
+                    'type' => $seance->type,
+                ]);
+                return;
+            }
+
             // Récupérer la planification académique correspondante
             $planification = ESBTPPlanificationAcademique::where('matiere_id', $seance->matiere_id)
                 ->where('filiere_id', $seance->classe->filiere_id)

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
+use App\Models\ESBTPEvaluation;
 
 class ESBTPSeanceCours extends Model
 {
@@ -37,6 +38,7 @@ class ESBTPSeanceCours extends Model
         'color',
         'homework_description',
         'homework_due_date',
+        'homework_evaluation_id',
         'is_recurring',
         'recurrence_days',
         'priority',
@@ -103,6 +105,14 @@ class ESBTPSeanceCours extends Model
     public function teacher()
     {
         return $this->belongsTo(ESBTPTeacher::class, 'teacher_id');
+    }
+
+    /**
+     * Évaluation générée automatiquement pour un devoir.
+     */
+    public function homeworkEvaluation()
+    {
+        return $this->belongsTo(ESBTPEvaluation::class, 'homework_evaluation_id');
     }
 
     /**

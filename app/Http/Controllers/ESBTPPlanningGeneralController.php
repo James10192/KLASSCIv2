@@ -532,6 +532,7 @@ class ESBTPPlanningGeneralController extends Controller
         
         // Séances de l'enseignant
         $seancesEnseignant = ESBTPSeanceCours::where('teacher_id', $user->id)
+            ->where('type', ESBTPSeanceCours::TYPE_COURSE)
             ->whereHas('emploiTemps', function($query) use ($anneeId) {
                 if ($anneeId) {
                     $query->where('annee_universitaire_id', $anneeId);
@@ -950,6 +951,7 @@ class ESBTPPlanningGeneralController extends Controller
     private function calculerChargeHoraireEnseignant($enseignantId, $anneeId)
     {
         $query = ESBTPSeanceCours::where('teacher_id', $enseignantId)
+            ->where('type', ESBTPSeanceCours::TYPE_COURSE)
             ->with('matiere')
             ->select('matiere_id', DB::raw('COUNT(*) as nb_seances'),
                     DB::raw('SUM(TIME_TO_SEC(TIMEDIFF(heure_fin, heure_debut))/3600) as total_heures'))
@@ -1665,6 +1667,7 @@ class ESBTPPlanningGeneralController extends Controller
             $totalSeances = ESBTPSeanceCours::whereHas('emploiTemps', function($query) use ($annee) {
                 $query->where('annee_universitaire_id', $annee->id);
             })
+            ->where('type', ESBTPSeanceCours::TYPE_COURSE)
             ->whereMonth('created_at', $moisCourant->month)
             ->whereYear('created_at', $moisCourant->year)
             ->count();
@@ -1673,6 +1676,7 @@ class ESBTPPlanningGeneralController extends Controller
             $totalHeures = ESBTPSeanceCours::whereHas('emploiTemps', function($query) use ($annee) {
                 $query->where('annee_universitaire_id', $annee->id);
             })
+            ->where('type', ESBTPSeanceCours::TYPE_COURSE)
             ->whereMonth('created_at', $moisCourant->month)
             ->whereYear('created_at', $moisCourant->year)
             ->sum(DB::raw('TIME_TO_SEC(TIMEDIFF(heure_fin, heure_debut))/3600'));

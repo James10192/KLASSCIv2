@@ -412,9 +412,16 @@
 
 
         @php
-            // Définir les créneaux horaires et jours pour la grille
-            $timeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
-            $days = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+            if (!isset($timeSlots) || !is_array($timeSlots) || empty($timeSlots)) {
+                $timeSlots = [];
+                for ($hour = 8; $hour < 18; $hour++) {
+                    $timeSlots[] = sprintf('%02d:00', $hour);
+                }
+            }
+
+            if (!isset($days) || !is_array($days) || empty($days)) {
+                $days = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+            }
         @endphp
 
         <!-- Section: Grille horaire (pleine largeur) -->

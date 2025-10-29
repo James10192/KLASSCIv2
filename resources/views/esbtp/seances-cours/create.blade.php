@@ -248,7 +248,7 @@
                                             <option value="{{ $matiere['matiere']->id }}" 
                                                     data-heures-restantes="{{ $matiere['heures_restantes'] }}"
                                                     data-volume-total="{{ $matiere['volume_horaire_total'] }}"
-                                                    data-enseignants="{{ $matiere['enseignants_assignes']->pluck('id')->toJson() }}"
+                                                    data-enseignants="{{ ($matiere['enseignants_selectables'] ?? collect())->pluck('id')->toJson() }}"
                                                     {{ old('matiere_id') == $matiere['matiere']->id ? 'selected' : '' }}>
                                                 {{ $matiere['matiere']->name }} 
                                                 ({{ $matiere['heures_restantes'] }}h restantes / {{ $matiere['volume_horaire_total'] }}h)
@@ -264,7 +264,7 @@
                                     @enderror
                                 </div>
 
-                                <div class="form-group">
+                                <div class="form-group" id="teacherFieldGroup">
                                     <label for="teacher_id" class="form-label">Enseignant assigné <span class="text-danger">*</span></label>
                                     <select name="teacher_id" id="teacher_id" class="form-select @error('teacher_id') error @enderror" onchange="showTeacherAvailability()" required>
                                         <option value="">Sélectionner d'abord une matière</option>
@@ -426,6 +426,8 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/fr.js"></script>
 <script>
+const currentTeacherId = "{{ old('teacher_id') }}";
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Select2
     $('.select2').select2({
@@ -476,6 +478,17 @@ document.addEventListener('DOMContentLoaded', function() {
         selectSessionType(initialType);
     }
     updateHomeworkTimingInfo();
+
+    // Pré-remplir les enseignants si une matière est déjà sélectionnée
+    const matiereSelect = document.getElementById('matiere_id');
+    if (matiereSelect && matiereSelect.value) {
+        updateTeachersForSubject();
+        if (currentTeacherId && document.getElementById('sessionType').value === 'course') {
+            const teacherSelect = document.getElementById('teacher_id');
+            teacherSelect.value = currentTeacherId;
+            showTeacherAvailability();
+        }
+    }
 });
 
 function selectSessionType(type) {
@@ -501,20 +514,44 @@ function selectSessionType(type) {
 
     // Update required fields
     const teacherField = document.getElementById('teacher_id');
+    const teacherGroup = document.getElementById('teacherFieldGroup');
+    const teacherInfo = document.getElementById('teacher-info');
+    const teacherAvailability = document.getElementById('teacher-availability');
     const matiereField = document.getElementById('matiere_id');
     const salleField = document.getElementById('salle');
     const homeworkDescField = document.getElementById('homework_description');
     const homeworkDueDateField = document.getElementById('homework_due_date');
 
-    if (type === 'course' || type === 'homework') {
-        teacherField.required = true;
-        matiereField.required = true;
-        salleField.required = true;
-    } else {
-        teacherField.required = false;
-        matiereField.required = false;
-        salleField.required = false;
+    const requiresTeacher = type === 'course';
+    const requiresSalle = (type === 'course' || type === 'homework');
+
+    if (teacherField) {
+        teacherField.required = requiresTeacher;
+        teacherField.disabled = !requiresTeacher;
+        if (!requiresTeacher) {
+            if (typeof $ !== 'undefined') {
+                $('#teacher_id').val(null).trigger('change.select2');
+                $('#teacher_id').prop('disabled', true).trigger('change.select2');
+            } else {
+                teacherField.value = '';
+            }
+            if (teacherInfo) {
+                teacherInfo.style.display = 'none';
+            }
+            if (teacherAvailability) {
+                teacherAvailability.style.display = 'none';
+            }
+        } else if (typeof $ !== 'undefined') {
+            $('#teacher_id').prop('disabled', false).trigger('change.select2');
+        }
     }
+
+    if (teacherGroup) {
+        teacherGroup.style.display = requiresTeacher ? 'block' : 'none';
+    }
+
+    matiereField.required = type === 'course' || type === 'homework';
+    salleField.required = requiresSalle;
 
     if (type === 'homework') {
         homeworkDescField.required = true;
@@ -522,6 +559,10 @@ function selectSessionType(type) {
     } else {
         homeworkDescField.required = false;
         homeworkDueDateField.required = false;
+    }
+
+    if (typeof updateTeachersForSubject === 'function') {
+        updateTeachersForSubject();
     }
 
     updateHomeworkTimingInfo();
@@ -629,7 +670,7 @@ document.getElementById('sessionForm').addEventListener('submit', function(e) {
     }
 
     // Validation de disponibilité de l'enseignant
-    if ((type === 'course' || type === 'homework') && !validateTeacherAvailability()) {
+    if (type === 'course' && !validateTeacherAvailability()) {
         e.preventDefault();
         return;
     }
@@ -641,6 +682,11 @@ function validateTeacherAvailability() {
     const jourSelect = document.getElementById('jour');
     const heureDebut = document.getElementById('heure_debut');
     const heureFin = document.getElementById('heure_fin');
+    const currentType = document.getElementById('sessionType').value;
+
+    if (currentType !== 'course') {
+        return true;
+    }
     
     if (!teacherSelect.value || !jourSelect.value || !heureDebut.value || !heureFin.value) {
         return true; // Pas assez d'infos pour valider
@@ -701,9 +747,15 @@ function updateTeachersForSubject() {
     const teacherSelect = document.getElementById('teacher_id');
     const matiereInfo = document.getElementById('matiere-info');
     const heuresRestantesText = document.getElementById('heures-restantes-text');
+    const teacherInfo = document.getElementById('teacher-info');
+    const teacherAvailability = document.getElementById('teacher-availability');
+    const currentType = document.getElementById('sessionType').value;
+    const requiresTeacher = currentType === 'course';
     
     // Reset teacher select
-    teacherSelect.innerHTML = '<option value="">Sélectionner un enseignant</option>';
+    teacherSelect.innerHTML = requiresTeacher
+        ? '<option value="">Sélectionner un enseignant</option>'
+        : '<option value="">Aucun enseignant requis pour un devoir</option>';
     
     if (matiereSelect.value) {
         const selectedOption = matiereSelect.options[matiereSelect.selectedIndex];
@@ -715,15 +767,30 @@ function updateTeachersForSubject() {
         heuresRestantesText.textContent = `${heuresRestantes}h restantes sur ${volumeTotal}h`;
         matiereInfo.style.display = 'block';
         
+        if (!requiresTeacher) {
+            if (teacherInfo) {
+                teacherInfo.style.display = 'none';
+            }
+            if (teacherAvailability) {
+                teacherAvailability.style.display = 'none';
+            }
+            return;
+        }
+        
         // Ajouter les enseignants assignés à cette matière
         const allTeachers = @json($teachers->keyBy('id'));
-        enseignantsIds.forEach(teacherId => {
-            if (allTeachers[teacherId]) {
+        enseignantsIds.forEach(rawId => {
+            const teacherId = rawId?.toString();
+            if (teacherId && allTeachers[teacherId]) {
                 const teacher = allTeachers[teacherId];
-                const option = new Option(
-                    teacher.user ? teacher.user.name : teacher.matricule, 
-                    teacherId
-                );
+                const teacherName = teacher?.user?.name 
+                    ?? teacher?.name 
+                    ?? teacher?.matricule 
+                    ?? `Enseignant ${teacherId}`;
+                const option = new Option(teacherName, teacherId);
+                if (currentTeacherId && teacherId === currentTeacherId) {
+                    option.selected = true;
+                }
                 teacherSelect.add(option);
             }
         });
@@ -748,6 +815,13 @@ function showTeacherAvailability() {
     const availabilityGrid = document.getElementById('availability-grid');
     const teacherInfo = document.getElementById('teacher-info');
     const teacherAssignmentText = document.getElementById('teacher-assignment-text');
+    const currentType = document.getElementById('sessionType').value;
+    
+    if (currentType !== 'course') {
+        teacherAvailability.style.display = 'none';
+        teacherInfo.style.display = 'none';
+        return;
+    }
     
     if (teacherSelect.value) {
         const teacherId = teacherSelect.value;

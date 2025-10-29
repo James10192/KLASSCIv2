@@ -1,29 +1,68 @@
 @props(['seances' => collect(), 'emploiTemps' => null, 'timeSlots' => [], 'days' => []])
 
 @php
-    // Définir les créneaux horaires par défaut si non fournis
-    $defaultTimeSlots = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
-    $timeSlots = empty($timeSlots) ? $defaultTimeSlots : $timeSlots;
-    
-    // Définir les jours par défaut si non fournis
-    $defaultDays = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-    $days = empty($days) ? $defaultDays : $days;
-    
+    // Définir les créneaux horaires par défaut si non fournis (intervalle d'1h)
+    $defaultTimeSlots = [];
+    for ($hour = 8; $hour < 18; $hour++) {
+        $defaultTimeSlots[] = sprintf('%02d:00', $hour);
+    }
+
+    $timeSlots = empty($timeSlots) ? $defaultTimeSlots : array_values($timeSlots);
+    $timeSlots = array_values(array_unique($timeSlots));
+    sort($timeSlots);
+
     // Mapping jour numérique -> nom du jour (1 = lundi, 2 = mardi, etc.)
     $jourMapping = [
         1 => 'lundi',
-        2 => 'mardi', 
+        2 => 'mardi',
         3 => 'mercredi',
         4 => 'jeudi',
         5 => 'vendredi',
         6 => 'samedi',
-        0 => 'dimanche', // Au cas où
-        7 => 'dimanche'  // Au cas où
+        0 => 'dimanche',
+        7 => 'dimanche'
     ];
-    
+
+    // Définir les jours par défaut si non fournis
+    $defaultDays = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+
+    if (empty($days)) {
+        $days = $defaultDays;
+    } else {
+        $days = array_map(function ($day) use ($jourMapping) {
+            if (is_numeric($day)) {
+                return $jourMapping[(int) $day] ?? strtolower($day);
+            }
+            return strtolower($day);
+        }, $days);
+        $days = array_values(array_unique($days));
+    }
+
     // Mapping inverse nom du jour -> numérique
     $dayToNumber = array_flip($jourMapping);
-    
+
+    $timeToMinutes = function ($timeValue) {
+        if ($timeValue instanceof \Carbon\Carbon) {
+            return ((int) $timeValue->format('H')) * 60 + (int) $timeValue->format('i');
+        }
+
+        if (is_string($timeValue) && strlen($timeValue) >= 4) {
+            [$hour, $minute] = array_pad(explode(':', substr($timeValue, 0, 5)), 2, 0);
+            if (is_numeric($hour) && is_numeric($minute)) {
+                return ((int) $hour) * 60 + (int) $minute;
+            }
+        }
+
+        return 0;
+    };
+
+    $intervalMinutes = 60;
+    if (count($timeSlots) > 1) {
+        $intervalMinutes = max(1, $timeToMinutes($timeSlots[1]) - $timeToMinutes($timeSlots[0]));
+    }
+
+    $firstSlotMinutes = $timeToMinutes($timeSlots[0] ?? '08:00');
+
     // Créer une grille pour suivre les cellules occupées par des rowspans
     $occupiedCells = [];
     foreach ($days as $day) {
@@ -47,31 +86,24 @@
 
             if (!$heureDebut || !$heureFin) continue;
 
-            // Trouver l'index du créneau de début
-            $startSlotIndex = array_search($heureDebut, $timeSlots);
-            if ($startSlotIndex === false) continue;
+            $startMinutes = $timeToMinutes($heureDebut);
+            $endMinutes = $timeToMinutes($heureFin);
 
-            // Calculer combien de créneaux cette séance occupe
-            $endSlotIndex = null;
-            foreach ($timeSlots as $index => $slot) {
-                // Check if this is the last slot
-                $nextSlotIndex = $index + 1;
-                $nextSlot = isset($timeSlots[$nextSlotIndex]) ? $timeSlots[$nextSlotIndex] : null;
-
-                // If this is the last slot or the end time is before the next slot starts
-                if ($nextSlot === null || $heureFin <= $nextSlot) {
-                    if ($index >= $startSlotIndex) {
-                        $endSlotIndex = $index;
-                        break; // Found the ending slot, no need to continue
-                    }
-                }
+            if ($endMinutes <= $startMinutes) {
+                $endMinutes = $startMinutes + $intervalMinutes;
             }
 
-            if ($endSlotIndex === null) $endSlotIndex = $startSlotIndex;
+            $startSlotIndex = (int) floor(($startMinutes - $firstSlotMinutes) / $intervalMinutes);
+            $startSlotIndex = max(0, $startSlotIndex);
 
-            // Calculer le rowspan
+            $endSlotIndex = (int) ceil(($endMinutes - $firstSlotMinutes) / $intervalMinutes) - 1;
+            $endSlotIndex = max($endSlotIndex, $startSlotIndex);
+            $endSlotIndex = min($endSlotIndex, count($timeSlots) - 1);
+
             $rowspan = $endSlotIndex - $startSlotIndex + 1;
-            if ($rowspan < 1) $rowspan = 1;
+            if ($rowspan < 1) {
+                $rowspan = 1;
+            }
 
             // Stocker les informations
             $seancesWithRowspans[] = [
@@ -84,7 +116,9 @@
 
             // Marquer les cellules comme occupées
             for ($i = $startSlotIndex; $i <= $endSlotIndex; $i++) {
-                $occupiedCells[$jour][$i] = true;
+                if (isset($occupiedCells[$jour][$i])) {
+                    $occupiedCells[$jour][$i] = true;
+                }
             }
         }
     }

@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Services\ESBTPPDFService;
 use App\Helpers\SettingsHelper;
+use Carbon\Carbon;
 
 class ESBTPEmploiTempsController extends Controller
 {
@@ -116,6 +117,73 @@ class ESBTPEmploiTempsController extends Controller
     }
 
     /**
+     * Génère une liste de créneaux horaires à partir des séances existantes.
+     */
+    private function generateTimeSlots($seances, int $intervalMinutes = 60, string $defaultStart = '08:00', string $defaultEnd = '18:00'): array
+    {
+        $intervalMinutes = max(1, $intervalMinutes);
+
+        $convertToMinutes = function ($value) {
+            if ($value instanceof Carbon) {
+                return ((int) $value->format('H')) * 60 + (int) $value->format('i');
+            }
+
+            if (is_string($value) && strlen($value) >= 4) {
+                [$hour, $minute] = array_pad(explode(':', substr($value, 0, 5)), 2, 0);
+                if (is_numeric($hour) && is_numeric($minute)) {
+                    return ((int) $hour) * 60 + (int) $minute;
+                }
+            }
+
+            return null;
+        };
+
+        $startMinutes = $convertToMinutes($defaultStart);
+        $endMinutes = $convertToMinutes($defaultEnd);
+
+        if ($startMinutes === null) {
+            $startMinutes = 8 * 60;
+        }
+
+        if ($endMinutes === null) {
+            $endMinutes = 18 * 60;
+        }
+
+        $seancesCollection = $seances instanceof \Illuminate\Support\Collection
+            ? $seances
+            : collect($seances ?: []);
+
+        foreach ($seancesCollection as $seance) {
+            $start = $convertToMinutes($seance->heure_debut ?? null);
+            $end = $convertToMinutes($seance->heure_fin ?? null);
+
+            if ($start !== null) {
+                $startMinutes = min($startMinutes, (int) floor($start / $intervalMinutes) * $intervalMinutes);
+            }
+
+            if ($end !== null) {
+                $endMinutes = max($endMinutes, (int) ceil($end / $intervalMinutes) * $intervalMinutes);
+            }
+        }
+
+        if ($endMinutes <= $startMinutes) {
+            $endMinutes = $startMinutes + $intervalMinutes;
+        }
+
+        $startMinutes = intdiv($startMinutes, $intervalMinutes) * $intervalMinutes;
+        $endMinutes = (int) ceil($endMinutes / $intervalMinutes) * $intervalMinutes;
+
+        $slots = [];
+        for ($minute = $startMinutes; $minute < $endMinutes; $minute += $intervalMinutes) {
+            $hours = intdiv($minute, 60);
+            $minutes = $minute % 60;
+            $slots[] = sprintf('%02d:%02d', $hours, $minutes);
+        }
+
+        return array_values(array_unique($slots));
+    }
+
+    /**
      * Récupérer les données de planification pour une classe donnée
      */
     private function getPlanificationDataForClasse($classe, $annee, $semestre = null)
@@ -168,7 +236,7 @@ class ESBTPEmploiTempsController extends Controller
                     }
                 })
                 ->active()
-                ->with(['matiere', 'enseignantPrincipal', 'teachers.user'])
+                ->with(['matiere', 'enseignantPrincipal', 'teachers.user', 'teachers.availabilities'])
                 ->first();
             
             if ($planification) {
@@ -206,6 +274,7 @@ class ESBTPEmploiTempsController extends Controller
         // Traiter chaque planification pour calculer les heures restantes
         $matieresPlanifiees = collect();
         $enseignantsIds = collect();
+        $teacherCache = [];
         
         foreach ($planifications as $planification) {
             // Utiliser les heures effectuées basées sur les émargements validés
@@ -216,7 +285,8 @@ class ESBTPEmploiTempsController extends Controller
             // IMPORTANT: Exclure les séances où l'enseignant est marqué ABSENT
             if ($heuresUtilisees == 0) {
                 // Utiliser une sous-requête pour obtenir l'attendance la plus récente par séance
-                $seances = \App\Models\ESBTPSeanceCours::where('matiere_id', $planification->matiere_id)
+                $seances = \App\Models\ESBTPSeanceCours::where('esbtp_seance_cours.matiere_id', $planification->matiere_id)
+                    ->where('esbtp_seance_cours.type', ESBTPSeanceCours::TYPE_COURSE)
                     ->where('classe_id', $classe->id)
                     ->where('annee_universitaire_id', $annee->id)
                     ->when($semestre, function($query) use ($semestre) {
@@ -270,11 +340,28 @@ class ESBTPEmploiTempsController extends Controller
                 $enseignantAffiche = $planification->enseignantPrincipal;
             }
             
+            $enseignantsSelectables = $planification->teachers ? $planification->teachers->filter()->values() : collect();
+
+            if ($planification->enseignantPrincipal) {
+                $principalUserId = $planification->enseignantPrincipal->id;
+
+                if (!array_key_exists($principalUserId, $teacherCache)) {
+                    $teacherCache[$principalUserId] = ESBTPTeacher::with(['user', 'availabilities'])->where('user_id', $principalUserId)->first();
+                }
+
+                $principalTeacherModel = $teacherCache[$principalUserId];
+
+                if ($principalTeacherModel && !$enseignantsSelectables->contains('id', $principalTeacherModel->id)) {
+                    $enseignantsSelectables->push($principalTeacherModel);
+                }
+            }
+
             $matieresPlanifiees->push([
                 'planification_id' => $planification->id,
                 'matiere' => $planification->matiere,
                 'enseignant_principal' => $planification->enseignantPrincipal,
                 'enseignants_assignes' => $planification->teachers,
+                'enseignants_selectables' => $enseignantsSelectables,
                 'enseignant_affiche' => $enseignantAffiche,
                 'volume_horaire_total' => $planification->volume_horaire_total,
                 'heures_utilisees' => $heuresUtilisees,
@@ -434,14 +521,6 @@ class ESBTPEmploiTempsController extends Controller
         // Grouper les séances par jour
         $seancesParJour = $emploi_temp->getSeancesParJour();
 
-        // Récupérer les heures de début et de fin pour l'affichage (créneaux d'une heure)
-        $heuresDebut = [];
-        $heuresFin = [];
-        for ($heure = 8; $heure < 18; $heure++) {
-            $heuresDebut[] = sprintf('%02d:00', $heure);
-            $heuresFin[] = sprintf('%02d:00', $heure + 1);
-        }
-
         // Noms des jours pour l'affichage
         $joursNoms = [
             1 => 'Lundi',
@@ -452,8 +531,10 @@ class ESBTPEmploiTempsController extends Controller
             6 => 'Samedi',
         ];
 
-        // Créer les variables $timeSlots et $days pour la vue
-        $timeSlots = $heuresDebut;
+        // Générer dynamiquement les créneaux horaires (pas de 15 minutes pour couvrir 08:30, 09:15, etc.)
+        $timeSlots = $this->generateTimeSlots($seances);
+
+        // Créer les variables $days pour la vue
         $days = array_keys($joursNoms);
 
         // Calcul des statistiques par matière
@@ -481,8 +562,7 @@ class ESBTPEmploiTempsController extends Controller
 
         return view('esbtp.emploi-temps.show', compact(
             'emploiTemps', 'seances', 'seancesParJour',
-            'heuresDebut', 'heuresFin', 'joursNoms',
-            'matiereStats', 'timeSlots', 'days', 'planificationData'
+            'joursNoms', 'matiereStats', 'timeSlots', 'days', 'planificationData'
         ));
     }
 
