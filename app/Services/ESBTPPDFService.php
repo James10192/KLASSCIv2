@@ -8,9 +8,11 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPResultatMatiere;
 use App\Models\ESBTPEmploiTemps;
+use App\Models\ESBTPSeanceCours;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use App\Services\NumberToWords;
+use App\Helpers\SettingsHelper;
 
 class ESBTPPDFService
 {
@@ -225,14 +227,138 @@ class ESBTPPDFService
         $days = array_keys($joursNoms);
 
         // Calcul des statistiques par matière
-        $matiereStats = [];
-        foreach ($emploiTemps->seances as $seance) {
-            $matiereName = $seance->matiere ? $seance->matiere->name : 'Non définie';
-            if (!isset($matiereStats[$matiereName])) {
-                $matiereStats[$matiereName] = 0;
+            $matiereStats = [];
+            foreach ($emploiTemps->seances as $seance) {
+                $matiereName = $seance->matiere ? $seance->matiere->name : 'Non définie';
+                if (!isset($matiereStats[$matiereName])) {
+                    $matiereStats[$matiereName] = 0;
+                }
+                $matiereStats[$matiereName]++;
             }
-            $matiereStats[$matiereName]++;
-        }
+            $matiereStats = collect($matiereStats)->sortDesc();
+
+            $totalSeances = $emploiTemps->seances->count();
+            $totalMinutes = $emploiTemps->seances->reduce(function ($carry, $seance) {
+                $start = $seance->heure_debut instanceof Carbon
+                    ? $seance->heure_debut->copy()
+                    : ($seance->heure_debut ? Carbon::parse($seance->heure_debut) : null);
+                $end = $seance->heure_fin instanceof Carbon
+                    ? $seance->heure_fin->copy()
+                    : ($seance->heure_fin ? Carbon::parse($seance->heure_fin) : null);
+
+                if ($start && $end) {
+                    if ($end->lessThanOrEqualTo($start)) {
+                        $end = $end->addDay();
+                    }
+                    return $carry + $start->diffInMinutes($end);
+                }
+
+                return $carry;
+            }, 0);
+            $totalHours = $totalMinutes > 0 ? $totalMinutes / 60 : 0;
+            $totalHoursFormatted = $totalHours > 0
+                ? rtrim(rtrim(number_format($totalHours, 1, ',', ' '), '0'), ',') . ' h'
+                : '0 h';
+
+            $sessionTypeLabels = [
+                ESBTPSeanceCours::TYPE_COURSE => 'Cours',
+                ESBTPSeanceCours::TYPE_HOMEWORK => 'Devoir',
+                ESBTPSeanceCours::TYPE_BREAK => 'Récréation',
+                ESBTPSeanceCours::TYPE_LUNCH => 'Pause déjeuner',
+            ];
+
+            $sessionTypeColors = [
+                ESBTPSeanceCours::TYPE_COURSE => ['bg' => '#2563eb', 'text' => '#ffffff'],
+                ESBTPSeanceCours::TYPE_HOMEWORK => ['bg' => '#16a34a', 'text' => '#ffffff'],
+                ESBTPSeanceCours::TYPE_BREAK => ['bg' => '#f59e0b', 'text' => '#1f2937'],
+                ESBTPSeanceCours::TYPE_LUNCH => ['bg' => '#f97316', 'text' => '#1f2937'],
+                'default' => ['bg' => '#0ea5e9', 'text' => '#ffffff'],
+            ];
+
+            $sessionTypeStats = $emploiTemps->seances
+                ->groupBy(function ($seance) {
+                    return $seance->type ?? ESBTPSeanceCours::TYPE_COURSE;
+                })
+                ->map
+                ->count()
+                ->toArray();
+
+            $uniqueMatieres = $matiereStats->count();
+            $uniqueTeachers = $emploiTemps->seances
+                ->map(function ($seance) {
+                    if ($seance->teacher_id) {
+                        return 'teacher_' . $seance->teacher_id;
+                    }
+                    if (!empty($seance->enseignant)) {
+                        return 'name_' . $seance->enseignant;
+                    }
+                    return null;
+                })
+                ->filter()
+                ->unique()
+                ->count();
+
+            $daysCovered = $emploiTemps->seances->pluck('jour')->filter()->unique()->count();
+
+            $summaryStats = [
+                [
+                    'label' => 'Séances programmées',
+                    'value' => $totalSeances,
+                    'description' => 'Total des séances planifiées',
+                ],
+                [
+                    'label' => 'Volume horaire',
+                    'value' => $totalHoursFormatted,
+                    'description' => 'Durée cumulée des séances',
+                ],
+                [
+                    'label' => 'Matières couvertes',
+                    'value' => $uniqueMatieres,
+                    'description' => 'Diversité pédagogique hebdomadaire',
+                ],
+                [
+                    'label' => 'Intervenants mobilisés',
+                    'value' => $uniqueTeachers,
+                    'description' => 'Enseignants affectés à la classe',
+                ],
+            ];
+
+            $periodeAffichage = null;
+            if ($emploiTemps->date_debut && $emploiTemps->date_fin) {
+                $periodeAffichage = Carbon::parse($emploiTemps->date_debut)->locale('fr')->isoFormat('LL')
+                    . ' → '
+                    . Carbon::parse($emploiTemps->date_fin)->locale('fr')->isoFormat('LL');
+            } elseif ($emploiTemps->annee && $emploiTemps->annee->name) {
+                $periodeAffichage = $emploiTemps->annee->name;
+            } elseif (!empty($emploiTemps->semestre)) {
+                $periodeAffichage = 'Semestre ' . $emploiTemps->semestre;
+            }
+
+            $config = [
+                'school_name' => SettingsHelper::get('school_name', 'École Spéciale du Bâtiment et des Travaux Publics'),
+                'school_type' => SettingsHelper::get('school_type', 'Enseignement Supérieur Technique'),
+                'school_authorization' => SettingsHelper::get('school_authorization_number', ''),
+                'school_address' => SettingsHelper::get('school_address', ''),
+                'school_phone' => SettingsHelper::get('school_phone', ''),
+                'school_email' => SettingsHelper::get('school_email', ''),
+                'school_website' => SettingsHelper::get('school_website', ''),
+                'school_city' => SettingsHelper::get('school_city', 'Yamoussoukro'),
+                'school_country' => SettingsHelper::get('school_country', 'Côte d\'Ivoire'),
+                'director_name' => SettingsHelper::get('director_name', ''),
+                'director_title' => SettingsHelper::get('director_title', 'Directeur'),
+                'school_logo' => SettingsHelper::get('school_logo', ''),
+            ];
+            $logoBase64 = $this->prepareLogoBase64($config['school_logo']);
+
+            $etablissementInfo = [
+                'nom' => $config['school_name'],
+                'adresse' => $config['school_address'],
+                'telephone' => $config['school_phone'],
+                'email' => $config['school_email'],
+                'ville' => $config['school_city'],
+                'pays' => $config['school_country'],
+                'type' => $config['school_type'],
+            ];
 
             $data = [
                 'emploiTemps' => $emploiTemps,
@@ -244,14 +370,25 @@ class ESBTPPDFService
                 'matiereStats' => $matiereStats,
                 'timeSlots' => $timeSlots,
                 'days' => $days,
-                'date_edition' => Carbon::now()->locale('fr')->isoFormat('LL')
+                'date_edition' => Carbon::now()->locale('fr')->isoFormat('LL'),
+                'settings' => $config,
+                'logoBase64' => $logoBase64,
+                'sessionTypeColors' => $sessionTypeColors,
+                'sessionTypeLabels' => $sessionTypeLabels,
+                'sessionTypeStats' => $sessionTypeStats,
+                'summaryStats' => $summaryStats,
+                'totalSeances' => $totalSeances,
+                'totalHoursFormatted' => $totalHoursFormatted,
+                'daysCovered' => $daysCovered,
+                'periodeAffichage' => $periodeAffichage,
+                'etablissement' => $etablissementInfo,
             ];
 
             \Log::info('PDF Generation - Data prepared successfully', ['data_keys' => array_keys($data)]);
 
             // Utiliser un template PDF simplifié pour éviter les timeouts
             \Log::info('PDF Generation - About to load view');
-            $pdf = PDF::loadView('pdf.emploi-temps-simple', $data);
+            $pdf = PDF::loadView('pdf.emploi-temps', $data);
             \Log::info('PDF Generation - View loaded successfully');
             
             $pdf->setPaper('A4', 'landscape');
@@ -267,5 +404,28 @@ class ESBTPPDFService
             ]);
             throw $e;
         }
+    }
+
+    private function prepareLogoBase64($logoPath): ?string
+    {
+        if (empty($logoPath)) {
+            return null;
+        }
+
+        $storagePath = storage_path('app/public/' . $logoPath);
+        if (file_exists($storagePath)) {
+            $logoType = pathinfo($storagePath, PATHINFO_EXTENSION);
+            $logoData = file_get_contents($storagePath);
+            return 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
+        }
+
+        $publicPath = public_path($logoPath);
+        if (file_exists($publicPath)) {
+            $logoType = pathinfo($publicPath, PATHINFO_EXTENSION);
+            $logoData = file_get_contents($publicPath);
+            return 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
+        }
+
+        return null;
     }
 }

@@ -1348,6 +1348,118 @@ class ESBTPEmploiTempsController extends Controller
                 }
                 $matiereStats[$matiereName]++;
             }
+            $matiereStats = collect($matiereStats)->sortDesc();
+
+            $totalSeances = $emploiTemps->seances->count();
+            $totalMinutes = $emploiTemps->seances->reduce(function ($carry, $seance) {
+                $start = $seance->heure_debut instanceof Carbon
+                    ? $seance->heure_debut->copy()
+                    : ($seance->heure_debut ? Carbon::parse($seance->heure_debut) : null);
+                $end = $seance->heure_fin instanceof Carbon
+                    ? $seance->heure_fin->copy()
+                    : ($seance->heure_fin ? Carbon::parse($seance->heure_fin) : null);
+
+                if ($start && $end) {
+                    if ($end->lessThanOrEqualTo($start)) {
+                        $end = $end->addDay();
+                    }
+                    return $carry + $start->diffInMinutes($end);
+                }
+
+                return $carry;
+            }, 0);
+            $totalHours = $totalMinutes > 0 ? $totalMinutes / 60 : 0;
+            $totalHoursFormatted = $totalHours > 0
+                ? rtrim(rtrim(number_format($totalHours, 1, ',', ' '), '0'), ',') . ' h'
+                : '0 h';
+
+            $uniqueMatieres = $matiereStats->count();
+            $uniqueTeachers = $emploiTemps->seances
+                ->map(function ($seance) {
+                    if ($seance->teacher_id) {
+                        return 'teacher_' . $seance->teacher_id;
+                    }
+                    if (!empty($seance->enseignant)) {
+                        return 'name_' . $seance->enseignant;
+                    }
+                    return null;
+                })
+                ->filter()
+                ->unique()
+                ->count();
+
+            $daysCovered = $emploiTemps->seances->pluck('jour')->filter()->unique()->count();
+
+            $sessionTypeLabels = [
+                ESBTPSeanceCours::TYPE_COURSE => 'Cours',
+                ESBTPSeanceCours::TYPE_HOMEWORK => 'Devoir',
+                ESBTPSeanceCours::TYPE_BREAK => 'Récréation',
+                ESBTPSeanceCours::TYPE_LUNCH => 'Pause déjeuner',
+            ];
+
+            $sessionTypeColors = [
+                ESBTPSeanceCours::TYPE_COURSE => ['bg' => '#2563eb', 'text' => '#ffffff'],
+                ESBTPSeanceCours::TYPE_HOMEWORK => ['bg' => '#16a34a', 'text' => '#ffffff'],
+                ESBTPSeanceCours::TYPE_BREAK => ['bg' => '#f59e0b', 'text' => '#1f2937'],
+                ESBTPSeanceCours::TYPE_LUNCH => ['bg' => '#f97316', 'text' => '#1f2937'],
+                'default' => ['bg' => '#0ea5e9', 'text' => '#ffffff'],
+            ];
+
+            $sessionTypeStats = $emploiTemps->seances
+                ->groupBy(function ($seance) {
+                    return $seance->type ?? ESBTPSeanceCours::TYPE_COURSE;
+                })
+                ->map
+                ->count()
+                ->toArray();
+
+            $summaryStats = [
+                [
+                    'label' => 'Séances programmées',
+                    'value' => $totalSeances,
+                    'icon' => 'fa-calendar-check',
+                    'description' => 'Total des séances de la semaine',
+                ],
+                [
+                    'label' => 'Volume horaire',
+                    'value' => $totalHoursFormatted,
+                    'icon' => 'fa-hourglass-half',
+                    'description' => 'Durée cumulée des séances',
+                ],
+                [
+                    'label' => 'Matières couvertes',
+                    'value' => $uniqueMatieres,
+                    'icon' => 'fa-book-open',
+                    'description' => 'Nombre de matières différentes',
+                ],
+                [
+                    'label' => 'Intervenants mobilisés',
+                    'value' => $uniqueTeachers,
+                    'icon' => 'fa-user-tie',
+                    'description' => 'Nombre d’enseignants uniques',
+                ],
+            ];
+
+            $periodeAffichage = null;
+            if ($emploiTemps->date_debut && $emploiTemps->date_fin) {
+                $periodeAffichage = Carbon::parse($emploiTemps->date_debut)->locale('fr')->isoFormat('LL')
+                    . ' → '
+                    . Carbon::parse($emploiTemps->date_fin)->locale('fr')->isoFormat('LL');
+            } elseif ($emploiTemps->annee && $emploiTemps->annee->name) {
+                $periodeAffichage = $emploiTemps->annee->name;
+            } elseif (!empty($emploiTemps->semestre)) {
+                $periodeAffichage = 'Semestre ' . $emploiTemps->semestre;
+            }
+
+            $etablissementInfo = [
+                'nom' => $config['school_name'],
+                'adresse' => $config['school_address'],
+                'telephone' => $config['school_phone'],
+                'email' => $config['school_email'],
+                'ville' => $config['school_city'],
+                'pays' => $config['school_country'],
+                'type' => $config['school_type'],
+            ];
 
             return view('esbtp.emploi-temps.preview-pdf', [
                 'emploiTemps' => $emploiTemps,
@@ -1361,6 +1473,15 @@ class ESBTPEmploiTempsController extends Controller
                 'matiereStats' => $matiereStats,
                 'logoBase64' => $logoBase64,
                 'settings' => $settings,
+                'summaryStats' => $summaryStats,
+                'sessionTypeStats' => $sessionTypeStats,
+                'sessionTypeLabels' => $sessionTypeLabels,
+                'sessionTypeColors' => $sessionTypeColors,
+                'totalHoursFormatted' => $totalHoursFormatted,
+                'totalSeances' => $totalSeances,
+                'daysCovered' => $daysCovered,
+                'periodeAffichage' => $periodeAffichage,
+                'etablissement' => $etablissementInfo,
             ]);
 
         } catch (\Exception $e) {

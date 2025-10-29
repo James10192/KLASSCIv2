@@ -1,482 +1,455 @@
-@if(!isset($date_edition))
 @extends('layouts.app')
 
-@section('title', 'Prévisualisation Emploi du Temps - ' . ($emploiTemps->classe->name ?? 'Non défini'))
+@section('title', 'Prévisualisation Emploi du temps - ' . ($emploiTemps->classe->name ?? 'Classe'))
 
 @section('styles')
-@else
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>Emploi du Temps - {{ $emploiTemps->classe->name ?? 'Non défini' }}</title>
-@endif
-@if(!isset($date_edition))
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-@else
-<!-- Mode PDF - Pas de liens externes -->
-@endif
 <style>
-    /* Variables CSS pour compatibilité */
-    :root {
-        --primary: #1e3a8a;
-        --secondary: #3b82f6;
-        --success: #10b981;
-        --danger: #ef4444;
-        --warning: #f59e0b;
-        --surface: #f8fafc;
-        --border: #e2e8f0;
-        --text-primary: #1f2937;
-        --text-secondary: #6b7280;
-        --space-sm: 0.5rem;
-        --space-md: 1rem;
-        --space-lg: 1.5rem;
-        --space-xl: 2rem;
-        --radius-small: 0.25rem;
-        --radius-medium: 0.5rem;
-        --radius-large: 0.75rem;
-        --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-    }
-    
-    .preview-container {
-        max-width: 100%;
-        margin: 0;
+    .kpi-card {
         background: white;
-        padding: var(--space-sm);
+        border: 1px solid #e5e7eb;
+        border-radius: 18px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+        padding: 1.5rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        position: relative;
+        overflow: hidden;
     }
-    
-    .preview-toolbar {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-medium);
-        padding: var(--space-md);
-        margin-bottom: var(--space-lg);
+    .kpi-card::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(14, 165, 233, 0.05));
+        pointer-events: none;
+    }
+    .kpi-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px rgba(30, 64, 175, 0.12);
+    }
+    .kpi-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #2563eb;
+        margin-bottom: 0.25rem;
+    }
+    .kpi-title {
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.75rem;
+        color: #6b7280;
+        font-weight: 600;
+    }
+    .kpi-description {
+        font-size: 0.9rem;
+        color: #9ca3af;
+    }
+
+    .school-card {
+        background: linear-gradient(135deg, #2563eb, #1e3a8a);
+        color: white;
+        border-radius: 20px;
+        padding: 2rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 20px 40px rgba(30, 64, 175, 0.25);
+    }
+    .school-card::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top right, rgba(255,255,255,0.18), transparent 45%);
+        pointer-events: none;
+    }
+    .school-card h2 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 0.5rem;
+    }
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.2rem;
+        margin-top: 1.5rem;
+    }
+    .info-badge {
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
         display: flex;
-        justify-content: between;
         align-items: center;
-        gap: var(--space-md);
+        gap: 0.75rem;
+        font-size: 0.95rem;
     }
-    
-    .preview-actions {
+    .info-badge i {
+        background: rgba(255,255,255,0.2);
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
         display: flex;
-        gap: var(--space-sm);
-        margin-left: auto;
+        align-items: center;
+        justify-content: center;
     }
-    
-    .preview-content {
-        border: 1px solid #ddd;
-        border-radius: var(--radius-medium);
-        box-shadow: var(--shadow-card);
-        padding: var(--space-lg);
+    .info-badge span {
+        display: block;
+        font-weight: 600;
+        color: white;
+    }
+    .info-badge small {
+        display: block;
+        font-size: 0.75rem;
+        opacity: 0.75;
+    }
+
+    .timetable-wrapper {
+        overflow-x: auto;
+        border-radius: 18px;
+        border: 1px solid #e5e7eb;
         background: white;
-        min-height: 600px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
     }
-    
-    /* Styles pour l'emploi du temps - format paysage minimal */
-    .timetable-document {
-        font-family: DejaVu Sans, Arial, sans-serif;
-        font-size: 12px;
-        line-height: 1.4;
-        color: #333;
+    .timetable-grid {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        min-width: 960px;
     }
-    
-    /* Force toutes les polices pour PDF */
-    @if(isset($date_edition))
-    * {
-        font-family: DejaVu Sans, Arial, sans-serif !important;
+    .timetable-grid th,
+    .timetable-grid td {
+        border: 1px solid #e5e7eb;
+        padding: 0.75rem;
+        text-align: center;
+        vertical-align: middle;
+        position: relative;
     }
-    @endif
-    
-    /* En-tête minimal avec logo et nom école */
-    .minimal-header {
+    .timetable-grid thead th {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        color: white;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-weight: 600;
+        border-bottom: none;
+    }
+    .timetable-time-header {
+        width: 110px;
+    }
+    .timetable-time-cell {
+        background: #f8fafc;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #1f2937;
+        position: sticky;
+        left: 0;
+        z-index: 5;
+    }
+    .tt-session {
+        border-radius: 14px;
+        padding: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
+    }
+    .tt-session-subject {
+        font-size: 0.95rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+    .tt-session-teacher,
+    .tt-session-room,
+    .tt-session-time {
+        font-size: 0.8rem;
+        opacity: 0.95;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        justify-content: center;
+    }
+    .tt-session-teacher i,
+    .tt-session-room i,
+    .tt-session-time i {
+        font-size: 0.75rem;
+    }
+    .tt-session-notes {
+        font-size: 0.72rem;
+        opacity: 0.85;
+    }
+    .timetable-empty-cell {
+        background: #f9fafb;
+    }
+
+    .session-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+    .session-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        background: #f3f4f6;
+        padding: 0.4rem 0.75rem;
+        border-radius: 999px;
+    }
+    .session-legend-color {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+    }
+
+    .stat-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+    }
+    .stat-list-item {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: var(--space-lg);
-        padding: var(--space-md);
-        background: #1e3a8a;
+        padding: 0.85rem 1rem;
+        border-radius: 14px;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+    }
+    .stat-list-item strong {
+        font-size: 0.95rem;
+        color: #1f2937;
+    }
+    .stat-list-item span {
+        font-size: 0.85rem;
+        color: #6b7280;
+    }
+    .stat-list-item .badge {
+        font-size: 0.8rem;
+        background: #2563eb;
         color: white;
-        border-radius: var(--radius-medium);
-        box-shadow: var(--shadow-card);
-    }
-    
-    .header-left {
-        display: flex;
-        align-items: center;
-        gap: var(--space-md);
-    }
-    
-    .school-logo {
-        width: 50px;
-        height: 50px;
-        border-radius: var(--radius-small);
-        object-fit: cover;
-        background: white;
-        padding: 4px;
-    }
-    
-    .school-info h1 {
-        font-size: 18px;
-        font-weight: bold;
-        margin: 0 0 2px 0;
-        color: white;
-    }
-    
-    .school-address {
-        font-size: 12px;
-        opacity: 0.9;
-        margin: 0;
-    }
-    
-    .header-title {
-        font-size: 24px;
-        font-weight: bold;
-        color: white;
-        margin: 0;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    
-    .header-info {
-        font-size: 14px;
-        display: flex;
-        gap: var(--space-md);
-        flex-direction: column;
-        align-items: flex-end;
-    }
-    
-    .info-badge {
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-        padding: 6px 12px;
-        border-radius: var(--radius-small);
-        font-size: 12px;
-        font-weight: 500;
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 0.35rem 0.65rem;
+        border-radius: 999px;
     }
 
-
-    /* Table emploi du temps - format paysage optimisé avec styles table-moderne */
-    .table-moderne {
-        min-width: 1000px;
-        width: 100%;
-        font-size: 11px;
+    @media (max-width: 992px) {
+        .kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
     }
-
-    .timetable {
-        min-width: 1000px;
-    }
-
-    .timetable th, .timetable td {
-        height: 70px;
-        position: relative;
-        padding: 6px;
-        text-align: center;
-        vertical-align: middle;
-    }
-
-    .timetable th {
-        height: 45px;
-        font-size: 12px;
-    }
-
-    .time-column {
-        width: 100px;
-        font-weight: bold;
-        background-color: var(--surface);
-        font-size: 11px;
-        color: var(--text-primary);
-        writing-mode: horizontal-tb;
-    }
-
-    /* Session cells - format compact paysage */
-    .session-cell {
-        padding: 4px;
-        border-radius: var(--radius-small);
-        font-size: 10px;
-        color: #fff;
-        height: calc(100% - 8px);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        margin: 1px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        line-height: 1.2;
-    }
-
-    .session-matiere {
-        font-weight: bold;
-        font-size: 11px;
-        margin-bottom: 2px;
-        text-align: center;
-    }
-
-    .session-enseignant {
-        font-size: 9px;
-        opacity: 0.9;
-        margin-bottom: 1px;
-        text-align: center;
-    }
-
-    .session-details {
-        font-size: 8px;
-        opacity: 0.8;
-        text-align: center;
-    }
-
-    /* Couleurs simplifiées pour PDF - pas de gradients */
-    .session-cours { background: #1e3a8a; color: white; }
-    .session-td { background: #10b981; color: white; }
-    .session-tp { background: #6b7280; color: white; }
-    .session-examen { background: #ef4444; color: white; }
-    .session-autre { background: #f59e0b; color: #1f2937; }
-    .session-pause { background: #9ca3af; color: white; }
-    .session-dejeuner { background: #f97316; color: #1f2937; }
-    
-    /* Styles table-moderne intégrés pour PDF */
-    .table-moderne {
-        overflow-x: auto;
-        border-radius: var(--radius-medium);
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        background: white;
-    }
-    
-    .table-moderne table {
-        width: 100%;
-        border-collapse: collapse;
-        background: white;
-    }
-    
-    .table-moderne thead tr {
-        background: #1e3a8a;
-        color: white;
-    }
-    
-    .table-moderne th {
-        padding: var(--space-lg) var(--space-md);
-        text-align: left;
-        font-weight: 600;
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .table-moderne th.text-center {
-        text-align: center;
-    }
-    
-    .table-moderne tbody tr {
-        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    }
-    
-    .table-moderne td {
-        padding: var(--space-lg) var(--space-md);
-        vertical-align: middle;
-    }
-
     @media (max-width: 768px) {
-        .timetable-container {
-            margin-bottom: 20px;
+        .kpi-grid {
+            grid-template-columns: repeat(1, minmax(0, 1fr));
         }
-        
-        .stats-grid {
-            grid-template-columns: 1fr;
-        }
-        
-        .legend {
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .logo-section {
-            flex-direction: column;
-            text-align: center;
-        }
-        
-        .logo {
-            margin: 0 0 15px 0;
-        }
-    }
-    
-    @media print {
-        .preview-toolbar {
-            display: none;
-        }
-        
-        .preview-content {
-            border: none;
-            box-shadow: none;
-        }
-        
-        .timetable-document {
-            padding: 0;
+        .timetable-grid {
+            min-width: 720px;
         }
     }
 </style>
-@if(!isset($date_edition))
 @endsection
 
 @section('content')
-@else
-</head>
-<body>
-@endif
 <div class="dashboard-acasi">
     <div class="main-content">
-        <div class="preview-container">
-            <!-- Barre d'outils de prévisualisation (masquée pour PDF) -->
-            @if(!isset($date_edition))
-            <div class="preview-toolbar">
-                <div class="toolbar-info">
-                    <h4 class="mb-0">
-                        <i class="fas fa-calendar-alt me-2"></i>
-                        Prévisualisation Emploi du Temps
-                    </h4>
-                    <small class="text-muted">{{ $emploiTemps->classe->name ?? 'Non définie' }} - {{ $emploiTemps->annee->name ?? 'Non définie' }}</small>
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1>
+                    <i class="fas fa-calendar-week me-2"></i>
+                    Emploi du temps - {{ $emploiTemps->classe->name ?? 'Classe' }}
+                </h1>
+                <p class="header-subtitle">
+                    @if($periodeAffichage)
+                        {{ $periodeAffichage }}
+                    @elseif($emploiTemps->annee && $emploiTemps->annee->name)
+                        {{ $emploiTemps->annee->name }}
+                    @else
+                        Période non définie
+                    @endif
+                </p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.emploi-temps.export-pdf', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-acasi danger" target="_blank">
+                    <i class="fas fa-file-pdf"></i>
+                    Exporter en PDF
+                </a>
+                <button onclick="window.print()" class="btn-acasi primary">
+                    <i class="fas fa-print"></i>
+                    Imprimer
+                </button>
+                <a href="{{ route('esbtp.emploi-temps.show', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Retour au détail
+                </a>
+            </div>
+        </div>
+
+        <div class="kpi-grid">
+            @foreach($summaryStats as $stat)
+                <div class="kpi-card">
+                    <div class="kpi-title">{{ $stat['label'] }}</div>
+                    <div class="kpi-value">
+                        @if(is_numeric($stat['value']))
+                            {{ number_format($stat['value'], 0, ',', ' ') }}
+                        @else
+                            {{ $stat['value'] }}
+                        @endif
+                    </div>
+                    <div class="kpi-description">
+                        <i class="fas {{ $stat['icon'] }} me-1"></i>
+                        {{ $stat['description'] }}
+                    </div>
                 </div>
-                
-                <div class="preview-actions">
-                    <a href="{{ route('esbtp.emploi-temps.show', $emploiTemps->id) }}" class="btn-acasi secondary">
-                        <i class="fas fa-arrow-left me-1"></i>Retour
-                    </a>
-                    
-                    <a href="{{ route('esbtp.emploi-temps.export-pdf', $emploiTemps->id) }}" class="btn-acasi success">
-                        <i class="fas fa-file-pdf me-1"></i>Générer PDF
-                    </a>
-                    
-                    <button onclick="window.print()" class="btn-acasi info">
-                        <i class="fas fa-print me-1"></i>Imprimer
-                    </button>
+            @endforeach
+        </div>
+
+        <div class="school-card mt-4">
+            <div class="d-flex flex-column flex-lg-row align-items-start align-items-lg-center justify-content-between gap-4">
+                <div>
+                    <h2>{{ $etablissement['nom'] }}</h2>
+                    <p style="margin: 0; font-size: 0.95rem; opacity: 0.9;">
+                        {{ $etablissement['type'] ?? 'Établissement' }}
+                    </p>
+                </div>
+                @if($logoBase64)
+                    <div class="text-center">
+                        <img src="{{ $logoBase64 }}" alt="Logo établissement" style="max-height: 70px; max-width: 160px; object-fit: contain; filter: brightness(0) invert(1);">
+                    </div>
+                @endif
+            </div>
+
+            <div class="info-grid">
+                <div class="info-badge">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <div>
+                        <span>{{ $etablissement['ville'] ?? '' }} {{ $etablissement['pays'] ? ' - ' . $etablissement['pays'] : '' }}</span>
+                        <small>{{ $etablissement['adresse'] ?: 'Adresse non renseignée' }}</small>
+                    </div>
+                </div>
+                <div class="info-badge">
+                    <i class="fas fa-phone"></i>
+                    <div>
+                        <span>{{ $etablissement['telephone'] ?: '---' }}</span>
+                        <small>Standard administratif</small>
+                    </div>
+                </div>
+                <div class="info-badge">
+                    <i class="fas fa-envelope"></i>
+                    <div>
+                        <span>{{ $etablissement['email'] ?: '---' }}</span>
+                        <small>Contact officiel</small>
+                    </div>
+                </div>
+                <div class="info-badge">
+                    <i class="fas fa-layer-group"></i>
+                    <div>
+                        <span>{{ $emploiTemps->classe->filiere->name ?? 'Filière non renseignée' }}</span>
+                        <small>{{ $emploiTemps->classe->niveau->name ?? 'Niveau non renseigné' }}</small>
+                    </div>
                 </div>
             </div>
-            @endif
+        </div>
 
-            <!-- Contenu de l'emploi du temps -->
-            <div class="preview-content">
-                <div class="timetable-document">
-                    @php
-                        use App\Helpers\SettingsHelper;
-                        $schoolName = SettingsHelper::get('school_name', 'École Spéciale du Bâtiment et des Travaux Publics');
-                        $schoolAddress = SettingsHelper::get('school_address', 'BP 2541 Yamoussoukro');
-                        $schoolCity = SettingsHelper::get('school_city', 'Yamoussoukro');
-                        $showLogo = SettingsHelper::get('timetable_show_logo', '1') === '1';
-                        $logoPath = SettingsHelper::get('school_logo');
-                        
-                        $logoBase64 = null;
-                        if ($showLogo && $logoPath) {
-                            $paths = [
-                                storage_path('app/public/' . $logoPath),
-                                public_path($logoPath),
-                                public_path('images/LOGO-KLASSCI-PNG.png'),
-                            ];
-                            
-                            foreach ($paths as $path) {
-                                if (file_exists($path)) {
-                                    $imageData = file_get_contents($path);
-                                    $extension = pathinfo($path, PATHINFO_EXTENSION);
-                                    $logoBase64 = 'data:image/' . $extension . ';base64,' . base64_encode($imageData);
-                                    break;
-                                }
-                            }
-                        }
-                    @endphp
-
-                    <!-- En-tête avec logo et infos école -->
-                    <div class="minimal-header">
-                        <div class="header-left">
-                            @if($logoBase64)
-                                <img src="{{ $logoBase64 }}" alt="Logo École" class="school-logo">
-                            @endif
-                            <div class="school-info">
-                                <h1>{{ $schoolName }}</h1>
-                                @if($schoolAddress || $schoolCity)
-                                    <p class="school-address">
-                                        @if($schoolAddress){{ $schoolAddress }}@endif
-                                        @if($schoolAddress && $schoolCity) - @endif
-                                        @if($schoolCity){{ $schoolCity }}@endif
-                                    </p>
-                                @endif
-                            </div>
+        <div class="row g-4 mt-4">
+            <div class="col-lg-6">
+                <div class="main-card h-100">
+                    <div class="main-card-header">
+                        <div class="main-card-title">
+                            <i class="fas fa-chart-pie"></i>
+                            Répartition par type de séance
                         </div>
-                        
-                        <div>
-                            <h2 class="header-title">EMPLOI DU TEMPS</h2>
-                        </div>
-                        
-                        <div class="header-info">
-                            <span class="info-badge">{{ $emploiTemps->classe->name ?? 'Classe non définie' }}</span>
-                            <span class="info-badge">{{ $emploiTemps->annee->name ?? 'Période non définie' }}</span>
-                        </div>
+                        <div class="main-card-subtitle">Vue d’ensemble des formats pédagogiques</div>
                     </div>
-
-                    <!-- Tableau emploi du temps -->
-                    <div class="table-moderne">
-                        <table class="timetable">
-                            <thead>
-                                <tr>
-                                    <th class="time-column text-center">Heure</th>
-                                    <th class="text-center">Lundi</th>
-                                    <th class="text-center">Mardi</th>
-                                    <th class="text-center">Mercredi</th>
-                                    <th class="text-center">Jeudi</th>
-                                    <th class="text-center">Vendredi</th>
-                                    <th class="text-center">Samedi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($timeSlots as $timeIndex => $time)
-                                    <tr>
-                                        <td class="time-column">{{ $time }}</td>
-                                        @foreach($days as $dayIndex => $day)
-                                            <td>
-                                                @if(isset($seancesParJour[$dayIndex + 1][$timeIndex]))
-                                                    @php
-                                                        $seance = $seancesParJour[$dayIndex + 1][$timeIndex];
-                                                        $typeClass = 'session-' . strtolower($seance->type ?? 'autre');
-                                                    @endphp
-                                                    <div class="session-cell {{ $typeClass }}">
-                                                        <div class="session-matiere">
-                                                            {{ $seance->matiere->name ?? 'Matière' }}
-                                                        </div>
-                                                        <div class="session-enseignant">
-                                                            {{ $seance->enseignant_nom ?? 'Enseignant' }}
-                                                        </div>
-                                                        <div class="session-details">
-                                                            {{ ucfirst($seance->type ?? 'Cours') }}
-                                                            @if($seance->salle)
-                                                                - {{ $seance->salle }}
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                @endif
-                                            </td>
-                                        @endforeach
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                    <div class="main-card-body">
+                        <ul class="stat-list">
+                            @foreach($sessionTypeLabels as $type => $label)
+                                @php
+                                    $count = $sessionTypeStats[$type] ?? 0;
+                                    $style = $sessionTypeColors[$type] ?? $sessionTypeColors['default'];
+                                @endphp
+                                <li class="stat-list-item">
+                                    <div>
+                                        <strong>{{ $label }}</strong>
+                                        <span>{{ $count }} séance{{ $count > 1 ? 's' : '' }}</span>
+                                    </div>
+                                    <div class="badge" style="background: {{ $style['bg'] }}; color: {{ $style['text'] }};">
+                                        {{ number_format($count / max(1, $totalSeances) * 100, 0) }}%
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
                     </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="main-card h-100">
+                    <div class="main-card-header">
+                        <div class="main-card-title">
+                            <i class="fas fa-book"></i>
+                            Matières les plus présentes
+                        </div>
+                        <div class="main-card-subtitle">Classement par volume de séances</div>
+                    </div>
+                    <div class="main-card-body">
+                        <ul class="stat-list">
+                            @forelse($matiereStats->take(6) as $matiere => $count)
+                                <li class="stat-list-item">
+                                    <div>
+                                        <strong>{{ $matiere }}</strong>
+                                        <span>{{ $count }} séance{{ $count > 1 ? 's' : '' }}</span>
+                                    </div>
+                                    <div class="badge">
+                                        {{ number_format($count / max(1, $totalSeances) * 100, 0) }}%
+                                    </div>
+                                </li>
+                            @empty
+                                <li class="stat-list-item">
+                                    <div>
+                                        <strong>Aucune donnée</strong>
+                                        <span>Pas de séance enregistrée</span>
+                                    </div>
+                                </li>
+                            @endforelse
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-card mt-4">
+            <div class="main-card-header">
+                <div class="main-card-title">
+                    <i class="fas fa-table"></i>
+                    Grille hebdomadaire
+                </div>
+                <div class="main-card-subtitle">
+                    {{ $totalSeances }} séances réparties sur {{ $daysCovered }} jour{{ $daysCovered > 1 ? 's' : '' }} • {{ $totalHoursFormatted }} cumulées
+                </div>
+            </div>
+            <div class="main-card-body">
+                @include('esbtp.emploi-temps.partials.timetable-grid', [
+                    'seances' => $seances,
+                    'timeSlots' => $timeSlots,
+                    'days' => $days,
+                    'dayLabels' => $joursNoms,
+                    'sessionStyles' => $sessionTypeColors,
+                    'variant' => 'web',
+                ])
+
+                <div class="session-legend">
+                    @foreach($sessionTypeLabels as $type => $label)
+                        @php
+                            $style = $sessionTypeColors[$type] ?? $sessionTypeColors['default'];
+                        @endphp
+                        <div class="session-legend-item">
+                            <span class="session-legend-color" style="background: {{ $style['bg'] }};"></span>
+                            {{ $label }}
+                        </div>
+                    @endforeach
                 </div>
             </div>
         </div>
     </div>
 </div>
-@if(!isset($date_edition))
 @endsection
-
-@push('scripts')
-<script>
-// Gérer l'impression
-window.addEventListener('beforeprint', function() {
-    document.body.classList.add('printing');
-});
-
-window.addEventListener('afterprint', function() {
-    document.body.classList.remove('printing');
-});
-</script>
-@endpush
-@else
-</body>
-</html>
-@endif
