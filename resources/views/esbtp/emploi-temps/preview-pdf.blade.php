@@ -435,7 +435,9 @@
                     'dayLabels' => $joursNoms,
                     'sessionStyles' => $sessionTypeColors,
                     'sessionLabels' => $sessionTypeLabels,
-                    'variant' => 'web',
+                    'variant' => 'pdf',
+                    'emploiTemps' => $emploiTemps ?? null,
+                    'interactive' => false,
                 ])
 
                 <div class="session-legend">

@@ -6,6 +6,8 @@
     'sessionStyles' => [],
     'sessionLabels' => [],
     'variant' => 'web',
+    'emploiTemps' => null,
+    'interactive' => false,
 ])
 
 @php
@@ -24,8 +26,14 @@
         7 => 'dimanche',
     ];
 
+    $dayToNumber = array_flip($jourMapping);
+
     $timeToMinutes = function ($timeValue) {
         if ($timeValue instanceof Carbon) {
+            return ((int) $timeValue->format('H')) * 60 + (int) $timeValue->format('i');
+        }
+
+        if ($timeValue instanceof \DateTimeInterface) {
             return ((int) $timeValue->format('H')) * 60 + (int) $timeValue->format('i');
         }
 
@@ -36,13 +44,8 @@
             }
         }
 
-        return 0;
+        return null;
     };
-
-    $defaultTimeSlots = [];
-    for ($hour = 8; $hour < 18; $hour++) {
-        $defaultTimeSlots[] = sprintf('%02d:00', $hour);
-    }
 
     $normalizeTimeString = function ($timeValue) {
         if ($timeValue instanceof Carbon) {
@@ -60,15 +63,20 @@
         return null;
     };
 
+    $defaultTimeSlots = [];
+    for ($hour = 7; $hour <= 18; $hour++) {
+        $defaultTimeSlots[] = sprintf('%02d:00', $hour);
+    }
+
     $normalizedSlots = empty($timeSlots) ? $defaultTimeSlots : array_values($timeSlots);
     $normalizedSlots = array_values(array_unique($normalizedSlots));
     sort($normalizedSlots);
 
-    $intervalMinutes = 60;
-    if (count($normalizedSlots) > 1) {
-        $intervalMinutes = max(1, $timeToMinutes($normalizedSlots[1]) - $timeToMinutes($normalizedSlots[0]));
+    if (empty($normalizedSlots)) {
+        $normalizedSlots = $defaultTimeSlots;
     }
-    $firstSlotMinutes = $timeToMinutes($normalizedSlots[0] ?? '08:00');
+
+    $minutesPerSegment = 15;
 
     $normalizedDays = [];
     foreach ($days as $day) {
@@ -96,92 +104,42 @@
         ];
     }
 
-    $occupiedCells = [];
-    $cellsCovered = [];
-    $seanceLookup = [];
-    foreach ($normalizedDays as $dayInfo) {
-        foreach ($normalizedSlots as $slotIndex => $slot) {
-            $occupiedCells[$dayInfo['slug']][$slotIndex] = false;
-            $cellsCovered[$dayInfo['slug']][$slotIndex] = false;
+    $minMinutes = 7 * 60;
+    $maxMinutes = 18 * 60;
+
+    $seancesCollection = $seances instanceof \Illuminate\Support\Collection ? $seances : collect($seances ?: []);
+
+    $occupiedGridRows = [];
+
+    foreach ($seancesCollection as $seance) {
+        $startString = $normalizeTimeString($seance->heure_debut ?? null);
+        $endString = $normalizeTimeString($seance->heure_fin ?? null);
+
+        $startMinutes = $timeToMinutes($startString);
+        $endMinutes = $timeToMinutes($endString);
+
+        if ($startMinutes !== null) {
+            $minMinutes = min($minMinutes, (int) floor($startMinutes / $minutesPerSegment) * $minutesPerSegment);
+        }
+
+        if ($endMinutes !== null) {
+            $maxMinutes = max($maxMinutes, (int) ceil($endMinutes / $minutesPerSegment) * $minutesPerSegment);
         }
     }
 
-    if ($seances && $seances->count()) {
-        $seancesParJour = [];
-        foreach ($seances as $seance) {
-            $jourNumeric = $seance->jour;
-            $jourSlug = isset($jourMapping[$jourNumeric]) ? $jourMapping[$jourNumeric] : null;
-            if (!$jourSlug || !isset($occupiedCells[$jourSlug])) {
-                continue;
-            }
-            $seancesParJour[$jourSlug][] = $seance;
-        }
+    $totalRangeMinutes = max($minutesPerSegment, $maxMinutes - $minMinutes);
+    $segmentCount = (int) ceil($totalRangeMinutes / $minutesPerSegment);
 
-        foreach ($seancesParJour as $jourSlug => $listeSeances) {
-            usort($listeSeances, function ($a, $b) use ($timeToMinutes, $normalizeTimeString) {
-                $startA = $timeToMinutes($normalizeTimeString($a->heure_debut ?? null));
-                $startB = $timeToMinutes($normalizeTimeString($b->heure_debut ?? null));
-                return $startA <=> $startB;
-            });
-
-            foreach ($listeSeances as $index => $seance) {
-                $heureDebut = $normalizeTimeString($seance->heure_debut ?? null);
-                $heureFin = $normalizeTimeString($seance->heure_fin ?? null);
-
-                if (!$heureDebut || !$heureFin) {
-                    continue;
-                }
-
-                $startMinutes = $timeToMinutes($heureDebut);
-                $endMinutes = $timeToMinutes($heureFin);
-
-                if ($endMinutes <= $startMinutes) {
-                    $endMinutes = $startMinutes + $intervalMinutes;
-                }
-
-                $startSlotIndex = (int) floor(($startMinutes - $firstSlotMinutes) / $intervalMinutes);
-                $startSlotIndex = max(0, min($startSlotIndex, count($normalizedSlots) - 1));
-
-                $endSlotIndex = (int) ceil(($endMinutes - $firstSlotMinutes) / $intervalMinutes) - 1;
-                $endSlotIndex = max($endSlotIndex, $startSlotIndex);
-                $endSlotIndex = min($endSlotIndex, count($normalizedSlots) - 1);
-
-                if (isset($listeSeances[$index + 1])) {
-                    $nextSeance = $listeSeances[$index + 1];
-                    $nextStartString = $normalizeTimeString($nextSeance->heure_debut ?? null);
-                    if ($nextStartString) {
-                        $nextStartMinutes = $timeToMinutes($nextStartString);
-                        $nextStartSlotIndex = (int) floor(($nextStartMinutes - $firstSlotMinutes) / $intervalMinutes);
-                        $nextStartSlotIndex = max(0, min($nextStartSlotIndex, count($normalizedSlots) - 1));
-
-                        if ($nextStartSlotIndex <= $endSlotIndex && $nextStartSlotIndex >= $startSlotIndex) {
-                            $adjustedEnd = max($startSlotIndex, $nextStartSlotIndex - 1);
-                            if ($adjustedEnd < $startSlotIndex) {
-                                $adjustedEnd = $startSlotIndex;
-                            }
-                            $endSlotIndex = $adjustedEnd;
-                        }
-                    }
-                }
-
-                $rowspan = max(1, $endSlotIndex - $startSlotIndex + 1);
-
-                $seanceLookup[$jourSlug][$startSlotIndex] = [
-                    'seance' => $seance,
-                    'rowspan' => $rowspan,
-                    'startSlotIndex' => $startSlotIndex,
-                    'endSlotIndex' => $endSlotIndex,
-                ];
-
-                for ($i = $startSlotIndex; $i <= $endSlotIndex; $i++) {
-                    $occupiedCells[$jourSlug][$i] = true;
-                    if ($i !== $startSlotIndex) {
-                        $cellsCovered[$jourSlug][$i] = true;
-                    }
-                }
-            }
-        }
+    $segments = [];
+    for ($segment = 0; $segment <= $segmentCount; $segment++) {
+        $minuteValue = $minMinutes + $segment * $minutesPerSegment;
+        $segments[] = [
+            'minutes' => $minuteValue,
+            'label' => $minuteValue % 60 === 0 ? sprintf('%02d:%02d', intdiv($minuteValue, 60), $minuteValue % 60) : null,
+        ];
     }
+
+    $segmentHeight = $variant === 'pdf' ? 18 : 26;
 
     $defaultLabels = [
         ESBTPSeanceCours::TYPE_COURSE => 'Cours',
@@ -220,25 +178,321 @@
         return $luminance > 0.6 ? '#0f172a' : '#ffffff';
     };
 
-    $swatchMap = [];
-    if ($seances && $seances->count()) {
-        foreach ($seances as $seance) {
-            $type = $seance->type ?? ESBTPSeanceCours::TYPE_COURSE;
-            if (!isset($swatchMap[$type])) {
-                $swatchMap[$type] = $seance->color ?: $getSessionStyle($type)['bg'];
-            }
+    $timelineSessions = [];
+    $occupiedGridRows = [];
+    $allowedDaySlugs = collect($normalizedDays)->pluck('slug')->map(fn ($slug) => strtolower(trim($slug)))->flip();
+
+    foreach ($seancesCollection as $seance) {
+        $jourValue = $seance->jour;
+        $jourSlug = null;
+
+        if (is_numeric($jourValue)) {
+            $jourSlug = $jourMapping[(int) $jourValue] ?? null;
+        } elseif (is_string($jourValue)) {
+            $jourSlug = strtolower(trim($jourValue));
+        }
+
+        if ($jourSlug) {
+            $jourSlug = strtolower(trim($jourSlug));
+        }
+
+        if (!$jourSlug || !$allowedDaySlugs->has($jourSlug)) {
+            continue;
+        }
+
+        $startString = $normalizeTimeString($seance->heure_debut ?? null);
+        $endString = $normalizeTimeString($seance->heure_fin ?? null);
+
+        $startMinutes = $timeToMinutes($startString);
+        $endMinutes = $timeToMinutes($endString);
+
+        if ($startMinutes === null) {
+            continue;
+        }
+
+        if ($endMinutes === null || $endMinutes <= $startMinutes) {
+            $endMinutes = $startMinutes + $minutesPerSegment;
+        }
+
+        $relativeStart = max(0, (int) floor(($startMinutes - $minMinutes) / $minutesPerSegment));
+        $durationSegments = max(1, (int) ceil(($endMinutes - $startMinutes) / $minutesPerSegment));
+        $durationSegments = min($durationSegments, max(1, $segmentCount - $relativeStart));
+
+        $gridRowStart = $relativeStart + 2;
+        $gridRowEnd = $gridRowStart + $durationSegments;
+
+        $type = $seance->type ?? ESBTPSeanceCours::TYPE_COURSE;
+        $style = $getSessionStyle($type);
+        $backgroundColor = $seance->color ?: $style['bg'];
+        $textColor = $computeTextColor($backgroundColor, $style['text']);
+
+        $matiere = $seance->matiere->name ?? 'Matière';
+        $enseignant = $seance->enseignant_nom ?? optional(optional($seance->teacher)->user)->name;
+        $salle = $seance->salle;
+
+        try {
+            $startDisplay = Carbon::createFromFormat('H:i', $startString)->format('H:i');
+        } catch (\Exception $e) {
+            $startDisplay = $startString;
+        }
+
+        try {
+            $endDisplay = Carbon::createFromFormat('H:i', $endString)->format('H:i');
+        } catch (\Exception $e) {
+            $endDisplay = $endString;
+        }
+
+        $timeRange = trim(($startDisplay ?: '') . ' - ' . ($endDisplay ?: ''));
+
+        $timelineSessions[$jourSlug][] = [
+            'id' => $seance->id,
+            'type' => $type,
+            'typeLabel' => strtoupper($labelMap[$type] ?? 'Séance'),
+            'background' => $backgroundColor,
+            'textColor' => $textColor,
+            'matiere' => $matiere,
+            'enseignant' => $enseignant,
+            'salle' => $salle,
+            'timeRange' => $timeRange,
+            'notes' => $seance->description,
+            'gridColumn' => $jourSlug,
+            'gridRowStart' => $gridRowStart,
+            'gridRowEnd' => $gridRowEnd,
+            'rowspanSegments' => $durationSegments,
+        ];
+
+        for ($row = $gridRowStart; $row < $gridRowEnd; $row++) {
+            $occupiedGridRows[$jourSlug][$row] = true;
+        }
+
+        for ($row = $gridRowStart; $row < $gridRowEnd; $row++) {
+            $occupiedGridRows[$jourSlug][$row] = true;
         }
     }
-    foreach ($labelMap as $type => $_) {
-        if (!isset($swatchMap[$type])) {
-            $swatch = $getSessionStyle($type);
-            $swatchMap[$type] = $swatch['bg'];
-        }
-    }
+
+    $daysCount = count($normalizedDays);
+    $gridTemplateColumns = '80px repeat(' . $daysCount . ', 1fr)';
+    $gridTemplateRows = 'repeat(' . ($segmentCount + 1) . ', ' . $segmentHeight . 'px)';
+
 @endphp
 
-<div class="timetable-wrapper timetable-variant-{{ $variant }}">
-    <table class="timetable-grid">
+@if($variant === 'web')
+    @once
+        <style>
+            .timeline-grid {
+                border: 1px solid #dbeafe;
+                border-radius: 18px;
+                overflow: hidden;
+                box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+                background: #ffffff;
+            }
+            .timeline-grid .timeline-header {
+                display: contents;
+            }
+            .timeline-grid .timeline-header-cell {
+                padding: 10px 12px;
+                background: linear-gradient(135deg, #0453cb, #0f6ae0);
+                color: #ffffff;
+                font-size: 0.75rem;
+                letter-spacing: 0.08em;
+                font-weight: 600;
+                text-transform: uppercase;
+                border-right: 1px solid rgba(255,255,255,0.18);
+            }
+            .timeline-grid .timeline-header-cell:last-child {
+                border-right: none;
+            }
+            .timeline-grid .timeline-hour-cell {
+                display: flex;
+                align-items: flex-start;
+                justify-content: flex-end;
+                padding: 6px 8px;
+                font-size: 0.82rem;
+                font-weight: 600;
+                color: #1e293b;
+                background: #f8fafc;
+                border-right: 1px solid #e2e8f0;
+            }
+            .timeline-grid .timeline-day-background {
+                position: relative;
+                background-image: linear-gradient(to bottom, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+                background-size: 100% {{ $segmentHeight * 4 }}px;
+                border-right: 1px solid rgba(226, 232, 240, 0.9);
+            }
+            .timeline-grid .timeline-day-background:last-child {
+                border-right: none;
+            }
+            .timeline-grid .timeline-session {
+                border-radius: 14px;
+                padding: 10px;
+                box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+                transition: transform 0.15s ease, box-shadow 0.15s ease;
+                justify-self: center;
+                width: 95%;
+            }
+            .timeline-grid .timeline-session:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 16px 32px rgba(15, 23, 42, 0.2);
+            }
+            .timeline-grid .timeline-session-type {
+                font-size: 0.7rem;
+                letter-spacing: 0.08em;
+                font-weight: 700;
+                opacity: 0.85;
+            }
+            .timeline-grid .timeline-session-subject {
+                font-size: 0.95rem;
+                font-weight: 700;
+            }
+            .timeline-grid .timeline-session-meta {
+                font-size: 0.78rem;
+                opacity: 0.92;
+            }
+            .timeline-grid .timeline-session-actions {
+                opacity: 0;
+                transition: opacity 0.2s ease;
+            }
+            .timeline-grid .timeline-session:hover .timeline-session-actions {
+                opacity: 1;
+            }
+            .timeline-grid .timeline-slot-add {
+                width: 26px;
+                height: 26px;
+                border-radius: 50%;
+                border: 2px dashed #3b82f6;
+                color: #1d4ed8;
+                background: #ffffff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.75rem;
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+                transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+            }
+            .timeline-grid .timeline-slot-add:hover {
+                background: #1d4ed8;
+                color: #ffffff;
+                transform: translate(-50%, -50%) scale(1.05);
+            }
+        </style>
+    @endonce
+
+    @php
+        $dayIndexMap = collect($normalizedDays)->pluck('slug')->mapWithKeys(function ($day, $index) {
+            return [$day => $index + 2]; // column 1 reserved for hours
+        })->toArray();
+    @endphp
+
+    <div class="timeline-grid" style="display: grid; grid-template-columns: {{ $gridTemplateColumns }}; grid-template-rows: auto {{ $gridTemplateRows }};">
+        <div class="timeline-header">
+            <div class="timeline-header-cell">Heure</div>
+            @foreach($normalizedDays as $dayInfo)
+                <div class="timeline-header-cell">{{ $dayInfo['label'] }}</div>
+            @endforeach
+        </div>
+
+        @foreach($segments as $index => $segment)
+            <div class="timeline-hour-cell" style="grid-column: 1; grid-row: {{ $index + 2 }};">
+                {{ $segment['label'] ?? '' }}
+            </div>
+        @endforeach
+
+        @foreach($normalizedDays as $dayInfo)
+            @php
+                $daySlug = $dayInfo['slug'];
+                $columnIndex = $dayIndexMap[$daySlug] ?? 2;
+            @endphp
+            <div class="timeline-day-background" style="grid-column: {{ $columnIndex }}; grid-row: 2 / span {{ $segmentCount + 1 }};"></div>
+
+            @if($interactive && $emploiTemps)
+                @foreach($segments as $index => $segment)
+                    @php
+                        $minuteValue = $segment['minutes'];
+                        if ($minuteValue >= $maxMinutes) { continue; }
+                        if ($minuteValue % 60 !== 0) { continue; }
+                        $timeString = sprintf('%02d:%02d', intdiv($minuteValue, 60), $minuteValue % 60);
+                        $dayNumber = is_numeric($dayInfo['key']) ? $dayInfo['key'] : ($dayToNumber[strtolower($dayInfo['key'])] ?? ($dayToNumber[$daySlug] ?? 1));
+                        $rowIndex = $index + 2;
+                        if (($occupiedGridRows[$daySlug][$rowIndex] ?? false)) {
+                            continue;
+                        }
+                    @endphp
+                    <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id, 'jour' => $dayNumber, 'heure_debut' => $timeString]) }}"
+                       class="timeline-slot-add"
+                       style="grid-column: {{ $columnIndex }}; grid-row: {{ $rowIndex }}; transform: translate(-50%, -50%); justify-self: center; align-self: center;"
+                       title="Ajouter une séance">
+                        <i class="fas fa-plus"></i>
+                    </a>
+                @endforeach
+            @endif
+
+            @foreach($timelineSessions[$daySlug] ?? [] as $session)
+                <div class="timeline-session type-{{ $session['type'] }}"
+                     style="grid-column: {{ $columnIndex }}; grid-row: {{ $session['gridRowStart'] }} / {{ $session['gridRowEnd'] }}; background: {{ $session['background'] }}; color: {{ $session['textColor'] }}; justify-self: center; width: 95%;">
+                    <div class="timeline-session-type">{{ $session['typeLabel'] }}</div>
+                    <div class="timeline-session-subject">{{ $session['matiere'] }}</div>
+                    @if($session['enseignant'])
+                        <div class="timeline-session-meta"><i class="fas fa-user-tie me-1"></i>{{ $session['enseignant'] }}</div>
+                    @endif
+                    @if($session['salle'])
+                        <div class="timeline-session-meta"><i class="fas fa-door-open me-1"></i>{{ $session['salle'] }}</div>
+                    @endif
+                    @if($session['timeRange'])
+                        <div class="timeline-session-meta"><i class="fas fa-clock me-1"></i>{{ $session['timeRange'] }}</div>
+                    @endif
+                    @if($session['notes'])
+                        <div class="timeline-session-meta">{{ Str::limit($session['notes'], 80) }}</div>
+                    @endif
+
+                    @if($interactive)
+                        <div class="timeline-session-actions">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ route('esbtp.seances-cours.edit', $session['id']) }}" class="btn btn-light btn-sm">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <form action="{{ route('esbtp.seances-cours.destroy', $session['id']) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-light btn-sm" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette séance ?');">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            @endforeach
+        @endforeach
+    </div>
+@else
+    @php
+        $pdfRows = [];
+        for ($segment = 0; $segment < $segmentCount; $segment++) {
+            $minuteValue = $minMinutes + $segment * $minutesPerSegment;
+            $pdfRows[] = [
+                'index' => $segment,
+                'label' => $minuteValue % 60 === 0 ? sprintf('%02d:%02d', intdiv($minuteValue, 60), $minuteValue % 60) : '',
+            ];
+        }
+
+        $pdfCells = [];
+        $pdfCovered = [];
+        foreach ($timelineSessions as $daySlug => $sessions) {
+            foreach ($sessions as $session) {
+                $rowIndex = max(0, $session['gridRowStart'] - 2);
+                $rowSpan = max(1, $session['rowspanSegments']);
+                $pdfCells[$daySlug][$rowIndex] = $session + ['rowspan' => $rowSpan];
+                for ($offset = 1; $offset < $rowSpan; $offset++) {
+                    $pdfCovered[$daySlug][$rowIndex + $offset] = true;
+                }
+            }
+        }
+    @endphp
+
+    <table class="timetable-grid timetable-variant-{{ $variant }}">
         <thead>
             <tr>
                 <th class="timetable-time-header">Heure</th>
@@ -248,63 +502,36 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($normalizedSlots as $slotIndex => $timeSlot)
+            @foreach($pdfRows as $row)
                 <tr>
-                    <td class="timetable-time-cell">{{ $timeSlot }}</td>
+                    <td class="timetable-time-cell">{{ $row['label'] }}</td>
                     @foreach($normalizedDays as $dayInfo)
                         @php
                             $daySlug = $dayInfo['slug'];
-                            $cellOccupied = $occupiedCells[$daySlug][$slotIndex] ?? false;
-                            $cellCovered = $cellsCovered[$daySlug][$slotIndex] ?? false;
-                            $seanceData = $seanceLookup[$daySlug][$slotIndex] ?? null;
                         @endphp
-
-                        @if($seanceData && $cellOccupied)
-                            @php
-                                $seanceToDisplay = $seanceData['seance'];
-                                $rowspan = $seanceData['rowspan'] ?? 1;
-
-                                $type = $seanceToDisplay->type ?? ESBTPSeanceCours::TYPE_COURSE;
-                                $style = $getSessionStyle($type);
-                                $matiere = $seanceToDisplay->matiere->name ?? 'Matière';
-                                $enseignant = $seanceToDisplay->enseignant_nom ?? optional(optional($seanceToDisplay->teacher)->user)->name;
-                                $salle = $seanceToDisplay->salle;
-                                $timeRange = '';
-                                if ($seanceToDisplay->heure_debut && $seanceToDisplay->heure_fin) {
-                                    $startHour = $seanceToDisplay->heure_debut instanceof Carbon
-                                        ? $seanceToDisplay->heure_debut->format('H:i')
-                                        : Carbon::parse($seanceToDisplay->heure_debut)->format('H:i');
-                                    $endHour = $seanceToDisplay->heure_fin instanceof Carbon
-                                        ? $seanceToDisplay->heure_fin->format('H:i')
-                                        : Carbon::parse($seanceToDisplay->heure_fin)->format('H:i');
-                                    $timeRange = $startHour . ' - ' . $endHour;
-                                }
-                                $notes = $seanceToDisplay->description;
-                                $typeLabel = strtoupper($labelMap[$type] ?? 'Séance');
-                                $backgroundColor = $seanceToDisplay->color ?: $style['bg'];
-                                $textColor = $computeTextColor($backgroundColor, $style['text']);
-                            @endphp
-                            <td class="timetable-session-cell" rowspan="{{ $rowspan }}">
-                                <div class="tt-session type-{{ $type }}" style="background: {{ $backgroundColor }}; color: {{ $textColor }};">
+                        @if(isset($pdfCells[$daySlug][$row['index']]))
+                            @php $cell = $pdfCells[$daySlug][$row['index']]; @endphp
+                            <td class="timetable-session-cell" rowspan="{{ $cell['rowspan'] }}">
+                                <div class="tt-session type-{{ $cell['type'] }}" style="background: {{ $cell['background'] }}; color: {{ $cell['textColor'] }};">
                                     <div class="tt-session-type" style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85;">
-                                        {{ $typeLabel }}
+                                        {{ $cell['typeLabel'] }}
                                     </div>
-                                    <div class="tt-session-subject">{{ $matiere }}</div>
-                                    @if($enseignant)
-                                        <div class="tt-session-teacher"><i class="fas fa-user-tie"></i> {{ $enseignant }}</div>
+                                    <div class="tt-session-subject">{{ $cell['matiere'] }}</div>
+                                    @if($cell['enseignant'])
+                                        <div class="tt-session-teacher"><i class="fas fa-user-tie"></i> {{ $cell['enseignant'] }}</div>
                                     @endif
-                                    @if($salle)
-                                        <div class="tt-session-room"><i class="fas fa-door-open"></i> {{ $salle }}</div>
+                                    @if($cell['salle'])
+                                        <div class="tt-session-room"><i class="fas fa-door-open"></i> {{ $cell['salle'] }}</div>
                                     @endif
-                                    @if($timeRange)
-                                        <div class="tt-session-time"><i class="fas fa-clock"></i> {{ $timeRange }}</div>
+                                    @if($cell['timeRange'])
+                                        <div class="tt-session-time"><i class="fas fa-clock"></i> {{ $cell['timeRange'] }}</div>
                                     @endif
-                                    @if($notes)
-                                        <div class="tt-session-notes">{{ Str::limit($notes, 80) }}</div>
+                                    @if($cell['notes'])
+                                        <div class="tt-session-notes">{{ Str::limit($cell['notes'], 80) }}</div>
                                     @endif
                                 </div>
                             </td>
-                        @elseif($cellCovered)
+                        @elseif(isset($pdfCovered[$daySlug][$row['index']]))
                             @continue
                         @else
                             <td class="timetable-empty-cell"></td>
@@ -314,4 +541,4 @@
             @endforeach
         </tbody>
     </table>
-</div>
+@endif

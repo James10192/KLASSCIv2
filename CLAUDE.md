@@ -330,7 +330,14 @@ MAIL_FROM_NAME="KLASSCI"
   - Étude des limitations `dompdf` (print-color-adjust, linear-gradient, tables) + benchmark avec `liste-appel-pdf`.
   - Header reconstruit avec table principale + sous-table pour les cartes (plein fond #0453cb → #5e91de, logos inversés), suppression des transparences `rgba()` non supportées.
   - Cartes infos (`Localisation`, `Contact`, `Classe & Filière`, `Couverture`) converties en blocs pleins (`background-color: #0f4ec3`) avec padding réduit (6–7px) pour rester sur une page A4 paysage.
-  - Grille horaire PDF alignée sur la preview : padding cellules 4–5px, largeur colonnes 84px, légende simple en liste. Préparation de la bascule « timeline » (calculs normalisés `normalizeTimeString`, `cellsCovered`) pour le prochain delivery.
+  - Grille horaire PDF alignée sur la preview : padding cellules 4–5px, largeur colonnes 84px, légende simple en liste. Préparation de la bascule « timeline » (calculs normalisés `normalizeTimeString`, `cellsCovered`) pour le prochain delivery.
+- **27/10** : Refactor timeline emploi du temps (show + preview + PDF)
+  - Web : timeline CSS grid 07h–18h, cartes positionnées en pourcentage (start/end minutes), largeur 95 %, boutons `+` uniquement sur créneaux libres, conservation des couleurs par type.
+  - PDF : grille à pas d’1h avec `rowspan` calculé pour chaque séance (prise en compte des minutes), en-tête et palette KLASSCI conservés.
+  - Contrôleur : `generateTimeSlots()` démarre à 07h, normalisations des jours et minutes pour l’affichage timeline.
+  - **27/10 (suite)** : Passage complet en timeline côté web + PDF.
+    - Vue web : grille `CSS Grid` pas 15 min → sessions positionnées via `grid-row-start/end`, largeur 95 %, suppression des boutons `+` sur créneaux occupés, plage 07h-18h.
+    - Export PDF : abandon du tableau rowspan → layout `flex + abs positioning`, axe horaire 1h et blocs dimensionnés à la minute (offset/height). Même palette/typographie que le web, compatibilité Dompdf (sans CSS variables/grids).
 
 ## ✨ Fonctionnalités récentes
 

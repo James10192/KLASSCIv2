@@ -1,174 +1,32 @@
-@props(['seances' => collect(), 'emploiTemps' => null, 'timeSlots' => [], 'days' => []])
+@props([
+    'seances' => collect(),
+    'emploiTemps' => null,
+    'timeSlots' => [],
+    'days' => [],
+])
 
 @php
-    // Définir les créneaux horaires par défaut si non fournis (intervalle d'1h)
-    $defaultTimeSlots = [];
-    for ($hour = 8; $hour < 18; $hour++) {
-        $defaultTimeSlots[] = sprintf('%02d:00', $hour);
-    }
+    use App\Models\ESBTPSeanceCours;
 
-    $timeSlots = empty($timeSlots) ? $defaultTimeSlots : array_values($timeSlots);
-    $timeSlots = array_values(array_unique($timeSlots));
-    sort($timeSlots);
-
-    // Mapping jour numérique -> nom du jour (1 = lundi, 2 = mardi, etc.)
-    $jourMapping = [
-        1 => 'lundi',
-        2 => 'mardi',
-        3 => 'mercredi',
-        4 => 'jeudi',
-        5 => 'vendredi',
-        6 => 'samedi',
-        0 => 'dimanche',
-        7 => 'dimanche'
+    $sessionTypeLabels = [
+        ESBTPSeanceCours::TYPE_COURSE => 'Cours',
+        ESBTPSeanceCours::TYPE_HOMEWORK => 'Devoir',
+        ESBTPSeanceCours::TYPE_BREAK => 'Récréation',
+        ESBTPSeanceCours::TYPE_LUNCH => 'Pause déjeuner',
     ];
 
-    // Définir les jours par défaut si non fournis
-    $defaultDays = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+    $sessionTypeColors = [
+        ESBTPSeanceCours::TYPE_COURSE => ['bg' => '#0453cb', 'text' => '#ffffff'],
+        ESBTPSeanceCours::TYPE_HOMEWORK => ['bg' => '#3ba54f', 'text' => '#ffffff'],
+        ESBTPSeanceCours::TYPE_BREAK => ['bg' => '#f59e0b', 'text' => '#1f2937'],
+        ESBTPSeanceCours::TYPE_LUNCH => ['bg' => '#0ea5e9', 'text' => '#ffffff'],
+        'default' => ['bg' => '#5e91de', 'text' => '#ffffff'],
+    ];
 
-    if (empty($days)) {
-        $days = $defaultDays;
-    } else {
-        $days = array_map(function ($day) use ($jourMapping) {
-            if (is_numeric($day)) {
-                return $jourMapping[(int) $day] ?? strtolower($day);
-            }
-            return strtolower($day);
-        }, $days);
-        $days = array_values(array_unique($days));
-    }
-
-    // Mapping inverse nom du jour -> numérique
-    $dayToNumber = array_flip($jourMapping);
-
-    $timeToMinutes = function ($timeValue) {
-        if ($timeValue instanceof \Carbon\Carbon) {
-            return ((int) $timeValue->format('H')) * 60 + (int) $timeValue->format('i');
-        }
-
-        if (is_string($timeValue) && strlen($timeValue) >= 4) {
-            [$hour, $minute] = array_pad(explode(':', substr($timeValue, 0, 5)), 2, 0);
-            if (is_numeric($hour) && is_numeric($minute)) {
-                return ((int) $hour) * 60 + (int) $minute;
-            }
-        }
-
-        return 0;
-    };
-
-    $normalizeTimeString = function ($timeValue) {
-        if ($timeValue instanceof \Carbon\CarbonInterface) {
-            return $timeValue->format('H:i');
-        }
-
-        if ($timeValue instanceof \DateTimeInterface) {
-            return $timeValue->format('H:i');
-        }
-
-        if (is_string($timeValue) && strlen($timeValue) >= 4) {
-            return substr($timeValue, 0, 5);
-        }
-
-        return null;
-    };
-
-    $intervalMinutes = 60;
-    if (count($timeSlots) > 1) {
-        $intervalMinutes = max(1, $timeToMinutes($timeSlots[1]) - $timeToMinutes($timeSlots[0]));
-    }
-
-    $firstSlotMinutes = $timeToMinutes($timeSlots[0] ?? '08:00');
-
-    // Préparer les structures de données pour suivre les cellules occupées
-    $occupiedCells = [];
-    $cellsCovered = [];
-    $seanceLookup = [];
-
-    foreach ($days as $day) {
-        foreach ($timeSlots as $slotIndex => $slot) {
-            $occupiedCells[$day][$slotIndex] = false;
-            $cellsCovered[$day][$slotIndex] = false;
-        }
-    }
-
-    if ($seances && $seances->count() > 0) {
-        $seancesParJour = [];
-
-        foreach ($seances as $seance) {
-            $jourNumeric = $seance->jour;
-            $jourSlug = isset($jourMapping[$jourNumeric]) ? $jourMapping[$jourNumeric] : null;
-
-            if (!$jourSlug || !array_key_exists($jourSlug, $occupiedCells)) {
-                continue;
-            }
-
-            $seancesParJour[$jourSlug][] = $seance;
-        }
-
-        foreach ($seancesParJour as $jourSlug => $listeSeances) {
-            usort($listeSeances, function ($a, $b) use ($timeToMinutes, $normalizeTimeString) {
-                $startA = $timeToMinutes($normalizeTimeString($a->heure_debut ?? null));
-                $startB = $timeToMinutes($normalizeTimeString($b->heure_debut ?? null));
-                return $startA <=> $startB;
-            });
-
-            foreach ($listeSeances as $index => $seance) {
-                $heureDebut = $normalizeTimeString($seance->heure_debut ?? null);
-                $heureFin = $normalizeTimeString($seance->heure_fin ?? null);
-
-                if (!$heureDebut || !$heureFin) {
-                    continue;
-                }
-
-                $startMinutes = $timeToMinutes($heureDebut);
-                $endMinutes = $timeToMinutes($heureFin);
-
-                if ($endMinutes <= $startMinutes) {
-                    $endMinutes = $startMinutes + $intervalMinutes;
-                }
-
-                $startSlotIndex = (int) floor(($startMinutes - $firstSlotMinutes) / $intervalMinutes);
-                $startSlotIndex = max(0, min($startSlotIndex, count($timeSlots) - 1));
-
-                $endSlotIndex = (int) ceil(($endMinutes - $firstSlotMinutes) / $intervalMinutes) - 1;
-                $endSlotIndex = max($endSlotIndex, $startSlotIndex);
-                $endSlotIndex = min($endSlotIndex, count($timeSlots) - 1);
-
-                if (isset($listeSeances[$index + 1])) {
-                    $nextSeance = $listeSeances[$index + 1];
-                    $nextStartString = $normalizeTimeString($nextSeance->heure_debut ?? null);
-
-                    if ($nextStartString) {
-                        $nextStartMinutes = $timeToMinutes($nextStartString);
-                        $nextStartSlotIndex = (int) floor(($nextStartMinutes - $firstSlotMinutes) / $intervalMinutes);
-                        $nextStartSlotIndex = max(0, min($nextStartSlotIndex, count($timeSlots) - 1));
-
-                        if ($nextStartSlotIndex <= $endSlotIndex && $nextStartSlotIndex >= $startSlotIndex) {
-                            $adjustedEnd = max($startSlotIndex, $nextStartSlotIndex - 1);
-                            if ($adjustedEnd < $startSlotIndex) {
-                                $adjustedEnd = $startSlotIndex;
-                            }
-                            $endSlotIndex = $adjustedEnd;
-                        }
-                    }
-                }
-
-                $rowspan = max(1, $endSlotIndex - $startSlotIndex + 1);
-
-                $seanceLookup[$jourSlug][$startSlotIndex] = [
-                    'seance' => $seance,
-                    'rowspan' => $rowspan,
-                    'startSlotIndex' => $startSlotIndex,
-                    'endSlotIndex' => $endSlotIndex,
-                ];
-
-                for ($i = $startSlotIndex; $i <= $endSlotIndex; $i++) {
-                    $occupiedCells[$jourSlug][$i] = true;
-                    if ($i !== $startSlotIndex) {
-                        $cellsCovered[$jourSlug][$i] = true;
-                    }
-                }
-            }
+    foreach ($seances as $seance) {
+        $type = $seance->type ?? ESBTPSeanceCours::TYPE_COURSE;
+        if (!isset($sessionTypeColors[$type]) && !empty($seance->color)) {
+            $sessionTypeColors[$type] = ['bg' => $seance->color, 'text' => '#ffffff'];
         }
     }
 @endphp
@@ -179,277 +37,33 @@
             <i class="fas fa-calendar-week"></i>
             Grille horaire
         </div>
-        <div class="main-card-subtitle">Emploi du temps de la semaine</div>
+        <div class="main-card-subtitle">Visualisation dynamique de la semaine en cours</div>
     </div>
     <div class="main-card-body">
-
-        <!-- Légende -->
         <div class="mb-4">
-            <h6 class="mb-3"><i class="fas fa-palette me-2"></i>Légende des couleurs :</h6>
+            <h6 class="mb-3"><i class="fas fa-palette me-2"></i>Légende des formats :</h6>
             <div class="d-flex flex-wrap gap-3">
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: var(--primary);"></div>
-                    <small>Cours</small>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: var(--success);"></div>
-                    <small>Devoirs</small>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: var(--warning);"></div>
-                    <small>Récréations</small>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color" style="background-color: var(--info);"></div>
-                    <small>Pause déjeuner</small>
-                </div>
+                @foreach($sessionTypeLabels as $type => $label)
+                    @php
+                        $swatch = $sessionTypeColors[$type] ?? $sessionTypeColors['default'];
+                    @endphp
+                    <div class="legend-item d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill" style="background: rgba(15,23,42,0.05);">
+                        <span class="legend-color" style="display:inline-block;width:16px;height:16px;border-radius:50%;background: {{ $swatch['bg'] }};"></span>
+                        <small class="fw-semibold text-uppercase" style="letter-spacing: 0.05em;">{{ $label }}</small>
+                    </div>
+                @endforeach
             </div>
         </div>
 
-        <!-- Grille horaire -->
-        <div class="timetable-container">
-            <table class="table table-bordered timetable">
-                <thead>
-                    <tr>
-                        <th class="text-center time-column">Heure</th>
-                        <th class="text-center">Lundi</th>
-                        <th class="text-center">Mardi</th>
-                        <th class="text-center">Mercredi</th>
-                        <th class="text-center">Jeudi</th>
-                        <th class="text-center">Vendredi</th>
-                        <th class="text-center">Samedi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($timeSlots as $slotIndex => $timeSlot)
-                    <tr>
-                        <td class="text-center time-column">{{ $timeSlot }}</td>
-                    @foreach($days as $day)
-                            @php
-                                $cellOccupied = $occupiedCells[$day][$slotIndex] ?? false;
-                                $cellCovered = $cellsCovered[$day][$slotIndex] ?? false;
-                                $seanceData = $seanceLookup[$day][$slotIndex] ?? null;
-                            @endphp
-
-                            @if($seanceData && $cellOccupied)
-                                @php
-                                    $seanceToDisplay = $seanceData['seance'];
-                                    $rowspan = $seanceData['rowspan'] ?? 1;
-
-                                    $typeSeance = $seanceToDisplay->type ?? 'course';
-                                    $isBreakType = in_array($typeSeance, ['break', 'lunch']);
-                                    
-                                    $colorsByType = [
-                                        'course' => 'var(--primary)',      // Bleu pour les cours
-                                        'homework' => 'var(--success)',    // Vert pour les devoirs
-                                        'break' => 'var(--warning)',       // Orange pour les récréations
-                                        'lunch' => 'var(--info)'           // Cyan pour les pauses déjeuner
-                                    ];
-                                    
-                                    $backgroundColor = $colorsByType[$typeSeance] ?? $seanceToDisplay->color ?? 'var(--primary)';
-                                @endphp
-
-                                <td class="align-middle" rowspan="{{ $rowspan }}">
-                                    <div class="session-cell"
-                                         style="background-color: {{ $backgroundColor }}"
-                                         data-bs-toggle="tooltip"
-                                         data-bs-placement="top"
-                                         title="{{ $seanceToDisplay->matiere->name ?? 'Séance' }} - {{ $seanceToDisplay->heure_debut->format('H:i') }} à {{ $seanceToDisplay->heure_fin->format('H:i') }}">
-                                        
-                                        <!-- Type de séance -->
-                                        @php
-                                            $typeLabels = [
-                                                'course' => 'COURS',
-                                                'homework' => 'DEVOIR', 
-                                                'break' => 'RÉCRÉATION',
-                                                'lunch' => 'PAUSE'
-                                            ];
-                                            $typeLabel = $typeLabels[$typeSeance] ?? 'COURS';
-                                        @endphp
-                                        <div class="session-info session-type fw-bold text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">
-                                            {{ $typeLabel }}
-                                        </div>
-                                        
-                                        @if(!$isBreakType)
-                                            <!-- Matière (seulement pour cours/devoirs) -->
-                                            @if($seanceToDisplay->matiere)
-                                                <div class="session-info session-matiere fw-bold">
-                                                    {{ $seanceToDisplay->matiere->name }}
-                                                </div>
-                                            @endif
-                                            
-                                            <!-- Enseignant (seulement pour cours/devoirs) -->
-                                            @if($seanceToDisplay->enseignant ?? $seanceToDisplay->teacher)
-                                                <div class="session-info session-enseignant">
-                                                    <i class="fas fa-user-tie me-1" style="font-size: 0.6rem;"></i>
-                                                    {{ $seanceToDisplay->enseignant->name ?? $seanceToDisplay->teacher->name }}
-                                                </div>
-                                            @endif
-                                        @endif
-                                        
-                                        <!-- Horaire (pour tous types) -->
-                                        <div class="session-info session-time" style="font-size: 0.7rem;">
-                                            <i class="fas fa-clock me-1" style="font-size: 0.6rem;"></i>
-                                            {{ $seanceToDisplay->heure_debut->format('H:i') }} - {{ $seanceToDisplay->heure_fin->format('H:i') }}
-                                        </div>
-                                        
-                                        <!-- Salle (pour tous types) -->
-                                        @if($seanceToDisplay->salle)
-                                            <div class="session-info session-salle" style="font-size: 0.7rem;">
-                                                <i class="fas fa-door-open me-1" style="font-size: 0.6rem;"></i>
-                                                {{ $seanceToDisplay->salle }}
-                                            </div>
-                                        @endif
-                                        
-                                        <div class="session-actions mt-1">
-                                            <div class="btn-group btn-group-sm">
-                                                <a href="{{ route('esbtp.seances-cours.edit', $seanceToDisplay->id) }}" class="btn btn-sm btn-light">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                                <form action="{{ route('esbtp.seances-cours.destroy', $seanceToDisplay->id) }}" method="POST" class="d-inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-sm btn-light" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette séance ?')">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
-                            @elseif(!$cellOccupied && !$cellCovered)
-                                <td>
-                                    @if($emploiTemps)
-                                        @php
-                                            // Convertir le nom du jour en numérique pour le lien
-                                            $dayNumber = isset($dayToNumber[$day]) ? $dayToNumber[$day] : 1;
-                                        @endphp
-                                        <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id, 'jour' => $dayNumber, 'heure_debut' => $timeSlot]) }}" class="btn-add-session">
-                                            <i class="fas fa-plus"></i>
-                                        </a>
-                                    @else
-                                        <div class="btn-add-session" style="cursor: not-allowed; opacity: 0.5;">
-                                            <i class="fas fa-plus"></i>
-                                        </div>
-                                    @endif
-                                </td>
-                            @endif
-                        @endforeach
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
+        @include('esbtp.emploi-temps.partials.timetable-grid', [
+            'seances' => $seances,
+            'timeSlots' => $timeSlots,
+            'days' => $days,
+            'sessionStyles' => $sessionTypeColors,
+            'sessionLabels' => $sessionTypeLabels,
+            'variant' => 'web',
+            'emploiTemps' => $emploiTemps,
+            'interactive' => true,
+        ])
     </div>
 </div>
-
-<style>
-.timetable-container {
-    overflow-x: auto;
-}
-
-.timetable {
-    min-width: 900px;
-}
-
-.timetable th, .timetable td {
-    min-width: 150px;
-    height: 80px;
-    position: relative;
-    vertical-align: middle;
-}
-
-.time-column {
-    width: 80px;
-    font-weight: bold;
-    background-color: #f8f9fa;
-}
-
-.session-cell {
-    padding: 8px;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    color: #fff;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    position: relative;
-}
-
-.session-info {
-    line-height: 1.2;
-    margin-bottom: 2px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.session-type {
-    font-size: 0.7rem !important;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
-    background: rgba(255,255,255,0.2);
-    padding: 1px 4px;
-    border-radius: 3px;
-    text-align: center;
-}
-
-.session-matiere {
-    font-weight: bold;
-    font-size: 0.85rem;
-}
-
-.session-enseignant {
-    font-size: 0.75rem;
-    opacity: 0.9;
-}
-
-.session-time, .session-salle {
-    font-size: 0.7rem;
-    opacity: 0.85;
-}
-
-.session-actions {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    display: none;
-}
-
-.session-cell:hover .session-actions {
-    display: block;
-}
-
-.btn-add-session {
-    border: 2px dashed #dee2e6;
-    background-color: rgba(0,0,0,0.02);
-    color: #6c757d;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    transition: all 0.2s;
-    text-decoration: none;
-}
-
-.btn-add-session:hover {
-    background-color: rgba(0,0,0,0.05);
-    color: #343a40;
-    text-decoration: none;
-}
-
-.legend-item {
-    display: inline-flex;
-    align-items: center;
-    margin-right: 15px;
-}
-
-.legend-color {
-    width: 15px;
-    height: 15px;
-    border-radius: 3px;
-    margin-right: 5px;
-}
-</style>

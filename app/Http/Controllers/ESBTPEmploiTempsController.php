@@ -119,7 +119,7 @@ class ESBTPEmploiTempsController extends Controller
     /**
      * Génère une liste de créneaux horaires à partir des séances existantes.
      */
-    private function generateTimeSlots($seances, int $intervalMinutes = 60, string $defaultStart = '08:00', string $defaultEnd = '18:00'): array
+private function generateTimeSlots($seances, int $intervalMinutes = 60, string $defaultStart = '07:00', string $defaultEnd = '18:00'): array
     {
         $intervalMinutes = max(1, $intervalMinutes);
 
