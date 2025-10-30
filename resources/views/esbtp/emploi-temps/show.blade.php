@@ -335,7 +335,16 @@
         <div class="dashboard-header">
             <div class="header-left">
                 <h1><i class="fas fa-calendar-alt me-2"></i>{{ $emploiTemps->titre ?? 'Emploi du Temps' }}</h1>
-                <p class="header-subtitle">Emploi du temps de {{ $emploiTemps->classe->name ?? 'Non défini' }}</p>
+                <p class="header-subtitle">
+                    Emploi du temps de {{ $emploiTemps->classe->name ?? 'Non défini' }}
+                    @if($emploiTemps->date_debut && $emploiTemps->date_fin)
+                        <br>
+                        <small class="text-muted">
+                            <i class="fas fa-calendar-day"></i> Du {{ \Carbon\Carbon::parse($emploiTemps->date_debut)->format('d/m/Y') }}
+                            au {{ \Carbon\Carbon::parse($emploiTemps->date_fin)->format('d/m/Y') }}
+                        </small>
+                    @endif
+                </p>
             </div>
             <div class="header-actions">
                 <a href="{{ route('esbtp.emploi-temps.index') }}" class="btn-acasi secondary">

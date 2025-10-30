@@ -34,26 +34,78 @@ class ESBTPEmploiTempsController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         // No policy-based authorization
         // Récupérer l'année universitaire courante d'abord
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         // Filtrer les emplois du temps par année courante
-        $emploisTempsQuery = ESBTPEmploiTemps::with(['classe', 'seances']);
+        $emploisTempsQuery = ESBTPEmploiTemps::with(['classe.filiere', 'classe.niveau', 'seances']);
 
         if ($anneeEnCours) {
             $emploisTempsQuery->where('annee_universitaire_id', $anneeEnCours->id);
         }
 
-        $emploisTemps = $emploisTempsQuery->get();
+        // Appliquer les filtres depuis l'URL
+        // Filtrage par filière
+        if ($request->filled('filiere_id')) {
+            $emploisTempsQuery->whereHas('classe', function($q) use ($request) {
+                $q->where('filiere_id', $request->filiere_id);
+            });
+        }
+
+        // Filtrage par niveau
+        if ($request->filled('niveau_id')) {
+            $emploisTempsQuery->whereHas('classe', function($q) use ($request) {
+                $q->where('niveau_etude_id', $request->niveau_id);
+            });
+        }
+
+        // Filtrage par classe
+        if ($request->filled('classe_id')) {
+            $emploisTempsQuery->where('classe_id', $request->classe_id);
+        }
+
+        // Filtrage par statut
+        if ($request->filled('status')) {
+            if ($request->status === 'active') {
+                $emploisTempsQuery->where('is_active', true);
+            } elseif ($request->status === 'inactive') {
+                $emploisTempsQuery->where('is_active', false);
+            }
+        }
+
+        // Filtrage par emploi du temps courant
+        if ($request->filled('is_current')) {
+            if ($request->is_current === '1' || $request->is_current === 'true') {
+                $emploisTempsQuery->where('is_current', true);
+            } elseif ($request->is_current === '0' || $request->is_current === 'false') {
+                $emploisTempsQuery->where('is_current', false);
+            }
+        }
+
+        // Filtrage par semaine (plage de dates au format "date_debut|date_fin")
+        if ($request->filled('semaine')) {
+            $dates = explode('|', $request->semaine);
+            if (count($dates) === 2) {
+                $emploisTempsQuery->where('date_debut', $dates[0])
+                      ->where('date_fin', $dates[1]);
+            }
+        }
+
+        $emploisTemps = $emploisTempsQuery->orderBy('date_debut', 'desc')
+                                         ->orderBy('created_at', 'desc')
+                                         ->get();
 
         // Ajout des filières pour le filtre
         $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
 
         // Ajout des niveaux pour le filtre
         $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
+
+        // Ajout des classes pour le filtre
+        $classes = ESBTPClasse::with(['filiere', 'niveau'])->orderBy('name')->get();
 
         // Ajout des années universitaires pour le filtre
         $annees = ESBTPAnneeUniversitaire::orderBy('name', 'desc')->get();
@@ -70,7 +122,7 @@ class ESBTPEmploiTempsController extends Controller
         $anneeUniversitaireCourante = $anneeEnCours;
 
         return view('esbtp.emploi-temps.index', compact(
-            'emploisTemps', 'filieres', 'niveaux', 'annees', 'anneeUniversitaireCourante',
+            'emploisTemps', 'filieres', 'niveaux', 'classes', 'annees', 'anneeUniversitaireCourante',
             'totalEmploisTemps', 'emploisTempsActifs', 'totalSeances', 'emploisTempsAnneeEnCours'
         ));
     }
@@ -1598,5 +1650,91 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         $luminance = 0.299 * $r + 0.587 * $g + 0.114 * $b;
 
         return $luminance > 0.6 ? '#0f172a' : '#ffffff';
+    }
+
+    /**
+     * Refresh emplois du temps avec filtres AJAX (sans reload de page)
+     */
+    public function refresh(Request $request)
+    {
+        \Log::info('🔄 Refresh emplois temps AJAX', $request->all());
+
+        // Récupérer l'année universitaire courante
+        $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        if (!$anneeUniversitaire) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucune année universitaire active trouvée'
+            ], 404);
+        }
+
+        // Query de base
+        $query = ESBTPEmploiTemps::with([
+            'classe.filiere',
+            'classe.niveau',
+            'annee'
+        ])->where('annee_universitaire_id', $anneeUniversitaire->id);
+
+        // Filtrage par filière
+        if ($request->filled('filiere_id')) {
+            $query->whereHas('classe', function($q) use ($request) {
+                $q->where('filiere_id', $request->filiere_id);
+            });
+        }
+
+        // Filtrage par niveau
+        if ($request->filled('niveau_id')) {
+            $query->whereHas('classe', function($q) use ($request) {
+                $q->where('niveau_etude_id', $request->niveau_id);
+            });
+        }
+
+        // Filtrage par classe
+        if ($request->filled('classe_id')) {
+            $query->where('classe_id', $request->classe_id);
+        }
+
+        // Filtrage par statut
+        if ($request->filled('status')) {
+            if ($request->status === 'active') {
+                $query->where('is_active', true);
+            } elseif ($request->status === 'inactive') {
+                $query->where('is_active', false);
+            }
+        }
+
+        // Filtrage par emploi du temps courant
+        if ($request->filled('is_current')) {
+            if ($request->is_current === '1' || $request->is_current === 'true') {
+                $query->where('is_current', true);
+            } elseif ($request->is_current === '0' || $request->is_current === 'false') {
+                $query->where('is_current', false);
+            }
+        }
+
+        // Filtrage par semaine (plage de dates au format "date_debut|date_fin")
+        if ($request->filled('semaine')) {
+            $dates = explode('|', $request->semaine);
+            if (count($dates) === 2) {
+                $query->where('date_debut', $dates[0])
+                      ->where('date_fin', $dates[1]);
+            }
+        }
+
+        // Récupérer les résultats
+        $emploisTemps = $query->orderBy('date_debut', 'desc')
+                             ->orderBy('created_at', 'desc')
+                             ->get();
+
+        \Log::info('✅ Résultats trouvés', ['count' => $emploisTemps->count()]);
+
+        // Render les partiels
+        return response()->json([
+            'success' => true,
+            'html_cards' => view('esbtp.emploi-temps.partials.cards', compact('emploisTemps'))->render(),
+            'html_table' => view('esbtp.emploi-temps.partials.table-rows', compact('emploisTemps'))->render(),
+            'count' => $emploisTemps->count()
+        ]);
     }
 }

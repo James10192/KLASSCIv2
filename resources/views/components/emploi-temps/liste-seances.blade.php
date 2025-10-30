@@ -185,7 +185,7 @@
                     <div>
                         <h6><strong>Aucune séance programmée</strong></h6>
                         <p class="mb-2">Cet emploi du temps ne contient aucune séance.</p>
-                        <a href="{{ route('esbtp.emploi-temps.add-session', $emploiTemps->id) }}" 
+                        <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id]) }}"
                            class="btn btn-primary btn-sm">
                             <i class="fas fa-plus me-1"></i>Ajouter la première séance
                         </a>

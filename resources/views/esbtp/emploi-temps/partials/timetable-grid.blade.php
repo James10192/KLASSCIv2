@@ -285,6 +285,8 @@
                 overflow: hidden;
                 box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
                 background: #ffffff;
+                max-height: 100vh;
+                overflow-y: auto;
             }
             .timeline-grid .timeline-header {
                 display: contents;
@@ -328,7 +330,7 @@
                 box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
                 display: flex;
                 flex-direction: column;
-                gap: 4px;
+                gap: 6px;
                 transition: transform 0.15s ease, box-shadow 0.15s ease;
                 justify-self: center;
                 width: 95%;
@@ -338,18 +340,38 @@
                 box-shadow: 0 16px 32px rgba(15, 23, 42, 0.2);
             }
             .timeline-grid .timeline-session-type {
-                font-size: 0.7rem;
-                letter-spacing: 0.08em;
-                font-weight: 700;
-                opacity: 0.85;
+                font-size: 0.65rem;
+                letter-spacing: 0.1em;
+                font-weight: 600;
+                opacity: 0.75;
+                text-transform: uppercase;
             }
             .timeline-grid .timeline-session-subject {
-                font-size: 0.95rem;
-                font-weight: 700;
+                font-size: 1.15rem;
+                font-weight: 800;
+                line-height: 1.3;
+                text-align: center;
+                flex-grow: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
             .timeline-grid .timeline-session-meta {
-                font-size: 0.78rem;
-                opacity: 0.92;
+                font-size: 0.7rem;
+                opacity: 0.85;
+            }
+            .timeline-grid .timeline-session-bottom {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                flex-wrap: wrap;
+                font-size: 0.7rem;
+                opacity: 0.85;
+            }
+            .timeline-grid .timeline-session-bottom > span:not(:last-child)::after {
+                content: "•";
+                margin-left: 8px;
+                opacity: 0.6;
             }
             .timeline-grid .timeline-session-actions {
                 opacity: 0;
@@ -434,15 +456,17 @@
                      style="grid-column: {{ $columnIndex }}; grid-row: {{ $session['gridRowStart'] }} / {{ $session['gridRowEnd'] }}; background: {{ $session['background'] }}; color: {{ $session['textColor'] }}; justify-self: center; width: 95%;">
                     <div class="timeline-session-type">{{ $session['typeLabel'] }}</div>
                     <div class="timeline-session-subject">{{ $session['matiere'] }}</div>
-                    @if($session['enseignant'])
-                        <div class="timeline-session-meta"><i class="fas fa-user-tie me-1"></i>{{ $session['enseignant'] }}</div>
-                    @endif
-                    @if($session['salle'])
-                        <div class="timeline-session-meta"><i class="fas fa-door-open me-1"></i>{{ $session['salle'] }}</div>
-                    @endif
-                    @if($session['timeRange'])
-                        <div class="timeline-session-meta"><i class="fas fa-clock me-1"></i>{{ $session['timeRange'] }}</div>
-                    @endif
+                    <div class="timeline-session-bottom">
+                        @if($session['enseignant'])
+                            <span><i class="fas fa-user-tie me-1"></i>{{ $session['enseignant'] }}</span>
+                        @endif
+                        @if($session['salle'])
+                            <span><i class="fas fa-door-open me-1"></i>{{ $session['salle'] }}</span>
+                        @endif
+                        @if($session['timeRange'])
+                            <span><i class="fas fa-clock me-1"></i>{{ $session['timeRange'] }}</span>
+                        @endif
+                    </div>
                     @if($session['notes'])
                         <div class="timeline-session-meta">{{ Str::limit($session['notes'], 80) }}</div>
                     @endif
@@ -513,21 +537,25 @@
                             @php $cell = $pdfCells[$daySlug][$row['index']]; @endphp
                             <td class="timetable-session-cell" rowspan="{{ $cell['rowspan'] }}">
                                 <div class="tt-session type-{{ $cell['type'] }}" style="background: {{ $cell['background'] }}; color: {{ $cell['textColor'] }};">
-                                    <div class="tt-session-type" style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85;">
+                                    <div class="tt-session-type" style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.75;">
                                         {{ $cell['typeLabel'] }}
                                     </div>
-                                    <div class="tt-session-subject">{{ $cell['matiere'] }}</div>
-                                    @if($cell['enseignant'])
-                                        <div class="tt-session-teacher"><i class="fas fa-user-tie"></i> {{ $cell['enseignant'] }}</div>
-                                    @endif
-                                    @if($cell['salle'])
-                                        <div class="tt-session-room"><i class="fas fa-door-open"></i> {{ $cell['salle'] }}</div>
-                                    @endif
-                                    @if($cell['timeRange'])
-                                        <div class="tt-session-time"><i class="fas fa-clock"></i> {{ $cell['timeRange'] }}</div>
-                                    @endif
+                                    <div class="tt-session-subject" style="font-size: 1.05rem; font-weight: 800; text-align: center; margin: 4px 0;">{{ $cell['matiere'] }}</div>
+                                    <div class="tt-session-bottom" style="font-size: 0.7rem; opacity: 0.85; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                                        @if($cell['enseignant'])
+                                            <span><i class="fas fa-user-tie"></i> {{ $cell['enseignant'] }}</span>
+                                        @endif
+                                        @if($cell['salle'])
+                                            @if($cell['enseignant'])<span style="opacity: 0.6;">•</span>@endif
+                                            <span><i class="fas fa-door-open"></i> {{ $cell['salle'] }}</span>
+                                        @endif
+                                        @if($cell['timeRange'])
+                                            @if($cell['enseignant'] || $cell['salle'])<span style="opacity: 0.6;">•</span>@endif
+                                            <span><i class="fas fa-clock"></i> {{ $cell['timeRange'] }}</span>
+                                        @endif
+                                    </div>
                                     @if($cell['notes'])
-                                        <div class="tt-session-notes">{{ Str::limit($cell['notes'], 80) }}</div>
+                                        <div class="tt-session-notes" style="font-size: 0.7rem; opacity: 0.85; margin-top: 4px;">{{ Str::limit($cell['notes'], 80) }}</div>
                                     @endif
                                 </div>
                             </td>
