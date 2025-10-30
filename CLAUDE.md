@@ -595,6 +595,44 @@ $heuresEffectuees = $attendancesCount * $dureeMoyenne;
 
 ---
 
+### 🎨 Preview PDF Emploi du Temps - Grille CSS Proportionnelle (30 octobre)
+
+**Page** : `/esbtp/emploi-temps` - Preview PDF
+
+**Problème** : La preview PDF utilisait un tableau HTML standard où toutes les lignes avaient la même hauteur, rendant une séance de 30 minutes visuellement identique à une séance de 60 minutes.
+
+**Solution implémentée** : Remplacement complet du tableau HTML par CSS Grid (même structure que la version web).
+
+**Architecture** :
+- **Avant** : `<table>` avec rows fixes → toutes les périodes égales
+- **Après** : CSS Grid avec `grid-template-rows: repeat({{ $segmentCount }}, 1fr)` → hauteurs proportionnelles
+
+**Code** (`timetable-grid.blade.php` L522-586) :
+```html
+<div style="display: grid;
+            grid-template-columns: 80px repeat({{ count($normalizedDays) }}, 1fr);
+            grid-template-rows: 40px repeat({{ $segmentCount }}, 1fr);">
+
+    {{-- Sessions avec grid-row spanning --}}
+    <div style="grid-row: {{ $session['gridRowStart'] }} / {{ $session['gridRowEnd'] }};">
+        <!-- Contenu séance -->
+    </div>
+</div>
+```
+
+**Alignement labels d'heures** :
+- Utilisation de `transform: translateY(50%)` pour aligner les labels avec les lignes horizontales
+- Les labels étaient centrés dans leurs cellules (au-dessus de la ligne)
+- Le translateY les décale vers le bas pour toucher la ligne
+
+**Impact** :
+- Séances proportionnelles à leur durée réelle (30 min = moitié de 60 min)
+- Labels de minutes affichés (heures pleines + minutes importantes)
+- Labels alignés avec les lignes horizontales
+- Cohérence visuelle parfaite avec la version web timeline
+
+---
+
 ## 📝 TODO & Prochaines Étapes
 
 ### 🔴 Priorité Haute

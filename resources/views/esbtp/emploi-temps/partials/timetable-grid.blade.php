@@ -520,87 +520,67 @@
         @endforeach
     </div>
 @else
-    @php
-        // Use the same segments logic as web view (with important times)
-        $pdfRows = [];
-        foreach ($segments as $index => $segment) {
-            // Skip the last segment to match the segmentCount
-            if ($index >= $segmentCount) {
-                break;
-            }
-            $pdfRows[] = [
-                'index' => $index,
-                'label' => $segment['label'] ?? '',
-                'isFullHour' => $segment['isFullHour'] ?? false,
-                'isImportant' => $segment['isImportant'] ?? false,
-            ];
-        }
+    {{-- PDF: Use same CSS Grid structure as web timeline (without interactive elements) --}}
+    <div class="timetable-timeline timetable-variant-{{ $variant }}" style="display: grid; grid-template-columns: 80px repeat({{ count($normalizedDays) }}, 1fr); grid-template-rows: 40px repeat({{ $segmentCount }}, 1fr); gap: 0; border: 1px solid #e2e8f0; background: white; font-family: Arial, sans-serif;">
 
-        $pdfCells = [];
-        $pdfCovered = [];
-        foreach ($timelineSessions as $daySlug => $sessions) {
-            foreach ($sessions as $session) {
-                $rowIndex = max(0, $session['gridRowStart'] - 3);
-                $rowSpan = max(1, $session['rowspanSegments']);
-                $pdfCells[$daySlug][$rowIndex] = $session + ['rowspan' => $rowSpan];
-                for ($offset = 1; $offset < $rowSpan; $offset++) {
-                    $pdfCovered[$daySlug][$rowIndex + $offset] = true;
-                }
-            }
-        }
-    @endphp
+        {{-- Header: Time column + Day columns --}}
+        <div style="grid-column: 1; grid-row: 1; background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
+            Heure
+        </div>
+        @foreach($normalizedDays as $index => $dayInfo)
+            <div style="grid-column: {{ $index + 2 }}; grid-row: 1; background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; border-bottom: 1px solid #e2e8f0; @if($index < count($normalizedDays) - 1) border-right: 1px solid #e2e8f0; @endif">
+                {{ $dayInfo['label'] }}
+            </div>
+        @endforeach
 
-    <table class="timetable-grid timetable-variant-{{ $variant }}">
-        <thead>
-            <tr>
-                <th class="timetable-time-header">Heure</th>
-                @foreach($normalizedDays as $dayInfo)
-                    <th class="timetable-day-header">{{ $dayInfo['label'] }}</th>
+        {{-- Time labels (only important ones for PDF) --}}
+        @foreach($segments as $rowIndex => $segment)
+            @if($rowIndex >= $segmentCount)
+                @break
+            @endif
+            @if(($segment['isImportant'] ?? false) || ($segment['isFullHour'] ?? false))
+                <div style="grid-column: 1; grid-row: {{ $rowIndex + 2 }}; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; @if($segment['isFullHour']) font-weight: 700; color: #0f172a; @else font-weight: 500; color: #64748b; @endif border-right: 1px solid #e2e8f0; transform: translateY(50%);">
+                    {{ $segment['label'] }}
+                </div>
+            @endif
+        @endforeach
+
+        {{-- Grid lines (horizontal) --}}
+        @foreach($segments as $rowIndex => $segment)
+            @if($rowIndex >= $segmentCount)
+                @break
+            @endif
+            @if(($segment['isImportant'] ?? false) || ($segment['isFullHour'] ?? false))
+                @foreach($normalizedDays as $colIndex => $dayInfo)
+                    <div style="grid-column: {{ $colIndex + 2 }}; grid-row: {{ $rowIndex + 2 }}; border-bottom: 1px solid {{ $segment['isFullHour'] ? '#cbd5e1' : '#f1f5f9' }}; @if($colIndex < count($normalizedDays) - 1) border-right: 1px solid #e2e8f0; @endif"></div>
                 @endforeach
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($pdfRows as $row)
-                <tr>
-                    <td class="timetable-time-cell" style="padding-top: 2px; @if($row['isFullHour']) font-weight: 700; font-size: 0.85rem; color: #0f172a; @elseif($row['isImportant']) font-weight: 500; font-size: 0.75rem; color: #64748b; background: #f8fafc; @else font-weight: 600; font-size: 0.78rem; color: #475569; @endif">{{ $row['label'] }}</td>
-                    @foreach($normalizedDays as $dayInfo)
-                        @php
-                            $daySlug = $dayInfo['slug'];
-                        @endphp
-                        @if(isset($pdfCells[$daySlug][$row['index']]))
-                            @php $cell = $pdfCells[$daySlug][$row['index']]; @endphp
-                            <td class="timetable-session-cell" rowspan="{{ $cell['rowspan'] }}">
-                                <div class="tt-session type-{{ $cell['type'] }}" style="background: {{ $cell['background'] }}; color: {{ $cell['textColor'] }};">
-                                    <div class="tt-session-type" style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.75;">
-                                        {{ $cell['typeLabel'] }}
-                                    </div>
-                                    <div class="tt-session-subject" style="font-size: 1.05rem; font-weight: 800; text-align: center; margin: 4px 0;">{{ $cell['matiere'] }}</div>
-                                    <div class="tt-session-bottom" style="font-size: 0.7rem; opacity: 0.85; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-                                        @if($cell['enseignant'])
-                                            <span><i class="fas fa-user-tie"></i> {{ $cell['enseignant'] }}</span>
-                                        @endif
-                                        @if($cell['salle'])
-                                            @if($cell['enseignant'])<span style="opacity: 0.6;">•</span>@endif
-                                            <span><i class="fas fa-door-open"></i> {{ $cell['salle'] }}</span>
-                                        @endif
-                                        @if($cell['timeRange'])
-                                            @if($cell['enseignant'] || $cell['salle'])<span style="opacity: 0.6;">•</span>@endif
-                                            <span><i class="fas fa-clock"></i> {{ $cell['timeRange'] }}</span>
-                                        @endif
-                                    </div>
-                                    @if($cell['notes'])
-                                        <div class="tt-session-notes" style="font-size: 0.7rem; opacity: 0.85; margin-top: 4px;">{{ Str::limit($cell['notes'], 80) }}</div>
-                                    @endif
-                                </div>
-                            </td>
-                        @elseif(isset($pdfCovered[$daySlug][$row['index']]))
-                            @continue
-                        @else
-                            <td class="timetable-empty-cell"></td>
+            @endif
+        @endforeach
+
+        {{-- Sessions (positioned with grid-row-start/end for proportional height) --}}
+        @foreach($normalizedDays as $dayIndex => $dayInfo)
+            @php $columnIndex = $dayIndex + 2; $daySlug = $dayInfo['slug']; @endphp
+            @foreach($timelineSessions[$daySlug] ?? [] as $session)
+                <div style="grid-column: {{ $columnIndex }}; grid-row: {{ $session['gridRowStart'] }} / {{ $session['gridRowEnd'] }}; background: {{ $session['background'] }}; color: {{ $session['textColor'] }}; margin: 0 4px; border-radius: 4px; padding: 6px 8px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                    <div style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.75; margin-bottom: 2px;">
+                        {{ $session['typeLabel'] }}
+                    </div>
+                    <div style="font-size: 1rem; font-weight: 800; text-align: center; margin: 2px 0;">
+                        {{ $session['matiere'] }}
+                    </div>
+                    <div style="font-size: 0.65rem; opacity: 0.85; margin-top: 2px;">
+                        @if($session['enseignant'])
+                            <div><i class="fas fa-user-tie"></i> {{ $session['enseignant'] }}</div>
                         @endif
-                    @endforeach
-                </tr>
+                        @if($session['salle'])
+                            <div><i class="fas fa-door-open"></i> {{ $session['salle'] }}</div>
+                        @endif
+                        @if($session['timeRange'])
+                            <div><i class="fas fa-clock"></i> {{ $session['timeRange'] }}</div>
+                        @endif
+                    </div>
+                </div>
             @endforeach
-        </tbody>
-    </table>
+        @endforeach
+    </div>
 @endif
