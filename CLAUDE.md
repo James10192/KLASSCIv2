@@ -7570,6 +7570,378 @@ feat(classes): ajout export Excel/CSV/PDF avec filtres
 
 ---
 
-*Dernière mise à jour: 30 octobre 2025 - Export Classes Excel/CSV/PDF*
+## 🔄 Emploi du Temps - Filtrage AJAX sans Page Reload (30 Octobre 2025)
 
-*À implémenter : 30 octobre 2025*
+### Problématique Initiale
+
+La page `/esbtp/emploi-temps` avait plusieurs problèmes avec le filtrage AJAX :
+
+1. ❌ **Sélection filtres ne déclenchait rien** : Changer un select ne rafraîchissait pas les données automatiquement
+2. ❌ **Bouton "Appliquer les filtres" rechargeait la page** : Le bouton avait `type="submit"` causant un refresh complet
+3. ❌ **Filtres non persistants après F5** : Les filtres dans l'URL n'étaient pas réappliqués au chargement
+4. ❌ **JavaScript ne s'exécutait pas** : Utilisait `@section('scripts')` au lieu de `@push('scripts')`
+5. ❌ **Erreur 404 sur route refresh** : Route définie APRÈS `Route::resource` donc non accessible
+6. ❌ **Erreur DataTables** : `Cannot read properties of undefined (reading 'isDataTable')`
+
+### Solutions Implémentées
+
+#### 1. Fix Ordre des Routes - Route Statique AVANT Route::resource
+
+**Problème** : Laravel matche les routes dans l'ordre. `Route::resource` génère une route `{emploi_temp}` qui capturait "refresh".
+
+**Fichier** : `routes/web.php` (lignes 499-524)
+
+**Avant** :
+```php
+Route::resource('emploi-temps', ESBTPEmploiTempsController::class)
+    ->parameters(['emploi-temps' => 'emploi_temp'])
+    // ...
+
+// Route AJAX - définie APRÈS, donc jamais atteinte !
+Route::get('emploi-temps/refresh', [ESBTPEmploiTempsController::class, 'refresh'])
+    ->name('emploi-temps.refresh');
+```
+
+**Après** :
+```php
+// Route AJAX pour refresh - DOIT ÊTRE AVANT Route::resource
+Route::get('emploi-temps/refresh', [ESBTPEmploiTempsController::class, 'refresh'])
+    ->name('emploi-temps.refresh')
+    ->middleware(['permission:view_timetables']);
+
+Route::resource('emploi-temps', ESBTPEmploiTempsController::class)
+    ->parameters(['emploi-temps' => 'emploi_temp'])
+    // ...
+```
+
+**Règle Laravel** :
+> Les routes **statiques** (ex: `refresh`, `create`) doivent TOUJOURS être définies AVANT les routes avec **paramètres dynamiques** (ex: `{emploi_temp}`).
+
+#### 2. Fix Blade Directive - @push au lieu de @section
+
+**Problème** : Le layout utilise `@stack('scripts')` mais la vue utilisait `@section('scripts')`.
+
+**Fichier** : `resources/views/esbtp/emploi-temps/index.blade.php`
+
+**Avant** (ligne 709) :
+```blade
+@section('scripts')
+<script>
+    // Code JavaScript
+</script>
+@endsection
+```
+
+**Après** (ligne 709) :
+```blade
+@push('scripts')
+<script>
+    // Code JavaScript
+</script>
+@endpush
+```
+
+**Différence** :
+- `@yield('scripts')` + `@section('scripts')` : Un seul bloc
+- `@stack('scripts')` + `@push('scripts')` : Accumule plusieurs blocs
+
+Le layout `app.blade.php` utilise `@stack('scripts')` donc toutes les vues doivent utiliser `@push`.
+
+#### 3. Pattern AJAX - Suivi de classes.index
+
+**Fichier** : `resources/views/esbtp/emploi-temps/index.blade.php` (lignes 762-880)
+
+**Ordre d'implémentation** :
+
+1. **Définir fonction `fetchEmploisTempsData()` EN PREMIER**
+2. **Initialiser Select2 APRÈS**
+3. **Ajouter event listeners natifs sur tous les selects**
+4. **Listener bouton "Appliquer les filtres"**
+5. **Empêcher soumission formulaire**
+
+**Code complet** :
+```javascript
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Fonction fetch AVANT tout
+    function fetchEmploisTempsData() {
+        const form = document.getElementById('filterForm');
+        const formData = new FormData(form);
+        const params = new URLSearchParams(formData);
+
+        console.log('🔄 Fetching emplois temps with params:', Object.fromEntries(params));
+        showOverlay();
+
+        const targetUrl = `{{ route("esbtp.emploi-temps.refresh") }}?${params.toString()}`;
+
+        fetch(targetUrl, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erreur lors du chargement des emplois du temps.');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                document.getElementById('cardsContainer').innerHTML = data.html_cards;
+                document.getElementById('tableBody').innerHTML = data.html_table;
+
+                // Reinitialize DataTable if needed
+                if (tableView.checked && typeof $ !== 'undefined' && typeof $.fn.dataTable !== 'undefined') {
+                    if ($.fn.dataTable.isDataTable('#emploiTempsTable')) {
+                        $('#emploiTempsTable').DataTable().destroy();
+                    }
+                    initializeDataTable();
+                }
+
+                // Update URL
+                const newUrl = new URL(window.location);
+                params.forEach((value, key) => {
+                    if (value) {
+                        newUrl.searchParams.set(key, value);
+                    } else {
+                        newUrl.searchParams.delete(key);
+                    }
+                });
+                history.pushState({}, '', newUrl);
+
+                console.log('✅ Refresh completed: ' + data.count + ' emplois temps');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Fetch error:', error);
+            alert('Erreur de connexion au serveur: ' + error.message);
+        })
+        .finally(() => {
+            hideOverlay();
+        });
+    }
+
+    // 2. Initialiser Select2 APRÈS fonction
+    if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
+        $('.select2').select2({
+            theme: 'bootstrap-5',
+            width: '100%',
+            placeholder: 'Sélectionner une option',
+            allowClear: true
+        });
+    }
+
+    // 3. Event listeners natifs sur TOUS les selects
+    const form = document.getElementById('filterForm');
+    const filterInputs = form.querySelectorAll('select');
+
+    filterInputs.forEach(function(input) {
+        input.addEventListener('change', function() {
+            console.log('🔄 Filter changed:', this.id || this.name, '=', this.value);
+            fetchEmploisTempsData();
+        });
+    });
+
+    // 4. Listener bouton
+    document.getElementById('applyFiltersBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        console.log('🔄 Apply filters button clicked');
+        fetchEmploisTempsData();
+    });
+
+    // 5. Empêcher submit formulaire
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('🔄 Form submit prevented');
+        fetchEmploisTempsData();
+        return false;
+    });
+});
+```
+
+**Pourquoi ça fonctionne** :
+- Select2 déclenche l'événement natif `change` sur le `<select>` original
+- Pas besoin d'événements Select2-spécifiques (`select2:select`, etc.)
+- Pattern identique à `classes.index` (référence utilisateur)
+
+#### 4. Changement Type Bouton
+
+**Fichier** : `resources/views/esbtp/emploi-temps/index.blade.php` (ligne 633)
+
+**Avant** :
+```html
+<button type="submit" class="btn-acasi primary">
+```
+
+**Après** :
+```html
+<button type="button" id="applyFiltersBtn" class="btn-acasi primary">
+```
+
+**Impact** : Empêche la soumission HTML native du formulaire.
+
+#### 5. Filtres Persistants après F5
+
+**Fichier** : `app/Http/Controllers/ESBTPEmploiTempsController.php` (lignes 37-99)
+
+**Modification méthode `index()`** :
+
+```php
+public function index(Request $request)
+{
+    $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+    $emploisTempsQuery = ESBTPEmploiTemps::with(['classe.filiere', 'classe.niveau', 'seances']);
+
+    if ($anneeEnCours) {
+        $emploisTempsQuery->where('annee_universitaire_id', $anneeEnCours->id);
+    }
+
+    // Appliquer les filtres depuis l'URL
+    if ($request->filled('filiere_id')) {
+        $emploisTempsQuery->whereHas('classe', function($q) use ($request) {
+            $q->where('filiere_id', $request->filiere_id);
+        });
+    }
+
+    if ($request->filled('niveau_id')) {
+        $emploisTempsQuery->whereHas('classe', function($q) use ($request) {
+            $q->where('niveau_etude_id', $request->niveau_id);
+        });
+    }
+
+    if ($request->filled('classe_id')) {
+        $emploisTempsQuery->where('classe_id', $request->classe_id);
+    }
+
+    if ($request->filled('status')) {
+        if ($request->status === 'active') {
+            $emploisTempsQuery->where('is_active', true);
+        } elseif ($request->status === 'inactive') {
+            $emploisTempsQuery->where('is_active', false);
+        }
+    }
+
+    if ($request->filled('is_current')) {
+        if ($request->is_current === '1' || $request->is_current === 'true') {
+            $emploisTempsQuery->where('is_current', true);
+        } elseif ($request->is_current === '0' || $request->is_current === 'false') {
+            $emploisTempsQuery->where('is_current', false);
+        }
+    }
+
+    if ($request->filled('semaine')) {
+        $dates = explode('|', $request->semaine);
+        if (count($dates) === 2) {
+            $emploisTempsQuery->where('date_debut', $dates[0])
+                  ->where('date_fin', $dates[1]);
+        }
+    }
+
+    $emploisTemps = $emploisTempsQuery->orderBy('date_debut', 'desc')
+                                     ->orderBy('created_at', 'desc')
+                                     ->get();
+    // ...
+}
+```
+
+**Résultat** : Blade peut utiliser `{{ request('filiere_id') == $value ? 'selected' : '' }}` pour pré-sélectionner.
+
+#### 6. Fix Erreur DataTables
+
+**Problème** : `$.fn.dataTable` pouvait être `undefined` si jQuery/DataTables pas encore chargé.
+
+**Fichier** : `resources/views/esbtp/emploi-temps/index.blade.php`
+
+**Ligne 731 - Dans `toggleView()`** :
+```javascript
+// AVANT
+if (!$.fn.dataTable.isDataTable('#emploiTempsTable')) {
+
+// APRÈS
+if (typeof $ !== 'undefined' && typeof $.fn.dataTable !== 'undefined') {
+    if (!$.fn.dataTable.isDataTable('#emploiTempsTable')) {
+```
+
+**Ligne 801 - Dans `fetchEmploisTempsData()`** :
+```javascript
+// AVANT
+if (tableView.checked && $.fn.dataTable.isDataTable('#emploiTempsTable')) {
+
+// APRÈS
+if (tableView.checked && typeof $ !== 'undefined' && typeof $.fn.dataTable !== 'undefined') {
+    if ($.fn.dataTable.isDataTable('#emploiTempsTable')) {
+```
+
+**Impact** : Plus d'erreur "Cannot read properties of undefined".
+
+### Workflow Final Fonctionnel
+
+```
+1. Page charge
+   ↓
+2. JavaScript s'exécute (@push monte dans @stack)
+   ↓
+3. Event listeners attachés à TOUS les selects
+   ↓
+4. User change filtre (ex: semaine)
+   ↓
+5. Select2 déclenche 'change' natif
+   ↓
+6. fetchEmploisTempsData() appelé
+   ↓
+7. AJAX GET /esbtp/emploi-temps/refresh?semaine=...
+   ↓
+8. Controller refresh() applique filtres + retourne JSON
+   ↓
+9. JavaScript remplace cardsContainer et tableBody
+   ↓
+10. URL mise à jour (history.pushState)
+   ↓
+11. User fait F5
+   ↓
+12. index() applique filtres depuis URL
+   ↓
+13. Selects pré-sélectionnés via {{ request('field') }}
+```
+
+### Tests de Validation
+
+| Test | Attendu | Résultat |
+|------|---------|----------|
+| Changer filtre "Semaine" | AJAX refresh sans reload | ✅ Fonctionne |
+| Clic "Appliquer les filtres" | AJAX refresh sans reload | ✅ Fonctionne |
+| Console logs | 🔄 Filter changed, 🔄 Fetching, ✅ Refresh completed | ✅ Visibles |
+| F5 après filtrage | Filtres persistent | ✅ Fonctionne |
+| Toggle vue cards/table | DataTable initialisé sans erreur | ✅ Fonctionne |
+
+### Fichiers Modifiés
+
+1. ✅ `routes/web.php` (L499-524) - Route refresh AVANT Route::resource
+2. ✅ `app/Http/Controllers/ESBTPEmploiTempsController.php` (L37-99) - Méthode index() applique filtres URL
+3. ✅ `resources/views/esbtp/emploi-temps/index.blade.php` :
+   - L709, L883 : `@push('scripts')` au lieu de `@section('scripts')`
+   - L633 : Bouton `type="button"` avec id
+   - L731 : Vérification jQuery/DataTables dans toggleView()
+   - L801 : Vérification jQuery/DataTables dans fetchEmploisTempsData()
+   - L762-880 : Pattern AJAX complet suivant classes.index
+
+### Références
+
+- **Pattern source** : `resources/views/esbtp/classes/index.blade.php` (lignes 314-495)
+- **Documentation** : Section "Refresh AJAX partiel" dans CLAUDE.md
+- **Layout** : `resources/views/layouts/app.blade.php` (ligne 3176) utilise `@stack('scripts')`
+
+### Leçon Apprise
+
+> **Ordre des routes Laravel** : Les routes statiques DOIVENT être définies AVANT les routes avec paramètres dynamiques.
+>
+> **Blade scripts** : Toujours vérifier si le layout utilise `@stack` ou `@yield` pour adapter la vue.
+>
+> **Select2 events** : Utiliser les événements natifs `change` au lieu des événements Select2-spécifiques pour simplicité.
+
+---
+
+*Dernière mise à jour: 30 octobre 2025 - Emploi du Temps AJAX Filtering*

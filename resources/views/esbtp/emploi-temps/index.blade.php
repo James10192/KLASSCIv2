@@ -482,86 +482,7 @@
                     <div class="card-body">
                         <!-- Vue en cards (par défaut) -->
                         <div id="cardsContainer" class="emplois-cards-container">
-                            @forelse($emploisTemps as $emploiTemps)
-                                <div class="emploi-card {{ $emploiTemps->is_active ? 'active' : '' }}">
-                                    <div class="emploi-card-header">
-                                        <h6 class="emploi-card-title">
-                                            <i class="fas fa-graduation-cap me-2"></i>
-                                            {{ $emploiTemps->classe->name ?? 'Classe non définie' }}
-                                        </h6>
-                                        <div class="emploi-status-badges">
-                                            @if($emploiTemps->is_active)
-                                                <span class="badge-moderne success">Actif</span>
-                                            @else
-                                                <span class="badge-moderne secondary">Inactif</span>
-                                            @endif
-                                            @if(optional($emploiTemps)->is_current)
-                                                <span class="badge-moderne info">Courant</span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="emploi-card-body">
-                                        <div class="emploi-info-grid">
-                                            <div class="emploi-info-item">
-                                                <div class="emploi-info-label">Filière</div>
-                                                <div class="emploi-info-value">{{ $emploiTemps->classe->filiere->name ?? 'Non définie' }}</div>
-                                            </div>
-                                            <div class="emploi-info-item">
-                                                <div class="emploi-info-label">Niveau</div>
-                                                <div class="emploi-info-value">{{ $emploiTemps->classe->niveau->name ?? 'Non défini' }}</div>
-                                            </div>
-                                            <div class="emploi-info-item">
-                                                <div class="emploi-info-label">Année</div>
-                                                <div class="emploi-info-value">{{ Str::limit($emploiTemps->annee->name ?? 'Non définie', 15) }}</div>
-                                            </div>
-                                            <div class="emploi-info-item">
-                                                <div class="emploi-info-label">Période</div>
-                                                <div class="emploi-info-value">
-                                                    @if($emploiTemps->semestre == 'Semestre 1')
-                                                        S1
-                                                    @elseif($emploiTemps->semestre == 'Semestre 2')
-                                                        S2
-                                                    @else
-                                                        Année
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="emploi-actions">
-                                            <a href="{{ route('esbtp.emploi-temps.show', $emploiTemps->id) }}" 
-                                               class="btn btn-sm btn-outline-primary" title="Voir">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <a href="{{ route('esbtp.emploi-temps.edit', $emploiTemps->id) }}" 
-                                               class="btn btn-sm btn-outline-warning" title="Modifier">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <form action="{{ route('esbtp.emploi-temps.destroy', $emploiTemps->id) }}" 
-                                                  method="POST" style="display: inline;" 
-                                                  onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet emploi du temps ?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                            @empty
-                                <div class="empty-state-card">
-                                    <div class="text-center py-5">
-                                        <i class="fas fa-calendar-times fa-4x text-muted mb-4"></i>
-                                        <h5 class="text-muted mb-2">Aucun emploi du temps trouvé</h5>
-                                        <p class="text-muted mb-4">Créez votre premier emploi du temps pour commencer.</p>
-                                        <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn btn-primary">
-                                            <i class="fas fa-plus me-2"></i>Créer un emploi du temps
-                                        </a>
-                                    </div>
-                                </div>
-                            @endforelse
+                            @include('esbtp.emploi-temps.partials.cards', ['emploisTemps' => $emploisTemps])
                         </div>
 
                         <!-- Vue tableau (masquée par défaut) -->
@@ -575,101 +496,13 @@
                                     <th class="col-niveau">Niveau</th>
                                     <th class="col-annee">Année universitaire</th>
                                     <th class="col-periode">Période</th>
+                                    <th class="col-dates">Dates</th>
                                     <th class="col-statut">Statut</th>
                                     <th class="col-actions">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                    @forelse($emploisTemps as $emploiTemps)
-                                        <tr>
-                                            <td class="col-classe">{{ $emploiTemps->classe->name ?? 'Non définie' }}</td>
-                                            <td class="col-filiere">{{ $emploiTemps->classe->filiere->name ?? 'Non définie' }}</td>
-                                            <td class="col-niveau">{{ $emploiTemps->classe->niveau->name ?? 'Non défini' }}</td>
-                                            <td class="col-annee">{{ $emploiTemps->annee->name ?? 'Non définie' }}</td>
-                                            <td class="col-periode">
-                                                @if($emploiTemps->semestre == 'Semestre 1')
-                                                    <span class="badge-moderne primary">Semestre 1</span>
-                                                @elseif($emploiTemps->semestre == 'Semestre 2')
-                                                    <span class="badge-moderne primary">Semestre 2</span>
-                                                @else
-                                                    <span class="badge-moderne primary">Année complète</span>
-                                                @endif
-                                            </td>
-                                            <td class="col-statut">
-                                                @if($emploiTemps->is_active)
-                                                    <span class="badge-moderne success">Actif</span>
-                                                @else
-                                                    <span class="badge-moderne secondary">Inactif</span>
-                                                @endif
-                                                @if(optional($emploiTemps)->is_current)
-                                                    <span class="badge-moderne info">Courant</span>
-                                                @endif
-                                            </td>
-                                            <td class="col-actions">
-                                                <div class="btn-group-moderne">
-                                                    <a href="{{ route('esbtp.emploi-temps.show', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-moderne info" title="Voir">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('edit_timetables'))
-                                                    <a href="{{ route('esbtp.emploi-temps.edit', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-moderne warning" title="Modifier">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    @endif
-                                                    @if(auth()->user()->hasRole('superAdmin') && auth()->user()->can('delete_timetables'))
-                                                    <button type="button" class="btn-moderne danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $emploiTemps->id }}" title="Supprimer">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                    @endif
-                                                </div>
-
-                                            @if(auth()->user()->hasRole('superAdmin') && auth()->user()->can('delete_timetables'))
-                                            <!-- Modal de confirmation de suppression -->
-                                            <div class="modal fade" id="deleteModal{{ $emploiTemps->id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ $emploiTemps->id }}" aria-hidden="true">
-                                                <div class="modal-dialog">
-                                                    <div class="modal-content">
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title" id="deleteModalLabel{{ $emploiTemps->id }}">Confirmation de suppression</h5>
-                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                        </div>
-                                                        <div class="modal-body">
-                                                            <div class="alert alert-warning">
-                                                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                                                <strong>Attention :</strong> Cette action est irréversible.
-                                                            </div>
-                                                            <p>Êtes-vous sûr de vouloir supprimer cet emploi du temps ?</p>
-                                                            <p><strong>Classe :</strong> {{ $emploiTemps->classe->name ?? 'Non définie' }}</p>
-                                                            <p><strong>Année universitaire :</strong> {{ $emploiTemps->annee->name ?? 'Non définie' }}</p>
-                                                            <p class="text-danger"><strong>Attention :</strong> Cette action supprimera également toutes les séances de cours associées à cet emploi du temps.</p>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                                            <form action="{{ route('esbtp.emploi-temps.destroy', ['emploi_temp' => $emploiTemps->id]) }}" method="POST">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                <button type="submit" class="btn btn-danger">
-                                                                    <i class="fas fa-trash me-2"></i> Supprimer
-                                                                </button>
-                                                            </form>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="7" class="text-center">
-                                                <div class="py-5">
-                                                    <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
-                                                    <p class="mb-0">Aucun emploi du temps n'a été créé.</p>
-                                                    <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn-acasi primary mt-3">
-                                                        <i class="fas fa-plus-circle me-1"></i>Créer un emploi du temps
-                                                    </a>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforelse
+                            <tbody id="tableBody">
+                                    @include('esbtp.emploi-temps.partials.table-rows', ['emploisTemps' => $emploisTemps])
                                 </tbody>
                             </table>
                             </div>
@@ -713,6 +546,48 @@
                         </div>
 
                         <div class="mb-3">
+                            <label for="classe_id" class="form-label">Classe</label>
+                            <select class="form-select select2" id="classe_id" name="classe_id">
+                                <option value="">Toutes les classes</option>
+                                @foreach($classes as $classe)
+                                    <option value="{{ $classe->id }}" {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
+                                        {{ $classe->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="semaine" class="form-label">
+                                <i class="fas fa-calendar-week me-1"></i>Semaine
+                            </label>
+                            <select class="form-select" id="semaine" name="semaine">
+                                <option value="">Toutes les semaines</option>
+                                @php
+                                    // Récupérer toutes les plages de dates distinctes des emplois du temps
+                                    $semaines = \App\Models\ESBTPEmploiTemps::select('date_debut', 'date_fin')
+                                        ->whereNotNull('date_debut')
+                                        ->whereNotNull('date_fin')
+                                        ->distinct()
+                                        ->orderBy('date_debut', 'desc')
+                                        ->get()
+                                        ->map(function($emploi) {
+                                            return [
+                                                'value' => $emploi->date_debut . '|' . $emploi->date_fin,
+                                                'label' => \Carbon\Carbon::parse($emploi->date_debut)->format('d/m/Y') . ' - ' . \Carbon\Carbon::parse($emploi->date_fin)->format('d/m/Y')
+                                            ];
+                                        })
+                                        ->unique('value');
+                                @endphp
+                                @foreach($semaines as $semaine)
+                                    <option value="{{ $semaine['value'] }}" {{ request('semaine') == $semaine['value'] ? 'selected' : '' }}>
+                                        {{ $semaine['label'] }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
                             <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 8px;">
                                 <label for="annee_id" class="form-label mb-0" style="font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Universitaire Courante</label>
                                 <button type="button" class="btn btn-link btn-sm p-0" data-bs-toggle="modal" data-bs-target="#yearChangeModal" style="font-size: 12px; text-decoration: none;">
@@ -737,17 +612,25 @@
                         </div>
 
                         <div class="mb-3">
+                            <label for="is_current" class="form-label">Emploi du temps courant</label>
+                            <select class="form-select" id="is_current" name="is_current">
+                                <option value="">Tous</option>
+                                <option value="1" {{ request('is_current') == '1' ? 'selected' : '' }}>Courant uniquement</option>
+                                <option value="0" {{ request('is_current') == '0' ? 'selected' : '' }}>Non courant</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="status" class="form-label">Statut</label>
                             <select class="form-select" id="status" name="status">
                                 <option value="">Tous les statuts</option>
                                 <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Actifs uniquement</option>
                                 <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactifs uniquement</option>
-                                <option value="current" {{ request('status') == 'current' ? 'selected' : '' }}>Courants uniquement</option>
                             </select>
                         </div>
 
                             <div class="d-grid gap-2">
-                                <button type="submit" class="btn-acasi primary">
+                                <button type="button" id="applyFiltersBtn" class="btn-acasi primary">
                                     <i class="fas fa-search me-2"></i>Appliquer les filtres
                                 </button>
                                 <a href="{{ route('esbtp.emploi-temps.index') }}" class="btn-acasi secondary">
@@ -823,7 +706,7 @@
     </div>
 </div>
 
-@section('scripts')
+@push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Basculer entre les vues
@@ -842,10 +725,13 @@
                 cardsContainer.style.display = 'none';
                 tableContainer.style.display = 'block';
                 localStorage.setItem('emploiTempsViewMode', 'table');
-                
+
                 // Réinitialiser DataTable si pas encore initialisé
-                if (!$.fn.dataTable.isDataTable('#emploiTempsTable')) {
-                    initializeDataTable();
+                // Vérifier que jQuery et DataTables sont chargés
+                if (typeof $ !== 'undefined' && typeof $.fn.dataTable !== 'undefined') {
+                    if (!$.fn.dataTable.isDataTable('#emploiTempsTable')) {
+                        initializeDataTable();
+                    }
                 }
             }
         }
@@ -876,16 +762,127 @@
             return table;
         }
 
-        // Initialize Select2 for enhanced selects
-        $('.select2').select2({
-            theme: 'bootstrap-5',
-            width: '100%'
+        // AJAX Refresh Function
+        function fetchEmploisTempsData() {
+            const form = document.getElementById('filterForm');
+            const formData = new FormData(form);
+            const params = new URLSearchParams(formData);
+
+            console.log('🔄 Fetching emplois temps with params:', Object.fromEntries(params));
+
+            // Show loading overlay
+            showOverlay();
+
+            const targetUrl = `{{ route("esbtp.emploi-temps.refresh") }}?${params.toString()}`;
+
+            fetch(targetUrl, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erreur lors du chargement des emplois du temps.');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Update cards container
+                    document.getElementById('cardsContainer').innerHTML = data.html_cards;
+
+                    // Update table body
+                    document.getElementById('tableBody').innerHTML = data.html_table;
+
+                    // Reinitialize DataTable if in table view
+                    if (tableView.checked && typeof $ !== 'undefined' && typeof $.fn.dataTable !== 'undefined') {
+                        if ($.fn.dataTable.isDataTable('#emploiTempsTable')) {
+                            $('#emploiTempsTable').DataTable().destroy();
+                        }
+                        initializeDataTable();
+                    }
+
+                    // Update URL without reload
+                    const newUrl = new URL(window.location);
+                    params.forEach((value, key) => {
+                        if (value) {
+                            newUrl.searchParams.set(key, value);
+                        } else {
+                            newUrl.searchParams.delete(key);
+                        }
+                    });
+                    history.pushState({}, '', newUrl);
+
+                    console.log('✅ Refresh completed: ' + data.count + ' emplois temps');
+                } else {
+                    console.error('❌ Error:', data.message);
+                    alert('Erreur lors du chargement des données');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Fetch error:', error);
+                alert('Erreur de connexion au serveur: ' + error.message);
+            })
+            .finally(() => {
+                hideOverlay();
+            });
+        }
+
+        // Helper functions for overlay
+        function showOverlay() {
+            if (document.getElementById('loadingOverlay')) return;
+            const overlay = document.createElement('div');
+            overlay.id = 'loadingOverlay';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);z-index:9999;display:flex;align-items:center;justify-content:center;';
+            overlay.innerHTML = '<div style="background:white;padding:20px;border-radius:8px;"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
+            document.body.appendChild(overlay);
+        }
+
+        function hideOverlay() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) overlay.remove();
+        }
+
+        // Initialize Select2 AFTER defining event listeners
+        if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
+            $('.select2').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: 'Sélectionner une option',
+                allowClear: true
+            });
+        }
+
+        // Get all filter elements (same pattern as classes.index)
+        const form = document.getElementById('filterForm');
+        const filterInputs = form.querySelectorAll('select');
+
+        // Add change listeners to ALL select elements (Select2 will trigger 'change' event on original element)
+        filterInputs.forEach(function(input) {
+            input.addEventListener('change', function() {
+                console.log('🔄 Filter changed:', this.id || this.name, '=', this.value);
+                fetchEmploisTempsData();
+            });
         });
 
-        // Submit filter form when selects change
-        $('#filiere_id, #niveau_id, #annee_id, #status').change(function() {
-            $('#filterForm').submit();
+        // Event listener for "Appliquer les filtres" button
+        document.getElementById('applyFiltersBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('🔄 Apply filters button clicked');
+            fetchEmploisTempsData();
+        });
+
+        // Prevent default form submission (safety fallback)
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🔄 Form submit prevented');
+            fetchEmploisTempsData();
+            return false;
         });
     });
 </script>
-@endsection
+@endpush
