@@ -1005,4 +1005,192 @@ class ESBTPClasseController extends Controller
 
         return Excel::download(new \App\Exports\ClasseEtudiantsExport($classe, $etudiants, $anneeCourante, $etablissement), $filename);
     }
+
+    /**
+     * Récupérer toutes les classes filtrées (pour les exports)
+     */
+    private function getAllFilteredClasses(Request $request)
+    {
+        $query = ESBTPClasse::with(['filiere', 'niveau', 'annee']);
+
+        // Appliquer les mêmes filtres que dans index()
+        if ($request->filled('filiere_id')) {
+            $query->where('filiere_id', $request->filiere_id);
+        }
+
+        if ($request->filled('niveau_id')) {
+            $query->where('niveau_etude_id', $request->niveau_id);
+        }
+
+        if ($request->filled('statut')) {
+            $query->where('is_active', $request->statut === 'active');
+        }
+
+        if ($request->filled('capacite')) {
+            if ($request->capacite === 'disponible') {
+                $query->whereRaw('places_totales > (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status != "annulée")');
+            } elseif ($request->capacite === 'pleine') {
+                $query->whereRaw('places_totales <= (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status != "annulée")');
+            }
+        }
+
+        // Recherche par nom ou code
+        if ($request->filled('search')) {
+            $search = '%' . $request->search . '%';
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', $search)
+                  ->orWhere('code', 'like', $search);
+            });
+        }
+
+        // Récupérer TOUS les résultats (pas de pagination)
+        return $query->orderBy('name')->get();
+    }
+
+    /**
+     * Exporter les classes au format Excel (XLSX)
+     */
+    public function exportExcel(Request $request)
+    {
+        try {
+            // Récupérer TOUTES les classes filtrées
+            $classes = $this->getAllFilteredClasses($request);
+
+            // Récupérer l'année courante
+            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+            // Préparer les filtres pour l'export
+            $filters = [
+                'search' => $request->input('search'),
+                'filiere_id' => $request->input('filiere_id'),
+                'niveau_id' => $request->input('niveau_id'),
+                'statut' => $request->input('statut'),
+                'capacite' => $request->input('capacite'),
+            ];
+
+            // Créer l'export
+            $export = new \App\Exports\ClassesExport($classes, $anneeCourante, $filters);
+
+            // Générer le nom du fichier
+            $filename = 'classes_' . now()->format('Y-m-d_His') . '.xlsx';
+
+            \Log::info('Export Excel classes généré', [
+                'user_id' => auth()->id(),
+                'total_classes' => $classes->count(),
+                'filename' => $filename
+            ]);
+
+            return Excel::download($export, $filename);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur export Excel classes: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'Erreur lors de l\'export Excel: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Exporter les classes au format CSV
+     */
+    public function exportCsv(Request $request)
+    {
+        try {
+            // Récupérer TOUTES les classes filtrées
+            $classes = $this->getAllFilteredClasses($request);
+
+            // Récupérer l'année courante
+            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+            // Préparer les filtres
+            $filters = [
+                'search' => $request->input('search'),
+                'filiere_id' => $request->input('filiere_id'),
+                'niveau_id' => $request->input('niveau_id'),
+                'statut' => $request->input('statut'),
+                'capacite' => $request->input('capacite'),
+            ];
+
+            // Créer l'export
+            $export = new \App\Exports\ClassesExport($classes, $anneeCourante, $filters);
+
+            // Générer le nom du fichier
+            $filename = 'classes_' . now()->format('Y-m-d_His') . '.csv';
+
+            \Log::info('Export CSV classes généré', [
+                'user_id' => auth()->id(),
+                'total_classes' => $classes->count(),
+                'filename' => $filename
+            ]);
+
+            return Excel::download($export, $filename, \Maatwebsite\Excel\Excel::CSV, [
+                'Content-Type' => 'text/csv',
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur export CSV classes: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'Erreur lors de l\'export CSV: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Exporter les classes au format PDF
+     */
+    public function exportPdf(Request $request)
+    {
+        try {
+            // Récupérer TOUTES les classes filtrées
+            $classes = $this->getAllFilteredClasses($request);
+
+            // Récupérer l'année courante
+            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+            // Préparer les filtres
+            $filters = [
+                'search' => $request->input('search'),
+                'filiere_id' => $request->input('filiere_id'),
+                'niveau_id' => $request->input('niveau_id'),
+                'statut' => $request->input('statut'),
+                'capacite' => $request->input('capacite'),
+            ];
+
+            // Récupérer les paramètres de l'école
+            $settings = [
+                'nom' => Setting::get('school_name', 'ESBTP-yAKRO'),
+                'adresse' => Setting::get('school_address', ''),
+                'telephone' => Setting::get('school_phone', ''),
+                'email' => Setting::get('school_email', ''),
+                'logo' => Setting::get('school_logo', '')
+            ];
+
+            \Log::info('Export PDF classes généré', [
+                'user_id' => auth()->id(),
+                'total_classes' => $classes->count(),
+            ]);
+
+            // Générer le PDF
+            $pdf = PDF::loadView('esbtp.classes.export-pdf', [
+                'classes' => $classes,
+                'anneeCourante' => $anneeCourante,
+                'filters' => $filters,
+                'settings' => $settings,
+                'dateExport' => now()
+            ]);
+
+            // Télécharger le PDF
+            $filename = 'classes_' . now()->format('Y-m-d_His') . '.pdf';
+            return $pdf->download($filename);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur export PDF classes: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'Erreur lors de l\'export PDF: ' . $e->getMessage());
+        }
+    }
 }

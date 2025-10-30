@@ -7043,3 +7043,533 @@ feat(api-lms): enrichir endpoint /enseignants avec classes, matières et volume 
 ---
 
 *Dernière mise à jour: 25 octobre 2025 - API LMS Enseignants Enrichi*
+
+---
+
+## 🎓 TODO: Blocage Classes Pleines - Inscriptions (30 Octobre 2025)
+
+### Problématique
+
+Le système de blocage des classes pleines n'est **pas cohérent** entre les deux pages d'inscription :
+
+| Page | Route | Affichage Places | Blocage Submit |
+|------|-------|------------------|----------------|
+| **Réinscription** | `/esbtp/reinscription/{id}/finaliser` | ✅ Oui | ✅ Oui |
+| **Inscription** | `/esbtp/inscriptions/create` | ❓ À vérifier | ❌ Non |
+
+### État Actuel : Page Réinscription ✅
+
+**Page** : `resources/views/esbtp/reinscription/create.blade.php`
+
+**Fonctionnalités implémentées** :
+1. ✅ **Affichage capacité** (ligne 226) :
+   ```html
+   <div id="nouvelleClassePlacesInfo" class="mt-2"></div>
+   ```
+   Affiche : `"Places disponibles: 15 / 30"` avec alertes colorées
+
+2. ✅ **Blocage bouton submit** (lignes 492-498) :
+   ```javascript
+   if (available <= 0) {
+       alertClass = 'alert-danger';
+       message = '<strong>Aucune place disponible !</strong> (0/30)';
+       message += '<br><small>Veuillez sélectionner une autre classe...</small>';
+       setReinscriptionButtonState(false, 'Classe complète...');
+   }
+   ```
+
+3. ✅ **Fonction blocage** (lignes 296-306) :
+   ```javascript
+   function setReinscriptionButtonState(enabled, message = '') {
+       btnConfirmer.disabled = !enabled;  // Désactive le bouton
+       if (message) {
+           btnConfirmer.setAttribute('title', message);  // Tooltip
+       }
+   }
+   ```
+
+4. ✅ **Endpoint backend** :
+   ```
+   GET /esbtp/classes/{id}/available-places
+   Controller: ESBTPEtudiantController::getAvailablePlaces()
+   ```
+
+5. ✅ **Seuils d'alerte** :
+   - Vert : > 5 places
+   - Jaune : ≤ 5 places
+   - Rouge + Blocage : 0 places
+
+### À Implémenter : Page Inscription ❌
+
+**Page** : `resources/views/esbtp/inscriptions/create.blade.php`
+
+**Statut actuel** : À vérifier
+
+**Objectif** : Implémenter le **même système** que la page réinscription
+
+**Tâches** :
+1. [ ] Vérifier si affichage capacité existe déjà
+2. [ ] Vérifier si blocage submit existe déjà
+3. [ ] Si manquant, implémenter :
+   - Affichage `<div id="placesInfo">` avec alertes colorées
+   - Fonction `setSubmitButtonState(enabled, message)`
+   - Appel AJAX à `/esbtp/classes/{id}/available-places`
+   - Blocage bouton submit quand `available_places <= 0`
+   - Tooltip au survol du bouton désactivé
+
+**Questions à clarifier** :
+- Classes affichées en dropdown `<select>` ou en cards ?
+- Utilise-t-elle le composant `class-selector.blade.php` ?
+- Y a-t-il déjà un affichage partiel de capacité ?
+
+### Architecture Backend (Déjà Implémenté)
+
+**Endpoint** : `GET /esbtp/classes/{id}/available-places`
+
+**Controller** : `app/Http/Controllers/ESBTPEtudiantController.php` (lignes 1639-1655)
+
+```php
+public function getAvailablePlaces($id)
+{
+    $classe = ESBTPClasse::find($id);
+    if (!$classe) {
+        return response()->json([
+            'available_places' => 0,
+            'capacity' => 0
+        ], 404);
+    }
+
+    $availablePlaces = $this->classeManagementService->getAvailablePlaces($id);
+
+    return response()->json([
+        'available_places' => $availablePlaces,
+        'capacity' => $classe->places_totales ?? 0
+    ]);
+}
+```
+
+**Service** : `app/Services/ClasseManagementService.php`
+
+**Calcul** :
+```php
+places_disponibles = places_totales - (inscriptions actives année courante avec status='active')
+```
+
+### Workflow Utilisateur Attendu
+
+**Page Inscription** :
+1. Utilisateur ouvre `/esbtp/inscriptions/create`
+2. Sélectionne filière + niveau → charge classes disponibles
+3. **Pour chaque classe** :
+   - Affiche ratio "15 / 30" places disponibles
+   - Alerte verte/jaune/rouge selon seuil
+4. Utilisateur sélectionne une classe
+5. **Si classe pleine** :
+   - Bouton "Enregistrer l'inscription" désactivé (`disabled=true`)
+   - Tooltip au survol : "Classe complète (0/30 places). Sélectionnez une autre classe."
+6. **Si classe disponible** :
+   - Bouton activé
+   - Soumission du formulaire possible
+
+### Cohérence Système
+
+**Objectif** : Les deux pages doivent avoir **exactement le même comportement** :
+- ✅ Affichage identique des places (format, couleurs, seuils)
+- ✅ Blocage identique du submit (désactivation + tooltip)
+- ✅ Messages utilisateur identiques
+- ✅ Même endpoint backend
+
+### Fichiers à Modifier (Estimation)
+
+**Si inscription n'a pas le système** :
+1. `resources/views/esbtp/inscriptions/create.blade.php` :
+   - Ajout `<div id="placesInfo">`
+   - Fonction JavaScript `fetchAvailablePlaces(classeId)`
+   - Fonction `setSubmitButtonState(enabled, message)`
+   - Event listener sur sélection classe
+
+**Si inscription utilise class-selector.blade.php** :
+1. `resources/views/components/forms/class-selector.blade.php` :
+   - Vérifier si blocage existe déjà
+   - Si non, ajouter fonction blocage
+
+### Tests à Effectuer
+
+**Après implémentation** :
+- [ ] Classe avec 15/30 places → Alerte verte, bouton activé
+- [ ] Classe avec 3/30 places → Alerte jaune, bouton activé
+- [ ] Classe avec 0/30 places → Alerte rouge, bouton désactivé
+- [ ] Tooltip au survol du bouton désactivé
+- [ ] Changement de classe → état bouton mis à jour
+- [ ] Formulaire ne se soumet pas quand classe pleine
+
+### Notes Importantes
+
+**Backend déjà prêt** ✅ :
+- Endpoint `/available-places` fonctionnel
+- Service `ClasseManagementService` avec calcul correct
+- Aucune modification backend nécessaire
+
+**Frontend à aligner** ❌ :
+- Page inscription doit copier la logique de réinscription
+- Réutiliser les mêmes fonctions JavaScript si possible
+- Garder les mêmes messages et seuils
+
+### Priorité
+
+🔴 **Haute** - Empêche les inscriptions dans des classes pleines (intégrité données)
+
+### Estimation
+
+⏱️ **1-2 heures** (si simple ajout JavaScript dans inscription/create)
+
+---
+
+## 📊 Export Classes - Excel, CSV, PDF (30 Octobre 2025)
+
+### Vue d'ensemble
+
+Fonctionnalité d'export complète pour la page `/esbtp/classes` permettant d'exporter la liste des classes avec leurs statistiques en trois formats : Excel (.xlsx), CSV, et PDF.
+
+**Architecture** : Suivre le même pattern que `paiements.index` pour la cohérence du système.
+
+### Fonctionnalités Implémentées
+
+#### 1. Formats d'Export
+
+**Excel (.xlsx)** :
+- 10 colonnes : N°, Nom classe, Code, Filière, Niveau, Effectif actuel, Capacité, Places restantes, Taux remplissage (%), Statut
+- Header stylisé avec nom école et année universitaire courante
+- Section statistiques : Total classes, Effectif total, Capacité totale, Taux moyen remplissage
+- Section filtres appliqués
+- Styles : Couleurs, bordures, alternance de lignes, auto-filter
+- Lignes automatiquement dimensionnées (ShouldAutoSize)
+
+**CSV** :
+- Mêmes 10 colonnes que Excel
+- Format simple délimité par virgules
+- Compatible import Excel/Google Sheets
+
+**PDF** :
+- Layout professionnel avec header école + logo
+- Année universitaire courante affichée
+- 4 KPI cards : Total classes, Effectif total, Capacité totale, Taux moyen remplissage
+- Tableau 8 colonnes (compact pour PDF)
+- Section filtres appliqués
+- Footer avec date de génération
+- Design aligné sur `liste-appel-pdf` (bleu #0453cb)
+
+#### 2. Gestion des Filtres
+
+**Filtres supportés** :
+- `filiere_id` : Filtrer par filière
+- `niveau_id` : Filtrer par niveau d'étude
+- `statut` : Actives/Inactives
+- `capacite` : Disponibles/Pleines
+- `search` : Recherche nom ou code classe
+
+**Comportement** :
+- Export respecte TOUS les filtres actifs
+- Export TOUTES les classes (pas de pagination)
+- Paramètres passés via query string
+- Affichage des filtres appliqués dans l'export
+
+#### 3. Interface Utilisateur
+
+**Bouton Export** :
+- Dropdown "Exporter" dans la section filtres
+- Classe Bootstrap : `dropup` (s'ouvre vers le haut)
+- 3 options avec icônes :
+  - Excel (.xlsx) - Icône verte `fa-file-excel`
+  - CSV - Icône bleue `fa-file-csv`
+  - PDF - Icône rouge `fa-file-pdf`
+
+**Placement** :
+- Même ligne que boutons "Filtrer" et "Réinitialiser"
+- Après le bouton "Réinitialiser"
+- Avant le compteur "X classe(s) trouvée(s)"
+
+**UX** :
+- Dropup pour éviter conflit avec cartes KPI en dessous
+- Clic sur format → téléchargement direct
+- Nom fichier : `classes_YYYY-MM-DD_HHmmss.{ext}`
+
+### Architecture Technique
+
+#### 1. Controller (ESBTPClasseController.php)
+
+**Méthode helper** : `getAllFilteredClasses(Request $request)` (lignes 1012-1048)
+```php
+private function getAllFilteredClasses(Request $request)
+{
+    $query = ESBTPClasse::with(['filiere', 'niveau', 'annee']);
+
+    // Apply filters (same logic as index())
+    if ($request->filled('filiere_id')) {
+        $query->where('filiere_id', $request->filiere_id);
+    }
+    if ($request->filled('niveau_id')) {
+        $query->where('niveau_etude_id', $request->niveau_id);
+    }
+    // ... autres filtres
+
+    return $query->orderBy('name')->get();
+}
+```
+
+**Méthodes d'export** :
+- `exportExcel(Request $request)` (lignes 1053-1092)
+- `exportCsv(Request $request)` (lignes 1097-1138)
+- `exportPdf(Request $request)` (lignes 1143-1195)
+
+**Logique commune** :
+1. Récupérer classes filtrées via `getAllFilteredClasses()`
+2. Récupérer année universitaire courante
+3. Préparer données (filtres, stats)
+4. Retourner download Excel/CSV ou view PDF
+
+#### 2. Export Class (ClassesExport.php)
+
+**Localisation** : `app/Exports/ClassesExport.php`
+
+**Interfaces implémentées** :
+- `FromCollection` : Source de données
+- `WithHeadings` : En-têtes colonnes
+- `WithMapping` : Transformation données
+- `WithTitle` : Nom feuille Excel
+- `ShouldAutoSize` : Largeur colonnes auto
+- `WithEvents` : Styling Excel
+
+**Propriétés** :
+```php
+private $classes;              // Collection classes
+private $anneeCourante;        // Année universitaire
+private $filters;              // Filtres appliqués
+private $rowCounter = 0;       // Compteur lignes
+```
+
+**Méthodes principales** :
+- `collection()` : Retourne classes
+- `headings()` : 10 en-têtes colonnes
+- `map($classe)` : Transforme classe en tableau
+- `title()` : "Liste des Classes"
+- `registerEvents()` : Styling Excel complet
+
+**Calculs dynamiques** :
+```php
+$effectifActuel = $classe->inscriptions()->where('status', '!=', 'annulée')->count();
+$capaciteMax = $classe->places_totales ?? 0;
+$placesRestantes = max(0, $capaciteMax - $effectifActuel);
+$tauxRemplissage = $capaciteMax > 0 ? round(($effectifActuel / $capaciteMax) * 100, 2) : 0;
+```
+
+**Styling Excel** :
+- Header : Fond bleu (#0453cb), texte blanc, gras
+- Statistiques : Fond gris clair, texte gras
+- Filtres : Fond jaune clair
+- Données : Alternance blanc/gris clair
+- Bordures sur toutes cellules
+- Auto-filter sur en-têtes
+
+#### 3. PDF Template (export-pdf.blade.php)
+
+**Localisation** : `resources/views/esbtp/classes/export-pdf.blade.php`
+
+**Structure** :
+1. Header : Nom école + logo (si disponible)
+2. Titre : "Liste des Classes"
+3. Année universitaire : `{{ $anneeCourante ? $anneeCourante->name : 'Année en cours' }}`
+4. KPI Cards (4) : Total classes, Effectif total, Capacité totale, Taux moyen
+5. Tableau : 8 colonnes (compact)
+6. Filtres appliqués : Section bas de page
+7. Footer : Date génération
+
+**Colonnes tableau** (8 au lieu de 10 pour largeur PDF) :
+- N°
+- Nom de la classe
+- Filière
+- Niveau
+- Effectif
+- Capacité
+- Places restantes
+- Statut
+
+**Styles** :
+- Couleur primaire : #0453cb (bleu KLASSCI)
+- Police : Arial, sans-serif
+- Taille page : A4 portrait
+- Margins : 15mm
+
+#### 4. Routes (web.php)
+
+**Lignes 1734-1737** :
+```php
+// Routes pour export de la liste des classes
+Route::get('/esbtp/classes-export/excel', [ESBTPClasseController::class, 'exportExcel'])
+    ->name('esbtp.classes.export.excel');
+Route::get('/esbtp/classes-export/csv', [ESBTPClasseController::class, 'exportCsv'])
+    ->name('esbtp.classes.export.csv');
+Route::get('/esbtp/classes-export/pdf', [ESBTPClasseController::class, 'exportPdf'])
+    ->name('esbtp.classes.export.pdf');
+```
+
+**Middleware** : `auth` (hérité du groupe parent)
+
+#### 5. JavaScript (classes/index.blade.php)
+
+**Fonction** : `exportClasses(format)` (lignes 535-573)
+
+**Workflow** :
+1. Récupérer paramètres URL courants (filtres)
+2. Construire URL export selon format
+3. Ajouter filtres à URL export
+4. Rediriger vers URL (déclenche download)
+
+```javascript
+function exportClasses(format) {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    let exportUrl = '';
+    switch(format) {
+        case 'excel':
+            exportUrl = '{{ route("esbtp.classes.export.excel") }}';
+            break;
+        case 'csv':
+            exportUrl = '{{ route("esbtp.classes.export.csv") }}';
+            break;
+        case 'pdf':
+            exportUrl = '{{ route("esbtp.classes.export.pdf") }}';
+            break;
+    }
+
+    const exportParams = new URLSearchParams();
+    if (urlParams.has('filiere_id')) exportParams.set('filiere_id', urlParams.get('filiere_id'));
+    if (urlParams.has('niveau_id')) exportParams.set('niveau_id', urlParams.get('niveau_id'));
+    // ... autres filtres
+
+    const finalUrl = exportParams.toString() ? `${exportUrl}?${exportParams.toString()}` : exportUrl;
+    window.location.href = finalUrl;
+}
+```
+
+### Données Exportées
+
+#### Statistiques Globales (affichées dans header Excel/PDF)
+
+```php
+$stats = [
+    'total_classes' => $classes->count(),
+    'effectif_total' => $classes->sum(function($classe) {
+        return $classe->inscriptions()->where('status', '!=', 'annulée')->count();
+    }),
+    'capacite_totale' => $classes->sum('places_totales'),
+    'taux_moyen' => // Calcul moyenne pondérée taux remplissage
+];
+```
+
+#### Par Classe
+
+| Colonne | Source | Calcul |
+|---------|--------|--------|
+| N° | Auto-incrémenté | `$rowCounter++` |
+| Nom classe | `classes.name` | Direct |
+| Code classe | `classes.code` | Direct |
+| Filière | `filieres.name` via relation | `$classe->filiere->name` |
+| Niveau | `niveaux.name` via relation | `$classe->niveau->name` |
+| Effectif actuel | Comptage inscriptions | `inscriptions()->where('status', '!=', 'annulée')->count()` |
+| Capacité | `classes.places_totales` | Direct |
+| Places restantes | Calculé | `max(0, capacite - effectif)` |
+| Taux remplissage | Calculé | `(effectif / capacite) * 100` |
+| Statut | `classes.is_active` | `'Active' : 'Inactive'` |
+
+### Règles Métier
+
+**Effectif actuel** :
+- Compte les inscriptions avec `status != 'annulée'`
+- Ignore les inscriptions annulées
+
+**Places restantes** :
+- Formule : `max(0, capacité - effectif)`
+- Minimum 0 (pas de valeurs négatives)
+
+**Taux de remplissage** :
+- Formule : `(effectif / capacité) * 100`
+- Arrondi à 2 décimales
+- 0% si capacité = 0
+
+**Année universitaire** :
+- Affichée dans header : année courante (`is_current = true`)
+- **PAS** une colonne (comme demandé)
+- Contexte global de l'export
+
+### Cohérence Système
+
+**Pattern identique à paiements.index** :
+- ✅ Méthode helper `getAllFiltered*()`
+- ✅ 3 méthodes d'export (Excel, CSV, PDF)
+- ✅ Dropdown avec 3 options
+- ✅ Fonction JavaScript `export*(format)`
+- ✅ Respect filtres via query params
+- ✅ Export complet (pas de pagination)
+- ✅ Statistiques dans header
+- ✅ Section filtres appliqués
+- ✅ Nom fichier avec timestamp
+
+### Tests Recommandés
+
+- [ ] Export Excel sans filtres → Toutes les classes
+- [ ] Export Excel avec filtre filière → Classes filière seulement
+- [ ] Export CSV avec filtres multiples → Fichier correct
+- [ ] Export PDF avec search → Recherche respectée
+- [ ] Calculs effectif/capacité → Valeurs correctes
+- [ ] Header Excel → Nom école + année courante
+- [ ] KPI PDF → Statistiques correctes
+- [ ] Dropup → Menu s'ouvre vers le haut (pas caché par KPI)
+
+### Fichiers Modifiés
+
+1. ✅ `app/Http/Controllers/ESBTPClasseController.php` (lignes 1012-1195)
+   - `getAllFilteredClasses()` - Helper
+   - `exportExcel()` - Export Excel
+   - `exportCsv()` - Export CSV
+   - `exportPdf()` - Export PDF
+
+2. ✅ `app/Exports/ClassesExport.php` (nouveau fichier)
+   - Classe export Excel/CSV complète
+   - 10 colonnes avec calculs
+   - Styling complet
+
+3. ✅ `resources/views/esbtp/classes/export-pdf.blade.php` (nouveau fichier)
+   - Template PDF professionnel
+   - 8 colonnes (compact)
+   - KPI cards + filtres
+
+4. ✅ `routes/web.php` (lignes 1734-1737)
+   - 3 routes export
+
+5. ✅ `resources/views/esbtp/classes/index.blade.php`
+   - Dropdown export (lignes 145-167) - `dropup` class
+   - Fonction JavaScript (lignes 535-573)
+
+### Commits
+
+```bash
+feat(classes): ajout export Excel/CSV/PDF avec filtres
+
+- Export 3 formats : Excel (.xlsx), CSV, PDF
+- 10 colonnes Excel/CSV : N°, Nom, Code, Filière, Niveau, Effectif, Capacité, Places, Taux, Statut
+- 8 colonnes PDF (compact) : N°, Nom, Filière, Niveau, Effectif, Capacité, Places, Statut
+- Header stylisé : Nom école + année universitaire courante
+- KPI cards : Total classes, Effectif total, Capacité totale, Taux moyen
+- Respect filtres : filiere_id, niveau_id, statut, capacite, search
+- Export complet (pas de pagination)
+- Pattern identique à paiements.index
+- Dropup pour éviter conflit avec cartes KPI
+- Fichiers: ESBTPClasseController (+4 méthodes), ClassesExport.php, export-pdf.blade.php, routes
+```
+
+---
+
+*Dernière mise à jour: 30 octobre 2025 - Export Classes Excel/CSV/PDF*
+
+*À implémenter : 30 octobre 2025*

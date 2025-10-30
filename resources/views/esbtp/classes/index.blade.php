@@ -134,13 +134,38 @@
                         </div>
                     </div>
                     
-                    <div style="display: flex; gap: var(--space-md); align-items: center;">
+                    <div style="display: flex; gap: var(--space-md); align-items: center; flex-wrap: wrap;">
                         <button type="submit" class="btn-acasi primary">
                             <i class="fas fa-search me-1"></i>Filtrer
                         </button>
                         <button type="button" id="reset-filters-btn" class="btn-acasi secondary">
                             <i class="fas fa-times me-1"></i>Réinitialiser
                         </button>
+
+                        <!-- Boutons d'export -->
+                        <div class="dropup" style="display: inline-block;">
+                            <button type="button" class="btn-acasi secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-download"></i>Exporter
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <a class="dropdown-item" href="#" onclick="exportClasses('excel'); return false;">
+                                        <i class="fas fa-file-excel text-success me-2"></i>Excel (.xlsx)
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="#" onclick="exportClasses('csv'); return false;">
+                                        <i class="fas fa-file-csv text-info me-2"></i>CSV
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="#" onclick="exportClasses('pdf'); return false;">
+                                        <i class="fas fa-file-pdf text-danger me-2"></i>PDF
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+
                         <div style="margin-left: auto; font-size: var(--text-small); color: var(--text-muted);">
                             <i class="fas fa-list me-1"></i><span id="classes-count">{{ $classes->count() }}</span> classe(s) trouvée(s)
                         </div>
@@ -506,5 +531,45 @@ $(document).ready(function() {
             updateLoadMoreButton(initialHasMore);
         }
     });
+
+    /**
+     * Fonction pour exporter les classes selon le format choisi
+     * @param {string} format - 'excel', 'csv' ou 'pdf'
+     */
+    function exportClasses(format) {
+        // Récupérer les paramètres de filtrage actuels depuis l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+
+        // Construction de l'URL d'export selon le format
+        let exportUrl = '';
+        switch(format) {
+            case 'excel':
+                exportUrl = '{{ route("esbtp.classes.export.excel") }}';
+                break;
+            case 'csv':
+                exportUrl = '{{ route("esbtp.classes.export.csv") }}';
+                break;
+            case 'pdf':
+                exportUrl = '{{ route("esbtp.classes.export.pdf") }}';
+                break;
+            default:
+                console.error('Format d\'export non reconnu:', format);
+                return;
+        }
+
+        // Ajouter les paramètres de filtrage à l'URL d'export
+        const exportParams = new URLSearchParams();
+        if (urlParams.has('filiere_id')) exportParams.set('filiere_id', urlParams.get('filiere_id'));
+        if (urlParams.has('niveau_id')) exportParams.set('niveau_id', urlParams.get('niveau_id'));
+        if (urlParams.has('statut')) exportParams.set('statut', urlParams.get('statut'));
+        if (urlParams.has('capacite')) exportParams.set('capacite', urlParams.get('capacite'));
+        if (urlParams.has('search')) exportParams.set('search', urlParams.get('search'));
+
+        // Construire l'URL finale avec les paramètres
+        const finalUrl = exportParams.toString() ? `${exportUrl}?${exportParams.toString()}` : exportUrl;
+
+        // Rediriger vers l'URL d'export (déclenche le téléchargement)
+        window.location.href = finalUrl;
+    }
 </script>
 @endpush

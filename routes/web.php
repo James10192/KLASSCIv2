@@ -496,6 +496,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // Routes pour les emplois du temps ESBTP
 
+            // Route AJAX pour refresh des emplois du temps avec filtres - DOIT ÊTRE AVANT Route::resource
+            Route::get('emploi-temps/refresh', [ESBTPEmploiTempsController::class, 'refresh'])
+                ->name('emploi-temps.refresh')
+                ->middleware(['permission:view_timetables']);
+
             // Routes pour les emplois du temps ESBTP
             Route::resource('emploi-temps', ESBTPEmploiTempsController::class)
                 ->parameters(['emploi-temps' => 'emploi_temp'])
@@ -1725,6 +1730,11 @@ Route::get('/esbtp/classes/{classe}/liste-appel/pdf', [ESBTPClasseController::cl
 Route::get('/esbtp/classes/{classe}/liste-complete', [ESBTPClasseController::class, 'listeComplete'])->name('esbtp.classes.liste-complete');
 Route::get('/esbtp/classes/{classe}/liste-complete/pdf', [ESBTPClasseController::class, 'listeCompletePDF'])->name('esbtp.classes.liste-complete.pdf');
 Route::get('/esbtp/classes/{classe}/liste-complete/excel', [ESBTPClasseController::class, 'listeCompleteExcel'])->name('esbtp.classes.liste-complete.excel');
+
+// Routes pour export de la liste des classes
+Route::get('/esbtp/classes-export/excel', [ESBTPClasseController::class, 'exportExcel'])->name('esbtp.classes.export.excel');
+Route::get('/esbtp/classes-export/csv', [ESBTPClasseController::class, 'exportCsv'])->name('esbtp.classes.export.csv');
+Route::get('/esbtp/classes-export/pdf', [ESBTPClasseController::class, 'exportPdf'])->name('esbtp.classes.export.pdf');
 
 // Route pour mettre à jour les matières d'une classe
 Route::post('/esbtp/classes/{classe}/update-matieres', [ESBTPClasseController::class, 'updateMatieres'])->name('esbtp.classes.update-matieres');
