@@ -111,6 +111,9 @@
 
     $occupiedGridRows = [];
 
+    // Collect all unique start and end times from sessions
+    $importantTimes = collect();
+
     foreach ($seancesCollection as $seance) {
         $startString = $normalizeTimeString($seance->heure_debut ?? null);
         $endString = $normalizeTimeString($seance->heure_fin ?? null);
@@ -120,12 +123,17 @@
 
         if ($startMinutes !== null) {
             $minMinutes = min($minMinutes, (int) floor($startMinutes / $minutesPerSegment) * $minutesPerSegment);
+            $importantTimes->push($startMinutes);
         }
 
         if ($endMinutes !== null) {
             $maxMinutes = max($maxMinutes, (int) ceil($endMinutes / $minutesPerSegment) * $minutesPerSegment);
+            $importantTimes->push($endMinutes);
         }
     }
+
+    // Get unique important times (start/end of sessions)
+    $importantTimes = $importantTimes->unique()->sort()->values();
 
     $totalRangeMinutes = max($minutesPerSegment, $maxMinutes - $minMinutes);
     $segmentCount = (int) ceil($totalRangeMinutes / $minutesPerSegment);
@@ -133,9 +141,16 @@
     $segments = [];
     for ($segment = 0; $segment <= $segmentCount; $segment++) {
         $minuteValue = $minMinutes + $segment * $minutesPerSegment;
+
+        // Show label for full hours OR if this is an important time (session start/end)
+        $isImportantTime = $importantTimes->contains($minuteValue);
+        $isFullHour = $minuteValue % 60 === 0;
+
         $segments[] = [
             'minutes' => $minuteValue,
-            'label' => $minuteValue % 60 === 0 ? sprintf('%02d:%02d', intdiv($minuteValue, 60), $minuteValue % 60) : null,
+            'label' => ($isFullHour || $isImportantTime) ? sprintf('%02d:%02d', intdiv($minuteValue, 60), $minuteValue % 60) : null,
+            'isFullHour' => $isFullHour,
+            'isImportant' => $isImportantTime,
         ];
     }
 
@@ -218,7 +233,7 @@
         $durationSegments = max(1, (int) ceil(($endMinutes - $startMinutes) / $minutesPerSegment));
         $durationSegments = min($durationSegments, max(1, $segmentCount - $relativeStart));
 
-        $gridRowStart = $relativeStart + 2;
+        $gridRowStart = $relativeStart + 3;
         $gridRowEnd = $gridRowStart + $durationSegments;
 
         $type = $seance->type ?? ESBTPSeanceCours::TYPE_COURSE;
@@ -272,7 +287,7 @@
 
     $daysCount = count($normalizedDays);
     $gridTemplateColumns = '80px repeat(' . $daysCount . ', 1fr)';
-    $gridTemplateRows = 'repeat(' . ($segmentCount + 1) . ', ' . $segmentHeight . 'px)';
+    $gridTemplateRows = 'auto 15px repeat(' . $segmentCount . ', ' . $segmentHeight . 'px)';
 
 @endphp
 
@@ -308,12 +323,25 @@
                 display: flex;
                 align-items: flex-start;
                 justify-content: flex-end;
-                padding: 6px 8px;
+                padding: 0 8px;
                 font-size: 0.82rem;
                 font-weight: 600;
                 color: #1e293b;
+                margin-top: 0.15em;  /* Descendre légèrement pour aligner avec les lignes */
+            }
+            .timeline-grid .timeline-hour-cell.full-hour {
+                font-weight: 700;
+                font-size: 0.88rem;
+                color: #0f172a;
+            }
+            .timeline-grid .timeline-hour-cell.minute-marker {
+                font-weight: 500;
+                font-size: 0.75rem;
+                color: #64748b;
+                opacity: 0.85;
                 background: #f8fafc;
                 border-right: 1px solid #e2e8f0;
+                margin-top: -0.15em;  /* Remonter pour aligner avec les lignes */
             }
             .timeline-grid .timeline-day-background {
                 position: relative;
@@ -417,7 +445,7 @@
         </div>
 
         @foreach($segments as $index => $segment)
-            <div class="timeline-hour-cell" style="grid-column: 1; grid-row: {{ $index + 2 }};">
+            <div class="timeline-hour-cell {{ ($segment['isFullHour'] ?? false) ? 'full-hour' : '' }} {{ ($segment['isImportant'] ?? false) && !($segment['isFullHour'] ?? false) ? 'minute-marker' : '' }}" style="grid-column: 1; grid-row: {{ $index + 3 }};">
                 {{ $segment['label'] ?? '' }}
             </div>
         @endforeach
@@ -427,7 +455,7 @@
                 $daySlug = $dayInfo['slug'];
                 $columnIndex = $dayIndexMap[$daySlug] ?? 2;
             @endphp
-            <div class="timeline-day-background" style="grid-column: {{ $columnIndex }}; grid-row: 2 / span {{ $segmentCount + 1 }};"></div>
+            <div class="timeline-day-background" style="grid-column: {{ $columnIndex }}; grid-row: 3 / span {{ $segmentCount }};"></div>
 
             @if($interactive && $emploiTemps)
                 @foreach($segments as $index => $segment)
@@ -437,14 +465,14 @@
                         if ($minuteValue % 60 !== 0) { continue; }
                         $timeString = sprintf('%02d:%02d', intdiv($minuteValue, 60), $minuteValue % 60);
                         $dayNumber = is_numeric($dayInfo['key']) ? $dayInfo['key'] : ($dayToNumber[strtolower($dayInfo['key'])] ?? ($dayToNumber[$daySlug] ?? 1));
-                        $rowIndex = $index + 2;
+                        $rowIndex = $index + 3;
                         if (($occupiedGridRows[$daySlug][$rowIndex] ?? false)) {
                             continue;
                         }
                     @endphp
                     <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id, 'jour' => $dayNumber, 'heure_debut' => $timeString]) }}"
                        class="timeline-slot-add"
-                       style="grid-column: {{ $columnIndex }}; grid-row: {{ $rowIndex }}; transform: translate(-50%, -50%); justify-self: center; align-self: center;"
+                       style="grid-column: {{ $columnIndex }}; grid-row: {{ $rowIndex }}; transform: translate(-50%, -8%); justify-self: center; align-self: center;"
                        title="Ajouter une séance">
                         <i class="fas fa-plus"></i>
                     </a>
@@ -453,7 +481,7 @@
 
             @foreach($timelineSessions[$daySlug] ?? [] as $session)
                 <div class="timeline-session type-{{ $session['type'] }}"
-                     style="grid-column: {{ $columnIndex }}; grid-row: {{ $session['gridRowStart'] }} / {{ $session['gridRowEnd'] }}; background: {{ $session['background'] }}; color: {{ $session['textColor'] }}; justify-self: center; width: 95%;">
+                     style="grid-column: {{ $columnIndex }}; grid-row: {{ $session['gridRowStart'] }} / {{ $session['gridRowEnd'] }}; background: {{ $session['background'] }}; color: {{ $session['textColor'] }}; justify-self: center; width: 95%; transform: translateY(12px);">
                     <div class="timeline-session-type">{{ $session['typeLabel'] }}</div>
                     <div class="timeline-session-subject">{{ $session['matiere'] }}</div>
                     <div class="timeline-session-bottom">
@@ -493,12 +521,18 @@
     </div>
 @else
     @php
+        // Use the same segments logic as web view (with important times)
         $pdfRows = [];
-        for ($segment = 0; $segment < $segmentCount; $segment++) {
-            $minuteValue = $minMinutes + $segment * $minutesPerSegment;
+        foreach ($segments as $index => $segment) {
+            // Skip the last segment to match the segmentCount
+            if ($index >= $segmentCount) {
+                break;
+            }
             $pdfRows[] = [
-                'index' => $segment,
-                'label' => $minuteValue % 60 === 0 ? sprintf('%02d:%02d', intdiv($minuteValue, 60), $minuteValue % 60) : '',
+                'index' => $index,
+                'label' => $segment['label'] ?? '',
+                'isFullHour' => $segment['isFullHour'] ?? false,
+                'isImportant' => $segment['isImportant'] ?? false,
             ];
         }
 
@@ -506,7 +540,7 @@
         $pdfCovered = [];
         foreach ($timelineSessions as $daySlug => $sessions) {
             foreach ($sessions as $session) {
-                $rowIndex = max(0, $session['gridRowStart'] - 2);
+                $rowIndex = max(0, $session['gridRowStart'] - 3);
                 $rowSpan = max(1, $session['rowspanSegments']);
                 $pdfCells[$daySlug][$rowIndex] = $session + ['rowspan' => $rowSpan];
                 for ($offset = 1; $offset < $rowSpan; $offset++) {
@@ -528,7 +562,7 @@
         <tbody>
             @foreach($pdfRows as $row)
                 <tr>
-                    <td class="timetable-time-cell">{{ $row['label'] }}</td>
+                    <td class="timetable-time-cell" style="padding-top: 2px; @if($row['isFullHour']) font-weight: 700; font-size: 0.85rem; color: #0f172a; @elseif($row['isImportant']) font-weight: 500; font-size: 0.75rem; color: #64748b; background: #f8fafc; @else font-weight: 600; font-size: 0.78rem; color: #475569; @endif">{{ $row['label'] }}</td>
                     @foreach($normalizedDays as $dayInfo)
                         @php
                             $daySlug = $dayInfo['slug'];
