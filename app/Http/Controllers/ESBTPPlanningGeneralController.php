@@ -305,15 +305,11 @@ class ESBTPPlanningGeneralController extends Controller
             $html .= '</div>';
             $html .= '</div>';
             
-            // Section assignation de professeurs avec checkboxes (plus intuitif que select multiple)
+            // Section assignation de professeurs avec tableau structuré
             $html .= '<div class="config-section teacher-config-section">';
             $html .= '<div class="d-flex justify-content-between align-items-center mb-2">';
             $html .= '<label class="config-label mb-0"><i class="fas fa-users"></i>Professeur(s) assigné(s)</label>';
-            $html .= '<button type="button" class="btn btn-sm btn-outline-primary toggle-all-teachers" data-matiere-id="' . $matiere->id . '">';
-            $html .= '<i class="fas fa-check-double me-1"></i>Tout sélectionner';
-            $html .= '</button>';
             $html .= '</div>';
-            $html .= '<div class="teacher-config teacher-checkboxes-container" data-matiere-id="' . $matiere->id . '">';
 
             // Récupérer les professeurs déjà assignés à cette matière
             $assignedTeachers = [];
@@ -336,22 +332,64 @@ class ESBTPPlanningGeneralController extends Controller
                 $html .= '<i class="fas fa-info-circle me-2"></i>Aucun enseignant disponible';
                 $html .= '</div>';
             } else {
+                // Champ de recherche
+                $html .= '<div class="teacher-search-wrapper mb-2" style="position: relative;">';
+                $html .= '<input type="text" class="form-control teacher-search-input" data-matiere-id="' . $matiere->id . '" placeholder="Rechercher un enseignant (nom ou spécialisation)..." style="padding-left: 35px; border-radius: 6px; border: 1px solid #ddd;">';
+                $html .= '<i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #999;"></i>';
+                $html .= '</div>';
+
+                // Conteneur du tableau
+                $html .= '<div class="teacher-table-container" data-matiere-id="' . $matiere->id . '" style="max-height: 400px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 6px;">';
+
+                // Tableau HTML
+                $html .= '<table class="table table-sm table-hover mb-0 teacher-selection-table" style="margin-bottom: 0 !important;">';
+
+                // Header avec checkbox global
+                $html .= '<thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 10; border-bottom: 2px solid #dee2e6;">';
+                $html .= '<tr>';
+                $html .= '<th style="width: 50px; text-align: center; padding: 10px;">';
+                $html .= '<input type="checkbox" class="teacher-select-all-checkbox" data-matiere-id="' . $matiere->id . '" title="Tout sélectionner / Tout désélectionner">';
+                $html .= '</th>';
+                $html .= '<th style="padding: 10px;">Nom complet</th>';
+                $html .= '<th style="padding: 10px; width: 30%;">Spécialisation</th>';
+                $html .= '</tr>';
+                $html .= '</thead>';
+
+                // Body
+                $html .= '<tbody>';
                 foreach ($teachers as $teacher) {
                     $teacherName = $teacher->user ? $teacher->user->name : $teacher->matricule;
-                    $specialization = $teacher->specialization ? ' (' . $teacher->specialization . ')' : '';
+                    $specialization = $teacher->specialization ?: '-';
                     $checked = in_array($teacher->id, $assignedTeachers) ? ' checked' : '';
 
-                    $html .= '<div class="teacher-checkbox-item">';
-                    $html .= '<label class="teacher-checkbox-label">';
+                    $html .= '<tr class="teacher-row" data-teacher-name="' . htmlspecialchars(strtolower($teacherName)) . '" data-teacher-spec="' . htmlspecialchars(strtolower($specialization)) . '">';
+
+                    // Colonne checkbox
+                    $html .= '<td style="text-align: center; padding: 8px;">';
                     $html .= '<input type="checkbox" name="teachers[' . $matiere->id . '][]" value="' . $teacher->id . '"' . $checked . ' class="teacher-checkbox">';
-                    $html .= '<span class="teacher-checkbox-custom"></span>';
-                    $html .= '<span class="teacher-name">' . htmlspecialchars($teacherName) . '</span>';
-                    if ($specialization) {
-                        $html .= '<span class="teacher-spec">' . htmlspecialchars($specialization) . '</span>';
-                    }
-                    $html .= '</label>';
-                    $html .= '</div>';
+                    $html .= '</td>';
+
+                    // Colonne nom
+                    $html .= '<td style="padding: 8px;">';
+                    $html .= '<strong>' . htmlspecialchars($teacherName) . '</strong>';
+                    $html .= '</td>';
+
+                    // Colonne spécialisation
+                    $html .= '<td style="padding: 8px; color: #666;">';
+                    $html .= htmlspecialchars($specialization);
+                    $html .= '</td>';
+
+                    $html .= '</tr>';
                 }
+                $html .= '</tbody>';
+                $html .= '</table>';
+
+                $html .= '</div>'; // Fin teacher-table-container
+
+                // Message aucun résultat (caché par défaut)
+                $html .= '<div class="teacher-no-results text-muted text-center py-3" data-matiere-id="' . $matiere->id . '" style="display: none;">';
+                $html .= '<i class="fas fa-search me-2"></i>Aucun enseignant trouvé';
+                $html .= '</div>';
             }
 
             // Compteur dynamique
@@ -360,8 +398,7 @@ class ESBTPPlanningGeneralController extends Controller
             $html .= '<span class="count-text">Sélectionnez un ou plusieurs enseignants</span>';
             $html .= '</div>';
 
-            $html .= '</div>';
-            $html .= '</div>';
+            $html .= '</div>'; // Fin teacher-config-section
             
             $html .= '</div>';
             $html .= '</div>';

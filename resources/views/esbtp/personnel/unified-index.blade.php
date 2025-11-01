@@ -655,7 +655,12 @@
                                         {{ strtoupper(substr($teacher->user->name, 0, 2)) }}
                                     </div>
                                     <div class="personnel-info">
-                                        <div class="personnel-name">{{ $teacher->user->name }}</div>
+                                        <div class="personnel-name">
+                                            @if($teacher->title)
+                                                <span style="font-weight: 500;">{{ $teacher->title }}</span>
+                                            @endif
+                                            {{ $teacher->user->name }}
+                                        </div>
                                         <div class="personnel-details">
                                             <div class="personnel-detail">
                                                 <i class="fas fa-envelope"></i>

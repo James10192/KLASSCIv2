@@ -118,7 +118,83 @@
         border-top: 1px solid var(--border);
         margin-top: var(--space-xl);
     }
-    
+
+    /* Header principal amélioré */
+    .main-header {
+        background: linear-gradient(135deg, #0453cb, #1b64d4);
+        color: white;
+        padding: var(--space-xl);
+        border-radius: var(--radius-large);
+        margin-bottom: var(--space-xl);
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--shadow-elevated);
+    }
+
+    .main-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 100px;
+        height: 200%;
+        background: rgba(255,255,255,0.05);
+        transform: skewX(-15deg);
+    }
+
+    .header-content {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .header-left h1 {
+        font-size: 2rem;
+        margin: 0 0 var(--space-xs);
+        font-weight: 700;
+        color: white;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .header-left p {
+        margin: 0;
+        opacity: 0.95;
+        font-size: 1.1rem;
+        color: rgba(255,255,255,0.95);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .header-actions {
+        display: flex;
+        gap: var(--space-md);
+    }
+
+    .btn-header {
+        padding: var(--space-sm) var(--space-lg);
+        border: 2px solid rgba(255,255,255,0.4);
+        border-radius: var(--radius-full);
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        background: rgba(255,255,255,0.1);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .btn-header:hover {
+        background: rgba(255,255,255,0.25);
+        border-color: rgba(255,255,255,0.6);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        color: white;
+        text-decoration: none;
+    }
+
     @media (max-width: 768px) {
         .form-grid {
             grid-template-columns: 1fr;
@@ -130,13 +206,21 @@
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <div class="card-moderne">
-            <div class="card-header-moderne">
-                <h1 class="section-title">
-                    <i class="fas fa-user-tie me-2"></i>
-                    Créer un Coordinateur
-                </h1>
-                <p class="section-subtitle">Ajout d'un nouveau coordinateur pédagogique</p>
+        <div class="main-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>
+                        <i class="fas fa-user-tie me-2"></i>
+                        Créer un Coordinateur
+                    </h1>
+                    <p>Ajout d'un nouveau coordinateur pédagogique</p>
+                </div>
+                <div class="header-actions">
+                    <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn-header">
+                        <i class="fas fa-arrow-left"></i>
+                        Retour à la liste
+                    </a>
+                </div>
             </div>
         </div>
 

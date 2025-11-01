@@ -899,6 +899,151 @@ $formatHeures = function($heures) {
 
 ---
 
+### 📊 Planning Général - Interface Tableau Professeurs avec Recherche Floue (1er novembre)
+
+**Page** : `/esbtp/planning-general`
+
+**Problème** : Interface d'assignation des professeurs peu ergonomique et recherche stricte.
+
+#### Améliorations Implémentées
+
+**1. Tableau HTML structuré** (au lieu de liste checkboxes)
+
+**Fichier** : `app/Http/Controllers/ESBTPPlanningGeneralController.php` (lignes 308-401)
+
+**Structure** :
+```html
+<table class="table table-hover teacher-selection-table">
+  <thead style="position: sticky; top: 0;">
+    <tr>
+      <th><input type="checkbox" class="teacher-select-all-checkbox" /></th>
+      <th>Nom complet</th>
+      <th>Spécialisation</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="teacher-row" data-teacher-name="jean kouassi" data-teacher-spec="mathematics">
+      <td><input type="checkbox" name="teachers[42][]" value="1" /></td>
+      <td><strong>Jean KOUASSI</strong></td>
+      <td>Mathematics</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+**Avantages** :
+- Header sticky (visible au scroll)
+- Max-height 400px avec scroll automatique
+- 3 colonnes : Checkbox | Nom complet | Spécialisation
+
+**2. Checkbox header (remplace bouton "Tout sélectionner")**
+
+**Fichier** : `resources/views/esbtp/planning-general/index.blade.php` (lignes 2414-2433)
+
+**Comportement** :
+- Coché → Sélectionne TOUTES les lignes VISIBLES (après filtrage)
+- Décoché → Désélectionne TOUTES les lignes VISIBLES
+- État indéterminé (`indeterminate`) → Quelques lignes cochées
+- Respecte le filtre de recherche
+
+**3. Recherche floue (Fuzzy Search) avec tolérance 80%**
+
+**Fichier** : `resources/views/esbtp/planning-general/index.blade.php` (lignes 2449-2603)
+
+**Algorithmes** :
+- **Levenshtein Distance** : Calcule le nombre d'opérations (insertion, suppression, substitution) pour transformer une chaîne
+- **Similarité en %** : `((maxLen - distance) / maxLen) * 100`
+- **Normalisation** : Supprime accents, majuscules, caractères spéciaux
+- **4 niveaux de matching** :
+  1. Correspondance exacte (substring)
+  2. Correspondance par mots (chaque mot ≥ 80%)
+  3. Similarité globale (≥ 80%)
+  4. Inversion de noms ("Jean KOUASSI" = "KOUASSI Jean")
+
+**Exemples** :
+```javascript
+// Tolérance fautes d'orthographe
+"kouasi" → trouve "KOUASSI Jean" (85.7% similarité) ✅
+"jea kouas" → trouve "KOUASSI Jean" (84% similarité) ✅
+
+// Inversion de noms
+"jean kouassi" → trouve "KOUASSI Jean" ✅
+
+// Recherche spécialisation
+"math" → trouve spé "Mathematics" ✅
+"physic" → trouve spé "Physics" (85.7% similarité) ✅
+```
+
+**Configuration seuil** :
+```javascript
+const matchName = fuzzyMatch(searchText, teacherName, 80);  // 80% = tolérance
+```
+
+**4. Logs console détaillés**
+
+**Fichier** : `resources/views/esbtp/planning-general/index.blade.php`
+
+**Logs disponibles** :
+```javascript
+// Checkbox header
+console.log('🔍 Header checkbox clicked - Matiere:', matiereId);
+console.log('  👁️ Visible rows before:', visibleCheckboxes.length);
+console.log('  ✅ Checked before/after:', checkedBefore, checkedAfter);
+
+// Recherche floue
+console.log('🔍 Fuzzy search - Query:', searchText);
+console.log('  🔎 Checking:', teacherName);
+console.log('  ✅ Exact match / Word match / Fuzzy match (85.7%)');
+console.log('  ❌ No match - Similarity: 45.5%');
+console.log('  📊 Search results:', visibleCount, 'rows visible');
+
+// Compteur
+console.log('📊 updateTeacherCount - Matiere:', matiereId);
+console.log('  📈 Total teachers / 👁️ Visible / ✅ Selected');
+console.log('  🔲 Header: unchecked / ✅ checked / ➖ indeterminate');
+```
+
+**5. Fixes CSS checkboxes invisibles**
+
+**Fichier** : `resources/views/esbtp/planning-general/index.blade.php` (lignes 1271-1290)
+
+**Problème** : Ancien CSS cachait toutes les checkboxes (`opacity: 0`)
+
+**Solution** : Sélecteur spécifique
+```css
+/* Ancien système seulement */
+.teacher-checkbox-label .teacher-checkbox {
+    opacity: 0;
+}
+
+/* Nouveau tableau - visibles */
+.teacher-selection-table .teacher-checkbox {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+}
+```
+
+#### Fichiers Modifiés
+
+| Fichier | Lignes | Modifications |
+|---------|--------|---------------|
+| `ESBTPPlanningGeneralController.php` | 308-401 | Génération tableau HTML + recherche |
+| `index.blade.php` (view) | 2345-2603 | JavaScript fuzzy search + checkbox header |
+| `index.blade.php` (CSS) | 1271-1290 | Fix checkboxes invisibles |
+| `index.blade.php` (debug) | 3173-3193 | Logs boutons matières |
+
+#### Avantages
+
+- Interface moderne et professionnelle
+- Recherche tolérante (fautes d'orthographe, inversion noms)
+- Checkbox header intuitif (select all/deselect all)
+- Debug facile avec logs console détaillés
+- Performance optimisée (filtrage client-side)
+- UX cohérente (sélection lignes visibles uniquement)
+
+---
+
 ## 📝 TODO & Prochaines Étapes
 
 ### 🔴 Priorité Haute

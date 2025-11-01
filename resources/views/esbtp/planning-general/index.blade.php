@@ -1268,11 +1268,25 @@
         transform: translateX(3px);
     }
 
-    /* Checkbox input caché */
-    .teacher-checkbox {
+    /* Checkbox input caché - SEULEMENT pour l'ancien système avec teacher-checkbox-label */
+    .teacher-checkbox-label .teacher-checkbox {
         position: absolute;
         opacity: 0;
         pointer-events: none;
+    }
+
+    /* Checkboxes du tableau - visibles et normales */
+    .teacher-selection-table .teacher-checkbox {
+        cursor: pointer;
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Checkbox header - un peu plus grande */
+    .teacher-select-all-checkbox {
+        cursor: pointer;
+        width: 18px;
+        height: 18px;
     }
 
     /* Checkbox custom visuel */
@@ -2342,19 +2356,30 @@ $(function() {
                         }
                     });
 
-                    // Gérer les checkboxes enseignants avec compteur dynamique
-                    console.log('🔍 Initialisation teacher-checkboxes...');
+                    // Gérer les tableaux de professeurs avec compteur dynamique
+                    console.log('🔍 Initialisation teacher tables...');
 
-                    // Fonction pour mettre à jour le compteur et le bouton toggle
-                    function updateTeacherCount($container) {
-                        const $checkboxes = $container.find('.teacher-checkbox');
-                        const $countDiv = $container.find('.teacher-selection-count');
+                    // Fonction pour mettre à jour le compteur et l'état du checkbox header
+                    function updateTeacherCount(matiereId) {
+                        console.log('📊 updateTeacherCount called for matiere:', matiereId);
+
+                        const $tableContainer = $('.teacher-table-container[data-matiere-id="' + matiereId + '"]');
+                        const $allCheckboxes = $tableContainer.find('.teacher-checkbox');
+                        const $visibleRows = $tableContainer.find('.teacher-row:visible');
+                        const $visibleCheckboxes = $visibleRows.find('.teacher-checkbox');
+                        const $headerCheckbox = $('.teacher-select-all-checkbox[data-matiere-id="' + matiereId + '"]');
+                        const $countDiv = $('.teacher-selection-count').has('.count-text');
                         const $countText = $countDiv.find('.count-text');
-                        const matiereId = $container.data('matiere-id');
-                        const $toggleBtn = $('.toggle-all-teachers[data-matiere-id="' + matiereId + '"]');
 
-                        const totalCount = $checkboxes.length;
-                        const selectedCount = $checkboxes.filter(':checked').length;
+                        const totalCount = $allCheckboxes.length;
+                        const visibleCount = $visibleCheckboxes.length;
+                        const selectedCount = $allCheckboxes.filter(':checked').length;
+                        const visibleSelectedCount = $visibleCheckboxes.filter(':checked').length;
+
+                        console.log('  📈 Total teachers:', totalCount);
+                        console.log('  👁️ Visible teachers:', visibleCount);
+                        console.log('  ✅ Total selected:', selectedCount);
+                        console.log('  ✅ Visible selected:', visibleSelectedCount);
 
                         // Mettre à jour le compteur
                         if (selectedCount > 0) {
@@ -2365,45 +2390,216 @@ $(function() {
                             $countText.html('Sélectionnez un ou plusieurs enseignants');
                         }
 
-                        // Mettre à jour le bouton toggle
-                        if (selectedCount === totalCount && totalCount > 0) {
-                            $toggleBtn.html('<i class="fas fa-times-circle me-1"></i>Tout désélectionner');
-                            $toggleBtn.removeClass('btn-outline-primary').addClass('btn-outline-danger');
+                        // Mettre à jour l'état du checkbox header (basé sur lignes VISIBLES)
+                        if (visibleCount === 0) {
+                            $headerCheckbox.prop('checked', false);
+                            $headerCheckbox.prop('indeterminate', false);
+                            console.log('  🔲 Header: unchecked (no visible rows)');
+                        } else if (visibleSelectedCount === 0) {
+                            $headerCheckbox.prop('checked', false);
+                            $headerCheckbox.prop('indeterminate', false);
+                            console.log('  🔲 Header: unchecked');
+                        } else if (visibleSelectedCount === visibleCount) {
+                            $headerCheckbox.prop('checked', true);
+                            $headerCheckbox.prop('indeterminate', false);
+                            console.log('  ✅ Header: checked');
                         } else {
-                            $toggleBtn.html('<i class="fas fa-check-double me-1"></i>Tout sélectionner');
-                            $toggleBtn.removeClass('btn-outline-danger').addClass('btn-outline-primary');
+                            $headerCheckbox.prop('checked', false);
+                            $headerCheckbox.prop('indeterminate', true);
+                            console.log('  ➖ Header: indeterminate');
                         }
                     }
 
-                    // Initialiser tous les conteneurs de checkboxes
-                    $('.teacher-checkboxes-container').each(function() {
-                        const $container = $(this);
-
-                        // Mettre à jour le compteur initial
-                        updateTeacherCount($container);
-
-                        // Écouter les changements sur les checkboxes
-                        $container.on('change', '.teacher-checkbox', function() {
-                            updateTeacherCount($container);
-                        });
+                    // Initialiser tous les tableaux
+                    $('.teacher-table-container').each(function() {
+                        const matiereId = $(this).data('matiere-id');
+                        console.log('🎬 Initializing table for matiere:', matiereId);
+                        updateTeacherCount(matiereId);
                     });
 
-                    // Gérer les boutons "Tout sélectionner / Tout désélectionner"
-                    $(document).on('click', '.toggle-all-teachers', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
+                    // Gérer le changement d'une checkbox individuelle
+                    $(document).on('change', '.teacher-checkbox', function() {
+                        const matiereId = $(this).closest('.teacher-table-container').data('matiere-id');
+                        console.log('🔄 Individual checkbox changed in matiere:', matiereId);
+                        updateTeacherCount(matiereId);
+                    });
 
+                    // Gérer le checkbox header (select all / deselect all pour lignes VISIBLES)
+                    $(document).on('change', '.teacher-select-all-checkbox', function() {
                         const matiereId = $(this).data('matiere-id');
-                        const $container = $('.teacher-checkboxes-container[data-matiere-id="' + matiereId + '"]');
-                        const $checkboxes = $container.find('.teacher-checkbox');
-                        const checkedCount = $checkboxes.filter(':checked').length;
-                        const allChecked = $checkboxes.length === checkedCount;
+                        const isChecked = $(this).prop('checked');
 
-                        // Toggle all checkboxes
-                        $checkboxes.prop('checked', !allChecked);
+                        console.log('🔍 Header checkbox clicked - Matiere:', matiereId);
+                        console.log('  🎯 Action:', isChecked ? 'SELECT ALL VISIBLE' : 'DESELECT ALL VISIBLE');
 
-                        // Mettre à jour le compteur
-                        updateTeacherCount($container);
+                        const $tableContainer = $('.teacher-table-container[data-matiere-id="' + matiereId + '"]');
+                        const $visibleCheckboxes = $tableContainer.find('.teacher-row:visible .teacher-checkbox');
+
+                        console.log('  👁️ Visible rows before:', $visibleCheckboxes.length);
+                        console.log('  ✅ Checked before:', $visibleCheckboxes.filter(':checked').length);
+
+                        // Cocher/décocher uniquement les lignes VISIBLES
+                        $visibleCheckboxes.prop('checked', isChecked);
+
+                        console.log('  ✅ Checked after:', $visibleCheckboxes.filter(':checked').length);
+
+                        updateTeacherCount(matiereId);
+                    });
+
+                    // Fonction de calcul de distance de Levenshtein (similarité entre chaînes)
+                    function levenshteinDistance(str1, str2) {
+                        const len1 = str1.length;
+                        const len2 = str2.length;
+                        const matrix = [];
+
+                        // Initialiser la matrice
+                        for (let i = 0; i <= len1; i++) {
+                            matrix[i] = [i];
+                        }
+                        for (let j = 0; j <= len2; j++) {
+                            matrix[0][j] = j;
+                        }
+
+                        // Remplir la matrice
+                        for (let i = 1; i <= len1; i++) {
+                            for (let j = 1; j <= len2; j++) {
+                                const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+                                matrix[i][j] = Math.min(
+                                    matrix[i - 1][j] + 1,      // Suppression
+                                    matrix[i][j - 1] + 1,      // Insertion
+                                    matrix[i - 1][j - 1] + cost // Substitution
+                                );
+                            }
+                        }
+
+                        return matrix[len1][len2];
+                    }
+
+                    // Fonction de calcul du pourcentage de similarité
+                    function calculateSimilarity(str1, str2) {
+                        const maxLen = Math.max(str1.length, str2.length);
+                        if (maxLen === 0) return 100;
+                        const distance = levenshteinDistance(str1, str2);
+                        return ((maxLen - distance) / maxLen) * 100;
+                    }
+
+                    // Fonction de normalisation de texte (supprime accents, met en minuscule)
+                    function normalizeText(text) {
+                        return text
+                            .toLowerCase()
+                            .normalize('NFD')
+                            .replace(/[\u0300-\u036f]/g, '') // Supprime les accents
+                            .replace(/[^a-z0-9\s]/g, ''); // Garde seulement lettres, chiffres, espaces
+                    }
+
+                    // Fonction de recherche floue (fuzzy search)
+                    function fuzzyMatch(searchText, targetText, threshold = 80) {
+                        const normalizedSearch = normalizeText(searchText);
+                        const normalizedTarget = normalizeText(targetText);
+
+                        // 1. Correspondance exacte (substring)
+                        if (normalizedTarget.includes(normalizedSearch)) {
+                            console.log('    ✅ Exact match:', targetText);
+                            return true;
+                        }
+
+                        // 2. Correspondance par mots individuels
+                        const searchWords = normalizedSearch.split(/\s+/).filter(w => w.length > 0);
+                        const targetWords = normalizedTarget.split(/\s+/).filter(w => w.length > 0);
+
+                        // Vérifier si tous les mots de recherche matchent au moins un mot de la cible
+                        const allWordsMatch = searchWords.every(searchWord => {
+                            return targetWords.some(targetWord => {
+                                // Correspondance exacte du mot
+                                if (targetWord.includes(searchWord)) {
+                                    return true;
+                                }
+                                // Correspondance floue du mot (80%+)
+                                const similarity = calculateSimilarity(searchWord, targetWord);
+                                return similarity >= threshold;
+                            });
+                        });
+
+                        if (allWordsMatch) {
+                            console.log('    ✅ Word match:', targetText);
+                            return true;
+                        }
+
+                        // 3. Similarité globale de la chaîne complète
+                        const globalSimilarity = calculateSimilarity(normalizedSearch, normalizedTarget);
+                        if (globalSimilarity >= threshold) {
+                            console.log('    ✅ Fuzzy match (', globalSimilarity.toFixed(1), '%):', targetText);
+                            return true;
+                        }
+
+                        // 4. Tenter avec inversion des mots (Jean KOUASSI vs KOUASSI Jean)
+                        if (searchWords.length === 2 && targetWords.length >= 2) {
+                            const reversed = searchWords.reverse().join(' ');
+                            if (normalizedTarget.includes(reversed)) {
+                                console.log('    ✅ Reversed match:', targetText);
+                                return true;
+                            }
+                        }
+
+                        console.log('    ❌ No match:', targetText, '- Similarity:', globalSimilarity.toFixed(1), '%');
+                        return false;
+                    }
+
+                    // Gérer le filtre de recherche avec fuzzy matching
+                    $(document).on('keyup', '.teacher-search-input', function() {
+                        const matiereId = $(this).data('matiere-id');
+                        const searchText = $(this).val().trim();
+
+                        console.log('🔍 Fuzzy search for matiere:', matiereId, '- Query:', searchText);
+
+                        const $tableContainer = $('.teacher-table-container[data-matiere-id="' + matiereId + '"]');
+                        const $rows = $tableContainer.find('.teacher-row');
+                        const $noResults = $('.teacher-no-results[data-matiere-id="' + matiereId + '"]');
+
+                        let visibleCount = 0;
+
+                        if (searchText === '') {
+                            // Afficher toutes les lignes
+                            $rows.show();
+                            $noResults.hide();
+                            $tableContainer.show();
+                            visibleCount = $rows.length;
+                            console.log('  ✅ Search cleared - showing all', visibleCount, 'rows');
+                        } else {
+                            // Filtrer les lignes avec fuzzy matching
+                            $rows.each(function() {
+                                const teacherName = $(this).data('teacher-name');
+                                const teacherSpec = $(this).data('teacher-spec');
+
+                                console.log('  🔎 Checking:', teacherName);
+
+                                // Recherche floue sur le nom OU la spécialisation (seuil 80%)
+                                const matchName = fuzzyMatch(searchText, teacherName, 80);
+                                const matchSpec = fuzzyMatch(searchText, teacherSpec, 80);
+
+                                if (matchName || matchSpec) {
+                                    $(this).show();
+                                    visibleCount++;
+                                } else {
+                                    $(this).hide();
+                                }
+                            });
+
+                            console.log('  📊 Fuzzy search results:', visibleCount, 'rows visible');
+
+                            // Afficher message si aucun résultat
+                            if (visibleCount === 0) {
+                                $tableContainer.hide();
+                                $noResults.show();
+                                console.log('  ⚠️ No results found');
+                            } else {
+                                $tableContainer.show();
+                                $noResults.hide();
+                            }
+                        }
+
+                        // Mettre à jour le compteur et l'état du header checkbox
+                        updateTeacherCount(matiereId);
                     });
                 } else {
                     showAlert('error', response.message || 'Erreur lors du chargement des matières');
@@ -3092,13 +3288,27 @@ $(function() {
         window.location.href = `/esbtp/matieres/create?filiere_id=${filiereId}&niveau_id=${niveauId}`;
     });
 
-    // Gestionnaires pour la sélection rapide
+    // Gestionnaires pour la sélection rapide des matières (MODAL)
     $(document).on('click', '#btn-select-all', function() {
-        $('.matiere-checkbox').prop('checked', true);
+        const $checkboxes = $('.matiere-checkbox');
+        console.log('🔍 Matières - Tout sélectionner clicked');
+        console.log('  📊 Total matiere checkboxes:', $checkboxes.length);
+        console.log('  ✅ Checked before:', $checkboxes.filter(':checked').length);
+
+        $checkboxes.prop('checked', true);
+
+        console.log('  ✅ Checked after:', $checkboxes.filter(':checked').length);
     });
 
     $(document).on('click', '#btn-select-none', function() {
-        $('.matiere-checkbox').prop('checked', false);
+        const $checkboxes = $('.matiere-checkbox');
+        console.log('🔍 Matières - Tout désélectionner clicked');
+        console.log('  📊 Total matiere checkboxes:', $checkboxes.length);
+        console.log('  ✅ Checked before:', $checkboxes.filter(':checked').length);
+
+        $checkboxes.prop('checked', false);
+
+        console.log('  ✅ Checked after:', $checkboxes.filter(':checked').length);
     });
 
     // Reset du modal à la fermeture

@@ -355,19 +355,95 @@
         to { opacity: 1; transform: translateY(0); }
     }
     
+    /* Header principal amélioré */
+    .main-header {
+        background: linear-gradient(135deg, #0453cb, #1b64d4);
+        color: white;
+        padding: var(--space-xl);
+        border-radius: var(--radius-large);
+        margin-bottom: var(--space-xl);
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--shadow-elevated);
+    }
+
+    .main-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 100px;
+        height: 200%;
+        background: rgba(255,255,255,0.05);
+        transform: skewX(-15deg);
+    }
+
+    .header-content {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .header-left h1 {
+        font-size: 2rem;
+        margin: 0 0 var(--space-xs);
+        font-weight: 700;
+        color: white;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .header-left p {
+        margin: 0;
+        opacity: 0.95;
+        font-size: 1.1rem;
+        color: rgba(255,255,255,0.95);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .header-actions {
+        display: flex;
+        gap: var(--space-md);
+    }
+
+    .btn-header {
+        padding: var(--space-sm) var(--space-lg);
+        border: 2px solid rgba(255,255,255,0.4);
+        border-radius: var(--radius-full);
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        background: rgba(255,255,255,0.1);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .btn-header:hover {
+        background: rgba(255,255,255,0.25);
+        border-color: rgba(255,255,255,0.6);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        color: white;
+        text-decoration: none;
+    }
+
     @media (max-width: 768px) {
         .form-grid {
             grid-template-columns: 1fr;
         }
-        
+
         .wizard-steps {
             flex-wrap: wrap;
         }
-        
+
         .wizard-step {
             min-width: 120px;
         }
-        
+
         .availability-grid {
             grid-template-columns: 80px repeat(7, 1fr);
             font-size: 0.7rem;
@@ -379,13 +455,21 @@
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <div class="card-moderne">
-            <div class="card-header-moderne">
-                <h1 class="section-title">
-                    <i class="fas fa-user-plus me-2"></i>
-                    Nouveau Enseignant
-                </h1>
-                <p class="section-subtitle">Créez un profil complet pour le nouvel enseignant</p>
+        <div class="main-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <h1>
+                        <i class="fas fa-user-plus me-2"></i>
+                        Nouveau Enseignant
+                    </h1>
+                    <p>Créez un profil complet pour le nouvel enseignant</p>
+                </div>
+                <div class="header-actions">
+                    <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn-header">
+                        <i class="fas fa-arrow-left"></i>
+                        Retour à la liste
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -412,11 +496,6 @@
                     </div>
                     <div class="wizard-step" data-step="4">
                         <div class="wizard-step-number">4</div>
-                        <div class="wizard-step-title">Disponibilités</div>
-                        <div class="wizard-step-desc">Horaires & Préférences</div>
-                    </div>
-                    <div class="wizard-step" data-step="5">
-                        <div class="wizard-step-number">5</div>
                         <div class="wizard-step-title">Finalisation</div>
                         <div class="wizard-step-desc">Documents & Validation</div>
                     </div>
@@ -762,83 +841,8 @@
                         </div>
                     </div>
 
-                    <!-- Étape 4: Disponibilités -->
+                    <!-- Étape 4: Finalisation -->
                     <div class="form-section" id="step-4">
-                        <div class="form-section-title">
-                            <div class="form-section-icon">
-                                <i class="fas fa-calendar-alt"></i>
-                            </div>
-                            Disponibilités & Préférences
-                        </div>
-                        
-                        <div class="form-group-moderne">
-                            <label class="form-label-moderne">Préférences d'enseignement</label>
-                            <div class="checkbox-group">
-                                <div class="checkbox-item">
-                                    <input type="checkbox" name="accepte_enseignement_distance" id="accepte_enseignement_distance" 
-                                           value="1" {{ old('accepte_enseignement_distance') ? 'checked' : '' }}>
-                                    <label for="accepte_enseignement_distance">Enseignement à distance</label>
-                                </div>
-                                <div class="checkbox-item">
-                                    <input type="checkbox" name="accepte_cours_weekend" id="accepte_cours_weekend" 
-                                           value="1" {{ old('accepte_cours_weekend') ? 'checked' : '' }}>
-                                    <label for="accepte_cours_weekend">Cours le weekend</label>
-                                </div>
-                                <div class="checkbox-item">
-                                    <input type="checkbox" name="accepte_cours_soir" id="accepte_cours_soir" 
-                                           value="1" {{ old('accepte_cours_soir') ? 'checked' : '' }}>
-                                    <label for="accepte_cours_soir">Cours le soir</label>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-group-moderne">
-                            <label class="form-label-moderne">Grille de disponibilité</label>
-                            <div class="form-help-text">
-                                Cliquez sur les créneaux pour indiquer votre disponibilité
-                            </div>
-                            
-                            <div class="availability-grid">
-                                <div class="availability-header">Heure</div>
-                                <div class="availability-header">Lun</div>
-                                <div class="availability-header">Mar</div>
-                                <div class="availability-header">Mer</div>
-                                <div class="availability-header">Jeu</div>
-                                <div class="availability-header">Ven</div>
-                                <div class="availability-header">Sam</div>
-                                <div class="availability-header">Dim</div>
-                                
-                                @for($hour = 8; $hour <= 18; $hour++)
-                                    <div class="availability-time">{{ sprintf('%02d:00', $hour) }}</div>
-                                    @for($day = 0; $day < 7; $day++)
-                                        <div class="availability-slot" 
-                                             data-day="{{ $day }}" 
-                                             data-hour="{{ $hour }}"
-                                             onclick="toggleAvailability(this)">
-                                        </div>
-                                    @endfor
-                                @endfor
-                            </div>
-                            
-                            <div class="availability-legend">
-                                <div class="legend-item">
-                                    <div class="legend-color" style="background: var(--success);"></div>
-                                    <span>Disponible</span>
-                                </div>
-                                <div class="legend-item">
-                                    <div class="legend-color" style="background: var(--primary);"></div>
-                                    <span>Préféré</span>
-                                </div>
-                                <div class="legend-item">
-                                    <div class="legend-color" style="background: var(--danger);"></div>
-                                    <span>Indisponible</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Étape 5: Finalisation -->
-                    <div class="form-section" id="step-5">
                         <div class="form-section-title">
                             <div class="form-section-icon">
                                 <i class="fas fa-check-circle"></i>
@@ -966,7 +970,7 @@
 @push('scripts')
 <script>
 let currentStep = 1;
-const totalSteps = 5;
+const totalSteps = 4;
 
 function changeStep(direction) {
     const newStep = currentStep + direction;
@@ -1031,27 +1035,6 @@ function validateStep(step) {
     }
     
     return true;
-}
-
-// Gestion des disponibilités
-function toggleAvailability(element) {
-    const classes = ['available', 'preferred', 'unavailable'];
-    let currentClass = '';
-    
-    for (let cls of classes) {
-        if (element.classList.contains(cls)) {
-            currentClass = cls;
-            break;
-        }
-    }
-    
-    // Supprimer toutes les classes
-    element.classList.remove(...classes);
-    
-    // Ajouter la classe suivante
-    const currentIndex = classes.indexOf(currentClass);
-    const nextIndex = (currentIndex + 1) % classes.length;
-    element.classList.add(classes[nextIndex]);
 }
 
 // Gestion des uploads de fichiers

@@ -87,6 +87,7 @@ class ESBTPEnseignantController extends Controller
         $titres_academiques = [
             'M.' => 'Monsieur',
             'Mme' => 'Madame',
+            'Mlle' => 'Mademoiselle',
             'Dr.' => 'Docteur',
             'Pr.' => 'Professeur'
         ];
@@ -263,16 +264,17 @@ class ESBTPEnseignantController extends Controller
             }
 
             DB::commit();
-            
+
             // Obtenir les informations de connexion pour affichage
             $credentials = $this->userService->getCredentialsInfo(
-                $user->username, 
+                $user->username,
                 $this->userService->generateDefaultPassword()
             );
-            
+
             return redirect()->route('esbtp.personnel.unified.index')
                 ->with('success', 'Enseignant créé avec succès')
-                ->with('credentials', $credentials);
+                ->with('credentials', $credentials)
+                ->with('created_teacher_id', $teacher->id);
                 
         } catch (\Exception $e) {
             DB::rollback();
@@ -389,6 +391,7 @@ class ESBTPEnseignantController extends Controller
         $titres_academiques = [
             'M.' => 'Monsieur',
             'Mme' => 'Madame',
+            'Mlle' => 'Mademoiselle',
             'Dr.' => 'Docteur',
             'Pr.' => 'Professeur'
         ];
@@ -439,6 +442,7 @@ class ESBTPEnseignantController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $enseignant->user_id,
             'phone' => 'nullable|string|max:20',
+            'titre_academique' => 'nullable|string|max:10',
             'specialization' => 'required|string|max:255',
             'department_id' => 'required|exists:esbtp_departments,id',
             'laboratory_id' => 'nullable|exists:esbtp_laboratories,id',
@@ -464,6 +468,7 @@ class ESBTPEnseignantController extends Controller
 
             // Mettre à jour le profil enseignant
             $enseignant->update([
+                'title' => $request->titre_academique,
                 'specialization' => $request->specialization,
                 'department_id' => $request->department_id,
                 'laboratory_id' => $request->laboratory_id,
