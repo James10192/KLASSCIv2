@@ -387,8 +387,62 @@ class ESBTPPDFService
                 'etablissement' => $etablissementInfo,
             ];
 
-            $pdf = PDF::loadView('pdf.emploi-temps', $data);
-            $pdf->setPaper('A4', 'landscape');
+            // Utiliser Browsershot/Browserless.io pour support CSS Grid complet
+            // Utiliser le même template que le preview pour cohérence visuelle
+            $html = view('pdf.emploi-temps', $data)->render();
+
+            // Si Browserless.io est configuré (production) - utiliser API HTTP
+            if (config('services.browserless.enabled', false)) {
+                $apiKey = config('services.browserless.api_key');
+                $endpoint = config('services.browserless.endpoint', 'https://chrome.browserless.io');
+
+                // Appel API Browserless.io avec Guzzle HTTP Client
+                $client = new \GuzzleHttp\Client(['timeout' => 60]);
+
+                try {
+                    $response = $client->post("{$endpoint}/pdf?token={$apiKey}", [
+                        'json' => [
+                            'html' => $html,
+                            'options' => [
+                                'format' => 'A4',
+                                'landscape' => true,
+                                'margin' => [
+                                    'top' => '10mm',
+                                    'right' => '10mm',
+                                    'bottom' => '10mm',
+                                    'left' => '10mm',
+                                ],
+                                'printBackground' => true,
+                            ],
+                            // waitUntil est au niveau racine, pas dans options
+                            'gotoOptions' => [
+                                'waitUntil' => 'networkidle0',
+                            ],
+                        ],
+                    ]);
+
+                    $pdf = $response->getBody()->getContents();
+
+                    if (!$pdf) {
+                        throw new \Exception("Browserless.io returned empty PDF");
+                    }
+
+                    return $pdf;
+                } catch (\GuzzleHttp\Exception\RequestException $e) {
+                    \Log::error('Browserless.io API error', [
+                        'message' => $e->getMessage(),
+                        'code' => $e->getCode(),
+                    ]);
+                    throw new \Exception("Browserless.io API error: " . $e->getMessage());
+                }
+            }
+
+            // Fallback: Puppeteer local (développement)
+            $pdf = \Spatie\Browsershot\Browsershot::html($html)
+                ->paperSize(297, 210) // A4 paysage (largeur, hauteur en mm)
+                ->margins(10, 10, 10, 10) // top, right, bottom, left en mm
+                ->waitUntilNetworkIdle()
+                ->pdf();
 
             return $pdf;
         } catch (\Exception $e) {

@@ -633,6 +633,272 @@ $heuresEffectuees = $attendancesCount * $dureeMoyenne;
 
 ---
 
+### 📄 Export PDF Emploi du Temps - Template Compact (31 octobre)
+
+**Page** : `/esbtp/emploi-temps/{id}/export-pdf`
+
+**Problème** : L'export PDF utilisait le template preview (CSS Grid) et générait 2 pages :
+- Page 1 : Grille vide avec header et KPI volumineux
+- Page 2 : Liste des séances déconnectée de la grille
+
+**Solution** : Nouveau template dédié export avec HTML table classique
+
+#### Architecture Séparée
+
+**3 templates distincts** :
+- 🌐 **Web** : `esbtp/emploi-temps/partials/timetable-grid.blade.php` (CSS Grid interactif)
+- 👁️ **Preview** : `pdf/emploi-temps.blade.php` (CSS Grid pour aperçu navigateur)
+- 📄 **Export** : `pdf/emploi-temps-export.blade.php` (HTML table pour téléchargement) ✨ NOUVEAU
+
+#### Template Export Compact
+
+**Fichier** : `resources/views/pdf/emploi-temps-export.blade.php` (450 lignes)
+
+**Header compact (économie 40% hauteur)** :
+```
+┌─────────────────────────────────────────────────────┐
+│  ESBTP  │ Localisation │ Classe & Filière │ Couverture │
+│         │ Yamoussoukro │ TP C - TP        │ 27/10-02/11│
+└─────────────────────────────────────────────────────┘
+```
+
+**Structure HTML Table** :
+- Segments de **1 heure** (07:00, 08:00, 09:00...)
+- **Marqueurs minutes** affichés uniquement si séance commence/finit (ex: 08:30, 11:15)
+- Séances positionnées avec `rowspan` proportionnel
+- Tout tient sur **1 page A4 landscape**
+
+**Hiérarchie visuelle cartes séances** :
+```
+┌──────────────────────┐
+│ COURS (petit)        │ ← Haut : Type
+│                      │
+│  Mathématiques       │ ← Centre : Matière (GRAND, bold)
+│                      │
+│ KOUASSI • Salle A    │ ← Bas : Infos (petit)
+│ 08:30 - 10:00        │
+└──────────────────────┘
+```
+
+**Calcul intelligent rowspan** :
+```php
+// Séance 08:30-10:00 → rowspan = 1 (couvre 1 ligne 60min) + fraction
+// Séance 10:00-12:00 → rowspan = 2 (couvre 2 lignes 60min)
+$rowspan = 1;
+for ($i = $startIndex + 1; $i < count($finalSegments); $i++) {
+    if ($finalSegments[$i]['minutes'] < $endMinutes) {
+        $rowspan++;
+    }
+}
+```
+
+#### Modifications
+
+**Fichier** : `app/Services/ESBTPPDFService.php` (ligne 404)
+```php
+// ❌ AVANT
+$html = view('pdf.emploi-temps', $data)->render();
+
+// ✅ APRÈS
+$html = view('pdf.emploi-temps-export', $data)->render();
+```
+
+#### Résultat
+
+**Avant (2 pages)** :
+- Page 1 : Header volumineux + KPI cards + Grille vide
+- Page 2 : Liste séances déconnectée
+
+**Après (1 page)** :
+- Header compact 4 colonnes (30% hauteur)
+- Grille avec séances intégrées (70% hauteur)
+- Design identique au PDF de référence
+
+**Avantages** :
+- ✅ Tout tient sur 1 page A4 landscape
+- ✅ Séances visibles à leur position horaire
+- ✅ Print-ready, cohérent, professionnel
+- ✅ Preview PDF reste inchangé (pas de régression)
+
+**Templates préservés** :
+- ❌ `pdf/emploi-temps.blade.php` - Preview (NON TOUCHÉ)
+- ❌ `esbtp/emploi-temps/partials/timetable-grid.blade.php` - Web (NON TOUCHÉ)
+
+---
+
+### 📄 Export PDF Emploi du Temps - Browserless.io + CSS Grid (1er novembre)
+
+**Page** : `/esbtp/emploi-temps/{id}/export-pdf`
+
+**Problème** : Export PDF incompatible avec hébergement mutualisé (Puppeteer nécessite Chromium)
+
+#### Solution : Browserless.io Cloud Service
+
+**Architecture** :
+- **Développement local** : Puppeteer local (si disponible)
+- **Production (web44)** : Browserless.io API (Chrome headless cloud)
+
+**Configuration** :
+```env
+BROWSERLESS_ENABLED=true
+BROWSERLESS_API_KEY=2TLMQwRTHrQAQJb5b91c28c67e37e8aabdbbee6d08bd10e7d
+BROWSERLESS_ENDPOINT=https://production-sfo.browserless.io
+```
+
+**Fichier** : `config/services.php`
+```php
+'browserless' => [
+    'enabled' => env('BROWSERLESS_ENABLED', false),
+    'api_key' => env('BROWSERLESS_API_KEY'),
+    'endpoint' => env('BROWSERLESS_ENDPOINT', 'https://production-sfo.browserless.io'),
+],
+```
+
+#### Modifications Service PDF
+
+**Fichier** : `app/Services/ESBTPPDFService.php` (lignes 390-440)
+
+**Logique** :
+```php
+// Si Browserless.io configuré (production)
+if (config('services.browserless.enabled', false)) {
+    $apiKey = config('services.browserless.api_key');
+    $endpoint = config('services.browserless.endpoint');
+
+    // Appel API via Guzzle HTTP Client
+    $client = new \GuzzleHttp\Client(['timeout' => 60]);
+    $response = $client->post("{$endpoint}/pdf?token={$apiKey}", [
+        'json' => [
+            'html' => $html,
+            'options' => [
+                'format' => 'A4',
+                'landscape' => true,
+                'margin' => ['top' => '10mm', 'right' => '10mm', 'bottom' => '10mm', 'left' => '10mm'],
+                'printBackground' => true,
+            ],
+            'gotoOptions' => [
+                'waitUntil' => 'networkidle0',
+            ],
+        ],
+    ]);
+
+    return $response->getBody()->getContents();
+}
+
+// Fallback: Puppeteer local (développement)
+return \Spatie\Browsershot\Browsershot::html($html)
+    ->paperSize(297, 210)
+    ->margins(10, 10, 10, 10)
+    ->waitUntilNetworkIdle()
+    ->pdf();
+```
+
+**Controller** : `app/Http/Controllers/ESBTPEmploiTempsController.php` (ligne 1285)
+```php
+// Browsershot retourne contenu binaire directement (pas d'objet)
+return response($pdf, 200, [
+    'Content-Type' => 'application/pdf',
+    'Content-Disposition' => 'attachment; filename="' . $filename . '"'
+]);
+```
+
+#### Template PDF Optimisé
+
+**Suppression KPI cards** : `resources/views/pdf/emploi-temps.blade.php`
+- Lignes 57-90 : Styles CSS KPI supprimés
+- Lignes 209-225 : Bloc HTML KPI supprimé
+
+**Grille compacte** : `resources/views/esbtp/emploi-temps/partials/timetable-grid.blade.php` (variant PDF)
+- Colonne heures : 80px → **45px** (-44%)
+- Header : 40px → **22px** (-45%)
+- Font sizes réduits : **0.6rem** (header), **0.55rem** (heures), **0.5-0.75rem** (sessions)
+- Padding sessions : 6px 8px → **3px 4px** (-50%)
+- Margins : 4px → **2px**
+
+**Structure cards séances** (identique à emploi-temps.show) :
+```html
+<div class="session-card">
+    <!-- Type en haut (petit, uppercase) -->
+    <div style="font-size: 0.5rem;">COURS</div>
+
+    <!-- Matière au centre (GRAND, bold) -->
+    <div style="font-size: 0.75rem; font-weight: 800;">
+        Mathématiques
+    </div>
+
+    <!-- Détails en bas (même ligne, séparateurs •) -->
+    <div style="display: flex; gap: 4px;">
+        <span><i class="fas fa-user-tie"></i> KOUASSI Jean</span>
+        <span>•</span>
+        <span><i class="fas fa-door-open"></i> Salle A12</span>
+        <span>•</span>
+        <span><i class="fas fa-clock"></i> 08:30 - 10:00</span>
+    </div>
+</div>
+```
+
+#### Avantages
+
+✅ **CSS Grid parfait** : Positionnement proportionnel exact (08:30 visuellement à mi-chemin entre 08:00-09:00)
+✅ **Hauteurs proportionnelles** : Séance 2h50 visuellement plus grande que 1h30
+✅ **Compatible hébergement mutualisé** : Pas de Chromium local requis
+✅ **Coût raisonnable** : ~5€/mois (100h génération PDF)
+✅ **Fallback local** : Puppeteer si Browserless désactivé
+✅ **Design cohérent** : Identique à emploi-temps.show
+
+---
+
+### ⏱️ Format Heures - Emploi du Temps (1er novembre)
+
+**Pages concernées** :
+- `/esbtp/emploi-temps` (show)
+- `/esbtp/emploi-temps` (index)
+
+**Problème** : Affichage heures avec décimales excessives (`47.166666666667h`, `46.5h`)
+
+#### Solution : Formatage XXhYY
+
+**Fonction helper** : `app/Http/Controllers/ESBTPEmploiTempsController.php`
+
+**Lignes 434-442 & 486-494** :
+```php
+$formatHeures = function($heures) {
+    $h = floor($heures);
+    $m = round(($heures - $h) * 60);
+    if ($m > 0) {
+        return $h . 'h' . ($m < 10 ? '0' : '') . $m;
+    }
+    return $h . 'h';
+};
+```
+
+**Données enrichies** :
+- Lignes 454-456 : `volume_horaire_total_formatted`, `heures_utilisees_formatted`, `heures_restantes_formatted`
+- Lignes 498-499 : `heures_totales_formatted`, `heures_restantes_formatted`
+- Lignes 990-992 : `volume_info` avec champs formatés
+
+**Vue mise à jour** : `resources/views/components/emploi-temps/planification-section.blade.php`
+- Ligne 66 : H. Total → `{{ $matiere['volume_horaire_total_formatted'] }}`
+- Ligne 70 : H. Restantes → `{{ $matiere['heures_restantes_formatted'] }}`
+- Ligne 89 : Résumé H. planifiées → `{{ $planificationData['heures_totales_formatted'] }}`
+- Ligne 93 : Résumé H. restantes → `{{ $planificationData['heures_restantes_formatted'] }}`
+
+#### Résultats
+
+**Avant** :
+- 50.0h
+- 47.166666666667h
+- 46.5h
+
+**Après** :
+- 50h
+- 47h10 (47h + 10min)
+- 46h30 (46h + 30min)
+
+**Impact** : Affichage propre sans virgules ni décimales excessives
+
+---
+
 ## 📝 TODO & Prochaines Étapes
 
 ### 🔴 Priorité Haute
@@ -779,4 +1045,4 @@ TENANT_CODE=presentation
 
 ---
 
-*Dernière mise à jour: 30 octobre 2025*
+*Dernière mise à jour: 1er novembre 2025*

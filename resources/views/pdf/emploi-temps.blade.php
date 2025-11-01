@@ -8,60 +8,21 @@
             font-family: 'DejaVu Sans', Arial, sans-serif;
             box-sizing: border-box;
         }
-        .info-card-line {
-            font-size: 10px;
-            margin-bottom: 3px;
-            line-height: 1.35;
-        }
-        .info-card-line:last-child {
-            margin-bottom: 0;
-        }
         body {
             margin: 0;
-            padding: 12px 16px;
-            font-size: 9.5px;
+            padding: 8px 12px;
+            font-size: 9px;
             color: #0f172a;
             background: #ffffff;
         }
-        .timetable-wrapper {
-            margin-top: 10px;
-            border: 1px solid #dbeafe;
-            border-radius: 12px;
-            background: #ffffff;
-            overflow: hidden;
-        }
-        .timetable-grid {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .timetable-grid th,
-        .timetable-grid td {
-            border: 1px solid #e2e8f0;
-            padding: 4px 5px;
-            text-align: center;
-            font-size: 8.5px;
-        }
-        .timetable-grid thead th {
-            background: #0453cb;
-            color: #ffffff;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            -webkit-print-color-adjust: exact;
-        }
-        .timetable-time-cell {
-            background: #eff4ff;
-            font-weight: 600;
-            width: 84px;
-        }
+
+        /* Header avec gradient KLASSCI */
         .header {
-            background-color: #0453cb;
-            background-image: linear-gradient(135deg, #0453cb, #5e91de);
+            background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
             color: #ffffff;
-            border-radius: 10px;
-            padding: 10px 12px;
-            margin-bottom: 10px;
-            -webkit-print-color-adjust: exact;
-            color-adjust: exact;
+            border-radius: 12px;
+            padding: 12px 14px;
+            margin-bottom: 8px;
         }
         .header-top {
             display: table;
@@ -70,106 +31,161 @@
         .header-left,
         .header-right {
             display: table-cell;
-            vertical-align: top;
+            vertical-align: middle;
         }
         .header-right {
             text-align: right;
         }
         .header-title h1 {
             margin: 0;
-            font-size: 13px;
-            letter-spacing: 0.08em;
+            font-size: 14px;
+            letter-spacing: 0.1em;
             text-transform: uppercase;
+            font-weight: 700;
         }
         .header-title p {
-            margin: 3px 0 0 0;
-            font-size: 8.5px;
-            opacity: 0.9;
+            margin: 2px 0 0 0;
+            font-size: 9px;
+            opacity: 0.95;
         }
         .header-logo img {
-            max-height: 40px;
-            max-width: 110px;
-            object-fit: contain;
+            max-height: 45px;
+            max-width: 120px;
             filter: brightness(0) invert(1);
         }
-        .header-info {
+
+
+        /* Carte école moderne */
+        .school-card {
+            background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+        }
+        .school-card h2 {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin: 0 0 2px 0;
+        }
+        .school-card p {
+            margin: 0;
+            font-size: 8px;
+            opacity: 0.9;
+        }
+        .info-grid {
             display: table;
             width: 100%;
-            margin-top: 8px;
+            margin-top: 6px;
+            border-spacing: 4px;
         }
-        .header-info-row {
-            display: table-row;
-        }
-        .header-info-cell {
+        .info-badge {
             display: table-cell;
             width: 25%;
-            padding: 0 4px;
-        }
-        .header-card {
-            background-color: #0f4ec3;
+            background: rgba(255, 255, 255, 0.15);
             border-radius: 8px;
-            padding: 6px 7px;
-            color: #ffffff;
-            font-size: 8.5px;
-            -webkit-print-color-adjust: exact;
-            color-adjust: exact;
+            padding: 6px 8px;
+            font-size: 7.5px;
         }
-        .header-card-title {
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            font-size: 7.2px;
-            font-weight: 700;
-            margin-bottom: 3px;
+        .info-badge strong {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .info-badge small {
+            display: block;
+            font-size: 6.5px;
             opacity: 0.85;
         }
-        .header-card-line {
-            margin-bottom: 2px;
-            line-height: 1.3;
+
+        /* Grille emploi du temps avec style moderne */
+        .timetable-wrapper {
+            margin-top: 8px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
         }
-        .header-card-line:last-child {
-            margin-bottom: 0;
+        .timetable-grid {
+            width: 100%;
+            border-collapse: collapse;
         }
-        .tt-session {
-            border-radius: 10px;
+        .timetable-grid th,
+        .timetable-grid td {
+            border: 1px solid #e5e7eb;
+            padding: 5px 6px;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 7.5px;
+        }
+        .timetable-grid thead th {
+            background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
+            color: #ffffff;
+            font-size: 7.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            font-weight: 600;
             padding: 6px;
-            font-size: 8px;
-            -webkit-print-color-adjust: exact;
+        }
+        .timetable-time-cell {
+            background: #f8fafc;
+            font-weight: 600;
+            font-size: 7.5px;
+            color: #1f2937;
+            width: 70px;
+        }
+
+        /* Sessions avec couleurs et border-radius */
+        .tt-session {
+            border-radius: 8px;
+            padding: 5px 6px;
+            font-size: 7px;
         }
         .tt-session-type {
-            font-size: 7.5px;
+            font-size: 6.5px;
             letter-spacing: 0.08em;
             margin-bottom: 2px;
-            opacity: 0.85;
+            opacity: 0.9;
+            text-transform: uppercase;
         }
         .tt-session-subject {
-            font-size: 9px;
+            font-size: 8px;
             font-weight: 700;
             margin-bottom: 2px;
         }
         .tt-session-teacher,
         .tt-session-room,
         .tt-session-time {
-            font-size: 7.3px;
+            font-size: 6.5px;
             margin-bottom: 1px;
-            display: block;
+            opacity: 0.95;
         }
+
+        /* Légende modernisée */
         .legend {
-            margin-top: 12px;
+            margin-top: 8px;
             padding: 0;
             list-style: none;
         }
         .legend-item {
             display: inline-block;
-            margin-right: 12px;
-            font-size: 8.5px;
+            margin-right: 10px;
+            font-size: 7.5px;
             color: #475569;
+            background: #f3f4f6;
+            padding: 3px 6px;
+            border-radius: 12px;
         }
         .legend-color {
             display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 6px;
-            margin-right: 5px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 4px;
+            vertical-align: middle;
         }
     </style>
 </head>
@@ -188,53 +204,32 @@
                 @endif
             </div>
         </div>
-        <div class="header-info">
-            <div class="header-info-row">
-                <div class="header-info-cell">
-                    <div class="header-card">
-                        <div class="header-card-title">Localisation</div>
-                        <div class="header-card-line">
-                            {{ trim(($etablissement['ville'] ?? '') . ' - ' . ($etablissement['pays'] ?? '')) ?: 'Yamoussoukro - Côte d\'Ivoire' }}
-                        </div>
-                        <div class="header-card-line">
-                            {{ $etablissement['adresse'] ?: 'Adresse non renseignée' }}
-                        </div>
-                    </div>
-                </div>
-                <div class="header-info-cell">
-                    <div class="header-card">
-                        <div class="header-card-title">Contact</div>
-                        <div class="header-card-line">Standard administratif</div>
-                        <div class="header-card-line">Tél : {{ $etablissement['telephone'] ?: '--' }}</div>
-                        <div class="header-card-line">Email : {{ $etablissement['email'] ?: '--' }}</div>
-                        <div class="header-card-line">Contact officiel</div>
-                    </div>
-                </div>
-                <div class="header-info-cell">
-                    <div class="header-card">
-                        <div class="header-card-title">Classe &amp; Filière</div>
-                        <div class="header-card-line">
-                            {{ mb_strtoupper($emploiTemps->classe->filiere->name ?? 'Filière non renseignée', 'UTF-8') }}
-                        </div>
-                        <div class="header-card-line">
-                            {{ $emploiTemps->classe->niveau->name ?? 'Niveau non renseigné' }}
-                        </div>
-                        <div class="header-card-line">
-                            {{ mb_strtoupper($emploiTemps->classe->name ?? 'Classe non renseignée', 'UTF-8') }}
-                        </div>
-                    </div>
-                </div>
-                <div class="header-info-cell">
-                    <div class="header-card">
-                        <div class="header-card-title">Couverture</div>
-                        <div class="header-card-line">
-                            {{ $daysCovered }} jour{{ $daysCovered > 1 ? 's' : '' }} couverts
-                        </div>
-                        <div class="header-card-line">
-                            {{ $totalHoursFormatted }} cumulées
-                        </div>
-                    </div>
-                </div>
+    </div>
+
+    <div class="school-card">
+        <h2>{{ $emploiTemps->classe->name ?? 'Classe non renseignée' }}</h2>
+        <p>{{ $emploiTemps->classe->filiere->name ?? 'Filière non renseignée' }} - {{ $emploiTemps->classe->niveau->name ?? 'Niveau non renseigné' }}</p>
+
+        <div class="info-grid">
+            <div class="info-badge">
+                <strong>Localisation</strong>
+                <small>{{ trim(($etablissement['ville'] ?? '') . ' - ' . ($etablissement['pays'] ?? '')) ?: 'Yamoussoukro - Côte d\'Ivoire' }}</small>
+                <small>{{ $etablissement['adresse'] ?: 'Adresse non renseignée' }}</small>
+            </div>
+            <div class="info-badge">
+                <strong>Contact</strong>
+                <small>{{ $etablissement['telephone'] ?: '---' }}</small>
+                <small>Standard administratif</small>
+            </div>
+            <div class="info-badge">
+                <strong>Email</strong>
+                <small>{{ $etablissement['email'] ?: '---' }}</small>
+                <small>Contact officiel</small>
+            </div>
+            <div class="info-badge">
+                <strong>Couverture</strong>
+                <small>{{ $daysCovered }} jour{{ $daysCovered > 1 ? 's' : '' }} couverts</small>
+                <small>{{ $totalHoursFormatted }} cumulées</small>
             </div>
         </div>
     </div>

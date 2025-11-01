@@ -48,4 +48,22 @@ return [
         'api_token' => env('MASTER_API_TOKEN'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Browserless.io Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration pour Browserless.io - Service cloud Chrome headless
+    | pour génération PDF avec support CSS Grid complet.
+    |
+    | En développement local: utilise Puppeteer local (enabled=false)
+    | En production: utilise Browserless.io (enabled=true)
+    |
+    */
+    'browserless' => [
+        'enabled' => env('BROWSERLESS_ENABLED', false),
+        'api_key' => env('BROWSERLESS_API_KEY'),
+        'endpoint' => env('BROWSERLESS_ENDPOINT', 'https://production-sfo.browserless.io'),
+    ],
+
 ];

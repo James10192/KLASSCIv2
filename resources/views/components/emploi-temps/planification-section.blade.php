@@ -63,11 +63,11 @@
                                         @endif
                                     </td>
                                     <td class="text-center">
-                                        <span class="badge bg-primary">{{ $matiere['volume_horaire_total'] }}h</span>
+                                        <span class="badge bg-primary">{{ $matiere['volume_horaire_total_formatted'] ?? $matiere['volume_horaire_total'] . 'h' }}</span>
                                     </td>
                                     <td class="text-center">
                                         <span class="badge bg-{{ $matiere['heures_restantes'] > 0 ? 'success' : 'warning' }}">
-                                            {{ $matiere['heures_restantes'] }}h
+                                            {{ $matiere['heures_restantes_formatted'] ?? $matiere['heures_restantes'] . 'h' }}
                                         </span>
                                     </td>
                                     <td class="text-center">
@@ -86,11 +86,11 @@
                             <h6 class="text-primary"><i class="fas fa-chart-pie me-2"></i>Résumé</h6>
                             <div class="row">
                                 <div class="col-6">
-                                    <h4 class="text-primary mb-1">{{ $planificationData['heures_totales'] }}</h4>
+                                    <h4 class="text-primary mb-1">{{ $planificationData['heures_totales_formatted'] ?? $planificationData['heures_totales'] }}</h4>
                                     <small>H. planifiées</small>
                                 </div>
                                 <div class="col-6">
-                                    <h4 class="text-success mb-1">{{ $planificationData['heures_restantes'] }}</h4>
+                                    <h4 class="text-success mb-1">{{ $planificationData['heures_restantes_formatted'] ?? $planificationData['heures_restantes'] }}</h4>
                                     <small>H. restantes</small>
                                 </div>
                             </div>

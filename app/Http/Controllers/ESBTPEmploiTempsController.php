@@ -431,6 +431,16 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
 
             $enseignantsSelectables = $enseignantsSelectables->filter()->unique('id')->values();
 
+            // Fonction helper pour formater les heures en XXhYY
+            $formatHeures = function($heures) {
+                $h = floor($heures);
+                $m = round(($heures - $h) * 60);
+                if ($m > 0) {
+                    return $h . 'h' . ($m < 10 ? '0' : '') . $m;
+                }
+                return $h . 'h';
+            };
+
             $matieresPlanifiees->push([
                 'planification_id' => $planification->id,
                 'matiere' => $planification->matiere,
@@ -441,8 +451,11 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 'volume_horaire_total' => $planification->volume_horaire_total,
                 'heures_utilisees' => $heuresUtilisees,
                 'heures_restantes' => max(0, $heuresRestantes),
-                'pourcentage_utilise' => $planification->volume_horaire_total > 0 
-                    ? round(($heuresUtilisees / $planification->volume_horaire_total) * 100, 1) 
+                'volume_horaire_total_formatted' => $formatHeures($planification->volume_horaire_total),
+                'heures_utilisees_formatted' => $formatHeures($heuresUtilisees),
+                'heures_restantes_formatted' => $formatHeures(max(0, $heuresRestantes)),
+                'pourcentage_utilise' => $planification->volume_horaire_total > 0
+                    ? round(($heuresUtilisees / $planification->volume_horaire_total) * 100, 1)
                     : 0,
                 'volume_horaire_cm' => $planification->volume_horaire_cm,
                 'volume_horaire_td' => $planification->volume_horaire_td,
@@ -466,8 +479,24 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         }
 
         $data['matieres_planifiees'] = $matieresPlanifiees;
-        $data['heures_totales'] = $matieresPlanifiees->sum('volume_horaire_total');
-        $data['heures_restantes'] = $matieresPlanifiees->sum('heures_restantes');
+
+        $heuresTotal = $matieresPlanifiees->sum('volume_horaire_total');
+        $heuresRestantesTotal = $matieresPlanifiees->sum('heures_restantes');
+
+        // Fonction helper pour formater les heures en XXhYY
+        $formatHeuresTotal = function($heures) {
+            $h = floor($heures);
+            $m = round(($heures - $h) * 60);
+            if ($m > 0) {
+                return $h . 'h' . ($m < 10 ? '0' : '') . $m;
+            }
+            return $h . 'h';
+        };
+
+        $data['heures_totales'] = $heuresTotal;
+        $data['heures_restantes'] = $heuresRestantesTotal;
+        $data['heures_totales_formatted'] = $formatHeuresTotal($heuresTotal);
+        $data['heures_restantes_formatted'] = $formatHeuresTotal($heuresRestantesTotal);
 
         // Récupérer les enseignants disponibles (tous les enseignants, mais marquer ceux qui sont assignés)
         $tousLesEnseignants = \App\Models\User::role('enseignant')
@@ -972,11 +1001,24 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 $heuresEffectuees = $planification->heures_effectuees ?? 0;
                 $volumeTotal = $planification->volume_horaire_total;
                 $heuresRestantes = max(0, $volumeTotal - $heuresEffectuees);
-                
+
+                // Fonction helper pour formater les heures en XXh YYmin
+                $formatHeures = function($heures) {
+                    $h = floor($heures);
+                    $m = round(($heures - $h) * 60);
+                    if ($m > 0) {
+                        return $h . 'h' . ($m < 10 ? '0' : '') . $m;
+                    }
+                    return $h . 'h';
+                };
+
                 $matiere->volume_info = [
                     'volume_total' => $volumeTotal,
                     'heures_effectuees' => $heuresEffectuees,
                     'heures_restantes' => $heuresRestantes,
+                    'volume_total_formatted' => $formatHeures($volumeTotal),
+                    'heures_effectuees_formatted' => $formatHeures($heuresEffectuees),
+                    'heures_restantes_formatted' => $formatHeures($heuresRestantes),
                     'pourcentage_utilise' => $volumeTotal > 0 ? round(($heuresEffectuees / $volumeTotal) * 100, 1) : 0,
                     'est_complete' => $heuresRestantes <= 0,
                     'enseignant_principal' => $planification->enseignantPrincipal
@@ -987,6 +1029,9 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                     'volume_total' => 0,
                     'heures_effectuees' => 0,
                     'heures_restantes' => 0,
+                    'volume_total_formatted' => '0h',
+                    'heures_effectuees_formatted' => '0h',
+                    'heures_restantes_formatted' => '0h',
                     'pourcentage_utilise' => 0,
                     'est_complete' => false,
                     'non_configuree' => true,
@@ -1281,8 +1326,11 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             // Générer le nom du fichier
             $filename = 'emploi_temps_' . $emploiTemps->classe->name . '_' . now()->format('Y-m-d') . '.pdf';
 
-            // Retourner le PDF pour téléchargement
-            return $pdf->download($filename);
+            // Retourner le PDF pour téléchargement (Browsershot retourne le contenu binaire directement)
+            return response($pdf, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"'
+            ]);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la génération du PDF de l\'emploi du temps', [
                 'error' => $e->getMessage(),
