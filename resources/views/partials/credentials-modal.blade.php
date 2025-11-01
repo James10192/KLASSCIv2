@@ -44,12 +44,32 @@
             </div>
         </div>
 
-        <div style="display: flex; gap: var(--space-sm); justify-content: center;">
-            <button type="button" onclick="printCredentials()" class="btn-acasi secondary" style="flex: 1;">
+        @if(session('created_teacher_id'))
+        <div style="background-color: rgba(59, 130, 246, 0.1); border-radius: var(--radius-small); padding: var(--space-md); margin-bottom: var(--space-lg); border-left: 4px solid var(--primary);">
+            <div style="display: flex; align-items: flex-start; gap: var(--space-sm);">
+                <i class="fas fa-info-circle" style="color: var(--primary); margin-top: 2px;"></i>
+                <div>
+                    <p style="margin: 0; font-size: var(--text-small); color: var(--text-primary); font-weight: 600;">Gestion de la disponibilité</p>
+                    <p style="margin: var(--space-xs) 0 0 0; font-size: var(--text-small); color: var(--text-secondary);">
+                        Pour gérer la disponibilité de cet enseignant, consultez sa fiche détaillée. Vous pourrez le faire à tout moment.
+                    </p>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        <div style="display: flex; gap: var(--space-sm); justify-content: center; flex-wrap: wrap;">
+            <button type="button" onclick="printCredentials()" class="btn-acasi secondary" style="flex: 1; min-width: 120px;">
                 <i class="fas fa-print" style="margin-right: var(--space-xs);"></i>
                 Imprimer
             </button>
-            <button type="button" onclick="closeCredentialsModal()" class="btn-acasi primary" style="flex: 1;">
+            @if(session('created_teacher_id'))
+            <a href="{{ route('esbtp.enseignants.show', session('created_teacher_id')) }}" class="btn-acasi success" style="flex: 1; min-width: 120px; text-decoration: none;">
+                <i class="fas fa-user" style="margin-right: var(--space-xs);"></i>
+                Voir la fiche
+            </a>
+            @endif
+            <button type="button" onclick="closeCredentialsModal()" class="btn-acasi primary" style="flex: 1; min-width: 120px;">
                 <i class="fas fa-check" style="margin-right: var(--space-xs);"></i>
                 Compris
             </button>

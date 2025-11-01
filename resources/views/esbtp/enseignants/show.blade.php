@@ -1051,6 +1051,7 @@
                             </details>
 
                             <script>
+                            @if(config('app.debug'))
                             // DEBUG JavaScript sur page SHOW
                             document.addEventListener('DOMContentLoaded', function() {
                                 console.log('🔍 DEBUG PAGE SHOW CHARGÉE à {{ date('H:i:s') }}');
@@ -1084,6 +1085,7 @@
                                 }, 1000);
                                 @endif
                             });
+                            @endif
                             </script>
                         </div>
                         @endif
@@ -1241,8 +1243,10 @@
                             
                             // Envoyer les données via AJAX
                             const teacherId = {{ $teacher->id }};
+                            @if(config('app.debug'))
                             console.log('Données à envoyer:', { changes: changedSlots });
-                            
+                            @endif
+
                             fetch(`/esbtp/enseignants/${teacherId}/update-availability`, {
                                 method: 'POST',
                                 headers: {
@@ -1252,11 +1256,15 @@
                                 body: JSON.stringify({ changes: changedSlots })
                             })
                             .then(response => {
+                                @if(config('app.debug'))
                                 console.log('Réponse reçue:', response);
+                                @endif
                                 return response.json();
                             })
                             .then(data => {
+                                @if(config('app.debug'))
                                 console.log('Données reçues:', data);
+                                @endif
                                 if (data.success) {
                                     showNotification('Disponibilités mises à jour avec succès !', 'success');
                                     

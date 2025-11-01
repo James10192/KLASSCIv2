@@ -1268,10 +1268,12 @@ Route::prefix('secretaires')->name('secretaires.')->group(function () {
     Route::get('/{id}/edit', [ESBTPSecretaireController::class, 'edit'])->name('edit');
     Route::put('/{id}', [ESBTPSecretaireController::class, 'update'])->name('update');
     Route::delete('/{id}', [ESBTPSecretaireController::class, 'destroy'])->name('destroy');
+    Route::post('/{id}/toggle-status', [ESBTPSecretaireController::class, 'toggleStatus'])->name('toggle-status');
 });
 
 // Routes pour la gestion des enseignants
 Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])->group(function () {
+    Route::get('enseignants/duplicates', [ESBTPEnseignantController::class, 'duplicates'])->name('enseignants.duplicates');
     Route::resource('enseignants', ESBTPEnseignantController::class);
     Route::get('enseignants/{teacher}/matieres', [ESBTPEnseignantController::class, 'matieres'])->name('enseignants.matieres');
     Route::post('enseignants/{teacher}/assign-matieres', [ESBTPEnseignantController::class, 'assignMatieres'])->name('enseignants.assign-matieres');

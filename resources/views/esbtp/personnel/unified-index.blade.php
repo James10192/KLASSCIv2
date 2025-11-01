@@ -642,6 +642,21 @@
                         </select>
                     </div>
 
+                    {{-- Tip pour la disponibilité --}}
+                    <div style="background-color: rgba(59, 130, 246, 0.1); border-radius: var(--radius-medium); padding: var(--space-md); margin-bottom: var(--space-lg); border-left: 4px solid var(--primary);">
+                        <div style="display: flex; align-items: flex-start; gap: var(--space-sm);">
+                            <i class="fas fa-lightbulb" style="color: var(--primary); margin-top: 2px; font-size: 1.2rem;"></i>
+                            <div>
+                                <p style="margin: 0; font-size: var(--text-normal); color: var(--text-primary); font-weight: 600;">
+                                    <i class="fas fa-info-circle" style="margin-right: 4px;"></i>Astuce
+                                </p>
+                                <p style="margin: var(--space-xs) 0 0 0; font-size: var(--text-small); color: var(--text-secondary);">
+                                    Pour gérer la disponibilité d'un enseignant (horaires, jours disponibles, préférences), consultez sa fiche détaillée en cliquant sur le bouton "Voir détails".
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="enseignants-list">
                         @if(isset($enseignants) && $enseignants->count() > 0)
                             @foreach($enseignants as $teacher)
@@ -927,19 +942,61 @@ $(document).ready(function() {
 // Fonctions pour toggle le statut
 function toggleTeacherStatus(teacherId) {
     if (confirm('Êtes-vous sûr de vouloir changer le statut de cet enseignant ?')) {
-        // Logique AJAX pour toggle le statut enseignant
-        console.log('Toggle teacher status:', teacherId);
-        // TODO: Implémenter l'appel AJAX
-        alert('Fonctionnalité en développement');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        fetch(`/esbtp/enseignants/${teacherId}/toggle-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Afficher un message de succès
+                alert(data.message);
+                // Recharger la page pour refléter les changements
+                location.reload();
+            } else {
+                alert('Erreur lors de la mise à jour du statut');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Une erreur est survenue lors de la mise à jour du statut');
+        });
     }
 }
 
 function toggleSecretaireStatus(secretaireId) {
     if (confirm('Êtes-vous sûr de vouloir changer le statut de ce secrétaire ?')) {
-        // Logique AJAX pour toggle le statut secrétaire
-        console.log('Toggle secretaire status:', secretaireId);
-        // TODO: Implémenter l'appel AJAX
-        alert('Fonctionnalité en développement');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        fetch(`/esbtp/secretaires/${secretaireId}/toggle-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Afficher un message de succès
+                alert(data.message);
+                // Recharger la page pour refléter les changements
+                location.reload();
+            } else {
+                alert('Erreur lors de la mise à jour du statut');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Une erreur est survenue lors de la mise à jour du statut');
+        });
     }
 }
 </script>

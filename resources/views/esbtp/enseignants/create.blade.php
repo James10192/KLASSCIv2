@@ -948,6 +948,25 @@
 
                 </div>
 
+                {{-- Hidden input for duplicate override --}}
+                <input type="hidden" name="duplicate_override" id="duplicate_override" value="0">
+
+                {{-- Duplicate warning --}}
+                <div id="duplicate-warning" class="alert alert-warning d-none mt-4" role="alert">
+                    <div class="d-flex align-items-start">
+                        <i class="fas fa-exclamation-triangle me-2 mt-1"></i>
+                        <div>
+                            <strong>Attention : Doublon potentiel détecté</strong><br>
+                            <span id="duplicate-warning-text">Veuillez vérifier les informations avant de continuer.</span>
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="show-duplicates-modal">
+                                    Voir les doublons
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="wizard-actions">
                     <button type="button" class="btn-acasi secondary" id="prevBtn" onclick="changeStep(-1)" style="display: none;">
                         <i class="fas fa-arrow-left me-1"></i>Précédent
@@ -965,6 +984,31 @@
         </div>
     </div>
 </div>
+
+{{-- Modal pour afficher les doublons --}}
+<div class="modal fade" id="duplicateModal" tabindex="-1" aria-labelledby="duplicateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="duplicateModalLabel">Doublons potentiels détectés</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Nous avons trouvé des enseignants similaires dans la base de données :</p>
+                <div id="duplicate-modal-content">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>Aucun doublon détecté.
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="continue-with-duplicate">Continuer l'inscription</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -1123,5 +1167,192 @@ document.getElementById('type_contrat').addEventListener('change', function() {
 // Initialisation
 updateButtons();
 updateProgress();
+
+// ===== DUPLICATE DETECTION =====
+const duplicateForm = document.getElementById('teacherForm');
+const duplicateOverrideInput = document.getElementById('duplicate_override');
+const duplicateWarning = document.getElementById('duplicate-warning');
+const duplicateWarningText = document.getElementById('duplicate-warning-text');
+const duplicateModalElement = document.getElementById('duplicateModal');
+const duplicateModalContent = document.getElementById('duplicate-modal-content');
+const showDuplicatesBtn = document.getElementById('show-duplicates-modal');
+const continueWithDuplicateBtn = document.getElementById('continue-with-duplicate');
+const duplicateCheckUrl = "{{ route('esbtp.enseignants.duplicates') }}";
+let duplicateModalInstance = null;
+
+if (duplicateModalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+    duplicateModalInstance = new bootstrap.Modal(duplicateModalElement);
+}
+
+const duplicateState = { results: [], override: false };
+let duplicateTimer = null;
+
+function resetDuplicateOverride() {
+    duplicateState.override = false;
+    if (duplicateOverrideInput) {
+        duplicateOverrideInput.value = '0';
+    }
+}
+
+function scheduleDuplicateCheck() {
+    if (!duplicateCheckUrl) {
+        return;
+    }
+    if (duplicateTimer) {
+        clearTimeout(duplicateTimer);
+    }
+    duplicateTimer = setTimeout(runDuplicateCheck, 600);
+    resetDuplicateOverride();
+}
+
+function runDuplicateCheck() {
+    if (!duplicateForm || !duplicateCheckUrl) {
+        return;
+    }
+
+    const nameField = duplicateForm.querySelector('input[name="name"]');
+    const specializationField = duplicateForm.querySelector('input[name="specialization"]');
+
+    if (!nameField) {
+        return;
+    }
+
+    const nameValue = nameField.value.trim();
+
+    if (!nameValue || nameValue.length < 3) {
+        duplicateState.results = [];
+        updateDuplicateUI();
+        return;
+    }
+
+    const specializationValue = specializationField ? specializationField.value.trim() : '';
+
+    const params = new URLSearchParams();
+    params.append('name', nameValue);
+    if (specializationValue) {
+        params.append('specialization', specializationValue);
+    }
+
+    fetch(`${duplicateCheckUrl}?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        duplicateState.results = Array.isArray(data.duplicates) ? data.duplicates : [];
+        resetDuplicateOverride();
+        updateDuplicateUI();
+    })
+    .catch(() => {
+        duplicateState.results = [];
+        updateDuplicateUI();
+    });
+}
+
+function updateDuplicateUI() {
+    if (!duplicateWarning || !duplicateWarningText) {
+        return;
+    }
+
+    if (duplicateState.results.length > 0) {
+        if (duplicateState.override) {
+            duplicateWarning.classList.add('d-none');
+            if (duplicateOverrideInput) {
+                duplicateOverrideInput.value = '1';
+            }
+            return;
+        }
+
+        duplicateWarning.classList.remove('d-none');
+        duplicateWarningText.textContent = `Nous avons trouvé ${duplicateState.results.length} enseignant(s) avec un profil similaire.`;
+        renderDuplicateModal();
+    } else {
+        duplicateWarning.classList.add('d-none');
+        if (duplicateOverrideInput) {
+            duplicateOverrideInput.value = '0';
+        }
+        if (duplicateModalInstance) {
+            duplicateModalInstance.hide();
+        }
+        if (duplicateModalContent) {
+            duplicateModalContent.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>Aucun doublon détecté.
+                </div>
+            `;
+        }
+    }
+}
+
+function renderDuplicateModal() {
+    if (!duplicateModalContent) {
+        return;
+    }
+
+    if (duplicateState.results.length === 0) {
+        duplicateModalContent.innerHTML = `
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle me-2"></i>Aucun doublon détecté.
+            </div>
+        `;
+        return;
+    }
+
+    let html = '<div class="list-group">';
+    duplicateState.results.forEach(teacher => {
+        html += `
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1">${teacher.name}</h6>
+                        <p class="mb-1 text-muted"><small>Email: ${teacher.email}</small></p>
+                        <p class="mb-1 text-muted"><small>Spécialisation: ${teacher.specialization || 'N/A'}</small></p>
+                        <p class="mb-0 text-muted"><small>Matricule: ${teacher.matricule}</small></p>
+                    </div>
+                    <div>
+                        <a href="${teacher.show_url}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i> Voir
+                        </a>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+
+    duplicateModalContent.innerHTML = html;
+}
+
+// Event listeners for duplicate detection
+const nameField = document.querySelector('input[name="name"]');
+const specializationField = document.querySelector('input[name="specialization"]');
+
+if (nameField) {
+    nameField.addEventListener('input', scheduleDuplicateCheck);
+}
+if (specializationField) {
+    specializationField.addEventListener('input', scheduleDuplicateCheck);
+}
+
+if (showDuplicatesBtn) {
+    showDuplicatesBtn.addEventListener('click', () => {
+        if (duplicateModalInstance) {
+            duplicateModalInstance.show();
+        }
+    });
+}
+
+if (continueWithDuplicateBtn) {
+    continueWithDuplicateBtn.addEventListener('click', () => {
+        duplicateState.override = true;
+        updateDuplicateUI();
+        if (duplicateModalInstance) {
+            duplicateModalInstance.hide();
+        }
+    });
+}
 </script>
 @endpush

@@ -1044,6 +1044,472 @@ console.log('  🔲 Header: unchecked / ✅ checked / ➖ indeterminate');
 
 ---
 
+### 👥 Gestion Enseignants - Amélioration UX & Fonctionnalités (2 novembre)
+
+**Contexte** : Refonte complète de l'interface de gestion des enseignants pour améliorer l'expérience utilisateur et ajouter de nouvelles fonctionnalités.
+
+#### 1. Header Unifié Pages Création
+
+**Fichiers modifiés** :
+- `resources/views/esbtp/enseignants/create.blade.php` (lignes 458-474)
+- `resources/views/esbtp/coordinateurs/create.blade.php` (lignes 206-221)
+
+**Changement** : Remplacement du header `card-moderne` par `main-header` (copié depuis `enseignants.edit`)
+
+**Structure** :
+```html
+<div class="main-header">
+    <div class="header-content">
+        <div class="header-left">
+            <h1>
+                <i class="fas fa-user-plus me-2"></i>
+                Nouveau Enseignant
+            </h1>
+            <p>Créez un profil complet pour le nouvel enseignant</p>
+        </div>
+        <div class="header-actions">
+            <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn-header">
+                <i class="fas fa-arrow-left"></i>
+                Retour à la liste
+            </a>
+        </div>
+    </div>
+</div>
+```
+
+**Avantages** :
+- Cohérence visuelle entre pages création/édition
+- Design moderne et professionnel
+- Bouton "Retour" toujours visible
+
+---
+
+#### 2. Affichage Titre Académique
+
+**Fichier modifié** : `resources/views/esbtp/personnel/unified-index.blade.php` (lignes 658-663)
+
+**Changement** : Affichage du titre académique (M., Mme, Mlle, Dr., Pr.) AVANT le nom complet
+
+**Code** :
+```php
+<div class="personnel-name">
+    @if($teacher->title)
+        <span style="font-weight: 500;">{{ $teacher->title }}</span>
+    @endif
+    {{ $teacher->user->name }}
+</div>
+```
+
+**Exemples** :
+- Avant : `KOUASSI Jean`
+- Après : `Dr. KOUASSI Jean` ou `Pr. KOUASSI Jean`
+
+---
+
+#### 3. Option "Mademoiselle" Ajoutée
+
+**Fichiers modifiés** :
+- `app/Http/Controllers/ESBTPEnseignantController.php` (lignes 87-93 & 390-396)
+
+**Changement** : Ajout de l'option `'Mlle' => 'Mademoiselle'` dans le tableau `$titres_academiques`
+
+**Liste complète** :
+- M. (Monsieur)
+- Mme (Madame)
+- **Mlle (Mademoiselle)** ← NOUVEAU
+- Dr. (Docteur)
+- Pr. (Professeur)
+
+---
+
+#### 4. Titre Académique Modifiable
+
+**Fichier modifié** : `resources/views/esbtp/enseignants/edit.blade.php` (lignes 721-737)
+
+**Problème** : Le titre académique était affiché en lecture seule
+
+**Solution** : Remplacement par un select modifiable
+
+**Code** :
+```php
+<div class="form-group-moderne">
+    <label for="titre_academique" class="form-label-moderne">
+        Titre Académique
+    </label>
+    <select name="titre_academique" id="titre_academique"
+            class="form-select-moderne @error('titre_academique') is-invalid @enderror">
+        <option value="">Sélectionnez un titre</option>
+        @foreach($titres_academiques as $key => $value)
+            <option value="{{ $key }}" {{ old('titre_academique', $teacher->title) == $key ? 'selected' : '' }}>
+                {{ $value }}
+            </option>
+        @endforeach
+    </select>
+    @error('titre_academique')
+        <div class="invalid-feedback">{{ $message }}</div>
+    @enderror
+</div>
+```
+
+**Backend** : `ESBTPEnseignantController.php` (lignes 440-452, 469-470)
+- Validation : `'titre_academique' => 'nullable|string|max:10'`
+- Mapping : `'title' => $request->titre_academique`
+
+---
+
+#### 5. Suppression Section Disponibilité
+
+**Fichiers modifiés** :
+- `resources/views/esbtp/enseignants/create.blade.php` (lignes 481-501, 844-922)
+- `resources/views/esbtp/enseignants/edit.blade.php` (lignes 634-654, 892-965)
+
+**Problème** : Section "Disponibilités" trop complexe pour les pages création/édition
+
+**Solution** :
+- Suppression complète de l'étape 4 (Disponibilités)
+- Changement `totalSteps` de 5 à 4
+- Suppression fonction JavaScript `toggleAvailability()`
+- **Disponibilités gérées uniquement dans `enseignants.show`**
+
+**Wizard steps** :
+1. Informations personnelles
+2. Coordonnées
+3. Informations professionnelles
+4. ~~Disponibilités~~ ← SUPPRIMÉ
+5. Confirmation → devient étape 4
+
+---
+
+#### 6. Message Création Enrichi
+
+**Fichiers modifiés** :
+- `app/Http/Controllers/ESBTPEnseignantController.php` (lignes 274-277)
+- `resources/views/partials/credentials-modal.blade.php` (lignes 47-71)
+
+**Problème** : Pas de message clair sur où gérer la disponibilité après création
+
+**Solution** : Ajout d'une carte info + bouton "Voir la fiche"
+
+**Controller** :
+```php
+return redirect()->route('esbtp.personnel.unified.index')
+    ->with('credentials', $credentials)
+    ->with('created_teacher_id', $teacher->id);  // ← NOUVEAU
+```
+
+**Modal credentials** :
+```html
+@if(session('created_teacher_id'))
+<div style="background-color: rgba(59, 130, 246, 0.1); border-radius: var(--radius-small); padding: var(--space-md); margin-bottom: var(--space-lg); border-left: 4px solid var(--primary);">
+    <div style="display: flex; align-items: flex-start; gap: var(--space-sm);">
+        <i class="fas fa-info-circle" style="color: var(--primary); margin-top: 2px;"></i>
+        <div>
+            <p style="margin: 0; font-size: var(--text-small); color: var(--text-primary); font-weight: 600;">
+                Gestion de la disponibilité
+            </p>
+            <p style="margin: var(--space-xs) 0 0 0; font-size: var(--text-small); color: var(--text-secondary);">
+                Pour gérer la disponibilité de cet enseignant, consultez sa fiche détaillée. Vous pourrez le faire à tout moment.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div style="display: flex; gap: var(--space-sm); justify-content: center; flex-wrap: wrap;">
+    <button type="button" onclick="printCredentials()" class="btn-acasi secondary" style="flex: 1; min-width: 120px;">
+        <i class="fas fa-print" style="margin-right: var(--space-xs);"></i>
+        Imprimer
+    </button>
+    <a href="{{ route('esbtp.enseignants.show', session('created_teacher_id')) }}" class="btn-acasi success" style="flex: 1; min-width: 120px; text-decoration: none;">
+        <i class="fas fa-user" style="margin-right: var(--space-xs);"></i>
+        Voir la fiche
+    </a>
+    <button type="button" onclick="closeCredentialsModal()" class="btn-acasi primary" style="flex: 1; min-width: 120px;">
+        <i class="fas fa-check" style="margin-right: var(--space-xs);"></i>
+        Compris
+    </button>
+</div>
+@endif
+```
+
+**Résultat** :
+- Carte bleue avec icône info
+- Bouton "Voir la fiche" → Redirige vers `enseignants.show`
+- Message clair sur la gestion de disponibilité
+
+---
+
+#### 7. Tip Gestion Disponibilité
+
+**Fichier modifié** : `resources/views/esbtp/personnel/unified-index.blade.php` (lignes 645-658)
+
+**Changement** : Ajout d'une carte tip au-dessus de la liste des enseignants
+
+**Code** :
+```html
+<div style="background-color: rgba(59, 130, 246, 0.1); border-radius: var(--radius-medium); padding: var(--space-md); margin-bottom: var(--space-lg); border-left: 4px solid var(--primary);">
+    <div style="display: flex; align-items: flex-start; gap: var(--space-sm);">
+        <i class="fas fa-lightbulb" style="color: var(--primary); margin-top: 2px; font-size: 1.2rem;"></i>
+        <div>
+            <p style="margin: 0; font-size: var(--text-normal); color: var(--text-primary); font-weight: 600;">
+                <i class="fas fa-info-circle" style="margin-right: 4px;"></i>Astuce
+            </p>
+            <p style="margin: var(--space-xs) 0 0 0; font-size: var(--text-small); color: var(--text-secondary);">
+                Pour gérer la disponibilité d'un enseignant (horaires, jours disponibles, préférences), consultez sa fiche détaillée en cliquant sur le bouton "Voir détails".
+            </p>
+        </div>
+    </div>
+</div>
+```
+
+**Avantages** :
+- Informe les utilisateurs AVANT de créer un enseignant
+- Évite la confusion sur la gestion de disponibilité
+
+---
+
+#### 8. Nettoyage Debugs Conditionnels
+
+**Fichiers modifiés** :
+- `resources/views/esbtp/enseignants/edit.blade.php` (lignes 1046-1064)
+- `resources/views/esbtp/enseignants/show.blade.php` (lignes 1054-1088, 1246-1267)
+
+**Problème** : Code debug (`console.log`, `alert`) visible en production
+
+**Solution** : Wrapping avec `@if(config('app.debug'))`
+
+**Exemples** :
+```php
+@if(config('app.debug'))
+<script>
+    console.log('🎯 Form submission debug');
+    console.log('Données:', formData);
+</script>
+@endif
+
+@if(config('app.debug'))
+    fetch('/api/debug')
+        .then(response => response.json())
+        .then(data => console.log('🔍 AJAX Debug:', data));
+@endif
+```
+
+**Impact** :
+- Console propre en production (`APP_DEBUG=false`)
+- Debugging facile en développement (`APP_DEBUG=true`)
+
+---
+
+#### 9. Détection Doublons Enseignants
+
+**Fichiers modifiés** :
+- `app/Http/Controllers/ESBTPEnseignantController.php` (lignes 296-335)
+- `routes/web.php` (ligne 1275)
+- `resources/views/esbtp/enseignants/create.blade.php` (lignes 951-968, 988-1010, 1171-1357)
+
+**Problème** : Risque de créer des enseignants en double
+
+**Solution** : Système de détection AJAX avec fuzzy search
+
+**Backend - Nouvelle méthode** :
+```php
+public function duplicates(Request $request)
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'specialization' => 'nullable|string|max:255',
+    ]);
+
+    $name = $request->input('name');
+    $specialization = $request->input('specialization');
+
+    $duplicates = ESBTPTeacher::with('user')
+        ->whereHas('user', function($query) use ($name) {
+            $query->where('name', 'LIKE', '%' . $name . '%');
+        })
+        ->when($specialization, function($query) use ($specialization) {
+            $query->where('specialization', 'LIKE', '%' . $specialization . '%');
+        })
+        ->limit(10)
+        ->get()
+        ->map(function($teacher) {
+            return [
+                'id' => $teacher->id,
+                'name' => $teacher->user->name ?? '',
+                'email' => $teacher->user->email ?? '',
+                'specialization' => $teacher->specialization,
+                'matricule' => $teacher->matricule,
+                'status' => $teacher->status,
+                'show_url' => route('esbtp.enseignants.show', $teacher->id),
+            ];
+        });
+
+    return response()->json([
+        'duplicates' => $duplicates,
+    ]);
+}
+```
+
+**Route** :
+```php
+// DOIT ÊTRE AVANT Route::resource
+Route::get('enseignants/duplicates', [ESBTPEnseignantController::class, 'duplicates'])
+    ->name('enseignants.duplicates');
+```
+
+**Frontend** :
+- **Debounced input listeners** (500ms) sur champs nom + spécialisation
+- **Alert warning** si doublons détectés
+- **Modal Bootstrap** avec liste détaillée
+- **Hidden input** `duplicate_override` pour forcer création
+
+**Workflow** :
+1. Utilisateur tape nom + spécialisation
+2. Après 500ms d'inactivité → Requête AJAX
+3. Si doublons → Alert jaune + bouton "Voir les doublons"
+4. Modal affiche : Nom, Email, Spécialisation, Matricule, Statut
+5. Liens "Voir la fiche" pour chaque doublon
+6. Bouton "Ignorer et créer quand même" → `duplicate_override = 1`
+
+---
+
+#### 10. Bouton Toggle Status Fonctionnel
+
+**Fichiers modifiés** :
+- `app/Http/Controllers/ESBTPEnseignantController.php` (lignes 704-723)
+- `app/Http/Controllers/ESBTPSecretaireController.php` (lignes 153-176) ← NOUVEAU
+- `routes/web.php` (ligne 1271)
+- `resources/views/esbtp/personnel/unified-index.blade.php` (lignes 943-1001)
+
+**Problème** : Bouton "Activer/Désactiver" marqué "En cours de développement"
+
+**Solution** : Implémentation complète AJAX
+
+**Backend Enseignants** :
+```php
+public function toggleStatus(Request $request, ESBTPTeacher $teacher)
+{
+    $newStatus = $teacher->status === 'active' ? 'inactive' : 'active';
+
+    $teacher->update([
+        'status' => $newStatus,
+        'updated_by' => auth()->id(),
+    ]);
+
+    // Support AJAX
+    if ($request->wantsJson() || $request->ajax()) {
+        return response()->json([
+            'success' => true,
+            'message' => 'Statut mis à jour avec succès',
+            'new_status' => $newStatus
+        ]);
+    }
+
+    return redirect()->back()->with('success', 'Statut mis à jour avec succès');
+}
+```
+
+**Backend Secrétaires** (même logique) :
+```php
+public function toggleStatus(Request $request, $id)
+{
+    $secretaire = User::role('secretaire')->findOrFail($id);
+    $newStatus = $secretaire->is_active ? 0 : 1;
+
+    $secretaire->update([
+        'is_active' => $newStatus,
+    ]);
+
+    if ($request->wantsJson() || $request->ajax()) {
+        return response()->json([
+            'success' => true,
+            'message' => 'Statut mis à jour avec succès',
+            'new_status' => $newStatus ? 'active' : 'inactive'
+        ]);
+    }
+
+    return redirect()->back()->with('success', 'Statut mis à jour avec succès');
+}
+```
+
+**Frontend** :
+```javascript
+function toggleTeacherStatus(teacherId) {
+    if (confirm('Êtes-vous sûr de vouloir changer le statut de cet enseignant ?')) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        fetch(`/esbtp/enseignants/${teacherId}/toggle-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();  // Rafraîchir la page
+            } else {
+                alert('Erreur lors de la mise à jour du statut');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Une erreur est survenue lors de la mise à jour du statut');
+        });
+    }
+}
+```
+
+**Routes** :
+```php
+// Enseignants (déjà existante)
+Route::post('enseignants/{teacher}/toggle-status', [ESBTPEnseignantController::class, 'toggleStatus'])
+    ->name('enseignants.toggle-status');
+
+// Secrétaires (nouvelle)
+Route::post('secretaires/{id}/toggle-status', [ESBTPSecretaireController::class, 'toggleStatus'])
+    ->name('secretaires.toggle-status');
+```
+
+**Résultat** :
+- ✅ Bouton "Activer" fonctionne pour enseignants
+- ✅ Bouton "Activer" fonctionne pour secrétaires
+- ✅ Confirmation avant action
+- ✅ Message de succès
+- ✅ Page rafraîchie automatiquement
+
+---
+
+#### Fichiers Modifiés (Récapitulatif)
+
+| Fichier | Type | Lignes modifiées | Changements |
+|---------|------|------------------|-------------|
+| `ESBTPEnseignantController.php` | Controller | 87-93, 390-396, 440-452, 469-470, 274-277, 296-335, 704-723 | Titre académique, duplicate detection, toggle status |
+| `ESBTPSecretaireController.php` | Controller | 153-176 | Toggle status (nouveau) |
+| `enseignants/create.blade.php` | View | 458-474, 358-432, 481-501, 844-922, 973, 951-968, 988-1010, 1171-1357 | Header, availability removal, duplicates |
+| `enseignants/edit.blade.php` | View | 634-654, 721-737, 892-965, 940, 1046-1064 | Header, title field, availability removal, debug cleanup |
+| `enseignants/show.blade.php` | View | 1054-1088, 1246-1267 | Debug cleanup |
+| `coordinateurs/create.blade.php` | View | 206-221, 122-196 | Header unification |
+| `personnel/unified-index.blade.php` | View | 658-663, 645-658, 943-1001 | Title display, tip, toggle status |
+| `credentials-modal.blade.php` | Partial | 47-71 | Availability tip, "View teacher" button |
+| `web.php` | Routes | 1275, 1271 | Duplicates route, secretaire toggle |
+
+---
+
+#### Améliorations UX
+
+✅ **Cohérence visuelle** : Headers unifiés entre toutes les pages
+✅ **Informations complètes** : Titre académique affiché partout
+✅ **Workflow simplifié** : Disponibilités gérées dans fiche détaillée uniquement
+✅ **Guidance utilisateur** : Tips et messages clairs
+✅ **Prévention doublons** : Détection automatique nom + spécialisation
+✅ **Actions fonctionnelles** : Toggle status opérationnel pour enseignants ET secrétaires
+✅ **Code propre** : Debug masqué en production
+
+---
+
 ## 📝 TODO & Prochaines Étapes
 
 ### 🔴 Priorité Haute
@@ -1190,4 +1656,4 @@ TENANT_CODE=presentation
 
 ---
 
-*Dernière mise à jour: 1er novembre 2025*
+*Dernière mise à jour: 2 novembre 2025*

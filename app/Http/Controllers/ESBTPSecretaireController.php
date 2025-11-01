@@ -149,4 +149,28 @@ class ESBTPSecretaireController extends Controller
         return redirect()->route('secretaires.index')
             ->with('success', 'Secrétaire supprimé avec succès');
     }
+
+    /**
+     * Toggle secretaire status (active/inactive).
+     */
+    public function toggleStatus(Request $request, $id)
+    {
+        $secretaire = User::role('secretaire')->findOrFail($id);
+        $newStatus = $secretaire->is_active ? 0 : 1;
+
+        $secretaire->update([
+            'is_active' => $newStatus,
+        ]);
+
+        // Si c'est une requête AJAX, retourner du JSON
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Statut mis à jour avec succès',
+                'new_status' => $newStatus ? 'active' : 'inactive'
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Statut mis à jour avec succès');
+    }
 } 

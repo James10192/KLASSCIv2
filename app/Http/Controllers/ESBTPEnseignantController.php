@@ -294,6 +294,47 @@ class ESBTPEnseignantController extends Controller
     }
 
     /**
+     * Check for duplicate teachers based on name and specialization.
+     */
+    public function duplicates(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'specialization' => 'nullable|string|max:255',
+        ]);
+
+        $name = $request->input('name');
+        $specialization = $request->input('specialization');
+
+        // Simple duplicate detection based on similar name and specialization
+        $duplicates = ESBTPTeacher::with('user')
+            ->whereHas('user', function($query) use ($name) {
+                // Similar name detection (simple LIKE for now)
+                $query->where('name', 'LIKE', '%' . $name . '%');
+            })
+            ->when($specialization, function($query) use ($specialization) {
+                $query->where('specialization', 'LIKE', '%' . $specialization . '%');
+            })
+            ->limit(10)
+            ->get()
+            ->map(function($teacher) {
+                return [
+                    'id' => $teacher->id,
+                    'name' => $teacher->user->name ?? '',
+                    'email' => $teacher->user->email ?? '',
+                    'specialization' => $teacher->specialization,
+                    'matricule' => $teacher->matricule,
+                    'status' => $teacher->status,
+                    'show_url' => route('esbtp.enseignants.show', $teacher->id),
+                ];
+            });
+
+        return response()->json([
+            'duplicates' => $duplicates,
+        ]);
+    }
+
+    /**
      * Display the specified teacher.
      */
     public function show(ESBTPTeacher $enseignant)
@@ -660,13 +701,24 @@ class ESBTPEnseignantController extends Controller
     /**
      * Toggle teacher status.
      */
-    public function toggleStatus(ESBTPTeacher $teacher)
+    public function toggleStatus(Request $request, ESBTPTeacher $teacher)
     {
+        $newStatus = $teacher->status === 'active' ? 'inactive' : 'active';
+
         $teacher->update([
-            'status' => $teacher->status === 'active' ? 'inactive' : 'active',
+            'status' => $newStatus,
             'updated_by' => auth()->id(),
         ]);
-        
+
+        // Si c'est une requête AJAX, retourner du JSON
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Statut mis à jour avec succès',
+                'new_status' => $newStatus
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Statut mis à jour avec succès');
     }
 
