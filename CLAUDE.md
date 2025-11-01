@@ -1525,6 +1525,608 @@ Route::post('secretaires/{id}/toggle-status', [ESBTPSecretaireController::class,
 
 ---
 
+## 🌐 Vision Future : Réseau Social KLASSCI
+
+**Concept** : Plateforme sociale éducative **CROSS-TENANT** pour tous les étudiants KLASSCI (tous établissements confondus), inspirée de Reddit/Twitter, mais adaptée au contexte académique africain.
+
+**Objectif** : Créer une **grande communauté élitiste panafricaine** des établissements utilisant KLASSCI - Un "LinkedIn académique africain" où les étudiants de l'ESBTP Abidjan peuvent échanger avec ceux de l'ESBTP Yakro, créer du networking inter-établissements, et construire une marque forte "étudiant KLASSCI".
+
+**Vision stratégique** : Transformer KLASSCI d'un simple ERP éducatif en un **écosystème académique complet** avec réseau social fédérateur - similaire à la relation entre GitHub (outil) et GitHub Social (communauté).
+
+---
+
+**📄 Documentation complète** : [docs/api/SOCIAL_NETWORK_ARCHITECTURE.md](docs/api/SOCIAL_NETWORK_ARCHITECTURE.md)
+
+### 📊 Analyse de Faisabilité (Novembre 2025)
+
+#### 1. État des Lieux - Architecture Actuelle & Vision Cross-Tenant
+
+**🎯 CHANGEMENT MAJEUR : Architecture Cross-Tenant Obligatoire**
+
+**Pourquoi une application séparée est OBLIGATOIRE ?**
+
+1. **Données centralisées** :
+   - Tous les étudiants (esbtp-abidjan, esbtp-yakro, etc.) sur la **même plateforme sociale**
+   - Impossible dans KLASSCI actuel (chaque tenant = BDD isolée)
+   - Besoin d'une **BDD centrale unique** pour le social
+
+2. **Networking inter-établissements** :
+   - Étudiant ESBTP Abidjan suit étudiant ESBTP Yakro ✅
+   - Posts visibles cross-tenant (ex: "Offres de stage BTP Côte d'Ivoire") ✅
+   - Communautés globales (ex: "Ingénieurs Génie Civil KLASSCI") ✅
+
+3. **Marque KLASSCI unifiée** :
+   - "Je suis étudiant KLASSCI" (comme "Je suis étudiant 42")
+   - Effet réseau : Plus il y a de tenants, plus la valeur augmente
+   - Élitisme : Accessible seulement aux étudiants d'établissements KLASSCI
+
+**Architecture SaaS Multi-Tenant Actuelle (rappel)** :
+```
+klassci_master (DB)          ← Gestion tenants
+├── Tables: tenants, tenant_deployments, tenant_health_checks,
+│   tenant_backups, tenant_features, tenant_activity_logs
+├── Application: klassci-master (~/workspace/klassciMaster)
+│
+├── tenant: esbtp-abidjan    → esbtp_abidjan (DB isolée)
+├── tenant: esbtp-yakro      → esbtp_yakro (DB isolée)
+├── tenant: presentation     → presentation (DB isolée)
+└── tenant: test-local       → test-local (DB isolée)
+```
+
+**PROBLÈME** : Les étudiants de `esbtp_abidjan` ne peuvent PAS voir/interagir avec ceux de `esbtp_yakro` (BDD séparées).
+
+**SOLUTION** : Application sociale séparée avec BDD centrale.
+
+---
+
+**Forces de KLASSCI (pour intégration sociale)** :
+- ✅ **Base utilisateurs multi-établissements** : ~4000 étudiants (3000 Abidjan + 700 Yakro + 50 test)
+- ✅ **API Master existante** : `klassci-master` peut servir d'auth provider
+- ✅ **Sanctum déjà en place** : Tokens API réutilisables
+- ✅ **Profils étudiants riches** : Nom, photo, classe, filière, établissement
+- ✅ **Infrastructure SaaS mature** : Déploiement tenant automatisé
+
+**Données à synchroniser depuis tenants** :
+- `users` + `esbtp_etudiants` : Profils (sync vers social central)
+- `esbtp_classes` + `esbtp_filieres` : Contexte académique
+- `tenants` (master DB) : Liste établissements KLASSCI
+
+---
+
+#### 2. Fonctionnalités Proposées (Inspirées Reddit + Twitter)
+
+**Phase 1 : Fondations (3-4 mois)** 🟢 Faisable
+
+| Fonctionnalité | Description | Complexité | Modèle inspiré |
+|----------------|-------------|------------|-----------------|
+| **Posts/Threads** | Publications texte/image/lien | Moyenne | Reddit posts + Twitter tweets |
+| **Commentaires** | Discussions threadées (3 niveaux max) | Moyenne | Reddit comments |
+| **Upvotes/Downvotes** | Système de vote +/- | Faible | Reddit karma |
+| **Communautés** | Basées sur Classes/Filières | Faible | Reddit subreddits |
+| **Hashtags** | Tags pour catégorisation | Faible | Twitter hashtags |
+| **Fil d'actualité** | Timeline chronologique/populaire | Moyenne | Twitter feed |
+| **Profils étudiants** | Extension profil existant | Faible | Reddit/Twitter profiles |
+
+**Phase 2 : Engagement (2-3 mois)** 🟡 Moyennement faisable
+
+| Fonctionnalité | Description | Complexité | Modèle inspiré |
+|----------------|-------------|------------|-----------------|
+| **Notifications temps réel** | Laravel Echo + Pusher/WebSocket | Moyenne | Reddit notifications |
+| **Suiveurs/Abonnements** | Follow users/communautés | Faible | Twitter follow |
+| **Mentions** | @username dans posts/comments | Moyenne | Twitter mentions |
+| **Recherche avancée** | Full-text search (Scout + Meilisearch) | Élevée | Reddit search |
+| **Modération** | Rapports, suppression, ban | Moyenne | Reddit moderation |
+| **Badges/Achievements** | Gamification (Top contributeur, etc.) | Moyenne | Reddit flair |
+
+**Phase 3 : Avancées (3-4 mois)** 🟠 Complexe
+
+| Fonctionnalité | Description | Complexité | Modèle inspiré |
+|----------------|-------------|------------|-----------------|
+| **Messages privés** | Chat 1-to-1 | Élevée | Reddit chat |
+| **Groupes de discussion** | Channels thématiques | Élevée | Discord-like |
+| **Partage de fichiers** | Documents, PDF, notes de cours | Moyenne | Slack files |
+| **Sondages** | Votes/enquêtes communautaires | Faible | Twitter polls |
+| **Live events** | Sessions Q&A en direct | Très élevée | Reddit AMAs |
+| **Recommandations AI** | Suggestions posts via Gemini | Élevée | Reddit suggestions |
+
+---
+
+#### 3. Architecture Technique Proposée - Application Séparée Cross-Tenant
+
+**🚀 DÉCISION ARCHITECTURALE : Application Indépendante Obligatoire**
+
+**Architecture Production (sous-domaines)** :
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    KLASSCI ECOSYSTEM                             │
+└─────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────┐     ┌──────────────────────┐     ┌──────────────────┐
+│  admin.klassci.com   │     │  social.klassci.com  │     │  Mobile App      │
+│  (Master Admin)      │────▶│  (Réseau Social)     │◀────│  (Future)        │
+│                      │     │                      │     │                  │
+│  Laravel 12.x        │     │  Laravel 12.x        │     │  Flutter/RN      │
+│  DB: klassci_master  │     │  DB: klassci_social  │     │  API REST        │
+│  API: /api/*         │     │  API: /api/v1/*      │     │                  │
+└──────────────────────┘     └──────────────────────┘     └──────────────────┘
+         │                            │
+         │                            │
+         ▼                            ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              Tenants KLASSCI (isolés par BDD)                   │
+├─────────────────────────────────────────────────────────────────┤
+│  • esbtp-abidjan.klassci.com    (DB: esbtp_abidjan)           │
+│  • esbtp-yakro.klassci.com      (DB: esbtp_yakro)             │
+│  • presentation.klassci.com     (DB: presentation)             │
+│  • [futurs tenants...]                                          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Note** : En développement local, remplacer sous-domaines par ports :
+- `localhost:8000` → Tenant
+- `localhost:8001` → admin.klassci.com
+- `localhost:8002` → social.klassci.com
+
+---
+
+**Flow d'authentification Single Sign-On (SSO)** :
+
+```
+1. Étudiant connecté sur esbtp-abidjan.klassci.com
+   ↓
+2. Clique "Accéder au Réseau Social KLASSCI" (menu)
+   ↓
+3. Tenant génère JWT token signé (payload: user_id, tenant_code, expire: 5min)
+   ↓
+4. Redirect → https://social.klassci.com/auth/sso?token=xxx
+   ↓
+5. social.klassci.com décode JWT + valide signature
+   ↓
+6. API call → admin.klassci.com/api/students/verify (avec token)
+   ↓
+7. Master API retourne profil complet étudiant
+   ↓
+8. Sync/Update profil dans klassci_social DB
+   ↓
+9. Génère session social.klassci.com (cookie/Sanctum)
+   ↓
+10. Redirect → https://social.klassci.com/feed
+```
+
+**Avantages SSO** :
+- ✅ Pas de double login (seamless)
+- ✅ Sécurisé (JWT short-lived + signature vérifiée)
+- ✅ Sync profil automatique (nom, photo, établissement)
+
+---
+
+**Phase 1 : Application Laravel Indépendante (MVP)**
+
+**Nouveau repo Git** : `klassci-social` (séparé de `KLASSCIv2`)
+
+```
+klassci-social/                   ← Nouveau repo
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── Auth/
+│   │   │   │   └── SSOController.php       ← Login via tenant
+│   │   │   ├── PostController.php
+│   │   │   ├── CommentController.php
+│   │   │   ├── VoteController.php
+│   │   │   ├── CommunityController.php
+│   │   │   └── FeedController.php
+│   │   └── Middleware/
+│   │       └── VerifyStudentStatus.php     ← Check actif via Master API
+│   │
+│   ├── Models/
+│   │   ├── Student.php                     ← Sync depuis tenants
+│   │   ├── Institution.php                 ← Sync depuis master.tenants
+│   │   ├── Post.php
+│   │   ├── Comment.php (nested set)
+│   │   ├── Vote.php
+│   │   ├── Community.php
+│   │   ├── Hashtag.php
+│   │   └── Follow.php
+│   │
+│   ├── Services/
+│   │   ├── MasterAPIService.php            ← Appels admin.klassci.com/api
+│   │   ├── StudentSyncService.php          ← Sync profils
+│   │   ├── FeedGeneratorService.php
+│   │   ├── VoteCalculatorService.php
+│   │   └── NotificationService.php
+│   │
+│   ├── Jobs/
+│   │   ├── SyncStudentFromTenant.php       ← Queue job
+│   │   ├── ProcessVoteJob.php
+│   │   └── GenerateFeedJob.php
+│   │
+│   └── Events/
+│       ├── PostCreated.php
+│       └── CommentAdded.php
+│
+├── database/
+│   └── migrations/
+│       ├── 2026_01_01_create_students_table.php
+│       ├── 2026_01_02_create_institutions_table.php
+│       ├── 2026_01_03_create_posts_table.php
+│       ├── 2026_01_04_create_comments_table.php
+│       ├── 2026_01_05_create_votes_table.php
+│       └── ...
+│
+├── routes/
+│   ├── web.php                             ← Interface Blade
+│   └── api.php                             ← API mobile v1
+│
+├── .env
+│   ├── DB_DATABASE=klassci_social
+│   ├── MASTER_API_URL=https://admin.klassci.com/api
+│   └── MASTER_API_TOKEN=xxx
+│
+└── composer.json
+```
+
+**Base de données dédiée** : `klassci_social` (nouvelle BDD)
+
+**Principe clé** :
+- `klassci-social` ne JAMAIS accéder directement aux BDD tenants
+- TOUJOURS passer par Master API pour vérification/sync
+
+---
+
+**Phase 2 : API REST pour Mobile (6-12 mois après)**
+
+```
+routes/api.php
+└── /api/v1/
+    ├── /auth/sso            ← Login depuis tenant
+    ├── /posts               ← CRUD posts
+    ├── /comments            ← CRUD commentaires
+    ├── /votes               ← Upvote/downvote
+    ├── /communities         ← Liste communautés
+    ├── /feed                ← Timeline personnalisée
+    ├── /notifications       ← Notifs temps réel
+    └── /students/{id}       ← Profils publics
+```
+
+**Documentation API** : OpenAPI/Swagger auto-généré
+
+---
+
+**Phase 3 : Microservices (si > 50k users actifs)**
+
+```
+┌──────────────────────┐
+│  API Gateway         │  ← Reverse proxy (Nginx/Traefik)
+│  (social.klassci.com)│
+└──────────────────────┘
+         │
+         ├──▶ klassci-social-api      (Laravel - Posts/Comments/Votes)
+         ├──▶ klassci-notification    (Node.js + Socket.io - Notifs temps réel)
+         ├──▶ klassci-search          (Meilisearch - Full-text search)
+         └──▶ klassci-media           (S3/CDN - Images/Vidéos)
+```
+
+**Communication inter-services** : RabbitMQ ou Redis Pub/Sub
+
+---
+
+#### 4. Modèle de Données Proposé
+
+**Tables principales** :
+
+```sql
+-- Posts (publications)
+CREATE TABLE social_posts (
+    id BIGINT PRIMARY KEY,
+    user_id BIGINT,               -- Lien vers users
+    community_id BIGINT,          -- Lien vers social_communities
+    post_type ENUM('text', 'link', 'image', 'poll'),
+    title VARCHAR(300),
+    content TEXT,
+    media_url VARCHAR(500),
+    vote_score INT DEFAULT 0,     -- Cache pour performance
+    comment_count INT DEFAULT 0,  -- Cache pour performance
+    is_pinned BOOLEAN DEFAULT 0,
+    is_locked BOOLEAN DEFAULT 0,
+    deleted_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    INDEX idx_community (community_id, created_at),
+    INDEX idx_user (user_id),
+    INDEX idx_vote_score (vote_score DESC)
+);
+
+-- Comments (commentaires threadés)
+CREATE TABLE social_comments (
+    id BIGINT PRIMARY KEY,
+    post_id BIGINT,
+    parent_id BIGINT NULL,        -- Pour threading
+    user_id BIGINT,
+    content TEXT,
+    vote_score INT DEFAULT 0,
+    depth INT DEFAULT 0,          -- 0 = top-level, max 3
+    path VARCHAR(500),            -- Ex: "1/5/12" pour nested set
+    deleted_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    INDEX idx_post (post_id, path),
+    INDEX idx_parent (parent_id)
+);
+
+-- Votes (upvotes/downvotes)
+CREATE TABLE social_votes (
+    id BIGINT PRIMARY KEY,
+    user_id BIGINT,
+    votable_type VARCHAR(50),     -- Post ou Comment
+    votable_id BIGINT,
+    vote_type TINYINT,            -- 1 = upvote, -1 = downvote
+    created_at TIMESTAMP,
+    UNIQUE KEY unique_vote (user_id, votable_type, votable_id)
+);
+
+-- Communities (communautés basées sur classes/filières)
+CREATE TABLE social_communities (
+    id BIGINT PRIMARY KEY,
+    name VARCHAR(100),
+    slug VARCHAR(100) UNIQUE,
+    description TEXT,
+    community_type ENUM('classe', 'filiere', 'general', 'custom'),
+    linked_id BIGINT NULL,        -- classe_id ou filiere_id
+    icon VARCHAR(500),
+    member_count INT DEFAULT 0,
+    post_count INT DEFAULT 0,
+    is_private BOOLEAN DEFAULT 0,
+    created_by BIGINT,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP,
+    INDEX idx_type (community_type, linked_id)
+);
+
+-- Follows (abonnements)
+CREATE TABLE social_follows (
+    id BIGINT PRIMARY KEY,
+    follower_id BIGINT,           -- Qui suit
+    followable_type VARCHAR(50),  -- User ou Community
+    followable_id BIGINT,         -- ID de l'entité suivie
+    created_at TIMESTAMP,
+    UNIQUE KEY unique_follow (follower_id, followable_type, followable_id)
+);
+
+-- Hashtags
+CREATE TABLE social_hashtags (
+    id BIGINT PRIMARY KEY,
+    name VARCHAR(100) UNIQUE,
+    usage_count INT DEFAULT 0,
+    created_at TIMESTAMP
+);
+
+CREATE TABLE social_post_hashtag (
+    post_id BIGINT,
+    hashtag_id BIGINT,
+    PRIMARY KEY (post_id, hashtag_id)
+);
+
+-- Notifications sociales
+CREATE TABLE social_notifications (
+    id BIGINT PRIMARY KEY,
+    user_id BIGINT,
+    type VARCHAR(50),             -- 'new_comment', 'upvote', 'mention', 'follow'
+    data JSON,                    -- Détails de la notification
+    read_at TIMESTAMP NULL,
+    created_at TIMESTAMP,
+    INDEX idx_user_unread (user_id, read_at)
+);
+```
+
+**Relations avec tables existantes** :
+- `users.id` ← `social_posts.user_id`
+- `esbtp_classes.id` ← `social_communities.linked_id` (si type='classe')
+- `esbtp_filieres.id` ← `social_communities.linked_id` (si type='filiere')
+
+---
+
+#### 5. Stack Technique Recommandée
+
+**Backend** :
+- ✅ **Laravel 12.x** (déjà en place)
+- ✅ **Sanctum** (API tokens pour mobile)
+- ✅ **Laravel Echo + Pusher** (notifications temps réel)
+- ✅ **Spatie Media Library** (gestion médias)
+- 🆕 **Laravel Scout + Meilisearch** (recherche full-text)
+- 🆕 **Laravel Horizon** (gestion queues pour votes/notifications)
+- 🆕 **Redis** (cache feed, vote counts)
+
+**Frontend Web** :
+- ✅ **Blade + Alpine.js** (déjà en place)
+- 🆕 **Livewire 3** (réactivité sans SPA)
+- 🆕 **Tailwind CSS** (déjà partiellement présent)
+
+**Frontend Mobile** (future) :
+- 🆕 **Flutter** ou **React Native**
+- API REST via Laravel Sanctum
+
+**Infrastructure** :
+- ✅ **MySQL 8.x** (tables existantes)
+- 🆕 **Redis** (cache + queues)
+- 🆕 **Meilisearch** (search engine)
+- ✅ **S3/DigitalOcean Spaces** (stockage médias)
+
+---
+
+#### 6. Estimations & Ressources
+
+**Effort de développement** :
+
+| Phase | Durée | Développeurs | Sprints | Coût estimé |
+|-------|-------|--------------|---------|-------------|
+| **Phase 1** : Posts + Comments + Votes | 3-4 mois | 2 devs | 6-8 sprints | ~40-50k€ |
+| **Phase 2** : Notifications + Modération | 2-3 mois | 2 devs | 4-6 sprints | ~25-35k€ |
+| **Phase 3** : Features avancées | 3-4 mois | 2-3 devs | 6-8 sprints | ~50-60k€ |
+| **Total MVP** (Phase 1+2) | **5-7 mois** | **2 devs** | **10-14 sprints** | **~65-85k€** |
+
+**Infrastructure supplémentaire** :
+
+| Service | Coût mensuel | Usage |
+|---------|--------------|-------|
+| **Redis Cloud** (4GB) | ~30€/mois | Cache + queues |
+| **Meilisearch Cloud** | ~50€/mois | Search engine |
+| **Pusher** (10k connections) | ~50€/mois | Real-time notifications |
+| **S3/Spaces** (500GB) | ~10€/mois | Stockage médias |
+| **Total infra** | **~140€/mois** | Pour 1000 users actifs |
+
+**Scalabilité** :
+- 1000 utilisateurs actifs : **~140€/mois**
+- 10 000 utilisateurs actifs : **~500€/mois**
+- 100 000 utilisateurs actifs : **~2000€/mois** (microservices requis)
+
+---
+
+#### 7. Risques & Challenges
+
+**🔴 Risques Majeurs** :
+
+1. **Modération de contenu**
+   - Risque : Contenu inapproprié, harcèlement, fake news
+   - Mitigation : Système de rapports, modérateurs communautaires, filtres IA (Gemini)
+
+2. **Performance à l'échelle**
+   - Risque : Feed lent avec 10k+ posts, votes lents
+   - Mitigation : Cache Redis agressif, queues asynchrones, denormalization
+
+3. **Engagement utilisateur**
+   - Risque : Adoption faible, contenu de mauvaise qualité
+   - Mitigation : Gamification (badges), modérateurs actifs, contenu seed initial
+
+4. **Coût infrastructure**
+   - Risque : Explosion des coûts avec usage massif
+   - Mitigation : Auto-scaling, CDN pour médias, archivage posts anciens
+
+**🟡 Challenges Techniques** :
+
+- **Nested comments** : Complexe à afficher efficacement (max 3 niveaux)
+- **Vote spam** : Prévention via throttling + détection patterns
+- **Real-time à l'échelle** : WebSocket coûteux, fallback polling
+- **Recherche pertinente** : Ranking algorithm complexe
+
+---
+
+#### 8. Roadmap Proposée
+
+**Q1 2026 : Phase 1 - MVP Social** 🟢
+- ✅ Modèle de données (posts, comments, votes, communities)
+- ✅ CRUD posts + commentaires
+- ✅ Système de votes (upvote/downvote)
+- ✅ Communautés auto (1 par classe + filière)
+- ✅ Feed chronologique simple
+- ✅ Interface web Blade + Alpine
+
+**Q2 2026 : Phase 2 - Engagement** 🟡
+- ✅ Notifications temps réel (Laravel Echo)
+- ✅ Système de follow (users + communities)
+- ✅ Mentions @username
+- ✅ Hashtags #topic
+- ✅ Modération (reports, admin panel)
+- ✅ Recherche basique (titres + contenu)
+
+**Q3 2026 : Phase 3 - Avancées** 🟠
+- ✅ Messages privés (chat 1-to-1)
+- ✅ Sondages intégrés
+- ✅ Partage de fichiers (notes de cours)
+- ✅ API mobile v1 (Sanctum)
+- ✅ Badges & gamification
+- ✅ Recherche full-text (Meilisearch)
+
+**Q4 2026 : Phase 4 - Mobile & Scale** 🔴
+- ✅ Application mobile (Flutter/RN)
+- ✅ Recommandations IA (Gemini)
+- ✅ Analytics & insights
+- ✅ Microservices (si nécessaire)
+- ✅ Monétisation (premium features ?)
+
+---
+
+#### 9. Recommandations Stratégiques
+
+**✅ FAISABLE - Recommandé de démarrer si :**
+1. Budget disponible : **~70k€** (Phase 1+2)
+2. Équipe technique : **2 développeurs Laravel senior** (6-12 mois)
+3. Base utilisateurs : **500+ étudiants actifs** sur au moins 3 tenants
+4. Engagement communautaire : **Modérateurs volontaires** identifiés
+5. Vision long terme : **Plan de monétisation** (premium, pub, partenariats)
+
+**🚀 Points de Départ Immédiats** :
+
+1. **Prototype léger (1 mois)** :
+   - Réutiliser `esbtp_annonces` comme base
+   - Ajouter système de commentaires simple
+   - Tester engagement sur 1 tenant pilote
+
+2. **Validation produit** :
+   - Interviews étudiants : Quels besoins réels ?
+   - Benchmark concurrents : Edmodo, Piazza, Discord éducatif
+   - Mesurer usage actuel des annonces existantes
+
+3. **Architecture progressive** :
+   - Phase 1 : Module Laravel monolithique (rapide)
+   - Phase 2 : API-first (préparation mobile)
+   - Phase 3 : Microservices (si > 10k users actifs)
+
+**⚠️ Risques à mitiger AVANT de démarrer** :
+
+- 📊 **Étude marché** : Y a-t-il vraiment un besoin ? (enquête étudiants)
+- 💰 **Business model** : Comment financer l'infrastructure long terme ?
+- 👥 **Modération** : Qui va modérer 24/7 ? (coût humain)
+- 🔒 **Légal** : CGU, RGPD, responsabilité contenu
+
+---
+
+#### 10. Benchmarks & Inspirations
+
+**Plateformes similaires existantes** :
+
+| Plateforme | Points forts | À adapter pour KLASSCI |
+|------------|--------------|------------------------|
+| **Piazza** | Q&A académique, endorsements profs | Intégrer enseignants comme modérateurs |
+| **Edmodo** | Classes privées, devoirs intégrés | Lien avec évaluations KLASSCI |
+| **Discord (éducatif)** | Channels par matière, voix/vidéo | Trop complexe, garder text-first |
+| **Reddit** | Voting, threading, modération communautaire | Modèle principal |
+| **Twitter** | Rapidité, hashtags, mentions | Pour annonces courtes |
+| **Slack** | Partage fichiers, intégrations | Pour groupes de travail |
+
+**Features différenciatrices KLASSCI** :
+
+- 🎓 **Contexte académique** : Posts liés à matières/cours
+- 📊 **Analytics profs** : Qui pose quoi ? (insights pédagogiques)
+- 🤖 **IA intégrée** : Gemini pour suggestions, résumés threads
+- 🌍 **Multilingue** : Français + langues locales (Côte d'Ivoire)
+- 💼 **Emploi** : Section offres stages/jobs (future)
+
+---
+
+### 📝 Conclusion - Verdict de Faisabilité
+
+**🟢 VERDICT : FAISABLE avec conditions**
+
+Le réseau social KLASSCI est **techniquement et économiquement faisable** sur une timeline de **6-12 mois** pour un MVP complet (Phase 1+2).
+
+**Facteurs de succès critiques** :
+1. ✅ **Architecture Laravel solide** déjà en place
+2. ✅ **Base utilisateurs existante** (étudiants + enseignants)
+3. ✅ **Infrastructure SaaS mature** (multi-tenant)
+4. ⚠️ **Budget nécessaire** : ~70k€ (MVP)
+5. ⚠️ **Équipe technique** : 2 devs senior x 6 mois
+6. ⚠️ **Engagement communautaire** : Modérateurs + contenu seed
+
+**Prochaines étapes recommandées** :
+1. **Validation produit** : Enquête étudiants (besoins réels ?)
+2. **Prototype 1 mois** : Posts + comments sur 1 tenant pilote
+3. **Go/No-Go** : Décision basée sur engagement prototype
+4. **Phase 1 si Go** : Développement MVP 3-4 mois
+
+---
+
 ## 📝 TODO & Prochaines Étapes
 
 ### 🔴 Priorité Haute
@@ -1672,3 +2274,21 @@ TENANT_CODE=presentation
 ---
 
 *Dernière mise à jour: 2 novembre 2025*
+
+---
+
+## 📚 Références & Ressources
+
+**Réseaux sociaux éducatifs 2025** :
+- Tendances réseaux sociaux : https://www.ekole.fr/blog/
+- Plateformes étudiantes : Piazza, Edmodo, Discord Éducatif
+
+**Architecture Laravel** :
+- Laravel Best Practices 2025 : https://benjamincrozat.com/laravel-architecture-best-practices
+- Building Social Networks with Laravel : https://www.surfsidemedia.in/
+- Reddit Clone Laravel : https://github.com/geosem42/laravel-reddit
+
+**Stack technique** :
+- Laravel Scout + Meilisearch : https://laravel.com/docs/scout
+- Laravel Echo + Pusher : https://laravel.com/docs/broadcasting
+- Laravel Horizon : https://laravel.com/docs/horizon
