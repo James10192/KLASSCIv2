@@ -735,8 +735,23 @@ $html = view('pdf.emploi-temps-export', $data)->render();
 #### Solution : Browserless.io Cloud Service
 
 **Architecture** :
-- **Développement local** : Puppeteer local (si disponible)
+- **Développement local** : Puppeteer-core local (si Chromium installé manuellement)
 - **Production (web44)** : Browserless.io API (Chrome headless cloud)
+
+**Installation** :
+```json
+{
+  "dependencies": {
+    "puppeteer-core": "^24.27.0"  // ← Plus léger (pas de Chromium bundlé)
+  }
+}
+```
+
+**Pourquoi puppeteer-core ?**
+- ✅ Ne télécharge pas Chromium (~300MB économisés)
+- ✅ Compatible hébergement mutualisé (pas de binaire requis)
+- ✅ Fallback local si Chromium installé séparément
+- ✅ Production utilise Browserless.io de toute façon
 
 **Configuration** :
 ```env
