@@ -2604,18 +2604,24 @@
         <div class="row align-items-center">
           <!-- Vidéo à gauche -->
           <div class="col-lg-5 col-md-12">
-            <div style="position: relative; background: #6c757d; border-radius: 20px; 
-                        aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center;
-                        cursor: pointer; overflow: hidden;">
-              <!-- Bouton Play -->
-              <div style="width: 80px; height: 80px; background: rgba(255, 255, 255, 0.9); 
-                         border-radius: 50%; display: flex; align-items: center; justify-content: center;
-                         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); transition: all 0.3s ease;"
-                   onmouseover="this.style.transform='scale(1.1)'; this.style.background='rgba(255, 255, 255, 1)';"
-                   onmouseout="this.style.transform='scale(1)'; this.style.background='rgba(255, 255, 255, 0.9)';">
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" style="margin-left: 3px;">
-                  <path d="M8 5v14l11-7z" fill="#6c757d"/>
-                </svg>
+            <div style="position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);">
+              <video 
+                controls 
+                poster=""
+                style="width: 100%; height: auto; border-radius: 20px; display: block;"
+                preload="metadata">
+                <source src="{{ asset('images/WhatsApp Video 2025-11-02 at 12.10.55 PM.mp4') }}" type="video/mp4">
+                Votre navigateur ne supporte pas la lecture de vidéos.
+              </video>
+            </div>
+            
+            <!-- Informations sous la vidéo -->
+            <div style="text-align: center; margin-top: 1.5rem; padding: 1rem;">
+              <div style="font-weight: 700; color: #333; font-size: 1.1rem; margin-bottom: 0.5rem;">
+                Mme Mangoua Nadège
+              </div>
+              <div style="color: #666; font-size: 0.95rem; font-style: italic;">
+                Directrice des études
               </div>
             </div>
           </div>
@@ -2635,11 +2641,6 @@
                 Lire plus
               </a>
               
-              <!-- Nom et qualité -->
-              <div>
-                <div style="font-weight: 700; color: #333; margin-bottom: 0.25rem;">Nom et prénom</div>
-                <div style="color: #666; font-size: 0.9rem;">Qualité</div>
-              </div>
             </div>
           </div>
         </div>
@@ -3242,12 +3243,12 @@
                             
                             <!-- Réseaux sociaux -->
                             <div style="display: flex; gap: 0.75rem;">
-                                <a href="https://web.facebook.com/p/African-Digit-Consulting-100092649035928/?_rdc=1&_rdr" target="_blank" rel="noopener" 
+                                <a href="https://web.facebook.com/profile.php?id=61576039683640" target="_blank" rel="noopener" 
                                    style="background: rgba(255,255,255,0.1); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: all 0.3s ease;"
                                    onmouseover="this.style.background='#1877f2';" onmouseout="this.style.background='rgba(255,255,255,0.1)';">
                                     <i class="fab fa-facebook-f"></i>
                                 </a>
-                                <a href="https://linkedin.com/company/african-digit-consulting/?originalSubdomain=ci" target="_blank" rel="noopener"
+                                <a href="https://www.linkedin.com/company/klassci/" target="_blank" rel="noopener"
                                    style="background: rgba(255,255,255,0.1); color: white; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: all 0.3s ease;"
                                    onmouseover="this.style.background='#0a66c2';" onmouseout="this.style.background='rgba(255,255,255,0.1)';">
                                     <i class="fab fa-linkedin-in"></i>
