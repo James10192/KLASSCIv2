@@ -2607,8 +2607,11 @@
             <div style="position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);">
               <video 
                 controls 
+                autoplay 
+                muted
+                loop
                 poster=""
-                style="width: 100%; height: auto; border-radius: 20px; display: block;"
+                style="width: 100%; height: 350px; object-fit: cover; object-position: center 20%; border-radius: 20px; display: block;"
                 preload="metadata">
                 <source src="{{ asset('images/WhatsApp Video 2025-11-02 at 12.10.55 PM.mp4') }}" type="video/mp4">
                 Votre navigateur ne supporte pas la lecture de vidéos.
