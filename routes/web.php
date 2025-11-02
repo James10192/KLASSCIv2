@@ -143,6 +143,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/password/change', [PasswordChangeController::class, 'updatePassword'])->name('password.change.update');
 });
 
+// Route pour les demandes de démonstration (accessible publiquement)
+Route::post('/contact-demo', [App\Http\Controllers\ContactController::class, 'sendDemo'])->name('contact.demo');
+
 // Routes pour la navbar (recherche, notifications, messages, actions rapides)
 Route::middleware(['auth'])->group(function () {
     // Routes de recherche

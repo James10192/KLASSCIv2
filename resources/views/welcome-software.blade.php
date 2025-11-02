@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KLASSCI - Système de Gestion Scolaire Moderne</title>
     <meta name="description" content="KLASSCI est un système de gestion scolaire complet et moderne pour les établissements d'enseignement supérieur. Gérez facilement vos étudiants, classes, notes et bien plus.">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -1700,7 +1701,7 @@
             </p>
             
             <!-- Bouton Commencer -->
-            <button class="btn-commencer scroll-animate scroll-animate-delay-3" style="background: linear-gradient(135deg, #0453cb 0%, #1b64d4 60%, #5e91de 100%); color: white; border: none; padding: 0.75rem 2rem; font-size: 1rem; font-weight: 600; border-radius: 25px; box-shadow: 0 4px 20px rgba(4, 83, 203, 0.3); transition: all 0.3s ease; cursor: pointer; font-family: 'Futura Round', 'Inter', sans-serif;">
+            <button id="btn-commencer" class="btn-commencer scroll-animate scroll-animate-delay-3" onclick="openContactModal()" style="background: linear-gradient(135deg, #0453cb 0%, #1b64d4 60%, #5e91de 100%); color: white; border: none; padding: 0.75rem 2rem; font-size: 1rem; font-weight: 600; border-radius: 25px; box-shadow: 0 4px 20px rgba(4, 83, 203, 0.3); transition: all 0.3s ease; cursor: pointer; font-family: 'Futura Round', 'Inter', sans-serif;">
               Commencer
             </button>
           </div>
@@ -3803,6 +3804,271 @@
         });
         updateFloatingLabels();
       });
+    </script>
+
+    <!-- Modal de Contact pour Demande de Démo -->
+    <div id="contactModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5); align-items: center; justify-content: center; z-index: 1000;">
+        <div class="card-moderne" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 2rem; margin: auto; background-color: white; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(4, 83, 203, 0.1), 0 10px 10px -5px rgba(4, 83, 203, 0.04);">
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #0453cb 0%, #1b64d4 60%, #5e91de 100%); border-radius: 50%; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-rocket" style="font-size: 28px; color: white;"></i>
+                </div>
+                <h3 style="color: #1A1A1A; margin-bottom: 0.5rem; font-size: 1.5rem; font-weight: 700;">Demander une démonstration</h3>
+                <p style="color: #6B7280; margin: 0; font-size: 0.95rem;">Découvrez comment KLASSCI peut transformer la gestion de votre établissement</p>
+            </div>
+
+            <form id="contactForm" onsubmit="submitContactForm(event)">
+                <div style="display: grid; gap: 1rem; margin-bottom: 1.5rem;">
+                    <!-- Nom complet -->
+                    <div>
+                        <label style="font-weight: 600; color: #1A1A1A; display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Nom complet *</label>
+                        <input type="text" name="nom" required style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 2px solid #E5E7EB; font-size: 1rem; transition: border-color 0.3s ease; background-color: #F9FAFB;" 
+                               onfocus="this.style.borderColor='#0453cb'; this.style.backgroundColor='white';" 
+                               onblur="this.style.borderColor='#E5E7EB'; this.style.backgroundColor='#F9FAFB';"
+                               placeholder="Votre nom et prénom">
+                    </div>
+
+                    <!-- Email -->
+                    <div>
+                        <label style="font-weight: 600; color: #1A1A1A; display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Email professionnel *</label>
+                        <input type="email" name="email" required style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 2px solid #E5E7EB; font-size: 1rem; transition: border-color 0.3s ease; background-color: #F9FAFB;" 
+                               onfocus="this.style.borderColor='#0453cb'; this.style.backgroundColor='white';" 
+                               onblur="this.style.borderColor='#E5E7EB'; this.style.backgroundColor='#F9FAFB';"
+                               placeholder="votre.email@etablissement.com">
+                    </div>
+
+                    <!-- Téléphone -->
+                    <div>
+                        <label style="font-weight: 600; color: #1A1A1A; display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Téléphone</label>
+                        <input type="tel" name="telephone" style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 2px solid #E5E7EB; font-size: 1rem; transition: border-color 0.3s ease; background-color: #F9FAFB;" 
+                               onfocus="this.style.borderColor='#0453cb'; this.style.backgroundColor='white';" 
+                               onblur="this.style.borderColor='#E5E7EB'; this.style.backgroundColor='#F9FAFB';"
+                               placeholder="+225 XX XX XX XX XX">
+                    </div>
+
+                    <!-- Établissement -->
+                    <div>
+                        <label style="font-weight: 600; color: #1A1A1A; display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Nom de l'établissement *</label>
+                        <input type="text" name="etablissement" required style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 2px solid #E5E7EB; font-size: 1rem; transition: border-color 0.3s ease; background-color: #F9FAFB;" 
+                               onfocus="this.style.borderColor='#0453cb'; this.style.backgroundColor='white';" 
+                               onblur="this.style.borderColor='#E5E7EB'; this.style.backgroundColor='#F9FAFB';"
+                               placeholder="Nom de votre école/université">
+                    </div>
+
+                    <!-- Type d'établissement -->
+                    <div>
+                        <label style="font-weight: 600; color: #1A1A1A; display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Type d'établissement *</label>
+                        <select name="type_etablissement" required style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 2px solid #E5E7EB; font-size: 1rem; transition: border-color 0.3s ease; background-color: #F9FAFB;" 
+                                onfocus="this.style.borderColor='#0453cb'; this.style.backgroundColor='white';" 
+                                onblur="this.style.borderColor='#E5E7EB'; this.style.backgroundColor='#F9FAFB';">
+                            <option value="">Sélectionnez le type</option>
+                            <option value="ecole_primaire">École primaire</option>
+                            <option value="college">Collège</option>
+                            <option value="lycee">Lycée</option>
+                            <option value="universite">Université</option>
+                            <option value="ecole_superieure">École supérieure</option>
+                            <option value="centre_formation">Centre de formation</option>
+                            <option value="autre">Autre</option>
+                        </select>
+                    </div>
+
+                    <!-- Nombre d'étudiants -->
+                    <div>
+                        <label style="font-weight: 600; color: #1A1A1A; display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Nombre d'étudiants approximatif</label>
+                        <select name="nombre_etudiants" style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 2px solid #E5E7EB; font-size: 1rem; transition: border-color 0.3s ease; background-color: #F9FAFB;" 
+                                onfocus="this.style.borderColor='#0453cb'; this.style.backgroundColor='white';" 
+                                onblur="this.style.borderColor='#E5E7EB'; this.style.backgroundColor='#F9FAFB';">
+                            <option value="">Sélectionnez une fourchette</option>
+                            <option value="moins_100">Moins de 100</option>
+                            <option value="100_500">100 - 500</option>
+                            <option value="500_1000">500 - 1 000</option>
+                            <option value="1000_5000">1 000 - 5 000</option>
+                            <option value="plus_5000">Plus de 5 000</option>
+                        </select>
+                    </div>
+
+                    <!-- Message -->
+                    <div>
+                        <label style="font-weight: 600; color: #1A1A1A; display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">Besoins spécifiques ou questions</label>
+                        <textarea name="message" rows="3" style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 2px solid #E5E7EB; font-size: 1rem; transition: border-color 0.3s ease; background-color: #F9FAFB; resize: vertical;" 
+                                  onfocus="this.style.borderColor='#0453cb'; this.style.backgroundColor='white';" 
+                                  onblur="this.style.borderColor='#E5E7EB'; this.style.backgroundColor='#F9FAFB';"
+                                  placeholder="Décrivez vos besoins ou posez vos questions..."></textarea>
+                    </div>
+                </div>
+
+                <div style="background-color: rgba(4, 83, 203, 0.1); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; border-left: 4px solid #0453cb;">
+                    <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
+                        <i class="fas fa-info-circle" style="color: #0453cb; margin-top: 2px;"></i>
+                        <div>
+                            <p style="margin: 0; font-size: 0.85rem; color: #1A1A1A; font-weight: 600;">Engagement de confidentialité</p>
+                            <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #4A5568;">
+                                Vos informations ne seront utilisées que pour vous contacter concernant KLASSCI et ne seront jamais partagées avec des tiers.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+                    <button type="button" onclick="closeContactModal()" style="flex: 1; min-width: 120px; background: #F3F4F6; color: #374151; border: none; padding: 0.75rem 1.5rem; font-size: 0.95rem; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.3s ease;"
+                            onmouseover="this.style.backgroundColor='#E5E7EB';"
+                            onmouseout="this.style.backgroundColor='#F3F4F6';">
+                        <i class="fas fa-times" style="margin-right: 0.5rem;"></i>
+                        Annuler
+                    </button>
+                    <button type="submit" id="submitBtn" style="flex: 2; min-width: 160px; background: linear-gradient(135deg, #0453cb 0%, #1b64d4 60%, #5e91de 100%); color: white; border: none; padding: 0.75rem 1.5rem; font-size: 0.95rem; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(4, 83, 203, 0.3);"
+                            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 25px rgba(4, 83, 203, 0.4)';"
+                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 20px rgba(4, 83, 203, 0.3)';">
+                        <i class="fas fa-paper-plane" style="margin-right: 0.5rem;"></i>
+                        Demander la démo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    function openContactModal() {
+        document.getElementById('contactModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        // Animation d'ouverture
+        const modal = document.getElementById('contactModal');
+        const card = modal.querySelector('.card-moderne');
+        card.style.transform = 'scale(0.9)';
+        card.style.opacity = '0';
+        setTimeout(() => {
+            card.style.transition = 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+            card.style.transform = 'scale(1)';
+            card.style.opacity = '1';
+        }, 10);
+    }
+
+    function closeContactModal() {
+        const modal = document.getElementById('contactModal');
+        const card = modal.querySelector('.card-moderne');
+        card.style.transform = 'scale(0.9)';
+        card.style.opacity = '0';
+        setTimeout(() => {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            // Reset form
+            document.getElementById('contactForm').reset();
+        }, 300);
+    }
+
+    function submitContactForm(event) {
+        event.preventDefault();
+        
+        const submitBtn = document.getElementById('submitBtn');
+        const originalHTML = submitBtn.innerHTML;
+        
+        // Animation de chargement
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>Envoi en cours...';
+        submitBtn.disabled = true;
+        
+        const formData = new FormData(event.target);
+        
+        fetch('/contact-demo', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                'Accept': 'application/json',
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Succès
+                submitBtn.innerHTML = '<i class="fas fa-check" style="margin-right: 0.5rem;"></i>Demande envoyée !';
+                submitBtn.style.background = '#10B981';
+                
+                setTimeout(() => {
+                    closeContactModal();
+                    showSuccessToast('Votre demande de démonstration a été envoyée avec succès ! Notre équipe vous contactera sous 24h.');
+                }, 1500);
+            } else {
+                throw new Error(data.message || 'Erreur lors de l\'envoi');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            submitBtn.innerHTML = '<i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>Erreur';
+            submitBtn.style.background = '#EF4444';
+            
+            setTimeout(() => {
+                submitBtn.innerHTML = originalHTML;
+                submitBtn.style.background = 'linear-gradient(135deg, #0453cb 0%, #1b64d4 60%, #5e91de 100%)';
+                submitBtn.disabled = false;
+            }, 2000);
+            
+            showErrorToast('Erreur lors de l\'envoi. Veuillez réessayer ou nous contacter directement.');
+        });
+    }
+
+    function showSuccessToast(message) {
+        showToast(message, 'success');
+    }
+
+    function showErrorToast(message) {
+        showToast(message, 'error');
+    }
+
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: ${type === 'success' ? '#10B981' : '#EF4444'};
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            max-width: 400px;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        `;
+        
+        const icon = document.createElement('i');
+        icon.className = type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle';
+        
+        toast.appendChild(icon);
+        toast.appendChild(document.createTextNode(message));
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.transform = 'translateX(0)';
+        }, 100);
+        
+        setTimeout(() => {
+            toast.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    document.body.removeChild(toast);
+                }
+            }, 300);
+        }, 5000);
+    }
+
+    // Fermer avec Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.getElementById('contactModal').style.display === 'flex') {
+            closeContactModal();
+        }
+    });
+
+    // Fermer en cliquant sur l'overlay
+    document.getElementById('contactModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeContactModal();
+        }
+    });
     </script>
 </body>
 </html>
