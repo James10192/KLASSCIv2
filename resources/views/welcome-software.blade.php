@@ -2645,14 +2645,14 @@
                   <i id="playPauseIcon" class="fas fa-play" style="color: white; font-size: 2rem; margin-left: 5px;"></i>
                 </div>
 
-                <!-- Contrôles audio en bas au centre -->
-                <div id="audioControls" style="position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column-reverse; align-items: center; gap: 0; z-index: 5;">
-                  <!-- Slider de volume (caché par défaut, apparaît au-dessus du bouton) -->
-                  <div id="volumeSliderContainer" style="opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity 0.3s ease, transform 0.3s ease; padding-bottom: 0.5rem;">
+                <!-- Contrôles audio dans le coin bas-droit -->
+                <div id="audioControls" style="position: absolute; bottom: 1rem; right: 1rem; display: flex; flex-direction: row; align-items: center; gap: 0; z-index: 5;">
+                  <!-- Slider de volume (caché par défaut, apparaît vers la gauche/intérieur) -->
+                  <div id="volumeSliderContainer" style="opacity: 0; transform: translateX(10px); pointer-events: none; transition: opacity 0.3s ease, transform 0.3s ease; padding-right: 0.5rem;">
                     <input type="range" id="volumeSlider" min="0" max="100" value="0" orient="vertical" style="writing-mode: bt-lr; -webkit-appearance: slider-vertical; width: 10px; height: 100px; background: linear-gradient(to top, #0453cb 0%, #5e91de 100%); border-radius: 10px; outline: none; cursor: pointer; filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));">
                   </div>
 
-                  <!-- Bouton Mute/Unmute (position fixe en bas au centre) -->
+                  <!-- Bouton Mute/Unmute (fixe dans le coin) -->
                   <button id="muteBtn" style="width: 48px; height: 48px; background: rgba(255, 255, 255, 0.95); border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); backdrop-filter: blur(10px); flex-shrink: 0;">
                     <i id="muteIcon" class="fas fa-volume-mute" style="color: #0453cb; font-size: 1.25rem; transition: color 0.3s ease;"></i>
                   </button>
@@ -2784,19 +2784,19 @@
                     }, 1500);
                   }
 
-                  // Fonction pour afficher le slider avec animation smooth
+                  // Fonction pour afficher le slider avec animation smooth (vers l'intérieur/gauche)
                   function showVolumeSlider() {
                     volumeSliderContainer.style.opacity = '1';
-                    volumeSliderContainer.style.transform = 'translateY(0)';
+                    volumeSliderContainer.style.transform = 'translateX(0)';
                     volumeSliderContainer.style.pointerEvents = 'auto';
                     isSliderVisible = true;
                     console.log('📊 Volume slider shown');
                   }
 
-                  // Fonction pour cacher le slider avec animation smooth
+                  // Fonction pour cacher le slider avec animation smooth (vers l'extérieur/droite)
                   function hideVolumeSlider() {
                     volumeSliderContainer.style.opacity = '0';
-                    volumeSliderContainer.style.transform = 'translateY(10px)';
+                    volumeSliderContainer.style.transform = 'translateX(10px)';
                     volumeSliderContainer.style.pointerEvents = 'none';
                     isSliderVisible = false;
                     console.log('📊 Volume slider hidden');

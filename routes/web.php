@@ -92,18 +92,16 @@ Route::get('/test-emploi-temps-show', function () {
 Route::get('/', function () {
     // Charger la vue de solution logicielle comme page d'accueil principale
     return view('welcome-software')->withHeaders([
-        'Cache-Control' => 'no-cache, no-store, must-revalidate',
-        'Pragma' => 'no-cache',
-        'Expires' => '0'
+        'Cache-Control' => 'public, max-age=3600', // Cache 1 heure
+        'Expires' => gmdate('D, d M Y H:i:s', time() + 3600) . ' GMT'
     ]);
 })->name('welcome');
 
 // Route pour l'ancienne version de l'école (si nécessaire pour référence)
 Route::get('/school', function () {
     return view('welcome-redesign')->withHeaders([
-        'Cache-Control' => 'no-cache, no-store, must-revalidate',
-        'Pragma' => 'no-cache',
-        'Expires' => '0'
+        'Cache-Control' => 'public, max-age=3600', // Cache 1 heure
+        'Expires' => gmdate('D, d M Y H:i:s', time() + 3600) . ' GMT'
     ]);
 })->name('welcome.school');
 
