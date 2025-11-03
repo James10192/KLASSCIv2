@@ -2598,56 +2598,382 @@
       }
     </style>
 
-    <!-- Section Témoignage -->
-    <section style="padding: 5rem 0; background: #f8f9fa; position: relative;">
-      <div class="container">
-        <div class="row align-items-center">
-          <!-- Vidéo à gauche -->
-          <div class="col-lg-5 col-md-12">
-            <div style="position: relative; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);">
-              <video 
-                controls 
-                autoplay 
-                muted
-                loop
-                poster=""
-                style="width: 100%; height: 350px; object-fit: cover; object-position: center 20%; border-radius: 20px; display: block;"
-                preload="metadata">
-                <source src="{{ asset('images/WhatsApp Video 2025-11-02 at 12.10.55 PM.mp4') }}" type="video/mp4">
-                Votre navigateur ne supporte pas la lecture de vidéos.
-              </video>
-            </div>
-            
-            <!-- Informations sous la vidéo -->
-            <div style="text-align: center; margin-top: 1.5rem; padding: 1rem;">
-              <div style="font-weight: 700; color: #333; font-size: 1.1rem; margin-bottom: 0.5rem;">
-                Mme Mangoua Nadège
+    <!-- Section Témoignage - Design moderne -->
+    <section style="padding: 5rem 0; background: linear-gradient(135deg, #f8faff 0%, #e8f2ff 100%); position: relative; overflow: hidden;">
+      <!-- Décorations arrière-plan -->
+      <div style="position: absolute; top: -50px; right: -50px; width: 400px; height: 400px; background: radial-gradient(circle, rgba(4, 83, 203, 0.05) 0%, transparent 70%); pointer-events: none;"></div>
+      <div style="position: absolute; bottom: -80px; left: -80px; width: 500px; height: 500px; background: radial-gradient(circle, rgba(94, 145, 222, 0.08) 0%, transparent 70%); pointer-events: none;"></div>
+
+      <div class="container" style="position: relative; z-index: 1;">
+        <!-- Titre de section -->
+        <div class="text-center mb-5 scroll-animate">
+          <span style="display: inline-block; background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; padding: 0.5rem 1.5rem; border-radius: 50px; font-size: 0.875rem; font-weight: 600; margin-bottom: 1rem; letter-spacing: 0.5px;">
+            <i class="fas fa-quote-left me-2"></i>TÉMOIGNAGE CLIENT
+          </span>
+          <h2 style="font-family: 'Futura Round', sans-serif; font-size: clamp(1.8rem, 3.5vw, 2.5rem); font-weight: 700; color: #1a202c; margin-top: 1rem;">
+            Ils nous font confiance
+          </h2>
+        </div>
+
+        <div class="row align-items-center g-5">
+          <!-- Vidéo à gauche avec carte moderne -->
+          <div class="col-lg-5 col-md-12 scroll-animate-left">
+            <div style="position: relative; background: white; border-radius: 24px; padding: 1.5rem; box-shadow: 0 20px 60px rgba(4, 83, 203, 0.15); transform: perspective(1000px) rotateY(-2deg); transition: all 0.4s ease;">
+              <!-- Badge "Live" -->
+              <div style="position: absolute; top: 2rem; left: 2rem; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; z-index: 10; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4); display: flex; align-items: center; gap: 0.5rem;">
+                <span style="width: 8px; height: 8px; background: white; border-radius: 50%; animation: pulse 2s infinite;"></span>
+                LIVE
               </div>
-              <div style="color: #666; font-size: 0.95rem; font-style: italic;">
-                Directrice des études
+
+              <!-- Conteneur vidéo portrait style Shorts -->
+              <div id="videoContainer" style="position: relative; border-radius: 16px; overflow: hidden; background: #000; aspect-ratio: 9/16; max-width: 320px; margin: 0 auto; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); cursor: pointer;">
+                <video
+                  id="testimonialVideo"
+                  autoplay
+                  muted
+                  loop
+                  playsinline
+                  poster=""
+                  style="width: 100%; height: 100%; object-fit: cover; display: block;"
+                  preload="metadata">
+                  <source src="{{ asset('images/WhatsApp Video 2025-11-02 at 12.10.55 PM.mp4') }}" type="video/mp4">
+                  Votre navigateur ne supporte pas la lecture de vidéos.
+                </video>
+
+                <!-- Overlay Play/Pause -->
+                <div id="playPauseOverlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80px; height: 80px; background: rgba(0, 0, 0, 0.7); border-radius: 50%; display: none; align-items: center; justify-content: center; pointer-events: none; transition: all 0.3s ease; backdrop-filter: blur(10px);">
+                  <i id="playPauseIcon" class="fas fa-play" style="color: white; font-size: 2rem; margin-left: 5px;"></i>
+                </div>
+
+                <!-- Contrôles audio en bas au centre -->
+                <div id="audioControls" style="position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column-reverse; align-items: center; gap: 0; z-index: 5;">
+                  <!-- Slider de volume (caché par défaut, apparaît au-dessus du bouton) -->
+                  <div id="volumeSliderContainer" style="opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity 0.3s ease, transform 0.3s ease; padding-bottom: 0.5rem;">
+                    <input type="range" id="volumeSlider" min="0" max="100" value="0" orient="vertical" style="writing-mode: bt-lr; -webkit-appearance: slider-vertical; width: 10px; height: 100px; background: linear-gradient(to top, #0453cb 0%, #5e91de 100%); border-radius: 10px; outline: none; cursor: pointer; filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));">
+                  </div>
+
+                  <!-- Bouton Mute/Unmute (position fixe en bas au centre) -->
+                  <button id="muteBtn" style="width: 48px; height: 48px; background: rgba(255, 255, 255, 0.95); border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); backdrop-filter: blur(10px); flex-shrink: 0;">
+                    <i id="muteIcon" class="fas fa-volume-mute" style="color: #0453cb; font-size: 1.25rem; transition: color 0.3s ease;"></i>
+                  </button>
+                </div>
+
+                <!-- Indicateur de statut (en haut à droite) -->
+                <div id="statusIndicator" style="position: absolute; top: 1rem; right: 1rem; background: rgba(0, 0, 0, 0.7); color: white; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: none; align-items: center; gap: 0.5rem; backdrop-filter: blur(10px); z-index: 5;">
+                  <i class="fas fa-play" style="font-size: 0.7rem;"></i>
+                  <span>En lecture</span>
+                </div>
+              </div>
+
+              <!-- Script pour contrôles vidéo personnalisés -->
+              <script>
+                (function() {
+                  const video = document.getElementById('testimonialVideo');
+                  const container = document.getElementById('videoContainer');
+                  const overlay = document.getElementById('playPauseOverlay');
+                  const playPauseIcon = document.getElementById('playPauseIcon');
+                  const muteBtn = document.getElementById('muteBtn');
+                  const muteIcon = document.getElementById('muteIcon');
+                  const volumeSliderContainer = document.getElementById('volumeSliderContainer');
+                  const volumeSlider = document.getElementById('volumeSlider');
+                  const statusIndicator = document.getElementById('statusIndicator');
+
+                  let overlayTimeout;
+
+                  // Toggle Play/Pause au clic sur la vidéo
+                  container.addEventListener('click', function(e) {
+                    // Ne pas déclencher si on clique sur les contrôles
+                    if (e.target.closest('#muteBtn') || e.target.closest('#volumeSliderContainer')) {
+                      return;
+                    }
+
+                    if (video.paused) {
+                      video.play();
+                      showOverlay('fa-play');
+                      updateStatusIndicator(true);
+                    } else {
+                      video.pause();
+                      showOverlay('fa-pause');
+                      updateStatusIndicator(false);
+                    }
+                  });
+
+                  // Afficher l'overlay temporairement
+                  function showOverlay(iconClass) {
+                    playPauseIcon.className = 'fas ' + iconClass;
+                    overlay.style.display = 'flex';
+
+                    clearTimeout(overlayTimeout);
+                    overlayTimeout = setTimeout(() => {
+                      overlay.style.display = 'none';
+                    }, 800);
+                  }
+
+                  // Mettre à jour l'indicateur de statut
+                  function updateStatusIndicator(isPlaying) {
+                    const icon = statusIndicator.querySelector('i');
+                    const text = statusIndicator.querySelector('span');
+
+                    if (isPlaying) {
+                      icon.className = 'fas fa-play';
+                      text.textContent = 'En lecture';
+                      statusIndicator.style.display = 'flex';
+                    } else {
+                      icon.className = 'fas fa-pause';
+                      text.textContent = 'En pause';
+                      statusIndicator.style.display = 'flex';
+                    }
+
+                    // Cacher après 2 secondes
+                    setTimeout(() => {
+                      statusIndicator.style.display = 'none';
+                    }, 2000);
+                  }
+
+                  // Variables pour stocker l'état du volume
+                  let previousVolume = 50; // Volume avant mute
+                  let isSliderVisible = false;
+
+                  // Initialiser le slider à 50%
+                  volumeSlider.value = 50;
+
+                  // Toggle Mute/Unmute
+                  muteBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    console.log('🔊 Mute button clicked');
+                    console.log('  Current muted:', video.muted);
+                    console.log('  Current volume:', video.volume);
+
+                    if (video.muted) {
+                      // Activer le son
+                      video.muted = false;
+                      const volumeToSet = previousVolume / 100;
+                      video.volume = volumeToSet;
+                      volumeSlider.value = previousVolume;
+
+                      console.log('  ✅ Unmuted - Volume set to:', volumeToSet);
+
+                      // Afficher un feedback visuel
+                      showVolumeIndicator('Son activé');
+                    } else {
+                      // Couper le son
+                      previousVolume = volumeSlider.value; // Sauvegarder le volume actuel
+                      video.muted = true;
+
+                      console.log('  🔇 Muted - Previous volume saved:', previousVolume);
+
+                      // Afficher un feedback visuel
+                      showVolumeIndicator('Son coupé');
+                    }
+
+                    updateMuteIcon();
+                  });
+
+                  // Afficher indicateur de volume temporaire
+                  function showVolumeIndicator(text) {
+                    const indicator = statusIndicator;
+                    const icon = indicator.querySelector('i');
+                    const span = indicator.querySelector('span');
+
+                    icon.className = video.muted ? 'fas fa-volume-mute' : 'fas fa-volume-up';
+                    span.textContent = text;
+                    indicator.style.display = 'flex';
+
+                    setTimeout(() => {
+                      indicator.style.display = 'none';
+                    }, 1500);
+                  }
+
+                  // Fonction pour afficher le slider avec animation smooth
+                  function showVolumeSlider() {
+                    volumeSliderContainer.style.opacity = '1';
+                    volumeSliderContainer.style.transform = 'translateY(0)';
+                    volumeSliderContainer.style.pointerEvents = 'auto';
+                    isSliderVisible = true;
+                    console.log('📊 Volume slider shown');
+                  }
+
+                  // Fonction pour cacher le slider avec animation smooth
+                  function hideVolumeSlider() {
+                    volumeSliderContainer.style.opacity = '0';
+                    volumeSliderContainer.style.transform = 'translateY(10px)';
+                    volumeSliderContainer.style.pointerEvents = 'none';
+                    isSliderVisible = false;
+                    console.log('📊 Volume slider hidden');
+                  }
+
+                  // Afficher le slider au hover du conteneur audio (bouton + slider)
+                  let volumeHoverTimeout;
+                  const audioControls = document.getElementById('audioControls');
+
+                  audioControls.addEventListener('mouseenter', function() {
+                    clearTimeout(volumeHoverTimeout);
+
+                    // Délai court pour éviter affichage accidentel
+                    volumeHoverTimeout = setTimeout(() => {
+                      showVolumeSlider();
+                    }, 200); // Réduit à 200ms pour être plus réactif
+                  });
+
+                  audioControls.addEventListener('mouseleave', function() {
+                    clearTimeout(volumeHoverTimeout);
+
+                    // Cacher immédiatement car pas d'espace entre bouton et slider
+                    hideVolumeSlider();
+                  });
+
+                  // Contrôle du volume via slider
+                  volumeSlider.addEventListener('input', function() {
+                    const volume = parseInt(this.value);
+                    const volumeDecimal = volume / 100;
+
+                    console.log('🎚️ Volume slider changed:', volume + '%');
+
+                    video.volume = volumeDecimal;
+                    previousVolume = volume;
+
+                    // Si on monte le volume, activer le son
+                    if (volume > 0 && video.muted) {
+                      video.muted = false;
+                      console.log('  ✅ Auto unmuted because volume > 0');
+                    }
+
+                    // Si volume à 0, mute
+                    if (volume === 0) {
+                      video.muted = true;
+                      console.log('  🔇 Auto muted because volume = 0');
+                    }
+
+                    updateMuteIcon();
+                  });
+
+                  // Mettre à jour l'icône de mute selon le volume
+                  function updateMuteIcon() {
+                    const volume = video.muted ? 0 : Math.round(video.volume * 100);
+
+                    console.log('🔄 Updating mute icon - Volume:', volume + '%, Muted:', video.muted);
+
+                    if (volume === 0 || video.muted) {
+                      muteIcon.className = 'fas fa-volume-mute';
+                      muteIcon.style.color = '#dc2626'; // Rouge
+                    } else if (volume < 30) {
+                      muteIcon.className = 'fas fa-volume-off';
+                      muteIcon.style.color = '#f59e0b'; // Orange
+                    } else if (volume < 70) {
+                      muteIcon.className = 'fas fa-volume-down';
+                      muteIcon.style.color = '#0453cb'; // Bleu
+                    } else {
+                      muteIcon.className = 'fas fa-volume-up';
+                      muteIcon.style.color = '#10b981'; // Vert
+                    }
+                  }
+
+                  // Initialiser
+                  console.log('🎬 Video player initialized');
+                  console.log('  Initial muted:', video.muted);
+                  console.log('  Initial volume:', video.volume);
+                  updateMuteIcon();
+
+                  // Support mobile : tap pour play/pause
+                  container.addEventListener('touchstart', function(e) {
+                    if (e.target.closest('#muteBtn') || e.target.closest('#volumeSliderContainer')) {
+                      return;
+                    }
+
+                    e.preventDefault();
+
+                    if (video.paused) {
+                      video.play();
+                      showOverlay('fa-play');
+                      updateStatusIndicator(true);
+                    } else {
+                      video.pause();
+                      showOverlay('fa-pause');
+                      updateStatusIndicator(false);
+                    }
+                  });
+                })();
+              </script>
+
+              <!-- Carte profil sous la vidéo -->
+              <div style="margin-top: 1.5rem; background: linear-gradient(135deg, #f8faff 0%, #e8f2ff 100%); border-radius: 16px; padding: 1.5rem; display: flex; align-items: center; gap: 1rem; box-shadow: 0 4px 16px rgba(4, 83, 203, 0.08);">
+                <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem; font-weight: 700; flex-shrink: 0; box-shadow: 0 4px 16px rgba(4, 83, 203, 0.3);">
+                  MN
+                </div>
+                <div style="flex: 1;">
+                  <div style="font-weight: 700; color: #1a202c; font-size: 1.1rem; margin-bottom: 0.25rem; font-family: 'Futura Round', sans-serif;">
+                    Mme Mangoua Nadège
+                  </div>
+                  <div style="color: #0453cb; font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-briefcase" style="font-size: 0.8rem;"></i>
+                    Directrice des études
+                  </div>
+                </div>
+                <div style="color: #0453cb;">
+                  <i class="fas fa-check-circle" style="font-size: 1.5rem;"></i>
+                </div>
               </div>
             </div>
           </div>
-          
-          <!-- Témoignage à droite -->
-          <div class="col-lg-7 col-md-12">
-            <div style="padding-left: 3rem;">
-              <!-- Citation -->
-              <blockquote style="font-size: 1.1rem; line-height: 1.6; color: #333; margin-bottom: 1.5rem; font-style: italic;">
-                « Avant, pour l'édition de nos bulletins, nous utilisions Excel et rencontrions beaucoup de difficultés. Depuis que nous utilisons KLASSCI, nous n'avons plus d'erreurs et il nous facilite énormément le travail. »
-              </blockquote>
-              
-              <!-- Lien Lire plus -->
-              <a href="#" style="color: #1565c0; text-decoration: none; font-weight: 600; margin-bottom: 1rem; display: inline-block;"
-                 onmouseover="this.style.textDecoration='underline';"
-                 onmouseout="this.style.textDecoration='none';">
-                Lire plus
-              </a>
-              
+
+          <!-- Témoignage à droite avec design moderne -->
+          <div class="col-lg-7 col-md-12 scroll-animate-right">
+            <div style="padding-left: 2rem;">
+              <!-- Icône citation géante -->
+              <div style="font-size: 4rem; color: rgba(4, 83, 203, 0.15); line-height: 1; margin-bottom: -1rem; font-family: Georgia, serif;">
+                "
+              </div>
+
+              <!-- Citation avec background moderne -->
+              <div style="background: white; border-radius: 20px; padding: 2.5rem; box-shadow: 0 12px 48px rgba(4, 83, 203, 0.1); border-left: 4px solid #0453cb; position: relative;">
+                <blockquote style="font-size: 1.25rem; line-height: 1.8; color: #2d3748; margin-bottom: 0; font-weight: 400; font-family: 'Inter', sans-serif;">
+                  Avant, pour l'édition de nos bulletins, nous utilisions Excel et rencontrions beaucoup de difficultés. Depuis que nous utilisons <strong style="color: #0453cb;">KLASSCI</strong>, nous n'avons plus d'erreurs et il nous facilite énormément le travail.
+                </blockquote>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Animation pulse pour le badge Live -->
+      <style>
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        /* Forcer les border-radius sur le conteneur vidéo */
+        #videoContainer {
+          border-radius: 16px !important;
+          overflow: hidden !important;
+        }
+
+        #testimonialVideo {
+          border-radius: 16px !important;
+        }
+
+        /* Hover effect pour la vidéo card */
+        .col-lg-5 > div {
+          border-radius: 24px !important;
+        }
+
+        .col-lg-5 > div:hover {
+          transform: perspective(1000px) rotateY(0deg) translateY(-4px) !important;
+          box-shadow: 0 24px 80px rgba(4, 83, 203, 0.2) !important;
+        }
+
+        /* Responsive */
+        @media (max-width: 991.98px) {
+          .col-lg-7 > div {
+            padding-left: 0 !important;
+            margin-top: 2rem;
+          }
+
+          .col-lg-5 > div {
+            transform: none !important;
+          }
+        }
+      </style>
     </section>
 
     <!-- Section Sécurité -->

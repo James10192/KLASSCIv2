@@ -1099,6 +1099,172 @@ console.log('  🔲 Header: unchecked / ✅ checked / ➖ indeterminate');
 
 ---
 
+### 🎬 Landing Page - Lecteur Vidéo Témoignages Style Shorts (3 novembre)
+
+**Page** : `/` - Section témoignages Mme Mangoua Nadège
+
+**Problème** : Design du témoignage vidéo trop fade et video player HTML5 basique sans contrôles personnalisés.
+
+**Solution implémentée** : Lecteur vidéo personnalisé style YouTube Shorts avec contrôles audio avancés.
+
+#### Architecture Lecteur Vidéo
+
+**Fichier** : `resources/views/welcome-software.blade.php` (lignes 2628-2884)
+
+**Fonctionnalités** :
+- ✅ Ratio portrait 9:16 (max-width 320px)
+- ✅ Play/Pause au clic sur vidéo
+- ✅ Overlay icône animé (fade in/out 500ms)
+- ✅ Contrôles audio bottom-center
+- ✅ Bouton mute/unmute avec icônes color-coded
+- ✅ Slider volume vertical (0-100%)
+- ✅ Transitions smooth (opacity + transform)
+- ✅ Mémoire volume avant mute
+- ✅ Border-radius permanent (16px)
+
+#### Contrôles Audio
+
+**Positionnement** : Bottom-center avec `transform: translateX(-50%)`
+
+**Structure HTML** :
+```html
+<div id="audioControls" style="position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column-reverse; align-items: center; gap: 0;">
+  <!-- Volume Slider (apparaît au hover) -->
+  <div id="volumeSliderContainer" style="opacity: 0; transform: translateY(10px); pointer-events: none; transition: opacity 0.3s ease, transform 0.3s ease;">
+    <input type="range" id="volumeSlider" min="0" max="100" value="50" orient="vertical" style="height: 100px;">
+  </div>
+
+  <!-- Bouton Mute/Unmute -->
+  <button id="muteBtn" style="width: 48px; height: 48px; background: rgba(255, 255, 255, 0.95); border-radius: 50%; flex-shrink: 0;">
+    <i id="muteIcon" class="fas fa-volume-mute"></i>
+  </button>
+</div>
+```
+
+**Icônes color-coded** :
+- 🔴 `fa-volume-mute` (rouge) : Muted ou volume = 0
+- 🟠 `fa-volume-down` (orange) : Volume 1-30%
+- 🔵 `fa-volume-down` (bleu) : Volume 31-70%
+- 🟢 `fa-volume-up` (vert) : Volume > 70%
+
+#### JavaScript - Gestion Audio
+
+**Variables état** :
+```javascript
+let previousVolume = 50;  // Volume avant mute (50% par défaut)
+let isSliderVisible = false;
+let volumeHoverTimeout;
+```
+
+**Toggle Mute/Unmute** :
+```javascript
+muteBtn.addEventListener('click', function(e) {
+  e.stopPropagation();
+
+  if (video.muted) {
+    video.muted = false;
+    video.volume = previousVolume / 100;
+    volumeSlider.value = previousVolume;
+    showVolumeIndicator('Son activé');
+  } else {
+    previousVolume = volumeSlider.value;
+    video.muted = true;
+    showVolumeIndicator('Son coupé');
+  }
+  updateMuteIcon();
+});
+```
+
+**Animation Slider** :
+```javascript
+// Afficher slider au hover du conteneur parent (évite disparition)
+audioControls.addEventListener('mouseenter', function() {
+  clearTimeout(volumeHoverTimeout);
+  volumeHoverTimeout = setTimeout(() => {
+    volumeSliderContainer.style.opacity = '1';
+    volumeSliderContainer.style.transform = 'translateY(0)';
+    volumeSliderContainer.style.pointerEvents = 'auto';
+  }, 200);
+});
+
+audioControls.addEventListener('mouseleave', function() {
+  clearTimeout(volumeHoverTimeout);
+  volumeSliderContainer.style.opacity = '0';
+  volumeSliderContainer.style.transform = 'translateY(10px)';
+  volumeSliderContainer.style.pointerEvents = 'none';
+});
+```
+
+#### CSS Styling
+
+**Border-radius permanent** :
+```css
+#videoContainer {
+  border-radius: 16px !important;
+  overflow: hidden !important;
+}
+
+#testimonialVideo {
+  border-radius: 16px !important;
+}
+```
+
+**Hover effect card** :
+```css
+.col-lg-5 > div {
+  border-radius: 24px !important;
+}
+
+.col-lg-5 > div:hover {
+  transform: perspective(1000px) rotateY(0deg) translateY(-4px) !important;
+  box-shadow: 0 24px 80px rgba(4, 83, 203, 0.2) !important;
+}
+```
+
+#### Fixes Appliqués
+
+**Fix #1: Audio ne fonctionnait pas** :
+- Initialisation volume à 50% au lieu de 0%
+- Ajout variable `previousVolume` pour mémoire
+- Console.log debugging extensif
+- Visual feedback avec indicateur status
+
+**Fix #2: Border-radius disparaissait** :
+- Ajout `!important` sur toutes règles CSS
+- Application sur container ET vidéo
+
+**Fix #3: Bouton se déplaçait au hover** :
+- `flex-shrink: 0` sur bouton (empêche rétrécissement)
+- `gap: 0` entre bouton et slider
+- Transition opacity/transform au lieu de display none/block
+- Hover listener sur parent container (`audioControls`) au lieu d'éléments individuels
+- Suppression background card blanc (transparent avec drop-shadow)
+
+**Fix #4: Position bouton** :
+- Déplacement de `bottom-right` vers `bottom-center`
+- Utilisation `left: 50%; transform: translateX(-50%);`
+
+#### Résultat
+
+**Avant** :
+- Liste HTML basique
+- Video player HTML5 standard
+- Pas de contrôles personnalisés
+- Design fade
+
+**Après** :
+- Lecteur vidéo moderne style Shorts
+- Contrôles audio smooth et intuitifs
+- Design cohérent avec reste de la landing page
+- UX optimale (hover, transitions, feedback visuel)
+
+**Performance** :
+- Autoplay loop en background
+- Poster image pour chargement initial
+- Contrôles légers (pas de bibliothèque externe)
+
+---
+
 #### 2. Affichage Titre Académique
 
 **Fichier modifié** : `resources/views/esbtp/personnel/unified-index.blade.php` (lignes 658-663)
@@ -1593,6 +1759,54 @@ klassci_master (DB)          ← Gestion tenants
 
 ---
 
+#### 1.1. Recherches & Tendances 2025 (2 novembre 2025)
+
+**Sources** : Web search réseau sociaux éducatifs + Laravel social networks best practices
+
+**📊 Tendances Réseaux Sociaux Étudiants 2025** :
+
+- **76% des 16-25 ans utilisent Instagram** (plateforme #1 devant Snapchat 63% et TikTok 60%)
+- **Formats courts et immersifs dominants** : Reels, Shorts, TikTok (préférence génération Z)
+- **IA et personnalisation** : Algorithmes de recommandation feed (Gemini/OpenAI)
+- **Contenu interactif** : Polls, Q&A, Live events (engagement x2-3)
+- **Mobile-first obligatoire** : 85%+ trafic mobile (PWA ou app native indispensable)
+- **Formats éducatifs** : Tutoriels vidéo, webinaires, témoignages étudiants, calendriers événements
+
+**🏗️ Laravel Social Network Best Practices 2025** :
+
+**Architecture Moderne** :
+- **Domain-Driven Design (DDD)** : Organiser code par business logic, pas couches techniques
+- **API-First** : Séparer APIs web/mobile/third-party (REST + GraphQL)
+- **Microservices** : Auth, Payments, Notifications services indépendants (Laravel Modules)
+- **Real-time** : Laravel Broadcasting + WebSockets (Pusher/Redis/Reverb)
+
+**Performance & Scalabilité** :
+- **Redis cache** : Feeds pré-calculés (TTL 5min) → Performance x10
+- **CDN** : Offload assets statiques vers S3/CloudFront (EC2 = PHP only)
+- **Database** : Indexes sur colonnes fréquentes, Read replicas, Query optimization
+- **Queues** : Laravel Horizon pour jobs async (emails, notifications, indexation)
+
+**Sécurité** :
+- **Rate limiting** : API throttling (60 req/min user, 10 req/min guest)
+- **Input sanitization** : XSS, SQL injection protection (Laravel validation built-in)
+- **CSRF tokens** : Tous les forms protégés
+- **Content moderation** : Filtre mots-clés + système reports + modérateurs humains
+
+**Packages Recommandés** :
+- `spatie/laravel-medialibrary` - Gestion fichiers/images (conversions auto)
+- `intervention/image` - Traitement images (resize, crop, watermark)
+- `cybercog/laravel-love` - Système likes/reactions avancé
+- `spatie/laravel-activitylog` - Audit trail (qui a fait quoi quand)
+- `laravel/scout` + `meilisearch` - Full-text search ultra-rapide
+- `laravel/horizon` - Monitoring queues Redis (dashboard temps réel)
+
+**Projets Reddit-like Laravel Open Source** :
+- `geosem42/laravel-reddit` : Login, Subreddits, Posts, Comments threadés, Upvote/Downvote, User profiles
+- `ivanmmarkovic/reddit-laravel` : Posts (link/text), Ajax voting, User profiles
+- Laracasts "Let's Build A Forum with Laravel and TDD" : TDD approach, threaded comments
+
+---
+
 #### 2. Fonctionnalités Proposées (Inspirées Reddit + Twitter)
 
 **Phase 1 : Fondations (3-4 mois)** 🟢 Faisable
@@ -1809,6 +2023,150 @@ routes/api.php
 ```
 
 **Communication inter-services** : RabbitMQ ou Redis Pub/Sub
+
+---
+
+#### 3.1. Fonctionnalités Sociales Déjà Présentes dans KLASSCI (Analyse 2 novembre 2025)
+
+**🔍 Exploration Codebase** : Analyse complète des features sociales existantes dans les tenants KLASSCI
+
+**✅ Infrastructure Solide Déjà En Place** :
+
+**1. Système d'Annonces Avancé**
+- **Modèle** : `ESBTPAnnonce` (`app/Models/ESBTPAnnonce.php`)
+- **Table** : `esbtp_annonces`
+- **Relations** : belongsToMany classes, belongsToMany etudiants
+- **Pivot Table** : `esbtp_annonce_etudiant` avec tracking (`is_read`, `read_at`)
+- **Features** :
+  - Destinataires : Classes spécifiques ou tous étudiants
+  - Types : info, warning, success, error
+  - Priorité : haute, normale, basse
+  - Marquer comme lu/non lu (AJAX)
+  - Bouton "Marquer tout comme lu"
+  - Filtres : Non lues, lues, par type, par priorité
+  - Design moderne avec badges priorité
+
+**2. Notifications Système**
+- **Modèle** : `Notification` (`app/Models/Notification.php`)
+- **Table** : `custom_notifications`
+- **Scopes** : unread(), read(), ofType()
+- **Features** :
+  - Badge compteur sur dashboard
+  - Actions avec liens
+  - Page dédiée `/mes-notifications`
+
+**3. Messages & Threads**
+- **Modèle** : `Message` (`app/Models/Message.php`)
+- **Support Threads** : via `parent_id` (réponses imbriquées)
+- **Statuts** : is_read, read_at
+- **Soft Deletes** : Archivage messages
+
+**4. Dashboard Étudiant Moderne**
+- **Vue** : `resources/views/dashboard/etudiant.blade.php`
+- **Design** : ACASI Design System 2025
+- **Sections** :
+  - Header personnalisé ("Bienvenue, {nom}")
+  - 6 Stat Cards (Matricule, Taux présence, Classe, Filière, Niveau, Notifications)
+  - Cours d'Aujourd'hui (timeline)
+  - Dernières Notes
+  - Annonces pour la classe
+- **Style** : Modern cards-based, responsive, icônes Font Awesome 6.4
+
+**5. Pages "mes-*" Étudiants (11 pages)**
+- `/mes-notes` - Notes avec filtres matière/période
+- `/mon-emploi-temps` - Planning hebdomadaire interactif
+- `/mes-absences` - Absences avec justification possible
+- `/mes-evaluations` - Évaluations à venir/passées
+- `/mon-bulletin` - Bulletins PDF downloadables
+- `/mes-paiements` - Historique paiements scolarité
+- `/mes-notifications` - Centre notifications
+- `/mes-messages` - Annonces reçues (filtres avancés)
+- Toutes avec middleware `auth, role:etudiant`
+
+**6. Permissions Granulaires**
+- **Rôle** : `etudiant` (Spatie Permission)
+- **11 permissions** : view_own_profile, view_own_notes, view_own_grades, view_own_exams, view_own_evaluations, view_own_bulletin, view_own_attendances, view_own_attendance, view_own_timetable, view_own_schedule
+- **Middleware** : Protection routes sensibles
+
+**7. Profils Étudiants Riches**
+- **Modèle** : `ESBTPEtudiant` (`app/Models/ESBTPEtudiant.php`)
+- **Table** : `esbtp_etudiants`
+- **Attributs** :
+  - Matricule (auto-généré)
+  - Nom, prénom, email, téléphone
+  - Photo (`storage/photos/etudiants/`)
+  - Date naissance, lieu naissance, nationalité
+  - Statut (actif/inactif/abandon)
+  - Tracking abandon (motif, date)
+- **Relations** :
+  - user(), inscriptions(), notes(), absences(), paiements()
+  - classe(), parents(), evaluations(), bulletins()
+- **Accesseurs** :
+  - inscription_active, classe_active, nom_complet, age, photo_url
+
+**8. Architecture Frontend Adaptée**
+- **Stack** : Blade + Alpine.js (réactivité)
+- **CSS** : Bootstrap 5.3 + Design System ACASI
+- **JS** : Chart.js (statistiques), DataTables (tableaux)
+- **Modals** : Bootstrap Modals
+- **Design Variables CSS** :
+  ```css
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --primary: #0453cb;
+  --secondary: #5e91de;
+  --success: #10b981;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  ```
+
+**9. Stack Backend**
+- Laravel 12.x (excellent pour social features)
+- MySQL 8.x (relations complexes supportées)
+- Redis (cache, queues) - déjà configuré
+- AWS S3 (stockage photos étudiants)
+- Laravel Sanctum (API tokens)
+
+**📊 Évaluation Réutilisabilité** :
+
+| Feature KLASSCI Actuelle | Réutilisable pour Social ? | Adaptations Nécessaires |
+|--------------------------|----------------------------|-------------------------|
+| Système annonces | ✅ OUI (90%) | Ajouter reactions/likes |
+| Notifications | ✅ OUI (80%) | Temps réel (WebSockets) |
+| Messages/Threads | ✅ OUI (70%) | Mentions @username |
+| Profils étudiants | ✅ OUI (100%) | Sync cross-tenant |
+| Permissions | ✅ OUI (100%) | Ajouter moderation roles |
+| Dashboard design | ✅ OUI (90%) | Adapter feed layout |
+| Frontend stack | ✅ OUI (100%) | Aucune |
+| Backend stack | ✅ OUI (100%) | Aucune |
+
+**💡 Avantages Compétitifs** :
+
+1. **80% de l'infrastructure déjà construite** :
+   - Annonces = Posts (structure identique)
+   - Notifications = Notifications (même système)
+   - Messages threads = Comments (déjà nested)
+   - Profils riches = User profiles (complets)
+
+2. **Design System mature** :
+   - ACASI 2025 cohérent avec toutes les pages
+   - Components réutilisables (cards, badges, buttons)
+   - Responsive mobile-first
+
+3. **Stack technique éprouvée** :
+   - Laravel 12.x production-ready
+   - MySQL 8.x scalable (4000+ étudiants actuels)
+   - Redis déjà configuré pour cache/queues
+   - S3 pour media (photos étudiants fonctionne)
+
+4. **Permissions & Sécurité** :
+   - Spatie Permission déjà en place
+   - Middleware auth robuste
+   - Audit trail (created_by, updated_by)
+   - Soft deletes partout
+
+**🎯 Conclusion** : Le réseau social ne sera **PAS une réécriture complète** mais une **évolution naturelle** des fonctionnalités existantes. Estimation : **60-70% du code réutilisable**.
 
 ---
 
