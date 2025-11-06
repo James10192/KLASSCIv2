@@ -48,6 +48,7 @@ class ESBTPStudentController extends Controller
         $niveau = $request->input('niveau');
         $annee = $request->input('annee');
         $status = $request->input('status');
+        $classe = $request->input('classe');
         $affectationStatus = $request->input('affectation_status');
         $inscritAnneeCourante = $request->input('inscrit_annee_courante');
         $estTransfert = $request->input('est_transfert');
@@ -80,6 +81,12 @@ class ESBTPStudentController extends Controller
                 if ($annee) {
                     $q->where('annee_universitaire_id', $annee);
                 }
+            });
+        }
+
+        if ($classe) {
+            $baseQuery->whereHas('inscriptions', function ($q) use ($classe) {
+                $q->where('classe_id', $classe);
             });
         }
 
@@ -131,6 +138,7 @@ class ESBTPStudentController extends Controller
                 'filiere' => $filiere,
                 'niveau' => $niveau,
                 'annee' => $annee,
+                'classe' => $classe,
                 'status' => $status,
                 'affectation_status' => $affectationStatus,
                 'inscrit_annee_courante' => $inscritAnneeCourante,
@@ -234,6 +242,10 @@ class ESBTPStudentController extends Controller
         $filieres = ESBTPFiliere::where('is_active', true)->get();
         $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
         $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
+        $classes = ESBTPClasse::where('is_active', true)
+            ->with(['filiere', 'niveauEtude'])
+            ->orderBy('name')
+            ->get();
 
         \Log::info('ESBTPStudentController@index completed', array_merge($baseLogContext, [
             'timestamp' => now()->toIso8601String(),
@@ -271,6 +283,8 @@ class ESBTPStudentController extends Controller
             'filiere',
             'niveau',
             'annee',
+            'classe',
+            'classes',
             'status',
             'affectationStatus',
             'inscritAnneeCourante',
@@ -323,7 +337,7 @@ class ESBTPStudentController extends Controller
         return view('esbtp.etudiants.show', compact('etudiant'));
     }
 
-    public function edit(ESBTPEtudiant $etudiant)
+    public function edit(Request $request, ESBTPEtudiant $etudiant)
     {
         // Charger les relations nécessaires
         $etudiant->load(['user', 'parents', 'inscriptions.filiere', 'inscriptions.niveau', 'inscriptions.classe']);
@@ -333,6 +347,10 @@ class ESBTPStudentController extends Controller
         $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
         $classes = ESBTPClasse::where('is_active', true)->get();
         $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
+
+        if ($request->boolean('embedded')) {
+            return view('esbtp.etudiants.embed.edit', compact('etudiant'));
+        }
 
         return view('esbtp.etudiants.edit', compact(
             'etudiant',

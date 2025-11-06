@@ -758,9 +758,17 @@ class ESBTPEtudiantController extends Controller
                 'redirect_to' => route('esbtp.etudiants.show', $etudiant->id)
             ]);
 
+            $successMessage = 'Informations de l\'étudiant mises à jour avec succès!';
+
+            if ($request->boolean('embedded_mode')) {
+                return redirect()
+                    ->route('esbtp.etudiants.edit', ['etudiant' => $etudiant->id, 'embedded' => 1])
+                    ->with('embedded_success_student', $successMessage);
+            }
+
             return redirect()
                 ->route('esbtp.etudiants.show', $etudiant->id)
-                ->with('success', 'Informations de l\'étudiant mises à jour avec succès!');
+                ->with('success', $successMessage);
 
         } catch (\Illuminate\Database\QueryException $e) {
             DB::rollBack();

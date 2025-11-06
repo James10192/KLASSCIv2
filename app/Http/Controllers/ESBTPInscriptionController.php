@@ -1017,7 +1017,7 @@ class ESBTPInscriptionController extends Controller
     /**
      * Afficher le formulaire de modification d'une inscription.
      */
-    public function edit(ESBTPInscription $inscription)
+    public function edit(Request $request, ESBTPInscription $inscription)
     {
         // Vérifier si l'inscription peut être modifiée
         if ($inscription->status === 'terminée') {
@@ -1045,6 +1045,16 @@ class ESBTPInscriptionController extends Controller
             ->get();
 
         $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
+
+        if ($request->boolean('embedded')) {
+            return view('esbtp.inscriptions.embed.edit', compact(
+                'inscription',
+                'filieres',
+                'niveaux',
+                'classes',
+                'annees'
+            ));
+        }
 
         return view('esbtp.inscriptions.edit', compact(
             'inscription',
@@ -1197,9 +1207,17 @@ class ESBTPInscriptionController extends Controller
 
             DB::commit();
 
+            $successMessage = 'Inscription mise à jour avec succès.';
+
+            if ($request->boolean('embedded_mode')) {
+                return redirect()
+                    ->route('esbtp.inscriptions.edit', ['inscription' => $inscription->id, 'embedded' => 1])
+                    ->with('embedded_success_inscription', $successMessage);
+            }
+
             return redirect()
                 ->route('esbtp.inscriptions.show', $inscription->id)
-                ->with('success', 'Inscription mise à jour avec succès.');
+                ->with('success', $successMessage);
 
         } catch (\Exception $e) {
             DB::rollBack();

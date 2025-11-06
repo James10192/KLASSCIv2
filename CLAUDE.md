@@ -1691,6 +1691,400 @@ Route::post('secretaires/{id}/toggle-status', [ESBTPSecretaireController::class,
 
 ---
 
+### 📝 Modal Édition Rapide Étudiants & Inscriptions (6 novembre)
+
+**Page** : `/esbtp/etudiants` (index)
+
+**Problème** : Besoin d'une interface d'édition rapide sans quitter la page de liste, avec accès aux informations de l'étudiant et de ses inscriptions.
+
+**Solution implémentée** : Modal moderne avec onglets pour édition étudiant et inscriptions via iframes.
+
+#### Architecture Modal
+
+**Fichier principal** : `resources/views/esbtp/etudiants/index.blade.php`
+
+**Structure** :
+- Modal Bootstrap avec design moderne (80vw × 80vh)
+- 2 onglets : "Étudiant" et "Inscriptions"
+- Contenu chargé via iframes pour isolation complète
+- Accordéon pour les inscriptions multiples
+
+#### Composants Créés
+
+**1. Vues Embedded (mode iframe)**
+
+**Nouveaux fichiers** :
+- `resources/views/esbtp/etudiants/embed/edit.blade.php` - Version iframe de l'édition étudiant
+- `resources/views/esbtp/inscriptions/embed/edit.blade.php` - Version iframe de l'édition inscription
+- `resources/views/layouts/embedded.blade.php` - Layout minimaliste pour iframes
+
+**Partials extraits** :
+- `resources/views/esbtp/etudiants/partials/edit-form.blade.php` - Formulaire étudiant réutilisable
+- `resources/views/esbtp/etudiants/partials/edit-form-scripts.blade.php` - Scripts formulaire étudiant
+- `resources/views/esbtp/inscriptions/partials/edit-form.blade.php` - Formulaire inscription réutilisable
+- `resources/views/esbtp/inscriptions/partials/edit-form-scripts.blade.php` - Scripts formulaire inscription
+
+#### Modifications Controllers
+
+**ESBTPStudentController.php** :
+```php
+public function edit(Request $request, ESBTPEtudiant $etudiant)
+{
+    // ... chargement relations
+
+    // Détection mode embedded
+    if ($request->boolean('embedded')) {
+        return view('esbtp.etudiants.embed.edit', compact('etudiant'));
+    }
+
+    return view('esbtp.etudiants.edit', compact(...));
+}
+```
+
+**ESBTPEtudiantController.php** :
+```php
+public function update(Request $request, ESBTPEtudiant $etudiant)
+{
+    // ... validation et mise à jour
+
+    // Redirection différente en mode embedded
+    if ($request->boolean('embedded_mode')) {
+        return redirect()
+            ->route('esbtp.etudiants.edit', ['etudiant' => $etudiant->id, 'embedded' => 1])
+            ->with('embedded_success_student', $successMessage);
+    }
+
+    return redirect()->route('esbtp.etudiants.show', $etudiant->id)
+        ->with('success', $successMessage);
+}
+```
+
+**ESBTPInscriptionController.php** (même logique) :
+```php
+public function edit(Request $request, ESBTPInscription $inscription)
+{
+    if ($request->boolean('embedded')) {
+        return view('esbtp.inscriptions.embed.edit', compact(...));
+    }
+    // ...
+}
+
+public function update(Request $request, ESBTPInscription $inscription)
+{
+    if ($request->boolean('embedded_mode')) {
+        return redirect()
+            ->route('esbtp.inscriptions.edit', ['inscription' => $inscription->id, 'embedded' => 1])
+            ->with('embedded_success_inscription', $successMessage);
+    }
+    // ...
+}
+```
+
+#### Design Modal Moderne
+
+**Dimensions** :
+```css
+.modal-modern .modal-dialog {
+    width: clamp(1024px, 80vw, 1800px);  /* Large sur grands écrans */
+    height: 80vh;
+    margin: 10vh auto;
+}
+```
+
+**Responsive** :
+- **> 1400px** : 80vw (max 1800px)
+- **1200-1400px** : 85vw
+- **992-1200px** : 90vw × 85vh
+- **< 992px** : 95vw × 90vh
+
+**Tabs Bootstrap** :
+```css
+.student-tabs-container .nav-link.active {
+    background: #ffffff;
+    font-weight: 700;
+    box-shadow: 0 -2px 20px rgba(15, 23, 42, 0.12);
+}
+
+.modern-tab-content {
+    background: #ffffff;
+    border-radius: 0 16px 16px 16px;
+    flex: 1;
+    overflow: hidden;  /* Pas de scrollbar sur le modal */
+}
+```
+
+**Gestion affichage onglets** :
+```css
+/* Par défaut tous cachés */
+.modern-tab-content .tab-pane {
+    display: none;
+}
+
+/* Seulement l'onglet actif visible */
+.modern-tab-content .tab-pane.show.active {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+}
+```
+
+#### Iframe Étudiant
+
+```css
+.modal-iframe-wrapper {
+    background: #ffffff;
+    width: 100%;
+    height: 100%;
+    flex: 1;
+}
+
+.modal-iframe-wrapper iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+```
+
+**Chargement lazy** :
+```javascript
+const separator = payload.edit_url.includes('?') ? '&' : '?';
+studentFrame.src = `${payload.edit_url}${separator}embedded=1&_=${Date.now()}`;
+```
+
+#### Accordéon Inscriptions
+
+**Génération dynamique** :
+```javascript
+function renderInscriptionsAccordion(payload) {
+    const inscriptions = payload?.inscriptions ?? [];
+
+    const items = inscriptions.map((inscription, index) => `
+        <div class="accordion-item">
+            <h2 class="accordion-header">
+                <button class="accordion-button ${index === 0 ? '' : 'collapsed'}"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#collapse-${inscription.id}">
+                    <i class="fas fa-graduation-cap me-2"></i>
+                    ${inscription.annee} - ${inscription.classe ?? 'Non affectée'}
+                    <span class="badge bg-${inscription.status_color} ms-auto">
+                        ${inscription.status}
+                    </span>
+                </button>
+            </h2>
+            <div id="collapse-${inscription.id}"
+                 class="accordion-collapse collapse ${index === 0 ? 'show' : ''}"
+                 data-bs-parent="#inscriptions-accordion">
+                <div class="accordion-body">
+                    <div class="modal-iframe-wrapper">
+                        <iframe class="inscription-frame"
+                                data-src="${inscription.edit_url}?embedded=1"
+                                loading="lazy"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    inscriptionsContainer.innerHTML =
+        `<div class="accordion accordion-modern">${items}</div>`;
+}
+```
+
+**Hauteur iframes accordéon** :
+```css
+.accordion-modern .accordion-body .modal-iframe-wrapper {
+    min-height: 500px;  /* Hauteur minimum garantie */
+    height: 60vh;       /* 60% viewport sur grands écrans */
+}
+
+@media (max-width: 992px) {
+    .accordion-modern .accordion-body .modal-iframe-wrapper {
+        height: 50vh;  /* Plus compact sur mobile */
+    }
+}
+```
+
+**Chargement iframe au clic** :
+```javascript
+function attachAccordionListeners(container) {
+    container.querySelectorAll('.accordion-button').forEach(button => {
+        button.addEventListener('shown.bs.collapse', () => {
+            const iframe = button.closest('.accordion-item')
+                                 .querySelector('.inscription-frame');
+            if (iframe && !iframe.src) {
+                const separator = iframe.dataset.src.includes('?') ? '&' : '?';
+                iframe.src = `${iframe.dataset.src}${separator}_=${Date.now()}`;
+            }
+        }, { once: true });
+    });
+}
+```
+
+#### Layout Embedded
+
+**Fichier** : `resources/views/layouts/embedded.blade.php`
+
+**Caractéristiques** :
+- Header minimaliste (pas de menu, pas de sidebar)
+- Formulaire prend toute la largeur
+- Messages success/error intégrés
+- Redirection interne (pas de navigation externe)
+
+```blade
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@yield('title')</title>
+    <!-- CSS uniquement -->
+</head>
+<body style="background: #f8fafc;">
+    @if(session('embedded_success_student') || session('embedded_success_inscription'))
+        <div class="alert alert-success">
+            {{ session('embedded_success_student') ?? session('embedded_success_inscription') }}
+        </div>
+    @endif
+
+    @yield('content')
+
+    <!-- Scripts uniquement -->
+</body>
+</html>
+```
+
+#### Refactorisation Code
+
+**Avant** : Formulaires dupliqués dans `edit.blade.php` et vues embedded
+
+**Après** : Extraction dans partials réutilisables
+
+**edit.blade.php** (version normale) :
+```blade
+@extends('layouts.app')
+
+@section('content')
+    <div class="main-header"><!-- ... --></div>
+    @include('esbtp.etudiants.partials.edit-form', [
+        'etudiant' => $etudiant,
+        'isEmbedded' => false
+    ])
+@endsection
+
+@push('scripts')
+    @include('esbtp.etudiants.partials.edit-form-scripts')
+@endpush
+```
+
+**embed/edit.blade.php** (version iframe) :
+```blade
+@extends('layouts.embedded')
+
+@section('content')
+    @include('esbtp.etudiants.partials.edit-form', [
+        'etudiant' => $etudiant,
+        'isEmbedded' => true
+    ])
+
+    @include('esbtp.etudiants.partials.edit-form-scripts')
+@endsection
+```
+
+**Paramètre `isEmbedded`** :
+- `true` → Formulaire avec `embedded_mode` hidden input
+- `false` → Formulaire normal
+
+#### Bouton Ouverture Modal
+
+**Fichier** : `resources/views/esbtp/etudiants/partials/results.blade.php`
+
+**Ajout data-student** :
+```blade
+<button type="button"
+        class="btn btn-sm btn-primary btn-open-edit-modal"
+        data-student='@json([
+            "id" => $etudiant->id,
+            "matricule" => $etudiant->matricule,
+            "name" => $etudiant->nom_complet,
+            "edit_url" => route('esbtp.etudiants.edit', $etudiant->id),
+            "inscriptions" => $etudiant->inscriptions->map(fn($i) => [
+                "id" => $i->id,
+                "annee" => $i->annee_universitaire->display_name ?? "",
+                "classe" => $i->classe->name ?? null,
+                "status" => $i->status,
+                "status_color" => match($i->status) {
+                    "validée" => "success",
+                    "en_attente" => "warning",
+                    default => "secondary"
+                },
+                "edit_url" => route('esbtp.inscriptions.edit', $i->id)
+            ])
+        ])'>
+    <i class="fas fa-edit"></i> Modifier
+</button>
+```
+
+**Event listener** :
+```javascript
+resultsContainer.addEventListener('click', function (event) {
+    const trigger = event.target.closest('.btn-open-edit-modal');
+    if (!trigger) return;
+
+    event.preventDefault();
+    openEditModal(trigger.getAttribute('data-student'));
+});
+```
+
+#### Avantages Architecture
+
+**1. Isolation complète** :
+- ✅ Iframe = contexte JS/CSS séparé
+- ✅ Pas de conflit avec page parent
+- ✅ Chargement à la demande (performance)
+
+**2. Réutilisabilité** :
+- ✅ Partials partagés entre vue normale et embedded
+- ✅ Un seul formulaire maintenu
+- ✅ Logique controller centralisée
+
+**3. UX moderne** :
+- ✅ Pas de rechargement page
+- ✅ Modal large (80% écran)
+- ✅ Onglets intuitifs
+- ✅ Accordéon pour inscriptions multiples
+- ✅ Messages success dans iframe
+
+**4. Performance** :
+- ✅ Lazy loading iframes
+- ✅ Chargement au clic sur accordéon
+- ✅ Cache-busting avec timestamp
+
+#### Fichiers Modifiés/Créés
+
+| Fichier | Type | Changements |
+|---------|------|-------------|
+| `ESBTPStudentController.php` | Controller | +4 lignes (embedded mode detection) |
+| `ESBTPEtudiantController.php` | Controller | +10 lignes (embedded redirect) |
+| `ESBTPInscriptionController.php` | Controller | +22 lignes (embedded mode support) |
+| `etudiants/index.blade.php` | View | +170 lignes (modal + CSS + JS) |
+| `etudiants/edit.blade.php` | View | -703 lignes (extraction partials) |
+| `etudiants/partials/edit-form.blade.php` | Partial | +700 lignes (formulaire extrait) |
+| `etudiants/partials/edit-form-scripts.blade.php` | Partial | +450 lignes (scripts extraits) |
+| `etudiants/embed/edit.blade.php` | View | +20 lignes (vue iframe) |
+| `inscriptions/edit.blade.php` | View | -370 lignes (extraction partials) |
+| `inscriptions/partials/edit-form.blade.php` | Partial | +360 lignes (formulaire extrait) |
+| `inscriptions/partials/edit-form-scripts.blade.php` | Partial | +200 lignes (scripts extraits) |
+| `inscriptions/embed/edit.blade.php` | View | +18 lignes (vue iframe) |
+| `layouts/embedded.blade.php` | Layout | +50 lignes (layout minimaliste) |
+| `etudiants/partials/results.blade.php` | Partial | +167 lignes (bouton + data) |
+
+**Total** :
+- **7 fichiers modifiés** (-1210 lignes nettes après extraction)
+- **7 nouveaux fichiers** (+1798 lignes de code réutilisable)
+- **Résultat** : Code mieux organisé, +588 lignes de fonctionnalités
+
+---
+
 ## 🌐 Vision Future : Réseau Social KLASSCI
 
 **Concept** : Plateforme sociale éducative **CROSS-TENANT** pour tous les étudiants KLASSCI (tous établissements confondus), inspirée de Reddit/Twitter, mais adaptée au contexte académique africain.
@@ -2631,7 +3025,7 @@ TENANT_CODE=presentation
 
 ---
 
-*Dernière mise à jour: 2 novembre 2025*
+*Dernière mise à jour: 6 novembre 2025*
 
 ---
 

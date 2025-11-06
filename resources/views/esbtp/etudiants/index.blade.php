@@ -4,6 +4,294 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+    .modal-modern .modal-dialog {
+        width: clamp(1024px, 80vw, 1800px);
+        max-width: 80vw;
+        height: 80vh;
+        max-height: 80vh;
+        position: relative;
+        margin: 10vh auto;
+    }
+
+    .modal-modern .modal-content {
+        border-radius: 24px;
+        border: none;
+        box-shadow: 0 25px 60px rgba(15, 23, 42, 0.25);
+        background: linear-gradient(135deg, #fdfdfd 0%, #f3f4f6 35%, #ffffff 100%);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .modal-modern .modal-header {
+        border-bottom: none;
+        padding: 20px 28px 12px 28px;
+        background: transparent;
+        flex-shrink: 0;
+    }
+
+    .modal-modern .modal-body {
+        padding: 8px 28px 24px 28px;
+        overflow: hidden;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .student-tabs-container {
+        position: relative;
+        margin-bottom: 0;
+        flex-shrink: 0;
+    }
+
+    .student-tabs-container .nav-tabs {
+        border: none;
+        margin-bottom: 0;
+        position: relative;
+        z-index: 10;
+        display: flex;
+        gap: 8px;
+        padding-left: 0;
+    }
+
+    .student-tabs-container .nav-link {
+        border: none !important;
+        border-radius: 16px 16px 0 0 !important;
+        padding: 14px 24px !important;
+        color: #6b7280 !important;
+        background: #f8fafc !important;
+        font-weight: 500 !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12) !important;
+        border-bottom: 1px solid #e5e7eb !important;
+    }
+
+    .student-tabs-container .nav-link:hover {
+        background: #eef2ff !important;
+        color: #1f2937 !important;
+        transform: translateY(-2px) !important;
+    }
+
+    .student-tabs-container .nav-link.active {
+        background: #ffffff !important;
+        color: #111827 !important;
+        font-weight: 700 !important;
+        box-shadow: 0 -2px 20px rgba(15, 23, 42, 0.12) !important;
+        border-bottom: none !important;
+    }
+
+    .student-tabs-container .nav-link .tab-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .student-tabs-container .nav-link .tab-label i {
+        font-size: 14px;
+    }
+
+    .modern-tab-content {
+        position: relative;
+        z-index: 5;
+        background: #ffffff;
+        border-radius: 0 16px 16px 16px;
+        margin-top: -1px;
+        box-shadow: inset 0 1px 0 rgba(229, 231, 235, 0.8), 0 20px 35px rgba(15, 23, 42, 0.15);
+        padding: 0;
+        border: 1px solid #e5e7eb;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        min-height: 0;
+    }
+
+    .modern-tab-content .tab-pane {
+        padding: 0;
+        border: none;
+        background: transparent;
+        display: none;
+        overflow: hidden;
+        min-height: 0;
+    }
+
+    .modern-tab-content .tab-pane.show.active {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+    }
+
+    .category-card {
+        position: relative;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,1) 100%);
+        border-radius: 20px;
+        border: 1px solid rgba(15, 23, 42, 0.06);
+        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
+        padding: 24px;
+    }
+
+    .category-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 25px 55px rgba(15, 23, 42, 0.18);
+    }
+
+    .category-card .modal-card-body {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .modal-iframe-wrapper {
+        border-radius: 0;
+        overflow: hidden;
+        border: none;
+        background: #ffffff;
+        width: 100%;
+        height: 100%;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .modal-iframe-wrapper iframe {
+        width: 100%;
+        height: 100%;
+        flex: 1;
+        border: none;
+    }
+
+    #inscriptions-accordion-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        min-height: 0;
+    }
+
+    #etudiants-table th button.table-sort {
+        color: inherit;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    #etudiants-table th button.table-sort:hover {
+        opacity: 0.85;
+    }
+
+    .accordion-modern .accordion-item {
+        border: none;
+        border-radius: 16px;
+        margin-bottom: 12px;
+        overflow: hidden;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+    }
+
+    .accordion-modern .accordion-button {
+        background: #f8fafc;
+        border: none;
+        font-weight: 600;
+        color: #0f172a;
+        padding: 16px 20px;
+    }
+
+    .accordion-modern .accordion-body {
+        background: #ffffff;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .accordion-modern .accordion-body .modal-iframe-wrapper {
+        min-height: 500px;
+        height: 60vh;
+    }
+
+    .accordion-modern .accordion-body .modal-iframe-wrapper iframe {
+        width: 100%;
+        height: 100%;
+    }
+
+    #editStudentTabContent {
+        transition: min-height 0.3s ease;
+    }
+
+    .modal-modern .modal-dialog::after {
+        content: '';
+        position: absolute;
+        top: -20px;
+        right: -20px;
+        width: 120px;
+        height: 120px;
+        background: radial-gradient(circle, rgba(255,255,255,0.45), rgba(99,102,241,0.08));
+        filter: blur(20px);
+        z-index: -1;
+    }
+
+    @media (max-width: 1400px) {
+        .modal-modern .modal-dialog {
+            width: 85vw;
+            max-width: 85vw;
+        }
+    }
+
+    @media (max-width: 1200px) {
+        .modal-modern .modal-dialog {
+            width: 90vw;
+            max-width: 90vw;
+            height: 85vh;
+            max-height: 85vh;
+            margin: 7.5vh auto;
+        }
+    }
+
+    @media (max-width: 992px) {
+        .modal-modern .modal-dialog {
+            width: 95vw;
+            max-width: 95vw;
+            height: 90vh;
+            max-height: 90vh;
+            margin: 5vh auto;
+        }
+
+        .accordion-modern .accordion-body .modal-iframe-wrapper {
+            min-height: 400px;
+            height: 50vh;
+        }
+
+        .category-card {
+            padding: 16px;
+        }
+
+        #search-form .row > [class*='col-'] {
+            width: 100%;
+        }
+
+        #search-form .row {
+            row-gap: 1rem;
+        }
+
+        .dashboard-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .header-actions a {
+            width: 100%;
+        }
+
+        .student-tabs-container .nav-tabs {
+            flex-direction: column;
+        }
+    }
+</style>
 @endsection
 
 @section('content')
@@ -77,6 +365,20 @@
                                         </select>
                                     </div>
                                     <div class="col-md-4 mb-3">
+                                        <label for="classe" class="form-label">Classe</label>
+                                        <select class="form-select year-selector" id="classe" name="classe">
+                                            <option value="">Toutes les classes</option>
+                                            @foreach($classes as $classeOption)
+                                                <option value="{{ $classeOption->id }}" {{ isset($classe) && $classe == $classeOption->id ? 'selected' : '' }}>
+                                                    {{ $classeOption->name }}
+                                                    @if($classeOption->filiere || $classeOption->niveauEtude)
+                                                        ({{ $classeOption->filiere->name ?? 'Filière N/A' }} - {{ $classeOption->niveauEtude->name ?? 'Niveau N/A' }})
+                                                    @endif
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
                                         <label for="annee" class="form-label">Année universitaire</label>
                                         <select class="form-select year-selector" id="annee" name="annee">
                                             <option value="">Toutes les années</option>
@@ -142,6 +444,55 @@
                 </div>
                 <div id="etudiants-results">
                     @include('esbtp.etudiants.partials.results', ['etudiants' => $etudiants])
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Modal d'édition rapide -->
+<div class="modal fade modal-modern" id="etudiantEditModal" tabindex="-1" aria-labelledby="etudiantEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <p class="text-uppercase text-muted small mb-1">Edition rapide</p>
+                    <h5 class="modal-title" id="etudiantEditModalLabel">Modifier l'étudiant</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <div class="student-tabs-container">
+                    <ul class="nav nav-tabs" id="editStudentTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="tab-etudiant-link" data-bs-toggle="tab" data-bs-target="#tab-etudiant" type="button" role="tab">
+                                <span class="tab-label">
+                                    <i class="fas fa-user-edit"></i>
+                                    Étudiant
+                                </span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab-inscriptions-link" data-bs-toggle="tab" data-bs-target="#tab-inscriptions" type="button" role="tab">
+                                <span class="tab-label">
+                                    <i class="fas fa-graduation-cap"></i>
+                                    Inscriptions
+                                </span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="tab-content modern-tab-content" id="editStudentTabContent">
+                    <div class="tab-pane fade show active" id="tab-etudiant" role="tabpanel">
+                        <div class="modal-iframe-wrapper">
+                            <iframe id="student-edit-frame" src="about:blank" title="Édition étudiant" loading="lazy" class="border-0"></iframe>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="tab-inscriptions" role="tabpanel">
+                        <div id="inscriptions-accordion-container" class="accordion-modern text-muted w-100">
+                            Sélectionnez un étudiant pour afficher ses inscriptions.
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -156,9 +507,13 @@
         const resultsContainer = document.getElementById('etudiants-results');
         const submitButton = form.querySelector('button[type="submit"]');
         const filterInputs = form.querySelectorAll('select');
+        const modalElement = document.getElementById('etudiantEditModal');
+        const inscriptionsContainer = document.getElementById('inscriptions-accordion-container');
+        const studentFrame = document.getElementById('student-edit-frame');
+        let editModal = null;
 
         if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
-            $('#filiere, #niveau, #annee, #status, #affectation_status, #inscrit_annee_courante').select2({
+            $('#filiere, #niveau, #classe, #annee, #status, #affectation_status, #inscrit_annee_courante').select2({
                 theme: 'bootstrap4',
                 placeholder: 'Sélectionner une option',
                 allowClear: true
@@ -182,6 +537,214 @@
                     event.preventDefault();
                     fetchResults(this.href, { pushState: true });
                 });
+            });
+        }
+
+        function initTableSorting(scope = document) {
+            const table = scope.querySelector('#etudiants-table');
+            if (!table) {
+                return;
+            }
+
+            scope.querySelectorAll('.table-sort').forEach((button) => {
+                if (button.dataset.sortInit === '1') {
+                    return;
+                }
+                button.dataset.sortInit = '1';
+                button.addEventListener('click', function () {
+                    const column = this.dataset.column;
+                    if (!column) {
+                        return;
+                    }
+                    const dataKey = 'sort' + column.charAt(0).toUpperCase() + column.slice(1);
+                    const currentDirection = this.dataset.sortDirection === 'asc' ? 'desc' : 'asc';
+                    this.dataset.sortDirection = currentDirection;
+
+                    scope.querySelectorAll('.table-sort').forEach((other) => {
+                        if (other !== this) {
+                            delete other.dataset.sortDirection;
+                        }
+                    });
+
+                    const rows = Array.from(table.querySelectorAll('tbody tr'));
+                    const multiplier = currentDirection === 'asc' ? 1 : -1;
+
+                    rows.sort((a, b) => {
+                        const rawA = a.dataset[dataKey] || '';
+                        const rawB = b.dataset[dataKey] || '';
+                        if (column === 'date') {
+                            if (rawA === rawB) {
+                                return 0;
+                            }
+                            return (rawA > rawB ? 1 : -1) * multiplier;
+                        }
+
+                        const aVal = rawA.toUpperCase();
+                        const bVal = rawB.toUpperCase();
+                        return aVal.localeCompare(bVal) * multiplier;
+                    });
+
+                    const tbody = table.querySelector('tbody');
+                    rows.forEach((row) => tbody.appendChild(row));
+                }, { once: false });
+            });
+        }
+
+        function formatStatusLabel(status) {
+            if (!status) {
+                return '';
+            }
+            const normalized = status.replace(/_/g, ' ');
+            const classes = {
+                'active': 'bg-success',
+                'en attente': 'bg-warning text-dark',
+                'en_attente': 'bg-warning text-dark',
+                'annulée': 'bg-danger',
+                'terminée': 'bg-secondary',
+            };
+            const key = status.toLowerCase();
+            const badgeClass = classes[key] || 'bg-primary';
+            return `<span class="badge ${badgeClass} text-uppercase">${normalized}</span>`;
+        }
+
+        function attachAccordionListeners(container) {
+            if (!container) {
+                return;
+            }
+            container.querySelectorAll('.accordion-collapse').forEach((collapseEl) => {
+                collapseEl.addEventListener('show.bs.collapse', function () {
+                    const iframe = this.querySelector('iframe[data-src]');
+                    if (iframe && !iframe.src) {
+                        const separator = iframe.dataset.src.includes('?') ? '&' : '?';
+                        iframe.src = `${iframe.dataset.src}${separator}_=${Date.now()}`;
+                    }
+                }, { once: true });
+            });
+
+            const firstVisible = container.querySelector('.accordion-collapse.show');
+            if (firstVisible) {
+                const iframe = firstVisible.querySelector('iframe[data-src]');
+                if (iframe && !iframe.src) {
+                    const separator = iframe.dataset.src.includes('?') ? '&' : '?';
+                    iframe.src = `${iframe.dataset.src}${separator}_=${Date.now()}`;
+                }
+            }
+        }
+
+        function renderInscriptionsAccordion(payload) {
+            if (!inscriptionsContainer) {
+                return;
+            }
+
+            const inscriptions = payload?.inscriptions ?? [];
+            if (!inscriptions.length) {
+                inscriptionsContainer.innerHTML = '<div class="alert alert-info mb-0">Aucune inscription disponible pour cet étudiant.</div>';
+                return;
+            }
+
+            const accordionId = 'inscriptionsAccordion';
+            const items = inscriptions.map((inscription, index) => {
+                const collapseId = `inscription-collapse-${inscription.id}`;
+                const headingId = `inscription-heading-${inscription.id}`;
+                const affectation = inscription.affectation_status ? `<span class="badge bg-secondary ms-2 text-uppercase">${inscription.affectation_status}</span>` : '';
+                const statusBadge = formatStatusLabel(inscription.status);
+                const typeBadge = inscription.type ? `<span class="badge bg-info text-dark text-uppercase ms-2">${inscription.type}</span>` : '';
+                const currentYearBadge = inscription.is_current_year ? `<span class="badge bg-primary text-white ms-2">Année courante</span>` : '';
+                const dateChip = inscription.date_label ? `<span class="badge bg-light text-dark border ms-2"><i class="far fa-calendar-alt me-1"></i>${inscription.date_label}</span>` : '';
+
+                return `
+<div class="accordion-item mb-2">
+    <h2 class="accordion-header" id="${headingId}">
+        <button class="accordion-button ${index === 0 ? '' : 'collapsed'}" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${index === 0}" aria-controls="${collapseId}">
+            <div class="d-flex flex-column flex-md-row w-100 justify-content-between">
+                <div>
+                    <strong>${inscription.annee}</strong> ${currentYearBadge} — ${inscription.classe}
+                    ${dateChip}
+                </div>
+                <div>
+                    ${statusBadge || ''}
+                    ${affectation}
+                    ${typeBadge}
+                </div>
+            </div>
+        </button>
+    </h2>
+    <div id="${collapseId}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" data-bs-parent="#${accordionId}">
+        <div class="accordion-body">
+            <div class="mb-3 row g-3 text-muted small">
+                ${inscription.filiere ? `<div class=\"col-md-4\"><i class=\"fas fa-book me-2 text-primary\"></i>${inscription.filiere}</div>` : ''}
+                ${inscription.niveau ? `<div class=\"col-md-4\"><i class=\"fas fa-layer-group me-2 text-primary\"></i>${inscription.niveau}</div>` : ''}
+                ${inscription.affectation_status ? `<div class=\"col-md-4\"><i class=\"fas fa-map-marker-alt me-2 text-primary\"></i>${inscription.affectation_status}</div>` : ''}
+            </div>
+            <div class="modal-iframe-wrapper">
+                <iframe class="border-0 inscription-frame" data-src="${inscription.edit_url}" title="Inscription #${inscription.id}" loading="lazy"></iframe>
+            </div>
+        </div>
+    </div>
+</div>`;
+            }).join('');
+
+            inscriptionsContainer.innerHTML = `<div class="accordion accordion-modern" id="${accordionId}">${items}</div>`;
+            attachAccordionListeners(inscriptionsContainer);
+        }
+
+        function openEditModal(datasetString) {
+            if (!modalElement || !datasetString) {
+                return;
+            }
+            if (!editModal) {
+                editModal = new bootstrap.Modal(modalElement);
+                modalElement.addEventListener('hidden.bs.modal', () => {
+                    if (studentFrame) {
+                        studentFrame.src = 'about:blank';
+                    }
+                    if (inscriptionsContainer) {
+                        inscriptionsContainer.innerHTML = '<div class="text-muted">Sélectionnez un étudiant pour afficher ses inscriptions.</div>';
+                    }
+                });
+            }
+
+            let payload;
+            try {
+                payload = JSON.parse(datasetString);
+            } catch (error) {
+                console.error('Impossible de parser les données de l\'étudiant', error);
+                return;
+            }
+
+            const modalTitle = document.getElementById('etudiantEditModalLabel');
+            if (modalTitle) {
+                const identifiant = payload.matricule ? ` (#${payload.matricule})` : '';
+                modalTitle.textContent = `Modifier ${payload.name ?? 'l\'étudiant'}${identifiant}`;
+            }
+
+            if (studentFrame && payload.edit_url) {
+                studentFrame.classList.add('opacity-50');
+                const separator = payload.edit_url.includes('?') ? '&' : '?';
+                studentFrame.src = `${payload.edit_url}${separator}_=${Date.now()}`;
+                studentFrame.addEventListener('load', function handleLoad() {
+                    studentFrame.classList.remove('opacity-50');
+                    studentFrame.removeEventListener('load', handleLoad);
+                });
+            }
+
+            renderInscriptionsAccordion(payload);
+            const studentTab = document.getElementById('tab-etudiant-link');
+            if (studentTab) {
+                const tabInstance = bootstrap.Tab.getOrCreateInstance(studentTab);
+                tabInstance.show();
+            }
+            editModal.show();
+        }
+
+        if (resultsContainer) {
+            resultsContainer.addEventListener('click', function (event) {
+                const trigger = event.target.closest('.btn-open-edit-modal');
+                if (!trigger) {
+                    return;
+                }
+                event.preventDefault();
+                openEditModal(trigger.getAttribute('data-student'));
             });
         }
 
@@ -211,6 +774,7 @@
                     window.history.pushState({ url: data.url }, '', data.url);
                 }
                 bindPagination();
+                initTableSorting(resultsContainer);
             })
             .catch(error => {
                 console.error(error);
@@ -251,6 +815,8 @@
         });
 
         bindPagination();
+        initTableSorting(resultsContainer);
+
     });
 </script>
 @endpush

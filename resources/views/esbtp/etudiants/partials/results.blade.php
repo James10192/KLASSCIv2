@@ -1,14 +1,35 @@
+@php
+    $currentYear = $anneeCourante ?? (\App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first());
+    $currentYearId = $currentYear->id ?? null;
+@endphp
 <div class="table-responsive">
-    <table class="table table-hover align-middle mb-0">
+    <table class="table table-hover align-middle mb-0" id="etudiants-table">
         <thead class="bg-primary text-white">
             <tr>
-                <th>Matricule</th>
+                <th>
+                    <button type="button" class="btn btn-link text-white text-decoration-none p-0 table-sort" data-column="matricule">
+                        Matricule <i class="fas fa-sort ms-1"></i>
+                    </button>
+                </th>
                 <th>Photo</th>
-                <th>Nom complet</th>
+                <th>
+                    <button type="button" class="btn btn-link text-white text-decoration-none p-0 table-sort" data-column="nom">
+                        Nom complet <i class="fas fa-sort ms-1"></i>
+                    </button>
+                </th>
                 <th>Genre</th>
                 <th>Contact</th>
                 <th>Résidence</th>
-                <th>Classe actuelle</th>
+                <th>
+                    <button type="button" class="btn btn-link text-white text-decoration-none p-0 table-sort" data-column="classe">
+                        Classe actuelle <i class="fas fa-sort ms-1"></i>
+                    </button>
+                </th>
+                <th>
+                    <button type="button" class="btn btn-link text-white text-decoration-none p-0 table-sort" data-column="date">
+                        Date inscription <i class="fas fa-sort ms-1"></i>
+                    </button>
+                </th>
                 <th>Statut d'affectation</th>
                 <th>Statut</th>
                 <th>Actions</th>
@@ -16,8 +37,59 @@
         </thead>
         <tbody>
             @forelse ($etudiants as $etudiant)
-                @php $pendingInscription = $etudiant->pending_inscriptions->first(); @endphp
-                <tr @if($pendingInscription) class="table-warning" @endif>
+                @php
+                    $pendingInscription = $etudiant->pending_inscriptions->first();
+                    $latestInscription = $etudiant->inscriptions->sortByDesc(function ($inscription) {
+                        return $inscription->date_inscription ?? $inscription->created_at;
+                    })->first();
+                    $latestDate = optional($latestInscription?->date_inscription)->format('d/m/Y') ?? '—';
+                    $latestDateSort = optional($latestInscription?->date_inscription)->format('Y-m-d') ?? '';
+
+                    $inscriptionsPayload = $etudiant->inscriptions
+                        ->sortByDesc(function ($inscription) {
+                            return $inscription->date_inscription ?? $inscription->created_at;
+                        })
+                        ->map(function ($inscription) use ($currentYearId) {
+                            $anneeLabel = $inscription->anneeUniversitaire->name
+                                ?? $inscription->anneeUniversitaire->libelle
+                                ?? 'Année non renseignée';
+
+                            return [
+                                'id' => $inscription->id,
+                                'annee' => $anneeLabel,
+                                'classe' => $inscription->classe->name ?? 'Non assignée',
+                                'filiere' => $inscription->filiere->name ?? null,
+                                'niveau' => $inscription->niveau->name ?? null,
+                                'status' => $inscription->status,
+                                'affectation_status' => $inscription->affectation_status,
+                                'type' => $inscription->type_inscription,
+                                'is_current_year' => $currentYearId && $inscription->annee_universitaire_id == $currentYearId,
+                                'date_label' => optional($inscription->date_inscription)->format('d/m/Y'),
+                                'date_value' => optional($inscription->date_inscription)->format('Y-m-d'),
+                                'edit_url' => route('esbtp.inscriptions.edit', ['inscription' => $inscription->id, 'embedded' => 1]),
+                            ];
+                        })
+                        ->values();
+
+                    $studentDataset = [
+                        'id' => $etudiant->id,
+                        'name' => trim($etudiant->nom . ' ' . $etudiant->prenoms),
+                        'matricule' => $etudiant->matricule,
+                        'edit_url' => route('esbtp.etudiants.edit', ['etudiant' => $etudiant->id, 'embedded' => 1]),
+                        'inscriptions' => $inscriptionsPayload,
+                    ];
+
+                    $inscriptionCouranteClasse = $currentYearId ? $etudiant->inscriptions->firstWhere('annee_universitaire_id', $currentYearId) : null;
+                    $inscriptionCourante = $currentYearId ? $etudiant->inscriptions
+                        ->where('annee_universitaire_id', $currentYearId)
+                        ->where('workflow_step', 'etudiant_cree')
+                        ->first() : null;
+                @endphp
+                <tr @if($pendingInscription) class="table-warning" @endif
+                    data-sort-matricule="{{ strtoupper($etudiant->matricule) }}"
+                    data-sort-nom="{{ strtoupper(trim($etudiant->nom . ' ' . $etudiant->prenoms)) }}"
+                    data-sort-classe="{{ strtoupper(optional($latestInscription?->classe)->name ?? '') }}"
+                    data-sort-date="{{ $latestDateSort }}">
                     <td>{{ $etudiant->matricule }}</td>
                     <td class="text-center">
                         @if($etudiant->photo_url)
@@ -47,10 +119,6 @@
                         @endif
                     </td>
                     <td>
-                        @php
-                            $anneeCouranteClasse = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
-                            $inscriptionCouranteClasse = $etudiant->inscriptions->where('annee_universitaire_id', $anneeCouranteClasse?->id)->first();
-                        @endphp
                         @if($inscriptionCouranteClasse)
                             <div class="d-flex align-items-center">
                                 <div class="flex-grow-1">
@@ -87,52 +155,34 @@
                         @endif
                     </td>
                     <td>
-                        @php
-                            $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
-                            $inscriptionCourante = $etudiant->inscriptions->where('annee_universitaire_id', $anneeCourante?->id)->first();
-
-                            // Labels des étapes du workflow
-                            $workflowLabels = [
-                                'prospect' => 'Prospect',
-                                'documents_complets' => 'Documents complets',
-                                'en_validation' => 'En validation',
-                                'valide' => 'Validé',
-                                'etudiant_cree' => 'Étudiant créé'
-                            ];
-                        @endphp
+                        <span class="badge bg-light text-dark border">{{ $latestDate }}</span>
+                    </td>
+                    <td>
                         @if($inscriptionCourante)
-                            @if($inscriptionCourante->workflow_step == 'etudiant_cree')
-                                {{-- Workflow terminé: afficher uniquement le statut d'affectation --}}
-                                @if($inscriptionCourante->affectation_status == 'affecté')
-                                    <span class="badge bg-success px-3 py-2">Affecté</span>
-                                @elseif($inscriptionCourante->affectation_status == 'réaffecté')
-                                    <span class="badge bg-info px-3 py-2">Réaffecté</span>
-                                @elseif($inscriptionCourante->affectation_status == 'non_affecté')
-                                    <span class="badge bg-danger px-3 py-2">Non affecté</span>
-                                @else
-                                    <span class="text-muted">-</span>
+                            @if($inscriptionCourante->affectation_status == 'affecté')
+                                <span class="badge bg-success px-3 py-2">Affecté</span>
+                            @elseif($inscriptionCourante->affectation_status == 'réaffecté')
+                                <span class="badge bg-info px-3 py-2">Réaffecté</span>
+                            @elseif($inscriptionCourante->affectation_status == 'non_affecté')
+                                <span class="badge bg-danger px-3 py-2">Non affecté</span>
+                            @else
+                                <span class="text-muted">-</span>
+                            @endif
+                        @elseif($etudiant->inscriptions->count() > 0)
+                            <?php $derniere = $etudiant->inscriptions->sortByDesc('created_at')->first(); ?>
+                            @if($derniere->affectation_status)
+                                @if($derniere->affectation_status == 'affecté')
+                                    <span class="badge bg-success px-2 py-1">Affecté</span>
+                                @elseif($derniere->affectation_status == 'réaffecté')
+                                    <span class="badge bg-info px-2 py-1">Réaffecté</span>
+                                @elseif($derniere->affectation_status == 'non_affecté')
+                                    <span class="badge bg-danger px-2 py-1">Non affecté</span>
                                 @endif
                             @else
-                                {{-- Workflow en cours: afficher l'étape + statut d'affectation --}}
-                                <div class="d-flex flex-column gap-1">
-                                    <span class="badge bg-warning text-dark px-2 py-1" style="font-size: 0.75rem;">
-                                        <i class="fas fa-tasks me-1"></i>{{ $workflowLabels[$inscriptionCourante->workflow_step] ?? $inscriptionCourante->workflow_step }}
-                                    </span>
-                                    @if($inscriptionCourante->affectation_status)
-                                        <div>
-                                            @if($inscriptionCourante->affectation_status == 'affecté')
-                                                <span class="badge bg-success px-2 py-1" style="font-size: 0.7rem;">Affecté</span>
-                                            @elseif($inscriptionCourante->affectation_status == 'réaffecté')
-                                                <span class="badge bg-info px-2 py-1" style="font-size: 0.7rem;">Réaffecté</span>
-                                            @elseif($inscriptionCourante->affectation_status == 'non_affecté')
-                                                <span class="badge bg-danger px-2 py-1" style="font-size: 0.7rem;">Non affecté</span>
-                                            @endif
-                                        </div>
-                                    @endif
-                                </div>
+                                <span class="text-muted small">Pas d'affectation ({{ $currentYear->name ?? 'N/A' }})</span>
                             @endif
                         @else
-                            <span class="text-muted small">Pas d'inscription ({{ $anneeCourante?->name ?? 'N/A' }})</span>
+                            <span class="text-muted small">Pas d'inscription ({{ $currentYear->name ?? 'N/A' }})</span>
                         @endif
                     </td>
                     <td>
@@ -143,16 +193,19 @@
                         @endif
                     </td>
                     <td>
-                        <div class="d-flex">
-                            <a href="{{ route('esbtp.etudiants.show', $etudiant) }}" class="btn btn-info btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" title="Voir les détails">
+                        <div class="d-flex flex-wrap gap-1">
+                            <a href="{{ route('esbtp.etudiants.show', $etudiant) }}" class="btn btn-info btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1" title="Voir les détails">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <a href="{{ route('esbtp.etudiants.edit', $etudiant) }}" class="btn btn-primary btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" title="Modifier">
+                            <button type="button"
+                                class="btn btn-primary btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 btn-open-edit-modal"
+                                title="Modifier"
+                                data-student='@json($studentDataset, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT)'>
                                 <i class="fas fa-edit"></i>
-                            </a>
+                            </button>
                             @if($pendingInscription)
                                 @can('inscriptions.validate')
-                                <button type="button" class="btn btn-success btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" data-bs-toggle="modal" data-bs-target="#validationModal{{ $pendingInscription->id }}" title="Valider l'inscription">
+                                <button type="button" class="btn btn-success btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#validationModal{{ $pendingInscription->id }}" title="Valider l'inscription">
                                     <i class="fas fa-check"></i>
                                 </button>
                                 @includeIf('esbtp.etudiants._validation_modal', ['pendingInscription' => $pendingInscription, 'etudiant' => $etudiant])
@@ -163,7 +216,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="10" class="text-center">Aucun étudiant trouvé</td>
+                    <td colspan="11" class="text-center">Aucun étudiant trouvé</td>
                 </tr>
             @endforelse
         </tbody>
