@@ -60,6 +60,18 @@ try {
         ]
     ];
 
+    // Vérifier si un utilisateur existe, sinon utiliser NULL pour created_by/updated_by
+    $firstUser = DB::table('users')->first();
+    $userId = $firstUser ? $firstUser->id : null;
+
+    if (!$userId) {
+        echo "⚠️  ATTENTION: Aucun utilisateur trouvé dans la base de données\n";
+        echo "💡 Les paramètres seront créés avec created_by/updated_by = NULL\n";
+        echo "💡 Exécutez d'abord: php artisan db:seed --class=ServiceTechniqueSeeder\n\n";
+    } else {
+        echo "✅ Utilisateur trouvé (ID: {$userId})\n\n";
+    }
+
     $created = 0;
     $existing = 0;
 
@@ -75,8 +87,8 @@ try {
             App\Models\Setting::create(array_merge($settingData, [
                 'is_active' => true,
                 'requires_restart' => false,
-                'created_by' => 1,
-                'updated_by' => 1,
+                'created_by' => $userId,
+                'updated_by' => $userId,
                 'validation_rules' => json_encode($settingData['validation_rules'])
             ]));
 
