@@ -13,6 +13,7 @@ npm-debug.log
 yarn-error.log
 /.idea
 /.vscode
+.setup.lock
 /ESBTP-yAKROv3
 # Database files
 *Seeder.php

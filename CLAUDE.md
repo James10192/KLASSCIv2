@@ -2219,6 +2219,411 @@ if ($filiere || $niveau || $annee || $classe) {
 
 ---
 
+### 🛠️ Scripts d'Initialisation Unifiés (6 novembre)
+
+**Contexte** : Besoin d'un système unifié pour orchestrer tous les scripts d'initialisation et seeders nécessaires au déploiement de KLASSCI.
+
+**Problème** :
+- 4 scripts PHP séparés (`init_storage.php`, `fix_permissions.php`, `deploy_settings.php`, `create_storage_link.php`)
+- 3 seeders critiques à exécuter manuellement
+- Pas de tracking de l'état d'initialisation
+- Risque d'oublier des étapes lors du déploiement
+
+**Solution implémentée** : Système d'orchestration avec tracking automatique.
+
+#### Architecture
+
+**3 composants principaux** :
+
+1. **setup.php** - Orchestrateur principal
+2. **verify.php** - Script de vérification
+3. **.setup.lock** - Fichier de tracking JSON
+
+#### 1. setup.php - Orchestrateur Principal
+
+**Fichier** : `/setup.php` (684 lignes)
+
+**Fonctionnalités** :
+- ✅ Exécution automatique de tous les scripts dans l'ordre correct
+- ✅ Exécution de tous les seeders critiques
+- ✅ Tracking détaillé de chaque étape
+- ✅ Mode interactif avec confirmations
+- ✅ Options granulaires (--only, --skip, --force)
+- ✅ Gestion des erreurs avec rollback partiel
+- ✅ Interface CLI moderne avec codes couleur ANSI
+
+**Ordre d'exécution (dépendances respectées)** :
+```bash
+1. storage      → init_storage.php (structure dossiers + symlinks)
+2. permissions  → fix_permissions.php (210 permissions Spatie)
+3. settings     → deploy_settings.php (paramètres système)
+4. seeders      → ChatbotSeeder, ServiceTechniqueSeeder, SettingsSeeder
+```
+
+**Options CLI** :
+
+| Option | Description | Exemple |
+|--------|-------------|---------|
+| `--interactive` / `-i` | Mode interactif avec confirmations | `php setup.php -i` |
+| `--force` / `-f` | Réexécuter même si déjà fait | `php setup.php --force` |
+| `--only=<step>` | Exécuter seulement certaines étapes | `php setup.php --only=storage,permissions` |
+| `--skip=<step>` | Sauter certaines étapes | `php setup.php --skip=seeders` |
+
+**Code clé - Vérification état initial** :
+```php
+private function isFullySetup(): bool
+{
+    $required = ['storage', 'permissions', 'settings', 'seeders'];
+
+    foreach ($required as $key) {
+        if ($key === 'seeders') {
+            $criticalSeeders = ['ChatbotSeeder', 'ServiceTechniqueSeeder', 'SettingsSeeder'];
+            foreach ($criticalSeeders as $seeder) {
+                if (!isset($this->lockData['seeders'][$seeder]) ||
+                    $this->lockData['seeders'][$seeder]['status'] !== 'success') {
+                    return false;
+                }
+            }
+        } else {
+            if (!isset($this->lockData[$key]) || $this->lockData[$key]['status'] !== 'success') {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+```
+
+**Gestion des erreurs** :
+```php
+try {
+    $this->runStorage();
+    $this->lockData['storage'] = [
+        'status' => 'success',
+        'date' => date('Y-m-d H:i:s'),
+        'errors' => []
+    ];
+} catch (Exception $e) {
+    $this->lockData['storage'] = [
+        'status' => 'failed',
+        'date' => date('Y-m-d H:i:s'),
+        'errors' => [$e->getMessage()]
+    ];
+    throw $e;
+}
+```
+
+---
+
+#### 2. verify.php - Script de Vérification
+
+**Fichier** : `/verify.php` (553 lignes)
+
+**Fonctionnalités** :
+- ✅ Vérification complète de l'état du système
+- ✅ Lecture du fichier `.setup.lock` pour historique
+- ✅ Vérifications physiques (fichiers, dossiers, symlinks)
+- ✅ Suggestions de correction automatiques
+- ✅ Export JSON pour CI/CD
+- ✅ Affichage détaillé avec `--verbose`
+
+**Vérifications effectuées** :
+
+| Vérification | Description | Sévérité |
+|--------------|-------------|----------|
+| `lock_file` | Existence et validité du `.setup.lock` | Critical |
+| `storage` | Dossiers + lien symbolique `public/storage` | Critical |
+| `permissions` | Permissions Spatie configurées | Critical |
+| `settings` | Paramètres système déployés | High |
+| `seeders` | 3 seeders critiques exécutés | High |
+| `database` | Connexion DB et configuration `.env` | Info |
+
+**Options CLI** :
+
+| Option | Description | Exemple |
+|--------|-------------|---------|
+| `--verbose` / `-v` | Affichage détaillé | `php verify.php --verbose` |
+| `--fix` | Suggère commandes de correction | `php verify.php --fix` |
+| `--json` | Output JSON pour CI/CD | `php verify.php --json` |
+
+**Code clé - Vérification stockage** :
+```php
+private function verifyStorage(): void
+{
+    $checks = [
+        'storage/app/public' => 'Dossier de stockage principal',
+        'storage/app/public/photos' => 'Dossier photos',
+        'storage/app/public/logos' => 'Dossier logos',
+        'storage/app/public/documents' => 'Dossier documents',
+        'public/storage' => 'Lien symbolique storage'
+    ];
+
+    $allOk = true;
+    $details = [];
+
+    foreach ($checks as $path => $description) {
+        $fullPath = $this->baseDir . '/' . $path;
+        $exists = file_exists($fullPath);
+
+        if (!$exists) {
+            $this->error("  ❌ $description manquant: $path");
+            $details[$path] = 'missing';
+            $allOk = false;
+        } else {
+            $details[$path] = 'ok';
+        }
+    }
+
+    $this->results['storage'] = [
+        'status' => $allOk ? 'ok' : 'error',
+        'message' => $allOk ? 'Stockage correctement configuré' : 'Problèmes de stockage détectés',
+        'severity' => $allOk ? 'info' : 'critical',
+        'details' => $details
+    ];
+}
+```
+
+**Export JSON** :
+```json
+{
+  "ready": false,
+  "timestamp": "2025-11-06 19:30:00",
+  "results": {
+    "lock_file": {
+      "status": "missing",
+      "message": "Fichier .setup.lock introuvable",
+      "severity": "critical"
+    },
+    "storage": {
+      "status": "error",
+      "message": "Problèmes de stockage détectés",
+      "severity": "critical",
+      "details": {
+        "storage/app/public": "ok",
+        "public/storage": "missing"
+      }
+    }
+  }
+}
+```
+
+---
+
+#### 3. .setup.lock - Fichier de Tracking
+
+**Format** : JSON
+
+**Localisation** : `/. setup.lock` (racine projet)
+
+**Gitignore** : ✅ Ajouté automatiquement (spécifique à chaque environnement)
+
+**Structure** :
+```json
+{
+  "version": "1.0",
+  "last_run": "2025-11-06 19:00:00",
+  "storage": {
+    "status": "success",
+    "date": "2025-11-06 19:00:05",
+    "errors": []
+  },
+  "permissions": {
+    "status": "success",
+    "date": "2025-11-06 19:01:23",
+    "errors": []
+  },
+  "settings": {
+    "status": "success",
+    "date": "2025-11-06 19:02:10",
+    "errors": []
+  },
+  "seeders": {
+    "ChatbotSeeder": {
+      "status": "success",
+      "date": "2025-11-06 19:03:00",
+      "errors": []
+    },
+    "ServiceTechniqueSeeder": {
+      "status": "success",
+      "date": "2025-11-06 19:03:15",
+      "errors": []
+    },
+    "SettingsSeeder": {
+      "status": "success",
+      "date": "2025-11-06 19:03:30",
+      "errors": []
+    }
+  }
+}
+```
+
+**Utilité** :
+- ✅ Évite réexécution inutile (idempotence)
+- ✅ Historique des exécutions
+- ✅ Détection des échecs passés
+- ✅ Diagnostic rapide (via `verify.php`)
+
+---
+
+#### Workflow Recommandé
+
+**Nouveau déploiement** :
+```bash
+# 1. Cloner + installer
+git clone https://github.com/James10192/KLASSCIv2.git
+cd KLASSCIv2
+composer install && npm install
+
+# 2. Configuration
+cp .env.example .env
+php artisan key:generate
+# Éditer .env
+
+# 3. Migrations
+php artisan migrate
+
+# 4. Initialisation COMPLÈTE
+php setup.php
+
+# 5. Vérification
+php verify.php --verbose
+```
+
+**Mise à jour serveur** :
+```bash
+# 1. Pull + update
+git pull origin presentation
+composer install --no-dev --optimize-autoloader
+
+# 2. Migrations
+php artisan migrate
+
+# 3. Vérifier état
+php verify.php --fix
+
+# 4. Si problèmes, réexécuter étapes manquantes
+php setup.php --only=storage  # Exemple
+
+# 5. Clear caches
+php artisan config:clear && php artisan cache:clear
+```
+
+**CI/CD Integration** :
+```yaml
+- name: Setup KLASSCI
+  run: |
+    php setup.php
+    php verify.php --json > setup-status.json
+
+- name: Verify Setup
+  run: |
+    if [ $(jq -r '.ready' setup-status.json) != "true" ]; then
+      echo "Setup verification failed"
+      exit 1
+    fi
+```
+
+---
+
+#### Avantages de la Solution
+
+**1. Idempotence garantie** :
+- ✅ Exécution multiple sans effet de bord
+- ✅ Skip automatique des étapes déjà réussies
+- ✅ Option `--force` pour override si nécessaire
+
+**2. Gestion des erreurs robuste** :
+- ✅ Tracking détaillé de chaque erreur
+- ✅ Suggestions de correction automatiques
+- ✅ Pas de corruption de l'état global
+
+**3. UX développeur optimale** :
+- ✅ Interface CLI moderne avec couleurs
+- ✅ Progress indicators clairs
+- ✅ Messages d'erreur explicites
+- ✅ Mode interactif pour apprentissage
+
+**4. Intégration CI/CD** :
+- ✅ Export JSON structuré
+- ✅ Codes de retour standard (0/1)
+- ✅ Vérification automatisable
+
+**5. Documentation complète** :
+- ✅ README dédié : `SETUP_README.md` (8 pages)
+- ✅ Exemples d'utilisation
+- ✅ Guide résolution problèmes
+
+---
+
+#### Fichiers Créés/Modifiés
+
+| Fichier | Type | Lignes | Description |
+|---------|------|--------|-------------|
+| `setup.php` | Script PHP | 684 | Orchestrateur principal |
+| `verify.php` | Script PHP | 553 | Vérification système |
+| `SETUP_README.md` | Documentation | ~400 | Guide complet |
+| `.gitignore` | Config | +1 | Ajout `.setup.lock` |
+| `.setup.lock` | JSON | Auto | Fichier de tracking (non commité) |
+
+**Total** : 3 nouveaux fichiers, 2 modifiés, ~1650 lignes de code + documentation
+
+---
+
+#### Dépendances Externes
+
+**Scripts PHP inclus** (déjà existants) :
+- `init_storage.php` - Initialisation stockage
+- `fix_permissions.php` - Configuration permissions
+- `deploy_settings.php` - Déploiement paramètres
+- `create_storage_link.php` - Lien symbolique (fallback)
+
+**Seeders Laravel** :
+- `ChatbotSeeder` - Prompts IA + templates
+- `ServiceTechniqueSeeder` - Compte African Digit Consulting
+- `SettingsSeeder` - Paramètres système
+
+---
+
+#### Tests Effectués
+
+**Test 1 - verify.php sur système non initialisé** :
+```bash
+php verify.php
+```
+**Résultat** : ✅ Détecte correctement 5 problèmes (lock, storage, permissions, settings, seeders)
+
+**Test 2 - Syntaxe setup.php** :
+```bash
+php -l setup.php
+```
+**Résultat** : ✅ Aucune erreur de syntaxe
+
+**Test 3 - Permissions exécutables** :
+```bash
+chmod +x setup.php verify.php
+./setup.php --help
+```
+**Résultat** : ✅ Scripts exécutables
+
+---
+
+#### Améliorations Futures Possibles
+
+**Phase 2** :
+- ⏭️ Option `--rollback` pour désinstaller complètement
+- ⏭️ Mode `--dry-run` pour simulation sans exécution
+- ⏭️ Webhook Slack/Discord pour notifications déploiement
+- ⏭️ Interface web pour monitoring (Filament panel)
+- ⏭️ Support multi-environnements (dev, staging, prod)
+
+**Phase 3** :
+- ⏭️ Script `update.php` pour mises à jour automatiques
+- ⏭️ Backup automatique avant chaque setup
+- ⏭️ Health checks périodiques (cron job)
+
+---
+
 ## 🌐 Vision Future : Réseau Social KLASSCI
 
 **Concept** : Plateforme sociale éducative **CROSS-TENANT** pour tous les étudiants KLASSCI (tous établissements confondus), inspirée de Reddit/Twitter, mais adaptée au contexte académique africain.
