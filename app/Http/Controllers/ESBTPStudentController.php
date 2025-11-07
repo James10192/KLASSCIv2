@@ -70,8 +70,8 @@ class ESBTPStudentController extends Controller
             $baseQuery->where('statut', $status);
         }
 
-        if ($filiere || $niveau || $annee) {
-            $baseQuery->whereHas('inscriptions', function ($q) use ($filiere, $niveau, $annee) {
+        if ($filiere || $niveau || $annee || $classe) {
+            $baseQuery->whereHas('inscriptions', function ($q) use ($filiere, $niveau, $annee, $classe) {
                 if ($filiere) {
                     $q->where('filiere_id', $filiere);
                 }
@@ -81,12 +81,9 @@ class ESBTPStudentController extends Controller
                 if ($annee) {
                     $q->where('annee_universitaire_id', $annee);
                 }
-            });
-        }
-
-        if ($classe) {
-            $baseQuery->whereHas('inscriptions', function ($q) use ($classe) {
-                $q->where('classe_id', $classe);
+                if ($classe) {
+                    $q->where('classe_id', $classe);
+                }
             });
         }
 

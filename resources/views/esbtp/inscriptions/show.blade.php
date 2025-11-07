@@ -247,7 +247,9 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                         </button>
                     @endif
                     
-                    @if($inscription->paiement_validation_id && $inscription->workflow_step === 'en_validation')
+                    @if($inscription->paiement_validation_id
+                        && $inscription->status === 'active'
+                        && $inscription->workflow_step !== 'etudiant_cree')
                         <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#validationModal" onclick="openValidationModal({{ $inscription->id }})">
                             <i class="fas fa-check"></i>Valider définitivement
                         </button>

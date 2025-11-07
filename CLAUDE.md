@@ -2085,6 +2085,140 @@ resultsContainer.addEventListener('click', function (event) {
 
 ---
 
+### 🐛 Corrections Bugs Inscriptions & Filtres (6 novembre)
+
+**Contexte** : Deux bugs critiques identifiés après l'implémentation du modal d'édition rapide.
+
+#### Bug #1 : Bouton "Valider Définitivement" Affiché à Tort
+
+**Page** : `/esbtp/inscriptions/{id}` (show)
+
+**Problème** :
+Le bouton "Valider définitivement" s'affichait même pour les inscriptions qui avaient atteint l'étape finale du workflow (`etudiant_cree`), ce qui n'avait pas de sens car il n'y a plus d'étape de validation après la création de l'étudiant.
+
+**Workflow complet des inscriptions** :
+```
+prospect → documents_complets → en_validation → valide → etudiant_cree (final)
+```
+
+**Code avant** :
+```php
+@if($inscription->paiement_validation_id && $inscription->workflow_step === 'en_validation')
+    <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#validationModal">
+        <i class="fas fa-check"></i>Valider définitivement
+    </button>
+@endif
+```
+
+**Problème** : Le bouton ne s'affichait QUE pour `en_validation`, alors qu'il devrait s'afficher pour TOUTES les étapes SAUF `etudiant_cree`.
+
+**Solution** :
+```php
+@if($inscription->paiement_validation_id
+    && $inscription->status === 'active'
+    && $inscription->workflow_step !== 'etudiant_cree')
+    <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#validationModal">
+        <i class="fas fa-check"></i>Valider définitivement
+    </button>
+@endif
+```
+
+**Logique corrigée** :
+- ✅ Affichage si paiement de validation existe
+- ✅ Affichage si inscription active
+- ✅ **CACHE** le bouton uniquement si étape finale (`etudiant_cree`)
+- ✅ Affiche pour `documents_complets`, `en_validation`, `valide`
+
+**Fichier modifié** : `resources/views/esbtp/inscriptions/show.blade.php` (lignes 250-256)
+
+---
+
+#### Bug #2 : Filtre Classe + Année Incorrecte
+
+**Page** : `/esbtp/etudiants` (index - Gestion Étudiants)
+
+**Problème** :
+Lorsqu'un utilisateur sélectionnait simultanément un filtre **Classe** ET un filtre **Année universitaire**, le système affichait AUSSI les étudiants qui avaient été dans cette classe mais dans une AUTRE année universitaire.
+
+**Exemple concret** :
+- Filtre : Classe = "L3 GC" + Année = "2024/2025"
+- Résultat incorrect : Affichait aussi un étudiant qui était en L3 GC en 2023/2024
+
+**Cause racine** :
+Le code avait deux `whereHas('inscriptions')` séparés, chacun vérifiant des conditions sur potentiellement DIFFÉRENTES inscriptions de l'étudiant.
+
+**Code avant** :
+```php
+if ($classe) {
+    $baseQuery->whereHas('inscriptions', function ($q) use ($classe) {
+        $q->where('classe_id', $classe);
+    });
+}
+
+if ($annee) {
+    $baseQuery->whereHas('inscriptions', function ($q) use ($annee) {
+        $q->where('annee_universitaire_id', $annee);
+    });
+}
+```
+
+**Problème** : Ces deux `whereHas` indépendants vérifient des inscriptions DIFFÉRENTES :
+- Premier whereHas : "L'étudiant a-t-il UNE inscription en L3 GC ?" → OUI (2023/2024)
+- Deuxième whereHas : "L'étudiant a-t-il UNE inscription en 2024/2025 ?" → OUI (L2 GC)
+- Résultat : L'étudiant passe les deux filtres même si aucune inscription ne respecte TOUS les critères simultanément
+
+**Solution** :
+Fusionner tous les filtres dans un SEUL `whereHas` pour garantir que les conditions s'appliquent à la MÊME inscription.
+
+```php
+if ($filiere || $niveau || $annee || $classe) {
+    $baseQuery->whereHas('inscriptions', function ($q) use ($filiere, $niveau, $annee, $classe) {
+        if ($filiere) {
+            $q->where('filiere_id', $filiere);
+        }
+        if ($niveau) {
+            $q->where('niveau_id', $niveau);
+        }
+        if ($annee) {
+            $q->where('annee_universitaire_id', $annee);
+        }
+        if ($classe) {
+            $q->where('classe_id', $classe);
+        }
+    });
+}
+```
+
+**Logique corrigée** :
+- ✅ UN SEUL `whereHas('inscriptions')` pour tous les filtres académiques
+- ✅ Toutes les conditions (`filiere`, `niveau`, `annee`, `classe`) s'appliquent à la MÊME inscription
+- ✅ Un étudiant n'est retourné QUE s'il a UNE inscription qui respecte TOUS les critères simultanément
+
+**Fichier modifié** : `app/Http/Controllers/ESBTPStudentController.php` (lignes 73-88)
+
+---
+
+#### Impact des Corrections
+
+**Bug #1 - Bouton "Valider Définitivement"** :
+- ✅ Plus d'affichage inutile du bouton pour inscriptions finalisées
+- ✅ Workflow clair : le bouton disparaît après création étudiant
+- ✅ UX améliorée : moins de confusion pour les utilisateurs
+
+**Bug #2 - Filtre Classe + Année** :
+- ✅ Résultats de recherche précis et cohérents
+- ✅ Respect de la logique métier (inscription = classe + année indissociables)
+- ✅ Performance identique (pas de requêtes supplémentaires)
+
+**Fichiers Modifiés (Récapitulatif)** :
+
+| Fichier | Lignes | Type Correction |
+|---------|--------|-----------------|
+| `resources/views/esbtp/inscriptions/show.blade.php` | 250-256 | Logique d'affichage conditionnelle |
+| `app/Http/Controllers/ESBTPStudentController.php` | 73-88 | Requête Eloquent (fusion whereHas) |
+
+---
+
 ## 🌐 Vision Future : Réseau Social KLASSCI
 
 **Concept** : Plateforme sociale éducative **CROSS-TENANT** pour tous les étudiants KLASSCI (tous établissements confondus), inspirée de Reddit/Twitter, mais adaptée au contexte académique africain.
@@ -3025,7 +3159,7 @@ TENANT_CODE=presentation
 
 ---
 
-*Dernière mise à jour: 6 novembre 2025*
+*Dernière mise à jour: 6 novembre 2025 - 18h30*
 
 ---
 
