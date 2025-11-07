@@ -2550,7 +2550,7 @@ php artisan config:clear && php artisan cache:clear
 - ✅ Vérification automatisable
 
 **5. Documentation complète** :
-- ✅ README dédié : `SETUP_README.md` (8 pages)
+- ✅ README dédié : [docs/SETUP_INITIALISATION.md](docs/SETUP_INITIALISATION.md) (8 pages)
 - ✅ Exemples d'utilisation
 - ✅ Guide résolution problèmes
 
@@ -2562,7 +2562,7 @@ php artisan config:clear && php artisan cache:clear
 |---------|------|--------|-------------|
 | `setup.php` | Script PHP | 684 | Orchestrateur principal |
 | `verify.php` | Script PHP | 553 | Vérification système |
-| `SETUP_README.md` | Documentation | ~400 | Guide complet |
+| [docs/SETUP_INITIALISATION.md](docs/SETUP_INITIALISATION.md) | Documentation | ~400 | Guide complet |
 | `.gitignore` | Config | +1 | Ajout `.setup.lock` |
 | `.setup.lock` | JSON | Auto | Fichier de tracking (non commité) |
 
