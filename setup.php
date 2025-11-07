@@ -246,20 +246,17 @@ class KLASSCISetup
         foreach ($seeders as $seeder) {
             $this->info("  ▶ $seeder...");
 
-            $output = [];
+            // Ajouter --force pour éviter la confirmation interactive en production
             $returnCode = 0;
-            exec("php artisan db:seed --class=$seeder 2>&1", $output, $returnCode);
+            passthru("php artisan db:seed --class=$seeder --force 2>&1", $returnCode);
 
             if ($returnCode !== 0) {
                 $this->lockData['seeders'][$seeder] = [
                     'status' => 'failed',
                     'date' => date('Y-m-d H:i:s'),
-                    'errors' => $output
+                    'errors' => ["Seeder a échoué avec le code de retour: $returnCode"]
                 ];
                 $this->warning("⚠️  $seeder a échoué");
-                foreach ($output as $line) {
-                    echo "    $line\n";
-                }
             } else {
                 $this->lockData['seeders'][$seeder] = [
                     'status' => 'success',
