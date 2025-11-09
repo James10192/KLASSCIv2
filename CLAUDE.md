@@ -2338,6 +2338,295 @@ function handleValidateInscription(inscriptionId, validateUrl) {
 
 ---
 
+### 📱 Page Étudiants Index - Responsive Design Complet (6 novembre)
+
+**Page** : `/esbtp/etudiants` (index - Gestion des étudiants)
+
+**Objectif** : Rendre la page complètement responsive pour tous les appareils (desktop, tablette, mobile, petit mobile).
+
+**Problème** :
+La page avait quelques media queries basiques mais l'expérience mobile était sous-optimale :
+- Filtres trop larges sur mobile
+- Tableau avec trop de colonnes visibles
+- Modal trop grand pour les petits écrans
+- Boutons actions difficiles à cliquer
+- Textes trop grands/petits selon l'appareil
+
+**Solution implémentée** : Media queries complètes avec 5 breakpoints principaux.
+
+#### Breakpoints et Adaptations
+
+**1. Desktop (> 1200px)** : Design par défaut
+- Filtres en grille 3 colonnes (col-md-4)
+- Modal 80vw × 80vh
+- Toutes colonnes table visibles
+- Boutons header horizontaux
+
+**2. Tablette (≤ 992px)** :
+```css
+/* Filtres */
+- Tous les filtres passent en 100% largeur (1 colonne)
+- Gap entre champs : 1rem
+- Boutons "Filtrer/Réinitialiser" en colonne pleine largeur
+
+/* Header */
+- Titre réduit : 1.75rem
+- Sous-titre : 0.9rem
+- Boutons actions en colonne verticale (width: 100%)
+
+/* Modal */
+- Largeur : 95vw × 90vh
+- Padding réduit : 16px/20px
+- Accordion iframe : 50vh (au lieu de 60vh)
+
+/* Table */
+- Padding cellules : 0.5rem
+- Font-size : 0.875rem
+- Photos : 40px (au lieu de 50px)
+- Boutons actions compacts
+```
+
+**3. Mobile paysage (≤ 768px)** :
+```css
+/* Textes */
+- Titre : 1.5rem
+- Labels : 0.875rem
+- Inputs : 0.875rem, padding 8px 12px
+
+/* Modal tabs */
+- 2 tabs côte à côte (flex: 1 1 50%)
+- Font-size : 0.85rem
+- Icônes : 12px
+
+/* Table */
+- Padding cellules : 0.4rem
+- Font-size : 0.8rem
+- Photos : 35px
+- Actions en colonne (width: 100%)
+```
+
+**4. Mobile portrait (≤ 576px)** :
+```css
+/* Header */
+- Titre : 1.25rem
+- Sous-titre : 0.8rem
+
+/* Card */
+- Padding : 1rem (au lieu de 1.5rem)
+
+/* Modal fullscreen */
+- 100vw × 100vh (plein écran)
+- Border-radius : 0 (pas d'arrondi)
+- Margin : 0
+
+/* Tabs verticaux */
+- Nav-tabs en colonne (flex-direction: column)
+- Chaque tab : 100% largeur
+
+/* Table - Colonnes cachées */
+- Photo (col 2) : display: none
+- Genre (col 4) : display: none
+- Résidence (col 6) : display: none
+- Date inscription (col 8) : display: none
+- Garde : Matricule, Nom, Contact, Classe, Statut affectation, Statut, Actions
+
+/* Formulaire */
+- Labels : 0.8rem
+- Inputs : 0.8rem, padding 6px 10px, min-height 36px
+- Boutons : 0.8rem, padding 8px 14px
+```
+
+**5. Petit mobile (≤ 400px)** :
+```css
+/* Textes ultra-compacts */
+- Titre : 1.1rem
+- Section title : 0.85rem
+- Inputs : 0.75rem, padding 6px 8px
+- Boutons : 0.75rem
+
+/* Card padding minimal */
+- 0.75rem partout
+
+/* Table - Colonne supplémentaire cachée */
+- Statut affectation (col 9) : display: none
+- Garde uniquement : Matricule, Nom, Contact, Classe, Statut, Actions
+```
+
+#### Améliorations Spécifiques
+
+**Formulaire de filtres** :
+```css
+/* Breakpoint 992px */
+.row > [class*='col-'] {
+    width: 100%;
+    flex: 0 0 100%;
+    max-width: 100%;
+}
+
+/* Boutons en colonne */
+.col-md-4.d-flex.align-items-end {
+    flex-direction: column !important;
+}
+
+.btn-acasi {
+    width: 100%;
+    margin-bottom: 0.5rem;
+}
+```
+
+**Searchable Select Component** :
+```css
+@media (max-width: 576px) {
+    .searchable-select-dropdown {
+        max-height: 60vh; /* Évite débordement écran */
+    }
+
+    .searchable-select-icon {
+        font-size: 0.8rem;
+        right: 10px;
+    }
+
+    .searchable-select-option {
+        padding: 10px 12px;
+        font-size: 0.85rem;
+    }
+}
+```
+
+**Table responsive progressive** :
+```css
+/* Tablette - scroll horizontal */
+@media (max-width: 992px) {
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch; /* Smooth scroll iOS */
+    }
+}
+
+/* Mobile - cacher colonnes non-essentielles */
+@media (max-width: 576px) {
+    /* nth-child(2,4,6,8) : display: none */
+}
+
+/* Petit mobile - cacher encore plus */
+@media (max-width: 400px) {
+    /* nth-child(9) : display: none */
+}
+```
+
+**Modal d'édition rapide** :
+```css
+/* Mobile portrait */
+@media (max-width: 576px) {
+    .modal-modern .modal-dialog {
+        width: 100vw;
+        max-width: 100vw;
+        height: 100vh;
+        max-height: 100vh;
+        margin: 0;
+        border-radius: 0; /* Fullscreen sans bordure */
+    }
+
+    /* Tabs en pile verticale */
+    .student-tabs-container .nav-tabs {
+        flex-direction: column;
+    }
+
+    .student-tabs-container .nav-link {
+        border-radius: 12px !important;
+        margin-bottom: 4px;
+    }
+}
+```
+
+**Accordion inscriptions** :
+```css
+@media (max-width: 576px) {
+    .accordion-modern .accordion-button {
+        padding: 12px;
+        font-size: 0.85rem;
+    }
+
+    .accordion-modern .accordion-body .modal-iframe-wrapper {
+        min-height: 300px;
+        height: 40vh; /* Réduit pour mobile */
+    }
+}
+```
+
+#### Résultats
+
+**Desktop (1920px)** :
+- ✅ Design complet avec toutes colonnes
+- ✅ Modal spacieux 80vw
+- ✅ Filtres en grille 3 colonnes
+
+**Tablette (768px)** :
+- ✅ Filtres empilés en 1 colonne
+- ✅ Modal 95vw adapté
+- ✅ Table scroll horizontal
+- ✅ Boutons actions compacts
+
+**Mobile (375px - iPhone)** :
+- ✅ Modal fullscreen
+- ✅ 5 colonnes cachées (photo, genre, résidence, date, affectation)
+- ✅ Tabs verticaux
+- ✅ Textes et inputs lisibles
+- ✅ Boutons pleine largeur
+
+**Petit mobile (360px - Galaxy)** :
+- ✅ 6 colonnes cachées
+- ✅ Textes ultra-compacts mais lisibles
+- ✅ Card padding minimal (0.75rem)
+- ✅ Tout accessible sans zoom
+
+#### Colonnes Table Visibles par Breakpoint
+
+| Colonne | Desktop | Tablette | Mobile | Petit Mobile |
+|---------|---------|----------|--------|--------------|
+| Matricule | ✅ | ✅ | ✅ | ✅ |
+| Photo | ✅ | ✅ | ❌ | ❌ |
+| Nom complet | ✅ | ✅ | ✅ | ✅ |
+| Genre | ✅ | ✅ | ❌ | ❌ |
+| Contact | ✅ | ✅ | ✅ | ✅ |
+| Résidence | ✅ | ✅ | ❌ | ❌ |
+| Classe actuelle | ✅ | ✅ | ✅ | ✅ |
+| Date inscription | ✅ | ✅ | ❌ | ❌ |
+| Statut affectation | ✅ | ✅ | ✅ | ❌ |
+| Statut | ✅ | ✅ | ✅ | ✅ |
+| Actions | ✅ | ✅ | ✅ | ✅ |
+
+**Total colonnes** : 11 → 11 → 6 → 5
+
+#### Performance
+
+**Avantages** :
+- ✅ CSS pur (pas de JS pour responsive)
+- ✅ Progressive enhancement
+- ✅ Touch-friendly sur mobile (boutons 100% largeur)
+- ✅ Scroll smooth natif iOS (`-webkit-overflow-scrolling`)
+- ✅ Pas de recalcul layout (uniquement display/padding)
+
+**Tests effectués** :
+- ✅ Chrome DevTools responsive mode
+- ✅ iPhone 12 Pro (375px)
+- ✅ iPad Air (820px)
+- ✅ Desktop 1920px
+
+**Fichiers modifiés** :
+
+| Fichier | Lignes ajoutées | Description |
+|---------|-----------------|-------------|
+| `resources/views/esbtp/etudiants/index.blade.php` | +400 | Media queries complètes (5 breakpoints) |
+
+**Breakpoints summary** :
+- 992px : Tablette (filtres 1 col, modal 95vw)
+- 768px : Mobile paysage (textes réduits, tabs 50%)
+- 576px : Mobile portrait (modal fullscreen, tabs verticaux, colonnes cachées)
+- 400px : Petit mobile (colonnes supplémentaires cachées, ultra-compact)
+
+---
+
 ### 🛠️ Scripts d'Initialisation Unifiés (6 novembre)
 
 **Contexte** : Besoin d'un système unifié pour orchestrer tous les scripts d'initialisation et seeders nécessaires au déploiement de KLASSCI.

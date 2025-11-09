@@ -5,9 +5,94 @@
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
+    /* Responsive fixes - Éviter débordement */
+    * {
+        box-sizing: border-box;
+    }
+
+    .dashboard-acasi {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .main-content {
+        max-width: 100%;
+        overflow-x: hidden;
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+
+    .card-moderne {
+        max-width: 100%;
+        overflow-x: hidden;
+        word-wrap: break-word;
+    }
+
+    .dashboard-header {
+        max-width: 100%;
+        overflow-x: hidden;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+    }
+
+    .header-left {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .header-left h1 {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    .header-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .table-responsive {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #search-form {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    #search-form .row {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    #search-form .row > [class*='col-'] {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+
+    .form-control,
+    .form-select,
+    .searchable-select-trigger {
+        max-width: 100%;
+    }
+
+    .btn-acasi {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+
     .modal-modern .modal-dialog {
-        width: clamp(1024px, 80vw, 1800px);
-        max-width: 80vw;
+        width: 80vw;
+        max-width: 1800px;
+        min-width: auto;
         height: 80vh;
         max-height: 80vh;
         position: relative;
@@ -267,22 +352,34 @@
             padding: 16px;
         }
 
+        /* Main content padding réduit */
+        .main-content {
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+
         /* Filtres en colonne complète sur tablette */
         #search-form .row > [class*='col-'] {
-            width: 100%;
-            flex: 0 0 100%;
-            max-width: 100%;
+            width: 100% !important;
+            flex: 0 0 100% !important;
+            max-width: 100% !important;
         }
 
         #search-form .row {
             row-gap: 1rem;
+            margin: 0;
         }
 
         /* Header responsive */
         .dashboard-header {
             flex-direction: column;
-            align-items: flex-start;
+            align-items: stretch;
             gap: 1rem;
+            width: 100%;
+        }
+
+        .dashboard-header .header-left {
+            width: 100%;
         }
 
         .dashboard-header .header-left h1 {
@@ -304,16 +401,19 @@
         .header-actions .btn-acasi {
             width: 100%;
             justify-content: center;
+            max-width: 100%;
         }
 
         /* Boutons filtres responsive */
         .col-md-4.d-flex.align-items-end {
             flex-direction: column !important;
             align-items: stretch !important;
+            width: 100% !important;
         }
 
         .col-md-4.d-flex.align-items-end .btn-acasi {
             width: 100%;
+            max-width: 100%;
             margin-bottom: 0.5rem;
         }
 
@@ -332,7 +432,7 @@
 
         /* Card padding réduit */
         .card-moderne .p-lg {
-            padding: 1.5rem !important;
+            padding: 1.5rem 1rem !important;
         }
 
         /* Tabs padding */
@@ -343,7 +443,17 @@
     }
 
     @media (max-width: 768px) {
+        /* Main content padding minimal */
+        .main-content {
+            padding-left: 8px;
+            padding-right: 8px;
+        }
+
         /* Header encore plus compact */
+        .dashboard-header {
+            width: 100%;
+        }
+
         .dashboard-header .header-left h1 {
             font-size: 1.5rem;
         }
@@ -366,12 +476,20 @@
             font-size: 0.875rem;
             padding: 8px 12px;
             min-height: 38px;
+            width: 100%;
         }
 
         /* Boutons filtres avec texte plus petit */
         #search-form .btn-acasi {
             font-size: 0.875rem;
             padding: 8px 16px;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        /* Card padding réduit */
+        .card-moderne .p-lg {
+            padding: 1rem 0.75rem !important;
         }
 
         /* Modal tabs en colonne sur petit écran */
@@ -400,9 +518,25 @@
     }
 
     @media (max-width: 576px) {
+        /* Main content minimal padding */
+        .main-content {
+            padding-left: 5px;
+            padding-right: 5px;
+        }
+
         /* Header très compact */
+        .dashboard-header {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        .dashboard-header .header-left {
+            width: 100%;
+        }
+
         .dashboard-header .header-left h1 {
             font-size: 1.25rem;
+            margin-bottom: 0.25rem;
         }
 
         .dashboard-header .header-subtitle {
@@ -416,12 +550,17 @@
 
         .header-actions .btn-acasi {
             width: 100%;
+            max-width: 100%;
             justify-content: center;
         }
 
         /* Card padding minimal */
+        .card-moderne {
+            width: 100%;
+        }
+
         .card-moderne .p-lg {
-            padding: 1rem !important;
+            padding: 0.75rem 0.5rem !important;
         }
 
         /* Modal fullscreen sur mobile */
@@ -535,16 +674,46 @@
 
     /* Très petits écrans (moins de 400px) */
     @media (max-width: 400px) {
+        /* Main content ultra minimal */
+        .main-content {
+            padding-left: 3px;
+            padding-right: 3px;
+        }
+
+        /* Header ultra compact */
+        .dashboard-header {
+            width: 100%;
+        }
+
+        .dashboard-header .header-left {
+            width: 100%;
+        }
+
         .dashboard-header .header-left h1 {
             font-size: 1.1rem;
         }
 
+        /* Card ultra compact */
+        .card-moderne {
+            width: 100%;
+        }
+
         .card-moderne .p-lg {
-            padding: 0.75rem !important;
+            padding: 0.5rem 0.25rem !important;
         }
 
         .section-title {
             font-size: 0.85rem;
+        }
+
+        /* Form ultra compact */
+        #search-form .row {
+            margin: 0;
+        }
+
+        #search-form .row > [class*='col-'] {
+            padding-left: 0.25rem;
+            padding-right: 0.25rem;
         }
 
         #search-form .form-control,
@@ -553,15 +722,24 @@
             font-size: 0.75rem;
             padding: 6px 8px;
             min-height: 34px;
+            width: 100%;
         }
 
         #search-form .btn-acasi {
             font-size: 0.75rem;
             padding: 6px 12px;
+            width: 100%;
+            max-width: 100%;
         }
 
         .modal-modern .modal-title {
             font-size: 1rem;
+        }
+
+        /* Header actions ultra compact */
+        .header-actions .btn-acasi {
+            width: 100%;
+            max-width: 100%;
         }
     }
 
