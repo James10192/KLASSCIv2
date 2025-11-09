@@ -267,28 +267,427 @@
             padding: 16px;
         }
 
+        /* Filtres en colonne complète sur tablette */
         #search-form .row > [class*='col-'] {
             width: 100%;
+            flex: 0 0 100%;
+            max-width: 100%;
         }
 
         #search-form .row {
             row-gap: 1rem;
         }
 
+        /* Header responsive */
         .dashboard-header {
             flex-direction: column;
             align-items: flex-start;
             gap: 1rem;
         }
+
+        .dashboard-header .header-left h1 {
+            font-size: 1.75rem;
+        }
+
+        .dashboard-header .header-subtitle {
+            font-size: 0.9rem;
+        }
+
+        /* Boutons header en colonne */
+        .header-actions {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .header-actions .btn-acasi {
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* Boutons filtres responsive */
+        .col-md-4.d-flex.align-items-end {
+            flex-direction: column !important;
+            align-items: stretch !important;
+        }
+
+        .col-md-4.d-flex.align-items-end .btn-acasi {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .col-md-4.d-flex.align-items-end .btn-acasi.me-2 {
+            margin-right: 0 !important;
+        }
+
+        /* Modal header padding réduit */
+        .modal-modern .modal-header {
+            padding: 16px 20px 10px 20px;
+        }
+
+        .modal-modern .modal-body {
+            padding: 6px 20px 20px 20px;
+        }
+
+        /* Card padding réduit */
+        .card-moderne .p-lg {
+            padding: 1.5rem !important;
+        }
+
+        /* Tabs padding */
+        .student-tabs-container .nav-link {
+            padding: 12px 16px !important;
+            font-size: 0.9rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        /* Header encore plus compact */
+        .dashboard-header .header-left h1 {
+            font-size: 1.5rem;
+        }
+
+        /* Section titles plus petits */
+        .section-title {
+            font-size: 1rem;
+        }
+
+        /* Form labels plus petits */
+        #search-form label.form-label {
+            font-size: 0.875rem;
+            margin-bottom: 0.375rem;
+        }
+
+        /* Inputs et selects avec padding réduit */
+        #search-form .form-control,
+        #search-form .form-select,
+        #search-form .searchable-select-trigger {
+            font-size: 0.875rem;
+            padding: 8px 12px;
+            min-height: 38px;
+        }
+
+        /* Boutons filtres avec texte plus petit */
+        #search-form .btn-acasi {
+            font-size: 0.875rem;
+            padding: 8px 16px;
+        }
+
+        /* Modal tabs en colonne sur petit écran */
+        .student-tabs-container .nav-tabs {
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+
+        .student-tabs-container .nav-item {
+            flex: 1 1 50%;
+        }
+
+        .student-tabs-container .nav-link {
+            border-radius: 12px 12px 0 0 !important;
+            font-size: 0.85rem;
+            padding: 10px 12px !important;
+        }
+
+        .student-tabs-container .nav-link .tab-label {
+            gap: 6px;
+        }
+
+        .student-tabs-container .nav-link .tab-label i {
+            font-size: 12px;
+        }
     }
 
     @media (max-width: 576px) {
-        .header-actions a {
+        /* Header très compact */
+        .dashboard-header .header-left h1 {
+            font-size: 1.25rem;
+        }
+
+        .dashboard-header .header-subtitle {
+            font-size: 0.8rem;
+        }
+
+        /* Boutons header pleine largeur */
+        .header-actions {
             width: 100%;
         }
 
+        .header-actions .btn-acasi {
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* Card padding minimal */
+        .card-moderne .p-lg {
+            padding: 1rem !important;
+        }
+
+        /* Modal fullscreen sur mobile */
+        .modal-modern .modal-dialog {
+            width: 100vw;
+            max-width: 100vw;
+            height: 100vh;
+            max-height: 100vh;
+            margin: 0;
+            border-radius: 0;
+        }
+
+        .modal-modern .modal-content {
+            border-radius: 0;
+            height: 100%;
+        }
+
+        .modal-modern .modal-header {
+            padding: 12px 16px 8px 16px;
+        }
+
+        .modal-modern .modal-body {
+            padding: 4px 16px 16px 16px;
+        }
+
+        /* Modal title plus petit */
+        .modal-modern .modal-title {
+            font-size: 1.1rem;
+        }
+
+        /* Tabs en pile verticale sur très petit écran */
         .student-tabs-container .nav-tabs {
             flex-direction: column;
+        }
+
+        .student-tabs-container .nav-item {
+            flex: 1 1 100%;
+        }
+
+        .student-tabs-container .nav-link {
+            border-radius: 12px !important;
+            margin-bottom: 4px;
+        }
+
+        /* Accordion plus compact */
+        .accordion-modern .accordion-button {
+            padding: 12px;
+            font-size: 0.85rem;
+        }
+
+        .accordion-modern .accordion-body {
+            padding: 12px;
+        }
+
+        .accordion-modern .accordion-body .modal-iframe-wrapper {
+            min-height: 300px;
+            height: 40vh;
+        }
+
+        /* Section title très compact */
+        .section-title {
+            font-size: 0.9rem;
+            margin-bottom: 1rem !important;
+        }
+
+        /* Labels très compacts */
+        #search-form label.form-label {
+            font-size: 0.8rem;
+        }
+
+        /* Inputs très compacts */
+        #search-form .form-control,
+        #search-form .form-select,
+        #search-form .searchable-select-trigger {
+            font-size: 0.8rem;
+            padding: 6px 10px;
+            min-height: 36px;
+        }
+
+        /* Searchable select icon plus petit */
+        .searchable-select-icon {
+            font-size: 0.8rem;
+            right: 10px;
+        }
+
+        /* Dropdown searchable select */
+        .searchable-select-dropdown {
+            max-height: 60vh;
+        }
+
+        .searchable-select-search input {
+            font-size: 0.85rem;
+            padding: 8px 12px;
+        }
+
+        .searchable-select-option {
+            padding: 10px 12px;
+            font-size: 0.85rem;
+        }
+
+        /* Boutons filtres compacts */
+        #search-form .btn-acasi {
+            font-size: 0.8rem;
+            padding: 8px 14px;
+        }
+
+        #search-form .btn-acasi i {
+            font-size: 0.75rem;
+        }
+    }
+
+    /* Très petits écrans (moins de 400px) */
+    @media (max-width: 400px) {
+        .dashboard-header .header-left h1 {
+            font-size: 1.1rem;
+        }
+
+        .card-moderne .p-lg {
+            padding: 0.75rem !important;
+        }
+
+        .section-title {
+            font-size: 0.85rem;
+        }
+
+        #search-form .form-control,
+        #search-form .form-select,
+        #search-form .searchable-select-trigger {
+            font-size: 0.75rem;
+            padding: 6px 8px;
+            min-height: 34px;
+        }
+
+        #search-form .btn-acasi {
+            font-size: 0.75rem;
+            padding: 6px 12px;
+        }
+
+        .modal-modern .modal-title {
+            font-size: 1rem;
+        }
+    }
+
+    /* Responsive Table Styles */
+    @media (max-width: 992px) {
+        /* Table avec scroll horizontal sur tablette */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Réduire padding colonnes table */
+        #etudiants-table th,
+        #etudiants-table td {
+            padding: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        /* Boutons d'action plus compacts */
+        #etudiants-table .btn-sm {
+            padding: 0.25rem 0.4rem;
+            font-size: 0.75rem;
+        }
+
+        #etudiants-table .btn-sm i {
+            font-size: 0.75rem;
+        }
+
+        /* Badges plus compacts */
+        #etudiants-table .badge {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        /* Photo plus petite */
+        #etudiants-table img,
+        #etudiants-table .rounded-circle {
+            width: 40px !important;
+            height: 40px !important;
+        }
+    }
+
+    @media (max-width: 768px) {
+        /* Table très compact sur mobile */
+        #etudiants-table th,
+        #etudiants-table td {
+            padding: 0.4rem;
+            font-size: 0.8rem;
+        }
+
+        /* Headers table avec moins de padding */
+        #etudiants-table th .btn-link {
+            font-size: 0.75rem;
+        }
+
+        #etudiants-table th .fas.fa-sort {
+            font-size: 0.65rem;
+        }
+
+        /* Actions en colonne */
+        #etudiants-table .d-flex.flex-wrap {
+            flex-direction: column !important;
+            gap: 0.25rem !important;
+        }
+
+        #etudiants-table .d-flex.flex-wrap .btn {
+            width: 100%;
+        }
+
+        /* Photo encore plus petite */
+        #etudiants-table img,
+        #etudiants-table .rounded-circle {
+            width: 35px !important;
+            height: 35px !important;
+        }
+
+        /* Badges très compacts */
+        #etudiants-table .badge {
+            font-size: 0.65rem;
+            padding: 0.2rem 0.4rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        /* Table ultra compact */
+        #etudiants-table th,
+        #etudiants-table td {
+            padding: 0.3rem 0.2rem;
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+
+        /* Cacher certaines colonnes moins importantes sur mobile */
+        #etudiants-table th:nth-child(2), /* Photo */
+        #etudiants-table td:nth-child(2),
+        #etudiants-table th:nth-child(4), /* Genre */
+        #etudiants-table td:nth-child(4),
+        #etudiants-table th:nth-child(6), /* Résidence */
+        #etudiants-table td:nth-child(6),
+        #etudiants-table th:nth-child(8), /* Date inscription */
+        #etudiants-table td:nth-child(8) {
+            display: none;
+        }
+
+        /* Pagination compact */
+        .pagination {
+            font-size: 0.75rem;
+        }
+
+        .pagination .page-link {
+            padding: 0.25rem 0.5rem;
+        }
+    }
+
+    @media (max-width: 400px) {
+        /* Cacher encore plus de colonnes sur très petit écran */
+        #etudiants-table th:nth-child(9), /* Statut affectation */
+        #etudiants-table td:nth-child(9) {
+            display: none;
+        }
+
+        /* Table ultra minimal */
+        #etudiants-table th,
+        #etudiants-table td {
+            padding: 0.25rem 0.15rem;
+            font-size: 0.7rem;
         }
     }
 
