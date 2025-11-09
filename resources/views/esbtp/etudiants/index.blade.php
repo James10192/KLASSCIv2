@@ -939,52 +939,6 @@
             return `<span class="badge bg-light text-dark ms-2">${workflowStep}</span>`;
         }
 
-        function handleValidateInscription(inscriptionId, validateUrl) {
-            if (!confirm('Êtes-vous sûr de vouloir valider définitivement cette inscription ? Cette action est irréversible.')) {
-                return;
-            }
-
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            if (!csrfToken) {
-                alert('Erreur: Token CSRF introuvable.');
-                return;
-            }
-
-            fetch(validateUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json'
-                },
-                credentials: 'same-origin'
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Erreur lors de la validation de l\'inscription.');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    alert(data.message || 'Inscription validée avec succès.');
-                    // Refresh current results to update the modal
-                    const currentUrl = window.location.href;
-                    fetchResults(currentUrl, { pushState: false });
-                    // Close modal
-                    if (editModal) {
-                        editModal.hide();
-                    }
-                } else {
-                    alert(data.message || 'Erreur lors de la validation de l\'inscription.');
-                }
-            })
-            .catch(error => {
-                console.error('Erreur validation:', error);
-                alert('Une erreur est survenue lors de la validation de l\'inscription.');
-            });
-        }
-
         function renderInscriptionsAccordion(payload) {
             if (!inscriptionsContainer) {
                 return;
@@ -1006,18 +960,6 @@
                 const currentYearBadge = inscription.is_current_year ? `<span class="badge bg-primary text-white ms-2">Année courante</span>` : '';
                 const dateChip = inscription.date_label ? `<span class="badge bg-light text-dark border ms-2"><i class="far fa-calendar-alt me-1"></i>${inscription.date_label}</span>` : '';
                 const workflowBadge = formatWorkflowStepBadge(inscription.workflow_step);
-
-                // Check if validation button should be shown
-                // Le bouton doit être caché UNIQUEMENT si status='active' ET workflow_step='etudiant_cree'
-                const canValidate = !(inscription.status === 'active' && inscription.workflow_step === 'etudiant_cree');
-
-                const validationButton = canValidate ? `
-                    <button type="button"
-                            class="btn btn-success btn-sm mt-3"
-                            onclick="handleValidateInscription(${inscription.id}, '${inscription.validate_url}')">
-                        <i class="fas fa-check me-2"></i>Valider définitivement
-                    </button>
-                ` : '';
 
                 return `
 <div class="accordion-item mb-2">
@@ -1049,7 +991,6 @@
                     <i class="fas fa-eye me-1"></i>Voir l'inscription
                 </a>
             </div>
-            ${validationButton}
             <div class="modal-iframe-wrapper">
                 <iframe class="border-0 inscription-frame" data-src="${inscription.edit_url}" title="Inscription #${inscription.id}" loading="lazy"></iframe>
             </div>
