@@ -7,11 +7,18 @@
     <meta name="description" content="KLASSCI est un système de gestion scolaire complet et moderne pour les établissements d'enseignement supérieur. Gérez facilement vos étudiants, classes, notes et bien plus.">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    <!-- Preconnect pour optimisation fonts & CDN -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.cdnfonts.com">
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
+    <!-- Google Fonts avec display=swap pour performance -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Polices personnalisées -->
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -2627,16 +2634,22 @@
 
               <!-- Conteneur vidéo portrait style Shorts -->
               <div id="videoContainer" style="position: relative; border-radius: 16px; overflow: hidden; background: #000; aspect-ratio: 9/16; max-width: 320px; margin: 0 auto; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); cursor: pointer;">
+                <!-- Placeholder de chargement -->
+                <div id="videoLoader" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: white; z-index: 1;">
+                  <i class="fas fa-circle-notch fa-spin" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
+                  <div style="font-size: 0.9rem;">Chargement vidéo...</div>
+                </div>
+
                 <video
                   id="testimonialVideo"
-                  autoplay
                   muted
                   loop
                   playsinline
                   poster=""
                   style="width: 100%; height: 100%; object-fit: cover; display: block;"
-                  preload="metadata">
-                  <source src="{{ asset('images/WhatsApp Video 2025-11-02 at 12.10.55 PM.mp4') }}" type="video/mp4">
+                  preload="none"
+                  data-src="{{ asset('images/WhatsApp Video 2025-11-02 at 12.10.55 PM.mp4') }}">
+                  <!-- Source sera ajoutée dynamiquement par lazy loading -->
                   Votre navigateur ne supporte pas la lecture de vidéos.
                 </video>
 
@@ -2649,7 +2662,7 @@
                 <div id="audioControls" style="position: absolute; bottom: 1rem; right: 1rem; display: flex; flex-direction: row; align-items: center; gap: 0; z-index: 5;">
                   <!-- Slider de volume (caché par défaut, apparaît vers la gauche/intérieur) -->
                   <div id="volumeSliderContainer" style="opacity: 0; transform: translateX(10px); pointer-events: none; transition: opacity 0.3s ease, transform 0.3s ease; padding-right: 0.5rem;">
-                    <input type="range" id="volumeSlider" min="0" max="100" value="0" orient="vertical" style="writing-mode: bt-lr; -webkit-appearance: slider-vertical; width: 10px; height: 100px; background: linear-gradient(to top, #0453cb 0%, #5e91de 100%); border-radius: 10px; outline: none; cursor: pointer; filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));">
+                    <input type="range" id="volumeSlider" min="0" max="100" value="0" style="writing-mode: vertical-lr; direction: rtl; width: 10px; height: 100px; background: linear-gradient(to top, #0453cb 0%, #5e91de 100%); border-radius: 10px; outline: none; cursor: pointer; filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));">
                   </div>
 
                   <!-- Bouton Mute/Unmute (fixe dans le coin) -->
@@ -2668,6 +2681,10 @@
               <!-- Script pour contrôles vidéo personnalisés -->
               <script>
                 (function() {
+                  // Mode debug (mettre à false en production pour désactiver tous les logs)
+                  const DEBUG = false;
+                  const log = DEBUG ? console.log.bind(console) : () => {};
+
                   const video = document.getElementById('testimonialVideo');
                   const container = document.getElementById('videoContainer');
                   const overlay = document.getElementById('playPauseOverlay');
@@ -2677,8 +2694,58 @@
                   const volumeSliderContainer = document.getElementById('volumeSliderContainer');
                   const volumeSlider = document.getElementById('volumeSlider');
                   const statusIndicator = document.getElementById('statusIndicator');
+                  const videoLoader = document.getElementById('videoLoader');
 
                   let overlayTimeout;
+                  let videoLoaded = false;
+
+                  // 🚀 LAZY LOADING - Charger la vidéo uniquement quand visible
+                  const lazyLoadVideo = () => {
+                    const videoSrc = video.dataset.src;
+
+                    if (videoSrc && !videoLoaded) {
+                      log('🎬 Lazy loading video:', videoSrc);
+
+                      // Créer et ajouter la source
+                      const source = document.createElement('source');
+                      source.src = videoSrc;
+                      source.type = 'video/mp4';
+                      video.appendChild(source);
+
+                      // Charger et lire la vidéo
+                      video.load();
+
+                      // Écouter l'événement canplay pour cacher le loader
+                      video.addEventListener('canplay', function() {
+                        log('✅ Video ready to play');
+                        videoLoader.style.display = 'none';
+                        video.play().catch(err => log('⚠️ Autoplay prevented:', err));
+                        videoLoaded = true;
+                      }, { once: true });
+
+                      // Gérer les erreurs de chargement
+                      video.addEventListener('error', function() {
+                        log('❌ Video loading error');
+                        videoLoader.innerHTML = '<i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: #f59e0b;"></i><div style="font-size: 0.9rem; margin-top: 0.5rem;">Erreur de chargement</div>';
+                      }, { once: true });
+                    }
+                  };
+
+                  // Observer Intersection pour détecter quand la vidéo est visible
+                  const videoObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                      if (entry.isIntersecting && !videoLoaded) {
+                        log('👁️ Video is visible, starting lazy load');
+                        lazyLoadVideo();
+                        videoObserver.unobserve(video); // Arrêter d'observer après chargement
+                      }
+                    });
+                  }, {
+                    rootMargin: '50px' // Charger 50px avant que la vidéo soit visible
+                  });
+
+                  // Démarrer l'observation
+                  videoObserver.observe(video);
 
                   // Toggle Play/Pause au clic sur la vidéo
                   container.addEventListener('click', function(e) {
@@ -2740,9 +2807,9 @@
                   // Toggle Mute/Unmute
                   muteBtn.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    console.log('🔊 Mute button clicked');
-                    console.log('  Current muted:', video.muted);
-                    console.log('  Current volume:', video.volume);
+                    log('🔊 Mute button clicked');
+                    log('  Current muted:', video.muted);
+                    log('  Current volume:', video.volume);
 
                     if (video.muted) {
                       // Activer le son
@@ -2751,7 +2818,7 @@
                       video.volume = volumeToSet;
                       volumeSlider.value = previousVolume;
 
-                      console.log('  ✅ Unmuted - Volume set to:', volumeToSet);
+                      log('  ✅ Unmuted - Volume set to:', volumeToSet);
 
                       // Afficher un feedback visuel
                       showVolumeIndicator('Son activé');
@@ -2760,7 +2827,7 @@
                       previousVolume = volumeSlider.value; // Sauvegarder le volume actuel
                       video.muted = true;
 
-                      console.log('  🔇 Muted - Previous volume saved:', previousVolume);
+                      log('  🔇 Muted - Previous volume saved:', previousVolume);
 
                       // Afficher un feedback visuel
                       showVolumeIndicator('Son coupé');
@@ -2790,7 +2857,7 @@
                     volumeSliderContainer.style.transform = 'translateX(0)';
                     volumeSliderContainer.style.pointerEvents = 'auto';
                     isSliderVisible = true;
-                    console.log('📊 Volume slider shown');
+                    log('📊 Volume slider shown');
                   }
 
                   // Fonction pour cacher le slider avec animation smooth (vers l'extérieur/droite)
@@ -2799,7 +2866,7 @@
                     volumeSliderContainer.style.transform = 'translateX(10px)';
                     volumeSliderContainer.style.pointerEvents = 'none';
                     isSliderVisible = false;
-                    console.log('📊 Volume slider hidden');
+                    log('📊 Volume slider hidden');
                   }
 
                   // Afficher le slider au hover du conteneur audio (bouton + slider)
@@ -2827,7 +2894,7 @@
                     const volume = parseInt(this.value);
                     const volumeDecimal = volume / 100;
 
-                    console.log('🎚️ Volume slider changed:', volume + '%');
+                    log('🎚️ Volume slider changed:', volume + '%');
 
                     video.volume = volumeDecimal;
                     previousVolume = volume;
@@ -2835,13 +2902,13 @@
                     // Si on monte le volume, activer le son
                     if (volume > 0 && video.muted) {
                       video.muted = false;
-                      console.log('  ✅ Auto unmuted because volume > 0');
+                      log('  ✅ Auto unmuted because volume > 0');
                     }
 
                     // Si volume à 0, mute
                     if (volume === 0) {
                       video.muted = true;
-                      console.log('  🔇 Auto muted because volume = 0');
+                      log('  🔇 Auto muted because volume = 0');
                     }
 
                     updateMuteIcon();
@@ -2851,7 +2918,7 @@
                   function updateMuteIcon() {
                     const volume = video.muted ? 0 : Math.round(video.volume * 100);
 
-                    console.log('🔄 Updating mute icon - Volume:', volume + '%, Muted:', video.muted);
+                    log('🔄 Updating mute icon - Volume:', volume + '%, Muted:', video.muted);
 
                     if (volume === 0 || video.muted) {
                       muteIcon.className = 'fas fa-volume-mute';
@@ -2869,9 +2936,9 @@
                   }
 
                   // Initialiser
-                  console.log('🎬 Video player initialized');
-                  console.log('  Initial muted:', video.muted);
-                  console.log('  Initial volume:', video.volume);
+                  log('🎬 Video player initialized');
+                  log('  Initial muted:', video.muted);
+                  log('  Initial volume:', video.volume);
                   updateMuteIcon();
 
                   // Support mobile : tap pour play/pause
