@@ -66,7 +66,10 @@
                                 'is_current_year' => $currentYearId && $inscription->annee_universitaire_id == $currentYearId,
                                 'date_label' => optional($inscription->date_inscription)->format('d/m/Y'),
                                 'date_value' => optional($inscription->date_inscription)->format('Y-m-d'),
+                                'workflow_step' => $inscription->workflow_step,
+                                'paiement_validation_id' => $inscription->paiement_validation_id,
                                 'edit_url' => route('esbtp.inscriptions.edit', ['inscription' => $inscription->id, 'embedded' => 1]),
+                                'validate_url' => route('esbtp.inscriptions.valider-definitivement', ['inscription' => $inscription->id]),
                             ];
                         })
                         ->values();
