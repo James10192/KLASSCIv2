@@ -4,6 +4,9 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 <style>
     .modal-modern .modal-dialog {
         width: clamp(1024px, 80vw, 1800px);
@@ -291,6 +294,63 @@
             flex-direction: column;
         }
     }
+
+    /* Select2 Custom Styles */
+    .select2-container--bootstrap-5 .select2-selection {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        min-height: 42px;
+        padding: 4px 8px;
+    }
+
+    .select2-container--bootstrap-5 .select2-selection:focus {
+        border-color: #0453cb;
+        box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1);
+    }
+
+    .select2-container--bootstrap-5 .select2-dropdown {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.1);
+    }
+
+    .select2-container--bootstrap-5 .select2-search__field {
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 8px 12px;
+        outline: none;
+    }
+
+    .select2-container--bootstrap-5 .select2-search__field:focus {
+        border-color: #0453cb;
+        box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1);
+    }
+
+    .select2-container--bootstrap-5 .select2-results__option--highlighted {
+        background-color: #0453cb;
+        color: white;
+    }
+
+    .select2-container--bootstrap-5 .select2-results__option[aria-selected="true"] {
+        background-color: #e8f2ff;
+        color: #0453cb;
+    }
+
+    /* Animation pour Select2 */
+    .select2-dropdown {
+        animation: slideDown 0.2s ease-out;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 </style>
 @endsection
 
@@ -501,6 +561,8 @@
 @endsection
 
 @push('scripts')
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const form = document.getElementById('search-form');
@@ -512,11 +574,40 @@
         const studentFrame = document.getElementById('student-edit-frame');
         let editModal = null;
 
+        // Configuration Select2 avec recherche optimisée pour 50+ éléments
         if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
-            $('#filiere, #niveau, #classe, #annee, #status, #affectation_status, #inscrit_annee_courante').select2({
-                theme: 'bootstrap4',
+            // Select Classe avec recherche toujours visible (50+ classes)
+            $('#classe').select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Rechercher une classe...',
+                allowClear: true,
+                width: '100%',
+                minimumResultsForSearch: 0,  // Toujours afficher la recherche
+                language: {
+                    noResults: function() {
+                        return "Aucune classe trouvée";
+                    },
+                    searching: function() {
+                        return "Recherche en cours...";
+                    },
+                    inputTooShort: function() {
+                        return "Veuillez saisir au moins 1 caractère";
+                    }
+                }
+            });
+
+            // Autres selects (filière, niveau, année, etc.)
+            $('#filiere, #niveau, #annee, #status, #affectation_status, #inscrit_annee_courante').select2({
+                theme: 'bootstrap-5',
                 placeholder: 'Sélectionner une option',
-                allowClear: true
+                allowClear: true,
+                width: '100%',
+                minimumResultsForSearch: 10,  // Recherche si > 10 options
+                language: {
+                    noResults: function() {
+                        return "Aucun résultat trouvé";
+                    }
+                }
             });
         }
 
