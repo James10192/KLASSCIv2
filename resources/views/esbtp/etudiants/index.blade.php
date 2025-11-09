@@ -760,12 +760,11 @@
                 this.search = '';
                 this.filteredOptions = this.options;
 
-                // Trigger form submission automatically
+                // Trigger AJAX refresh instead of form submission
                 this.$nextTick(() => {
-                    const form = this.$el.closest('form');
-                    if (form) {
-                        console.log('📤 Soumission formulaire...');
-                        form.submit();
+                    if (typeof window.triggerFilterChange === 'function') {
+                        console.log('📤 Déclenchement AJAX refresh...');
+                        window.triggerFilterChange();
                     }
                 });
             },
@@ -800,6 +799,24 @@
                 resultsContainer.classList.remove('opacity-50');
             }
         }
+
+        // Fonction globale pour déclencher le refresh AJAX depuis le composant Alpine
+        window.triggerFilterChange = function() {
+            console.log('🔄 triggerFilterChange appelée');
+            const formData = new FormData(form);
+            const params = new URLSearchParams();
+
+            // Construire les paramètres depuis le formulaire
+            for (const [key, value] of formData.entries()) {
+                if (value) {  // Ignorer les valeurs vides
+                    params.append(key, value);
+                }
+            }
+
+            const url = form.action + '?' + params.toString();
+            console.log('📍 URL AJAX:', url);
+            fetchResults(url, { pushState: true });
+        };
 
         function bindPagination() {
             resultsContainer.querySelectorAll('.pagination a').forEach((link) => {
