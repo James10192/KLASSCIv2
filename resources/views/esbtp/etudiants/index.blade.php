@@ -4,9 +4,6 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-<!-- Select2 CSS -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 <style>
     .modal-modern .modal-dialog {
         width: clamp(1024px, 80vw, 1800px);
@@ -295,61 +292,172 @@
         }
     }
 
-    /* Select2 Custom Styles */
-    .select2-container--bootstrap-5 .select2-selection {
+    /* Modern Searchable Select Component */
+    .searchable-select {
+        position: relative;
+        width: 100%;
+    }
+
+    .searchable-select-trigger {
+        width: 100%;
+        background: white;
         border: 1px solid #e2e8f0;
-        border-radius: 8px;
+        border-radius: 10px;
+        padding: 10px 40px 10px 14px;
+        font-size: 14px;
+        color: #1e293b;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         min-height: 42px;
-        padding: 4px 8px;
     }
 
-    .select2-container--bootstrap-5 .select2-selection:focus {
+    .searchable-select-trigger:hover {
+        border-color: #cbd5e1;
+    }
+
+    .searchable-select-trigger:focus,
+    .searchable-select.active .searchable-select-trigger {
+        outline: none;
         border-color: #0453cb;
         box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1);
     }
 
-    .select2-container--bootstrap-5 .select2-dropdown {
+    .searchable-select-trigger-text {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .searchable-select-trigger-text.placeholder {
+        color: #94a3b8;
+    }
+
+    .searchable-select-icon {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        transition: transform 0.2s;
+        color: #64748b;
+        pointer-events: none;
+    }
+
+    .searchable-select.active .searchable-select-icon {
+        transform: translateY(-50%) rotate(180deg);
+    }
+
+    .searchable-select-dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12), 0 4px 10px rgba(15, 23, 42, 0.08);
+        z-index: 1000;
+        max-height: 320px;
+        display: flex;
+        flex-direction: column;
+        animation: slideDown 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .searchable-select-search {
+        padding: 12px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .searchable-select-search input {
+        width: 100%;
+        padding: 10px 14px;
         border: 1px solid #e2e8f0;
         border-radius: 8px;
-        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.1);
-    }
-
-    .select2-container--bootstrap-5 .select2-search__field {
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        padding: 8px 12px;
+        font-size: 14px;
         outline: none;
+        transition: all 0.2s;
     }
 
-    .select2-container--bootstrap-5 .select2-search__field:focus {
+    .searchable-select-search input:focus {
         border-color: #0453cb;
         box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1);
     }
 
-    .select2-container--bootstrap-5 .select2-results__option--highlighted {
+    .searchable-select-search input::placeholder {
+        color: #94a3b8;
+    }
+
+    .searchable-select-options {
+        overflow-y: auto;
+        max-height: 240px;
+    }
+
+    .searchable-select-option {
+        padding: 10px 14px;
+        cursor: pointer;
+        transition: background-color 0.15s;
+        font-size: 14px;
+        color: #1e293b;
+    }
+
+    .searchable-select-option:hover {
+        background-color: #f8fafc;
+    }
+
+    .searchable-select-option.selected {
+        background-color: #eff6ff;
+        color: #0453cb;
+        font-weight: 500;
+    }
+
+    .searchable-select-option.highlighted {
         background-color: #0453cb;
         color: white;
     }
 
-    .select2-container--bootstrap-5 .select2-results__option[aria-selected="true"] {
-        background-color: #e8f2ff;
-        color: #0453cb;
-    }
-
-    /* Animation pour Select2 */
-    .select2-dropdown {
-        animation: slideDown 0.2s ease-out;
+    .searchable-select-no-results {
+        padding: 24px 14px;
+        text-align: center;
+        color: #94a3b8;
+        font-size: 14px;
     }
 
     @keyframes slideDown {
         from {
             opacity: 0;
-            transform: translateY(-10px);
+            transform: translateY(-8px);
         }
         to {
             opacity: 1;
             transform: translateY(0);
         }
+    }
+
+    /* Scrollbar styling */
+    .searchable-select-options::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .searchable-select-options::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+    }
+
+    .searchable-select-options::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+
+    .searchable-select-options::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    /* Alpine.js cloak */
+    [x-cloak] {
+        display: none !important;
     }
 </style>
 @endsection
@@ -426,17 +534,46 @@
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <label for="classe" class="form-label">Classe</label>
-                                        <select class="form-select year-selector" id="classe" name="classe">
-                                            <option value="">Toutes les classes</option>
-                                            @foreach($classes as $classeOption)
-                                                <option value="{{ $classeOption->id }}" {{ isset($classe) && $classe == $classeOption->id ? 'selected' : '' }}>
-                                                    {{ $classeOption->name }}
-                                                    @if($classeOption->filiere || $classeOption->niveauEtude)
-                                                        ({{ $classeOption->filiere->name ?? 'Filière N/A' }} - {{ $classeOption->niveauEtude->name ?? 'Niveau N/A' }})
-                                                    @endif
-                                                </option>
-                                            @endforeach
-                                        </select>
+                                        <div x-data="searchableSelect({
+                                            options: [
+                                                { value: '', label: 'Toutes les classes' },
+                                                @foreach($classes as $classeOption)
+                                                {
+                                                    value: '{{ $classeOption->id }}',
+                                                    label: '{{ $classeOption->name }} @if($classeOption->filiere || $classeOption->niveauEtude)({{ $classeOption->filiere->name ?? "Filière N/A" }} - {{ $classeOption->niveauEtude->name ?? "Niveau N/A" }})@endif'
+                                                },
+                                                @endforeach
+                                            ],
+                                            selected: '{{ $classe ?? '' }}',
+                                            name: 'classe',
+                                            placeholder: 'Rechercher une classe...'
+                                        })" class="searchable-select" :class="{ 'active': open }" @click.away="open = false">
+                                            <input type="hidden" name="classe" :value="selectedValue" id="classe">
+                                            <button type="button" class="searchable-select-trigger" @click="open = !open">
+                                                <span class="searchable-select-trigger-text" :class="{ 'placeholder': !selectedLabel }">
+                                                    <span x-text="selectedLabel || placeholder"></span>
+                                                </span>
+                                                <i class="fas fa-chevron-down searchable-select-icon"></i>
+                                            </button>
+                                            <div x-show="open" class="searchable-select-dropdown" x-cloak>
+                                                <div class="searchable-select-search">
+                                                    <input type="text" x-model="search" @input="filterOptions" placeholder="Tapez pour rechercher..." @click.stop x-ref="searchInput">
+                                                </div>
+                                                <div class="searchable-select-options">
+                                                    <template x-if="filteredOptions.length === 0">
+                                                        <div class="searchable-select-no-results">
+                                                            <i class="fas fa-search mb-2"></i>
+                                                            <div>Aucune classe trouvée</div>
+                                                        </div>
+                                                    </template>
+                                                    <template x-for="option in filteredOptions" :key="option.value">
+                                                        <div class="searchable-select-option" :class="{ 'selected': option.value === selectedValue }" @click="selectOption(option)">
+                                                            <span x-text="option.label"></span>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="col-md-4 mb-3">
                                         <label for="annee" class="form-label">Année universitaire</label>
@@ -561,9 +698,65 @@
 @endsection
 
 @push('scripts')
-<!-- Select2 JS -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
+    // Alpine.js Searchable Select Component
+    function searchableSelect(config) {
+        return {
+            options: config.options || [],
+            filteredOptions: [],
+            search: '',
+            open: false,
+            selectedValue: config.selected || '',
+            selectedLabel: '',
+            placeholder: config.placeholder || 'Sélectionner...',
+
+            init() {
+                this.filteredOptions = this.options;
+                this.updateSelectedLabel();
+
+                // Watch for open changes to focus search input
+                this.$watch('open', value => {
+                    if (value) {
+                        this.$nextTick(() => {
+                            this.$refs.searchInput?.focus();
+                        });
+                    } else {
+                        this.search = '';
+                        this.filteredOptions = this.options;
+                    }
+                });
+            },
+
+            filterOptions() {
+                const searchLower = this.search.toLowerCase();
+                this.filteredOptions = this.options.filter(option =>
+                    option.label.toLowerCase().includes(searchLower)
+                );
+            },
+
+            selectOption(option) {
+                this.selectedValue = option.value;
+                this.selectedLabel = option.label;
+                this.open = false;
+                this.search = '';
+                this.filteredOptions = this.options;
+
+                // Trigger form submission automatically
+                this.$nextTick(() => {
+                    const form = this.$el.closest('form');
+                    if (form) {
+                        form.submit();
+                    }
+                });
+            },
+
+            updateSelectedLabel() {
+                const selected = this.options.find(opt => opt.value === this.selectedValue);
+                this.selectedLabel = selected ? selected.label : '';
+            }
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const form = document.getElementById('search-form');
         const resultsContainer = document.getElementById('etudiants-results');
@@ -573,43 +766,6 @@
         const inscriptionsContainer = document.getElementById('inscriptions-accordion-container');
         const studentFrame = document.getElementById('student-edit-frame');
         let editModal = null;
-
-        // Configuration Select2 avec recherche optimisée pour 50+ éléments
-        if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
-            // Select Classe avec recherche toujours visible (50+ classes)
-            $('#classe').select2({
-                theme: 'bootstrap-5',
-                placeholder: 'Rechercher une classe...',
-                allowClear: true,
-                width: '100%',
-                minimumResultsForSearch: 0,  // Toujours afficher la recherche
-                language: {
-                    noResults: function() {
-                        return "Aucune classe trouvée";
-                    },
-                    searching: function() {
-                        return "Recherche en cours...";
-                    },
-                    inputTooShort: function() {
-                        return "Veuillez saisir au moins 1 caractère";
-                    }
-                }
-            });
-
-            // Autres selects (filière, niveau, année, etc.)
-            $('#filiere, #niveau, #annee, #status, #affectation_status, #inscrit_annee_courante').select2({
-                theme: 'bootstrap-5',
-                placeholder: 'Sélectionner une option',
-                allowClear: true,
-                width: '100%',
-                minimumResultsForSearch: 10,  // Recherche si > 10 options
-                language: {
-                    noResults: function() {
-                        return "Aucun résultat trouvé";
-                    }
-                }
-            });
-        }
 
         function setLoading(isLoading) {
             if (submitButton) {
