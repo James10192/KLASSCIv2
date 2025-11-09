@@ -1045,6 +1045,11 @@
                 ${inscription.niveau ? `<div class=\"col-md-4\"><i class=\"fas fa-layer-group me-2 text-primary\"></i>${inscription.niveau}</div>` : ''}
                 ${inscription.affectation_status ? `<div class=\"col-md-4\"><i class=\"fas fa-map-marker-alt me-2 text-primary\"></i>${inscription.affectation_status}</div>` : ''}
             </div>
+            <div class="mb-3">
+                <a href="/esbtp/inscriptions/${inscription.id}" target="_blank" class="btn btn-info btn-sm">
+                    <i class="fas fa-eye me-1"></i>Voir l'inscription
+                </a>
+            </div>
             ${validationButton}
             <div class="modal-iframe-wrapper">
                 <iframe class="border-0 inscription-frame" data-src="${inscription.edit_url}" title="Inscription #${inscription.id}" loading="lazy"></iframe>
@@ -1098,7 +1103,28 @@
                 });
             }
 
-            renderInscriptionsAccordion(payload);
+            // Charger TOUTES les inscriptions via AJAX (pas seulement l'année courante)
+            fetch(`/etudiants/${payload.id}/all-inscriptions`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.inscriptions) {
+                    // Remplacer les inscriptions dans le payload avec toutes les inscriptions
+                    payload.inscriptions = data.inscriptions;
+                }
+                renderInscriptionsAccordion(payload);
+            })
+            .catch(error => {
+                console.error('Erreur chargement inscriptions:', error);
+                // Afficher quand même avec les inscriptions par défaut (année courante)
+                renderInscriptionsAccordion(payload);
+            });
+
             const studentTab = document.getElementById('tab-etudiant-link');
             if (studentTab) {
                 const tabInstance = bootstrap.Tab.getOrCreateInstance(studentTab);

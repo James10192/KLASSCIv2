@@ -1286,6 +1286,11 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])-
     Route::put('specialties/{id}/restore', [ESBTPSpecialtyController::class, 'restore'])->name('specialties.restore');
     Route::resource('continuing-education', ESBTPContinuingEducationController::class);
     Route::put('continuing-education/{id}/restore', [ESBTPContinuingEducationController::class, 'restore'])->name('continuing-education.restore');
+
+    // Route AJAX pour charger toutes les inscriptions d'un étudiant (modal édition rapide)
+    Route::get('etudiants/{etudiant}/all-inscriptions', [ESBTPStudentController::class, 'getAllInscriptions'])
+        ->name('etudiants.all-inscriptions');
+
     Route::resource('etudiants', ESBTPStudentController::class)->parameters(['etudiants' => 'etudiant']);
     Route::put('students/{id}/restore', [ESBTPStudentController::class, 'restore'])->name('students.restore');
 });

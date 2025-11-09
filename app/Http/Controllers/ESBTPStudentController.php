@@ -453,4 +453,46 @@ class ESBTPStudentController extends Controller
         // Retourner le PDF pour téléchargement
         return $pdf->download('certificat_scolarite_' . Str::slug($etudiant->nom_complet) . '.pdf');
     }
+
+    /**
+     * Récupérer toutes les inscriptions d'un étudiant (pour le modal d'édition rapide)
+     */
+    public function getAllInscriptions(Request $request, ESBTPEtudiant $etudiant)
+    {
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $currentYearId = $anneeCourante->id ?? null;
+
+        $inscriptions = $etudiant->inscriptions()
+            ->with(['filiere', 'niveau', 'classe', 'anneeUniversitaire'])
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function ($inscription) use ($currentYearId) {
+                $anneeLabel = $inscription->anneeUniversitaire->name
+                    ?? $inscription->anneeUniversitaire->libelle
+                    ?? 'Année non renseignée';
+
+                return [
+                    'id' => $inscription->id,
+                    'annee' => $anneeLabel,
+                    'classe' => $inscription->classe->name ?? 'Non assignée',
+                    'filiere' => $inscription->filiere->name ?? null,
+                    'niveau' => $inscription->niveau->name ?? null,
+                    'status' => $inscription->status,
+                    'affectation_status' => $inscription->affectation_status,
+                    'type' => $inscription->type_inscription,
+                    'is_current_year' => $currentYearId && $inscription->annee_universitaire_id == $currentYearId,
+                    'date_label' => optional($inscription->date_inscription)->format('d/m/Y'),
+                    'date_value' => optional($inscription->date_inscription)->format('Y-m-d'),
+                    'workflow_step' => $inscription->workflow_step,
+                    'paiement_validation_id' => $inscription->paiement_validation_id,
+                    'edit_url' => route('esbtp.inscriptions.edit', ['inscription' => $inscription->id, 'embedded' => 1]),
+                    'validate_url' => route('esbtp.inscriptions.valider-definitivement', ['inscription' => $inscription->id]),
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'inscriptions' => $inscriptions
+        ]);
+    }
 }
