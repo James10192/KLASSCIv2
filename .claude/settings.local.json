@@ -15,7 +15,8 @@
       "Bash(git push:*)",
       "Bash(mysql:*)",
       "Bash(php:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": [],

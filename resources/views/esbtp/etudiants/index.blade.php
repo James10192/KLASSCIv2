@@ -551,7 +551,7 @@
                                             <input type="hidden" name="classe" :value="selectedValue" id="classe">
                                             <button type="button" class="searchable-select-trigger" @click="open = !open">
                                                 <span class="searchable-select-trigger-text" :class="{ 'placeholder': !selectedLabel }">
-                                                    <span x-text="selectedLabel || placeholder"></span>
+                                                    <span x-text="selectedLabel || placeholder">Rechercher une classe...</span>
                                                 </span>
                                                 <i class="fas fa-chevron-down searchable-select-icon"></i>
                                             </button>
@@ -699,8 +699,9 @@
 
 @push('scripts')
 <script>
-    // Alpine.js Searchable Select Component
-    function searchableSelect(config) {
+    // Alpine.js Searchable Select Component - Défini globalement
+    window.searchableSelect = function(config) {
+        console.log('🔧 Initialisation searchableSelect avec config:', config);
         return {
             options: config.options || [],
             filteredOptions: [],
@@ -711,11 +712,15 @@
             placeholder: config.placeholder || 'Sélectionner...',
 
             init() {
+                console.log('✅ searchableSelect init() appelé');
+                console.log('📊 Nombre d\'options:', this.options.length);
                 this.filteredOptions = this.options;
                 this.updateSelectedLabel();
+                console.log('🏷️ Label sélectionné:', this.selectedLabel);
 
                 // Watch for open changes to focus search input
                 this.$watch('open', value => {
+                    console.log('👁️ Dropdown open:', value);
                     if (value) {
                         this.$nextTick(() => {
                             this.$refs.searchInput?.focus();
@@ -732,9 +737,11 @@
                 this.filteredOptions = this.options.filter(option =>
                     option.label.toLowerCase().includes(searchLower)
                 );
+                console.log('🔍 Filtrage:', this.search, '→', this.filteredOptions.length, 'résultats');
             },
 
             selectOption(option) {
+                console.log('✅ Option sélectionnée:', option);
                 this.selectedValue = option.value;
                 this.selectedLabel = option.label;
                 this.open = false;
@@ -745,6 +752,7 @@
                 this.$nextTick(() => {
                     const form = this.$el.closest('form');
                     if (form) {
+                        console.log('📤 Soumission formulaire...');
                         form.submit();
                     }
                 });
@@ -753,9 +761,12 @@
             updateSelectedLabel() {
                 const selected = this.options.find(opt => opt.value === this.selectedValue);
                 this.selectedLabel = selected ? selected.label : '';
+                console.log('🔄 updateSelectedLabel - value:', this.selectedValue, 'label:', this.selectedLabel);
             }
         }
     }
+
+    console.log('✅ Fonction searchableSelect définie globalement');
 
     document.addEventListener('DOMContentLoaded', function () {
         const form = document.getElementById('search-form');
