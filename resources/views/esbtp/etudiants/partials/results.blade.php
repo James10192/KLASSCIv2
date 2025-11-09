@@ -2,7 +2,9 @@
     $currentYear = $anneeCourante ?? (\App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first());
     $currentYearId = $currentYear->id ?? null;
 @endphp
-<div class="table-responsive">
+
+<!-- Vue Desktop : Tableau (visible > 992px) -->
+<div class="table-responsive desktop-view">
     <table class="table table-hover align-middle mb-0" id="etudiants-table">
         <thead class="bg-primary text-white">
             <tr>
@@ -224,6 +226,204 @@
             @endforelse
         </tbody>
     </table>
+</div>
+
+<!-- Vue Mobile : Cards Grid (visible ≤ 992px) -->
+<div class="mobile-view">
+    <div class="students-grid">
+        @forelse ($etudiants as $etudiant)
+            @php
+                $pendingInscription = $etudiant->pending_inscriptions->first();
+                $latestInscription = $etudiant->inscriptions->sortByDesc(function ($inscription) {
+                    return $inscription->date_inscription ?? $inscription->created_at;
+                })->first();
+                $latestDate = optional($latestInscription?->date_inscription)->format('d/m/Y') ?? '—';
+
+                $inscriptionsPayload = $etudiant->inscriptions
+                    ->sortByDesc(function ($inscription) {
+                        return $inscription->date_inscription ?? $inscription->created_at;
+                    })
+                    ->map(function ($inscription) use ($currentYearId) {
+                        $anneeLabel = $inscription->anneeUniversitaire->name
+                            ?? $inscription->anneeUniversitaire->libelle
+                            ?? 'Année non renseignée';
+
+                        return [
+                            'id' => $inscription->id,
+                            'annee' => $anneeLabel,
+                            'classe' => $inscription->classe->name ?? 'Non assignée',
+                            'filiere' => $inscription->filiere->name ?? null,
+                            'niveau' => $inscription->niveau->name ?? null,
+                            'status' => $inscription->status,
+                            'affectation_status' => $inscription->affectation_status,
+                            'type' => $inscription->type_inscription,
+                            'is_current_year' => $currentYearId && $inscription->annee_universitaire_id == $currentYearId,
+                            'date_label' => optional($inscription->date_inscription)->format('d/m/Y'),
+                            'date_value' => optional($inscription->date_inscription)->format('Y-m-d'),
+                            'workflow_step' => $inscription->workflow_step,
+                            'paiement_validation_id' => $inscription->paiement_validation_id,
+                            'edit_url' => route('esbtp.inscriptions.edit', ['inscription' => $inscription->id, 'embedded' => 1]),
+                            'validate_url' => route('esbtp.inscriptions.valider-definitivement', ['inscription' => $inscription->id]),
+                        ];
+                    })
+                    ->values();
+
+                $studentDataset = [
+                    'id' => $etudiant->id,
+                    'name' => trim($etudiant->nom . ' ' . $etudiant->prenoms),
+                    'matricule' => $etudiant->matricule,
+                    'edit_url' => route('esbtp.etudiants.edit', ['etudiant' => $etudiant->id, 'embedded' => 1]),
+                    'inscriptions' => $inscriptionsPayload,
+                ];
+
+                $inscriptionCouranteClasse = $currentYearId ? $etudiant->inscriptions->firstWhere('annee_universitaire_id', $currentYearId) : null;
+                $inscriptionCourante = $currentYearId ? $etudiant->inscriptions
+                    ->where('annee_universitaire_id', $currentYearId)
+                    ->where('workflow_step', 'etudiant_cree')
+                    ->first() : null;
+            @endphp
+
+            <div class="student-card {{ $pendingInscription ? 'pending-inscription' : '' }}">
+                <!-- Header de la card avec photo et nom -->
+                <div class="student-card-header">
+                    <div class="student-photo">
+                        @if($etudiant->photo_url)
+                            <img src="{{ $etudiant->photo_url }}" alt="Photo" class="rounded-circle">
+                        @else
+                            <div class="photo-placeholder rounded-circle">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        @endif
+                    </div>
+                    <div class="student-info-header">
+                        <h3 class="student-name">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</h3>
+                        <p class="student-matricule">{{ $etudiant->matricule }}</p>
+                        @if($pendingInscription)
+                            <span class="badge bg-warning text-dark">Inscription en attente</span>
+                        @endif
+                    </div>
+                    <div class="student-status">
+                        @if($etudiant->statut == 'actif')
+                            <span class="badge bg-success">Actif</span>
+                        @else
+                            <span class="badge bg-danger">Inactif</span>
+                        @endif
+                    </div>
+                </div>
+
+                <!-- Corps de la card avec infos -->
+                <div class="student-card-body">
+                    <!-- Contact -->
+                    <div class="info-row">
+                        <i class="fas fa-phone text-primary"></i>
+                        <div class="info-content">
+                            <span class="info-label">Contact</span>
+                            <span class="info-value">{{ $etudiant->telephone }}</span>
+                        </div>
+                    </div>
+
+                    @if($etudiant->email)
+                    <div class="info-row">
+                        <i class="fas fa-envelope text-primary"></i>
+                        <div class="info-content">
+                            <span class="info-label">Email</span>
+                            <span class="info-value">{{ $etudiant->email }}</span>
+                        </div>
+                    </div>
+                    @endif
+
+                    <!-- Classe actuelle -->
+                    <div class="info-row">
+                        <i class="fas fa-graduation-cap text-primary"></i>
+                        <div class="info-content">
+                            <span class="info-label">Classe actuelle</span>
+                            @if($inscriptionCouranteClasse)
+                                <span class="info-value">
+                                    {{ $inscriptionCouranteClasse->classe ? $inscriptionCouranteClasse->classe->name : 'Non assigné' }}
+                                    @if($inscriptionCouranteClasse->workflow_step == 'etudiant_cree')
+                                        <i class="fas fa-check-circle text-success ms-1"></i>
+                                    @else
+                                        <i class="fas fa-hourglass-half text-warning ms-1"></i>
+                                    @endif
+                                </span>
+                                @if($inscriptionCouranteClasse->filiere || $inscriptionCouranteClasse->niveau)
+                                <small class="text-muted d-block">
+                                    {{ $inscriptionCouranteClasse->filiere ? $inscriptionCouranteClasse->filiere->name : '' }}
+                                    {{ $inscriptionCouranteClasse->niveau ? ' - '.$inscriptionCouranteClasse->niveau->name : '' }}
+                                </small>
+                                @endif
+                            @elseif($etudiant->inscriptions->count() > 0)
+                                <?php $derniere = $etudiant->inscriptions->sortByDesc('created_at')->first(); ?>
+                                <span class="info-value">
+                                    {{ $derniere->classe ? $derniere->classe->name : 'Non assigné' }}
+                                </span>
+                                <small class="text-muted d-block">
+                                    {{ $derniere->filiere ? $derniere->filiere->name : '' }}
+                                    {{ $derniere->niveau ? ' - '.$derniere->niveau->name : '' }}
+                                    ({{ $derniere->anneeUniversitaire ? $derniere->anneeUniversitaire->name : '' }})
+                                </small>
+                            @else
+                                <span class="info-value text-muted">Non inscrit</span>
+                            @endif
+                        </div>
+                    </div>
+
+                    <!-- Statut d'affectation -->
+                    @if($inscriptionCourante)
+                        <div class="info-row">
+                            <i class="fas fa-map-marker-alt text-primary"></i>
+                            <div class="info-content">
+                                <span class="info-label">Affectation ({{ $currentYear->name ?? 'N/A' }})</span>
+                                @if($inscriptionCourante->affectation_status == 'affecté')
+                                    <span class="badge bg-success">Affecté</span>
+                                @elseif($inscriptionCourante->affectation_status == 'réaffecté')
+                                    <span class="badge bg-info">Réaffecté</span>
+                                @elseif($inscriptionCourante->affectation_status == 'non_affecté')
+                                    <span class="badge bg-danger">Non affecté</span>
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+
+                    <!-- Date inscription -->
+                    <div class="info-row">
+                        <i class="fas fa-calendar text-primary"></i>
+                        <div class="info-content">
+                            <span class="info-label">Date inscription</span>
+                            <span class="info-value">{{ $latestDate }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer avec actions -->
+                <div class="student-card-footer">
+                    <a href="{{ route('esbtp.etudiants.show', $etudiant) }}" class="btn btn-sm btn-info">
+                        <i class="fas fa-eye"></i> Voir
+                    </a>
+                    <button type="button"
+                        class="btn btn-sm btn-primary btn-open-edit-modal"
+                        data-student='@json($studentDataset, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT)'>
+                        <i class="fas fa-edit"></i> Modifier
+                    </button>
+                    @if($pendingInscription)
+                        @can('inscriptions.validate')
+                        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#validationModal{{ $pendingInscription->id }}">
+                            <i class="fas fa-check"></i> Valider
+                        </button>
+                        @includeIf('esbtp.etudiants._validation_modal', ['pendingInscription' => $pendingInscription, 'etudiant' => $etudiant])
+                        @endcan
+                    @endif
+                </div>
+            </div>
+        @empty
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-user-slash fa-3x text-muted mb-3"></i>
+                <p class="text-muted">Aucun étudiant trouvé</p>
+            </div>
+        @endforelse
+    </div>
 </div>
 
 <div class="d-flex justify-content-center mt-4">

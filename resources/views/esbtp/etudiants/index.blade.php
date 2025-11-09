@@ -10,49 +10,328 @@
         box-sizing: border-box;
     }
 
+    /* Empêcher TOUT scroll horizontal sur mobile */
+    html {
+        overflow-x: hidden !important;
+        width: 100%;
+        max-width: 100vw;
+        position: relative;
+    }
+
+    body {
+        overflow-x: hidden !important;
+        width: 100%;
+        max-width: 100vw;
+        position: relative;
+        margin: 0;
+        padding: 0;
+    }
+
     .dashboard-acasi {
         max-width: 100%;
-        overflow-x: hidden;
+        overflow-x: hidden !important;
+        width: 100%;
+        margin: 0 auto;
+        padding: 0;
+        box-sizing: border-box;
     }
+
+    /* Forcer tout wrapper/container à être centré sur mobile */
+    @media (max-width: 992px) {
+        .dashboard-acasi,
+        .dashboard-acasi > *,
+        .main-content > * {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+    }
+
+    /* ========================================
+       SYSTÈME 8PX GRID - SPACING STANDARD
+       8, 16, 24, 32, 40, 48, 56, 64px
+       ======================================== */
 
     .main-content {
         max-width: 100%;
         overflow-x: hidden;
-        padding-left: 15px;
-        padding-right: 15px;
+        width: 100%;
+        margin: 0 auto;
+        padding-left: 16px;  /* 8px grid */
+        padding-right: 16px;
+        box-sizing: border-box;
+    }
+
+    /* Border-radius sur main-content quand cards visibles (mobile) */
+    @media (max-width: 992px) {
+        .main-content {
+            border-radius: 16px;  /* 8px grid × 2 */
+            background: transparent;
+        }
     }
 
     .card-moderne {
         max-width: 100%;
         overflow-x: hidden;
         word-wrap: break-word;
+        margin-bottom: 32px;  /* 8px grid × 4 - Séparation claire entre sections */
+        margin-left: 0;
+        margin-right: 0;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .card-moderne .p-lg {
+        overflow-x: hidden;
+        padding: 24px;  /* 8px grid × 3 - Internal padding cohérent */
+        box-sizing: border-box;
+    }
+
+    /* Permettre au searchable-select dropdown de dépasser la card */
+    .card-moderne:has(.searchable-select.active) {
+        overflow: visible;
+    }
+
+    .card-moderne:has(.searchable-select.active) .p-lg {
+        overflow: visible;
+    }
+
+    @media (max-width: 992px) {
+        .card-moderne {
+            margin-bottom: 24px;  /* 8px grid × 3 */
+        }
+
+        .card-moderne .p-lg {
+            padding: 16px;  /* 8px grid × 2 */
+        }
+
+        .main-content {
+            padding-left: 16px;  /* 8px grid × 2 */
+            padding-right: 16px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .card-moderne {
+            margin-bottom: 16px;  /* 8px grid × 2 */
+        }
+
+        .card-moderne .p-lg {
+            padding: 12px;  /* Un peu moins que 16px pour très petits écrans */
+        }
+
+        .main-content {
+            padding-left: 8px;  /* 8px grid × 1 */
+            padding-right: 8px;
+        }
     }
 
     .dashboard-header {
         max-width: 100%;
         overflow-x: hidden;
+        width: 100%;
         display: flex;
         flex-wrap: wrap;
-        gap: 1rem;
+        gap: 16px;  /* 8px grid × 2 */
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 1.5rem;
+        margin-bottom: 32px;  /* 8px grid × 4 - Séparation claire du contenu */
+        padding: 0;
+    }
+
+    @media (max-width: 992px) {
+        .dashboard-header {
+            margin-bottom: 24px;  /* 8px grid × 3 */
+            gap: 16px;  /* 8px grid × 2 */
+        }
+    }
+
+    @media (max-width: 576px) {
+        .dashboard-header {
+            margin-bottom: 16px;  /* 8px grid × 2 */
+            gap: 8px;  /* 8px grid × 1 */
+        }
+    }
+
+    /* ========================================
+       SÉPARATION ICÔNE/TITRE - Visual Hierarchy
+       Principe: Icône doit avoir un espace clair du texte
+       ======================================== */
+    .section-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;  /* 8px + 4px pour équilibre visuel */
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 24px;  /* 8px grid × 3 */
+    }
+
+    .section-title i {
+        flex-shrink: 0;  /* Empêcher l'icône de se compresser */
+        font-size: 1.1em;  /* Légèrement plus petite que le texte */
+        color: var(--primary, #0453cb);
+    }
+
+    /* ========================================
+       INDICATEUR FILTRES ACTIFS
+       Affiche les filtres actuellement appliqués avec option de suppression
+       ======================================== */
+    .active-filters-container {
+        margin-bottom: 24px;  /* 8px grid × 3 */
+        padding: 16px;  /* 8px grid × 2 */
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 1px solid #bae6fd;
+        border-radius: 12px;  /* 8px + 4px */
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;  /* 8px grid × 1 */
+        align-items: center;
+    }
+
+    .active-filters-label {
+        font-size: 14px;
+        font-weight: 600;
+        color: #075985;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .active-filters-label i {
+        font-size: 16px;
+    }
+
+    .filter-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;  /* 8px grid × 1 */
+        padding: 8px 12px;  /* 8px grid × 1, 8px + 4px */
+        background: #ffffff;
+        border: 1px solid #0ea5e9;
+        border-radius: 8px;  /* 8px grid × 1 */
+        font-size: 14px;
+        color: #0c4a6e;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .filter-tag:hover {
+        background: #f0f9ff;
+        border-color: #0284c7;
+        transform: translateY(-1px);
+    }
+
+    .filter-tag-label {
+        font-weight: 700;
+        color: #075985;
+    }
+
+    .filter-tag-value {
+        color: #0c4a6e;
+    }
+
+    .filter-tag-remove {
+        margin-left: 4px;
+        padding: 2px 6px;
+        background: #fee2e2;
+        border: none;
+        border-radius: 4px;
+        color: #dc2626;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .filter-tag-remove:hover {
+        background: #fecaca;
+        color: #b91c1c;
+    }
+
+    .clear-all-filters {
+        padding: 8px 16px;  /* 8px grid × 1, 8px grid × 2 */
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        border: none;
+        border-radius: 8px;  /* 8px grid × 1 */
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .clear-all-filters:hover {
+        background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+        transform: translateY(-1px);
+    }
+
+    /* Responsive */
+    @media (max-width: 576px) {
+        .active-filters-container {
+            padding: 12px;  /* 8px + 4px */
+        }
+
+        .filter-tag {
+            font-size: 13px;
+            padding: 6px 10px;
+        }
+
+        .clear-all-filters {
+            font-size: 13px;
+            padding: 6px 12px;
+        }
     }
 
     .header-left {
         flex: 1 1 auto;
         min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
     }
 
     .header-left h1 {
         word-wrap: break-word;
         overflow-wrap: break-word;
+        font-size: clamp(1.5rem, 5vw, 2rem);
+        margin: 0;
+    }
+
+    .header-left .header-subtitle {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        font-size: clamp(0.875rem, 3vw, 1rem);
     }
 
     .header-actions {
         display: flex;
         flex-wrap: wrap;
         gap: 0.5rem;
+        flex-shrink: 0;
+        max-width: 100%;
+    }
+
+    .header-actions .btn-acasi {
+        font-size: clamp(0.875rem, 2.5vw, 1rem);
+        padding: 0.5rem 1rem;
+        white-space: nowrap;
+    }
+
+    @media (max-width: 768px) {
+        .header-actions {
+            width: 100%;
+            justify-content: stretch;
+        }
+
+        .header-actions .btn-acasi {
+            flex: 1;
+            min-width: 0;
+            white-space: normal;
+            text-align: center;
+        }
     }
 
     .table-responsive {
@@ -64,16 +343,49 @@
     #search-form {
         max-width: 100%;
         overflow-x: hidden;
+        width: 100%;
+    }
+
+    /* Permettre au dropdown de dépasser le formulaire aussi */
+    #search-form:has(.searchable-select.active) {
+        overflow: visible;
     }
 
     #search-form .row {
         margin-left: 0;
         margin-right: 0;
+        width: 100%;
+        max-width: 100%;
     }
 
     #search-form .row > [class*='col-'] {
         padding-left: 0.5rem;
         padding-right: 0.5rem;
+    }
+
+    /* Sur mobile, pas de marges négatives */
+    @media (max-width: 992px) {
+        #search-form .row,
+        .row {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+    }
+
+    /* Permettre aux colonnes de dépasser aussi */
+    #search-form .row:has(.searchable-select.active) {
+        overflow: visible;
+    }
+
+    #search-form .row > [class*='col-']:has(.searchable-select.active) {
+        overflow: visible;
+    }
+
+    /* S'assurer que tous les containers respectent la largeur */
+    .container-fluid,
+    .container {
+        max-width: 100%;
+        overflow-x: hidden;
     }
 
     .form-control,
@@ -86,6 +398,672 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    /* ========================================
+       RESPONSIVE DESIGN 2025 - BEST PRACTICES
+       ======================================== */
+
+    /* Vue Desktop/Mobile Toggle */
+    .desktop-view {
+        display: block;
+    }
+
+    .mobile-view {
+        display: none;
+    }
+
+    @media (max-width: 992px) {
+        .desktop-view {
+            display: none;
+        }
+
+        .mobile-view {
+            display: block;
+        }
+    }
+
+    /* ========================================
+       MOBILE FILTER DRAWER (Standards 2025)
+       ======================================== */
+
+    /* Bouton FAB flottant Filtres - Positionné à GAUCHE pour ne pas chevaucher chatbot */
+    .mobile-filter-fab {
+        position: fixed;
+        bottom: 24px;
+        left: 24px;  /* Gauche au lieu de droite */
+        z-index: 1000;
+        display: none;
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
+        color: white;
+        border: none;
+        box-shadow: 0 8px 24px rgba(4, 83, 203, 0.4);
+        font-size: 24px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .mobile-filter-fab:hover {
+        transform: scale(1.1);
+        box-shadow: 0 12px 32px rgba(4, 83, 203, 0.5);
+    }
+
+    .mobile-filter-fab:active {
+        transform: scale(0.95);
+    }
+
+    @media (max-width: 992px) {
+        .mobile-filter-fab {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    }
+
+    /* Drawer overlay */
+    .filter-drawer-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1040;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .filter-drawer-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Drawer panel */
+    .filter-drawer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        max-width: 100vw;
+        max-height: 90vh;
+        background: #ffffff;
+        border-radius: 24px 24px 0 0;
+        box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.2);
+        z-index: 1050;
+        transform: translateY(100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        overflow-x: hidden;
+    }
+
+    .filter-drawer.active {
+        transform: translateY(0);
+    }
+
+    /* Drawer header */
+    .filter-drawer-header {
+        padding: 24px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+    }
+
+    .filter-drawer-header h3 {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .filter-drawer-close {
+        background: #f1f5f9;
+        border: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #64748b;
+        font-size: 20px;
+        transition: all 0.2s ease;
+    }
+
+    .filter-drawer-close:hover {
+        background: #e2e8f0;
+        color: #1e293b;
+    }
+
+    /* Drawer body (scrollable) */
+    .filter-drawer-body {
+        padding: 24px;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .filter-drawer-body .form-group {
+        margin-bottom: 24px;
+    }
+
+    .filter-drawer-body .form-label {
+        display: block;
+        font-size: 16px;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 8px;
+    }
+
+    .filter-drawer-body .form-control,
+    .filter-drawer-body .form-select,
+    .filter-drawer-body .searchable-select-trigger {
+        width: 100%;
+        padding: 16px;
+        font-size: 18px;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        min-height: 56px;
+        transition: all 0.2s ease;
+    }
+
+    .filter-drawer-body .form-control:focus,
+    .filter-drawer-body .form-select:focus,
+    .filter-drawer-body .searchable-select-trigger:focus {
+        border-color: #0453cb;
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(4, 83, 203, 0.1);
+    }
+
+    /* Drawer footer (sticky) */
+    .filter-drawer-footer {
+        padding: 24px;
+        border-top: 1px solid #e5e7eb;
+        background: #f8fafc;
+        flex-shrink: 0;
+        display: flex;
+        gap: 12px;
+    }
+
+    .filter-drawer-footer .btn {
+        flex: 1;
+        min-height: 56px;
+        font-size: 18px;
+        font-weight: 600;
+        border-radius: 12px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .filter-drawer-footer .btn-primary {
+        background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
+        color: white;
+    }
+
+    .filter-drawer-footer .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(4, 83, 203, 0.3);
+    }
+
+    .filter-drawer-footer .btn-secondary {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .filter-drawer-footer .btn-secondary:hover {
+        background: #e2e8f0;
+        color: #1e293b;
+    }
+
+    /* Cache les filtres desktop sur mobile */
+    @media (max-width: 992px) {
+        .desktop-filters {
+            display: none;
+        }
+    }
+
+    /* ========================================
+       STUDENT CARDS - DESIGN MODERNE 2025
+       ======================================== */
+
+    /* Grid responsive : 1 col mobile, 2 cols desktop, 3 cols large */
+    .students-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 24px;
+        padding: 0;
+        margin-top: 24px;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    /* 2 colonnes à partir de 1200px */
+    @media (min-width: 1200px) {
+        .students-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 28px;
+        }
+    }
+
+    /* 3 colonnes à partir de 1400px */
+    @media (min-width: 1400px) {
+        .students-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 32px;
+        }
+    }
+
+    /* S'assurer que le contenu résultats ne déborde pas */
+    #etudiants-results {
+        max-width: 100%;
+        overflow-x: hidden;
+        width: 100%;
+    }
+
+    /* ========================================
+       STUDENT CARD - DESIGN MODERNE 2025
+       Typography: 18-24px | Padding: 24-32px | Touch targets: 56px
+       ======================================== */
+
+    .student-card {
+        background: #ffffff;
+        border-radius: 16px;  /* 8px grid × 2 */
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);  /* 16px = 8px grid × 2 */
+        transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .student-card:hover {
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);  /* 32px = 8px grid × 4 */
+        transform: translateY(-4px);
+    }
+
+    .student-card.pending-inscription {
+        border-left: 5px solid #f59e0b;
+    }
+
+    /* Card Header */
+    .student-card-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;  /* 8px grid × 2 */
+        padding: 24px;  /* 8px grid × 3 */
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .student-photo img,
+    .photo-placeholder {
+        width: 88px;
+        height: 88px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+        border: 4px solid #fff;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .photo-placeholder {
+        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6366f1;
+        font-size: 32px;
+    }
+
+    .student-info-header {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .student-name {
+        font-size: 22px;
+        font-weight: 700;
+        margin: 0 0 8px 0;
+        color: #1e293b;
+        line-height: 1.3;
+        letter-spacing: -0.02em;
+    }
+
+    .student-matricule {
+        font-size: 16px;
+        color: #64748b;
+        margin: 0 0 8px 0;
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+
+    .student-status {
+        flex-shrink: 0;
+    }
+
+    .student-status .badge {
+        font-size: 14px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+
+    /* Card Body */
+    .student-card-body {
+        padding: 24px;  /* 8px grid × 3 */
+        display: flex;
+        flex-direction: column;
+        gap: 16px;  /* 8px grid × 2 - Séparation entre info rows */
+    }
+
+    .info-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;  /* 8px + 4px pour équilibre visuel */
+    }
+
+    .info-row > i {
+        font-size: 22px;
+        margin-top: 2px;
+        flex-shrink: 0;
+        width: 28px;
+        text-align: center;
+    }
+
+    .info-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .info-label {
+        display: block;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: #64748b;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+
+    .info-value {
+        display: block;
+        font-size: 18px;
+        color: #1e293b;
+        font-weight: 500;
+        line-height: 1.5;
+        word-wrap: break-word;
+    }
+
+    .info-value small {
+        font-size: 15px;
+        color: #64748b;
+    }
+
+    /* Card Footer */
+    .student-card-footer {
+        padding: 24px;  /* 8px grid × 3 */
+        background: #f8fafc;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        gap: 12px;  /* 8px + 4px pour équilibre visuel */
+        flex-wrap: wrap;
+    }
+
+    .student-card-footer .btn {
+        flex: 1;
+        min-width: fit-content;
+        min-height: 56px;  /* 8px grid × 7 - Touch target optimal */
+        font-size: 16px;  /* 8px grid × 2 */
+        font-weight: 600;
+        padding: 0 24px;  /* 8px grid × 3 */
+        border-radius: 12px;  /* 8px + 4px */
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;  /* 8px grid × 1 */
+    }
+
+    .student-card-footer .btn:hover {
+        transform: translateY(-2px);
+    }
+
+    .student-card-footer .btn i {
+        font-size: 16px;
+    }
+
+    /* Badges dans cards */
+    .student-card .badge {
+        font-size: 14px;
+        padding: 8px 16px;
+        font-weight: 600;
+        border-radius: 8px;
+    }
+
+    /* Textes muted plus gros */
+    .student-card small.text-muted {
+        font-size: 15px;
+        color: #64748b;
+    }
+
+    /* Les cards sont déjà optimisées mobile-first (voir grid breakpoints ci-dessus) */
+
+    /* Règles mobile strictes pour éviter tout débordement */
+    @media (max-width: 992px) {
+        /* Réduire gap de la grille sur mobile */
+        .students-grid {
+            gap: 16px;
+            padding: 0;
+            margin-top: 16px;
+        }
+
+        .student-card,
+        .student-card-header,
+        .student-card-body,
+        .student-card-footer {
+            max-width: 100%;
+            width: 100%;
+            overflow-x: hidden;
+            box-sizing: border-box;
+        }
+
+        .student-name,
+        .student-matricule,
+        .info-value,
+        .info-label {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            max-width: 100%;
+        }
+
+        /* Réduire padding des cards sur mobile (8px grid) */
+        .student-card-header {
+            padding: 16px;  /* 8px grid × 2 */
+            gap: 12px;  /* 8px + 4px */
+        }
+
+        .student-card-body {
+            padding: 16px;  /* 8px grid × 2 */
+            gap: 12px;  /* 8px + 4px */
+        }
+
+        .student-card-footer {
+            padding: 16px;  /* 8px grid × 2 */
+            gap: 8px;  /* 8px grid × 1 */
+        }
+
+        /* Boutons footer plus compacts */
+        .student-card-footer .btn {
+            font-size: 14px;
+            min-height: 48px;  /* 8px grid × 6 */
+            padding: 0 16px;  /* 8px grid × 2 */
+        }
+
+        /* Photos */
+        .student-photo img,
+        .photo-placeholder {
+            width: 64px;
+            height: 64px;
+        }
+
+        /* Textes plus petits mais lisibles */
+        .student-name {
+            font-size: 18px;
+        }
+
+        .student-matricule {
+            font-size: 14px;
+        }
+
+        .info-value {
+            font-size: 16px;
+        }
+
+        .info-row > i {
+            font-size: 18px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        /* Gap encore plus réduit sur très petit écran (8px grid) */
+        .students-grid {
+            gap: 12px;  /* 8px + 4px */
+            margin-top: 12px;
+        }
+
+        .student-card-header {
+            padding: 12px;  /* 8px + 4px - Compact mais respirable */
+        }
+
+        .student-card-body {
+            padding: 12px;  /* 8px + 4px */
+            gap: 12px;
+        }
+
+        .student-card-footer {
+            padding: 12px;  /* 8px + 4px */
+        }
+
+        .student-card-footer .btn {
+            font-size: 13px;
+            min-height: 44px;  /* Minimum touch target acceptable */
+            padding: 0 12px;  /* 8px + 4px */
+        }
+
+        /* Photos légèrement plus petites sur très petit écran */
+        .student-photo img,
+        .photo-placeholder {
+            width: 56px;
+            height: 56px;
+        }
+    }
+
+    /* Règles ULTRA strictes pour petits écrans iPhone (390px) */
+    @media (max-width: 400px) {
+        /* Forcer tout le contenu à rester dans la largeur */
+        * {
+            max-width: 100vw !important;
+        }
+
+        /* Paddings ÉGAUX des deux côtés pour centrage parfait */
+        .main-content {
+            padding-left: 6px !important;
+            padding-right: 6px !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        .card-moderne {
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+
+        .card-moderne .p-lg {
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+        }
+
+        .students-grid {
+            gap: 8px !important;
+            padding: 0 !important;
+        }
+
+        .student-card {
+            border-radius: 12px !important;
+        }
+
+        .student-card-header,
+        .student-card-body,
+        .student-card-footer {
+            padding: 8px !important;
+        }
+
+        .student-card-header {
+            gap: 8px !important;
+        }
+
+        .student-card-body {
+            gap: 10px !important;
+        }
+
+        .student-photo img,
+        .photo-placeholder {
+            width: 48px !important;
+            height: 48px !important;
+        }
+
+        .student-name {
+            font-size: 16px !important;
+        }
+
+        .student-matricule {
+            font-size: 13px !important;
+        }
+
+        .info-label {
+            font-size: 11px !important;
+        }
+
+        .info-value {
+            font-size: 14px !important;
+        }
+
+        .info-row > i {
+            font-size: 16px !important;
+        }
+
+        .student-card-footer .btn {
+            font-size: 12px !important;
+            min-height: 40px !important;
+            padding: 0 8px !important;
+        }
+
+        .dashboard-header {
+            padding: 0 !important;
+        }
+
+        .header-left h1 {
+            font-size: 1.25rem !important;
+        }
+
+        .header-subtitle {
+            font-size: 0.75rem !important;
+        }
     }
 
 
@@ -463,28 +1441,30 @@
             font-size: 1rem;
         }
 
-        /* Form labels plus petits */
+        /* Form labels - GARDER TAILLE LISIBLE */
         #search-form label.form-label {
-            font-size: 0.875rem;
-            margin-bottom: 0.375rem;
+            font-size: 0.9375rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
         }
 
-        /* Inputs et selects avec padding réduit */
+        /* Inputs et selects - GARDER TAILLE NORMALE LISIBLE */
         #search-form .form-control,
         #search-form .form-select,
         #search-form .searchable-select-trigger {
-            font-size: 0.875rem;
-            padding: 8px 12px;
-            min-height: 38px;
+            font-size: 1rem;
+            padding: 12px 16px;
+            min-height: 48px;
             width: 100%;
         }
 
-        /* Boutons filtres avec texte plus petit */
+        /* Boutons filtres - GARDER TAILLE NORMALE */
         #search-form .btn-acasi {
-            font-size: 0.875rem;
-            padding: 8px 16px;
+            font-size: 1rem;
+            padding: 12px 20px;
             width: 100%;
             max-width: 100%;
+            min-height: 48px;
         }
 
         /* Card padding réduit */
@@ -620,30 +1600,31 @@
             height: 40vh;
         }
 
-        /* Section title très compact */
+        /* Section title */
         .section-title {
-            font-size: 0.9rem;
+            font-size: 1.125rem;
             margin-bottom: 1rem !important;
         }
 
-        /* Labels très compacts */
+        /* Labels - GARDER TAILLE LISIBLE */
         #search-form label.form-label {
-            font-size: 0.8rem;
+            font-size: 0.9375rem;
+            font-weight: 600;
         }
 
-        /* Inputs très compacts */
+        /* Inputs - GARDER TAILLE NORMALE */
         #search-form .form-control,
         #search-form .form-select,
         #search-form .searchable-select-trigger {
-            font-size: 0.8rem;
-            padding: 6px 10px;
-            min-height: 36px;
+            font-size: 1rem;
+            padding: 12px 16px;
+            min-height: 48px;
         }
 
-        /* Searchable select icon plus petit */
+        /* Searchable select icon */
         .searchable-select-icon {
-            font-size: 0.8rem;
-            right: 10px;
+            font-size: 1rem;
+            right: 16px;
         }
 
         /* Dropdown searchable select */
@@ -652,23 +1633,24 @@
         }
 
         .searchable-select-search input {
-            font-size: 0.85rem;
-            padding: 8px 12px;
+            font-size: 1rem;
+            padding: 12px 16px;
         }
 
         .searchable-select-option {
-            padding: 10px 12px;
-            font-size: 0.85rem;
+            padding: 12px 16px;
+            font-size: 1rem;
         }
 
-        /* Boutons filtres compacts */
+        /* Boutons filtres - GARDER TAILLE NORMALE */
         #search-form .btn-acasi {
-            font-size: 0.8rem;
-            padding: 8px 14px;
+            font-size: 1rem;
+            padding: 12px 20px;
+            min-height: 48px;
         }
 
         #search-form .btn-acasi i {
-            font-size: 0.75rem;
+            font-size: 1rem;
         }
     }
 
@@ -703,33 +1685,34 @@
         }
 
         .section-title {
-            font-size: 0.85rem;
+            font-size: 1.125rem;
         }
 
-        /* Form ultra compact */
+        /* Form - GARDER TAILLE LISIBLE même sur petit écran */
         #search-form .row {
             margin: 0;
         }
 
         #search-form .row > [class*='col-'] {
-            padding-left: 0.25rem;
-            padding-right: 0.25rem;
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
         }
 
         #search-form .form-control,
         #search-form .form-select,
         #search-form .searchable-select-trigger {
-            font-size: 0.75rem;
-            padding: 6px 8px;
-            min-height: 34px;
+            font-size: 1rem;
+            padding: 12px 16px;
+            min-height: 48px;
             width: 100%;
         }
 
         #search-form .btn-acasi {
-            font-size: 0.75rem;
-            padding: 6px 12px;
+            font-size: 1rem;
+            padding: 12px 20px;
             width: 100%;
             max-width: 100%;
+            min-height: 48px;
         }
 
         .modal-modern .modal-title {
@@ -1089,11 +2072,12 @@
                     @endif
 
 
-                <!-- Filtres de recherche -->
-                <div class="section-title mb-md">
-                    <i class="fas fa-filter me-2"></i>Filtres de recherche
-                </div>
-                            <form method="GET" action="{{ route('esbtp.etudiants.index') }}" id="search-form">
+                <!-- Filtres de recherche (Desktop uniquement) -->
+                <div class="desktop-filters">
+                    <div class="section-title mb-md">
+                        <i class="fas fa-filter me-2"></i>Filtres de recherche
+                    </div>
+                    <form method="GET" action="{{ route('esbtp.etudiants.index') }}" id="search-form">
                                 <div class="row">
                                     <div class="col-md-4 mb-3">
                                         <label for="search" class="form-label">Recherche</label>
@@ -1218,7 +2202,183 @@
                                         </a>
                                     </div>
                                 </div>
-                            </form>
+                    </form>
+                </div><!-- /.desktop-filters -->
+            </div>
+        </div>
+
+        <!-- ========================================
+             MOBILE FILTER DRAWER (Standards 2025)
+             ======================================== -->
+
+        <!-- Bouton FAB flottant (visible sur mobile uniquement) -->
+        <button type="button" class="mobile-filter-fab" id="mobile-filter-fab">
+            <i class="fas fa-filter"></i>
+        </button>
+
+        <!-- Drawer overlay -->
+        <div class="filter-drawer-overlay" id="filter-drawer-overlay"></div>
+
+        <!-- Drawer panel -->
+        <div class="filter-drawer" id="filter-drawer">
+            <!-- Header -->
+            <div class="filter-drawer-header">
+                <h3>
+                    <i class="fas fa-filter me-2"></i>
+                    Filtres de recherche
+                </h3>
+                <button type="button" class="filter-drawer-close" id="filter-drawer-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Body scrollable avec tous les filtres -->
+            <div class="filter-drawer-body">
+                <form method="GET" action="{{ route('esbtp.etudiants.index') }}" id="mobile-search-form">
+                    <!-- Recherche -->
+                    <div class="form-group">
+                        <label for="mobile-search" class="form-label">Recherche</label>
+                        <input type="text" class="form-control" id="mobile-search" name="search" value="{{ $search ?? '' }}" placeholder="Matricule, nom, prénom, téléphone...">
+                    </div>
+
+                    <!-- Filière -->
+                    <div class="form-group">
+                        <label for="mobile-filiere" class="form-label">Filière</label>
+                        <select class="form-select" id="mobile-filiere" name="filiere">
+                            <option value="">Toutes les filières</option>
+                            @foreach($filieres as $f)
+                                <option value="{{ $f->id }}" {{ isset($filiere) && $filiere == $f->id ? 'selected' : '' }}>
+                                    {{ $f->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Niveau d'études -->
+                    <div class="form-group">
+                        <label for="mobile-niveau" class="form-label">Niveau d'études</label>
+                        <select class="form-select" id="mobile-niveau" name="niveau">
+                            <option value="">Tous les niveaux</option>
+                            @foreach($niveaux as $n)
+                                <option value="{{ $n->id }}" {{ isset($niveau) && $niveau == $n->id ? 'selected' : '' }}>
+                                    {{ $n->name }} ({{ $n->type }} - Année {{ $n->year }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Classe avec Alpine.js searchable-select (COPIE EXACTE) -->
+                    <div class="form-group">
+                        <label for="mobile-classe" class="form-label">Classe</label>
+                        <div x-data="searchableSelect({
+                            options: [
+                                { value: '', label: 'Toutes les classes' },
+                                @foreach($classes as $classeOption)
+                                {
+                                    value: '{{ $classeOption->id }}',
+                                    label: '{{ $classeOption->name }} @if($classeOption->filiere || $classeOption->niveauEtude)({{ $classeOption->filiere->name ?? "Filière N/A" }} - {{ $classeOption->niveauEtude->name ?? "Niveau N/A" }})@endif'
+                                },
+                                @endforeach
+                            ],
+                            selected: '{{ $classe ?? '' }}',
+                            name: 'classe',
+                            placeholder: 'Rechercher une classe...'
+                        })" class="searchable-select" :class="{ 'active': open }" @click.away="open = false">
+                            <input type="hidden" name="classe" :value="selectedValue" id="mobile-classe">
+                            <button type="button" class="searchable-select-trigger" @click="open = !open">
+                                <span class="searchable-select-trigger-text" :class="{ 'placeholder': !selectedLabel }">
+                                    <span x-text="selectedLabel || placeholder">Rechercher une classe...</span>
+                                </span>
+                                <i class="fas fa-chevron-down searchable-select-icon"></i>
+                            </button>
+                            <div x-show="open" class="searchable-select-dropdown" x-cloak>
+                                <div class="searchable-select-search">
+                                    <input type="text" x-model="search" @input="filterOptions" placeholder="Tapez pour rechercher..." @click.stop x-ref="searchInput">
+                                </div>
+                                <div class="searchable-select-options">
+                                    <template x-if="filteredOptions.length === 0">
+                                        <div class="searchable-select-no-results">
+                                            <i class="fas fa-search mb-2"></i>
+                                            <div>Aucune classe trouvée</div>
+                                        </div>
+                                    </template>
+                                    <template x-for="option in filteredOptions" :key="option.value">
+                                        <div class="searchable-select-option" :class="{ 'selected': option.value === selectedValue }" @click="selectOption(option)">
+                                            <span x-text="option.label"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Année universitaire -->
+                    <div class="form-group">
+                        <label for="mobile-annee" class="form-label">Année universitaire</label>
+                        <select class="form-select" id="mobile-annee" name="annee">
+                            <option value="">Toutes les années</option>
+                            @foreach($annees as $a)
+                                <option value="{{ $a->id }}" {{ isset($annee) && $annee == $a->id ? 'selected' : '' }}>
+                                    {{ $a->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Statut -->
+                    <div class="form-group">
+                        <label for="mobile-status" class="form-label">Statut</label>
+                        <select class="form-select" id="mobile-status" name="status">
+                            <option value="">Tous les statuts</option>
+                            <option value="actif" {{ isset($status) && $status == 'actif' ? 'selected' : '' }}>Actif</option>
+                            <option value="inactif" {{ isset($status) && $status == 'inactif' ? 'selected' : '' }}>Inactif</option>
+                        </select>
+                    </div>
+
+                    <!-- Statut d'affectation -->
+                    <div class="form-group">
+                        <label for="mobile-affectation_status" class="form-label">Statut d'affectation ({{ $anneeCourante?->name ?? 'N/A' }})</label>
+                        <select class="form-select" id="mobile-affectation_status" name="affectation_status">
+                            <option value="">Tous les statuts d'affectation</option>
+                            <option value="affecté" {{ isset($affectationStatus) && $affectationStatus == 'affecté' ? 'selected' : '' }}>Affecté</option>
+                            <option value="réaffecté" {{ isset($affectationStatus) && $affectationStatus == 'réaffecté' ? 'selected' : '' }}>Réaffecté</option>
+                            <option value="non_affecté" {{ isset($affectationStatus) && $affectationStatus == 'non_affecté' ? 'selected' : '' }}>Non affecté</option>
+                        </select>
+                    </div>
+
+                    <!-- Inscription validée -->
+                    <div class="form-group">
+                        <label for="mobile-inscrit_annee_courante" class="form-label">Inscription validée ({{ $anneeCourante?->name ?? 'N/A' }})</label>
+                        <select class="form-select" id="mobile-inscrit_annee_courante" name="inscrit_annee_courante">
+                            <option value="">Tous</option>
+                            <option value="validee" {{ isset($inscritAnneeCourante) && $inscritAnneeCourante == 'validee' ? 'selected' : '' }}>Oui (Validée)</option>
+                            <option value="en_attente" {{ isset($inscritAnneeCourante) && $inscritAnneeCourante == 'en_attente' ? 'selected' : '' }}>En attente</option>
+                            <option value="absente" {{ isset($inscritAnneeCourante) && $inscritAnneeCourante == 'absente' ? 'selected' : '' }}>Absente</option>
+                        </select>
+                    </div>
+
+                    <!-- Transfert -->
+                    <div class="form-group">
+                        <label for="mobile-est_transfert" class="form-label">Transfert</label>
+                        <select class="form-select" id="mobile-est_transfert" name="est_transfert">
+                            <option value="">Tous</option>
+                            <option value="1" {{ isset($estTransfert) && $estTransfert == '1' ? 'selected' : '' }}>Oui (Transferts)</option>
+                            <option value="0" {{ isset($estTransfert) && $estTransfert == '0' ? 'selected' : '' }}>Non (Locaux)</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Footer sticky avec boutons -->
+            <div class="filter-drawer-footer">
+                <button type="button" class="btn btn-secondary" id="filter-drawer-reset">
+                    <i class="fas fa-redo-alt"></i>
+                    Réinitialiser
+                </button>
+                <button type="submit" form="mobile-search-form" class="btn btn-primary">
+                    <i class="fas fa-search"></i>
+                    Filtrer
+                </button>
             </div>
         </div>
 
@@ -1228,6 +2388,12 @@
                 <div class="section-title mb-md">
                     <i class="fas fa-list"></i>Liste des étudiants
                 </div>
+
+                <!-- Indicateur filtres actifs -->
+                <div id="active-filters-container" class="active-filters-container" style="display: none;">
+                    <!-- Sera rempli dynamiquement via JavaScript -->
+                </div>
+
                 <div id="etudiants-results">
                     @include('esbtp.etudiants.partials.results', ['etudiants' => $etudiants])
 </div>
@@ -1288,6 +2454,108 @@
 
 @push('scripts')
 <script>
+    // ========================================
+    // MOBILE FILTER DRAWER - JavaScript
+    // ========================================
+    document.addEventListener('DOMContentLoaded', function() {
+        const fab = document.getElementById('mobile-filter-fab');
+        const drawer = document.getElementById('filter-drawer');
+        const overlay = document.getElementById('filter-drawer-overlay');
+        const closeBtn = document.getElementById('filter-drawer-close');
+        const resetBtn = document.getElementById('filter-drawer-reset');
+
+        if (!fab || !drawer || !overlay) {
+            console.log('⚠️ Drawer elements not found');
+            return;
+        }
+
+        // Fonction pour ouvrir le drawer
+        function openDrawer() {
+            console.log('📂 Opening filter drawer');
+            drawer.classList.add('active');
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden'; // Empêcher le scroll du body
+        }
+
+        // Fonction pour fermer le drawer
+        function closeDrawer() {
+            console.log('📁 Closing filter drawer');
+            drawer.classList.remove('active');
+            overlay.classList.remove('active');
+            document.body.style.overflow = ''; // Restaurer le scroll
+        }
+
+        // Event listeners
+        fab.addEventListener('click', openDrawer);
+        closeBtn.addEventListener('click', closeDrawer);
+        overlay.addEventListener('click', closeDrawer);
+
+        // Bouton réinitialiser dans le drawer (AJAX - pas de refresh)
+        resetBtn.addEventListener('click', function() {
+            console.log('🔄 Réinitialisation des filtres');
+
+            // Utiliser fetchResults pour recharger la page sans filtres (AJAX)
+            if (typeof window.fetchResultsGlobal === 'function') {
+                window.fetchResultsGlobal('{{ route('esbtp.etudiants.index') }}', { pushState: true });
+
+                // Réinitialiser les champs du formulaire
+                mobileForm.reset();
+
+                // Fermer le drawer
+                setTimeout(closeDrawer, 300);
+            } else {
+                // Fallback si fetchResultsGlobal n'est pas disponible
+                window.location.href = '{{ route('esbtp.etudiants.index') }}';
+            }
+        });
+
+        // Fermer avec la touche Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && drawer.classList.contains('active')) {
+                closeDrawer();
+            }
+        });
+
+        // ========================================
+        // AJAX SUBMISSION DU DRAWER (PAS DE REFRESH PAGE)
+        // ========================================
+        const mobileForm = document.getElementById('mobile-search-form');
+        if (mobileForm) {
+            mobileForm.addEventListener('submit', function(e) {
+                e.preventDefault();  // Empêcher la soumission normale (refresh page)
+                console.log('📤 Soumission AJAX du drawer mobile');
+
+                // Construire les paramètres depuis le formulaire mobile
+                const formData = new FormData(mobileForm);
+                const params = new URLSearchParams();
+
+                for (const [key, value] of formData.entries()) {
+                    if (value) {  // Ignorer les valeurs vides
+                        params.append(key, value);
+                    }
+                }
+
+                const url = mobileForm.action + '?' + params.toString();
+                console.log('📍 URL AJAX:', url);
+
+                // Utiliser la fonction fetchResults existante (définie plus bas dans le script)
+                if (typeof window.fetchResultsGlobal === 'function') {
+                    window.fetchResultsGlobal(url, { pushState: true });
+
+                    // Fermer le drawer après la soumission
+                    setTimeout(closeDrawer, 300);  // Petit délai pour UX smooth
+                } else {
+                    console.error('❌ fetchResultsGlobal non disponible');
+                }
+            });
+        }
+
+        console.log('✅ Mobile filter drawer initialized');
+    });
+
+    // ========================================
+    // ALPINE.JS SEARCHABLE SELECT COMPONENT
+    // ========================================
     // Alpine.js Searchable Select Component - Défini globalement
     window.searchableSelect = function(config) {
         console.log('🔧 Initialisation searchableSelect avec config:', config);
@@ -1695,6 +2963,152 @@
             })
             .finally(() => setLoading(false));
         }
+
+        // Exposer fetchResults globalement pour le drawer mobile
+        window.fetchResultsGlobal = fetchResults;
+
+        // ========================================
+        // INDICATEUR FILTRES ACTIFS
+        // ========================================
+        function updateActiveFiltersIndicator() {
+            const container = document.getElementById('active-filters-container');
+            if (!container) return;
+
+            // Récupérer les paramètres de l'URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const activeFilters = [];
+
+            // Mapping des paramètres vers des labels lisibles
+            const filterLabels = {
+                'search': 'Recherche',
+                'filiere': 'Filière',
+                'niveau': 'Niveau',
+                'classe': 'Classe',
+                'annee': 'Année universitaire',
+                'statut': 'Statut',
+                'affectation_status': 'Statut affectation',
+                'inscrit_annee_courante': 'Inscription validée',
+                'est_transfert': 'Transfert'
+            };
+
+            // Récupérer les options de select pour avoir les labels
+            const getSelectLabel = (name, value) => {
+                const select = document.querySelector(`select[name="${name}"], #mobile-${name}`);
+                if (select) {
+                    const option = select.querySelector(`option[value="${value}"]`);
+                    return option ? option.textContent.trim() : value;
+                }
+
+                // Pour le champ recherche, retourner la valeur directement
+                if (name === 'search') {
+                    return value;
+                }
+
+                // Pour la classe (searchable select)
+                if (name === 'classe') {
+                    // Chercher dans les options Alpine.js (si disponibles)
+                    return value;  // Fallback sur la valeur brute
+                }
+
+                return value;
+            };
+
+            // Parcourir les paramètres
+            for (const [key, value] of urlParams) {
+                if (value && filterLabels[key]) {
+                    activeFilters.push({
+                        key: key,
+                        label: filterLabels[key],
+                        value: value,
+                        displayValue: getSelectLabel(key, value)
+                    });
+                }
+            }
+
+            // Afficher ou masquer le conteneur
+            if (activeFilters.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            container.style.display = 'flex';
+
+            // Générer le HTML
+            let html = `
+                <div class="active-filters-label">
+                    <i class="fas fa-filter"></i>
+                    <span>Filtres actifs :</span>
+                </div>
+            `;
+
+            // Ajouter chaque filtre
+            activeFilters.forEach(filter => {
+                html += `
+                    <div class="filter-tag" data-filter-key="${filter.key}">
+                        <span class="filter-tag-label">${filter.label}:</span>
+                        <span class="filter-tag-value">${filter.displayValue}</span>
+                        <button class="filter-tag-remove" data-filter-key="${filter.key}" title="Supprimer ce filtre">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            });
+
+            // Bouton tout effacer
+            html += `
+                <button class="clear-all-filters" id="clear-all-filters-btn">
+                    <i class="fas fa-times-circle"></i>
+                    <span>Tout effacer</span>
+                </button>
+            `;
+
+            container.innerHTML = html;
+
+            // Attacher les event listeners
+            container.querySelectorAll('.filter-tag-remove').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const key = this.getAttribute('data-filter-key');
+                    removeFilter(key);
+                });
+            });
+
+            const clearAllBtn = container.querySelector('#clear-all-filters-btn');
+            if (clearAllBtn) {
+                clearAllBtn.addEventListener('click', function() {
+                    clearAllFilters();
+                });
+            }
+        }
+
+        function removeFilter(key) {
+            console.log('🗑️ Suppression du filtre:', key);
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.delete(key);
+
+            const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
+            fetchResults(newUrl, { pushState: true });
+
+            // Mettre à jour l'indicateur après le fetch
+            setTimeout(updateActiveFiltersIndicator, 500);
+        }
+
+        function clearAllFilters() {
+            console.log('🗑️ Suppression de tous les filtres');
+            fetchResults(window.location.pathname, { pushState: true });
+
+            // Mettre à jour l'indicateur après le fetch
+            setTimeout(updateActiveFiltersIndicator, 500);
+        }
+
+        // Mettre à jour l'indicateur au chargement initial
+        updateActiveFiltersIndicator();
+
+        // Mettre à jour l'indicateur après chaque fetchResults
+        const originalFetchResults = fetchResults;
+        window.fetchResultsGlobal = function(url, options) {
+            originalFetchResults(url, options);
+            setTimeout(updateActiveFiltersIndicator, 500);
+        };
 
         form.addEventListener('submit', function (event) {
             event.preventDefault();
