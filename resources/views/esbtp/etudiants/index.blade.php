@@ -1008,9 +1008,8 @@
                 const workflowBadge = formatWorkflowStepBadge(inscription.workflow_step);
 
                 // Check if validation button should be shown
-                const canValidate = inscription.paiement_validation_id
-                    && ['active', 'en_attente'].includes(inscription.status)
-                    && inscription.workflow_step !== 'etudiant_cree';
+                // Le bouton doit être caché UNIQUEMENT si status='active' ET workflow_step='etudiant_cree'
+                const canValidate = !(inscription.status === 'active' && inscription.workflow_step === 'etudiant_cree');
 
                 const validationButton = canValidate ? `
                     <button type="button"

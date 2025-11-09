@@ -2114,22 +2114,20 @@ prospect → documents_complets → en_validation → valide → etudiant_cree (
 
 **Solution** :
 ```php
-@if($inscription->paiement_validation_id
-    && in_array($inscription->status, ['active', 'en_attente'])
-    && $inscription->workflow_step !== 'etudiant_cree')
+@if(!($inscription->status === 'active' && $inscription->workflow_step === 'etudiant_cree'))
     <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#validationModal">
         <i class="fas fa-check"></i>Valider définitivement
     </button>
 @endif
 ```
 
-**Logique corrigée** :
-- ✅ Affichage si paiement de validation existe
-- ✅ Affichage si inscription `active` OU `en_attente` (le bouton sert à les faire passer à `etudiant_cree`)
-- ✅ **CACHE** le bouton uniquement si étape finale (`etudiant_cree`)
-- ✅ Affiche pour `documents_complets`, `en_validation`, `valide`
+**Logique finale simplifiée** :
+- ✅ Le bouton s'affiche dans TOUS les cas SAUF quand `status='active' ET workflow_step='etudiant_cree'`
+- ✅ S'affiche même pour `en_attente`, `prospect`, `documents_complets`, `en_validation`, `valide`
+- ✅ S'affiche même si `status='active'` mais que `workflow_step` n'est pas encore `etudiant_cree`
+- ✅ **CACHÉ UNIQUEMENT** quand inscription finalisée (`active` + `etudiant_cree`)
 
-**Fichier modifié** : `resources/views/esbtp/inscriptions/show.blade.php` (lignes 250-256)
+**Fichier modifié** : `resources/views/esbtp/inscriptions/show.blade.php` (lignes 250-254)
 
 ---
 
