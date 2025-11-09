@@ -1287,10 +1287,6 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])-
     Route::resource('continuing-education', ESBTPContinuingEducationController::class);
     Route::put('continuing-education/{id}/restore', [ESBTPContinuingEducationController::class, 'restore'])->name('continuing-education.restore');
 
-    // Route AJAX pour charger toutes les inscriptions d'un étudiant (modal édition rapide)
-    Route::get('etudiants/{etudiant}/all-inscriptions', [ESBTPStudentController::class, 'getAllInscriptions'])
-        ->name('etudiants.all-inscriptions');
-
     Route::resource('etudiants', ESBTPStudentController::class)->parameters(['etudiants' => 'etudiant']);
     Route::put('students/{id}/restore', [ESBTPStudentController::class, 'restore'])->name('students.restore');
 });
@@ -1659,6 +1655,10 @@ Route::middleware(['auth'])->group(function () {
     // ... existing code ...
 
     // ESBTP Student Routes
+    // Route AJAX pour charger toutes les inscriptions d'un étudiant (modal édition rapide) - AVANT Route::resource
+    Route::get('esbtp/etudiants/{etudiant}/all-inscriptions', [ESBTPStudentController::class, 'getAllInscriptions'])
+        ->name('esbtp.etudiants.all-inscriptions');
+
     Route::resource('esbtp/etudiants', ESBTPStudentController::class, ['as' => 'esbtp'])->parameters(['etudiants' => 'etudiant']);
     Route::post('esbtp/etudiants/{id}/restore', [ESBTPStudentController::class, 'restore'])->name('esbtp.etudiants.restore');
     Route::post('esbtp/etudiants/{etudiant}/update-photo', [ESBTPEtudiantController::class, 'updatePhoto'])->name('esbtp.etudiants.update-photo');

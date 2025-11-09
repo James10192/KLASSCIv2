@@ -1103,7 +1103,7 @@
             }
 
             // Charger TOUTES les inscriptions via AJAX (pas seulement l'année courante)
-            fetch(`/etudiants/${payload.id}/all-inscriptions`, {
+            fetch(`/esbtp/etudiants/${payload.id}/all-inscriptions`, {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json'
