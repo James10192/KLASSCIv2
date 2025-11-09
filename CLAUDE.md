@@ -2115,7 +2115,7 @@ prospect → documents_complets → en_validation → valide → etudiant_cree (
 **Solution** :
 ```php
 @if($inscription->paiement_validation_id
-    && $inscription->status === 'active'
+    && in_array($inscription->status, ['active', 'en_attente'])
     && $inscription->workflow_step !== 'etudiant_cree')
     <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#validationModal">
         <i class="fas fa-check"></i>Valider définitivement
@@ -2125,7 +2125,7 @@ prospect → documents_complets → en_validation → valide → etudiant_cree (
 
 **Logique corrigée** :
 - ✅ Affichage si paiement de validation existe
-- ✅ Affichage si inscription active
+- ✅ Affichage si inscription `active` OU `en_attente` (le bouton sert à les faire passer à `etudiant_cree`)
 - ✅ **CACHE** le bouton uniquement si étape finale (`etudiant_cree`)
 - ✅ Affiche pour `documents_complets`, `en_validation`, `valide`
 

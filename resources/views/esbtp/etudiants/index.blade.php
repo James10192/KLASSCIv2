@@ -1009,7 +1009,7 @@
 
                 // Check if validation button should be shown
                 const canValidate = inscription.paiement_validation_id
-                    && inscription.status === 'active'
+                    && ['active', 'en_attente'].includes(inscription.status)
                     && inscription.workflow_step !== 'etudiant_cree';
 
                 const validationButton = canValidate ? `
