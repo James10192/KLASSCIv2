@@ -1974,9 +1974,10 @@
             <div class="crm-two-columns">
               <!-- Colonne gauche : Image du chapeau -->
               <div class="crm-left-column scroll-animate-left">
-                <img src="/images/Images landingPage/Sans titre - 2-06.png" 
-                     alt="Chapeau de diplômé" 
-                     class="crm-graduation-img">
+                <img src="/images/Images landingPage/Sans titre - 2-06.png"
+                     alt="Chapeau de diplômé"
+                     class="crm-graduation-img"
+                     loading="lazy">
               </div>
               
               <!-- Colonne droite : Titre + 6 points -->
@@ -1993,9 +1994,10 @@
                 
                 <!-- Image du chapeau pour mobile uniquement (juste après le titre) -->
                 <div class="crm-mobile-image" style="display: none;">
-                  <img src="/images/Images landingPage/Sans titre - 2-06.png" 
-                       alt="Chapeau de diplômé" 
-                       class="crm-graduation-img">
+                  <img src="/images/Images landingPage/Sans titre - 2-06.png"
+                       alt="Chapeau de diplômé"
+                       class="crm-graduation-img"
+                       loading="lazy">
                 </div>
                 
                 <!-- Grille des 6 points -->
@@ -2511,9 +2513,10 @@
 
     <!-- Section Partenaire 0 FCFA -->
     <section class="partnership-section scroll-animate-scale" style="padding: 0; margin: 0; width: 100%; display: block; min-height: 600px; height: auto; overflow: hidden;">
-      <img src="/images/Images landingPage/Sans titre - 2-02.png" 
-           alt="Dashboard KLASSCI - 0 FCFA" 
+      <img src="/images/Images landingPage/Sans titre - 2-02.png"
+           alt="Dashboard KLASSCI - 0 FCFA"
            class="partnership-image"
+           loading="lazy"
            style="width: 100%; height: auto; min-height: 600px; object-fit: cover; object-position: center; display: block; margin: 0; padding: 0; max-width: 100vw;">
     </section>
 
@@ -3050,8 +3053,9 @@
           <!-- Image sécurité à gauche -->
           <div class="col-lg-6 col-md-12">
             <div style="text-align: center; margin-bottom: 2rem;">
-              <img src="/images/Images landingPage/Sans titre - 2-04.png" 
-                   alt="Sécurité et protection des données KLASSCI" 
+              <img src="/images/Images landingPage/Sans titre - 2-04.png"
+                   alt="Sécurité et protection des données KLASSCI"
+                   loading="lazy"
                    style="max-width: 100%; height: auto; border-radius: 20px;">
             </div>
           </div>
@@ -3127,8 +3131,9 @@
           <!-- Image des bulles de chat -->
           <div class="col-lg-6 col-md-12 scroll-animate-right">
             <div style="text-align: center; padding: 2rem 0;">
-              <img src="/images/Images landingPage/bulles.png" 
-                   alt="Bulles de chat support KLASSCI" 
+              <img src="/images/Images landingPage/bulles.png"
+                   alt="Bulles de chat support KLASSCI"
+                   loading="lazy"
                    style="max-width: 100%; height: auto;">
             </div>
           </div>
@@ -3138,9 +3143,10 @@
 
     <!-- Section Image CTA -->
     <section class="cta-image-section scroll-animate-scale" style="padding: 0; margin: 0; width: 100%; display: block; min-height: 600px; height: auto; overflow: hidden;">
-      <img src="/images/Images landingPage/Sans titre - 2-03.png" 
-           alt="CTA Transform KLASSCI" 
+      <img src="/images/Images landingPage/Sans titre - 2-03.png"
+           alt="CTA Transform KLASSCI"
            class="cta-transform-image"
+           loading="lazy"
            style="width: 100%; height: auto; min-height: 600px; object-fit: cover; object-position: center; display: block; margin: 0; padding: 0; max-width: 100vw;">
     </section>
 
