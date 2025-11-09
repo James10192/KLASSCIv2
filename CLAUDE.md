@@ -2217,6 +2217,60 @@ if ($filiere || $niveau || $annee || $classe) {
 
 ---
 
+#### Bug #3 : Route AJAX Chemin Incorrect
+
+**Page** : `/esbtp/etudiants` (index - Modal édition rapide)
+
+**Problème** :
+L'appel AJAX pour charger toutes les inscriptions d'un étudiant échouait silencieusement - le modal s'ouvrait mais n'affichait que l'inscription de l'année courante au lieu de toutes les inscriptions.
+
+**Symptôme utilisateur** :
+> "Quand j'appuie sur le modal edition rapide je ne vois toujours pas toutes les inscriptions, ici on met reinscription donc normalement il doit avoir la premiere inscription mais je ne vois pas"
+
+**Cause racine** :
+La route AJAX était définie au mauvais endroit dans `routes/web.php` :
+- Route définie ligne 1291 : `Route::get('etudiants/{etudiant}/all-inscriptions', ...)`
+- Mais la page est accessible via le préfixe `/esbtp/etudiants/`
+- JavaScript appelait `/etudiants/${payload.id}/all-inscriptions` qui n'existe pas dans le contexte `/esbtp/`
+
+**Solution implémentée** :
+
+1. **Déplacement de la route** (routes/web.php ligne 1663) :
+```php
+// Route AJAX pour charger toutes les inscriptions d'un étudiant (modal édition rapide) - AVANT Route::resource
+Route::get('esbtp/etudiants/{etudiant}/all-inscriptions', [ESBTPStudentController::class, 'getAllInscriptions'])
+    ->name('esbtp.etudiants.all-inscriptions');
+```
+
+**IMPORTANT** : Cette route DOIT être placée AVANT `Route::resource('esbtp/etudiants', ...)` sinon les routes resource interceptent la requête.
+
+2. **Correction URL JavaScript** (etudiants/index.blade.php ligne 1106) :
+```javascript
+// AVANT
+fetch(`/etudiants/${payload.id}/all-inscriptions`, {
+
+// APRÈS
+fetch(`/esbtp/etudiants/${payload.id}/all-inscriptions`, {
+```
+
+3. **Suppression route dupliquée** :
+   - Supprimé l'ancienne route incorrecte ligne 1290-1292
+
+**Résultat** :
+- ✅ L'appel AJAX fonctionne correctement
+- ✅ Le modal affiche maintenant TOUTES les inscriptions de l'étudiant (toutes années confondues)
+- ✅ Indicateur "Année courante" visible pour l'inscription active
+- ✅ Performance optimisée : chargement uniquement à l'ouverture du modal
+
+**Fichiers modifiés** :
+
+| Fichier | Lignes | Modifications |
+|---------|--------|---------------|
+| `routes/web.php` | 1663-1664 | Route déplacée au bon endroit + suppression doublon |
+| `resources/views/esbtp/etudiants/index.blade.php` | 1106 | Correction URL fetch AJAX |
+
+---
+
 ### 🛠️ Scripts d'Initialisation Unifiés (6 novembre)
 
 **Contexte** : Besoin d'un système unifié pour orchestrer tous les scripts d'initialisation et seeders nécessaires au déploiement de KLASSCI.
