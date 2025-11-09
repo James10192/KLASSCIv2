@@ -359,11 +359,12 @@
         border: 1px solid #e2e8f0;
         border-radius: 10px;
         box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12), 0 4px 10px rgba(15, 23, 42, 0.08);
-        z-index: 1000;
+        z-index: 9999;
         max-height: 320px;
         display: flex;
         flex-direction: column;
         animation: slideDown 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        isolation: isolate;
     }
 
     .searchable-select-search {
@@ -458,6 +459,17 @@
     /* Alpine.js cloak */
     [x-cloak] {
         display: none !important;
+    }
+
+    /* Fix z-index conflict avec card-moderne hover */
+    .card-moderne:has(.searchable-select.active) {
+        transform: none !important;
+        position: relative;
+        z-index: 1;
+    }
+
+    .card-moderne:has(.searchable-select.active):hover {
+        transform: none !important;
     }
 </style>
 @endsection
