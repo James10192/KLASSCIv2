@@ -2970,6 +2970,14 @@
         // ========================================
         // INDICATEUR FILTRES ACTIFS
         // ========================================
+
+        // Mapping des classes (ID → Label) pour l'indicateur de filtres
+        const classesMapping = {
+            @foreach($classes as $classeOption)
+            '{{ $classeOption->id }}': '{{ $classeOption->name }}@if($classeOption->filiere || $classeOption->niveauEtude) ({{ $classeOption->filiere->name ?? "Filière N/A" }} - {{ $classeOption->niveauEtude->name ?? "Niveau N/A" }})@endif',
+            @endforeach
+        };
+
         function updateActiveFiltersIndicator() {
             const container = document.getElementById('active-filters-container');
             if (!container) return;
@@ -2993,21 +3001,22 @@
 
             // Récupérer les options de select pour avoir les labels
             const getSelectLabel = (name, value) => {
-                const select = document.querySelector(`select[name="${name}"], #mobile-${name}`);
-                if (select) {
-                    const option = select.querySelector(`option[value="${value}"]`);
-                    return option ? option.textContent.trim() : value;
-                }
-
                 // Pour le champ recherche, retourner la valeur directement
                 if (name === 'search') {
                     return value;
                 }
 
-                // Pour la classe (searchable select)
+                // Pour la classe (searchable select Alpine.js)
                 if (name === 'classe') {
-                    // Chercher dans les options Alpine.js (si disponibles)
-                    return value;  // Fallback sur la valeur brute
+                    // Utiliser le mapping créé depuis les data Laravel
+                    return classesMapping[value] || value;
+                }
+
+                // Pour les autres selects standards
+                const select = document.querySelector(`select[name="${name}"], #mobile-${name}`);
+                if (select) {
+                    const option = select.querySelector(`option[value="${value}"]`);
+                    return option ? option.textContent.trim() : value;
                 }
 
                 return value;
@@ -3086,27 +3095,24 @@
             urlParams.delete(key);
 
             const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
-            fetchResults(newUrl, { pushState: true });
-
-            // Mettre à jour l'indicateur après le fetch
-            setTimeout(updateActiveFiltersIndicator, 500);
+            // Utiliser window.fetchResultsGlobal pour déclencher l'update automatique
+            window.fetchResultsGlobal(newUrl, { pushState: true });
         }
 
         function clearAllFilters() {
             console.log('🗑️ Suppression de tous les filtres');
-            fetchResults(window.location.pathname, { pushState: true });
-
-            // Mettre à jour l'indicateur après le fetch
-            setTimeout(updateActiveFiltersIndicator, 500);
+            // Utiliser window.fetchResultsGlobal pour déclencher l'update automatique
+            window.fetchResultsGlobal(window.location.pathname, { pushState: true });
         }
 
         // Mettre à jour l'indicateur au chargement initial
         updateActiveFiltersIndicator();
 
-        // Mettre à jour l'indicateur après chaque fetchResults
+        // Wrapper pour mettre à jour l'indicateur après chaque fetchResults
         const originalFetchResults = fetchResults;
         window.fetchResultsGlobal = function(url, options) {
             originalFetchResults(url, options);
+            // Mettre à jour l'indicateur après chaque changement AJAX
             setTimeout(updateActiveFiltersIndicator, 500);
         };
 
@@ -3116,7 +3122,8 @@
             const formData = new FormData(form);
             const params = new URLSearchParams(formData);
             const targetUrl = `${form.action}?${params.toString()}`;
-            fetchResults(targetUrl, { pushState: true });
+            // Utiliser window.fetchResultsGlobal pour déclencher l'update automatique
+            window.fetchResultsGlobal(targetUrl, { pushState: true });
             return false;
         });
 
@@ -3128,7 +3135,8 @@
                 const formData = new FormData(form);
                 const params = new URLSearchParams(formData);
                 const targetUrl = `${form.action}?${params.toString()}`;
-                fetchResults(targetUrl, { pushState: true });
+                // Utiliser window.fetchResultsGlobal pour déclencher l'update automatique
+                window.fetchResultsGlobal(targetUrl, { pushState: true });
             });
         });
 
@@ -3138,7 +3146,8 @@
 
         window.addEventListener('popstate', function (event) {
             const targetUrl = event.state?.url || window.location.href;
-            fetchResults(targetUrl, { pushState: false });
+            // Utiliser window.fetchResultsGlobal pour déclencher l'update automatique
+            window.fetchResultsGlobal(targetUrl, { pushState: false });
         });
 
         bindPagination();

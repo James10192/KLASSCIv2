@@ -3516,6 +3516,106 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 ---
 
+#### Fix Indicateur Filtres Actifs - Update Automatique (7 novembre)
+
+**Contexte** : Suite à l'implémentation initiale de l'indicateur des filtres actifs, deux bugs critiques ont été identifiés.
+
+**Bug #1 : Filtres actifs ne se mettent pas à jour automatiquement**
+
+**Problème** :
+- Quand l'utilisateur change un filtre (ex: Filière "Génie Civil" → "BTP"), l'indicateur continuait d'afficher l'ancien filtre
+- Résultat : Accumulation de filtres (ancien + nouveau) au lieu d'un remplacement
+- Cause : Les event listeners appelaient `fetchResults()` directement, contournant le wrapper qui met à jour l'indicateur
+
+**Solution** :
+```javascript
+// ❌ AVANT - Bypasse le wrapper
+filterInputs.forEach((input) => {
+    input.addEventListener('change', () => {
+        fetchResults(targetUrl, { pushState: true });  // Pas d'update indicateur
+    });
+});
+
+// ✅ APRÈS - Utilise le wrapper global
+filterInputs.forEach((input) => {
+    input.addEventListener('change', () => {
+        window.fetchResultsGlobal(targetUrl, { pushState: true });  // Update automatique
+    });
+});
+
+// Le wrapper déclenche l'update après chaque requête AJAX
+window.fetchResultsGlobal = function(url, options) {
+    originalFetchResults(url, options);
+    setTimeout(updateActiveFiltersIndicator, 500);  // ← Update automatique
+};
+```
+
+**Emplacements corrigés** (5 points d'entrée) :
+1. Form submit desktop (ligne 3126)
+2. FilterInputs change (ligne 3139)
+3. Popstate navigation (ligne 3150)
+4. removeFilter() (ligne 3099)
+5. clearAllFilters() (ligne 3105)
+
+**Impact** :
+- ✅ Indicateur se met à jour après CHAQUE changement AJAX
+- ✅ Pas de doublons de filtres
+- ✅ Toujours synchronisé avec l'URL
+
+---
+
+**Bug #2 : Classe affiche l'ID au lieu du nom**
+
+**Problème** :
+- Dans l'indicateur, le filtre classe affichait `Classe: 15` (l'ID) au lieu de `Classe: L3 GC (Génie Civil - Licence 3)`
+- Cause : Le select classe utilise un composant Alpine.js (pas de `<option>` classique), la fonction `getSelectLabel()` ne trouvait pas le label
+
+**Solution** :
+```javascript
+// Mapping ID → Label généré depuis les data Laravel (ligne 2975)
+const classesMapping = {
+    @foreach($classes as $classeOption)
+    '{{ $classeOption->id }}': '{{ $classeOption->name }}@if($classeOption->filiere || $classeOption->niveauEtude) ({{ $classeOption->filiere->name ?? "Filière N/A" }} - {{ $classeOption->niveauEtude->name ?? "Niveau N/A" }})@endif',
+    @endforeach
+};
+
+// Fonction getSelectLabel() améliorée (ligne 3010)
+const getSelectLabel = (name, value) => {
+    if (name === 'classe') {
+        // Utiliser le mapping créé depuis les data Laravel
+        return classesMapping[value] || value;
+    }
+    // ... autres cas
+};
+```
+
+**Exemple de mapping généré** :
+```javascript
+const classesMapping = {
+    '15': 'L3 GC (Génie Civil - Licence 3)',
+    '22': 'L2 BTP (BTP - Licence 2)',
+    '7': 'M1 Archi (Architecture - Master 1)',
+    // ...
+};
+```
+
+**Impact** :
+- ✅ Classe affiche le nom complet : `"L3 GC (Génie Civil - Licence 3)"`
+- ✅ Cohérent avec les autres filtres (tous affichent des labels lisibles)
+- ✅ Pas de dépendance DOM (mapping généré côté serveur)
+
+---
+
+#### Fichiers Modifiés
+
+| Fichier | Lignes modifiées | Type |
+|---------|------------------|------|
+| `resources/views/esbtp/etudiants/index.blade.php` | 2975-2979, 3010-3013, 3099, 3105, 3126, 3139, 3150 | Fix AJAX + mapping classes |
+
+**Total** : 1 fichier, 8 emplacements modifiés
+
+---
+
 ## 🌐 Vision Future : Réseau Social KLASSCI
 
 **Concept** : Plateforme sociale éducative **CROSS-TENANT** pour tous les étudiants KLASSCI (tous établissements confondus), inspirée de Reddit/Twitter, mais adaptée au contexte académique africain.
