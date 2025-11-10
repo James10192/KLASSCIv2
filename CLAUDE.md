@@ -5194,6 +5194,99 @@ Route::get('/parents/search', [App\Http\Controllers\ESBTP\ParentController::clas
 
 ---
 
+### 📧 Fix Affichage Email Étudiant - email vs email_personnel (7 novembre)
+
+**Pages concernées** : `/esbtp/etudiants/{id}` (show) et `/esbtp/inscriptions/{id}` (show)
+
+**Problème** : L'email affiché dans les pages de détail ne correspondait pas à l'email saisi dans les formulaires.
+
+#### Analyse du Problème
+
+**Structure du modèle `ESBTPEtudiant`** :
+- **2 champs email** dans la table :
+  1. `email` - Champ de base (souvent vide)
+  2. `email_personnel` - Champ rempli via les formulaires
+
+**Dans les formulaires (saisie)** :
+- `inscriptions.create` ligne 771 : `<input name="email_personnel">`
+- `etudiants.edit` ligne 135 : `<input name="email_personnel">`
+
+**Dans les pages d'affichage (AVANT)** :
+- `etudiants.show` ligne 156 : `{{ $etudiant->email }}` ❌
+- `etudiants.show` ligne 743 : `{{ $etudiant->email }}` ❌
+- `inscriptions.show` ligne 358 : `{{ $inscription->etudiant->email }}` ❌
+
+**Conséquence** : L'email saisi dans `email_personnel` n'était jamais affiché.
+
+---
+
+#### Solution Implémentée
+
+**Remplacement de `email` par `email_personnel` dans les 3 emplacements** :
+
+**1. etudiants.show - Tableau informations (ligne 156)** :
+```blade
+{{-- AVANT --}}
+<td>{{ $etudiant->email ?: 'Non renseigné' }}</td>
+
+{{-- APRÈS --}}
+<td>{{ $etudiant->email_personnel ?: 'Non renseigné' }}</td>
+```
+
+**2. etudiants.show - Section suppression (lignes 742-743)** :
+```blade
+{{-- AVANT --}}
+@if($etudiant->email)
+    <small class="text-muted">Email: {{ $etudiant->email }}</small><br>
+@endif
+
+{{-- APRÈS --}}
+@if($etudiant->email_personnel)
+    <small class="text-muted">Email: {{ $etudiant->email_personnel }}</small><br>
+@endif
+```
+
+**3. inscriptions.show - Tableau informations (ligne 358)** :
+```blade
+{{-- AVANT --}}
+<td>{{ $inscription->etudiant->email ?: 'Non renseigné' }}</td>
+
+{{-- APRÈS --}}
+<td>{{ $inscription->etudiant->email_personnel ?: 'Non renseigné' }}</td>
+```
+
+---
+
+#### Fichiers Modifiés
+
+| Fichier | Lignes | Modifications |
+|---------|--------|---------------|
+| `resources/views/esbtp/etudiants/show.blade.php` | 156, 742-743 | `email` → `email_personnel` (2 occurrences) |
+| `resources/views/esbtp/inscriptions/show.blade.php` | 358 | `email` → `email_personnel` (1 occurrence) |
+
+---
+
+#### Impact
+
+✅ **Cohérence données** : L'email affiché correspond à celui saisi dans les formulaires
+✅ **Email personnel visible** : Le champ `email_personnel` rempli s'affiche correctement
+✅ **Fallback "Non renseigné"** : Affichage par défaut si champ vide
+✅ **Condition correcte** : Le `@if` vérifie maintenant le bon champ
+
+---
+
+#### Workflow Utilisateur
+
+**Avant le fix** :
+1. Utilisateur saisit email dans `inscriptions.create` → Enregistré dans `email_personnel`
+2. Utilisateur consulte `etudiants.show` → Affiche `email` (vide) → "Non renseigné" ❌
+
+**Après le fix** :
+1. Utilisateur saisit email dans `inscriptions.create` → Enregistré dans `email_personnel`
+2. Utilisateur consulte `etudiants.show` → Affiche `email_personnel` → Email visible ✅
+
+---
+
 ## 📝 TODO & Prochaines Étapes
 
 ### 🔴 Priorité Haute

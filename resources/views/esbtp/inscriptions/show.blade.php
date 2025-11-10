@@ -355,7 +355,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                 </tr>
                                 <tr>
                                     <th>Email</th>
-                                    <td>{{ $inscription->etudiant->email ?: 'Non renseigné' }}</td>
+                                    <td>{{ $inscription->etudiant->email_personnel ?: 'Non renseigné' }}</td>
                                 </tr>
                                 <tr>
                                     <th>Ville de résidence</th>

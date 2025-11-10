@@ -153,7 +153,7 @@
                                         </tr>
                                         <tr>
                                             <th>Email</th>
-                                            <td>{{ $etudiant->email ?: 'Non renseigné' }}</td>
+                                            <td>{{ $etudiant->email_personnel ?: 'Non renseigné' }}</td>
                                         </tr>
                                         <tr>
                                             <th>Ville de résidence</th>
@@ -739,8 +739,8 @@
                             <small class="text-muted">Matricule: {{ $etudiant->matricule }}</small>
                         </div>
                         <div class="col-md-6">
-                            @if($etudiant->email)
-                            <small class="text-muted">Email: {{ $etudiant->email }}</small><br>
+                            @if($etudiant->email_personnel)
+                            <small class="text-muted">Email: {{ $etudiant->email_personnel }}</small><br>
                             @endif
                             <small class="text-muted">ID: {{ $etudiant->id }}</small>
                         </div>
