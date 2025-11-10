@@ -4929,6 +4929,118 @@ Le réseau social KLASSCI est **techniquement et économiquement faisable** sur 
 
 ---
 
+## 🚀 Développements Novembre 2025
+
+### 🎨 Header Étudiants - Fix Padding & Nettoyage CSS (7 novembre)
+
+**Page** : `/esbtp/etudiants` (index)
+
+**Problème** : Le header n'avait pas de padding, rendant le design moins professionnel et moins cohérent avec les autres pages (notamment `classes.index`).
+
+#### Cause Identifiée
+
+**Override CSS inapproprié** dans `etudiants/index.blade.php` (ligne 138) :
+```css
+.dashboard-header {
+    padding: 0;  /* ❌ Override le padding global */
+}
+```
+
+Le fichier `dashboard-moderne.css` définit déjà un padding par défaut :
+```css
+.dashboard-header {
+    padding: var(--space-lg);  /* 24px */
+    margin-bottom: var(--space-lg);
+    /* ... autres styles */
+}
+```
+
+#### Solution Implémentée
+
+**1. Suppression du override `padding: 0;`** :
+```css
+/* AVANT */
+.dashboard-header {
+    max-width: 100%;
+    overflow-x: hidden;
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding: 0;  /* ❌ */
+}
+
+/* APRÈS */
+.dashboard-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    justify-content: space-between;
+    /* padding: var(--space-lg) hérité de dashboard-moderne.css */
+}
+```
+
+**2. Nettoyage propriétés redondantes** :
+- Supprimé `max-width: 100%;`, `overflow-x: hidden;`, `width: 100%;` (déjà gérés par `.dashboard-acasi` et `.main-content`)
+- Supprimé `margin-bottom: 32px;` redondant (déjà défini dans le CSS global à 24px)
+
+**3. Simplification media queries** :
+```css
+/* AVANT - 2 media queries redondantes */
+@media (max-width: 992px) {
+    .dashboard-header {
+        margin-bottom: 24px;  /* Identique au global */
+        gap: 16px;  /* Identique au global */
+    }
+}
+
+@media (max-width: 576px) {
+    .dashboard-header {
+        margin-bottom: 16px;
+        gap: 8px;
+    }
+}
+
+/* APRÈS - 1 seule media query utile */
+@media (max-width: 576px) {
+    .dashboard-header {
+        gap: 8px;  /* Plus compact sur mobile */
+    }
+}
+```
+
+#### Fichiers Modifiés
+
+| Fichier | Lignes | Modifications |
+|---------|--------|---------------|
+| `resources/views/esbtp/etudiants/index.blade.php` | 128-140 | Nettoyage CSS `.dashboard-header` |
+
+#### Impact
+
+✅ **Padding visible** : Le header a maintenant un padding de 24px (var(--space-lg))
+✅ **Cohérence design** : Aligné avec `classes.index` et autres pages
+✅ **Code plus propre** : -10 lignes CSS redondantes supprimées
+✅ **Responsive préservé** : Gap réduit à 8px sur mobile (<576px)
+✅ **Héritage CSS respecté** : Le fichier global `dashboard-moderne.css` gère maintenant le styling principal
+
+#### Comparaison Avant/Après
+
+**Avant** :
+- Header collé aux bords (padding: 0)
+- Propriétés CSS en double (max-width, width, overflow)
+- Media queries redondantes avec valeurs identiques au global
+
+**Après** :
+- Header espacé avec padding de 24px
+- CSS minimal (seulement flexbox layout)
+- Une seule media query pour ajustement mobile
+
+---
+
 ## 📝 TODO & Prochaines Étapes
 
 ### 🔴 Priorité Haute

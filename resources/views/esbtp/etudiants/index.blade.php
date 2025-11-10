@@ -126,29 +126,17 @@
     }
 
     .dashboard-header {
-        max-width: 100%;
-        overflow-x: hidden;
-        width: 100%;
         display: flex;
         flex-wrap: wrap;
         gap: 16px;  /* 8px grid × 2 */
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 32px;  /* 8px grid × 4 - Séparation claire du contenu */
-        padding: 0;
-    }
-
-    @media (max-width: 992px) {
-        .dashboard-header {
-            margin-bottom: 24px;  /* 8px grid × 3 */
-            gap: 16px;  /* 8px grid × 2 */
-        }
+        /* padding: var(--space-lg) hérité de dashboard-moderne.css */
     }
 
     @media (max-width: 576px) {
         .dashboard-header {
-            margin-bottom: 16px;  /* 8px grid × 2 */
-            gap: 8px;  /* 8px grid × 1 */
+            gap: 8px;  /* 8px grid × 1 - Plus compact sur mobile */
         }
     }
 
