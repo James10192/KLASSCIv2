@@ -3562,6 +3562,69 @@ window.fetchResultsGlobal = function(url, options) {
 - ✅ Pas de doublons de filtres
 - ✅ Toujours synchronisé avec l'URL
 
+**⚠️ Hotfix : Problème de timing (7 novembre - 30min après)**
+
+**Problème persistant** :
+- Malgré la correction initiale, l'indicateur ne se mettait toujours pas à jour
+- L'utilisateur devait faire Ctrl+R (refresh page complète) pour voir les changements
+- Cause : **Race condition** dans le timing d'exécution
+
+**Diagnostic** :
+```javascript
+// ❌ ANCIEN CODE - Race condition
+window.fetchResultsGlobal = function(url, options) {
+    originalFetchResults(url, options);  // Lance le fetch (asynchrone)
+    setTimeout(updateActiveFiltersIndicator, 500);  // Lit l'URL après 500ms
+};
+
+// Mais :
+// - Le fetch prend 200-1000ms pour se terminer
+// - pushState() est exécuté DANS le .then() du fetch
+// - setTimeout() lit l'URL AVANT que pushState() soit exécuté
+// Résultat : L'indicateur lit l'ANCIENNE URL !
+```
+
+**Timeline du bug** :
+```
+T+0ms    : Appel fetchResultsGlobal(newUrl)
+T+0ms    : Démarrage fetch AJAX
+T+0ms    : setTimeout(updateIndicator, 500) démarre
+T+500ms  : updateIndicator() lit window.location → ANCIENNE URL ❌
+T+800ms  : Fetch terminé → pushState(newUrl) → URL mise à jour
+```
+
+**Solution finale** :
+```javascript
+function fetchResults(url, options = {}) {
+    // ...
+    return fetch(url, { /* ... */ })
+        .then(data => {
+            resultsContainer.innerHTML = data.html;
+            if (options.pushState !== false) {
+                window.history.pushState({ url: data.url }, '', data.url);
+            }
+            bindPagination();
+            initTableSorting(resultsContainer);
+
+            // ✅ Appeler APRÈS pushState, dans le .then()
+            updateActiveFiltersIndicator();
+        });
+}
+
+// Supprimer le wrapper inutile
+// window.fetchResultsGlobal pointe directement vers fetchResults
+```
+
+**Modifications** :
+- Ligne 2934 : `fetchResults()` retourne maintenant la promesse (`return fetch(...)`)
+- Ligne 2961 : `updateActiveFiltersIndicator()` appelé dans le `.then()` après `pushState`
+- Lignes 3115-3120 : Wrapper setTimeout supprimé (obsolète)
+
+**Impact** :
+- ✅ L'indicateur lit l'URL au BON moment (après pushState)
+- ✅ Plus besoin de Ctrl+R
+- ✅ Update instantané et synchronisé
+
 ---
 
 **Bug #2 : Classe affiche l'ID au lieu du nom**
@@ -3610,9 +3673,17 @@ const classesMapping = {
 
 | Fichier | Lignes modifiées | Type |
 |---------|------------------|------|
-| `resources/views/esbtp/etudiants/index.blade.php` | 2975-2979, 3010-3013, 3099, 3105, 3126, 3139, 3150 | Fix AJAX + mapping classes |
+| `resources/views/esbtp/etudiants/index.blade.php` | 2934, 2939, 2961, 2975-2979, 3010-3013, 3099, 3105, 3115-3120 (supprimés) | Fix timing + mapping classes |
 
-**Total** : 1 fichier, 8 emplacements modifiés
+**Modifications détaillées** :
+- **2934** : `fetchResults()` retourne la promesse (`return fetch(...)`)
+- **2939** : Retour de promesse vide si URL manquante (`return Promise.resolve()`)
+- **2961** : Appel `updateActiveFiltersIndicator()` dans `.then()` après `pushState`
+- **2975-2979** : Mapping `classesMapping` ID → Label
+- **3010-3013** : Fonction `getSelectLabel()` utilise le mapping pour classe
+- **3115-3120** : Wrapper `setTimeout` supprimé (obsolète)
+
+**Total** : 1 fichier, 6 sections modifiées, 1 section supprimée
 
 ---
 

@@ -2931,12 +2931,12 @@
 
         function fetchResults(url, options = {}) {
             if (!url) {
-                return;
+                return Promise.resolve();
             }
 
             setLoading(true);
 
-            fetch(url, {
+            return fetch(url, {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json'
@@ -2956,6 +2956,9 @@
                 }
                 bindPagination();
                 initTableSorting(resultsContainer);
+
+                // Mettre à jour l'indicateur APRÈS pushState
+                updateActiveFiltersIndicator();
             })
             .catch(error => {
                 console.error(error);
@@ -3107,14 +3110,6 @@
 
         // Mettre à jour l'indicateur au chargement initial
         updateActiveFiltersIndicator();
-
-        // Wrapper pour mettre à jour l'indicateur après chaque fetchResults
-        const originalFetchResults = fetchResults;
-        window.fetchResultsGlobal = function(url, options) {
-            originalFetchResults(url, options);
-            // Mettre à jour l'indicateur après chaque changement AJAX
-            setTimeout(updateActiveFiltersIndicator, 500);
-        };
 
         form.addEventListener('submit', function (event) {
             event.preventDefault();
