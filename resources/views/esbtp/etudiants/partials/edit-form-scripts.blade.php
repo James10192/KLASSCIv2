@@ -206,10 +206,10 @@
             const relation = $(this).val();
             $(this).closest('.parent-card').find('.parent-relation-input').val(relation);
         });
-    });
 
-    function createNewParentCard() {
-        return `
+        // Fonction pour créer une nouvelle carte parent
+        function createNewParentCard() {
+            return `
 <div class="parent-card mb-4" id="new-parent-card" data-parent-index="new" style="background: #fff; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #e9ecef;">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
@@ -263,145 +263,67 @@
         </div>
     </div>
 </div>`;
-    }
-
-    // === GESTION DES PARENTS EXISTANTS (Style class-selector) ===
-    let allParents = [];
-    let currentParentSort = { column: null, direction: 'asc' };
-
-    // Fonction pour charger tous les parents
-    function loadParents() {
-        const tableBody = document.getElementById('parents-table-body');
-        tableBody.innerHTML = '<tr><td colspan="5" class="text-center">Chargement...</td></tr>';
-
-        fetch('{{ route("esbtp.parents.search") }}?q=&etudiant_id={{ $etudiant->id }}')
-            .then(response => response.json())
-            .then(parents => {
-                allParents = parents;
-                displayParentsTable(allParents);
-            })
-            .catch(error => {
-                console.error('Error loading parents:', error);
-                tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erreur lors du chargement des parents.</td></tr>';
-            });
-    }
-
-    // Fonction pour afficher les parents dans le tableau
-    function displayParentsTable(parents) {
-        const tableBody = document.getElementById('parents-table-body');
-        tableBody.innerHTML = '';
-
-        if (parents.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Aucun parent trouvé</td></tr>';
-            return;
         }
 
-        parents.forEach(parent => {
-            const enfants = parent.etudiants && parent.etudiants.length > 0
-                ? parent.etudiants.map(e => `${e.prenoms} ${e.nom}`).join(', ')
-                : '<em class="text-muted">Aucun</em>';
+        // === GESTION DES PARENTS EXISTANTS (Style class-selector) ===
+        let allParents = [];
+        let currentParentSort = { column: null, direction: 'asc' };
 
-            tableBody.innerHTML += `<tr>
-                <td>${parent.nom || ''}</td>
-                <td>${parent.prenoms || ''}</td>
-                <td>${parent.telephone || 'Non renseigné'}</td>
-                <td>${enfants}</td>
-                <td>
-                    <button type="button" class="btn btn-sm btn-primary add-existing-parent-btn"
-                            data-parent-id="${parent.id}"
-                            data-parent-nom="${parent.nom || ''}"
-                            data-parent-prenoms="${parent.prenoms || ''}"
-                            data-parent-telephone="${parent.telephone || ''}"
-                            data-parent-email="${parent.email || ''}"
-                            data-parent-profession="${parent.profession || ''}"
-                            data-parent-adresse="${parent.adresse || ''}">
-                        Sélectionner
-                    </button>
-                </td>
-            </tr>`;
-        });
-    }
+        // Fonction pour charger tous les parents
+        function loadParents() {
+            const tableBody = document.getElementById('parents-table-body');
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center">Chargement...</td></tr>';
 
-    // Fonction pour filtrer les parents
-    function filterParents() {
-        const filterType = document.getElementById('parent_search_filter').value;
-        const query = document.getElementById('parent_search_query').value.toLowerCase();
+            fetch('{{ route("esbtp.parents.search") }}?q=&etudiant_id={{ $etudiant->id }}')
+                .then(response => response.json())
+                .then(parents => {
+                    allParents = parents;
+                    displayParentsTable(allParents);
+                })
+                .catch(error => {
+                    console.error('Error loading parents:', error);
+                    tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erreur lors du chargement des parents.</td></tr>';
+                });
+        }
 
-        let filteredParents = allParents;
+        // Fonction pour afficher les parents dans le tableau
+        function displayParentsTable(parents) {
+            const tableBody = document.getElementById('parents-table-body');
+            tableBody.innerHTML = '';
 
-        if (query) {
-            filteredParents = filteredParents.filter(parent => {
-                switch (filterType) {
-                    case 'nom':
-                        return (parent.nom || '').toLowerCase().includes(query);
-                    case 'prenoms':
-                        return (parent.prenoms || '').toLowerCase().includes(query);
-                    case 'telephone':
-                        return (parent.telephone || '').toLowerCase().includes(query);
-                    default: // 'all'
-                        return (parent.nom || '').toLowerCase().includes(query) ||
-                               (parent.prenoms || '').toLowerCase().includes(query) ||
-                               (parent.telephone || '').toLowerCase().includes(query);
-                }
+            if (parents.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Aucun parent trouvé</td></tr>';
+                return;
+            }
+
+            parents.forEach(parent => {
+                const enfants = parent.etudiants && parent.etudiants.length > 0
+                    ? parent.etudiants.map(e => `${e.prenoms} ${e.nom}`).join(', ')
+                    : '<em class="text-muted">Aucun</em>';
+
+                tableBody.innerHTML += `<tr>
+                    <td>${parent.nom || ''}</td>
+                    <td>${parent.prenoms || ''}</td>
+                    <td>${parent.telephone || 'Non renseigné'}</td>
+                    <td>${enfants}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-primary add-existing-parent-btn"
+                                data-parent-id="${parent.id}"
+                                data-parent-nom="${parent.nom || ''}"
+                                data-parent-prenoms="${parent.prenoms || ''}"
+                                data-parent-telephone="${parent.telephone || ''}"
+                                data-parent-email="${parent.email || ''}"
+                                data-parent-profession="${parent.profession || ''}"
+                                data-parent-adresse="${parent.adresse || ''}">
+                            Sélectionner
+                        </button>
+                    </td>
+                </tr>`;
             });
         }
 
-        if (currentParentSort.column) {
-            sortParents(filteredParents, currentParentSort.column, currentParentSort.direction);
-        } else {
-            displayParentsTable(filteredParents);
-        }
-    }
-
-    // Fonction pour trier les parents
-    function sortParents(parents, column, direction) {
-        const sortedParents = [...parents].sort((a, b) => {
-            let aValue = a[column] || '';
-            let bValue = b[column] || '';
-
-            if (direction === 'asc') {
-                return aValue.localeCompare(bValue);
-            } else {
-                return bValue.localeCompare(aValue);
-            }
-        });
-
-        displayParentsTable(sortedParents);
-        updateParentSortIcons(column, direction);
-    }
-
-    // Fonction pour mettre à jour les icônes de tri
-    function updateParentSortIcons(activeColumn, direction) {
-        document.querySelectorAll('.sortable-parent i').forEach(icon => {
-            icon.className = 'fas fa-sort text-muted';
-        });
-
-        const activeHeader = document.querySelector(`[data-column="${activeColumn}"] i`);
-        if (activeHeader) {
-            if (direction === 'asc') {
-                activeHeader.className = 'fas fa-sort-up text-primary';
-            } else {
-                activeHeader.className = 'fas fa-sort-down text-primary';
-            }
-        }
-    }
-
-    // Event listeners pour les filtres et la recherche
-    document.getElementById('parent_search_query').addEventListener('input', filterParents);
-    document.getElementById('parent_search_filter').addEventListener('change', filterParents);
-
-    // Event listeners pour le tri
-    document.querySelectorAll('.sortable-parent').forEach(header => {
-        header.addEventListener('click', function() {
-            const column = this.getAttribute('data-column');
-            let direction = 'asc';
-
-            if (currentParentSort.column === column) {
-                direction = currentParentSort.direction === 'asc' ? 'desc' : 'asc';
-            }
-
-            currentParentSort = { column, direction };
-
+        // Fonction pour filtrer les parents
+        function filterParents() {
             const filterType = document.getElementById('parent_search_filter').value;
             const query = document.getElementById('parent_search_query').value.toLowerCase();
 
@@ -416,7 +338,7 @@
                             return (parent.prenoms || '').toLowerCase().includes(query);
                         case 'telephone':
                             return (parent.telephone || '').toLowerCase().includes(query);
-                        default:
+                        default: // 'all'
                             return (parent.nom || '').toLowerCase().includes(query) ||
                                    (parent.prenoms || '').toLowerCase().includes(query) ||
                                    (parent.telephone || '').toLowerCase().includes(query);
@@ -424,27 +346,105 @@
                 });
             }
 
-            sortParents(filteredParents, column, direction);
+            if (currentParentSort.column) {
+                sortParents(filteredParents, currentParentSort.column, currentParentSort.direction);
+            } else {
+                displayParentsTable(filteredParents);
+            }
+        }
+
+        // Fonction pour trier les parents
+        function sortParents(parents, column, direction) {
+            const sortedParents = [...parents].sort((a, b) => {
+                let aValue = a[column] || '';
+                let bValue = b[column] || '';
+
+                if (direction === 'asc') {
+                    return aValue.localeCompare(bValue);
+                } else {
+                    return bValue.localeCompare(aValue);
+                }
+            });
+
+            displayParentsTable(sortedParents);
+            updateParentSortIcons(column, direction);
+        }
+
+        // Fonction pour mettre à jour les icônes de tri
+        function updateParentSortIcons(activeColumn, direction) {
+            document.querySelectorAll('.sortable-parent i').forEach(icon => {
+                icon.className = 'fas fa-sort text-muted';
+            });
+
+            const activeHeader = document.querySelector(`[data-column="${activeColumn}"] i`);
+            if (activeHeader) {
+                if (direction === 'asc') {
+                    activeHeader.className = 'fas fa-sort-up text-primary';
+                } else {
+                    activeHeader.className = 'fas fa-sort-down text-primary';
+                }
+            }
+        }
+
+        // Event listeners pour les filtres et la recherche
+        document.getElementById('parent_search_query').addEventListener('input', filterParents);
+        document.getElementById('parent_search_filter').addEventListener('change', filterParents);
+
+        // Event listeners pour le tri
+        document.querySelectorAll('.sortable-parent').forEach(header => {
+            header.addEventListener('click', function() {
+                const column = this.getAttribute('data-column');
+                let direction = 'asc';
+
+                if (currentParentSort.column === column) {
+                    direction = currentParentSort.direction === 'asc' ? 'desc' : 'asc';
+                }
+
+                currentParentSort = { column, direction };
+
+                const filterType = document.getElementById('parent_search_filter').value;
+                const query = document.getElementById('parent_search_query').value.toLowerCase();
+
+                let filteredParents = allParents;
+
+                if (query) {
+                    filteredParents = filteredParents.filter(parent => {
+                        switch (filterType) {
+                            case 'nom':
+                                return (parent.nom || '').toLowerCase().includes(query);
+                            case 'prenoms':
+                                return (parent.prenoms || '').toLowerCase().includes(query);
+                            case 'telephone':
+                                return (parent.telephone || '').toLowerCase().includes(query);
+                            default:
+                                return (parent.nom || '').toLowerCase().includes(query) ||
+                                       (parent.prenoms || '').toLowerCase().includes(query) ||
+                                       (parent.telephone || '').toLowerCase().includes(query);
+                        }
+                    });
+                }
+
+                sortParents(filteredParents, column, direction);
+            });
         });
-    });
 
-    $('[data-embedded-toggle="form"]').on('click', function() {
-        const targetId = $(this).data('target');
-        const noticeId = $(this).data('notice');
+        // Charger les parents quand le modal s'ouvre
+        $('#searchParentModal').on('show.bs.modal', function() {
+            loadParents();
+        });
 
-        if (noticeId) {
-            $('#' + noticeId).addClass('d-none');
-        }
+        $('[data-embedded-toggle="form"]').on('click', function() {
+            const targetId = $(this).data('target');
+            const noticeId = $(this).data('notice');
 
-        if (targetId) {
-            $('#' + targetId).removeClass('d-none');
-        }
-    });
+            if (noticeId) {
+                $('#' + noticeId).addClass('d-none');
+            }
 
-});
+            if (targetId) {
+                $('#' + targetId).removeClass('d-none');
+            }
+        });
 
-// Charger les parents quand le modal s'ouvre
-document.getElementById('searchParentModal').addEventListener('show.bs.modal', function() {
-    loadParents();
-});
+    }); // FIN du $(document).ready()
 </script>

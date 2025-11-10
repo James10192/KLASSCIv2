@@ -1094,6 +1094,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::post('/settings/import', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'import'])->name('esbtp.settings.import');
         Route::get('/settings/status', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'checkStatus'])->name('esbtp.settings.status');
         Route::post('/settings/validate', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'checkStatus'])->name('esbtp.settings.validate');
+
+        // ESBTP Parents Search (pour modal de sélection dans edit étudiant)
+        Route::get('/parents/search', [App\Http\Controllers\ESBTP\ParentController::class, 'search'])->name('esbtp.parents.search');
     });
 
 // Configuration des matricules - accès direct sans sidebar

@@ -25,7 +25,9 @@ class ParentController extends Controller
      */
     public function __construct()
     {
-        $this->middleware(['auth', 'role:parent']);
+        // La méthode search doit être accessible par les admin/secrétaires aussi
+        $this->middleware(['auth', 'role:parent'])->except(['search']);
+        $this->middleware(['auth'])->only(['search']);
     }
 
     /**
@@ -245,5 +247,52 @@ class ParentController extends Controller
 
         return redirect()->route('parent.settings')
             ->with('success', 'Vos informations ont été mises à jour avec succès.');
+    }
+
+    /**
+     * Recherche de parents pour l'édition d'étudiants
+     * Utilisé dans le modal de sélection de parent existant
+     */
+    public function search(Request $request)
+    {
+        $query = $request->input('q', '');
+        $etudiantId = $request->input('etudiant_id');
+
+        $parents = ESBTPParent::with(['etudiants' => function($query) use ($etudiantId) {
+                // Exclure l'étudiant en cours d'édition de la liste des enfants
+                if ($etudiantId) {
+                    $query->where('esbtp_etudiants.id', '!=', $etudiantId);
+                }
+            }])
+            ->when($query, function ($q) use ($query) {
+                $q->where(function($subQuery) use ($query) {
+                    $subQuery->where('nom', 'like', '%' . $query . '%')
+                        ->orWhere('prenoms', 'like', '%' . $query . '%')
+                        ->orWhere('telephone', 'like', '%' . $query . '%')
+                        ->orWhere('email', 'like', '%' . $query . '%');
+                });
+            })
+            ->limit(50)
+            ->get()
+            ->map(function($parent) {
+                return [
+                    'id' => $parent->id,
+                    'nom' => $parent->nom,
+                    'prenoms' => $parent->prenoms,
+                    'telephone' => $parent->telephone,
+                    'email' => $parent->email,
+                    'profession' => $parent->profession,
+                    'adresse' => $parent->adresse,
+                    'etudiants' => $parent->etudiants->map(function($etudiant) {
+                        return [
+                            'id' => $etudiant->id,
+                            'nom' => $etudiant->nom,
+                            'prenoms' => $etudiant->prenoms,
+                        ];
+                    })
+                ];
+            });
+
+        return response()->json($parents);
     }
 }
