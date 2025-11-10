@@ -2210,9 +2210,9 @@
                                         <button type="submit" class="btn-acasi primary me-2">
                                             <i class="fas fa-search"></i>Filtrer
                                         </button>
-                                        <a href="{{ route('esbtp.etudiants.index') }}" class="btn-acasi secondary">
+                                        <button type="button" class="btn-acasi secondary" id="desktop-reset-btn">
                                             <i class="fas fa-redo-alt"></i>Réinitialiser
-                                        </a>
+                                        </button>
                                     </div>
                                 </div>
                     </form>
@@ -2505,19 +2505,16 @@
 
         // Bouton réinitialiser dans le drawer (AJAX - pas de refresh)
         resetBtn.addEventListener('click', function() {
-            console.log('🔄 Réinitialisation des filtres');
+            console.log('🔄 Réinitialisation des filtres (drawer mobile)');
 
-            // Utiliser fetchResults pour recharger la page sans filtres (AJAX)
-            if (typeof window.fetchResultsGlobal === 'function') {
-                window.fetchResultsGlobal('{{ route('esbtp.etudiants.index') }}', { pushState: true });
+            // Utiliser clearAllFilters qui gère tout (AJAX + reset selects)
+            if (typeof clearAllFilters === 'function') {
+                clearAllFilters();
 
-                // Réinitialiser les champs du formulaire
-                mobileForm.reset();
-
-                // Fermer le drawer
+                // Fermer le drawer après l'AJAX
                 setTimeout(closeDrawer, 300);
             } else {
-                // Fallback si fetchResultsGlobal n'est pas disponible
+                // Fallback si clearAllFilters n'est pas disponible
                 window.location.href = '{{ route('esbtp.etudiants.index') }}';
             }
         });
@@ -2599,6 +2596,31 @@
                         this.search = '';
                         this.filteredOptions = this.options;
                     }
+                });
+
+                // Écouter les events de reset
+                const componentName = config.name;
+
+                // Reset individuel (pour ce composant spécifique)
+                window.addEventListener('reset-searchable-select', (e) => {
+                    if (e.detail && e.detail.name === componentName) {
+                        console.log('🔄 Reset event received for:', componentName);
+                        this.selectedValue = '';
+                        this.selectedLabel = '';
+                        this.search = '';
+                        this.filteredOptions = this.options;
+                        this.open = false;
+                    }
+                });
+
+                // Reset tous les composants
+                window.addEventListener('reset-all-searchable-selects', () => {
+                    console.log('🔄 Reset ALL event received for:', componentName);
+                    this.selectedValue = '';
+                    this.selectedLabel = '';
+                    this.search = '';
+                    this.filteredOptions = this.options;
+                    this.open = false;
                 });
             },
 
@@ -3110,24 +3132,106 @@
             }
         }
 
+        // Fonction pour reset un select spécifique (desktop + mobile + Alpine.js)
+        function resetSelectByName(name) {
+            console.log('🔄 Reset select:', name);
+
+            // Reset select desktop standard
+            const desktopSelect = document.querySelector(`select[name="${name}"]`);
+            if (desktopSelect) {
+                desktopSelect.value = '';
+                console.log('  ✅ Desktop select reset');
+            }
+
+            // Reset select mobile standard
+            const mobileSelect = document.querySelector(`#mobile-${name}`);
+            if (mobileSelect) {
+                mobileSelect.value = '';
+                console.log('  ✅ Mobile select reset');
+            }
+
+            // Reset input recherche si c'est le champ search
+            if (name === 'search') {
+                const searchInput = document.querySelector('input[name="search"]');
+                if (searchInput) {
+                    searchInput.value = '';
+                    console.log('  ✅ Search input reset');
+                }
+                const mobileSearchInput = document.querySelector('#mobile-search');
+                if (mobileSearchInput) {
+                    mobileSearchInput.value = '';
+                    console.log('  ✅ Mobile search input reset');
+                }
+            }
+
+            // Reset composant Alpine.js (classe searchable select)
+            if (name === 'classe') {
+                // Dispatcher un event custom pour reset le composant Alpine
+                window.dispatchEvent(new CustomEvent('reset-searchable-select', {
+                    detail: { name: 'classe' }
+                }));
+                console.log('  ✅ Alpine.js classe component reset event dispatched');
+            }
+        }
+
+        // Fonction pour reset TOUS les selects
+        function resetAllSelects() {
+            console.log('🔄 Reset ALL selects');
+
+            // Reset formulaire desktop
+            if (form) {
+                form.reset();
+                console.log('  ✅ Desktop form reset');
+            }
+
+            // Reset formulaire mobile
+            const mobileForm = document.getElementById('mobile-search-form');
+            if (mobileForm) {
+                mobileForm.reset();
+                console.log('  ✅ Mobile form reset');
+            }
+
+            // Reset tous les composants Alpine.js
+            window.dispatchEvent(new CustomEvent('reset-all-searchable-selects'));
+            console.log('  ✅ Alpine.js reset event dispatched');
+        }
+
         function removeFilter(key) {
             console.log('🗑️ Suppression du filtre:', key);
             const urlParams = new URLSearchParams(window.location.search);
             urlParams.delete(key);
 
             const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
-            // Utiliser window.fetchResultsGlobal pour déclencher l'update automatique
-            window.fetchResultsGlobal(newUrl, { pushState: true });
+
+            // Faire l'appel AJAX puis reset le select correspondant
+            window.fetchResultsGlobal(newUrl, { pushState: true }).then(() => {
+                // Reset le select correspondant après l'AJAX
+                resetSelectByName(key);
+            });
         }
 
         function clearAllFilters() {
             console.log('🗑️ Suppression de tous les filtres');
-            // Utiliser window.fetchResultsGlobal pour déclencher l'update automatique
-            window.fetchResultsGlobal(window.location.pathname, { pushState: true });
+
+            // Faire l'appel AJAX puis reset tous les selects
+            window.fetchResultsGlobal(window.location.pathname, { pushState: true }).then(() => {
+                // Reset TOUS les selects après l'AJAX
+                resetAllSelects();
+            });
         }
 
         // Mettre à jour l'indicateur au chargement initial
         updateActiveFiltersIndicator();
+
+        // Bouton "Réinitialiser" desktop
+        const desktopResetBtn = document.getElementById('desktop-reset-btn');
+        if (desktopResetBtn) {
+            desktopResetBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('🔄 Réinitialisation des filtres (desktop)');
+                clearAllFilters();
+            });
+        }
 
         form.addEventListener('submit', function (event) {
             event.preventDefault();

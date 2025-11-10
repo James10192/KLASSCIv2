@@ -3866,6 +3866,275 @@ Après : Clic sur "Nom" → Trie les 1000, affiche les 10 premiers alphabétique
 
 ---
 
+### 🔄 Reset Filtres - Synchronisation Selects après AJAX (7 novembre)
+
+**Page** : `/esbtp/etudiants` (index - Gestion Étudiants)
+
+**Problème** : Les selects ne se mettaient pas à jour après suppression de filtres
+
+**Contexte** : Trois actions de réinitialisation ne synchronisaient pas les selects avec l'état des filtres.
+
+#### Problèmes identifiés
+
+**1. Bouton "×" (suppression filtre individuel)**
+- ❌ Liste se met à jour via AJAX
+- ❌ Select garde l'ancienne valeur (ex: "Génie Civil" reste sélectionné)
+- **Attendu** : Select revient à "Toutes les filières"
+
+**2. Bouton "Tout effacer"**
+- ❌ Liste se met à jour via AJAX
+- ❌ TOUS les selects gardent leurs anciennes valeurs
+- **Attendu** : Tous les selects réinitialisés à leurs valeurs par défaut
+
+**3. Bouton "Réinitialiser" (desktop + drawer mobile)**
+- ❌ Faisait un refresh complet de la page (`<a href>`)
+- **Attendu** : AJAX comme les autres actions (pas de refresh page)
+
+---
+
+#### Solution implémentée
+
+**Nouvelles fonctions utilitaires** :
+
+**1. `resetSelectByName(name)` - Reset un select spécifique** (lignes 3114-3153)
+```javascript
+function resetSelectByName(name) {
+    // Reset select desktop standard
+    const desktopSelect = document.querySelector(`select[name="${name}"]`);
+    if (desktopSelect) {
+        desktopSelect.value = '';
+    }
+
+    // Reset select mobile standard
+    const mobileSelect = document.querySelector(`#mobile-${name}`);
+    if (mobileSelect) {
+        mobileSelect.value = '';
+    }
+
+    // Reset input recherche
+    if (name === 'search') {
+        const searchInput = document.querySelector('input[name="search"]');
+        if (searchInput) searchInput.value = '';
+
+        const mobileSearchInput = document.querySelector('#mobile-search');
+        if (mobileSearchInput) mobileSearchInput.value = '';
+    }
+
+    // Reset composant Alpine.js (classe searchable select)
+    if (name === 'classe') {
+        window.dispatchEvent(new CustomEvent('reset-searchable-select', {
+            detail: { name: 'classe' }
+        }));
+    }
+}
+```
+
+**2. `resetAllSelects()` - Reset TOUS les selects** (lignes 3156-3175)
+```javascript
+function resetAllSelects() {
+    // Reset formulaire desktop
+    if (form) {
+        form.reset();
+    }
+
+    // Reset formulaire mobile
+    const mobileForm = document.getElementById('mobile-search-form');
+    if (mobileForm) {
+        mobileForm.reset();
+    }
+
+    // Reset tous les composants Alpine.js
+    window.dispatchEvent(new CustomEvent('reset-all-searchable-selects'));
+}
+```
+
+---
+
+**Modifications des fonctions existantes** :
+
+**3. `removeFilter(key)` - Avec reset select** (lignes 3177-3189)
+```javascript
+function removeFilter(key) {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.delete(key);
+
+    const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
+
+    // Faire l'appel AJAX puis reset le select correspondant
+    window.fetchResultsGlobal(newUrl, { pushState: true }).then(() => {
+        // Reset le select correspondant APRÈS l'AJAX
+        resetSelectByName(key);
+    });
+}
+```
+
+**4. `clearAllFilters()` - Avec reset tous les selects** (lignes 3191-3199)
+```javascript
+function clearAllFilters() {
+    // Faire l'appel AJAX puis reset tous les selects
+    window.fetchResultsGlobal(window.location.pathname, { pushState: true }).then(() => {
+        // Reset TOUS les selects APRÈS l'AJAX
+        resetAllSelects();
+    });
+}
+```
+
+---
+
+**Bouton "Réinitialiser" desktop** :
+
+**HTML** : Remplacement `<a href>` par `<button>` (ligne 2213)
+```html
+<!-- ❌ AVANT - Refresh page complète -->
+<a href="{{ route('esbtp.etudiants.index') }}" class="btn-acasi secondary">
+    <i class="fas fa-redo-alt"></i>Réinitialiser
+</a>
+
+<!-- ✅ APRÈS - AJAX -->
+<button type="button" class="btn-acasi secondary" id="desktop-reset-btn">
+    <i class="fas fa-redo-alt"></i>Réinitialiser
+</button>
+```
+
+**Event listener** (lignes 3202-3209)
+```javascript
+const desktopResetBtn = document.getElementById('desktop-reset-btn');
+if (desktopResetBtn) {
+    desktopResetBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        clearAllFilters();
+    });
+}
+```
+
+---
+
+**Bouton "Réinitialiser" drawer mobile** (lignes 2507-2520)
+```javascript
+// ❌ AVANT
+resetBtn.addEventListener('click', function() {
+    window.fetchResultsGlobal('{{ route('esbtp.etudiants.index') }}', { pushState: true });
+    mobileForm.reset();  // Reset AVANT l'AJAX ❌
+    setTimeout(closeDrawer, 300);
+});
+
+// ✅ APRÈS
+resetBtn.addEventListener('click', function() {
+    clearAllFilters();  // Gère AJAX + reset selects
+    setTimeout(closeDrawer, 300);
+});
+```
+
+---
+
+**Alpine.js - Event listeners** (lignes 2601-2624)
+
+**Ajout dans `init()` du composant searchableSelect** :
+```javascript
+init() {
+    // ... code existant
+
+    // Écouter les events de reset
+    const componentName = config.name;
+
+    // Reset individuel (pour ce composant spécifique)
+    window.addEventListener('reset-searchable-select', (e) => {
+        if (e.detail && e.detail.name === componentName) {
+            this.selectedValue = '';
+            this.selectedLabel = '';
+            this.search = '';
+            this.filteredOptions = this.options;
+            this.open = false;
+        }
+    });
+
+    // Reset tous les composants
+    window.addEventListener('reset-all-searchable-selects', () => {
+        this.selectedValue = '';
+        this.selectedLabel = '';
+        this.search = '';
+        this.filteredOptions = this.options;
+        this.open = false;
+    });
+}
+```
+
+---
+
+#### Workflow complet
+
+**Scénario 1 : Suppression filtre individuel "Filière"**
+```
+1. Utilisateur clique sur "×" du tag "Filière: Génie Civil"
+2. removeFilter('filiere') appelé
+3. AJAX fetchResultsGlobal() → Liste mise à jour
+4. .then() → resetSelectByName('filiere')
+5. Select desktop "filiere" → value = ''
+6. Select mobile "mobile-filiere" → value = ''
+7. Indicateur filtres actifs mis à jour automatiquement
+```
+
+**Scénario 2 : "Tout effacer"**
+```
+1. Utilisateur clique sur "Tout effacer"
+2. clearAllFilters() appelé
+3. AJAX fetchResultsGlobal() → Liste mise à jour
+4. .then() → resetAllSelects()
+5. form.reset() (desktop)
+6. mobileForm.reset() (mobile)
+7. Event 'reset-all-searchable-selects' dispatché
+8. Alpine.js reset tous les composants classe
+9. Indicateur filtres actifs disparaît
+```
+
+**Scénario 3 : Bouton "Réinitialiser"**
+```
+Desktop:
+1. Click sur bouton "Réinitialiser"
+2. clearAllFilters() appelé (identique à "Tout effacer")
+3. Pas de refresh page ✅
+
+Mobile:
+1. Click sur bouton "Réinitialiser" dans drawer
+2. clearAllFilters() appelé
+3. setTimeout(closeDrawer, 300) → Ferme le drawer
+4. Pas de refresh page ✅
+```
+
+---
+
+#### Fichiers modifiés
+
+| Fichier | Lignes modifiées | Type |
+|---------|------------------|------|
+| `resources/views/esbtp/etudiants/index.blade.php` | 2213, 2507-2520, 2601-2624, 3114-3209 | HTML + JS reset selects + Alpine.js |
+
+**Total** : 1 fichier, ~150 lignes ajoutées/modifiées
+
+---
+
+#### Impact
+
+**Avant** :
+- ❌ Suppression filtre : Liste OK, selects KO (valeurs incorrectes)
+- ❌ "Tout effacer" : Liste OK, selects KO (valeurs incorrectes)
+- ❌ "Réinitialiser" : Refresh page complète (Ctrl+R)
+
+**Après** :
+- ✅ Suppression filtre : Liste + select correspondant réinitialisés
+- ✅ "Tout effacer" : Liste + TOUS les selects réinitialisés
+- ✅ "Réinitialiser" : AJAX (pas de refresh page)
+- ✅ Desktop ET mobile synchronisés
+- ✅ Composants Alpine.js (classe) également resetés
+- ✅ Indicateur filtres actifs toujours synchronisé
+
+**UX améliorée** :
+- État des selects toujours cohérent avec les filtres actifs
+- Pas de confusion utilisateur (ancien filtre visible mais inactif)
+- Performance : AJAX au lieu de refresh page complète
+
+---
+
 ## 🌐 Vision Future : Réseau Social KLASSCI
 
 **Concept** : Plateforme sociale éducative **CROSS-TENANT** pour tous les étudiants KLASSCI (tous établissements confondus), inspirée de Reddit/Twitter, mais adaptée au contexte académique africain.
