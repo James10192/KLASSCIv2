@@ -3687,6 +3687,185 @@ const classesMapping = {
 
 ---
 
+### 🔀 Tri Colonnes - Server-Side au lieu de Client-Side (7 novembre)
+
+**Page** : `/esbtp/etudiants` (index - Gestion Étudiants)
+
+**Problème** : Tri limité à la page actuelle
+
+**Situation avant** :
+- Tri des colonnes (Nom, Prénom, Matricule, etc.) fait en JavaScript côté client
+- Triait SEULEMENT les étudiants de la page actuelle (ex: 10 étudiants sur la page 1)
+- Les étudiants des autres pages n'étaient PAS inclus dans le tri
+
+**Exemple concret** :
+```
+Page 1 avant tri : Kouassi, Bamba, Traoré
+Page 2 (non visible) : Adou, Yao
+
+Clic sur "Nom" (tri A-Z) :
+❌ Résultat ancien : Bamba, Kouassi, Traoré (tri page 1 seulement)
+✅ Résultat attendu : Adou devrait être en premier (A < B)
+```
+
+**Cause** :
+```javascript
+// ❌ Ancien code - Tri client-side
+const rows = Array.from(table.querySelectorAll('tbody tr'));  // ← Seulement les lignes dans le DOM
+rows.sort((a, b) => { /* ... */ });  // ← Trie seulement ces lignes
+```
+
+---
+
+#### Solution : Tri Server-Side avec AJAX
+
+**Backend - Controller** : `app/Http/Controllers/ESBTPStudentController.php` (lignes 235-258)
+
+**Ajout gestion paramètres `sort` et `order`** :
+```php
+// Gestion du tri
+$sortColumn = $request->input('sort', 'created_at');
+$sortOrder = $request->input('order', 'desc');
+
+// Mapping des colonnes frontend vers les colonnes DB
+$columnMapping = [
+    'nom' => 'nom',
+    'prenom' => 'prenom',
+    'matricule' => 'matricule',
+    'email' => 'email',
+    'telephone' => 'telephone',
+    'date' => 'date_naissance',
+    'statut' => 'statut',
+    'created_at' => 'created_at',
+];
+
+// Valider la colonne de tri
+$sortColumn = $columnMapping[$sortColumn] ?? 'created_at';
+$sortOrder = in_array(strtolower($sortOrder), ['asc', 'desc']) ? strtolower($sortOrder) : 'desc';
+
+// Appliquer le tri
+$baseQuery->orderBy($sortColumn, $sortOrder);
+
+$etudiants = $baseQuery->paginate($perPage)->appends($request->query());
+```
+
+**Sécurité** :
+- ✅ Whitelist des colonnes autorisées (mapping)
+- ✅ Validation `asc` ou `desc` uniquement
+- ✅ Fallback sur `created_at` + `desc` si paramètres invalides
+
+---
+
+**Frontend - Vue** : `resources/views/esbtp/etudiants/index.blade.php` (lignes 2675-2728)
+
+**Remplacement tri client-side par AJAX** :
+```javascript
+function initTableSorting(scope = document) {
+    scope.querySelectorAll('.table-sort').forEach((button) => {
+        button.addEventListener('click', function () {
+            const column = this.dataset.column;  // Ex: "nom", "matricule"
+
+            // Alterner la direction du tri
+            const currentDirection = this.dataset.sortDirection || 'desc';
+            const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+            this.dataset.sortDirection = newDirection;
+
+            // Retirer les indicateurs visuels sur les autres colonnes
+            scope.querySelectorAll('.table-sort').forEach((other) => {
+                if (other !== this) {
+                    delete other.dataset.sortDirection;
+                    other.classList.remove('sorted-asc', 'sorted-desc');
+                }
+            });
+
+            // Ajouter classe CSS pour indiquer le tri actif (flèche ▲/▼)
+            this.classList.add(`sorted-${newDirection}`);
+
+            // Construire l'URL avec les paramètres de tri
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('sort', column);
+            urlParams.set('order', newDirection);
+            urlParams.set('page', '1');  // Reset à la page 1
+
+            const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
+
+            // Faire l'appel AJAX pour récupérer les résultats triés
+            window.fetchResultsGlobal(newUrl, { pushState: true });
+        });
+    });
+}
+```
+
+**Workflow** :
+1. Clic sur header colonne (ex: "Nom")
+2. JavaScript construit URL : `?sort=nom&order=asc&page=1`
+3. Appel AJAX au serveur via `fetchResultsGlobal()`
+4. Controller Laravel trie TOUS les étudiants par nom ASC
+5. Retourne la page 1 des résultats triés
+6. Affichage avec "Adou" en premier
+
+---
+
+**CSS - Indicateurs visuels** : `index.blade.php` (lignes 1248-1259)
+
+**Flèches de tri** :
+```css
+/* Indicateurs de tri actif avec flèches */
+#etudiants-table th button.table-sort.sorted-asc::after {
+    content: ' ▲';
+    font-size: 10px;
+    color: var(--primary, #0453cb);
+}
+
+#etudiants-table th button.table-sort.sorted-desc::after {
+    content: ' ▼';
+    font-size: 10px;
+    color: var(--primary, #0453cb);
+}
+```
+
+**Rendu visuel** :
+- Colonne triée en ordre croissant : `Nom ▲`
+- Colonne triée en ordre décroissant : `Nom ▼`
+- Autres colonnes : Pas de flèche
+
+---
+
+#### Fichiers Modifiés
+
+| Fichier | Lignes modifiées | Type |
+|---------|------------------|------|
+| `app/Http/Controllers/ESBTPStudentController.php` | 235-258 | Gestion paramètres `sort` et `order` |
+| `resources/views/esbtp/etudiants/index.blade.php` | 1248-1259, 2675-2728 | AJAX tri + CSS flèches |
+
+**Total** : 2 fichiers, 3 sections modifiées
+
+---
+
+#### Impact
+
+**Avant** :
+- ❌ Tri limité à 10 étudiants (page actuelle)
+- ❌ Navigation entre pages perdait le tri
+- ❌ Pas de feedback visuel sur la colonne triée
+
+**Après** :
+- ✅ Tri sur TOUS les étudiants (toutes pages confondues)
+- ✅ Pagination respecte le tri (page 2 continue le tri de la page 1)
+- ✅ Flèches ▲/▼ indiquent la colonne et direction du tri actif
+- ✅ URL mise à jour : `?sort=nom&order=asc` (bookmarkable)
+- ✅ Indicateur filtres actifs synchronisé (grâce au fix précédent)
+
+**Exemple réel** :
+```
+1000 étudiants répartis sur 100 pages (10 par page)
+
+Avant : Clic sur "Nom" → Trie seulement les 10 de la page actuelle
+Après : Clic sur "Nom" → Trie les 1000, affiche les 10 premiers alphabétiquement
+```
+
+---
+
 ## 🌐 Vision Future : Réseau Social KLASSCI
 
 **Concept** : Plateforme sociale éducative **CROSS-TENANT** pour tous les étudiants KLASSCI (tous établissements confondus), inspirée de Reddit/Twitter, mais adaptée au contexte académique africain.

@@ -1245,6 +1245,19 @@
         opacity: 0.85;
     }
 
+    /* Indicateurs de tri actif avec flèches */
+    #etudiants-table th button.table-sort.sorted-asc::after {
+        content: ' ▲';
+        font-size: 10px;
+        color: var(--primary, #0453cb);
+    }
+
+    #etudiants-table th button.table-sort.sorted-desc::after {
+        content: ' ▼';
+        font-size: 10px;
+        color: var(--primary, #0453cb);
+    }
+
     .accordion-modern .accordion-item {
         border: none;
         border-radius: 16px;
@@ -2688,36 +2701,41 @@
                     if (!column) {
                         return;
                     }
-                    const dataKey = 'sort' + column.charAt(0).toUpperCase() + column.slice(1);
-                    const currentDirection = this.dataset.sortDirection === 'asc' ? 'desc' : 'asc';
-                    this.dataset.sortDirection = currentDirection;
 
+                    // Récupérer la direction actuelle et alterner
+                    const currentDirection = this.dataset.sortDirection || 'desc';
+                    const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+                    this.dataset.sortDirection = newDirection;
+
+                    // Retirer les indicateurs de tri sur les autres colonnes
                     scope.querySelectorAll('.table-sort').forEach((other) => {
                         if (other !== this) {
                             delete other.dataset.sortDirection;
+                            other.classList.remove('sorted-asc', 'sorted-desc');
                         }
                     });
 
-                    const rows = Array.from(table.querySelectorAll('tbody tr'));
-                    const multiplier = currentDirection === 'asc' ? 1 : -1;
+                    // Ajouter classe CSS pour indiquer le tri actif
+                    this.classList.remove('sorted-asc', 'sorted-desc');
+                    this.classList.add(`sorted-${newDirection}`);
 
-                    rows.sort((a, b) => {
-                        const rawA = a.dataset[dataKey] || '';
-                        const rawB = b.dataset[dataKey] || '';
-                        if (column === 'date') {
-                            if (rawA === rawB) {
-                                return 0;
-                            }
-                            return (rawA > rawB ? 1 : -1) * multiplier;
-                        }
+                    // Construire l'URL avec les paramètres de tri
+                    const urlParams = new URLSearchParams(window.location.search);
+                    urlParams.set('sort', column);
+                    urlParams.set('order', newDirection);
 
-                        const aVal = rawA.toUpperCase();
-                        const bVal = rawB.toUpperCase();
-                        return aVal.localeCompare(bVal) * multiplier;
-                    });
+                    // Garder la page actuelle si elle existe
+                    if (!urlParams.has('page')) {
+                        urlParams.set('page', '1');
+                    }
 
-                    const tbody = table.querySelector('tbody');
-                    rows.forEach((row) => tbody.appendChild(row));
+                    const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
+
+                    console.log('🔀 Tri par colonne:', column, '→', newDirection);
+                    console.log('📍 URL:', newUrl);
+
+                    // Faire l'appel AJAX pour récupérer les résultats triés
+                    window.fetchResultsGlobal(newUrl, { pushState: true });
                 }, { once: false });
             });
         }

@@ -232,7 +232,30 @@ class ESBTPStudentController extends Controller
             );
             $etudiants->appends($request->query());
         } else {
-            $etudiants = $baseQuery->orderByDesc('created_at')->paginate($perPage)->appends($request->query());
+            // Gestion du tri
+            $sortColumn = $request->input('sort', 'created_at');
+            $sortOrder = $request->input('order', 'desc');
+
+            // Mapping des colonnes frontend vers les colonnes DB
+            $columnMapping = [
+                'nom' => 'nom',
+                'prenom' => 'prenom',
+                'matricule' => 'matricule',
+                'email' => 'email',
+                'telephone' => 'telephone',
+                'date' => 'date_naissance',
+                'statut' => 'statut',
+                'created_at' => 'created_at',
+            ];
+
+            // Valider la colonne de tri
+            $sortColumn = $columnMapping[$sortColumn] ?? 'created_at';
+            $sortOrder = in_array(strtolower($sortOrder), ['asc', 'desc']) ? strtolower($sortOrder) : 'desc';
+
+            // Appliquer le tri
+            $baseQuery->orderBy($sortColumn, $sortOrder);
+
+            $etudiants = $baseQuery->paginate($perPage)->appends($request->query());
         }
 
         // Récupérer les listes pour les filtres
