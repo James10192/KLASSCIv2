@@ -15,18 +15,21 @@
                 <h1>{{ $etudiant->nom }} {{ $etudiant->prenoms }}</h1>
                 <p class="header-subtitle">Détails de l'étudiant - Matricule: {{ $etudiant->matricule }}</p>
             </div>
-            <div class="header-actions">
+            <div class="header-actions d-flex flex-wrap gap-2">
                 @if(isset($etudiant) && $etudiant->id)
-                <a href="{{ route('esbtp.etudiants.edit', ['etudiant' => $etudiant->id]) }}" class="btn-acasi primary me-2">
-                    <i class="fas fa-edit"></i>Modifier
+                <a href="{{ route('esbtp.etudiants.edit', ['etudiant' => $etudiant->id]) }}" class="btn-acasi primary">
+                    <i class="fas fa-edit"></i>
+                    <span class="d-none d-sm-inline ms-1">Modifier</span>
                 </a>
                 @endif
-                <a href="{{ route('esbtp.etudiants.index') }}" class="btn-acasi secondary me-2">
-                    <i class="fas fa-arrow-left"></i>Retour à la liste
+                <a href="{{ route('esbtp.etudiants.index') }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    <span class="d-none d-sm-inline ms-1">Retour</span>
                 </a>
-                <div class="dropdown me-2">
+                <div class="dropdown">
                     <button class="btn-acasi info dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-file-alt"></i>Documents
+                        <i class="fas fa-file-alt"></i>
+                        <span class="d-none d-md-inline ms-1">Documents</span>
                     </button>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="{{ route('esbtp.etudiants.certificat.preview', ['etudiant' => $etudiant->id]) }}">
@@ -50,14 +53,16 @@
                         @endif
                     </ul>
                 </div>
-                <a href="{{ route('esbtp.paiements.create') }}?etudiant={{ $etudiant->id }}" class="btn-acasi success me-2">
-                    <i class="fas fa-plus"></i>Nouveau paiement
+                <a href="{{ route('esbtp.paiements.create') }}?etudiant={{ $etudiant->id }}" class="btn-acasi success">
+                    <i class="fas fa-plus"></i>
+                    <span class="d-none d-lg-inline ms-1">Paiement</span>
                 </a>
 
                 <!-- Bouton suppression étudiant - Accès réservé aux superAdmin -->
                 @can('delete_students')
                 <button type="button" class="btn-acasi danger" data-bs-toggle="modal" data-bs-target="#deleteStudentModal" title="Supprimer l'étudiant et toutes ses données">
-                    <i class="fas fa-trash"></i>Supprimer
+                    <i class="fas fa-trash"></i>
+                    <span class="d-none d-lg-inline ms-1">Supprimer</span>
                 </button>
                 @endcan
             </div>
@@ -95,7 +100,7 @@
                     @endif
 
             <div class="row">
-                <div class="col-md-4">
+                <div class="col-12 col-md-5 col-lg-4">
                     <div class="card-moderne">
                         <div class="p-lg">
                             <div class="section-title mb-md">
@@ -334,7 +339,7 @@
                     @endif
                 </div>
 
-                <div class="col-md-8">
+                <div class="col-12 col-md-7 col-lg-8">
                     <div class="card-moderne mb-4">
                         <div class="p-lg">
                             <div class="section-title mb-md">
@@ -589,7 +594,8 @@
                                 <i class="fas fa-money-bill-wave"></i>Paiements
                             </div>
                                     @if($etudiant->paiements && $etudiant->paiements->count() > 0)
-                                        <div class="table-responsive">
+                                        <!-- Desktop : Table -->
+                                        <div class="table-responsive d-none d-lg-block">
                                             <table class="table table-bordered table-striped">
                                                 <thead class="table-light">
                                                     <tr>
@@ -642,14 +648,14 @@
                                                             </td>
                                                             <td>
                                                                 <div class="btn-group">
-                                                                    <a href="{{ route('esbtp.paiements.show', $paiement->id) }}" 
-                                                                       class="btn btn-sm btn-outline-primary" 
+                                                                    <a href="{{ route('esbtp.paiements.show', $paiement->id) }}"
+                                                                       class="btn btn-sm btn-outline-primary"
                                                                        title="Voir détails">
                                                                         <i class="fas fa-eye"></i>
                                                                     </a>
                                                                     @if($paiement->status == 'validé' && $paiement->numero_recu)
-                                                                        <a href="{{ route('esbtp.paiements.recu', $paiement->id) }}" 
-                                                                           class="btn btn-sm btn-outline-success" 
+                                                                        <a href="{{ route('esbtp.paiements.recu', $paiement->id) }}"
+                                                                           class="btn btn-sm btn-outline-success"
                                                                            title="Télécharger reçu"
                                                                            target="_blank">
                                                                             <i class="fas fa-file-pdf"></i>
@@ -662,14 +668,79 @@
                                                 </tbody>
                                             </table>
                                         </div>
+
+                                        <!-- Mobile : Cards -->
+                                        <div class="d-lg-none">
+                                            @foreach($etudiant->paiements->sortByDesc('date_paiement') as $paiement)
+                                                @php
+                                                    $status = $paiement->status ?? 'en_attente';
+                                                @endphp
+                                                <div class="card mb-3 border-start border-4 border-{{ $status == 'validé' ? 'success' : ($status == 'en_attente' ? 'warning' : 'danger') }}">
+                                                    <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                                                        <strong class="text-dark"><i class="fas fa-receipt me-1"></i>{{ $paiement->numero_recu ?: 'N/A' }}</strong>
+                                                        @if($status == 'validé')
+                                                            <span class="badge bg-success">
+                                                                <i class="fas fa-check me-1"></i>Validé
+                                                            </span>
+                                                        @elseif($status == 'en_attente')
+                                                            <span class="badge bg-warning">
+                                                                <i class="fas fa-clock me-1"></i>En attente
+                                                            </span>
+                                                        @elseif($status == 'rejeté')
+                                                            <span class="badge bg-danger">
+                                                                <i class="fas fa-times me-1"></i>Rejeté
+                                                            </span>
+                                                        @else
+                                                            <span class="badge bg-secondary">{{ $status }}</span>
+                                                        @endif
+                                                    </div>
+                                                    <div class="card-body p-3">
+                                                        <div class="mb-3 text-center">
+                                                            <div class="h4 mb-0 text-primary fw-bold">{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</div>
+                                                        </div>
+                                                        <div class="row g-2 mb-3">
+                                                            <div class="col-6">
+                                                                <small class="text-muted d-block">Référence</small>
+                                                                <strong class="small">{{ $paiement->reference_paiement ?: 'N/A' }}</strong>
+                                                            </div>
+                                                            <div class="col-6">
+                                                                <small class="text-muted d-block">Date</small>
+                                                                <strong class="small">{{ $paiement->date_paiement ? $paiement->date_paiement->format('d/m/Y') : 'N/A' }}</strong>
+                                                            </div>
+                                                            <div class="col-12">
+                                                                <small class="text-muted d-block">Motif</small>
+                                                                <span class="small">{{ $paiement->motif ?: 'Non spécifié' }}</span>
+                                                            </div>
+                                                            <div class="col-6">
+                                                                <small class="text-muted d-block">Mode</small>
+                                                                <span class="badge bg-light text-dark">{{ $paiement->mode_paiement ?: 'N/A' }}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="d-flex gap-2">
+                                                            <a href="{{ route('esbtp.paiements.show', $paiement->id) }}"
+                                                               class="btn btn-sm btn-outline-primary flex-fill">
+                                                                <i class="fas fa-eye me-1"></i>Détails
+                                                            </a>
+                                                            @if($paiement->status == 'validé' && $paiement->numero_recu)
+                                                                <a href="{{ route('esbtp.paiements.recu', $paiement->id) }}"
+                                                                   class="btn btn-sm btn-outline-success flex-fill"
+                                                                   target="_blank">
+                                                                    <i class="fas fa-file-pdf me-1"></i>Reçu
+                                                                </a>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
                                         
                                         @php
                                             $totalPaiements = $etudiant->paiements->sum('montant');
                                             $paiementsValides = $etudiant->paiements->where('status', 'validé')->sum('montant');
                                             $paiementsEnAttente = $etudiant->paiements->where('status', 'en_attente')->sum('montant');
                                         @endphp
-                                        <div class="row mt-3">
-                                            <div class="col-md-4">
+                                        <div class="row g-3 mt-3">
+                                            <div class="col-12 col-sm-6 col-md-4">
                                                 <div class="card border-primary">
                                                     <div class="card-body text-center p-2">
                                                         <small class="text-muted">Total Validé</small>
@@ -677,7 +748,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="col-md-4">
+                                            <div class="col-12 col-sm-6 col-md-4">
                                                 <div class="card border-warning">
                                                     <div class="card-body text-center p-2">
                                                         <small class="text-muted">En Attente</small>
@@ -685,7 +756,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="col-md-4">
+                                            <div class="col-12 col-sm-6 col-md-4">
                                                 <div class="card border-info">
                                                     <div class="card-body text-center p-2">
                                                         <small class="text-muted">Total Général</small>

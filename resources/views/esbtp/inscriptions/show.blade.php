@@ -235,37 +235,43 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                 <h1>{{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</h1>
                 <p class="header-subtitle">Détails de l'inscription - Matricule: {{ $inscription->etudiant->matricule }}</p>
             </div>
-            <div class="header-actions">
+            <div class="header-actions d-flex flex-wrap gap-2">
                 @can('inscriptions.validate')
-                    <a href="{{ route('esbtp.inscriptions.administration') }}" class="btn-acasi primary me-2">
-                        <i class="fas fa-cog"></i>Administration
+                    <a href="{{ route('esbtp.inscriptions.administration') }}" class="btn-acasi primary">
+                        <i class="fas fa-cog"></i>
+                        <span class="d-none d-md-inline ms-1">Administration</span>
                     </a>
-                    
+
                     @if(auth()->user()->hasRole('superAdmin') && $inscription->status === 'en_attente' && !$inscription->paiement_validation_id)
-                        <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#paymentModal" onclick="preparePaymentModal({{ $inscription->id }})">
-                            <i class="fas fa-credit-card"></i>Valider avec paiement
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#paymentModal" onclick="preparePaymentModal({{ $inscription->id }})">
+                            <i class="fas fa-credit-card"></i>
+                            <span class="d-none d-lg-inline ms-1">Valider avec paiement</span>
                         </button>
                     @endif
-                    
+
                     @if(!($inscription->status === 'active' && $inscription->workflow_step === 'etudiant_cree'))
-                        <button class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#validationModal" onclick="openValidationModal({{ $inscription->id }})">
-                            <i class="fas fa-check"></i>Valider définitivement
+                        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#validationModal" onclick="openValidationModal({{ $inscription->id }})">
+                            <i class="fas fa-check"></i>
+                            <span class="d-none d-lg-inline ms-1">Valider</span>
                         </button>
                     @endif
                 @endcan
-                
+
                 @can('inscriptions.edit')
-                    <a href="{{ route('esbtp.inscriptions.edit', $inscription) }}" class="btn-acasi secondary me-2">
-                        <i class="fas fa-edit"></i>Modifier
+                    <a href="{{ route('esbtp.inscriptions.edit', $inscription) }}" class="btn-acasi secondary">
+                        <i class="fas fa-edit"></i>
+                        <span class="d-none d-sm-inline ms-1">Modifier</span>
                     </a>
                 @endcan
-                
-                <a href="{{ route('esbtp.etudiants.show', $inscription->etudiant) }}" class="btn-acasi primary me-2">
-                    <i class="fas fa-user"></i>Voir l'étudiant
+
+                <a href="{{ route('esbtp.etudiants.show', $inscription->etudiant) }}" class="btn-acasi primary">
+                    <i class="fas fa-user"></i>
+                    <span class="d-none d-md-inline ms-1">Étudiant</span>
                 </a>
-                
+
                 <a href="{{ route('esbtp.etudiants.index') }}" class="btn-acasi secondary">
-                    <i class="fas fa-arrow-left"></i>Retour à la liste
+                    <i class="fas fa-arrow-left"></i>
+                    <span class="d-none d-sm-inline ms-1">Retour</span>
                 </a>
             </div>
         </div>
@@ -304,7 +310,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
             @endif
 
             <div class="row">
-                <div class="col-md-4">
+                <div class="col-12 col-md-5 col-lg-4">
                     <!-- Informations étudiant -->
                     <div class="card-moderne">
                         <div class="p-lg">
@@ -440,7 +446,9 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                             </div>
 
                             <!-- Étapes détaillées du workflow -->
-                            <div class="workflow-steps">
+
+                            <!-- Desktop : Layout horizontal -->
+                            <div class="workflow-steps d-none d-md-block">
                                 <div class="row">
                                     @foreach($steps as $stepKey => $stepInfo)
                                         @php
@@ -477,6 +485,49 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                 </div>
                             </div>
 
+                            <!-- Mobile : Layout vertical -->
+                            <div class="workflow-steps-mobile d-md-none">
+                                @foreach($steps as $stepKey => $stepInfo)
+                                    @php
+                                        $stepIndex = array_search($stepKey, $stepKeys);
+                                        $isCompleted = $stepIndex < $currentStepIndex;
+                                        $isCurrent = $stepKey === $inscription->workflow_step;
+                                        $isPending = $stepIndex > $currentStepIndex;
+                                    @endphp
+                                    <div class="d-flex align-items-center mb-3 pb-3 {{ !$loop->last ? 'border-bottom' : '' }}">
+                                        <div class="me-3 flex-shrink-0">
+                                            @if($isCompleted)
+                                                <div class="badge bg-success rounded-circle p-3" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                                                    <i class="fas fa-check fa-lg"></i>
+                                                </div>
+                                            @elseif($isCurrent)
+                                                <div class="badge bg-{{ $stepInfo['color'] }} rounded-circle p-3" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                                                    <i class="{{ $stepInfo['icon'] }} fa-lg"></i>
+                                                </div>
+                                            @else
+                                                <div class="badge bg-light text-muted rounded-circle p-3" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                                                    <i class="{{ $stepInfo['icon'] }} fa-lg"></i>
+                                                </div>
+                                            @endif
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="fw-bold text-{{ $isCompleted ? 'success' : ($isCurrent ? $stepInfo['color'] : 'muted') }}">
+                                                {{ $stepInfo['label'] }}
+                                            </div>
+                                            <small class="text-muted">
+                                                @if($isCompleted)
+                                                    <i class="fas fa-check-circle me-1"></i>Complété
+                                                @elseif($isCurrent)
+                                                    <i class="fas fa-arrow-right me-1"></i>En cours
+                                                @else
+                                                    <i class="fas fa-clock me-1"></i>En attente
+                                                @endif
+                                            </small>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+
                             @if($inscription->paiement_validation_id)
                                 <div class="alert alert-success">
                                     <i class="fas fa-check-circle me-2"></i>
@@ -502,7 +553,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                     </div>
                 </div>
 
-                <div class="col-md-8">
+                <div class="col-12 col-md-7 col-lg-8">
                     <!-- Informations de l'inscription -->
                     <div class="card-moderne mb-4">
                         <div class="p-lg">
