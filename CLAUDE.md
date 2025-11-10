@@ -5357,6 +5357,251 @@ Route::get('/parents/search', [App\Http\Controllers\ESBTP\ParentController::clas
 
 ---
 
+### 📱 Améliorations Responsive Pages Détails (6 novembre 2025)
+
+**Pages modifiées** : `etudiants.show`, `inscriptions.show`
+
+**Contexte** : Refonte complète du design responsive pour améliorer l'UX mobile des pages de détails étudiants et inscriptions.
+
+#### Analyse Préalable
+
+**Recherches web (best practices 2024)** :
+- Tables responsive : Approche card-based sur mobile (lignes = cards)
+- Breakpoints standards : 360px (mobile), 768px (tablet), 1024px (desktop)
+- Spacing : 8px grid system (16px gap minimum entre cards)
+- Touch targets : Minimum 44x44px sur mobile
+- Mobile-first approach : Priorité au contenu essentiel
+
+**Composants inventoriés** :
+- ✅ etudiants.show : 7 sections (photo, infos, compte, stats, parents, inscriptions, paiements)
+- ✅ inscriptions.show : 15+ sections (workflow, paiements, documents, reliquats)
+
+**Problèmes identifiés** :
+- ❌ Tables paiements (9 colonnes) : Scroll horizontal pénible sur mobile
+- ❌ Header actions : 4-6 boutons débordent sur petit écran
+- ❌ Layout col-md-4/8 : Pas de breakpoints intermédiaires (tablet)
+- ❌ Workflow steps : 5 badges trop petits sur mobile
+
+---
+
+#### Améliorations Implémentées
+
+**1. Header Actions Responsive** 🔴 Priorité haute
+
+**Avant** :
+```html
+<a href="..." class="btn-acasi primary me-2">
+    <i class="fas fa-edit"></i>Modifier
+</a>
+```
+
+**Après** :
+```html
+<div class="header-actions d-flex flex-wrap gap-2">
+    <a href="..." class="btn-acasi primary">
+        <i class="fas fa-edit"></i>
+        <span class="d-none d-sm-inline ms-1">Modifier</span>
+    </a>
+</div>
+```
+
+**Changements** :
+- `flex-wrap gap-2` : Permet wrap des boutons avec espacement 8px
+- `d-none d-sm-inline` : Cache texte sur mobile (< 576px), affiche sur ≥ 576px
+- Suppression `me-2` : Remplacé par `gap-2` sur le parent
+
+**Breakpoints texte** :
+- Administration : `d-none d-md-inline` (visible ≥ 768px)
+- Modifier/Retour : `d-none d-sm-inline` (visible ≥ 576px)
+- Paiement/Supprimer : `d-none d-lg-inline` (visible ≥ 992px)
+
+---
+
+**2. Tables → Cards Mobile** 🔴 Priorité haute
+
+**Fichier** : `etudiants.show.blade.php` (lignes 597-735)
+
+**Structure** :
+```html
+<!-- Desktop : Table normale -->
+<div class="table-responsive d-none d-lg-block">
+    <table>...</table>
+</div>
+
+<!-- Mobile : Cards -->
+<div class="d-lg-none">
+    @foreach($paiements as $paiement)
+    <div class="card mb-3 border-start border-4 border-{{ $status == 'validé' ? 'success' : 'warning' }}">
+        <div class="card-header bg-light">
+            <strong>{{ $paiement->numero_recu }}</strong>
+            <span class="badge">{{ $status }}</span>
+        </div>
+        <div class="card-body">
+            <div class="h4 text-primary">{{ $paiement->montant }} FCFA</div>
+            <!-- Infos 2 colonnes -->
+            <div class="row g-2">...</div>
+        </div>
+    </div>
+    @endforeach
+</div>
+```
+
+**Design cards** :
+- Bordure colorée à gauche (4px) : Vert (validé), Jaune (attente), Rouge (rejeté)
+- Header : Numéro reçu + Badge status
+- Montant : `h4` centré en haut (hiérarchie visuelle)
+- Infos : Grid 2 colonnes (référence/date, motif, mode)
+- Actions : 2 boutons full-width avec texte explicite
+
+**Avantage** : Lisibilité parfaite sur mobile, pas de scroll horizontal
+
+---
+
+**3. Breakpoints Layout Intermédiaires** 🟡 Priorité moyenne
+
+**Avant** :
+```html
+<div class="col-md-4">...</div> <!-- Sidebar -->
+<div class="col-md-8">...</div> <!-- Main -->
+```
+
+**Après** :
+```html
+<div class="col-12 col-md-5 col-lg-4">...</div>  <!-- 100% → 41.6% → 33.3% -->
+<div class="col-12 col-md-7 col-lg-8">...</div>  <!-- 100% → 58.4% → 66.7% -->
+```
+
+**Breakpoints** :
+- **< 768px** (mobile) : Full-width (col-12)
+- **768-1024px** (tablet) : 5/12 sidebar, 7/12 main
+- **≥ 1024px** (desktop) : 4/12 sidebar, 8/12 main
+
+**Avantage** : Transitions plus douces entre écrans
+
+---
+
+**4. Stat Cards Responsive** 🟡 Priorité moyenne
+
+**Fichier** : `etudiants.show.blade.php` (lignes 676-701)
+
+**Avant** :
+```html
+<div class="row">
+    <div class="col-md-4">...</div>
+    <div class="col-md-4">...</div>
+    <div class="col-md-4">...</div>
+</div>
+```
+
+**Après** :
+```html
+<div class="row g-3">  <!-- Gap 16px -->
+    <div class="col-12 col-sm-6 col-md-4">...</div>
+    <div class="col-12 col-sm-6 col-md-4">...</div>
+    <div class="col-12 col-sm-6 col-md-4">...</div>
+</div>
+```
+
+**Layout** :
+- **< 576px** (mobile) : 1 card/row (full-width)
+- **576-768px** (tablet) : 2 cards/row (50% chacune)
+- **≥ 768px** (desktop) : 3 cards/row (33.3% chacune)
+
+**Avantage** : Lecture confortable sur toutes tailles
+
+---
+
+**5. Workflow Steps Mobile** 🟡 Priorité moyenne
+
+**Fichier** : `inscriptions.show.blade.php` (lignes 449-529)
+
+**Desktop** : Layout horizontal (5 badges circulaires côte à côte)
+```html
+<div class="workflow-steps d-none d-md-block">
+    <div class="row">
+        @foreach($steps as $step)
+        <div class="col text-center">
+            <div class="badge rounded-circle p-3">...</div>
+            <small>{{ $step['label'] }}</small>
+        </div>
+        @endforeach
+    </div>
+</div>
+```
+
+**Mobile** : Layout vertical (badges + labels horizontaux)
+```html
+<div class="workflow-steps-mobile d-md-none">
+    @foreach($steps as $step)
+    <div class="d-flex align-items-center mb-3 border-bottom">
+        <div class="badge rounded-circle" style="width: 50px; height: 50px;">
+            <i class="{{ $step['icon'] }}"></i>
+        </div>
+        <div class="flex-grow-1 ms-3">
+            <div class="fw-bold">{{ $step['label'] }}</div>
+            <small>
+                @if($isCompleted) Complété
+                @elseif($isCurrent) En cours
+                @else En attente
+                @endif
+            </small>
+        </div>
+    </div>
+    @endforeach
+</div>
+```
+
+**Avantages** :
+- Badges 50x50px : Touch targets optimaux
+- Labels lisibles (pas de troncature)
+- Status explicite (Complété/En cours/En attente)
+
+---
+
+#### Fichiers Modifiés
+
+| Fichier | Lignes modifiées | Changements |
+|---------|------------------|-------------|
+| `etudiants.show.blade.php` | ~130 lignes | Header, layout, table→cards, stat cards |
+| `inscriptions.show.blade.php` | ~90 lignes | Header, layout, workflow mobile |
+
+**Total** : 2 fichiers, ~220 lignes ajoutées/modifiées
+
+---
+
+#### Respect Contraintes
+
+✅ **Couleurs KLASSCI** : Palette `dashboard-moderne.css` inchangée
+✅ **Pas de gradients custom** : Variables CSS existantes uniquement
+✅ **Design subtil** : Pas de refonte drastique, améliorations incrémentales
+✅ **Mobile-first** : Progressive enhancement (mobile → desktop)
+✅ **8px grid system** : Spacing cohérent (Bootstrap `gap-2`, `gap-3`)
+
+---
+
+#### Tests Recommandés
+
+- [ ] Tester sur iPhone SE (375px)
+- [ ] Tester sur iPad (768px)
+- [ ] Tester sur Desktop (1920px)
+- [ ] Vérifier tous les breakpoints intermédiaires
+- [ ] Tester rotation portrait/landscape
+
+---
+
+#### Prochaines Améliorations Possibles
+
+**Priorité basse** :
+- Accordion parents responsive (tables 2 cols → 1 col mobile)
+- Spacing utilities responsive (margin-bottom adaptatif)
+- Cards inscriptions responsive (layout 2 cols → 1 col)
+
+**Estimation** : 1-2h
+
+**Commit** : `9aa07a4` - feat(responsive): améliorer design mobile pages détails
+
+---
+
 ## 📦 Archive
 
 **Historique complet avant Octobre 2025** : Voir [CLAUDE_ARCHIVE.md](CLAUDE_ARCHIVE.md)
@@ -5433,7 +5678,7 @@ TENANT_CODE=presentation
 
 ---
 
-*Dernière mise à jour: 6 novembre 2025 - 18h30*
+*Dernière mise à jour: 6 novembre 2025 - 20h45*
 
 ---
 
