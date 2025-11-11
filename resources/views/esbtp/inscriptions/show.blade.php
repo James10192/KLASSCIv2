@@ -1094,6 +1094,20 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                         font-size: 15px !important;
                                         padding: 10px 16px !important;
                                     }
+
+                                    /* Workflow étapes : passer en mode vertical (mobile) */
+                                    .workflow-steps {
+                                        display: none !important;
+                                    }
+
+                                    .workflow-steps-mobile {
+                                        display: block !important;
+                                    }
+
+                                    /* Ajouter espace entre les cards empilées */
+                                    .card-moderne {
+                                        margin-bottom: 24px !important;
+                                    }
                                 }
                                 @media (min-width: 1601px) {
                                     /* Tables financières */
@@ -1108,6 +1122,15 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                     .col-1600-6 {
                                         flex: 0 0 50% !important;
                                         max-width: 50% !important;
+                                    }
+
+                                    /* Workflow étapes : mode horizontal (desktop) */
+                                    .workflow-steps {
+                                        display: block !important;
+                                    }
+
+                                    .workflow-steps-mobile {
+                                        display: none !important;
                                     }
                                 }
 
