@@ -338,7 +338,8 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                 </div>
                             </div>
 
-                            <table class="table table-bordered">
+                            <!-- Version Desktop : Table -->
+                            <table class="table table-bordered table-desktop-1600">
                                 <tr>
                                     <th style="width: 40%">Genre</th>
                                     <td>{{ $inscription->etudiant->sexe == 'M' ? 'Masculin' : 'Féminin' }}</td>
@@ -376,6 +377,48 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                     <td>{{ $inscription->etudiant->adresse ?: 'Non renseignée' }}</td>
                                 </tr>
                             </table>
+
+                            <!-- Version Mobile : Liste format table -->
+                            <div class="list-mobile-1600">
+                                <div class="row g-1 small">
+                                    <div class="col-12 d-flex border-bottom py-2">
+                                        <div class="text-muted flex-shrink-0 me-2">Genre:</div>
+                                        <div class="fw-bold">{{ $inscription->etudiant->sexe == 'M' ? 'Masculin' : 'Féminin' }}</div>
+                                    </div>
+                                    <div class="col-12 d-flex border-bottom py-2">
+                                        <div class="text-muted flex-shrink-0 me-2">Date de naissance:</div>
+                                        <div class="fw-bold">{{ \Carbon\Carbon::parse($inscription->etudiant->date_naissance)->format('d-m-Y') }}</div>
+                                    </div>
+                                    <div class="col-12 d-flex border-bottom py-2">
+                                        <div class="text-muted flex-shrink-0 me-2">Lieu de naissance:</div>
+                                        <div class="fw-bold">{{ $inscription->etudiant->lieu_naissance ?: 'Non renseigné' }}</div>
+                                    </div>
+                                    <div class="col-12 d-flex border-bottom py-2">
+                                        <div class="text-muted flex-shrink-0 me-2">Nationalité:</div>
+                                        <div class="fw-bold">{{ $inscription->etudiant->nationalite ?: 'Non renseignée' }}</div>
+                                    </div>
+                                    <div class="col-12 d-flex border-bottom py-2">
+                                        <div class="text-muted flex-shrink-0 me-2">Téléphone:</div>
+                                        <div class="fw-bold">{{ $inscription->etudiant->telephone }}</div>
+                                    </div>
+                                    <div class="col-12 d-flex border-bottom py-2">
+                                        <div class="text-muted flex-shrink-0 me-2">Email:</div>
+                                        <div class="fw-bold text-break">{{ $inscription->etudiant->email_personnel ?: 'Non renseigné' }}</div>
+                                    </div>
+                                    <div class="col-12 d-flex border-bottom py-2">
+                                        <div class="text-muted flex-shrink-0 me-2">Ville:</div>
+                                        <div class="fw-bold">{{ $inscription->etudiant->ville ?: 'Non renseignée' }}</div>
+                                    </div>
+                                    <div class="col-12 d-flex border-bottom py-2">
+                                        <div class="text-muted flex-shrink-0 me-2">Commune:</div>
+                                        <div class="fw-bold">{{ $inscription->etudiant->commune ?: 'Non renseignée' }}</div>
+                                    </div>
+                                    <div class="col-12 d-flex border-bottom py-2">
+                                        <div class="text-muted flex-shrink-0 me-2">Adresse:</div>
+                                        <div class="fw-bold">{{ $inscription->etudiant->adresse ?: 'Non renseignée' }}</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -561,8 +604,9 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                 <i class="fas fa-graduation-cap"></i>Informations académiques
                             </div>
                             <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <table class="table table-bordered">
+                                <div class="col-12 col-1600-6 mb-3">
+                                    <!-- Version Desktop : Table -->
+                                    <table class="table table-bordered table-desktop-1600">
                                         <tr>
                                             <th style="width: 40%">Filière</th>
                                             <td>{{ $inscription->filiere->name }}</td>
@@ -608,9 +652,60 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                             </td>
                                         </tr>
                                     </table>
+
+                                    <!-- Version Mobile : Liste -->
+                                    <div class="list-mobile-1600">
+                                        <div class="row g-1 small">
+                                            <div class="col-12 d-flex border-bottom py-2">
+                                                <div class="text-muted flex-shrink-0 me-2">Filière:</div>
+                                                <div class="fw-bold">{{ $inscription->filiere->name }}</div>
+                                            </div>
+                                            <div class="col-12 d-flex border-bottom py-2">
+                                                <div class="text-muted flex-shrink-0 me-2">Niveau:</div>
+                                                <div class="fw-bold">{{ $inscription->niveau->name }}</div>
+                                            </div>
+                                            <div class="col-12 d-flex border-bottom py-2">
+                                                <div class="text-muted flex-shrink-0 me-2">Classe:</div>
+                                                <div class="fw-bold">{{ $inscription->classe->name }}</div>
+                                            </div>
+                                            <div class="col-12 d-flex border-bottom py-2">
+                                                <div class="text-muted flex-shrink-0 me-2">Année universitaire:</div>
+                                                <div class="fw-bold">{{ $inscription->anneeUniversitaire->name }}</div>
+                                            </div>
+                                            <div class="col-12 d-flex border-bottom py-2">
+                                                <div class="text-muted flex-shrink-0 me-2">Statut:</div>
+                                                <div>
+                                                    @if($inscription->affectation_status)
+                                                        @switch($inscription->affectation_status)
+                                                            @case('affecté')
+                                                                <span class="badge bg-success">
+                                                                    <i class="fas fa-check-circle me-1"></i>Affecté
+                                                                </span>
+                                                                @break
+                                                            @case('réaffecté')
+                                                                <span class="badge bg-warning">
+                                                                    <i class="fas fa-exchange-alt me-1"></i>Réaffecté
+                                                                </span>
+                                                                @break
+                                                            @case('non_affecté')
+                                                                <span class="badge bg-danger">
+                                                                    <i class="fas fa-times-circle me-1"></i>Non affecté
+                                                                </span>
+                                                                @break
+                                                            @default
+                                                                <span class="badge bg-secondary">{{ $inscription->affectation_status }}</span>
+                                                        @endswitch
+                                                    @else
+                                                        <span class="text-muted">Non renseigné</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <table class="table table-bordered">
+                                <div class="col-12 col-1600-6 mb-3">
+                                    <!-- Version Desktop : Table -->
+                                    <table class="table table-bordered table-desktop-1600">
                                         <tr>
                                             <th style="width: 40%">Date d'inscription</th>
                                             <td>{{ $inscription->date_inscription }}</td>
@@ -689,6 +784,88 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                             </td>
                                         </tr>
                                     </table>
+
+                                    <!-- Version Mobile : Liste -->
+                                    <div class="list-mobile-1600">
+                                        <div class="row g-1 small">
+                                            <div class="col-12 d-flex border-bottom py-2">
+                                                <div class="text-muted flex-shrink-0 me-2">Date:</div>
+                                                <div class="fw-bold">{{ $inscription->date_inscription }}</div>
+                                            </div>
+                                            <div class="col-12 d-flex border-bottom py-2">
+                                                <div class="text-muted flex-shrink-0 me-2">Type:</div>
+                                                <div>
+                                                    <span class="badge bg-{{ in_array($inscription->type_inscription, ['reinscription', 'réinscription']) ? 'info' : 'primary' }}">
+                                                        {{ in_array($inscription->type_inscription, ['reinscription', 'réinscription']) ? 'Réinscription' : ucfirst($inscription->type_inscription) }}
+                                                    </span>
+                                                    @if($inscription->est_transfert)
+                                                        <span class="badge bg-warning ms-1" title="Transfert d'un autre établissement">
+                                                            <i class="fas fa-exchange-alt me-1"></i>Transfert
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                            </div>
+
+                                            @if($inscription->est_transfert && $inscription->etablissement_origine)
+                                            <div class="col-12 d-flex border-bottom py-2">
+                                                <div class="text-muted flex-shrink-0 me-2">Établissement:</div>
+                                                <div class="fw-bold">
+                                                    <i class="fas fa-school text-muted me-1"></i>{{ $inscription->etablissement_origine }}
+                                                </div>
+                                            </div>
+                                            @endif
+
+                                            <div class="col-12 border-bottom py-2">
+                                                <div class="text-muted mb-2">Observations:</div>
+                                                <div>
+                                                    @if(in_array($inscription->type_inscription, ['reinscription', 'réinscription']) && $reinscriptionData)
+                                                        <div class="reinscription-details">
+                                                            @if(isset($reinscriptionData['decision']))
+                                                            <div class="mb-2">
+                                                                <strong>Décision académique:</strong>
+                                                                <span class="badge bg-{{ strtolower($reinscriptionData['decision']) === 'passage' ? 'success' : (strtolower($reinscriptionData['decision']) === 'redoublement' ? 'danger' : 'warning') }}">
+                                                                    {{ $reinscriptionData['decision_label'] ?? $reinscriptionData['decision'] }}
+                                                                </span>
+                                                            </div>
+                                                            @endif
+
+                                                            <div class="mb-2">
+                                                                <strong>Statut d'affectation:</strong>
+                                                                <span class="text-muted">{{ $reinscriptionData['affectation_label'] }}</span>
+                                                            </div>
+
+                                                            @if(!$reinscriptionData['reliquat_gere'])
+                                                            <div class="mb-2">
+                                                                <strong>Reliquat:</strong>
+                                                                <span class="text-warning">
+                                                                    <i class="fas fa-exclamation-triangle"></i>
+                                                                    {{ number_format($reinscriptionData['reliquat_montant'], 0, ',', ' ') }} FCFA
+                                                                </span>
+                                                            </div>
+                                                            @else
+                                                            <div class="mb-2">
+                                                                <strong>Reliquat:</strong>
+                                                                <span class="text-success">
+                                                                    <i class="fas fa-check-circle"></i>
+                                                                    Aucun reliquat
+                                                                </span>
+                                                            </div>
+                                                            @endif
+
+                                                            @if(isset($reinscriptionData['notes']) && $reinscriptionData['notes'])
+                                                            <div class="mt-2 pt-2" style="border-top: 1px solid #dee2e6;">
+                                                                <strong>Notes:</strong><br>
+                                                                <span class="text-muted text-break">{{ $reinscriptionData['notes'] }}</span>
+                                                            </div>
+                                                            @endif
+                                                        </div>
+                                                    @else
+                                                        {{ $inscription->observations ?: 'Aucune' }}
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -747,8 +924,9 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                             <div id="collapse{{ $index }}" class="accordion-collapse collapse {{ $index == 0 ? 'show' : '' }}" aria-labelledby="heading{{ $index }}" data-bs-parent="#accordionParents">
                                                 <div class="accordion-body">
                                                     <div class="row">
-                                                        <div class="col-md-6">
-                                                            <table class="table table-bordered">
+                                                        <div class="col-12 col-1600-6 mb-3">
+                                                            <!-- Version Desktop : Table -->
+                                                            <table class="table table-bordered table-desktop-1600">
                                                                 <tr>
                                                                     <th style="width: 40%">Nom complet</th>
                                                                     <td>{{ $parent->nom }} {{ $parent->prenoms }}</td>
@@ -766,9 +944,32 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                                                     <td>{{ $parent->email ?: 'Non renseigné' }}</td>
                                                                 </tr>
                                                             </table>
+
+                                                            <!-- Version Mobile : Liste -->
+                                                            <div class="list-mobile-1600">
+                                                                <div class="row g-1 small">
+                                                                    <div class="col-12 d-flex border-bottom py-2">
+                                                                        <div class="text-muted flex-shrink-0 me-2">Nom complet:</div>
+                                                                        <div class="fw-bold">{{ $parent->nom }} {{ $parent->prenoms }}</div>
+                                                                    </div>
+                                                                    <div class="col-12 d-flex border-bottom py-2">
+                                                                        <div class="text-muted flex-shrink-0 me-2">Relation:</div>
+                                                                        <div class="fw-bold">{{ $parent->pivot->relation }}</div>
+                                                                    </div>
+                                                                    <div class="col-12 d-flex border-bottom py-2">
+                                                                        <div class="text-muted flex-shrink-0 me-2">Téléphone:</div>
+                                                                        <div class="fw-bold">{{ $parent->telephone ?: 'Non renseigné' }}</div>
+                                                                    </div>
+                                                                    <div class="col-12 d-flex border-bottom py-2">
+                                                                        <div class="text-muted flex-shrink-0 me-2">Email:</div>
+                                                                        <div class="fw-bold text-break">{{ $parent->email ?: 'Non renseigné' }}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                        <div class="col-md-6">
-                                                            <table class="table table-bordered">
+                                                        <div class="col-12 col-1600-6 mb-3">
+                                                            <!-- Version Desktop : Table -->
+                                                            <table class="table table-bordered table-desktop-1600">
                                                                 <tr>
                                                                     <th style="width: 40%">Profession</th>
                                                                     <td>{{ $parent->profession ?: 'Non renseignée' }}</td>
@@ -778,6 +979,20 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                                                     <td>{{ $parent->adresse ?: 'Non renseignée' }}</td>
                                                                 </tr>
                                                             </table>
+
+                                                            <!-- Version Mobile : Liste -->
+                                                            <div class="list-mobile-1600">
+                                                                <div class="row g-1 small">
+                                                                    <div class="col-12 d-flex border-bottom py-2">
+                                                                        <div class="text-muted flex-shrink-0 me-2">Profession:</div>
+                                                                        <div class="fw-bold">{{ $parent->profession ?: 'Non renseignée' }}</div>
+                                                                    </div>
+                                                                    <div class="col-12 d-flex border-bottom py-2">
+                                                                        <div class="text-muted flex-shrink-0 me-2">Adresse:</div>
+                                                                        <div class="fw-bold text-break">{{ $parent->adresse ?: 'Non renseignée' }}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -800,7 +1015,224 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                             <div class="section-title mb-md">
                                 <i class="fas fa-chart-line"></i>Situation Financière Détaillée
                             </div>
-                            <div class="table-responsive">
+
+                            <style>
+                                /* Breakpoint personnalisé à 1600px pour TOUT le responsive */
+                                @media (max-width: 1600px) {
+                                    /* Cards financières */
+                                    .financial-table-desktop { display: none !important; }
+                                    .financial-cards-responsive { display: block !important; }
+
+                                    /* Tables → Listes */
+                                    .table-desktop-1600 { display: none !important; }
+                                    .list-mobile-1600 { display: block !important; }
+
+                                    /* FORCER TOUTES les colonnes à être empilées (1 colonne pleine largeur) */
+                                    .row > div[class*="col-"],
+                                    .row > .col-md-6,
+                                    .row > .col-lg-6,
+                                    .row > .col-xl-6,
+                                    .row > .col-1600-6,
+                                    div[class*="col-md-6"],
+                                    div[class*="col-lg-6"],
+                                    div[class*="col-xl-6"] {
+                                        flex: 0 0 100% !important;
+                                        max-width: 100% !important;
+                                        width: 100% !important;
+                                    }
+
+                                    /* Augmenter les tailles de police pour meilleure lisibilité */
+                                    body {
+                                        font-size: 16px !important;
+                                    }
+
+                                    .section-title {
+                                        font-size: 20px !important;
+                                    }
+
+                                    .text-muted,
+                                    .small {
+                                        font-size: 15px !important;
+                                    }
+
+                                    .fw-bold,
+                                    strong {
+                                        font-size: 16px !important;
+                                    }
+
+                                    .badge {
+                                        font-size: 14px !important;
+                                        padding: 6px 12px !important;
+                                    }
+
+                                    .financial-stat-label {
+                                        font-size: 14px !important;
+                                    }
+
+                                    .financial-stat-value {
+                                        font-size: 22px !important;
+                                    }
+
+                                    .financial-stat-extra {
+                                        font-size: 14px !important;
+                                    }
+
+                                    .financial-title h5 {
+                                        font-size: 18px !important;
+                                    }
+
+                                    .financial-title p {
+                                        font-size: 15px !important;
+                                    }
+
+                                    table th,
+                                    table td {
+                                        font-size: 15px !important;
+                                    }
+
+                                    .btn {
+                                        font-size: 15px !important;
+                                        padding: 10px 16px !important;
+                                    }
+                                }
+                                @media (min-width: 1601px) {
+                                    /* Tables financières */
+                                    .financial-table-desktop { display: block !important; }
+                                    .financial-cards-responsive { display: none !important; }
+
+                                    /* Tables autres sections */
+                                    .table-desktop-1600 { display: table !important; }
+                                    .list-mobile-1600 { display: none !important; }
+
+                                    /* 2 colonnes côte à côte (50% de largeur chacune) */
+                                    .col-1600-6 {
+                                        flex: 0 0 50% !important;
+                                        max-width: 50% !important;
+                                    }
+                                }
+
+                                /* Style ACASI pour les cards financières */
+                                .financial-card-acasi {
+                                    background: var(--surface, #ffffff);
+                                    border-radius: var(--radius-medium, 12px);
+                                    box-shadow: var(--shadow-card, 0 1px 3px rgba(0, 0, 0, 0.1));
+                                    transition: all 0.3s ease;
+                                    overflow: hidden;
+                                    margin-bottom: var(--space-md, 16px);
+                                }
+
+                                .financial-card-acasi:hover {
+                                    box-shadow: var(--shadow-hover, 0 4px 12px rgba(0, 0, 0, 0.15));
+                                    transform: translateY(-2px);
+                                }
+
+                                .financial-card-header {
+                                    display: flex;
+                                    align-items: center;
+                                    padding: var(--space-md, 16px);
+                                    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+                                    border-bottom: 1px solid #e5e7eb;
+                                }
+
+                                .financial-icon-wrapper {
+                                    width: 48px;
+                                    height: 48px;
+                                    border-radius: var(--radius-medium, 12px);
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    font-size: 24px;
+                                    flex-shrink: 0;
+                                    margin-right: var(--space-md, 16px);
+                                }
+
+                                .financial-icon-wrapper.status-paid { background: #dcfce7; color: #10b981; }
+                                .financial-icon-wrapper.status-partial { background: #fef3c7; color: #f59e0b; }
+                                .financial-icon-wrapper.status-unpaid { background: #fee2e2; color: #ef4444; }
+
+                                .financial-title {
+                                    flex: 1;
+                                }
+
+                                .financial-title h5 {
+                                    margin: 0;
+                                    font-size: 16px;
+                                    font-weight: 700;
+                                    color: var(--text-primary, #111827);
+                                }
+
+                                .financial-title p {
+                                    margin: 4px 0 0 0;
+                                    font-size: var(--text-small, 12px);
+                                    color: var(--text-secondary, #6b7280);
+                                }
+
+                                .financial-stats {
+                                    display: grid;
+                                    grid-template-columns: repeat(2, 1fr);
+                                    gap: var(--space-md, 16px);
+                                    padding: var(--space-md, 16px);
+                                }
+
+                                .financial-stat-card {
+                                    background: #f9fafb;
+                                    border-radius: var(--radius-small, 6px);
+                                    padding: var(--space-sm, 8px) var(--space-md, 16px);
+                                }
+
+                                .financial-stat-label {
+                                    font-size: var(--text-small, 12px);
+                                    color: var(--text-secondary, #6b7280);
+                                    margin-bottom: 4px;
+                                    display: flex;
+                                    align-items: center;
+                                }
+
+                                .financial-stat-label i {
+                                    margin-right: 4px;
+                                    opacity: 0.7;
+                                }
+
+                                .financial-stat-value {
+                                    font-size: 18px;
+                                    font-weight: 700;
+                                    color: var(--text-primary, #111827);
+                                }
+
+                                .financial-stat-value.text-success { color: #10b981 !important; }
+                                .financial-stat-value.text-danger { color: #ef4444 !important; }
+                                .financial-stat-value.text-warning { color: #f59e0b !important; }
+
+                                .financial-stat-extra {
+                                    font-size: var(--text-small, 12px);
+                                    margin-top: 4px;
+                                }
+
+                                .financial-actions {
+                                    padding: 0 var(--space-md, 16px) var(--space-md, 16px);
+                                    display: flex;
+                                    gap: var(--space-sm, 8px);
+                                    flex-wrap: wrap;
+                                }
+
+                                .financial-actions .btn {
+                                    flex: 1 1 auto;
+                                    min-width: 120px;
+                                }
+
+                                @media (max-width: 576px) {
+                                    .financial-stats {
+                                        grid-template-columns: 1fr;
+                                    }
+
+                                    .financial-actions .btn {
+                                        flex: 1 1 100%;
+                                    }
+                                }
+                            </style>
+
+                            <!-- Version Desktop : Table -->
+                            <div class="table-responsive financial-table-desktop">
                                 <table class="table table-bordered table-striped">
                                     <thead>
                                         <tr>
@@ -1023,6 +1455,291 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                         @endif
                                     </tbody>
                                 </table>
+                            </div>
+
+                            <!-- Version Responsive : Cards ACASI Modernes -->
+                            <div class="financial-cards-responsive" style="display: none;">
+                                @forelse($feeCategoriesWithRules as $item)
+                                    <div class="financial-card-acasi">
+                                        <!-- Header avec icône et titre -->
+                                        <div class="financial-card-header">
+                                            <div class="financial-icon-wrapper status-{{ $item['status'] }}">
+                                                <i class="{{ $item['category']->icon ?? 'fas fa-file-invoice-dollar' }}"></i>
+                                            </div>
+                                            <div class="financial-title">
+                                                <h5>{{ $item['category']->name }}</h5>
+                                                <p>{{ $item['category']->description ?? '' }}</p>
+                                            </div>
+                                            @if($item['is_mandatory'])
+                                                <span class="badge bg-danger" style="height: fit-content;">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>Obligatoire
+                                                </span>
+                                            @else
+                                                <span class="badge bg-info" style="height: fit-content;">
+                                                    <i class="fas fa-star me-1"></i>Optionnel
+                                                </span>
+                                            @endif
+                                        </div>
+
+                                        <!-- Stats financières -->
+                                        <div class="financial-stats">
+                                            @php
+                                                $paiementsEnAttente = $inscription->paiements()
+                                                    ->where('frais_category_id', $item['category']->id)
+                                                    ->where('status', 'en_attente')
+                                                    ->where(function($query) {
+                                                        $query->where('type_paiement', '!=', 'reliquat')
+                                                              ->orWhereNull('type_paiement');
+                                                    })
+                                                    ->get();
+                                                $montantEnAttente = $paiementsEnAttente->sum('montant');
+                                            @endphp
+
+                                            <!-- Montant Attendu -->
+                                            <div class="financial-stat-card">
+                                                <div class="financial-stat-label">
+                                                    <i class="fas fa-file-invoice"></i>
+                                                    Montant Attendu
+                                                </div>
+                                                @if($item['is_configured'])
+                                                    <div class="financial-stat-value">
+                                                        {{ number_format($item['montant_attendu'], 0, ',', ' ') }} FCFA
+                                                    </div>
+                                                @else
+                                                    <div class="financial-stat-value text-warning">
+                                                        {{ number_format($item['category']->default_amount, 0, ',', ' ') }} FCFA
+                                                    </div>
+                                                    <div class="financial-stat-extra text-warning">
+                                                        <i class="fas fa-exclamation-triangle"></i> Non configuré (défaut)
+                                                    </div>
+                                                @endif
+                                            </div>
+
+                                            <!-- Montant Payé -->
+                                            <div class="financial-stat-card">
+                                                <div class="financial-stat-label">
+                                                    <i class="fas fa-check-circle"></i>
+                                                    Montant Payé
+                                                </div>
+                                                @if($item['total_paye'] > 0)
+                                                    <div class="financial-stat-value text-success">
+                                                        {{ number_format($item['total_paye'], 0, ',', ' ') }} FCFA
+                                                    </div>
+                                                    <div class="financial-stat-extra text-success">
+                                                        <i class="fas fa-check"></i> Validé
+                                                    </div>
+                                                @else
+                                                    <div class="financial-stat-value">
+                                                        0 FCFA
+                                                    </div>
+                                                @endif
+                                                @if($montantEnAttente > 0)
+                                                    <div class="financial-stat-extra text-warning">
+                                                        <i class="fas fa-hourglass-half"></i> {{ number_format($montantEnAttente, 0, ',', ' ') }} FCFA en attente
+                                                    </div>
+                                                @endif
+                                            </div>
+
+                                            <!-- Solde -->
+                                            <div class="financial-stat-card">
+                                                <div class="financial-stat-label">
+                                                    <i class="fas fa-balance-scale"></i>
+                                                    Solde
+                                                </div>
+                                                @if($item['solde'] > 0)
+                                                    <div class="financial-stat-value text-danger">
+                                                        {{ number_format($item['solde'], 0, ',', ' ') }} FCFA
+                                                    </div>
+                                                    <div class="financial-stat-extra text-danger">
+                                                        <i class="fas fa-arrow-down"></i> À payer
+                                                    </div>
+                                                @elseif($item['solde'] < 0)
+                                                    <div class="financial-stat-value text-success">
+                                                        {{ number_format(abs($item['solde']), 0, ',', ' ') }} FCFA
+                                                    </div>
+                                                    <div class="financial-stat-extra text-success">
+                                                        <i class="fas fa-arrow-up"></i> Trop-perçu (transférable)
+                                                    </div>
+                                                @else
+                                                    <div class="financial-stat-value text-success">
+                                                        0 FCFA
+                                                    </div>
+                                                    <div class="financial-stat-extra text-success">
+                                                        <i class="fas fa-check-double"></i> Soldé
+                                                    </div>
+                                                @endif
+                                            </div>
+
+                                            <!-- Statut -->
+                                            <div class="financial-stat-card">
+                                                <div class="financial-stat-label">
+                                                    <i class="fas fa-info-circle"></i>
+                                                    Statut
+                                                </div>
+                                                <div class="financial-stat-value">
+                                                    @switch($item['status'])
+                                                        @case('paid')
+                                                            <span class="badge bg-success" style="font-size: 14px;">
+                                                                <i class="fas fa-check me-1"></i>Payé
+                                                            </span>
+                                                            @break
+                                                        @case('partial')
+                                                            <span class="badge bg-warning" style="font-size: 14px;">
+                                                                <i class="fas fa-clock me-1"></i>Partiel
+                                                            </span>
+                                                            @break
+                                                        @case('unpaid')
+                                                            <span class="badge bg-danger" style="font-size: 14px;">
+                                                                <i class="fas fa-times me-1"></i>Impayé
+                                                            </span>
+                                                            @break
+                                                        @default
+                                                            <span class="badge bg-secondary" style="font-size: 14px;">{{ $item['status'] }}</span>
+                                                    @endswitch
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Actions -->
+                                        <div class="financial-actions">
+                                                @if(auth()->user()->hasRole('superAdmin') && $item['is_configured'] && $item['solde'] > 0)
+                                                    <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#paymentModal" onclick="preparePaymentModalForCategory({{ $inscription->id }}, {{ $item['category']->id }})" title="Effectuer un paiement">
+                                                        <i class="fas fa-credit-card me-1"></i>Payer
+                                                    </button>
+                                                @endif
+                                                @if(auth()->user()->hasRole('superAdmin') && $item['subscription'])
+                                                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editSubscriptionModal" onclick="prepareEditSubscriptionModal({{ $item['subscription']->id }}, {{ json_encode($item['category']->name) }}, {{ $item['subscription']->amount }})" title="Modifier le montant">
+                                                        <i class="fas fa-edit me-1"></i>Modifier
+                                                    </button>
+                                                @endif
+                                                @if($item['solde'] < 0)
+                                                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#transferModal" onclick="prepareTransferModal({{ $inscription->id }}, {{ $item['category']->id }}, {{ abs($item['solde']) }}, {{ json_encode($item['category']->name) }})" title="Transférer">
+                                                        <i class="fas fa-exchange-alt me-1"></i>Transférer
+                                                    </button>
+                                                @endif
+                                                @if(!$item['is_configured'])
+                                                    <a href="{{ route('esbtp.frais.configure') }}?filiere_id={{ $inscription->filiere_id }}&niveau_id={{ $inscription->niveau_id }}" class="btn btn-sm btn-warning">
+                                                        <i class="fas fa-cogs me-1"></i>Configurer
+                                                    </a>
+                                                @endif
+                                            @if($montantEnAttente > 0)
+                                                <a href="{{ route('esbtp.paiements.index') }}?etudiant={{ $inscription->etudiant_id }}" class="btn btn-sm btn-outline-warning">
+                                                    <i class="fas fa-external-link-alt me-1"></i>Valider paiement
+                                                </a>
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    {{-- Cards pour les reliquats --}}
+                                    @if($loop->last && isset($reliquatsEntrants) && $reliquatsEntrants->count() > 0)
+                                        @foreach($reliquatsEntrants as $reliquat)
+                                            @if($reliquat->solde_restant > 0)
+                                                <div class="financial-card-acasi">
+                                                    <!-- Header reliquat -->
+                                                    <div class="financial-card-header">
+                                                        <div class="financial-icon-wrapper" style="background: #fef3c7; color: #f59e0b;">
+                                                            <i class="fas fa-history"></i>
+                                                        </div>
+                                                        <div class="financial-title">
+                                                            <h5>{{ $reliquat->fraisSubscription->fraisConfiguration->name ?? $reliquat->fraisSubscription->fraisCategory->name ?? 'N/A' }}</h5>
+                                                            <p>Reliquat {{ $reliquat->inscriptionSource->anneeUniversitaire->name ?? 'N/A' }}</p>
+                                                        </div>
+                                                        <span class="badge bg-warning" style="height: fit-content;">
+                                                            <i class="fas fa-history me-1"></i>Reliquat
+                                                        </span>
+                                                    </div>
+
+                                                    <!-- Stats reliquat -->
+                                                    <div class="financial-stats">
+                                                        @php
+                                                            $paiementsReliquatEnAttente = \App\Models\ESBTPPaiement::where('type_paiement', 'reliquat')
+                                                                ->where('reliquat_detail_id', $reliquat->id)
+                                                                ->where('status', 'en_attente')
+                                                                ->sum('montant');
+                                                        @endphp
+
+                                                        <!-- Montant Total -->
+                                                        <div class="financial-stat-card">
+                                                            <div class="financial-stat-label">
+                                                                <i class="fas fa-file-invoice"></i>
+                                                                Montant Total
+                                                            </div>
+                                                            <div class="financial-stat-value">
+                                                                {{ number_format($reliquat->montant_reliquat, 0, ',', ' ') }} FCFA
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Montant Payé -->
+                                                        <div class="financial-stat-card">
+                                                            <div class="financial-stat-label">
+                                                                <i class="fas fa-check-circle"></i>
+                                                                Montant Payé
+                                                            </div>
+                                                            @if($reliquat->montant_regle > 0)
+                                                                <div class="financial-stat-value text-success">
+                                                                    {{ number_format($reliquat->montant_regle, 0, ',', ' ') }} FCFA
+                                                                </div>
+                                                            @else
+                                                                <div class="financial-stat-value">
+                                                                    0 FCFA
+                                                                </div>
+                                                            @endif
+                                                            @if($paiementsReliquatEnAttente > 0)
+                                                                <div class="financial-stat-extra text-warning">
+                                                                    <i class="fas fa-hourglass-half"></i> {{ number_format($paiementsReliquatEnAttente, 0, ',', ' ') }} FCFA en attente
+                                                                </div>
+                                                            @endif
+                                                        </div>
+
+                                                        <!-- Solde Restant -->
+                                                        <div class="financial-stat-card">
+                                                            <div class="financial-stat-label">
+                                                                <i class="fas fa-balance-scale"></i>
+                                                                Solde Restant
+                                                            </div>
+                                                            <div class="financial-stat-value text-danger">
+                                                                {{ number_format($reliquat->solde_restant, 0, ',', ' ') }} FCFA
+                                                            </div>
+                                                            <div class="financial-stat-extra text-danger">
+                                                                <i class="fas fa-arrow-down"></i> À payer
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Statut -->
+                                                        <div class="financial-stat-card">
+                                                            <div class="financial-stat-label">
+                                                                <i class="fas fa-info-circle"></i>
+                                                                Statut
+                                                            </div>
+                                                            <div class="financial-stat-value">
+                                                                <span class="badge bg-{{ $reliquat->statut == 'actif' ? 'warning' : ($reliquat->statut == 'soldé' ? 'success' : 'info') }}" style="font-size: 14px;">
+                                                                    {{ ucfirst($reliquat->statut) }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Actions reliquat -->
+                                                    <div class="financial-actions">
+                                                        <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#reliquatPaymentModal" onclick="prepareReliquatPaymentModal({{ $reliquat->id }}, {{ $reliquat->solde_restant }}, {{ json_encode($reliquat->fraisSubscription->fraisConfiguration->name ?? $reliquat->fraisSubscription->fraisCategory->name ?? 'N/A') }})" title="Payer ce reliquat">
+                                                            <i class="fas fa-credit-card me-1"></i>Payer reliquat
+                                                        </button>
+                                                        @if($paiementsReliquatEnAttente > 0)
+                                                            <a href="{{ route('esbtp.paiements.index') }}?search={{ $reliquat->id }}" class="btn btn-sm btn-outline-warning">
+                                                                <i class="fas fa-external-link-alt me-1"></i>Valider paiement
+                                                            </a>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            @endif
+                                        @endforeach
+                                    @endif
+                                @empty
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        Aucune catégorie de frais configurée pour cette inscription.
+                                    </div>
+                                @endforelse
                             </div>
                         </div>
                     </div>
