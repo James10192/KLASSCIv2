@@ -2368,7 +2368,7 @@ $(function() {
                         const $visibleRows = $tableContainer.find('.teacher-row:visible');
                         const $visibleCheckboxes = $visibleRows.find('.teacher-checkbox');
                         const $headerCheckbox = $('.teacher-select-all-checkbox[data-matiere-id="' + matiereId + '"]');
-                        const $countDiv = $('.teacher-selection-count').has('.count-text');
+                        const $countDiv = $('.teacher-selection-count[data-matiere-id="' + matiereId + '"]');
                         const $countText = $countDiv.find('.count-text');
 
                         const totalCount = $allCheckboxes.length;
@@ -2619,7 +2619,9 @@ $(function() {
     $('#save-volume-config').on('click', function() {
         const $btn = $(this);
         const originalText = $btn.html();
-        
+
+        console.log('🚀 ========== DÉBUT SAUVEGARDE PLANNING GÉNÉRAL ==========');
+
         // Récupérer les données du formulaire
         const formData = {
             filiere_id: currentFiliereId,
@@ -2628,14 +2630,26 @@ $(function() {
             volumes: {},
             teachers: {}
         };
-        
+
+        console.log('📋 Données de base:', {
+            filiere_id: formData.filiere_id,
+            niveau_id: formData.niveau_id,
+            annee_id: formData.annee_id
+        });
+
         // Collecter tous les volumes
         $('.volume-input').each(function() {
             const matiereId = $(this).attr('name').match(/volumes\[(\d+)\]/)[1];
             const volume = parseInt($(this).val()) || 0;
             formData.volumes[matiereId] = volume;
+
+            if (volume > 0) {
+                console.log('  📊 Volume Matière ' + matiereId + ': ' + volume + 'h');
+            }
         });
-        
+
+        console.log('📚 Total volumes:', Object.keys(formData.volumes).length + ' matières');
+
         // Collecter toutes les assignations de professeurs (checkboxes)
         $('.teacher-checkboxes-container').each(function() {
             const $container = $(this);
@@ -2654,15 +2668,25 @@ $(function() {
 
                 formData.teachers[matiereId] = selectedTeachers;
 
-                console.log('📝 Matière ' + matiereId + ': ' + selectedTeachers.length + ' enseignants sélectionnés', selectedTeachers);
+                console.log('👨‍🏫 Matière ' + matiereId + ': ' + selectedTeachers.length + ' enseignants sélectionnés', selectedTeachers);
             }
         });
-        
+
+        console.log('📝 Résumé enseignants:', {
+            'Matières avec enseignants': Object.keys(formData.teachers).length,
+            'Détails': formData.teachers
+        });
+
+        console.log('📦 FormData complet à envoyer:', JSON.stringify(formData, null, 2));
+
         // Validation
         if (!formData.filiere_id || !formData.niveau_id || !formData.annee_id) {
+            console.error('❌ Validation échouée: Données manquantes');
             showAlert('error', 'Données manquantes pour la sauvegarde');
             return;
         }
+
+        console.log('✅ Validation OK, envoi de la requête AJAX...');
         
         // Afficher loading sur le bouton
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Sauvegarde...');
@@ -2675,32 +2699,47 @@ $(function() {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             },
             success: function(response) {
+                console.log('✅ Réponse serveur SUCCESS:', response);
+
                 if (response.success) {
+                    console.log('🎉 Sauvegarde réussie!', response.message);
                     showAlert('success', response.message);
-                    
+
                     // Fermer le modal
                     $('#volumeConfigModal').modal('hide');
-                    
+
                     // Recharger la page pour mettre à jour les cartes
+                    console.log('🔄 Rechargement de la page dans 1 seconde...');
                     setTimeout(() => {
                         window.location.reload();
                     }, 1000);
                 } else {
+                    console.error('❌ Sauvegarde échouée (success=false):', response.message);
                     showAlert('error', response.message || 'Erreur lors de la sauvegarde');
                 }
+
+                console.log('========== FIN SAUVEGARDE PLANNING GÉNÉRAL ==========');
             },
             error: function(xhr) {
-                console.error('Erreur AJAX:', xhr);
+                console.error('❌ ========== ERREUR AJAX ==========');
+                console.error('Status:', xhr.status);
+                console.error('Status Text:', xhr.statusText);
+                console.error('Response:', xhr.responseJSON);
+                console.error('Full XHR:', xhr);
+
                 let message = 'Erreur lors de la sauvegarde';
-                
+
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     message = xhr.responseJSON.message;
+                    console.error('Message d\'erreur:', message);
                 } else if (xhr.responseJSON && xhr.responseJSON.errors) {
                     const errors = Object.values(xhr.responseJSON.errors).flat();
                     message = errors.join(', ');
+                    console.error('Erreurs de validation:', errors);
                 }
-                
+
                 showAlert('error', message);
+                console.error('========== FIN ERREUR ==========');
             },
             complete: function() {
                 $btn.prop('disabled', false).html(originalText);

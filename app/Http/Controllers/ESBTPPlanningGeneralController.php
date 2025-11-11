@@ -393,7 +393,7 @@ class ESBTPPlanningGeneralController extends Controller
             }
 
             // Compteur dynamique
-            $html .= '<div class="teacher-selection-count" style="margin-top: 10px; padding: 8px; background: #f0f8ff; border-radius: 6px; text-align: center; font-size: 13px;">';
+            $html .= '<div class="teacher-selection-count" data-matiere-id="' . $matiere->id . '" style="margin-top: 10px; padding: 8px; background: #f0f8ff; border-radius: 6px; text-align: center; font-size: 13px;">';
             $html .= '<i class="fas fa-info-circle text-primary"></i> ';
             $html .= '<span class="count-text">Sélectionnez un ou plusieurs enseignants</span>';
             $html .= '</div>';
@@ -415,6 +415,9 @@ class ESBTPPlanningGeneralController extends Controller
      */
     public function saveVolumeConfiguration(Request $request)
     {
+        \Log::info('🚀 ========== DÉBUT SAUVEGARDE PLANNING GÉNÉRAL (BACKEND) ==========');
+        \Log::info('📥 Données reçues:', $request->all());
+
         $request->validate([
             'filiere_id' => 'required|exists:esbtp_filieres,id',
             'niveau_id' => 'required|exists:esbtp_niveau_etudes,id',
@@ -425,15 +428,22 @@ class ESBTPPlanningGeneralController extends Controller
             'teachers.*' => 'nullable|array',
             'teachers.*.*' => 'exists:esbtp_teachers,id'
         ]);
-        
+
+        \Log::info('✅ Validation passée');
+        \Log::info('📊 Volumes à sauvegarder:', $request->volumes);
+        \Log::info('👨‍🏫 Professeurs à assigner:', $request->teachers ?? []);
+
         DB::beginTransaction();
-        
+
         try {
             $savedCount = 0;
             $updatedCount = 0;
+            $teachersAssignedCount = 0;
             
             foreach ($request->volumes as $matiereId => $volume) {
                 if ($volume && $volume > 0) {
+                    \Log::info("📚 Traitement Matière ID: {$matiereId}, Volume: {$volume}h");
+
                     $planification = ESBTPPlanificationAcademique::updateOrCreate(
                         [
                             'annee_universitaire_id' => $request->annee_id,
@@ -454,22 +464,33 @@ class ESBTPPlanningGeneralController extends Controller
                             'created_by' => Auth::id()
                         ]
                     );
-                    
+
                     if ($planification->wasRecentlyCreated) {
+                        \Log::info("  ➕ Planification créée (ID: {$planification->id})");
                         $savedCount++;
                     } else {
+                        \Log::info("  🔄 Planification mise à jour (ID: {$planification->id})");
                         $updatedCount++;
                     }
                     
                     // Gérer les assignations de professeurs pour cette planification
                     if (isset($request->teachers[$matiereId]) && !empty($request->teachers[$matiereId])) {
+                        $teachersForThisMatiere = $request->teachers[$matiereId];
+                        \Log::info("  👨‍🏫 Assignation de " . count($teachersForThisMatiere) . " professeur(s) pour matière {$matiereId}");
+                        \Log::info("  📋 IDs professeurs: " . json_encode($teachersForThisMatiere));
+
                         // Supprimer les anciennes assignations
-                        DB::table('esbtp_planification_teachers')
+                        $deletedCount = DB::table('esbtp_planification_teachers')
                             ->where('planification_id', $planification->id)
                             ->delete();
-                        
+
+                        \Log::info("  🗑️ {$deletedCount} ancienne(s) assignation(s) supprimée(s)");
+
+                        // Récupérer le premier enseignant pour le définir comme principal
+                        $firstTeacherId = null;
+
                         // Ajouter les nouvelles assignations
-                        foreach ($request->teachers[$matiereId] as $teacherId) {
+                        foreach ($teachersForThisMatiere as $index => $teacherId) {
                             if (!empty($teacherId)) {
                                 DB::table('esbtp_planification_teachers')->insert([
                                     'planification_id' => $planification->id,
@@ -477,13 +498,45 @@ class ESBTPPlanningGeneralController extends Controller
                                     'created_at' => now(),
                                     'updated_at' => now()
                                 ]);
+
+                                \Log::info("    ✅ Teacher ID {$teacherId} assigné à planification {$planification->id}");
+                                $teachersAssignedCount++;
+
+                                // Définir le premier enseignant comme principal
+                                if ($firstTeacherId === null) {
+                                    $firstTeacherId = $teacherId;
+                                }
+                            }
+                        }
+
+                        // Mettre à jour l'enseignant principal dans la planification
+                        if ($firstTeacherId !== null) {
+                            // Récupérer le user_id depuis la table esbtp_teachers
+                            $teacher = \App\Models\ESBTPTeacher::find($firstTeacherId);
+                            if ($teacher && $teacher->user_id) {
+                                $planification->update([
+                                    'enseignant_principal_id' => $teacher->user_id
+                                ]);
+                                \Log::info("    ⭐ Enseignant principal défini: Teacher ID {$firstTeacherId} (User ID {$teacher->user_id})");
+                            } else {
+                                \Log::warning("    ⚠️ Impossible de définir enseignant principal: Teacher {$firstTeacherId} non trouvé ou sans user_id");
                             }
                         }
                     } else {
+                        \Log::info("  ❌ Aucun professeur sélectionné pour matière {$matiereId}");
+
                         // Si aucun professeur sélectionné, supprimer les assignations existantes
-                        DB::table('esbtp_planification_teachers')
+                        $deletedCount = DB::table('esbtp_planification_teachers')
                             ->where('planification_id', $planification->id)
                             ->delete();
+
+                        \Log::info("  🗑️ {$deletedCount} assignation(s) supprimée(s)");
+
+                        // Supprimer l'enseignant principal
+                        $planification->update([
+                            'enseignant_principal_id' => null
+                        ]);
+                        \Log::info("  🚫 Enseignant principal retiré");
                     }
                 } else {
                     // Supprimer si volume = 0
@@ -510,7 +563,14 @@ class ESBTPPlanningGeneralController extends Controller
             }
             
             DB::commit();
-            
+
+            \Log::info('💾 Transaction committée avec succès');
+            \Log::info('📊 Résumé de la sauvegarde:', [
+                'Planifications créées' => $savedCount,
+                'Planifications mises à jour' => $updatedCount,
+                'Professeurs assignés au total' => $teachersAssignedCount
+            ]);
+
             $message = 'Configuration sauvegardée avec succès.';
             if ($savedCount > 0) {
                 $message .= " {$savedCount} nouvelle(s) planification(s) créée(s).";
@@ -518,15 +578,28 @@ class ESBTPPlanningGeneralController extends Controller
             if ($updatedCount > 0) {
                 $message .= " {$updatedCount} planification(s) mise(s) à jour.";
             }
-            
+            if ($teachersAssignedCount > 0) {
+                $message .= " {$teachersAssignedCount} professeur(s) assigné(s).";
+            }
+
+            \Log::info('✅ Message de succès: ' . $message);
+            \Log::info('========== FIN SAUVEGARDE PLANNING GÉNÉRAL (SUCCESS) ==========');
+
             return response()->json([
                 'success' => true,
                 'message' => $message
             ]);
-            
+
         } catch (\Exception $e) {
             DB::rollback();
-            
+
+            \Log::error('❌ ========== ERREUR SAUVEGARDE PLANNING GÉNÉRAL ==========');
+            \Log::error('Message d\'erreur: ' . $e->getMessage());
+            \Log::error('Fichier: ' . $e->getFile());
+            \Log::error('Ligne: ' . $e->getLine());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            \Log::error('========== FIN ERREUR ==========');
+
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la sauvegarde: ' . $e->getMessage()
