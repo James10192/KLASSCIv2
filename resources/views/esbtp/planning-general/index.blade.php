@@ -2651,7 +2651,10 @@ $(function() {
         console.log('📚 Total volumes:', Object.keys(formData.volumes).length + ' matières');
 
         // Collecter toutes les assignations de professeurs (checkboxes)
-        $('.teacher-checkboxes-container').each(function() {
+        const $teacherContainers = $('.teacher-table-container');
+        console.log('🔍 Conteneurs de professeurs trouvés:', $teacherContainers.length);
+
+        $teacherContainers.each(function() {
             const $container = $(this);
             const $checkedBoxes = $container.find('.teacher-checkbox:checked');
 
