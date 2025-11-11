@@ -343,7 +343,7 @@
 
 <!-- Script de sélection d'enseignant directement dans le HTML -->
 <script>
-console.log('🔥 SCRIPT EDIT-PROFESSEURS CHARGÉ!');
+debugLog('🔥 SCRIPT EDIT-PROFESSEURS CHARGÉ!');
 
 // Fonction pour animer les changements de valeur
 function animateValueChange(inputElement) {
@@ -354,15 +354,15 @@ function animateValueChange(inputElement) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 EDIT-PROFESSEURS: DOM chargé - Initialisation des event listeners');
+    debugLog('🚀 EDIT-PROFESSEURS: DOM chargé - Initialisation des event listeners');
 
     const form = document.getElementById('professeursForm');
 
     if (form) {
         form.addEventListener('submit', function(e) {
-            console.log('Formulaire soumis !');
-            console.log('Action:', this.action);
-            console.log('Méthode:', this.method);
+            debugLog('Formulaire soumis !');
+            debugLog('Action:', this.action);
+            debugLog('Méthode:', this.method);
 
             // Collecter les données du formulaire
             const formData = new FormData(this);
@@ -370,7 +370,7 @@ document.addEventListener('DOMContentLoaded', function() {
             for (let [key, value] of formData.entries()) {
                 data[key] = value;
             }
-            console.log('Données du formulaire:', data);
+            debugLog('Données du formulaire:', data);
 
             // Ne pas empêcher la soumission par défaut
             // Juste logger pour débogage
@@ -381,54 +381,54 @@ document.addEventListener('DOMContentLoaded', function() {
     const submitButtons = document.querySelectorAll('button[type="submit"]');
     submitButtons.forEach((button, index) => {
         button.addEventListener('click', function(e) {
-            console.log(`Bouton ${index + 1} cliqué:`, this.name, '=', this.value);
+            debugLog(`Bouton ${index + 1} cliqué:`, this.name, '=', this.value);
         });
     });
 
     // Ajouter des event listeners aux selects d'enseignants
     const teacherSelects = document.querySelectorAll('.form-select-modern');
-    console.log('📝 EDIT-PROFESSEURS: Selects trouvés:', teacherSelects.length);
+    debugLog('📝 EDIT-PROFESSEURS: Selects trouvés:', teacherSelects.length);
 
     // Test de diagnostic plus complet
-    console.log('🔍 DIAGNOSTIC COMPLET:');
-    console.log('- Tous les selects sur la page:', document.querySelectorAll('select').length);
-    console.log('- Selects avec classe form-select-modern:', teacherSelects.length);
-    console.log('- Inputs avec name professeurs:', document.querySelectorAll('input[name^="professeurs["]').length);
-    console.log('- Subject cards:', document.querySelectorAll('.subject-card').length);
+    debugLog('🔍 DIAGNOSTIC COMPLET:');
+    debugLog('- Tous les selects sur la page:', document.querySelectorAll('select').length);
+    debugLog('- Selects avec classe form-select-modern:', teacherSelects.length);
+    debugLog('- Inputs avec name professeurs:', document.querySelectorAll('input[name^="professeurs["]').length);
+    debugLog('- Subject cards:', document.querySelectorAll('.subject-card').length);
 
     teacherSelects.forEach((select, index) => {
-        console.log(`📋 Configuration select ${index + 1}:`, select);
+        debugLog(`📋 Configuration select ${index + 1}:`, select);
 
         select.setAttribute('title', 'Cliquez pour sélectionner un enseignant associé à cette matière');
 
         // Event listener pour la sélection d'enseignant
         select.addEventListener('change', function() {
-            console.log('🔄 Select change détecté sur:', this);
-            console.log('🔄 Valeur sélectionnée:', this.value);
+            debugLog('🔄 Select change détecté sur:', this);
+            debugLog('🔄 Valeur sélectionnée:', this.value);
 
             if (!this.value) {
-                console.log('⚠️ Aucune valeur sélectionnée, abandon');
+                debugLog('⚠️ Aucune valeur sélectionnée, abandon');
                 return;
             }
 
             // Trouver l'input correspondant
             const parentCard = this.closest('.subject-card');
-            console.log('🏠 Parent card:', parentCard);
+            debugLog('🏠 Parent card:', parentCard);
 
             if (parentCard) {
                 const targetInput = parentCard.querySelector('.form-control-modern');
-                console.log('🎯 Input trouvé:', targetInput);
-                console.log('🎯 Input classes:', targetInput ? targetInput.className : 'N/A');
-                console.log('🎯 Input ID:', targetInput ? targetInput.id : 'N/A');
+                debugLog('🎯 Input trouvé:', targetInput);
+                debugLog('🎯 Input classes:', targetInput ? targetInput.className : 'N/A');
+                debugLog('🎯 Input ID:', targetInput ? targetInput.id : 'N/A');
 
                 if (targetInput) {
-                    console.log('📝 Valeur avant:', targetInput.value);
+                    debugLog('📝 Valeur avant:', targetInput.value);
 
                     // Essayer plusieurs méthodes d'assignation
                     targetInput.value = this.value;
                     targetInput.setAttribute('value', this.value);
 
-                    console.log('📝 Valeur après:', targetInput.value);
+                    debugLog('📝 Valeur après:', targetInput.value);
 
                     // Déclencher l'événement input
                     targetInput.dispatchEvent(new Event('input', { bubbles: true }));
@@ -441,23 +441,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     targetInput.focus();
                     targetInput.blur();
 
-                    console.log('✅ Valeur assignée avec succès');
+                    debugLog('✅ Valeur assignée avec succès');
 
                     // Réinitialiser le select
                     this.value = '';
                 } else {
-                    console.error('❌ Input cible non trouvé dans la card');
-                    console.log('🔍 Tous les inputs dans la card:', parentCard.querySelectorAll('input'));
+                    debugError('❌ Input cible non trouvé dans la card');
+                    debugLog('🔍 Tous les inputs dans la card:', parentCard.querySelectorAll('input'));
                 }
             } else {
-                console.error('❌ Parent card non trouvé');
+                debugError('❌ Parent card non trouvé');
             }
         });
     });
 
     // Ajouter des gestionnaires d'événements pour les champs de saisie
     const teacherInputs = document.querySelectorAll('input[name^="professeurs["]');
-    console.log('🎯 Inputs trouvés:', teacherInputs.length);
+    debugLog('🎯 Inputs trouvés:', teacherInputs.length);
 
     teacherInputs.forEach(input => {
         // Animation lors de la saisie

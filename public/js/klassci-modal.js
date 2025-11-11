@@ -253,7 +253,7 @@ class KlassciModal {
                 }
             })
             .catch((error) => {
-                console.error("Erreur:", error);
+                debugError("Erreur:", error);
                 this.showAlert(
                     "danger",
                     "Une erreur est survenue lors de la création du fournisseur."
@@ -318,7 +318,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Exposer globalement pour le debug
     window.klassciModal = fournisseurModal;
 
-    console.log(
+    debugLog(
         "✅ KLASSCI Modal Custom initialisé - Contournement Bootstrap appliqué"
     );
 });

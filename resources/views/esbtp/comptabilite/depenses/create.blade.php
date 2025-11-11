@@ -427,7 +427,7 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Erreur:', error);
+                    debugError('Erreur:', error);
                     showAlert('danger', 'Une erreur est survenue lors de la création du fournisseur.');
                 })
                 .finally(() => {
@@ -463,12 +463,12 @@
         // Gestionnaire d'urgence pour les touches (Échap pour fermer)
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape' && modal && modal.classList.contains('show')) {
-                console.log('Emergency close via Escape key');
+                debugLog('Emergency close via Escape key');
                 // Suppression de tout code qui manipule modal.classList ou modal.style.display
             }
         });
 
-        console.log('Modal management script initialized');
+        debugLog('Modal management script initialized');
     });
 </script>
 @endpush 

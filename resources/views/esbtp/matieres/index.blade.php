@@ -736,7 +736,7 @@ tr[data-matiere-id] {
                 }
             })
             .catch((error) => {
-                console.error('Erreur lors du rafraîchissement de la matière:', error);
+                debugError('Erreur lors du rafraîchissement de la matière:', error);
             })
             .finally(() => {
                 setMatiereRowLoadingState(matiereId, false);
@@ -793,7 +793,7 @@ tr[data-matiere-id] {
                 clearSelection();
             })
             .catch((error) => {
-                console.error('Erreur lors du rafraîchissement des matières:', error);
+                debugError('Erreur lors du rafraîchissement des matières:', error);
             })
             .finally(() => {
                 overlay.remove();
@@ -869,7 +869,7 @@ tr[data-matiere-id] {
                         initTableInteractions();
                     })
                     .catch((error) => {
-                        console.error('Erreur pagination matières:', error);
+                        debugError('Erreur pagination matières:', error);
                     });
             });
         });
@@ -1097,7 +1097,7 @@ tr[data-matiere-id] {
                 updateCombinationsPreview();
             })
             .catch((error) => {
-                console.error('Erreur chargement liaisons matière:', error);
+                debugError('Erreur chargement liaisons matière:', error);
             });
     }
 
@@ -1161,7 +1161,7 @@ tr[data-matiere-id] {
                 `).join('');
             })
             .catch((error) => {
-                console.error('Erreur lors du chargement des matières:', error);
+                debugError('Erreur lors du chargement des matières:', error);
                 matieresListDiv.innerHTML = `
                     <div class="d-flex align-items-center justify-content-center py-4 text-danger">
                         <i class="fas fa-exclamation-triangle me-2"></i>
@@ -1311,7 +1311,7 @@ tr[data-matiere-id] {
                         showToast('success', data.message || 'Liaisons mises à jour avec succès.');
                     })
                     .catch((error) => {
-                        console.error('Erreur lors de l\'ajout des matières:', error);
+                        debugError('Erreur lors de l\'ajout des matières:', error);
                         showToast('error', 'Impossible d\'ajouter les matières sélectionnées.');
                     })
                     .finally(() => {
@@ -1350,7 +1350,7 @@ tr[data-matiere-id] {
                         showToast('success', data.message || 'Liaisons mises à jour avec succès.');
                     })
                     .catch((error) => {
-                        console.error('Erreur lors de la mise à jour des liaisons:', error);
+                        debugError('Erreur lors de la mise à jour des liaisons:', error);
                         showToast('error', error.message || 'Impossible de mettre à jour les liaisons.');
                     })
                     .finally(() => {

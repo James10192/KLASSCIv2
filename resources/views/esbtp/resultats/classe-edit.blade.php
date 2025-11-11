@@ -322,20 +322,20 @@
             $('#modeByStudentContent').hide();
             updateModeCardStyles();
 
-            console.log('✅ Modal moyennes nettoyé');
+            debugLog('✅ Modal moyennes nettoyé');
         });
 
         // Modal absences : réinitialiser le contenu à la fermeture
         $('#modalEditAbsences').on('hidden.bs.modal', function() {
             $('#absencesTableBody').empty();
-            console.log('✅ Modal absences nettoyé');
+            debugLog('✅ Modal absences nettoyé');
         });
 
         // Modal professeurs : réinitialiser le contenu à la fermeture
         $('#modalEditProfesseurs').on('hidden.bs.modal', function() {
             // Vider le tableau des professeurs
             $('#professeursTableBody').empty();
-            console.log('✅ Modal professeurs nettoyé');
+            debugLog('✅ Modal professeurs nettoyé');
         });
     }
 
@@ -384,7 +384,7 @@
                 semestre = semestreInput.value ? parseInt(semestreInput.value) : null;
                 periode = semestre ? 'semestre' + semestre : null;
 
-                console.log('✅ Semestre mis à jour:', semestre, '- Periode:', periode);
+                debugLog('✅ Semestre mis à jour:', semestre, '- Periode:', periode);
 
                 hideLoading();
                 showToast('✅ Filtres appliqués avec succès', 'success');
@@ -392,7 +392,7 @@
             .catch(error => {
                 hideLoading();
                 showToast('❌ Erreur lors du chargement des données', 'error');
-                console.error('Error:', error);
+                debugError('Error:', error);
             });
         });
 
@@ -463,7 +463,7 @@
         $('#btnMoyennes').prop('disabled', true);
         $('#btnAbsences').prop('disabled', true);
 
-        console.log('✅ Sélection des étudiants réinitialisée');
+        debugLog('✅ Sélection des étudiants réinitialisée');
     }
 
     // Show loading overlay
@@ -897,7 +897,7 @@
             },
             error: function(xhr, status, error) {
                 hideLoading();
-                console.error('Erreur AJAX getAbsences:', {
+                debugError('Erreur AJAX getAbsences:', {
                     status: xhr.status,
                     statusText: xhr.statusText,
                     responseText: xhr.responseText,
@@ -1014,7 +1014,7 @@
         })
         .catch(error => {
             hideLoading();
-            console.error('Error refreshing content:', error);
+            debugError('Error refreshing content:', error);
         });
     }
 

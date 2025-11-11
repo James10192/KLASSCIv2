@@ -881,22 +881,22 @@
 <!-- Script pour la suppression d'étudiant -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Script de suppression chargé');
+    debugLog('Script de suppression chargé');
 
     // Gérer l'activation du bouton de confirmation
     const confirmCheckbox = document.getElementById('confirmDeletion');
     const confirmBtn = document.getElementById('confirmDeleteBtn');
 
-    console.log('Checkbox:', confirmCheckbox);
-    console.log('Button:', confirmBtn);
+    debugLog('Checkbox:', confirmCheckbox);
+    debugLog('Button:', confirmBtn);
 
     if (confirmCheckbox && confirmBtn) {
         confirmCheckbox.addEventListener('change', function() {
-            console.log('Checkbox changé:', this.checked);
+            debugLog('Checkbox changé:', this.checked);
             confirmBtn.disabled = !this.checked;
         });
     } else {
-        console.error('Éléments non trouvés:', {
+        debugError('Éléments non trouvés:', {
             checkbox: !!confirmCheckbox,
             button: !!confirmBtn
         });
@@ -904,7 +904,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function deleteStudent() {
-    console.log('deleteStudent appelée');
+    debugLog('deleteStudent appelée');
 
     const confirmBtn = document.getElementById('confirmDeleteBtn');
     const loadingOverlay = document.getElementById('deletionProgress');
@@ -912,7 +912,7 @@ async function deleteStudent() {
     const keepUser = document.getElementById('keepUserAccount')?.checked || false;
 
     if (!confirmBtn || !loadingOverlay || !modalBody) {
-        console.error('Éléments requis non trouvés');
+        debugError('Éléments requis non trouvés');
         return;
     }
 
@@ -922,7 +922,7 @@ async function deleteStudent() {
     loadingOverlay.classList.remove('d-none');
 
     try {
-        console.log('Envoi de la requête de suppression...');
+        debugLog('Envoi de la requête de suppression...');
 
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         if (!csrfToken) {
@@ -941,11 +941,11 @@ async function deleteStudent() {
             })
         });
 
-        console.log('Réponse reçue:', response.status);
+        debugLog('Réponse reçue:', response.status);
 
         if (response.ok) {
             const data = await response.json();
-            console.log('Succès:', data);
+            debugLog('Succès:', data);
 
             // Succès - rediriger vers la liste des étudiants
             window.location.href = '{{ route("esbtp.etudiants.index") }}';
@@ -955,7 +955,7 @@ async function deleteStudent() {
         }
 
     } catch (error) {
-        console.error('Erreur:', error);
+        debugError('Erreur:', error);
 
         // Restaurer l'affichage
         loadingOverlay.classList.add('d-none');
@@ -1047,7 +1047,7 @@ async function uploadPhoto(input) {
         }
 
     } catch (error) {
-        console.error('Erreur upload photo:', error);
+        debugError('Erreur upload photo:', error);
         alert('Erreur lors de la mise à jour de la photo: ' + error.message);
     } finally {
         // Restaurer l'opacité

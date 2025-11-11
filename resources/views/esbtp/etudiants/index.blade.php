@@ -2466,13 +2466,13 @@
         const resetBtn = document.getElementById('filter-drawer-reset');
 
         if (!fab || !drawer || !overlay) {
-            console.log('⚠️ Drawer elements not found');
+            debugLog('⚠️ Drawer elements not found');
             return;
         }
 
         // Fonction pour ouvrir le drawer
         function openDrawer() {
-            console.log('📂 Opening filter drawer');
+            debugLog('📂 Opening filter drawer');
             drawer.classList.add('active');
             overlay.classList.add('active');
             document.body.style.overflow = 'hidden'; // Empêcher le scroll du body
@@ -2480,7 +2480,7 @@
 
         // Fonction pour fermer le drawer
         function closeDrawer() {
-            console.log('📁 Closing filter drawer');
+            debugLog('📁 Closing filter drawer');
             drawer.classList.remove('active');
             overlay.classList.remove('active');
             document.body.style.overflow = ''; // Restaurer le scroll
@@ -2493,7 +2493,7 @@
 
         // Bouton réinitialiser dans le drawer (AJAX - pas de refresh)
         resetBtn.addEventListener('click', function() {
-            console.log('🔄 Réinitialisation des filtres (drawer mobile)');
+            debugLog('🔄 Réinitialisation des filtres (drawer mobile)');
 
             // Utiliser clearAllFilters qui gère tout (AJAX + reset selects)
             if (typeof clearAllFilters === 'function') {
@@ -2521,7 +2521,7 @@
         if (mobileForm) {
             mobileForm.addEventListener('submit', function(e) {
                 e.preventDefault();  // Empêcher la soumission normale (refresh page)
-                console.log('📤 Soumission AJAX du drawer mobile');
+                debugLog('📤 Soumission AJAX du drawer mobile');
 
                 // Construire les paramètres depuis le formulaire mobile
                 const formData = new FormData(mobileForm);
@@ -2534,7 +2534,7 @@
                 }
 
                 const url = mobileForm.action + '?' + params.toString();
-                console.log('📍 URL AJAX:', url);
+                debugLog('📍 URL AJAX:', url);
 
                 // Utiliser la fonction fetchResults existante (définie plus bas dans le script)
                 if (typeof window.fetchResultsGlobal === 'function') {
@@ -2543,12 +2543,12 @@
                     // Fermer le drawer après la soumission
                     setTimeout(closeDrawer, 300);  // Petit délai pour UX smooth
                 } else {
-                    console.error('❌ fetchResultsGlobal non disponible');
+                    debugError('❌ fetchResultsGlobal non disponible');
                 }
             });
         }
 
-        console.log('✅ Mobile filter drawer initialized');
+        debugLog('✅ Mobile filter drawer initialized');
     });
 
     // ========================================
@@ -2556,7 +2556,7 @@
     // ========================================
     // Alpine.js Searchable Select Component - Défini globalement
     window.searchableSelect = function(config) {
-        console.log('🔧 Initialisation searchableSelect avec config:', config);
+        debugLog('🔧 Initialisation searchableSelect avec config:', config);
         return {
             options: config.options || [],
             filteredOptions: [],
@@ -2567,15 +2567,15 @@
             placeholder: config.placeholder || 'Sélectionner...',
 
             init() {
-                console.log('✅ searchableSelect init() appelé');
-                console.log('📊 Nombre d\'options:', this.options.length);
+                debugLog('✅ searchableSelect init() appelé');
+                debugLog('📊 Nombre d\'options:', this.options.length);
                 this.filteredOptions = this.options;
                 this.updateSelectedLabel();
-                console.log('🏷️ Label sélectionné:', this.selectedLabel);
+                debugLog('🏷️ Label sélectionné:', this.selectedLabel);
 
                 // Watch for open changes to focus search input
                 this.$watch('open', value => {
-                    console.log('👁️ Dropdown open:', value);
+                    debugLog('👁️ Dropdown open:', value);
                     if (value) {
                         this.$nextTick(() => {
                             this.$refs.searchInput?.focus();
@@ -2592,7 +2592,7 @@
                 // Reset individuel (pour ce composant spécifique)
                 window.addEventListener('reset-searchable-select', (e) => {
                     if (e.detail && e.detail.name === componentName) {
-                        console.log('🔄 Reset event received for:', componentName);
+                        debugLog('🔄 Reset event received for:', componentName);
                         this.selectedValue = '';
                         this.selectedLabel = '';
                         this.search = '';
@@ -2603,7 +2603,7 @@
 
                 // Reset tous les composants
                 window.addEventListener('reset-all-searchable-selects', () => {
-                    console.log('🔄 Reset ALL event received for:', componentName);
+                    debugLog('🔄 Reset ALL event received for:', componentName);
                     this.selectedValue = '';
                     this.selectedLabel = '';
                     this.search = '';
@@ -2617,11 +2617,11 @@
                 this.filteredOptions = this.options.filter(option =>
                     option.label.toLowerCase().includes(searchLower)
                 );
-                console.log('🔍 Filtrage:', this.search, '→', this.filteredOptions.length, 'résultats');
+                debugLog('🔍 Filtrage:', this.search, '→', this.filteredOptions.length, 'résultats');
             },
 
             selectOption(option) {
-                console.log('✅ Option sélectionnée:', option);
+                debugLog('✅ Option sélectionnée:', option);
                 this.selectedValue = option.value;
                 this.selectedLabel = option.label;
                 this.open = false;
@@ -2631,7 +2631,7 @@
                 // Trigger AJAX refresh instead of form submission
                 this.$nextTick(() => {
                     if (typeof window.triggerFilterChange === 'function') {
-                        console.log('📤 Déclenchement AJAX refresh...');
+                        debugLog('📤 Déclenchement AJAX refresh...');
                         window.triggerFilterChange();
                     }
                 });
@@ -2640,12 +2640,12 @@
             updateSelectedLabel() {
                 const selected = this.options.find(opt => opt.value === this.selectedValue);
                 this.selectedLabel = selected ? selected.label : '';
-                console.log('🔄 updateSelectedLabel - value:', this.selectedValue, 'label:', this.selectedLabel);
+                debugLog('🔄 updateSelectedLabel - value:', this.selectedValue, 'label:', this.selectedLabel);
             }
         }
     }
 
-    console.log('✅ Fonction searchableSelect définie globalement');
+    debugLog('✅ Fonction searchableSelect définie globalement');
 
     document.addEventListener('DOMContentLoaded', function () {
         const form = document.getElementById('search-form');
@@ -2670,7 +2670,7 @@
 
         // Fonction globale pour déclencher le refresh AJAX depuis le composant Alpine
         window.triggerFilterChange = function() {
-            console.log('🔄 triggerFilterChange appelée');
+            debugLog('🔄 triggerFilterChange appelée');
             const formData = new FormData(form);
             const params = new URLSearchParams();
 
@@ -2682,7 +2682,7 @@
             }
 
             const url = form.action + '?' + params.toString();
-            console.log('📍 URL AJAX:', url);
+            debugLog('📍 URL AJAX:', url);
             fetchResults(url, { pushState: true });
         };
 
@@ -2741,8 +2741,8 @@
 
                     const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
 
-                    console.log('🔀 Tri par colonne:', column, '→', newDirection);
-                    console.log('📍 URL:', newUrl);
+                    debugLog('🔀 Tri par colonne:', column, '→', newDirection);
+                    debugLog('📍 URL:', newUrl);
 
                     // Faire l'appel AJAX pour récupérer les résultats triés
                     window.fetchResultsGlobal(newUrl, { pushState: true });
@@ -2896,7 +2896,7 @@
             try {
                 payload = JSON.parse(datasetString);
             } catch (error) {
-                console.error('Impossible de parser les données de l\'étudiant', error);
+                debugError('Impossible de parser les données de l\'étudiant', error);
                 return;
             }
 
@@ -2933,7 +2933,7 @@
                 renderInscriptionsAccordion(payload);
             })
             .catch(error => {
-                console.error('Erreur chargement inscriptions:', error);
+                debugError('Erreur chargement inscriptions:', error);
                 // Afficher quand même avec les inscriptions par défaut (année courante)
                 renderInscriptionsAccordion(payload);
             });
@@ -2989,7 +2989,7 @@
                 updateActiveFiltersIndicator();
             })
             .catch(error => {
-                console.error(error);
+                debugError(error);
                 alert('Impossible de charger les étudiants. Veuillez réessayer.');
             })
             .finally(() => setLoading(false));
@@ -3122,20 +3122,20 @@
 
         // Fonction pour reset un select spécifique (desktop + mobile + Alpine.js)
         function resetSelectByName(name) {
-            console.log('🔄 Reset select:', name);
+            debugLog('🔄 Reset select:', name);
 
             // Reset select desktop standard
             const desktopSelect = document.querySelector(`select[name="${name}"]`);
             if (desktopSelect) {
                 desktopSelect.value = '';
-                console.log('  ✅ Desktop select reset');
+                debugLog('  ✅ Desktop select reset');
             }
 
             // Reset select mobile standard
             const mobileSelect = document.querySelector(`#mobile-${name}`);
             if (mobileSelect) {
                 mobileSelect.value = '';
-                console.log('  ✅ Mobile select reset');
+                debugLog('  ✅ Mobile select reset');
             }
 
             // Reset input recherche si c'est le champ search
@@ -3143,12 +3143,12 @@
                 const searchInput = document.querySelector('input[name="search"]');
                 if (searchInput) {
                     searchInput.value = '';
-                    console.log('  ✅ Search input reset');
+                    debugLog('  ✅ Search input reset');
                 }
                 const mobileSearchInput = document.querySelector('#mobile-search');
                 if (mobileSearchInput) {
                     mobileSearchInput.value = '';
-                    console.log('  ✅ Mobile search input reset');
+                    debugLog('  ✅ Mobile search input reset');
                 }
             }
 
@@ -3158,34 +3158,34 @@
                 window.dispatchEvent(new CustomEvent('reset-searchable-select', {
                     detail: { name: 'classe' }
                 }));
-                console.log('  ✅ Alpine.js classe component reset event dispatched');
+                debugLog('  ✅ Alpine.js classe component reset event dispatched');
             }
         }
 
         // Fonction pour reset TOUS les selects
         function resetAllSelects() {
-            console.log('🔄 Reset ALL selects');
+            debugLog('🔄 Reset ALL selects');
 
             // Reset formulaire desktop
             if (form) {
                 form.reset();
-                console.log('  ✅ Desktop form reset');
+                debugLog('  ✅ Desktop form reset');
             }
 
             // Reset formulaire mobile
             const mobileForm = document.getElementById('mobile-search-form');
             if (mobileForm) {
                 mobileForm.reset();
-                console.log('  ✅ Mobile form reset');
+                debugLog('  ✅ Mobile form reset');
             }
 
             // Reset tous les composants Alpine.js
             window.dispatchEvent(new CustomEvent('reset-all-searchable-selects'));
-            console.log('  ✅ Alpine.js reset event dispatched');
+            debugLog('  ✅ Alpine.js reset event dispatched');
         }
 
         function removeFilter(key) {
-            console.log('🗑️ Suppression du filtre:', key);
+            debugLog('🗑️ Suppression du filtre:', key);
             const urlParams = new URLSearchParams(window.location.search);
             urlParams.delete(key);
 
@@ -3199,7 +3199,7 @@
         }
 
         function clearAllFilters() {
-            console.log('🗑️ Suppression de tous les filtres');
+            debugLog('🗑️ Suppression de tous les filtres');
 
             // Faire l'appel AJAX puis reset tous les selects
             window.fetchResultsGlobal(window.location.pathname, { pushState: true }).then(() => {
@@ -3216,7 +3216,7 @@
         if (desktopResetBtn) {
             desktopResetBtn.addEventListener('click', function(e) {
                 e.preventDefault();
-                console.log('🔄 Réinitialisation des filtres (desktop)');
+                debugLog('🔄 Réinitialisation des filtres (desktop)');
                 clearAllFilters();
             });
         }

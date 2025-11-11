@@ -269,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 row.classList.add('marked');
             }
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => debugError('Error:', error));
     }
 
     // Fonction pour obtenir la couleur du bouton selon le statut

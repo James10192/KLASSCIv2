@@ -2357,11 +2357,11 @@ $(function() {
                     });
 
                     // Gérer les tableaux de professeurs avec compteur dynamique
-                    console.log('🔍 Initialisation teacher tables...');
+                    debugLog('🔍 Initialisation teacher tables...');
 
                     // Fonction pour mettre à jour le compteur et l'état du checkbox header
                     function updateTeacherCount(matiereId) {
-                        console.log('📊 updateTeacherCount called for matiere:', matiereId);
+                        debugLog('📊 updateTeacherCount called for matiere:', matiereId);
 
                         const $tableContainer = $('.teacher-table-container[data-matiere-id="' + matiereId + '"]');
                         const $allCheckboxes = $tableContainer.find('.teacher-checkbox');
@@ -2376,10 +2376,10 @@ $(function() {
                         const selectedCount = $allCheckboxes.filter(':checked').length;
                         const visibleSelectedCount = $visibleCheckboxes.filter(':checked').length;
 
-                        console.log('  📈 Total teachers:', totalCount);
-                        console.log('  👁️ Visible teachers:', visibleCount);
-                        console.log('  ✅ Total selected:', selectedCount);
-                        console.log('  ✅ Visible selected:', visibleSelectedCount);
+                        debugLog('  📈 Total teachers:', totalCount);
+                        debugLog('  👁️ Visible teachers:', visibleCount);
+                        debugLog('  ✅ Total selected:', selectedCount);
+                        debugLog('  ✅ Visible selected:', visibleSelectedCount);
 
                         // Mettre à jour le compteur
                         if (selectedCount > 0) {
@@ -2394,33 +2394,33 @@ $(function() {
                         if (visibleCount === 0) {
                             $headerCheckbox.prop('checked', false);
                             $headerCheckbox.prop('indeterminate', false);
-                            console.log('  🔲 Header: unchecked (no visible rows)');
+                            debugLog('  🔲 Header: unchecked (no visible rows)');
                         } else if (visibleSelectedCount === 0) {
                             $headerCheckbox.prop('checked', false);
                             $headerCheckbox.prop('indeterminate', false);
-                            console.log('  🔲 Header: unchecked');
+                            debugLog('  🔲 Header: unchecked');
                         } else if (visibleSelectedCount === visibleCount) {
                             $headerCheckbox.prop('checked', true);
                             $headerCheckbox.prop('indeterminate', false);
-                            console.log('  ✅ Header: checked');
+                            debugLog('  ✅ Header: checked');
                         } else {
                             $headerCheckbox.prop('checked', false);
                             $headerCheckbox.prop('indeterminate', true);
-                            console.log('  ➖ Header: indeterminate');
+                            debugLog('  ➖ Header: indeterminate');
                         }
                     }
 
                     // Initialiser tous les tableaux
                     $('.teacher-table-container').each(function() {
                         const matiereId = $(this).data('matiere-id');
-                        console.log('🎬 Initializing table for matiere:', matiereId);
+                        debugLog('🎬 Initializing table for matiere:', matiereId);
                         updateTeacherCount(matiereId);
                     });
 
                     // Gérer le changement d'une checkbox individuelle
                     $(document).on('change', '.teacher-checkbox', function() {
                         const matiereId = $(this).closest('.teacher-table-container').data('matiere-id');
-                        console.log('🔄 Individual checkbox changed in matiere:', matiereId);
+                        debugLog('🔄 Individual checkbox changed in matiere:', matiereId);
                         updateTeacherCount(matiereId);
                     });
 
@@ -2429,19 +2429,19 @@ $(function() {
                         const matiereId = $(this).data('matiere-id');
                         const isChecked = $(this).prop('checked');
 
-                        console.log('🔍 Header checkbox clicked - Matiere:', matiereId);
-                        console.log('  🎯 Action:', isChecked ? 'SELECT ALL VISIBLE' : 'DESELECT ALL VISIBLE');
+                        debugLog('🔍 Header checkbox clicked - Matiere:', matiereId);
+                        debugLog('  🎯 Action:', isChecked ? 'SELECT ALL VISIBLE' : 'DESELECT ALL VISIBLE');
 
                         const $tableContainer = $('.teacher-table-container[data-matiere-id="' + matiereId + '"]');
                         const $visibleCheckboxes = $tableContainer.find('.teacher-row:visible .teacher-checkbox');
 
-                        console.log('  👁️ Visible rows before:', $visibleCheckboxes.length);
-                        console.log('  ✅ Checked before:', $visibleCheckboxes.filter(':checked').length);
+                        debugLog('  👁️ Visible rows before:', $visibleCheckboxes.length);
+                        debugLog('  ✅ Checked before:', $visibleCheckboxes.filter(':checked').length);
 
                         // Cocher/décocher uniquement les lignes VISIBLES
                         $visibleCheckboxes.prop('checked', isChecked);
 
-                        console.log('  ✅ Checked after:', $visibleCheckboxes.filter(':checked').length);
+                        debugLog('  ✅ Checked after:', $visibleCheckboxes.filter(':checked').length);
 
                         updateTeacherCount(matiereId);
                     });
@@ -2499,7 +2499,7 @@ $(function() {
 
                         // 1. Correspondance exacte (substring)
                         if (normalizedTarget.includes(normalizedSearch)) {
-                            console.log('    ✅ Exact match:', targetText);
+                            debugLog('    ✅ Exact match:', targetText);
                             return true;
                         }
 
@@ -2521,14 +2521,14 @@ $(function() {
                         });
 
                         if (allWordsMatch) {
-                            console.log('    ✅ Word match:', targetText);
+                            debugLog('    ✅ Word match:', targetText);
                             return true;
                         }
 
                         // 3. Similarité globale de la chaîne complète
                         const globalSimilarity = calculateSimilarity(normalizedSearch, normalizedTarget);
                         if (globalSimilarity >= threshold) {
-                            console.log('    ✅ Fuzzy match (', globalSimilarity.toFixed(1), '%):', targetText);
+                            debugLog('    ✅ Fuzzy match (', globalSimilarity.toFixed(1), '%):', targetText);
                             return true;
                         }
 
@@ -2536,12 +2536,12 @@ $(function() {
                         if (searchWords.length === 2 && targetWords.length >= 2) {
                             const reversed = searchWords.reverse().join(' ');
                             if (normalizedTarget.includes(reversed)) {
-                                console.log('    ✅ Reversed match:', targetText);
+                                debugLog('    ✅ Reversed match:', targetText);
                                 return true;
                             }
                         }
 
-                        console.log('    ❌ No match:', targetText, '- Similarity:', globalSimilarity.toFixed(1), '%');
+                        debugLog('    ❌ No match:', targetText, '- Similarity:', globalSimilarity.toFixed(1), '%');
                         return false;
                     }
 
@@ -2550,7 +2550,7 @@ $(function() {
                         const matiereId = $(this).data('matiere-id');
                         const searchText = $(this).val().trim();
 
-                        console.log('🔍 Fuzzy search for matiere:', matiereId, '- Query:', searchText);
+                        debugLog('🔍 Fuzzy search for matiere:', matiereId, '- Query:', searchText);
 
                         const $tableContainer = $('.teacher-table-container[data-matiere-id="' + matiereId + '"]');
                         const $rows = $tableContainer.find('.teacher-row');
@@ -2564,14 +2564,14 @@ $(function() {
                             $noResults.hide();
                             $tableContainer.show();
                             visibleCount = $rows.length;
-                            console.log('  ✅ Search cleared - showing all', visibleCount, 'rows');
+                            debugLog('  ✅ Search cleared - showing all', visibleCount, 'rows');
                         } else {
                             // Filtrer les lignes avec fuzzy matching
                             $rows.each(function() {
                                 const teacherName = $(this).data('teacher-name');
                                 const teacherSpec = $(this).data('teacher-spec');
 
-                                console.log('  🔎 Checking:', teacherName);
+                                debugLog('  🔎 Checking:', teacherName);
 
                                 // Recherche floue sur le nom OU la spécialisation (seuil 80%)
                                 const matchName = fuzzyMatch(searchText, teacherName, 80);
@@ -2585,13 +2585,13 @@ $(function() {
                                 }
                             });
 
-                            console.log('  📊 Fuzzy search results:', visibleCount, 'rows visible');
+                            debugLog('  📊 Fuzzy search results:', visibleCount, 'rows visible');
 
                             // Afficher message si aucun résultat
                             if (visibleCount === 0) {
                                 $tableContainer.hide();
                                 $noResults.show();
-                                console.log('  ⚠️ No results found');
+                                debugLog('  ⚠️ No results found');
                             } else {
                                 $tableContainer.show();
                                 $noResults.hide();
@@ -2608,7 +2608,7 @@ $(function() {
             },
             error: function(xhr) {
                 $('#config-loading').hide();
-                console.error('Erreur AJAX:', xhr);
+                debugError('Erreur AJAX:', xhr);
                 showAlert('error', 'Erreur de communication avec le serveur');
                 $('#matieres-container').html('<div class="text-center text-muted py-4">Erreur de chargement</div>').show();
             }
@@ -2620,7 +2620,7 @@ $(function() {
         const $btn = $(this);
         const originalText = $btn.html();
 
-        console.log('🚀 ========== DÉBUT SAUVEGARDE PLANNING GÉNÉRAL ==========');
+        debugLog('🚀 ========== DÉBUT SAUVEGARDE PLANNING GÉNÉRAL ==========');
 
         // Récupérer les données du formulaire
         const formData = {
@@ -2631,7 +2631,7 @@ $(function() {
             teachers: {}
         };
 
-        console.log('📋 Données de base:', {
+        debugLog('📋 Données de base:', {
             filiere_id: formData.filiere_id,
             niveau_id: formData.niveau_id,
             annee_id: formData.annee_id
@@ -2644,15 +2644,15 @@ $(function() {
             formData.volumes[matiereId] = volume;
 
             if (volume > 0) {
-                console.log('  📊 Volume Matière ' + matiereId + ': ' + volume + 'h');
+                debugLog('  📊 Volume Matière ' + matiereId + ': ' + volume + 'h');
             }
         });
 
-        console.log('📚 Total volumes:', Object.keys(formData.volumes).length + ' matières');
+        debugLog('📚 Total volumes:', Object.keys(formData.volumes).length + ' matières');
 
         // Collecter toutes les assignations de professeurs (checkboxes)
         const $teacherContainers = $('.teacher-table-container');
-        console.log('🔍 Conteneurs de professeurs trouvés:', $teacherContainers.length);
+        debugLog('🔍 Conteneurs de professeurs trouvés:', $teacherContainers.length);
 
         $teacherContainers.each(function() {
             const $container = $(this);
@@ -2671,25 +2671,25 @@ $(function() {
 
                 formData.teachers[matiereId] = selectedTeachers;
 
-                console.log('👨‍🏫 Matière ' + matiereId + ': ' + selectedTeachers.length + ' enseignants sélectionnés', selectedTeachers);
+                debugLog('👨‍🏫 Matière ' + matiereId + ': ' + selectedTeachers.length + ' enseignants sélectionnés', selectedTeachers);
             }
         });
 
-        console.log('📝 Résumé enseignants:', {
+        debugLog('📝 Résumé enseignants:', {
             'Matières avec enseignants': Object.keys(formData.teachers).length,
             'Détails': formData.teachers
         });
 
-        console.log('📦 FormData complet à envoyer:', JSON.stringify(formData, null, 2));
+        debugLog('📦 FormData complet à envoyer:', JSON.stringify(formData, null, 2));
 
         // Validation
         if (!formData.filiere_id || !formData.niveau_id || !formData.annee_id) {
-            console.error('❌ Validation échouée: Données manquantes');
+            debugError('❌ Validation échouée: Données manquantes');
             showAlert('error', 'Données manquantes pour la sauvegarde');
             return;
         }
 
-        console.log('✅ Validation OK, envoi de la requête AJAX...');
+        debugLog('✅ Validation OK, envoi de la requête AJAX...');
         
         // Afficher loading sur le bouton
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Sauvegarde...');
@@ -2702,47 +2702,47 @@ $(function() {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             },
             success: function(response) {
-                console.log('✅ Réponse serveur SUCCESS:', response);
+                debugLog('✅ Réponse serveur SUCCESS:', response);
 
                 if (response.success) {
-                    console.log('🎉 Sauvegarde réussie!', response.message);
+                    debugLog('🎉 Sauvegarde réussie!', response.message);
                     showAlert('success', response.message);
 
                     // Fermer le modal
                     $('#volumeConfigModal').modal('hide');
 
                     // Recharger la page pour mettre à jour les cartes
-                    console.log('🔄 Rechargement de la page dans 1 seconde...');
+                    debugLog('🔄 Rechargement de la page dans 1 seconde...');
                     setTimeout(() => {
                         window.location.reload();
                     }, 1000);
                 } else {
-                    console.error('❌ Sauvegarde échouée (success=false):', response.message);
+                    debugError('❌ Sauvegarde échouée (success=false):', response.message);
                     showAlert('error', response.message || 'Erreur lors de la sauvegarde');
                 }
 
-                console.log('========== FIN SAUVEGARDE PLANNING GÉNÉRAL ==========');
+                debugLog('========== FIN SAUVEGARDE PLANNING GÉNÉRAL ==========');
             },
             error: function(xhr) {
-                console.error('❌ ========== ERREUR AJAX ==========');
-                console.error('Status:', xhr.status);
-                console.error('Status Text:', xhr.statusText);
-                console.error('Response:', xhr.responseJSON);
-                console.error('Full XHR:', xhr);
+                debugError('❌ ========== ERREUR AJAX ==========');
+                debugError('Status:', xhr.status);
+                debugError('Status Text:', xhr.statusText);
+                debugError('Response:', xhr.responseJSON);
+                debugError('Full XHR:', xhr);
 
                 let message = 'Erreur lors de la sauvegarde';
 
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     message = xhr.responseJSON.message;
-                    console.error('Message d\'erreur:', message);
+                    debugError('Message d\'erreur:', message);
                 } else if (xhr.responseJSON && xhr.responseJSON.errors) {
                     const errors = Object.values(xhr.responseJSON.errors).flat();
                     message = errors.join(', ');
-                    console.error('Erreurs de validation:', errors);
+                    debugError('Erreurs de validation:', errors);
                 }
 
                 showAlert('error', message);
-                console.error('========== FIN ERREUR ==========');
+                debugError('========== FIN ERREUR ==========');
             },
             complete: function() {
                 $btn.prop('disabled', false).html(originalText);
@@ -3062,16 +3062,16 @@ $(function() {
     
     // Ouvrir le modal et charger les données
     $('#addMatieresModal').on('show.bs.modal', function (event) {
-        console.log('Modal addMatieresModal ouvert !');
+        debugLog('Modal addMatieresModal ouvert !');
         const button = event.relatedTarget;
-        console.log('Button:', button);
+        debugLog('Button:', button);
         const isEmptyCombo = button.getAttribute('data-empty-combo');
         const filiereId = button.getAttribute('data-filiere-id');
         const niveauId = button.getAttribute('data-niveau-id');
         const filiereName = button.getAttribute('data-filiere-name');
         const niveauName = button.getAttribute('data-niveau-name');
         
-        console.log('Params:', {isEmptyCombo, filiereId, niveauId, filiereName, niveauName});
+        debugLog('Params:', {isEmptyCombo, filiereId, niveauId, filiereName, niveauName});
         
         if (isEmptyCombo === 'true') {
             // Mode ajout à combinaison vide
@@ -3169,7 +3169,7 @@ $(function() {
                 }
             })
             .catch(error => {
-                console.error('Erreur lors du chargement des matières:', error);
+                debugError('Erreur lors du chargement des matières:', error);
                 matieresListDiv.html(`
                     <div class="d-flex align-items-center justify-content-center py-4 text-danger">
                         <i class="fas fa-exclamation-triangle me-2"></i>
@@ -3307,7 +3307,7 @@ $(function() {
                 }
             })
             .catch(error => {
-                console.error('Erreur:', error);
+                debugError('Erreur:', error);
                 showAlert('error', 'Erreur lors de l\'ajout des matières: ' + error.message);
             })
             .finally(() => {
@@ -3333,24 +3333,24 @@ $(function() {
     // Gestionnaires pour la sélection rapide des matières (MODAL)
     $(document).on('click', '#btn-select-all', function() {
         const $checkboxes = $('.matiere-checkbox');
-        console.log('🔍 Matières - Tout sélectionner clicked');
-        console.log('  📊 Total matiere checkboxes:', $checkboxes.length);
-        console.log('  ✅ Checked before:', $checkboxes.filter(':checked').length);
+        debugLog('🔍 Matières - Tout sélectionner clicked');
+        debugLog('  📊 Total matiere checkboxes:', $checkboxes.length);
+        debugLog('  ✅ Checked before:', $checkboxes.filter(':checked').length);
 
         $checkboxes.prop('checked', true);
 
-        console.log('  ✅ Checked after:', $checkboxes.filter(':checked').length);
+        debugLog('  ✅ Checked after:', $checkboxes.filter(':checked').length);
     });
 
     $(document).on('click', '#btn-select-none', function() {
         const $checkboxes = $('.matiere-checkbox');
-        console.log('🔍 Matières - Tout désélectionner clicked');
-        console.log('  📊 Total matiere checkboxes:', $checkboxes.length);
-        console.log('  ✅ Checked before:', $checkboxes.filter(':checked').length);
+        debugLog('🔍 Matières - Tout désélectionner clicked');
+        debugLog('  📊 Total matiere checkboxes:', $checkboxes.length);
+        debugLog('  ✅ Checked before:', $checkboxes.filter(':checked').length);
 
         $checkboxes.prop('checked', false);
 
-        console.log('  ✅ Checked after:', $checkboxes.filter(':checked').length);
+        debugLog('  ✅ Checked after:', $checkboxes.filter(':checked').length);
     });
 
     // Reset du modal à la fermeture

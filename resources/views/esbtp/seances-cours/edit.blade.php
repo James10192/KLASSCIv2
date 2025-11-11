@@ -743,7 +743,7 @@ function showTypeChangeWarning(targetType) {
         warning.classList.add('active');
         setTimeout(() => warning.classList.remove('active'), 2500);
     } else {
-        alert('Pour changer le type de cette séance, supprimez-la puis créez une nouvelle séance du type souhaité.');
+        debugAlert('Pour changer le type de cette séance, supprimez-la puis créez une nouvelle séance du type souhaité.');
     }
 }
 
@@ -836,7 +836,7 @@ document.getElementById('sessionForm').addEventListener('submit', function(e) {
     const type = document.getElementById('sessionType').value;
     if (!type) {
         e.preventDefault();
-        alert('Veuillez sélectionner un type de séance');
+        debugAlert('Veuillez sélectionner un type de séance');
         return;
     }
 
@@ -844,7 +844,7 @@ document.getElementById('sessionForm').addEventListener('submit', function(e) {
     const endTime = document.getElementById('heure_fin').value;
     if (startTime && endTime && startTime >= endTime) {
         e.preventDefault();
-        alert('L\'heure de fin doit être postérieure à l\'heure de début');
+        debugAlert('L\'heure de fin doit être postérieure à l\'heure de début');
         return;
     }
 
@@ -879,7 +879,7 @@ function validateTeacherAvailability() {
     const availabilityData = @json($availabilityData ?? []);
     
     if (!availabilityData[teacherId]) {
-        alert('❌ Aucune disponibilité configurée pour cet enseignant.\n\nVeuillez configurer ses disponibilités avant de programmer cette séance.');
+        debugAlert('❌ Aucune disponibilité configurée pour cet enseignant.\n\nVeuillez configurer ses disponibilités avant de programmer cette séance.');
         return false;
     }
     
@@ -895,7 +895,7 @@ function validateTeacherAvailability() {
     
     const dayKey = dayMapping[selectedDay];
     if (!dayKey || !availabilityData[teacherId][dayKey]) {
-        alert('❌ L\'enseignant n\'est pas disponible ce jour-là.\n\nVeuillez choisir un autre jour ou un autre enseignant.');
+        debugAlert('❌ L\'enseignant n\'est pas disponible ce jour-là.\n\nVeuillez choisir un autre jour ou un autre enseignant.');
         return false;
     }
     
@@ -908,10 +908,10 @@ function validateTeacherAvailability() {
             const jourNoms = {1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi'};
             
             if (status === 'unavailable') {
-                alert(`❌ L'enseignant n'est pas disponible ${jourNoms[selectedDay]} à ${hour}:00.\n\nVeuillez ajuster les horaires ou choisir un autre enseignant.`);
+                debugAlert(`❌ L'enseignant n'est pas disponible ${jourNoms[selectedDay]} à ${hour}:00.\n\nVeuillez ajuster les horaires ou choisir un autre enseignant.`);
                 return false;
             } else if (status === 'occupied') {
-                alert(`❌ L'enseignant a déjà une séance programmée ${jourNoms[selectedDay]} à ${hour}:00 dans un autre emploi du temps.\n\nVeuillez choisir un autre créneau.`);
+                debugAlert(`❌ L'enseignant a déjà une séance programmée ${jourNoms[selectedDay]} à ${hour}:00 dans un autre emploi du temps.\n\nVeuillez choisir un autre créneau.`);
                 return false;
             }
         }
@@ -1056,7 +1056,7 @@ function showTeacherAvailability() {
         teacherAssignmentText.textContent = `Enseignant assigné: ${teacherName}`;
         teacherInfo.style.display = 'block';
         
-        console.log('🔍 Availability data for teacher', teacherId, ':', availabilityData[teacherId]);
+        debugLog('🔍 Availability data for teacher', teacherId, ':', availabilityData[teacherId]);
         
         if (availabilityData[teacherId]) {
             // Construire la grille de disponibilité

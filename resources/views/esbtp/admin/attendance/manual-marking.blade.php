@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Erreur: ' + data.message);
             }
         } catch (error) {
-            console.error('Error:', error);
+            debugError('Error:', error);
             alert('Une erreur est survenue');
         }
     });
@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Erreur: ' + data.message);
             }
         } catch (error) {
-            console.error('Error:', error);
+            debugError('Error:', error);
             alert('Une erreur est survenue');
         }
     });

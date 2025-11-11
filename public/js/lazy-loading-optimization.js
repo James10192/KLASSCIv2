@@ -166,7 +166,7 @@ class LazyLoadingManager {
 
             this.logPerformance("module_loaded", performance.now() - startTime);
         } catch (error) {
-            console.error(`Erreur chargement module ${moduleName}:`, error);
+            debugError(`Erreur chargement module ${moduleName}:`, error);
             this.logPerformance("module_error", performance.now() - startTime);
         }
     }
@@ -250,7 +250,7 @@ class LazyLoadingManager {
 
             this.logPerformance("chart_loaded", performance.now() - startTime);
         } catch (error) {
-            console.error("Erreur chargement graphique:", error);
+            debugError("Erreur chargement graphique:", error);
             this.showChartError(canvas);
         }
     }
@@ -306,7 +306,7 @@ class LazyLoadingManager {
                 window.LazyModules[moduleName] = moduleExports;
             }
         } catch (error) {
-            console.error(`Erreur exécution module ${moduleName}:`, error);
+            debugError(`Erreur exécution module ${moduleName}:`, error);
         }
     }
 
@@ -428,7 +428,7 @@ class LazyLoadingManager {
             const memory = performance.memory;
 
             if (memory.usedJSHeapSize > memory.jsHeapSizeLimit * 0.8) {
-                console.warn(
+                debugWarn(
                     "Utilisation mémoire élevée, nettoyage du cache..."
                 );
                 this.cleanupCache();
@@ -546,7 +546,7 @@ class LazyLoadingManager {
 // Initialisation automatique
 document.addEventListener("DOMContentLoaded", () => {
     window.lazyLoader = new LazyLoadingManager();
-    console.info("✅ Lazy Loading Manager initialisé");
+    debugInfo("✅ Lazy Loading Manager initialisé");
 });
 
 // Export pour utilisation externe

@@ -1049,8 +1049,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (form) {
         form.addEventListener('submit', function(e) {
             @if(config('app.debug'))
-            console.log('Étape actuelle:', currentStep);
-            console.log('Total étapes:', totalSteps);
+            debugLog('Étape actuelle:', currentStep);
+            debugLog('Total étapes:', totalSteps);
             @endif
 
             // Validation finale avant soumission

@@ -427,7 +427,7 @@
                 });
             })
             .catch(error => {
-                console.error('Erreur:', error);
+                debugError('Erreur:', error);
                 select.innerHTML = '<option value="">Erreur de chargement</option>';
             });
     }

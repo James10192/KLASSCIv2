@@ -421,7 +421,7 @@
                 }
             }
         } catch (error) {
-            console.warn('Chatbot widget: impossible de charger les dimensions stockées', error);
+            debugWarn('Chatbot widget: impossible de charger les dimensions stockées', error);
         }
 
         return {
@@ -434,7 +434,7 @@
         var self = this;
 
         if (!this.toggleButton || !this.window || !this.messagesContainer || !this.textarea || !this.sendButton) {
-            console.warn('Chatbot widget: éléments manquants, initialisation annulée.');
+            debugWarn('Chatbot widget: éléments manquants, initialisation annulée.');
             return;
         }
 
@@ -614,7 +614,7 @@
                 }
             })
             .catch(function (error) {
-                console.error('Chatbot widget - impossible de récupérer les conversations', error);
+                debugError('Chatbot widget - impossible de récupérer les conversations', error);
                 self.showToast('Impossible de charger les conversations');
             });
     };
@@ -725,7 +725,7 @@
                 }
             })
             .catch(function (error) {
-                console.error('Chatbot widget - suppression conversation', error);
+                debugError('Chatbot widget - suppression conversation', error);
                 self.showToast('Suppression impossible');
             });
     };
@@ -779,7 +779,7 @@
                 self.renderConversationList();
             })
             .catch(function (error) {
-                console.error('Chatbot widget - chargement historique', error);
+                debugError('Chatbot widget - chargement historique', error);
                 self.renderEmptyState('Impossible de charger l\'historique.');
             });
     };
@@ -870,7 +870,7 @@
                 self.fetchConversations();
             })
             .catch(function (error) {
-                console.error('Chatbot widget - envoi message', error);
+                debugError('Chatbot widget - envoi message', error);
                 if (self.typingElement) {
                     self.typingElement.remove();
                     self.typingElement = null;
@@ -1036,7 +1036,7 @@
                 window.localStorage.setItem('KLASSCI_CHATBOT_SIZE', JSON.stringify(this.state.dimensions));
             }
         } catch (error) {
-            console.warn('Chatbot widget: impossible de sauvegarder les dimensions', error);
+            debugWarn('Chatbot widget: impossible de sauvegarder les dimensions', error);
         }
     };
 

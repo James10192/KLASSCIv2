@@ -2303,6 +2303,13 @@
 
     @include('components.chatbot.widget')
 
+    <!-- Debug Helper - Doit être chargé en PREMIER -->
+    <script>
+        // Variable globale pour activer/désactiver les logs debug
+        window.DEBUG_MODE = {{ config('app.debug') ? 'true' : 'false' }};
+    </script>
+    <script src="{{ asset('js/debug-helper.js') }}"></script>
+
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
@@ -2316,23 +2323,23 @@
     <script src="{{ asset('js/navbar-diagnostics.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Initialisation de l\'application...');
+            debugLog('🚀 Initialisation de l\'application...');
 
             // 1. Initialiser Bootstrap dropdowns
-            console.log('🔽 Initialisation des dropdowns Bootstrap...');
+            debugLog('🔽 Initialisation des dropdowns Bootstrap...');
             const dropdownElementList = document.querySelectorAll('[data-bs-toggle="dropdown"]');
             const dropdownList = [...dropdownElementList].map(dropdownToggleEl => {
                 try {
                     return new bootstrap.Dropdown(dropdownToggleEl);
                 } catch (error) {
-                    console.error('Erreur initialisation dropdown:', error);
+                    debugError('Erreur initialisation dropdown:', error);
                     return null;
                 }
             });
-            console.log(`✅ ${dropdownList.filter(d => d !== null).length} dropdowns initialisés`);
+            debugLog(`✅ ${dropdownList.filter(d => d !== null).length} dropdowns initialisés`);
 
             // 2. Gestion du toggle sidebar
-            console.log('🍔 Configuration du toggle sidebar...');
+            debugLog('🍔 Configuration du toggle sidebar...');
             const sidebarToggle = document.getElementById('sidebar-toggle');
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
@@ -2344,7 +2351,7 @@
 
                 newSidebarToggle.addEventListener('click', function(e) {
                     e.preventDefault();
-                    console.log('🍔 Toggle sidebar cliqué');
+                    debugLog('🍔 Toggle sidebar cliqué');
 
                         sidebar.classList.toggle('show');
                     if (overlay) {
@@ -2358,20 +2365,20 @@
                 // Fermer sidebar en cliquant sur overlay
                 if (overlay) {
                     overlay.addEventListener('click', function() {
-                        console.log('📱 Overlay cliqué - fermeture sidebar');
+                        debugLog('📱 Overlay cliqué - fermeture sidebar');
                         sidebar.classList.remove('show');
                         overlay.classList.remove('show');
                         document.body.classList.remove('sidebar-open');
                     });
                 }
 
-                console.log('✅ Toggle sidebar configuré');
+                debugLog('✅ Toggle sidebar configuré');
             } else {
-                console.error('❌ Éléments sidebar non trouvés');
+                debugError('❌ Éléments sidebar non trouvés');
             }
 
             // 3. Gestion des accordéons sidebar
-            console.log('🎵 Configuration des accordéons sidebar...');
+            debugLog('🎵 Configuration des accordéons sidebar...');
             const accordionButtons = document.querySelectorAll('.menu-accordion-btn');
 
             accordionButtons.forEach((button, index) => {
@@ -2381,7 +2388,7 @@
 
                 newButton.addEventListener('click', function(e) {
                     e.preventDefault();
-                    console.log(`🎵 Accordéon ${index + 1} cliqué`);
+                    debugLog(`🎵 Accordéon ${index + 1} cliqué`);
 
                     const content = this.nextElementSibling;
                     const isActive = this.classList.contains('active');
@@ -2410,44 +2417,44 @@
                 });
             });
 
-            console.log(`✅ ${accordionButtons.length} accordéons configurés`);
+            debugLog(`✅ ${accordionButtons.length} accordéons configurés`);
 
             // 4. Améliorer la scrollbar sidebar
-            console.log('📜 Configuration de la scrollbar sidebar...');
+            debugLog('📜 Configuration de la scrollbar sidebar...');
             const sidebarMenu = document.querySelector('.sidebar-menu');
             if (sidebarMenu) {
                 // Ajouter padding bottom pour éviter que le dernier élément soit coupé
                 sidebarMenu.style.paddingBottom = '20px';
-                console.log('✅ Scrollbar sidebar configurée');
+                debugLog('✅ Scrollbar sidebar configurée');
             }
 
             // 5. Charger les données navbar
-            console.log('📡 Chargement des données navbar...');
+            debugLog('📡 Chargement des données navbar...');
             loadNavbarData();
 
             // 6. Configurer la recherche
-            console.log('🔍 Configuration de la recherche...');
+            debugLog('🔍 Configuration de la recherche...');
             setupSearchFunctionality();
 
-            console.log('🎉 Initialisation terminée !');
+            debugLog('🎉 Initialisation terminée !');
         });
 
         // Load navbar data (notifications, messages, quick actions)
         function loadNavbarData() {
-            console.log('📡 Début chargement données navbar...');
+            debugLog('📡 Début chargement données navbar...');
 
             // Load notifications
             fetch('{{ route("navbar.notifications") }}')
                 .then(response => {
-                    console.log('🔔 Réponse notifications:', response.status);
+                    debugLog('🔔 Réponse notifications:', response.status);
                     return response.json();
                 })
                 .then(data => {
-                    console.log('🔔 Données notifications reçues:', data);
+                    debugLog('🔔 Données notifications reçues:', data);
                     updateNotifications(data.notifications, data.unread_count);
                 })
                 .catch(error => {
-                    console.error('❌ Erreur chargement notifications:', error);
+                    debugError('❌ Erreur chargement notifications:', error);
                     document.getElementById('notifications-list').innerHTML = `
                         <li class="dropdown-empty">
                             <i class="fas fa-exclamation-triangle text-warning"></i>
@@ -2460,15 +2467,15 @@
             // Load messages
             fetch('{{ route("navbar.messages") }}')
                 .then(response => {
-                    console.log('💬 Réponse messages:', response.status);
+                    debugLog('💬 Réponse messages:', response.status);
                     return response.json();
                 })
                 .then(data => {
-                    console.log('💬 Données messages reçues:', data);
+                    debugLog('💬 Données messages reçues:', data);
                     updateMessages(data.messages, data.unread_count);
                 })
                 .catch(error => {
-                    console.error('❌ Erreur chargement messages:', error);
+                    debugError('❌ Erreur chargement messages:', error);
                     document.getElementById('messages-list').innerHTML = `
                         <li class="dropdown-empty">
                             <i class="fas fa-exclamation-triangle text-warning"></i>
@@ -2481,15 +2488,15 @@
             // Load quick actions
             fetch('{{ route("navbar.quick-actions") }}')
                 .then(response => {
-                    console.log('⚡ Réponse actions rapides:', response.status);
+                    debugLog('⚡ Réponse actions rapides:', response.status);
                     return response.json();
                 })
                 .then(data => {
-                    console.log('⚡ Données actions rapides reçues:', data);
+                    debugLog('⚡ Données actions rapides reçues:', data);
                     updateQuickActions(data.actions);
                 })
                 .catch(error => {
-                    console.error('❌ Erreur chargement actions rapides:', error);
+                    debugError('❌ Erreur chargement actions rapides:', error);
                     document.getElementById('quick-actions-list').innerHTML = `
                         <div class="dropdown-empty">
                             <i class="fas fa-exclamation-triangle text-warning"></i>
@@ -2502,7 +2509,7 @@
 
         // Update notifications
         function updateNotifications(notifications, unreadCount) {
-            console.log('🔔 Mise à jour notifications:', { notifications, unreadCount });
+            debugLog('🔔 Mise à jour notifications:', { notifications, unreadCount });
             const notificationsList = document.getElementById('notifications-list');
             const notificationsCount = document.getElementById('notifications-count');
             const markAllBtn = document.getElementById('mark-all-notifications-read');
@@ -2568,7 +2575,7 @@
 
         // Update messages
         function updateMessages(messages, unreadCount) {
-            console.log('💬 Mise à jour messages:', { messages, unreadCount });
+            debugLog('💬 Mise à jour messages:', { messages, unreadCount });
             const messagesList = document.getElementById('messages-list');
             const messagesCount = document.getElementById('messages-count');
             const markAllMessagesBtn = document.getElementById('mark-all-messages-read');
@@ -2633,7 +2640,7 @@
 
         // Update quick actions
         function updateQuickActions(actions) {
-            console.log('⚡ Mise à jour actions rapides:', actions);
+            debugLog('⚡ Mise à jour actions rapides:', actions);
             const quickActionsList = document.getElementById('quick-actions-list');
 
             // État vide avec design amélioré
@@ -2688,17 +2695,17 @@
 
         // Setup search functionality
         function setupSearchFunctionality() {
-            console.log('🔍 Configuration de la recherche...');
+            debugLog('🔍 Configuration de la recherche...');
             const searchInput = document.getElementById('global-search');
             const searchResults = document.getElementById('search-results');
             let searchTimeout;
 
             if (searchInput) {
-                console.log('✅ Search input trouvé, ajout des event listeners');
+                debugLog('✅ Search input trouvé, ajout des event listeners');
 
                 searchInput.addEventListener('input', function() {
                     const query = this.value.trim();
-                    console.log('🔍 Search input - nouvelle valeur:', query);
+                    debugLog('🔍 Search input - nouvelle valeur:', query);
 
                     clearTimeout(searchTimeout);
 
@@ -2723,22 +2730,22 @@
 
                 // Show search results when focusing on input if there's content
                 searchInput.addEventListener('focus', function() {
-                    console.log('🔍 Search input focus');
+                    debugLog('🔍 Search input focus');
                     if (this.value.trim().length >= 2 && searchResults.innerHTML.trim() !== '') {
                         searchResults.style.display = 'block';
                         searchResults.classList.add('show');
                     }
                 });
 
-                console.log('✅ Search functionality configurée');
+                debugLog('✅ Search functionality configurée');
             } else {
-                console.error('❌ Search input non trouvé');
+                debugError('❌ Search input non trouvé');
             }
         }
 
         // Perform search
         function performSearch(query) {
-            console.log('🔍 Exécution recherche pour:', query);
+            debugLog('🔍 Exécution recherche pour:', query);
             const searchResults = document.getElementById('search-results');
 
             searchResults.innerHTML = '<div class="loading-text"><div class="loading-spinner"></div> Recherche...</div>';
@@ -2747,22 +2754,22 @@
 
             fetch(`{{ route("search.global") }}?q=${encodeURIComponent(query)}`)
                 .then(response => {
-                    console.log('🔍 Réponse recherche:', response.status);
+                    debugLog('🔍 Réponse recherche:', response.status);
                     return response.json();
                 })
                 .then(data => {
-                    console.log('🔍 Résultats recherche:', data);
+                    debugLog('🔍 Résultats recherche:', data);
                     displaySearchResults(data);
                 })
                 .catch(error => {
-                    console.error('❌ Erreur recherche:', error);
+                    debugError('❌ Erreur recherche:', error);
                     searchResults.innerHTML = '<div class="search-no-results">Erreur de recherche</div>';
                 });
         }
 
         // Display search results
         function displaySearchResults(data) {
-            console.log('🔍 Affichage résultats recherche:', data);
+            debugLog('🔍 Affichage résultats recherche:', data);
             const searchResults = document.getElementById('search-results');
 
             if (!data.results || data.results.length === 0) {
@@ -2804,7 +2811,7 @@
 
         // Mark notification as read
         function markNotificationAsRead(notificationId) {
-            console.log('🔔 Marquage notification comme lue:', notificationId);
+            debugLog('🔔 Marquage notification comme lue:', notificationId);
             fetch(`{{ url('/navbar/notifications') }}/${notificationId}/read`, {
                 method: 'POST',
                 headers: {
@@ -2813,18 +2820,18 @@
                 }
             })
             .then(response => {
-                console.log('🔔 Réponse marquage notification:', response.status);
+                debugLog('🔔 Réponse marquage notification:', response.status);
                 return response.json();
             })
             .then(data => {
-                console.log('🔔 Notification marquée:', data);
+                debugLog('🔔 Notification marquée:', data);
                 if (data.success) {
                     // Recharger les notifications
                     loadNavbarData();
                 }
             })
             .catch(error => {
-                console.error('❌ Erreur marquage notification:', error);
+                debugError('❌ Erreur marquage notification:', error);
             });
         }
 
@@ -2834,7 +2841,7 @@
             if (markAllBtn) {
                 markAllBtn.addEventListener('click', function(e) {
                     e.preventDefault();
-                    console.log('🔔 Marquage toutes notifications comme lues');
+                    debugLog('🔔 Marquage toutes notifications comme lues');
 
                     fetch('{{ url('/navbar/notifications/mark-all-read') }}', {
                         method: 'POST',
@@ -2850,7 +2857,7 @@
                         }
                     })
                     .catch(error => {
-                        console.error('❌ Erreur marquage toutes notifications:', error);
+                        debugError('❌ Erreur marquage toutes notifications:', error);
                     });
                 });
             }
@@ -2877,11 +2884,11 @@
                         // Recalculer le badge
                         updateNotificationBadge();
                         
-                        console.log('✅ Notification marquée comme lue:', notificationId);
+                        debugLog('✅ Notification marquée comme lue:', notificationId);
                     }
                 })
                 .catch(error => {
-                    console.error('❌ Erreur marquage notification comme lue:', error);
+                    debugError('❌ Erreur marquage notification comme lue:', error);
                 });
             };
 
@@ -2923,7 +2930,7 @@
                 // Recalculer le badge
                 updateMessageBadge();
                 
-                console.log('✅ Message marqué comme lu:', messageId);
+                debugLog('✅ Message marqué comme lu:', messageId);
             };
 
             window.openMessageLink = function(url, messageId) {
@@ -2958,14 +2965,14 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            console.log('✅ Notification supprimée:', notificationId);
+                            debugLog('✅ Notification supprimée:', notificationId);
                             loadNavbarData(); // Recharger les données
                         } else {
                             alert('Erreur lors de la suppression');
                         }
                     })
                     .catch(error => {
-                        console.error('❌ Erreur suppression notification:', error);
+                        debugError('❌ Erreur suppression notification:', error);
                         alert('Erreur lors de la suppression');
                     });
                 }
@@ -2985,14 +2992,14 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            console.log('✅ Message supprimé:', messageId);
+                            debugLog('✅ Message supprimé:', messageId);
                             loadNavbarData(); // Recharger les données
                         } else {
                             alert('Erreur lors de la suppression');
                         }
                     })
                     .catch(error => {
-                        console.error('❌ Erreur suppression message:', error);
+                        debugError('❌ Erreur suppression message:', error);
                         alert('Erreur lors de la suppression');
                     });
                 }
@@ -3011,14 +3018,14 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            console.log('✅ Toutes les notifications supprimées');
+                            debugLog('✅ Toutes les notifications supprimées');
                             loadNavbarData(); // Recharger les données
                         } else {
                             alert('Erreur lors de la suppression');
                         }
                     })
                     .catch(error => {
-                        console.error('❌ Erreur suppression toutes notifications:', error);
+                        debugError('❌ Erreur suppression toutes notifications:', error);
                         alert('Erreur lors de la suppression');
                     });
                 }
@@ -3036,14 +3043,14 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {
-                            console.log('✅ Tous les messages supprimés');
+                            debugLog('✅ Tous les messages supprimés');
                             loadNavbarData(); // Recharger les données
                         } else {
                             alert('Erreur lors de la suppression');
                         }
                     })
                     .catch(error => {
-                        console.error('❌ Erreur suppression tous messages:', error);
+                        debugError('❌ Erreur suppression tous messages:', error);
                         alert('Erreur lors de la suppression');
                     });
                 }
@@ -3061,14 +3068,14 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        console.log('✅ Toutes les notifications marquées comme lues');
+                        debugLog('✅ Toutes les notifications marquées comme lues');
                         loadNavbarData(); // Recharger les données
                     } else {
                         alert('Erreur lors du marquage');
                     }
                 })
                 .catch(error => {
-                    console.error('❌ Erreur marquage toutes notifications:', error);
+                    debugError('❌ Erreur marquage toutes notifications:', error);
                     alert('Erreur lors du marquage');
                 });
             };
@@ -3084,27 +3091,27 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        console.log('✅ Tous les messages marqués comme lus');
+                        debugLog('✅ Tous les messages marqués comme lus');
                         loadNavbarData(); // Recharger les données
                     } else {
                         alert('Erreur lors du marquage');
                     }
                 })
                 .catch(error => {
-                    console.error('❌ Erreur marquage tous messages:', error);
+                    debugError('❌ Erreur marquage tous messages:', error);
                     alert('Erreur lors du marquage');
                 });
             };
 
             // Marquer les notifications comme vues quand on ouvre le dropdown
             document.getElementById('notificationsDropdown').addEventListener('shown.bs.dropdown', function () {
-                console.log('🔔 Dropdown notifications ouvert - marquage comme vu');
+                debugLog('🔔 Dropdown notifications ouvert - marquage comme vu');
 
                 // Vérifier s'il y a des notifications non lues avant d'appeler le serveur
                 const unreadNotifications = document.querySelectorAll('.notification-item.unread');
 
                 if (unreadNotifications.length === 0) {
-                    console.log('ℹ️ Aucune notification non lue, pas d\'appel serveur nécessaire');
+                    debugLog('ℹ️ Aucune notification non lue, pas d\'appel serveur nécessaire');
                     return;
                 }
 
@@ -3127,17 +3134,17 @@
                         // Mettre à jour le badge en utilisant la nouvelle fonction
                         updateNotificationBadge();
 
-                        console.log('✅ Notifications marquées comme vues');
+                        debugLog('✅ Notifications marquées comme vues');
                     }
                 })
                 .catch(error => {
-                    console.error('❌ Erreur marquage notifications vues:', error);
+                    debugError('❌ Erreur marquage notifications vues:', error);
                 });
             });
 
             // Marquer les messages comme vus quand on ouvre le dropdown
             document.getElementById('messagesDropdown').addEventListener('shown.bs.dropdown', function () {
-                console.log('💬 Dropdown messages ouvert - marquage comme vu');
+                debugLog('💬 Dropdown messages ouvert - marquage comme vu');
                 
                 // Pour l'instant, marquer visuellement les messages comme lus
                 const messageItems = document.querySelectorAll('.message-item.unread');
@@ -3148,7 +3155,7 @@
                 // Mettre à jour le badge
                 updateMessageBadge();
                 
-                console.log('✅ Messages marqués comme vus');
+                debugLog('✅ Messages marqués comme vus');
             });
 
             // Gérer le bouton "Tout marquer comme lu" pour les messages
@@ -3158,7 +3165,7 @@
                     e.preventDefault();
                     e.stopPropagation();
                     
-                    console.log('📨 Marquage tous messages comme lus...');
+                    debugLog('📨 Marquage tous messages comme lus...');
                     
                     // Marquer visuellement les messages comme lus
                     const messageItems = document.querySelectorAll('.message-item.unread');
@@ -3169,7 +3176,7 @@
                     // Mettre à jour le badge
                     updateMessageBadge();
                     
-                    console.log('✅ Messages marqués comme lus');
+                    debugLog('✅ Messages marqués comme lus');
                 });
             }
     });

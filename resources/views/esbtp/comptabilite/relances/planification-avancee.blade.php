@@ -536,7 +536,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
+            debugError('Erreur:', error);
             alert('Erreur de communication avec le serveur');
         });
     }

@@ -338,13 +338,13 @@ function deleteNotificationPage(notificationId) {
                     }, 300);
                 }
                 
-                console.log('✅ Notification supprimée:', notificationId);
+                debugLog('✅ Notification supprimée:', notificationId);
             } else {
                 alert('Erreur lors de la suppression de la notification.');
             }
         })
         .catch(error => {
-            console.error('❌ Erreur suppression notification:', error);
+            debugError('❌ Erreur suppression notification:', error);
             alert('Erreur lors de la suppression de la notification.');
         });
     }

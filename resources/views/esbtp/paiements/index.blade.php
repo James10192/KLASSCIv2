@@ -388,14 +388,14 @@ function showYearChangeInfo() {
         const $bulkActionsBar = $('#bulk-actions-bar');
         const $selectedCountSpan = $('#selected-count');
 
-        console.log('📊 updateBulkActionsBar appelée, checkboxes cochées:', checkedCount);
+        debugLog('📊 updateBulkActionsBar appelée, checkboxes cochées:', checkedCount);
 
         if (checkedCount > 0) {
-            console.log('✅ Affichage de la barre d\'actions groupées');
+            debugLog('✅ Affichage de la barre d\'actions groupées');
             $bulkActionsBar.show();  // Utiliser .show() au lieu de .addClass('show')
             $selectedCountSpan.text(checkedCount);
         } else {
-            console.log('❌ Masquage de la barre d\'actions groupées');
+            debugLog('❌ Masquage de la barre d\'actions groupées');
             $bulkActionsBar.hide();  // Utiliser .hide() au lieu de .removeClass('show')
         }
 
@@ -408,23 +408,23 @@ function showYearChangeInfo() {
      * Initialiser les écouteurs d'événements pour les checkboxes
      */
     function initCheckboxListeners() {
-        console.log('🔧 Initialisation des listeners de checkboxes...');
+        debugLog('🔧 Initialisation des listeners de checkboxes...');
 
         // Checkbox "Tout sélectionner"
         $(document).off('change', '#select-all').on('change', '#select-all', function() {
             const isChecked = $(this).prop('checked');
-            console.log('☑️ Select-all changé:', isChecked);
+            debugLog('☑️ Select-all changé:', isChecked);
             $('.paiement-checkbox').prop('checked', isChecked);
             updateBulkActionsBar();
         });
 
         // Checkboxes individuelles
         $(document).off('change', '.paiement-checkbox').on('change', '.paiement-checkbox', function() {
-            console.log('☑️ Checkbox individuelle changée');
+            debugLog('☑️ Checkbox individuelle changée');
             updateBulkActionsBar();
         });
 
-        console.log('✅ Listeners de checkboxes initialisés');
+        debugLog('✅ Listeners de checkboxes initialisés');
     }
 
     /**
@@ -576,7 +576,7 @@ function showYearChangeInfo() {
                     } else {
                         currentPaiementsCount = document.querySelectorAll('tr[data-paiement-id]').length;
                     }
-                    console.log('📊 Nombre de paiements affichés:', currentPaiementsCount);
+                    debugLog('📊 Nombre de paiements affichés:', currentPaiementsCount);
                 }
 
                 // Mettre à jour l'URL sans recharger la page
@@ -591,14 +591,14 @@ function showYearChangeInfo() {
                 }
 
                 if (showLog) {
-                    console.log('✅ Données rafraîchies avec succès');
+                    debugLog('✅ Données rafraîchies avec succès');
                 }
             } else {
-                console.error('❌ Réponse invalide du serveur:', data);
+                debugError('❌ Réponse invalide du serveur:', data);
             }
         })
         .catch(error => {
-            console.error('❌ Erreur lors du refresh:', error);
+            debugError('❌ Erreur lors du refresh:', error);
         })
         .finally(() => {
             // Masquer le spinner du bouton
@@ -641,7 +641,7 @@ function showYearChangeInfo() {
             );
 
             if (hasChanges) {
-                console.log('🆕 Changements détectés! Count:', currentPaiementsCount, '→', data.count, '| Last update:', lastUpdatedAt, '→', data.last_updated_at);
+                debugLog('🆕 Changements détectés! Count:', currentPaiementsCount, '→', data.count, '| Last update:', lastUpdatedAt, '→', data.last_updated_at);
 
                 // Mettre à jour les valeurs courantes
                 currentPaiementsCount = data.count;
@@ -650,11 +650,11 @@ function showYearChangeInfo() {
                 // Rafraîchir les données SANS overlay (polling automatique non-intrusif)
                 fetchPaiementsData(false, false);
             } else {
-                console.log('✓ Pas de changements (count:', data.count, ')');
+                debugLog('✓ Pas de changements (count:', data.count, ')');
             }
         })
         .catch(error => {
-            console.error('❌ Erreur lors de la vérification des mises à jour:', error);
+            debugError('❌ Erreur lors de la vérification des mises à jour:', error);
         });
     }
 
@@ -667,11 +667,11 @@ function showYearChangeInfo() {
         }
 
         pollingTimer = setInterval(() => {
-            console.log('🔄 Vérification des changements...');
+            debugLog('🔄 Vérification des changements...');
             checkForUpdates();
         }, pollingInterval);
 
-        console.log(`✅ Polling intelligent démarré (intervalle: ${pollingInterval}ms)`);
+        debugLog(`✅ Polling intelligent démarré (intervalle: ${pollingInterval}ms)`);
     }
 
     /**
@@ -681,7 +681,7 @@ function showYearChangeInfo() {
         if (pollingTimer) {
             clearInterval(pollingTimer);
             pollingTimer = null;
-            console.log('⏸️ Polling arrêté');
+            debugLog('⏸️ Polling arrêté');
         }
     }
 
@@ -731,7 +731,7 @@ function showYearChangeInfo() {
      * Gestion du bouton "Rafraîchir" manuel
      */
     $('#paiements-refresh-btn').off('click').on('click', function() {
-        console.log('🔄 Refresh manuel déclenché');
+        debugLog('🔄 Refresh manuel déclenché');
         fetchPaiementsData();
     });
 
@@ -739,7 +739,7 @@ function showYearChangeInfo() {
      * Gestion du bouton retour/avancer du navigateur
      */
     window.addEventListener('popstate', function() {
-        console.log('⬅️ Navigation navigateur détectée');
+        debugLog('⬅️ Navigation navigateur détectée');
         fetchPaiementsData();
     });
 
@@ -748,7 +748,7 @@ function showYearChangeInfo() {
      * avec animation de lumière verte/rouge qui parcourt la ligne
      */
     window.refreshPaiementLigne = function(paiementId, actionType = 'validate') {
-        console.log('🔄 Refresh ligne paiement:', paiementId, 'action:', actionType);
+        debugLog('🔄 Refresh ligne paiement:', paiementId, 'action:', actionType);
 
         const refreshUrl = `/esbtp/paiements/${paiementId}/refresh-ligne`;
         const existingRow = document.querySelector(`tr[data-paiement-id="${paiementId}"]`);
@@ -784,7 +784,7 @@ function showYearChangeInfo() {
             }
 
             if (!rowFragment) {
-                console.error('❌ Contenu HTML reçu:', data.html);
+                debugError('❌ Contenu HTML reçu:', data.html);
                 throw new Error('HTML retourné sans ligne de paiement valide');
             }
 
@@ -825,7 +825,7 @@ function showYearChangeInfo() {
                 setPaiementRowLoadingState(paiementId, false);
                 triggerPaiementRowHighlight(newRow, actionType);
 
-                console.log('🎉 Ligne rafraîchie avec succès (nouvelle ligne ajoutée):', paiementId);
+                debugLog('🎉 Ligne rafraîchie avec succès (nouvelle ligne ajoutée):', paiementId);
                 return;
             }
 
@@ -897,10 +897,10 @@ function showYearChangeInfo() {
                 }
             }, PAIEMENT_HIGHLIGHT_DURATION + 100);
 
-            console.log('🎉 Ligne rafraîchie avec succès (mise à jour différée):', paiementId);
+            debugLog('🎉 Ligne rafraîchie avec succès (mise à jour différée):', paiementId);
         })
         .catch(error => {
-            console.error('❌ Erreur refresh ligne:', error);
+            debugError('❌ Erreur refresh ligne:', error);
             setPaiementRowLoadingState(paiementId, false);
             alert('Erreur lors de la mise à jour: ' + error.message);
         });
@@ -911,7 +911,7 @@ function showYearChangeInfo() {
      * @param {string} format - Format d'export: 'excel', 'csv', ou 'pdf'
      */
     window.exportPaiements = function(format) {
-        console.log('📤 Export paiements format:', format);
+        debugLog('📤 Export paiements format:', format);
 
         // Récupérer les paramètres de filtres actuels
         const params = new URLSearchParams(window.location.search);
@@ -929,7 +929,7 @@ function showYearChangeInfo() {
                 exportUrl = '{{ route('esbtp.paiements.export.pdf') }}';
                 break;
             default:
-                console.error('❌ Format d\'export inconnu:', format);
+                debugError('❌ Format d\'export inconnu:', format);
                 return;
         }
 
@@ -938,7 +938,7 @@ function showYearChangeInfo() {
             exportUrl += '?' + params.toString();
         }
 
-        console.log('🔗 URL d\'export:', exportUrl);
+        debugLog('🔗 URL d\'export:', exportUrl);
 
         // Rediriger vers l'URL d'export (le téléchargement démarrera automatiquement)
         window.location.href = exportUrl;
@@ -948,7 +948,7 @@ function showYearChangeInfo() {
      * Initialisation au chargement de la page
      */
     $(document).ready(function() {
-        console.log('✅ Scripts paiements initialisés');
+        debugLog('✅ Scripts paiements initialisés');
 
         // Initialiser les listeners de checkboxes
         initCheckboxListeners();
@@ -957,17 +957,17 @@ function showYearChangeInfo() {
         startPolling();
 
         // Vérifier combien de checkboxes existent au chargement
-        console.log('🔍 Vérification checkboxes au chargement:');
-        console.log('   - Total checkboxes paiement:', $('.paiement-checkbox').length);
-        console.log('   - Select-all existe:', $('#select-all').length > 0);
-        console.log('   - Bulk actions bar existe:', $('#bulk-actions-bar').length > 0);
+        debugLog('🔍 Vérification checkboxes au chargement:');
+        debugLog('   - Total checkboxes paiement:', $('.paiement-checkbox').length);
+        debugLog('   - Select-all existe:', $('#select-all').length > 0);
+        debugLog('   - Bulk actions bar existe:', $('#bulk-actions-bar').length > 0);
 
         // Initialiser l'état de la barre d'actions groupées
         updateBulkActionsBar();
 
         // Auto-submit quand on change un select ou une date
         $('#status, #date_debut, #date_fin').off('change').on('change', function() {
-            console.log('📝 Changement détecté, soumission automatique du formulaire');
+            debugLog('📝 Changement détecté, soumission automatique du formulaire');
             $('#paiements-filter-form').submit();
         });
 
@@ -975,7 +975,7 @@ function showYearChangeInfo() {
          * Intercepter les clics sur les boutons de validation de paiement
          * Utilisation de addEventListener avec capture phase pour intercepter AVANT les autres handlers
          */
-        console.log('🎯 Installation du handler de validation avec capture phase...');
+        debugLog('🎯 Installation du handler de validation avec capture phase...');
 
         document.addEventListener('click', function(e) {
             // Vérifier si le clic est sur un bouton de validation ou un de ses enfants
@@ -987,8 +987,8 @@ function showYearChangeInfo() {
             }
 
             if (btn) {
-                console.log('🔘 Clic détecté sur bouton valider (CAPTURE PHASE)');
-                console.log('🎯 Bouton trouvé:', btn);
+                debugLog('🔘 Clic détecté sur bouton valider (CAPTURE PHASE)');
+                debugLog('🎯 Bouton trouvé:', btn);
 
                 // STOP IMMÉDIATEMENT tout avant même de vérifier quoi que ce soit
                 e.preventDefault();
@@ -996,26 +996,26 @@ function showYearChangeInfo() {
                 e.stopImmediatePropagation();
 
                 const paiementId = btn.getAttribute('data-paiement-id');
-                console.log('📋 Paiement ID:', paiementId);
+                debugLog('📋 Paiement ID:', paiementId);
 
                 if (!paiementId) {
-                    console.error('❌ Pas de paiement ID trouvé sur le bouton');
+                    debugError('❌ Pas de paiement ID trouvé sur le bouton');
                     return false;
                 }
 
                 if (!confirm('Êtes-vous sûr de vouloir valider ce paiement ?')) {
-                    console.log('⏸️ Validation annulée par l\'utilisateur');
+                    debugLog('⏸️ Validation annulée par l\'utilisateur');
                     return false;
                 }
 
-                console.log('🔄 Lancement validation AJAX pour paiement:', paiementId);
+                debugLog('🔄 Lancement validation AJAX pour paiement:', paiementId);
 
                 // Récupérer l'URL depuis l'attribut data
                 const actionUrl = btn.getAttribute('data-action-url');
-                console.log('🌐 URL d\'action:', actionUrl);
+                debugLog('🌐 URL d\'action:', actionUrl);
 
                 if (!actionUrl) {
-                    console.error('❌ Pas d\'URL d\'action trouvée sur le bouton');
+                    debugError('❌ Pas d\'URL d\'action trouvée sur le bouton');
                     return false;
                 }
 
@@ -1030,13 +1030,13 @@ function showYearChangeInfo() {
                     }
                 })
                 .then(response => {
-                    console.log('📡 Réponse serveur reçue:', response.status);
+                    debugLog('📡 Réponse serveur reçue:', response.status);
                     return response.json();
                 })
                 .then(data => {
-                    console.log('📦 Données JSON:', data);
+                    debugLog('📦 Données JSON:', data);
                     if (data.success) {
-                        console.log('✅ Paiement validé, lancement refresh ligne');
+                        debugLog('✅ Paiement validé, lancement refresh ligne');
                         // Rafraîchir la ligne avec animation verte
                         window.refreshPaiementLigne(paiementId, 'validate');
                     } else {
@@ -1045,7 +1045,7 @@ function showYearChangeInfo() {
                     }
                 })
                 .catch(error => {
-                    console.error('❌ Erreur validation:', error);
+                    debugError('❌ Erreur validation:', error);
                     setPaiementRowLoadingState(paiementId, false);
                     alert('Erreur lors de la validation du paiement: ' + error.message);
                 });
@@ -1054,7 +1054,7 @@ function showYearChangeInfo() {
             }
         }, true); // true = capture phase (s'exécute AVANT le bubbling)
 
-        console.log('✅ Handler de validation installé avec capture phase');
+        debugLog('✅ Handler de validation installé avec capture phase');
     });
 })();
 </script>
@@ -1083,7 +1083,7 @@ function bulkValider() {
         return;
     }
 
-    console.log('🔄 Validation en masse de', selectedIds.length, 'paiements:', selectedIds);
+    debugLog('🔄 Validation en masse de', selectedIds.length, 'paiements:', selectedIds);
 
     toggleRowsLoadingState(selectedIds, true);
 
@@ -1106,7 +1106,7 @@ function bulkValider() {
         return response.json();
     })
     .then(data => {
-        console.log('✅ Réponse bulk validation:', data);
+        debugLog('✅ Réponse bulk validation:', data);
 
         if (data.success) {
             // Rafraîchir chaque ligne validée avec animation
@@ -1129,7 +1129,7 @@ function bulkValider() {
         }
     })
     .catch(error => {
-        console.error('❌ Erreur bulk validation:', error);
+        debugError('❌ Erreur bulk validation:', error);
         toggleRowsLoadingState(selectedIds, false);
         alert('Erreur lors de la validation. Veuillez réessayer.');
     });
@@ -1197,7 +1197,7 @@ $(document).ready(function() {
             return;
         }
 
-        console.log('🔄 Rejet en masse de', selectedIds.length, 'paiements:', selectedIds);
+        debugLog('🔄 Rejet en masse de', selectedIds.length, 'paiements:', selectedIds);
 
         if (selectedIds.length === 0) {
             alert('Veuillez sélectionner au moins un paiement.');
@@ -1226,7 +1226,7 @@ $(document).ready(function() {
             return response.json();
         })
         .then(data => {
-            console.log('✅ Réponse bulk rejet:', data);
+            debugLog('✅ Réponse bulk rejet:', data);
 
             if (data.success) {
                 // Fermer le modal
@@ -1252,7 +1252,7 @@ $(document).ready(function() {
             }
         })
         .catch(error => {
-            console.error('❌ Erreur bulk rejet:', error);
+            debugError('❌ Erreur bulk rejet:', error);
             toggleRowsLoadingState(selectedIds, false);
             alert('Erreur lors du rejet. Veuillez réessayer.');
         });
@@ -1261,7 +1261,7 @@ $(document).ready(function() {
     // Intercepter le clic sur le bouton de rejet individuel
     $(document).on('click', '.rejeter-paiement-submit-btn', function(e) {
         e.preventDefault();
-        console.log('🛑 Clic sur bouton rejeter intercepté');
+        debugLog('🛑 Clic sur bouton rejeter intercepté');
 
         const button = $(this);
         const paiementId = button.data('paiement-id');
@@ -1276,7 +1276,7 @@ $(document).ready(function() {
         const motifRejet = motifRejetTextarea.val();
         const confirmerRejet = confirmerRejetCheckbox.is(':checked');
 
-        console.log('📝 Données formulaire:', {
+        debugLog('📝 Données formulaire:', {
             paiementId: paiementId,
             actionUrl: actionUrl,
             motifRejet: motifRejet,
@@ -1296,7 +1296,7 @@ $(document).ready(function() {
             return;
         }
 
-        console.log('🔄 Rejet individuel paiement ID:', paiementId);
+        debugLog('🔄 Rejet individuel paiement ID:', paiementId);
 
         if (typeof window.setPaiementRowLoadingState === 'function') {
             window.setPaiementRowLoadingState(paiementId, true);
@@ -1323,7 +1323,7 @@ $(document).ready(function() {
             return response.json();
         })
         .then(data => {
-            console.log('✅ Réponse rejet individuel:', data);
+            debugLog('✅ Réponse rejet individuel:', data);
 
             if (data.success) {
                 // Fermer le modal
@@ -1349,7 +1349,7 @@ $(document).ready(function() {
             }
         })
         .catch(error => {
-            console.error('❌ Erreur rejet individuel:', error);
+            debugError('❌ Erreur rejet individuel:', error);
             if (typeof window.setPaiementRowLoadingState === 'function') {
                 window.setPaiementRowLoadingState(paiementId, false);
             }

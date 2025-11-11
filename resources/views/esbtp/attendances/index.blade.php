@@ -1375,7 +1375,7 @@ function generateDailyReport() {
         }
     })
     .catch(error => {
-        console.error('Erreur:', error);
+        debugError('Erreur:', error);
         alert('Erreur de connexion lors de la génération du rapport');
     })
     .finally(() => {
@@ -1454,7 +1454,7 @@ function loadRecentActivities() {
         }
     })
     .catch(error => {
-        console.error('Erreur chargement activités:', error);
+        debugError('Erreur chargement activités:', error);
         if (activitiesContainer) {
             activitiesContainer.innerHTML = `
                 <div class="text-center py-4 text-warning">

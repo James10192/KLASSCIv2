@@ -238,7 +238,7 @@ function marquerAbandon(etudiantId) {
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
+            debugError('Erreur:', error);
             alert('Erreur lors de l\'enregistrement de l\'abandon');
         });
     }
@@ -271,7 +271,7 @@ function validerReinscription(etudiantId, decision) {
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
+            debugError('Erreur:', error);
             alert('Erreur lors de la validation');
         });
     }

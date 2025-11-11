@@ -146,7 +146,7 @@
 // Fonctions JavaScript pour gérer les options
 function addNewOption(categoryId, categoryName) {
     // TODO: Ouvrir un modal pour créer une nouvelle option
-    console.log('Ajouter option pour catégorie:', categoryId, categoryName);
+    debugLog('Ajouter option pour catégorie:', categoryId, categoryName);
     
     // Exemple de prompt simple en attendant le modal
     const optionName = prompt(`Nom de la nouvelle option pour ${categoryName}:`);
@@ -154,20 +154,20 @@ function addNewOption(categoryId, categoryName) {
         const optionPrice = prompt('Prix de cette option (en FCFA):');
         if (optionPrice && !isNaN(optionPrice)) {
             // TODO: Envoyer la requête AJAX pour créer l'option
-            console.log('Créer option:', optionName, optionPrice);
+            debugLog('Créer option:', optionName, optionPrice);
         }
     }
 }
 
 function editOption(optionId) {
     // TODO: Ouvrir un modal pour modifier l'option
-    console.log('Modifier option:', optionId);
+    debugLog('Modifier option:', optionId);
 }
 
 function deleteOption(optionId) {
     if (confirm('Êtes-vous sûr de vouloir supprimer cette option ?')) {
         // TODO: Envoyer la requête AJAX pour supprimer l'option
-        console.log('Supprimer option:', optionId);
+        debugLog('Supprimer option:', optionId);
     }
 }
 </script>

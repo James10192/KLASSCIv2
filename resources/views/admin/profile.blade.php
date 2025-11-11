@@ -378,7 +378,7 @@
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+                debugError('Error:', error);
                 showTemporaryMessage('Erreur lors de la mise à jour de la photo', 'error');
             })
             .finally(() => {

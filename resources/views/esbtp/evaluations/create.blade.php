@@ -544,7 +544,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             const classeId = this.value;
 
-            console.log('📚 [AJAX] Classe sélectionnée:', classeId);
+            debugLog('📚 [AJAX] Classe sélectionnée:', classeId);
 
             // Reset matière select
             matiereSelect.innerHTML = '<option value="">-- Sélectionner une matière --</option>';
@@ -563,7 +563,7 @@ document.addEventListener('DOMContentLoaded', function() {
      * Utilise les combinaisons globales (filière + niveau)
      */
     function loadMatieres(classeId) {
-        console.log('🔄 [AJAX] Chargement matières pour classe:', classeId);
+        debugLog('🔄 [AJAX] Chargement matières pour classe:', classeId);
 
         // Supprimer tous les spinners existants pour éviter les doublons
         const label = document.querySelector('label[for="matiere_id"]');
@@ -594,7 +594,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (spinner) spinner.remove();
 
             if (data.success) {
-                console.log('✅ [AJAX] Matières reçues:', data.count, 'pour', data.classe.nom);
+                debugLog('✅ [AJAX] Matières reçues:', data.count, 'pour', data.classe.nom);
 
                 // Mettre à jour le select avec les options HTML
                 matiereSelect.innerHTML = data.options;
@@ -610,14 +610,14 @@ document.addEventListener('DOMContentLoaded', function() {
                           'Veuillez d\'abord ajouter des matières via la page "Matières de classe".');
                 }
             } else {
-                console.error('❌ Erreur:', data.message);
+                debugError('❌ Erreur:', data.message);
                 alert('Erreur: ' + data.message);
                 matiereSelect.disabled = false;
             }
         })
         .catch(error => {
             if (spinner) spinner.remove();
-            console.error('❌ Erreur AJAX:', error);
+            debugError('❌ Erreur AJAX:', error);
             alert('Une erreur est survenue lors du chargement des matières: ' + error.message);
             matiereSelect.disabled = false;
         });

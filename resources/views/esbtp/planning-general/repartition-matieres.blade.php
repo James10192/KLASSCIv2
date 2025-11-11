@@ -743,15 +743,15 @@
 // ===== FILTRAGE CLIENT-SIDE (fonction globale) =====
 function filterByClasse(classeId) {
     const cards = document.querySelectorAll('.matiere-card');
-    console.log('Filtrage par classe:', classeId);
-    console.log('Nombre de cartes:', cards.length);
+    debugLog('Filtrage par classe:', classeId);
+    debugLog('Nombre de cartes:', cards.length);
     
     if (!classeId) {
         // Afficher toutes les cartes
         cards.forEach(card => {
             card.style.display = 'block';
         });
-        console.log('Affichage de toutes les cartes');
+        debugLog('Affichage de toutes les cartes');
         if (typeof updateChartsWithVisibleData === 'function') {
             updateChartsWithVisibleData();
         }
@@ -762,14 +762,14 @@ function filterByClasse(classeId) {
     const classeSelect = document.querySelector('select[name="classe_id"]');
     const selectedOption = classeSelect ? classeSelect.querySelector(`option[value="${classeId}"]`) : null;
     if (!selectedOption) {
-        console.error('Option sélectionnée introuvable');
+        debugError('Option sélectionnée introuvable');
         return;
     }
     
     const targetFiliereId = selectedOption.dataset.filiereId;
     const targetNiveauId = selectedOption.dataset.niveauId;
     
-    console.log('Filière cible:', targetFiliereId, 'Niveau cible:', targetNiveauId);
+    debugLog('Filière cible:', targetFiliereId, 'Niveau cible:', targetNiveauId);
     
     let visibleCount = 0;
     
@@ -778,7 +778,7 @@ function filterByClasse(classeId) {
         const cardFiliereId = card.dataset.filiereId;
         const cardNiveauId = card.dataset.niveauId;
         
-        console.log('Carte:', card.dataset.matiereName, 'Filière:', cardFiliereId, 'Niveau:', cardNiveauId);
+        debugLog('Carte:', card.dataset.matiereName, 'Filière:', cardFiliereId, 'Niveau:', cardNiveauId);
         
         if (cardFiliereId === targetFiliereId && cardNiveauId === targetNiveauId) {
             card.style.display = 'block';
@@ -788,7 +788,7 @@ function filterByClasse(classeId) {
         }
     });
     
-    console.log('Cartes visibles après filtrage:', visibleCount);
+    debugLog('Cartes visibles après filtrage:', visibleCount);
     if (typeof updateChartsWithVisibleData === 'function') {
         updateChartsWithVisibleData();
     }
@@ -797,19 +797,19 @@ function filterByClasse(classeId) {
 $(document).ready(function() {
     // Données pour les graphiques
     const repartitionDataRaw = @json($repartition->toArray());
-    console.log('Données graphiques brutes:', repartitionDataRaw);
+    debugLog('Données graphiques brutes:', repartitionDataRaw);
     
     // Convertir l'objet en array
     const repartitionData = Object.values(repartitionDataRaw);
-    console.log('Données graphiques (array):', repartitionData);
-    console.log('Nombre d\'éléments:', repartitionData.length);
+    debugLog('Données graphiques (array):', repartitionData);
+    debugLog('Nombre d\'éléments:', repartitionData.length);
     
     const totalHeures = repartitionData.reduce((sum, item) => {
         // Utiliser les heures planifiées si disponibles, sinon les heures réalisées
         const heures = item.est_configure ? parseFloat(item.heures_planifiees) : parseFloat(item.total_heures);
         return sum + heures;
     }, 0);
-    console.log('Total heures:', totalHeures);
+    debugLog('Total heures:', totalHeures);
     
     // Les pourcentages sont déjà calculés côté serveur, pas besoin de les recalculer
     
@@ -820,13 +820,13 @@ $(document).ready(function() {
     ];
     
     if (repartitionData.length > 0) {
-        console.log('Création des graphiques...');
+        debugLog('Création des graphiques...');
         
         // Vérifier les éléments du DOM
         const pieElement = document.getElementById('pieChart');
         const barElement = document.getElementById('barChart');
-        console.log('PieChart element:', pieElement);
-        console.log('BarChart element:', barElement);
+        debugLog('PieChart element:', pieElement);
+        debugLog('BarChart element:', barElement);
         
         if (pieElement) {
             // Graphique en secteurs
@@ -837,7 +837,7 @@ $(document).ready(function() {
                 }
                 return 'N/A';
             });
-            console.log('Labels pie:', pieLabels);
+            debugLog('Labels pie:', pieLabels);
             
             new Chart(pieCtx, {
                 type: 'pie',
@@ -882,7 +882,7 @@ $(document).ready(function() {
             }
         });
         } else {
-            console.error('Élément pieChart introuvable dans le DOM');
+            debugError('Élément pieChart introuvable dans le DOM');
         }
         
         if (barElement) {
@@ -894,7 +894,7 @@ $(document).ready(function() {
                 }
                 return 'N/A';
             });
-            console.log('Labels bar:', barLabels);
+            debugLog('Labels bar:', barLabels);
             
             new Chart(barCtx, {
                 type: 'bar',
@@ -941,11 +941,11 @@ $(document).ready(function() {
             }
         });
         } else {
-            console.error('Élément barChart introuvable dans le DOM');
+            debugError('Élément barChart introuvable dans le DOM');
         }
     } else {
-        console.warn('Aucune donnée disponible pour les graphiques');
-        console.log('RepartitionData:', repartitionData);
+        debugWarn('Aucune donnée disponible pour les graphiques');
+        debugLog('RepartitionData:', repartitionData);
     }
     
     // Animation des barres de progression
@@ -1127,7 +1127,7 @@ $(document).ready(function() {
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
+            debugError('Erreur:', error);
             alert('Erreur lors de la sauvegarde');
         })
         .finally(() => {
@@ -1138,14 +1138,14 @@ $(document).ready(function() {
     });
 
     // ===== DEBUG MODAL =====
-    console.log('Bootstrap version:', typeof bootstrap !== 'undefined' ? 'loaded' : 'NOT LOADED');
+    debugLog('Bootstrap version:', typeof bootstrap !== 'undefined' ? 'loaded' : 'NOT LOADED');
     
     // Test de clic sur les boutons
     document.addEventListener('click', function(e) {
         if (e.target.closest('button[data-bs-target="#configureModal"]')) {
-            console.log('Bouton modal cliqué!');
-            console.log('Button:', e.target.closest('button'));
-            console.log('Modal element:', document.getElementById('configureModal'));
+            debugLog('Bouton modal cliqué!');
+            debugLog('Button:', e.target.closest('button'));
+            debugLog('Modal element:', document.getElementById('configureModal'));
             
             // Test manuel d'ouverture du modal
             setTimeout(() => {
@@ -1153,9 +1153,9 @@ $(document).ready(function() {
                 if (modalEl && typeof bootstrap !== 'undefined') {
                     const modalInstance = new bootstrap.Modal(modalEl);
                     modalInstance.show();
-                    console.log('Modal ouvert manuellement');
+                    debugLog('Modal ouvert manuellement');
                 } else {
-                    console.error('Bootstrap ou modal element introuvable');
+                    debugError('Bootstrap ou modal element introuvable');
                 }
             }, 100);
         }
@@ -1164,18 +1164,18 @@ $(document).ready(function() {
     // Vérifier l'état du modal
     const modalElement = document.getElementById('configureModal');
     if (modalElement) {
-        console.log('Modal element found:', modalElement);
+        debugLog('Modal element found:', modalElement);
         modalElement.addEventListener('shown.bs.modal', function () {
-            console.log('Modal shown event triggered');
+            debugLog('Modal shown event triggered');
         });
         modalElement.addEventListener('hidden.bs.modal', function () {
-            console.log('Modal hidden event triggered');
+            debugLog('Modal hidden event triggered');
         });
         modalElement.addEventListener('show.bs.modal', function () {
-            console.log('Modal show event triggered');
+            debugLog('Modal show event triggered');
         });
     } else {
-        console.error('Modal element NOT FOUND');
+        debugError('Modal element NOT FOUND');
     }
 
     
@@ -1194,7 +1194,7 @@ $(document).ready(function() {
             return originalItem;
         }).filter(item => item);
         
-        console.log('Données filtrées pour graphiques:', filteredData);
+        debugLog('Données filtrées pour graphiques:', filteredData);
         
         // TODO: Recréer les graphiques avec filteredData
         // Pour l'instant, on garde les graphiques existants

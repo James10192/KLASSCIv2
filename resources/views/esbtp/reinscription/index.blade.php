@@ -622,56 +622,56 @@
 
 <script>
 // LOGS IMMÉDIATS AVANT CHARGEMENT JQUERY (PAGE REINSCRIPTIONS)
-console.log('🟢 DEBUG REINSCRIPTIONS: Script debug DÉBUT');
-console.log('🟢 DEBUG REINSCRIPTIONS: jQuery disponible avant chargement?', typeof $ !== 'undefined');
+debugLog('🟢 DEBUG REINSCRIPTIONS: Script debug DÉBUT');
+debugLog('🟢 DEBUG REINSCRIPTIONS: jQuery disponible avant chargement?', typeof $ !== 'undefined');
 </script>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script>
 // LOGS APRÈS JQUERY (PAGE REINSCRIPTIONS)
-console.log('🟢 DEBUG REINSCRIPTIONS: jQuery chargé?', typeof $ !== 'undefined');
-console.log('🟢 DEBUG REINSCRIPTIONS: jQuery version:', typeof $ !== 'undefined' ? $.fn.jquery : 'N/A');
+debugLog('🟢 DEBUG REINSCRIPTIONS: jQuery chargé?', typeof $ !== 'undefined');
+debugLog('🟢 DEBUG REINSCRIPTIONS: jQuery version:', typeof $ !== 'undefined' ? $.fn.jquery : 'N/A');
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
 // LOGS APRÈS BOOTSTRAP (PAGE REINSCRIPTIONS)
-console.log('🟢 DEBUG REINSCRIPTIONS: Bootstrap 4.6.2 chargé?', typeof $.fn.modal !== 'undefined');
-console.log('🟢 DEBUG REINSCRIPTIONS: Bootstrap version:', typeof bootstrap !== 'undefined' ? bootstrap : 'N/A');
+debugLog('🟢 DEBUG REINSCRIPTIONS: Bootstrap 4.6.2 chargé?', typeof $.fn.modal !== 'undefined');
+debugLog('🟢 DEBUG REINSCRIPTIONS: Bootstrap version:', typeof bootstrap !== 'undefined' ? bootstrap : 'N/A');
 
 $(document).ready(function() {
-    console.log('🟢 DEBUG REINSCRIPTIONS: Document ready');
+    debugLog('🟢 DEBUG REINSCRIPTIONS: Document ready');
     
     // Debug du modal "Changer d'année"
     const yearChangeModal = $('#yearChangeModal');
-    console.log('🟢 DEBUG REINSCRIPTIONS: Modal changement année trouvé?', yearChangeModal.length > 0);
+    debugLog('🟢 DEBUG REINSCRIPTIONS: Modal changement année trouvé?', yearChangeModal.length > 0);
     
     const yearChangeButton = $('button[onclick="showYearChangeInfo()"]');
-    console.log('🟢 DEBUG REINSCRIPTIONS: Bouton changement année trouvé?', yearChangeButton.length > 0);
+    debugLog('🟢 DEBUG REINSCRIPTIONS: Bouton changement année trouvé?', yearChangeButton.length > 0);
     
     // Debug du bouton "Changer d'année" existant
     const changeYearBtn = $('button[onclick="showYearChangeInfo()"]');
-    console.log('🟢 DEBUG REINSCRIPTIONS: Bouton "Changer d\'année" trouvé?', changeYearBtn.length > 0);
+    debugLog('🟢 DEBUG REINSCRIPTIONS: Bouton "Changer d\'année" trouvé?', changeYearBtn.length > 0);
     if (changeYearBtn.length > 0) {
-        console.log('🟢 DEBUG REINSCRIPTIONS: Texte du bouton:', changeYearBtn.text().trim());
-        console.log('🟢 DEBUG REINSCRIPTIONS: Attribut onclick:', changeYearBtn.attr('onclick'));
+        debugLog('🟢 DEBUG REINSCRIPTIONS: Texte du bouton:', changeYearBtn.text().trim());
+        debugLog('🟢 DEBUG REINSCRIPTIONS: Attribut onclick:', changeYearBtn.attr('onclick'));
     }
     
     // Intercepter les clics sur le bouton "Changer d'année" 
     changeYearBtn.on('click', function() {
-        console.log('🖱️ DEBUG REINSCRIPTIONS: Clic détecté sur bouton "Changer d\'année"');
-        console.log('🎯 DEBUG REINSCRIPTIONS: Tentative d\'ouverture du modal #yearChangeModal');
+        debugLog('🖱️ DEBUG REINSCRIPTIONS: Clic détecté sur bouton "Changer d\'année"');
+        debugLog('🎯 DEBUG REINSCRIPTIONS: Tentative d\'ouverture du modal #yearChangeModal');
     });
     
     // Écouter les événements du modal
     $('#yearChangeModal').on('show.bs.modal', function (e) {
-        console.log('🎭 DEBUG REINSCRIPTIONS: Événement show.bs.modal déclenché');
+        debugLog('🎭 DEBUG REINSCRIPTIONS: Événement show.bs.modal déclenché');
     });
     
     $('#yearChangeModal').on('shown.bs.modal', function (e) {
-        console.log('✅ DEBUG REINSCRIPTIONS: Modal affiché avec succès');
+        debugLog('✅ DEBUG REINSCRIPTIONS: Modal affiché avec succès');
     });
 });
 </script>
@@ -682,7 +682,7 @@ let loadedTabs = {};
 let currentPage = {};
 
 $(document).ready(function() {
-    console.log("🚀 DEBUG: Page ready, initialisation du lazy loading");
+    debugLog("🚀 DEBUG: Page ready, initialisation du lazy loading");
     
     // CORRECTION: Charger automatiquement l'onglet avec le plus d'étudiants
     const statistiques = {
@@ -695,24 +695,24 @@ $(document).ready(function() {
         errors: {{ $statistiques['errors'] ?? 0 }}
     };
     
-    console.log("📊 DEBUG: Statistiques reçues:", statistiques);
+    debugLog("📊 DEBUG: Statistiques reçues:", statistiques);
     
     // Trouver la catégorie avec le plus d'étudiants
     let maxCategory = 'passages';
     let maxCount = 0;
     for (const [category, count] of Object.entries(statistiques)) {
-        console.log(`📈 DEBUG: Catégorie "${category}": ${count} étudiants`);
+        debugLog(`📈 DEBUG: Catégorie "${category}": ${count} étudiants`);
         if (count > maxCount) {
             maxCount = count;
             maxCategory = category;
         }
     }
     
-    console.log(`🎯 DEBUG: Catégorie principale détectée: "${maxCategory}" avec ${maxCount} étudiants`);
+    debugLog(`🎯 DEBUG: Catégorie principale détectée: "${maxCategory}" avec ${maxCount} étudiants`);
     
     // Charger cette catégorie au démarrage
     if (maxCount > 0) {
-        console.log(`🔄 DEBUG: Activation de l'onglet "${maxCategory}"`);
+        debugLog(`🔄 DEBUG: Activation de l'onglet "${maxCategory}"`);
         
         // Activer l'onglet correspondant
         $('a[data-toggle="tab"]').removeClass('active');
@@ -721,8 +721,8 @@ $(document).ready(function() {
         const tabLink = $(`a[href="#${maxCategory}"]`);
         const tabPane = $(`#${maxCategory}`);
         
-        console.log(`🔍 DEBUG: Tab link trouvé:`, tabLink.length > 0);
-        console.log(`🔍 DEBUG: Tab pane trouvé:`, tabPane.length > 0);
+        debugLog(`🔍 DEBUG: Tab link trouvé:`, tabLink.length > 0);
+        debugLog(`🔍 DEBUG: Tab pane trouvé:`, tabPane.length > 0);
         
         tabLink.addClass('active');
         tabPane.addClass('show active');
@@ -732,35 +732,35 @@ $(document).ready(function() {
         const maxSpinner = maxTabPane.find('.reinscription-spinner');
         maxSpinner.addClass('hidden');
         
-        console.log(`📞 DEBUG: Appel loadTabContent("${maxCategory}")`);
+        debugLog(`📞 DEBUG: Appel loadTabContent("${maxCategory}")`);
         loadTabContent(maxCategory);
         
         // Marquer cette catégorie comme chargée
         loadedTabs[maxCategory] = true;
     } else {
-        console.log("⚠️ DEBUG: Aucune catégorie avec des étudiants trouvée");
+        debugLog("⚠️ DEBUG: Aucune catégorie avec des étudiants trouvée");
     }
     
     // Gérer les clics sur les onglets - Approche multiple pour plus de robustesse
-    console.log(`🔍 DEBUG: Configuration des gestionnaires d'onglets`);
+    debugLog(`🔍 DEBUG: Configuration des gestionnaires d'onglets`);
     
     // Méthode 1: Bootstrap shown.bs.tab
     $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
-        console.log(`🔗 DEBUG: Bootstrap shown.bs.tab détecté`);
+        debugLog(`🔗 DEBUG: Bootstrap shown.bs.tab détecté`);
         const targetTab = $(e.target).attr('href').substring(1);
-        console.log(`🎯 DEBUG: targetTab: "${targetTab}"`);
+        debugLog(`🎯 DEBUG: targetTab: "${targetTab}"`);
         
         const tabPane = $('#' + targetTab);
         const category = tabPane.data('category');
-        console.log(`📂 DEBUG: category extraite: "${category}"`);
-        console.log(`💾 DEBUG: loadedTabs status:`, loadedTabs);
-        console.log(`❓ DEBUG: "${category}" déjà chargé?`, loadedTabs[category] || false);
+        debugLog(`📂 DEBUG: category extraite: "${category}"`);
+        debugLog(`💾 DEBUG: loadedTabs status:`, loadedTabs);
+        debugLog(`❓ DEBUG: "${category}" déjà chargé?`, loadedTabs[category] || false);
         
         if (category) {
             if (loadedTabs[category]) {
-                console.log(`✅ DEBUG: Catégorie "${category}" déjà en cache, pas de rechargement`);
+                debugLog(`✅ DEBUG: Catégorie "${category}" déjà en cache, pas de rechargement`);
             } else {
-                console.log(`🚀 DEBUG: Chargement Bootstrap de la catégorie "${category}"`);
+                debugLog(`🚀 DEBUG: Chargement Bootstrap de la catégorie "${category}"`);
                 loadTabContent(category);
             }
         }
@@ -768,23 +768,23 @@ $(document).ready(function() {
     
     // Méthode 2: Clic direct comme fallback
     $('a[data-toggle="tab"]').on('click', function (e) {
-        console.log(`👆 DEBUG: Clic direct sur onglet détecté`);
+        debugLog(`👆 DEBUG: Clic direct sur onglet détecté`);
         const targetTab = $(this).attr('href').substring(1);
-        console.log(`🎯 DEBUG: targetTab: "${targetTab}"`);
+        debugLog(`🎯 DEBUG: targetTab: "${targetTab}"`);
         
         // Attendre un peu que l'onglet soit activé
         setTimeout(() => {
             const tabPane = $('#' + targetTab);
             const category = tabPane.data('category');
-            console.log(`📂 DEBUG: category extraite après timeout: "${category}"`);
-            console.log(`💾 DEBUG: loadedTabs status:`, loadedTabs);
-            console.log(`❓ DEBUG: "${category}" déjà chargé?`, loadedTabs[category] || false);
+            debugLog(`📂 DEBUG: category extraite après timeout: "${category}"`);
+            debugLog(`💾 DEBUG: loadedTabs status:`, loadedTabs);
+            debugLog(`❓ DEBUG: "${category}" déjà chargé?`, loadedTabs[category] || false);
             
             if (category) {
                 if (loadedTabs[category]) {
-                    console.log(`✅ DEBUG: Catégorie "${category}" déjà en cache, pas de rechargement`);
+                    debugLog(`✅ DEBUG: Catégorie "${category}" déjà en cache, pas de rechargement`);
                 } else {
-                    console.log(`🚀 DEBUG: Chargement par clic de la catégorie "${category}"`);
+                    debugLog(`🚀 DEBUG: Chargement par clic de la catégorie "${category}"`);
                     loadTabContent(category);
                 }
             }
@@ -794,7 +794,7 @@ $(document).ready(function() {
 
 // Fonction pour forcer le rechargement d'un onglet (efface le cache)
 function refreshTab(category) {
-    console.log(`🔄 DEBUG: Forcer le rechargement de "${category}"`);
+    debugLog(`🔄 DEBUG: Forcer le rechargement de "${category}"`);
     loadedTabs[category] = false;
     
     // Remettre le spinner et cacher le contenu
@@ -811,33 +811,33 @@ function refreshTab(category) {
 
 // Fonction principale de chargement lazy
 function loadTabContent(category, page = 1) {
-    console.log(`🔥 DEBUG: loadTabContent("${category}", ${page})`);
+    debugLog(`🔥 DEBUG: loadTabContent("${category}", ${page})`);
     
     const tabPane = $(`[data-category="${category}"]`);
     const loadingSpinner = tabPane.find('.reinscription-spinner');
     const contentContainer = tabPane.find('.content-container');
     
-    console.log(`🔍 DEBUG: Éléments trouvés:`);
-    console.log(`  - tabPane:`, tabPane.length > 0, tabPane);
-    console.log(`  - loadingSpinner:`, loadingSpinner.length > 0, loadingSpinner);
-    console.log(`  - contentContainer:`, contentContainer.length > 0, contentContainer);
+    debugLog(`🔍 DEBUG: Éléments trouvés:`);
+    debugLog(`  - tabPane:`, tabPane.length > 0, tabPane);
+    debugLog(`  - loadingSpinner:`, loadingSpinner.length > 0, loadingSpinner);
+    debugLog(`  - contentContainer:`, contentContainer.length > 0, contentContainer);
     
     // DEBUG ULTRA: Vérifier les états avant/après
-    console.log(`🔍 DEBUG ÉTATS AVANT:`);
-    console.log(`  - spinner visible:`, loadingSpinner.is(':visible'));
-    console.log(`  - container visible:`, contentContainer.is(':visible'));
-    console.log(`  - spinner display:`, loadingSpinner.css('display'));
-    console.log(`  - container display:`, contentContainer.css('display'));
+    debugLog(`🔍 DEBUG ÉTATS AVANT:`);
+    debugLog(`  - spinner visible:`, loadingSpinner.is(':visible'));
+    debugLog(`  - container visible:`, contentContainer.is(':visible'));
+    debugLog(`  - spinner display:`, loadingSpinner.css('display'));
+    debugLog(`  - container display:`, contentContainer.css('display'));
     
     // Afficher le spinner si c'est la première page
     if (page === 1) {
-        console.log(`🔄 DEBUG: Affichage du spinner pour page 1`);
+        debugLog(`🔄 DEBUG: Affichage du spinner pour page 1`);
         loadingSpinner.removeClass('hidden');
         contentContainer.hide();
     }
     
     const ajaxUrl = `{{ route('esbtp.reinscription.load-category', ':category') }}`.replace(':category', category);
-    console.log(`📡 DEBUG: URL AJAX: ${ajaxUrl}`);
+    debugLog(`📡 DEBUG: URL AJAX: ${ajaxUrl}`);
     
     // Récupérer les paramètres de filtres depuis le formulaire
     const filterParams = {};
@@ -853,7 +853,7 @@ function loadTabContent(category, page = 1) {
     if (statutReinscriptionValue) filterParams.statut_reinscription = statutReinscriptionValue;
     if (statutPaiementValue) filterParams.statut_paiement = statutPaiementValue;
     
-    console.log(`🔍 DEBUG: Paramètres de filtres:`, filterParams);
+    debugLog(`🔍 DEBUG: Paramètres de filtres:`, filterParams);
     
     // Faire la requête AJAX
     $.ajax({
@@ -865,22 +865,22 @@ function loadTabContent(category, page = 1) {
             ...filterParams // Inclure les paramètres de filtres
         },
         success: function(response) {
-            console.log(`✅ DEBUG: AJAX Success pour "${category}", page ${page}`);
-            console.log(`📊 DEBUG: Response total:`, response.total);
-            console.log(`📄 DEBUG: Response HTML length:`, response.html ? response.html.length : 0);
-            console.log(`🔄 DEBUG: Response has_more:`, response.has_more);
+            debugLog(`✅ DEBUG: AJAX Success pour "${category}", page ${page}`);
+            debugLog(`📊 DEBUG: Response total:`, response.total);
+            debugLog(`📄 DEBUG: Response HTML length:`, response.html ? response.html.length : 0);
+            debugLog(`🔄 DEBUG: Response has_more:`, response.has_more);
             
             if (page === 1) {
-                console.log(`🎯 DEBUG: Traitement première page`);
+                debugLog(`🎯 DEBUG: Traitement première page`);
                 // Première page : remplacer le contenu
-                console.log(`🚫 DEBUG: Masquage du spinner`);
-                console.log(`🔍 DEBUG AVANT addClass('hidden'):`, loadingSpinner.hasClass('hidden'));
+                debugLog(`🚫 DEBUG: Masquage du spinner`);
+                debugLog(`🔍 DEBUG AVANT addClass('hidden'):`, loadingSpinner.hasClass('hidden'));
                 loadingSpinner.addClass('hidden');
-                console.log(`🔍 DEBUG APRÈS addClass('hidden'):`, loadingSpinner.hasClass('hidden'));
+                debugLog(`🔍 DEBUG APRÈS addClass('hidden'):`, loadingSpinner.hasClass('hidden'));
                 
                 // CORRECTION: Gérer les catégories vides
                 if (response.total === 0) {
-                    console.log(`⚠️ DEBUG: Catégorie vide, affichage message`);
+                    debugLog(`⚠️ DEBUG: Catégorie vide, affichage message`);
                     const emptyHtml = `
                         <div class="text-center py-5">
                             <div class="mb-3">
@@ -892,12 +892,12 @@ function loadTabContent(category, page = 1) {
                     `;
                     contentContainer.html(emptyHtml);
                 } else {
-                    console.log(`📝 DEBUG: Injection du HTML (${response.html.length} chars)`);
+                    debugLog(`📝 DEBUG: Injection du HTML (${response.html.length} chars)`);
                     contentContainer.html(response.html);
                 }
                 
-                console.log(`👁️ DEBUG: Affichage du contenu`);
-                console.log(`🔍 DEBUG AVANT show():`, contentContainer.is(':visible'));
+                debugLog(`👁️ DEBUG: Affichage du contenu`);
+                debugLog(`🔍 DEBUG AVANT show():`, contentContainer.is(':visible'));
                 
                 // FORCE l'affichage avec plusieurs méthodes
                 contentContainer.show();
@@ -905,14 +905,14 @@ function loadTabContent(category, page = 1) {
                 contentContainer.css('width', '100%');
                 contentContainer.css('visibility', 'visible');
                 
-                console.log(`🔍 DEBUG APRÈS show():`, contentContainer.is(':visible'));
-                console.log(`🔍 DEBUG CSS display:`, contentContainer.css('display'));
-                console.log(`🔍 DEBUG largeur:`, contentContainer.css('width'));
+                debugLog(`🔍 DEBUG APRÈS show():`, contentContainer.is(':visible'));
+                debugLog(`🔍 DEBUG CSS display:`, contentContainer.css('display'));
+                debugLog(`🔍 DEBUG largeur:`, contentContainer.css('width'));
                 
                 // Vérifier que le contenu a bien été injecté
                 const injectedContent = contentContainer.html();
-                console.log(`📝 DEBUG contenu injecté (taille):`, injectedContent.length);
-                console.log(`🎨 DEBUG contient table-responsive:`, injectedContent.includes('table-responsive'));
+                debugLog(`📝 DEBUG contenu injecté (taille):`, injectedContent.length);
+                debugLog(`🎨 DEBUG contient table-responsive:`, injectedContent.includes('table-responsive'));
                 
                 // Forcer l'affichage de tous les éléments
                 const tableResponsive = contentContainer.find('.table-responsive');
@@ -920,15 +920,15 @@ function loadTabContent(category, page = 1) {
                 const thead = contentContainer.find('thead');
                 const tbody = contentContainer.find('tbody');
                 
-                console.log(`📋 DEBUG éléments trouvés:`);
-                console.log(`  - table-responsive: ${tableResponsive.length}`);
-                console.log(`  - table: ${table.length}`);
-                console.log(`  - thead: ${thead.length}`);
-                console.log(`  - tbody: ${tbody.length}`);
+                debugLog(`📋 DEBUG éléments trouvés:`);
+                debugLog(`  - table-responsive: ${tableResponsive.length}`);
+                debugLog(`  - table: ${table.length}`);
+                debugLog(`  - thead: ${thead.length}`);
+                debugLog(`  - tbody: ${tbody.length}`);
                 
                 // Forcer l'affichage de chaque élément
                 if (tableResponsive.length > 0) {
-                    console.log(`🔧 Force affichage table-responsive`);
+                    debugLog(`🔧 Force affichage table-responsive`);
                     tableResponsive.css({
                         'display': 'block !important',
                         'width': '100% !important',
@@ -937,7 +937,7 @@ function loadTabContent(category, page = 1) {
                 }
                 
                 if (table.length > 0) {
-                    console.log(`🔧 Force affichage table`);
+                    debugLog(`🔧 Force affichage table`);
                     table.css({
                         'display': 'table !important',
                         'width': '100% !important',
@@ -946,7 +946,7 @@ function loadTabContent(category, page = 1) {
                 }
                 
                 if (thead.length > 0) {
-                    console.log(`🔧 Force affichage thead`);
+                    debugLog(`🔧 Force affichage thead`);
                     thead.css({
                         'display': 'table-header-group !important',
                         'visibility': 'visible !important'
@@ -954,7 +954,7 @@ function loadTabContent(category, page = 1) {
                 }
                 
                 if (tbody.length > 0) {
-                    console.log(`🔧 Force affichage tbody`);
+                    debugLog(`🔧 Force affichage tbody`);
                     tbody.css({
                         'display': 'table-row-group !important',
                         'visibility': 'visible !important'
@@ -962,16 +962,16 @@ function loadTabContent(category, page = 1) {
                 }
                 loadedTabs[category] = true;
                 currentPage[category] = 1;
-                console.log(`💾 DEBUG: Catégorie "${category}" mise en cache pour éviter les rechargements`);
+                debugLog(`💾 DEBUG: Catégorie "${category}" mise en cache pour éviter les rechargements`);
             } else {
-                console.log(`➕ DEBUG: Ajout page ${page}`);
+                debugLog(`➕ DEBUG: Ajout page ${page}`);
                 // Pages suivantes : ajouter les lignes au tbody existant
                 const existingTable = contentContainer.find('table tbody');
                 if (existingTable.length > 0) {
-                    console.log(`📝 DEBUG: Ajout des lignes au tbody existant`);
+                    debugLog(`📝 DEBUG: Ajout des lignes au tbody existant`);
                     existingTable.append(response.html);
                 } else {
-                    console.log(`⚠️ DEBUG: Pas de tbody trouvé, ajout classique`);
+                    debugLog(`⚠️ DEBUG: Pas de tbody trouvé, ajout classique`);
                     contentContainer.append(response.html);
                 }
             }
@@ -998,11 +998,11 @@ function loadTabContent(category, page = 1) {
             currentPage[category] = page;
         },
         error: function(xhr, status, error) {
-            console.error(`❌ DEBUG: AJAX Error pour "${category}", page ${page}`);
-            console.error(`🔴 DEBUG: Status:`, status);
-            console.error(`🔴 DEBUG: Error:`, error);
-            console.error(`🔴 DEBUG: XHR Status:`, xhr.status);
-            console.error(`🔴 DEBUG: XHR Response:`, xhr.responseText);
+            debugError(`❌ DEBUG: AJAX Error pour "${category}", page ${page}`);
+            debugError(`🔴 DEBUG: Status:`, status);
+            debugError(`🔴 DEBUG: Error:`, error);
+            debugError(`🔴 DEBUG: XHR Status:`, xhr.status);
+            debugError(`🔴 DEBUG: XHR Response:`, xhr.responseText);
             
             const errorHtml = `
                 <div class="text-center py-4">
@@ -1018,7 +1018,7 @@ function loadTabContent(category, page = 1) {
             `;
             
             if (page === 1) {
-                console.log(`🛑 DEBUG: Masquage spinner et affichage erreur`);
+                debugLog(`🛑 DEBUG: Masquage spinner et affichage erreur`);
                 loadingSpinner.addClass('hidden');
                 contentContainer.html(errorHtml).show();
             }
@@ -1065,7 +1065,7 @@ function validerReinscription(etudiantId, decision) {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Erreur:', error);
+                debugError('Erreur:', error);
                 alert('Erreur lors de la validation');
             }
         });
@@ -1100,7 +1100,7 @@ function marquerAbandonModal(etudiantId) {
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Erreur:', error);
+                debugError('Erreur:', error);
                 alert('Erreur lors de l\'enregistrement de l\'abandon');
             }
         });
@@ -1112,19 +1112,19 @@ function exportResults() {
 }
 
 function showYearChangeInfo() {
-    console.log('🟢 DEBUG REINSCRIPTIONS: Fonction showYearChangeInfo() appelée');
-    console.log('🟢 DEBUG REINSCRIPTIONS: Modal #yearChangeModal existe?', $('#yearChangeModal').length > 0);
+    debugLog('🟢 DEBUG REINSCRIPTIONS: Fonction showYearChangeInfo() appelée');
+    debugLog('🟢 DEBUG REINSCRIPTIONS: Modal #yearChangeModal existe?', $('#yearChangeModal').length > 0);
     try {
         $('#yearChangeModal').modal('show');
-        console.log('✅ DEBUG REINSCRIPTIONS: Commande modal(show) exécutée dans showYearChangeInfo()');
+        debugLog('✅ DEBUG REINSCRIPTIONS: Commande modal(show) exécutée dans showYearChangeInfo()');
     } catch (error) {
-        console.error('❌ DEBUG REINSCRIPTIONS: Erreur dans showYearChangeInfo():', error);
+        debugError('❌ DEBUG REINSCRIPTIONS: Erreur dans showYearChangeInfo():', error);
     }
 }
 
 // Fonction pour recharger les données avec les filtres
 function applyFilters() {
-    console.log('🔍 Applying filters and reloading all tabs...');
+    debugLog('🔍 Applying filters and reloading all tabs...');
     
     // Réinitialiser le statut des onglets chargés
     loadedTabs = {};
@@ -1133,7 +1133,7 @@ function applyFilters() {
     const activeTab = $('.tab-pane.active');
     if (activeTab.length > 0) {
         const category = activeTab.attr('id');
-        console.log(`🎯 Rechargement de l'onglet actif: ${category}`);
+        debugLog(`🎯 Rechargement de l'onglet actif: ${category}`);
         loadTabContent(category, 1);
         loadedTabs[category] = true;
     }
@@ -1143,7 +1143,7 @@ function applyFilters() {
 
 // FONCTION TEST DEBUG TEMPORAIRE
 function testInjection() {
-    console.log('🧪 TEST INJECTION HTML');
+    debugLog('🧪 TEST INJECTION HTML');
     
     const testHtml = `
         <div class="table-responsive" style="width: 100% !important; border: 2px solid red;">
@@ -1178,15 +1178,15 @@ function testInjection() {
     
     if (activeTabPane.length > 0) {
         targetContainer = activeTabPane.find('.content-container');
-        console.log('🎯 Container actif trouvé:', activeTabPane.attr('id'));
+        debugLog('🎯 Container actif trouvé:', activeTabPane.attr('id'));
     } else {
         // Si pas d'onglet actif, utiliser redoublements
         targetContainer = $('#redoublements .content-container');
-        console.log('🎯 Utilise container redoublements par défaut');
+        debugLog('🎯 Utilise container redoublements par défaut');
     }
     
     if (targetContainer.length > 0) {
-        console.log('✅ Container trouvé, injection du HTML test');
+        debugLog('✅ Container trouvé, injection du HTML test');
         
         // Masquer le spinner
         targetContainer.siblings('.reinscription-spinner').addClass('hidden');
@@ -1202,11 +1202,11 @@ function testInjection() {
             'visibility': 'visible !important'
         });
         
-        console.log('✅ HTML test injecté avec succès');
+        debugLog('✅ HTML test injecté avec succès');
         alert('HTML TEST injecté! Regardez si la table s\'affiche avec les headers.');
         
     } else {
-        console.log('❌ Container non trouvé');
+        debugLog('❌ Container non trouvé');
         alert('Erreur: Container non trouvé');
     }
 }

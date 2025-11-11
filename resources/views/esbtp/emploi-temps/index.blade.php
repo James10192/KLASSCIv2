@@ -768,7 +768,7 @@
             const formData = new FormData(form);
             const params = new URLSearchParams(formData);
 
-            console.log('🔄 Fetching emplois temps with params:', Object.fromEntries(params));
+            debugLog('🔄 Fetching emplois temps with params:', Object.fromEntries(params));
 
             // Show loading overlay
             showOverlay();
@@ -816,14 +816,14 @@
                     });
                     history.pushState({}, '', newUrl);
 
-                    console.log('✅ Refresh completed: ' + data.count + ' emplois temps');
+                    debugLog('✅ Refresh completed: ' + data.count + ' emplois temps');
                 } else {
-                    console.error('❌ Error:', data.message);
+                    debugError('❌ Error:', data.message);
                     alert('Erreur lors du chargement des données');
                 }
             })
             .catch(error => {
-                console.error('❌ Fetch error:', error);
+                debugError('❌ Fetch error:', error);
                 alert('Erreur de connexion au serveur: ' + error.message);
             })
             .finally(() => {
@@ -863,7 +863,7 @@
         // Add change listeners to ALL select elements (Select2 will trigger 'change' event on original element)
         filterInputs.forEach(function(input) {
             input.addEventListener('change', function() {
-                console.log('🔄 Filter changed:', this.id || this.name, '=', this.value);
+                debugLog('🔄 Filter changed:', this.id || this.name, '=', this.value);
                 fetchEmploisTempsData();
             });
         });
@@ -871,7 +871,7 @@
         // Event listener for "Appliquer les filtres" button
         document.getElementById('applyFiltersBtn').addEventListener('click', function(e) {
             e.preventDefault();
-            console.log('🔄 Apply filters button clicked');
+            debugLog('🔄 Apply filters button clicked');
             fetchEmploisTempsData();
         });
 
@@ -879,7 +879,7 @@
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('🔄 Form submit prevented');
+            debugLog('🔄 Form submit prevented');
             fetchEmploisTempsData();
             return false;
         });

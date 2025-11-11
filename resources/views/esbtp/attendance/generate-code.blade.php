@@ -848,7 +848,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Auto-refresh every 10 minutes to get updated data
     setTimeout(function() {
-        console.log('Auto-refreshing page for updated data...');
+        debugLog('Auto-refreshing page for updated data...');
         window.location.reload();
     }, 600000); // 10 minutes
     

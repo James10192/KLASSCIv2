@@ -251,7 +251,7 @@
                         }
                     })
                     .catch(error => {
-                        console.error('Error fetching subjects:', error);
+                        debugError('Error fetching subjects:', error);
                         subjectSelect.innerHTML = '<option value="">Erreur lors du chargement des matières</option>';
                     });
             } else {

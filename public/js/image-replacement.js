@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
             img.parentNode.replaceChild(newImg, img);
             
             // Journaliser le remplacement pour le débogage
-            console.info(`Image remplacée: ${img.src} → ${thematicSrc} (contexte: ${contextType})`);
+            debugInfo(`Image remplacée: ${img.src} → ${thematicSrc} (contexte: ${contextType})`);
         }
     }
 
@@ -252,7 +252,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         );
                         
                         element.setAttribute('style', newStyle);
-                        console.info(`Image d'arrière-plan remplacée: ${imageUrl} → ${thematicUrl}`);
+                        debugInfo(`Image d'arrière-plan remplacée: ${imageUrl} → ${thematicUrl}`);
                     };
                     
                     tempImg.src = imageUrl;

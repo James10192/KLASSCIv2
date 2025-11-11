@@ -654,7 +654,7 @@
 
 <script>
 (function() {
-    console.log('✅ Scripts show séance initialisés');
+    debugLog('✅ Scripts show séance initialisés');
 
     /**
      * Met à jour l'état de chargement de la section statut enseignant
@@ -751,7 +751,7 @@
      * Initialisation au chargement
      */
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('✅ Event listeners installés pour show séance');
+        debugLog('✅ Event listeners installés pour show séance');
 
         // Initialize tooltips
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -772,7 +772,7 @@
             const type = btn.getAttribute('data-type') || 'start';
 
             if (!seanceId || !status) {
-                console.error('❌ Pas de seance ID ou status sur le bouton');
+                debugError('❌ Pas de seance ID ou status sur le bouton');
                 return;
             }
 
@@ -781,7 +781,7 @@
                 return;
             }
 
-            console.log('🔄 Marquage statut enseignant:', { seanceId, status, type });
+            debugLog('🔄 Marquage statut enseignant:', { seanceId, status, type });
 
             setTeacherStatusLoadingState(true);
 
@@ -803,9 +803,9 @@
                 return response.json();
             })
             .then(data => {
-                console.log('📦 Réponse serveur:', data);
+                debugLog('📦 Réponse serveur:', data);
                 if (data.success) {
-                    console.log('✅ Statut mis à jour');
+                    debugLog('✅ Statut mis à jour');
 
                     // Mettre à jour le badge
                     updateTeacherStatusBadge(status);
@@ -814,7 +814,7 @@
                     updateActionButtons(status);
 
                     // Afficher un message de succès (plus simple qu'alert)
-                    console.log('✅ Statut mis à jour avec succès');
+                    debugLog('✅ Statut mis à jour avec succès');
 
                     // PAS DE RELOAD - juste mise à jour visuelle du badge
                     // Le workflow reste inchangé car le marquage manuel ne l'affecte pas
@@ -824,13 +824,13 @@
                 setTeacherStatusLoadingState(false);
             })
             .catch(error => {
-                console.error('❌ Erreur update statut:', error);
+                debugError('❌ Erreur update statut:', error);
                 setTeacherStatusLoadingState(false);
                 alert('Erreur lors de la mise à jour: ' + error.message);
             });
         }, true); // Capture phase
 
-        console.log('✅ Scripts show séance prêts');
+        debugLog('✅ Scripts show séance prêts');
     });
 })();
 </script>

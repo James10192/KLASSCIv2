@@ -375,7 +375,7 @@
 @push('scripts')
 <script>
 $(function() {
-    console.log('=== SCRIPT PRINCIPAL CHARGÉ ===');
+    debugLog('=== SCRIPT PRINCIPAL CHARGÉ ===');
     
     let currentStudent = null;
     let studentBalance = null;
@@ -387,13 +387,13 @@ $(function() {
         var etudiantId = $(this).val();
         currentStudent = etudiantId;
         
-        console.log('Étudiant sélectionné:', etudiantId);
+        debugLog('Étudiant sélectionné:', etudiantId);
         
         if (etudiantId) {
-            console.log('Chargement des données pour l\'étudiant:', etudiantId);
+            debugLog('Chargement des données pour l\'étudiant:', etudiantId);
             loadStudentData(etudiantId);
         } else {
-            console.log('Réinitialisation du formulaire');
+            debugLog('Réinitialisation du formulaire');
             resetForm();
         }
     });
@@ -401,11 +401,11 @@ $(function() {
     // Si un étudiant est déjà sélectionné (pré-rempli), charger ses données
     @if($etudiant)
         currentStudent = '{{ $etudiant->id }}';
-        console.log('Étudiant pré-sélectionné:', currentStudent);
+        debugLog('Étudiant pré-sélectionné:', currentStudent);
         
         @if($inscription)
             // Inscription déjà sélectionnée, charger directement les catégories
-            console.log('Inscription pré-sélectionnée: {{ $inscription->id }}');
+            debugLog('Inscription pré-sélectionnée: {{ $inscription->id }}');
             $('#student-progress-section').show();
             loadStudentBalance(currentStudent);
             loadCategories('{{ $inscription->id }}');
@@ -417,7 +417,7 @@ $(function() {
     
     // Fonction pour charger les données de l'étudiant
     function loadStudentData(etudiantId) {
-        console.log('=== loadStudentData appelée avec ID:', etudiantId);
+        debugLog('=== loadStudentData appelée avec ID:', etudiantId);
         
         // Charger les inscriptions
         loadInscriptions(etudiantId);
@@ -431,21 +431,21 @@ $(function() {
     
     // Charger les inscriptions de l'étudiant
     function loadInscriptions(etudiantId) {
-        console.log('=== Chargement des inscriptions pour étudiant:', etudiantId);
-        console.log('URL complète:', "{{ route('esbtp.api.etudiants.inscriptions') }}" + "?etudiant_id=" + etudiantId);
+        debugLog('=== Chargement des inscriptions pour étudiant:', etudiantId);
+        debugLog('URL complète:', "{{ route('esbtp.api.etudiants.inscriptions') }}" + "?etudiant_id=" + etudiantId);
         
         $.ajax({
             url: "{{ route('esbtp.api.etudiants.inscriptions') }}",
             data: { etudiant_id: etudiantId },
             dataType: 'json',
             beforeSend: function(xhr, settings) {
-                console.log('Envoi de la requête AJAX...');
-                console.log('URL:', settings.url);
-                console.log('Data:', settings.data);
+                debugLog('Envoi de la requête AJAX...');
+                debugLog('URL:', settings.url);
+                debugLog('Data:', settings.data);
             },
             success: function(data) {
-                console.log('✅ Inscriptions reçues avec succès:', data);
-                console.log('Nombre d\'inscriptions:', data.length);
+                debugLog('✅ Inscriptions reçues avec succès:', data);
+                debugLog('Nombre d\'inscriptions:', data.length);
                 
                 var options = '<option value="">-- Sélectionner une inscription --</option>';
                 $.each(data, function(index, inscription) {
@@ -455,43 +455,43 @@ $(function() {
                                ' (' + inscription.annee + ')</option>';
                 });
                 
-                console.log('Options HTML générées:', options);
+                debugLog('Options HTML générées:', options);
                 $('#inscription_id').html(options);
-                console.log('Select #inscription_id mis à jour');
+                debugLog('Select #inscription_id mis à jour');
                 
                 // Vérifier que le select existe et est mis à jour
                 var selectElement = $('#inscription_id');
-                console.log('Select trouvé:', selectElement.length > 0);
-                console.log('Nouvelles options dans le select:', selectElement.find('option').length);
+                debugLog('Select trouvé:', selectElement.length > 0);
+                debugLog('Nouvelles options dans le select:', selectElement.find('option').length);
                 
                 // Si une inscription est sélectionnée, charger les catégories
                 var selectedInscription = $('#inscription_id').val();
-                console.log('Inscription pré-sélectionnée:', selectedInscription);
+                debugLog('Inscription pré-sélectionnée:', selectedInscription);
                 if (selectedInscription) {
                     loadCategories(selectedInscription);
                 }
             },
             error: function(xhr, status, error) {
-                console.error('Erreur chargement inscriptions:', {status, error, response: xhr.responseText});
+                debugError('Erreur chargement inscriptions:', {status, error, response: xhr.responseText});
             }
         });
     }
     
     // Charger les soldes de l'étudiant
     function loadStudentBalance(etudiantId) {
-        console.log('=== Chargement des soldes pour étudiant:', etudiantId);
+        debugLog('=== Chargement des soldes pour étudiant:', etudiantId);
         
         $.ajax({
             url: "{{ route('esbtp.api.etudiants.soldes') }}",
             data: { etudiant_id: etudiantId },
             dataType: 'json',
             success: function(data) {
-                console.log('Soldes reçus:', data);
+                debugLog('Soldes reçus:', data);
                 studentBalance = data;
                 updateProgressDisplay(data);
             },
             error: function(xhr, status, error) {
-                console.warn('Impossible de charger les soldes:', {status, error});
+                debugWarn('Impossible de charger les soldes:', {status, error});
             }
         });
     }
@@ -499,7 +499,7 @@ $(function() {
     // Gestion du changement d'inscription
     $('#inscription_id').on('change', function() {
         var inscriptionId = $(this).val();
-        console.log('Inscription sélectionnée:', inscriptionId);
+        debugLog('Inscription sélectionnée:', inscriptionId);
         
         if (inscriptionId) {
             loadCategories(inscriptionId);
@@ -510,27 +510,27 @@ $(function() {
     
     // Charger les catégories de frais disponibles
     function loadCategories(inscriptionId) {
-        console.log('=== Chargement des catégories pour inscription:', inscriptionId);
+        debugLog('=== Chargement des catégories pour inscription:', inscriptionId);
         
         $.ajax({
             url: "{{ route('esbtp.api.frais.categories') }}",
             data: { inscription_id: inscriptionId },
             dataType: 'json',
             success: function(data) {
-                console.log('Catégories reçues:', data);
+                debugLog('Catégories reçues:', data);
                 categories = data;
                 displayCategories(data);
                 $('#category-selection-section').fadeIn();
             },
             error: function(xhr, status, error) {
-                console.error('Erreur chargement catégories:', {status, error, response: xhr.responseText});
+                debugError('Erreur chargement catégories:', {status, error, response: xhr.responseText});
             }
         });
     }
     
     // Afficher les catégories de frais
     function displayCategories(categories) {
-        console.log('=== Affichage des catégories:', categories);
+        debugLog('=== Affichage des catégories:', categories);
         
         var html = '';
         categories.forEach(function(category) {
@@ -575,7 +575,7 @@ $(function() {
         selectedCategory = JSON.parse($element.attr('data-category'));
         $('#selected_category_id').val(selectedCategory.id);
         
-        console.log('Catégorie sélectionnée:', selectedCategory);
+        debugLog('Catégorie sélectionnée:', selectedCategory);
         
         // Afficher la section de détails du paiement
         loadPaymentDetails(selectedCategory);
@@ -671,7 +671,7 @@ $(function() {
     // Mettre à jour l'affichage de progression
     function updateProgressDisplay(balanceData) {
         if (!balanceData || !balanceData.categories) {
-            console.log('Pas de données de solde disponibles');
+            debugLog('Pas de données de solde disponibles');
             return;
         }
         
@@ -768,13 +768,13 @@ $(function() {
         if (isSubmitting) {
             e.preventDefault();
             e.stopImmediatePropagation();
-            console.warn('⚠️ Clic bloqué, soumission déjà en cours');
+            debugWarn('⚠️ Clic bloqué, soumission déjà en cours');
             return false;
         }
 
         // Marquer comme en cours de soumission IMMÉDIATEMENT
         isSubmitting = true;
-        console.log('🔒 Bouton cliqué, verrouillage immédiat');
+        debugLog('🔒 Bouton cliqué, verrouillage immédiat');
 
         // Sauvegarder le texte original
         originalButtonText = $submitBtn.html();

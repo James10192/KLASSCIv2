@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Afficher un message informatif
     setTimeout(() => {
-        console.log('🔧 Page de debug chargée. Le message est prêt à être copié.');
+        debugLog('🔧 Page de debug chargée. Le message est prêt à être copié.');
     }, 500);
 });
 </script>

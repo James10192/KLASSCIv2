@@ -359,7 +359,7 @@
 
         // Stocker l'ID de la matière actuelle
         const initialMatiereId = '{{ old('matiere_id', $evaluation->matiere_id) }}';
-        console.log('Matière actuelle ID:', initialMatiereId);
+        debugLog('Matière actuelle ID:', initialMatiereId);
 
         // Fonction pour réinitialiser le select des matières avec les données statiques
         function resetMatiereSelect() {
@@ -369,7 +369,7 @@
             // Charger les matières statiques comme fallback
             const staticMatieres = JSON.parse($('#matiere-data').attr('data-matieres'));
             if (staticMatieres && staticMatieres.length > 0) {
-                console.log('Utilisation des matières statiques:', staticMatieres.length);
+                debugLog('Utilisation des matières statiques:', staticMatieres.length);
                 staticMatieres.forEach(function(matiere) {
                     const id = matiere.id;
                     const name = matiere.nom || matiere.name || ('Matière ' + id);
@@ -377,7 +377,7 @@
                     $matiereSelect.append(`<option value="${id}" ${selected}>${name}</option>`);
 
                     if (id == initialMatiereId) {
-                        console.log('Matière correspondante trouvée dans les données statiques:', name);
+                        debugLog('Matière correspondante trouvée dans les données statiques:', name);
                     }
                 });
             }
@@ -391,8 +391,8 @@
             $matiereSelect.prop('disabled', true);
 
             // Log pour le débogage
-            console.log('Chargement des matières pour la classe ID:', classeId);
-            console.log('Matière actuelle:', initialMatiereId);
+            debugLog('Chargement des matières pour la classe ID:', classeId);
+            debugLog('Matière actuelle:', initialMatiereId);
 
             // Premier essai avec l'API principale
             $.ajax({
@@ -400,13 +400,13 @@
                 type: 'GET',
                 dataType: 'json',
                 success: function(data) {
-                    console.log('Matières reçues de l\'API:', data);
+                    debugLog('Matières reçues de l\'API:', data);
                     updateMatiereSelect(data);
                 },
                 error: function(xhr, status, error) {
-                    console.error('Erreur lors du chargement des matières:', error);
-                    console.error('Statut:', status);
-                    console.error('Réponse:', xhr.responseText);
+                    debugError('Erreur lors du chargement des matières:', error);
+                    debugError('Statut:', status);
+                    debugError('Réponse:', xhr.responseText);
 
                     // En cas d'erreur, essayer l'API de fallback
                     $.ajax({
@@ -414,14 +414,14 @@
                         type: 'GET',
                         dataType: 'json',
                         success: function(data) {
-                            console.log('Matières reçues de l\'API de fallback:', data);
+                            debugLog('Matières reçues de l\'API de fallback:', data);
                             updateMatiereSelect(data);
                         },
                         error: function(xhr) {
-                            console.error('L\'API de fallback a également échoué:', xhr);
+                            debugError('L\'API de fallback a également échoué:', xhr);
                             // Utiliser les matières statiques en dernier recours
                             resetMatiereSelect();
-                            console.log('Utilisation des matières statiques comme dernier recours');
+                            debugLog('Utilisation des matières statiques comme dernier recours');
                         }
                     });
                 }
@@ -432,12 +432,12 @@
             const $matiereSelect = $('#matiere_id');
             const currentMatiereId = initialMatiereId;
 
-            console.log('Mise à jour du select des matières avec la matière ID:', currentMatiereId);
+            debugLog('Mise à jour du select des matières avec la matière ID:', currentMatiereId);
 
             $matiereSelect.empty().append('<option value="">Sélectionner une matière</option>');
 
             if (Array.isArray(data) && data.length > 0) {
-                console.log('Mise à jour avec', data.length, 'matières');
+                debugLog('Mise à jour avec', data.length, 'matières');
                 data.forEach(function(matiere) {
                     const id = matiere.id;
                     const name = matiere.nom || matiere.name || ('Matière ' + id);
@@ -446,11 +446,11 @@
 
                     // Log pour le débogage
                     if (id == currentMatiereId) {
-                        console.log('Matière correspondante trouvée dans l\'API:', name);
+                        debugLog('Matière correspondante trouvée dans l\'API:', name);
                     }
                 });
             } else {
-                console.warn('Aucune matière reçue de l\'API ou format incorrect');
+                debugWarn('Aucune matière reçue de l\'API ou format incorrect');
                 // Utiliser les matières statiques comme fallback
                 resetMatiereSelect();
             }

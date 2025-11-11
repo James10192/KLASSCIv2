@@ -751,7 +751,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Erreur:', error);
+                debugError('Erreur:', error);
                 alert('Erreur de connexion');
             });
         });
@@ -836,7 +836,7 @@ function loadCurrentAssignments(optionId) {
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
+            debugError('Erreur:', error);
             assignmentsList.innerHTML = '<div class="text-danger">Erreur lors du chargement des assignations</div>';
             clearBtn.style.display = 'none';
         });
@@ -865,7 +865,7 @@ function removeAssignment(assignmentId) {
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
+            debugError('Erreur:', error);
             alert('Erreur de connexion');
         });
     }
@@ -897,7 +897,7 @@ function clearAllAssignments() {
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
+            debugError('Erreur:', error);
             alert('Erreur de connexion');
         });
     }
@@ -964,7 +964,7 @@ function saveOptionAssignment() {
         }
     })
     .catch(error => {
-        console.error('Erreur:', error);
+        debugError('Erreur:', error);
         alert('Erreur de connexion');
     });
 }
@@ -1025,12 +1025,12 @@ function refreshOptionAssignments(optionId) {
                 if (detailedView && detailedView.style.display !== 'none') {
                     // Pour la vue détaillée, on pourrait recharger juste cette carte
                     // Pour l'instant, on laisse comme ça car c'est plus complexe à implémenter
-                    console.log('Vue détaillée nécessite un rafraîchissement complet');
+                    debugLog('Vue détaillée nécessite un rafraîchissement complet');
                 }
             }
         })
         .catch(error => {
-            console.error('Erreur lors du rafraîchissement des assignations:', error);
+            debugError('Erreur lors du rafraîchissement des assignations:', error);
         });
 }
 
@@ -1072,7 +1072,7 @@ function deleteOption(optionId) {
 
 // === FIX MODAL Z-INDEX DYNAMIQUE ===
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Initialisation du fix des modals pour les frais optionnels');
+    debugLog('🚀 Initialisation du fix des modals pour les frais optionnels');
     
     // Liste des modals à corriger
     const modals = ['assignModal', 'editModal', 'deleteModal', 'addFeeModal'];
@@ -1082,7 +1082,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (modal) {
             // Événement pour forcer z-index correct à l'ouverture
             modal.addEventListener('show.bs.modal', function(e) {
-                console.log(`🔧 Préparation modal ${modalId}`);
+                debugLog(`🔧 Préparation modal ${modalId}`);
                 
                 // Désactiver toutes les animations pendant l'ouverture
                 document.body.style.setProperty('overflow', 'hidden', 'important');
@@ -1098,7 +1098,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             modal.addEventListener('shown.bs.modal', function(e) {
-                console.log(`✅ Modal ${modalId} ouvert - Application des corrections`);
+                debugLog(`✅ Modal ${modalId} ouvert - Application des corrections`);
                 
                 // Forcer z-index très élevé
                 modal.style.setProperty('z-index', '9999', 'important');
@@ -1132,7 +1132,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Nettoyer à la fermeture
             modal.addEventListener('hidden.bs.modal', function(e) {
-                console.log(`🧹 Nettoyage modal ${modalId}`);
+                debugLog(`🧹 Nettoyage modal ${modalId}`);
                 
                 // Supprimer style anti-cursor
                 const antiCursorStyle = document.getElementById(`anti-cursor-${modalId}`);
@@ -1146,7 +1146,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    console.log('✅ Fix modals configuré pour:', modals);
+    debugLog('✅ Fix modals configuré pour:', modals);
 });
 </script>
 @endpush

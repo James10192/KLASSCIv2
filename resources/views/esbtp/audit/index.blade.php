@@ -421,7 +421,7 @@ $(document).ready(function() {
                 $('#auditTableContainer').show();
             },
             error: function(xhr) {
-                console.error('Erreur lors du chargement des données:', xhr);
+                debugError('Erreur lors du chargement des données:', xhr);
                 $('#loadingIndicator').hide();
                 $('#auditTableContainer').show();
 

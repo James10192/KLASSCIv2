@@ -79,12 +79,12 @@
 @section('scripts')
 <script>
     $(document).ready(function() {
-        console.log('Document ready - initializing student form');
+        debugLog('Document ready - initializing student form');
 
         // Afficher les informations de débogage
-        console.log('Routes API disponibles:');
-        console.log('- Search Parents: {{ route("esbtp.api.search-parents") }}');
-        console.log('- Get Classes: {{ route("esbtp.api.get-classes") }}');
+        debugLog('Routes API disponibles:');
+        debugLog('- Search Parents: {{ route("esbtp.api.search-parents") }}');
+        debugLog('- Get Classes: {{ route("esbtp.api.get-classes") }}');
 
         // Initialiser Select2 pour les parents existants
         $('.select-parent').select2({
@@ -93,7 +93,7 @@
                 dataType: 'json',
                 delay: 250,
                 data: function (params) {
-                    console.log('Recherche de parents, terme:', params.term);
+                    debugLog('Recherche de parents, terme:', params.term);
                     return {
                         q: params.term,
                         page: params.page
@@ -101,7 +101,7 @@
                 },
                 processResults: function (data, params) {
                     params.page = params.page || 1;
-                    console.log('Résultats de recherche parents:', data);
+                    debugLog('Résultats de recherche parents:', data);
 
                     // Formatage des données pour Select2
                     const items = data.items.map(function(parent) {
@@ -140,23 +140,23 @@
 
         // Initialiser le compteur de parents (1 parent déjà présent)
         let parentCount = 1;
-        console.log('Nombre initial de parents:', parentCount);
+        debugLog('Nombre initial de parents:', parentCount);
 
         // Toggle between existing and new parent inputs - avec debug
         $(document).on('change', 'input[id^="parent_existant_"]', function() {
             const index = this.id.split('_').pop();
-            console.log('Toggle parent existant pour index:', index, 'Checked:', $(this).is(':checked'));
+            debugLog('Toggle parent existant pour index:', index, 'Checked:', $(this).is(':checked'));
 
             if ($(this).is(':checked')) {
                 // Afficher le sélecteur de parent existant
                 $(this).closest('.parent-item').find('.parent-existant').removeClass('d-none');
                 $(this).closest('.parent-item').find('.parent-nouveau').addClass('d-none');
-                console.log('Mode parent existant activé');
+                debugLog('Mode parent existant activé');
             } else {
                 // Afficher le formulaire de nouveau parent
                 $(this).closest('.parent-item').find('.parent-existant').addClass('d-none');
                 $(this).closest('.parent-item').find('.parent-nouveau').removeClass('d-none');
-                console.log('Mode nouveau parent activé');
+                debugLog('Mode nouveau parent activé');
             }
         });
 
@@ -169,10 +169,10 @@
             var niveauId = $('#niveau_etude_id').val();
             var anneeId = $('#annee_universitaire_id').val();
 
-            console.log('Changement détecté - Filière:', filiereId, 'Niveau:', niveauId, 'Année:', anneeId);
+            debugLog('Changement détecté - Filière:', filiereId, 'Niveau:', niveauId, 'Année:', anneeId);
 
             if (filiereId && niveauId && anneeId) {
-                console.log('Toutes les données sont présentes, appel AJAX pour les classes');
+                debugLog('Toutes les données sont présentes, appel AJAX pour les classes');
 
                 // Afficher un indicateur de chargement
                 $('#classe_id').html('<option value="">Chargement des classes...</option>');
@@ -186,7 +186,7 @@
                         annee_id: anneeId
                     },
                     success: function(data) {
-                        console.log('Classes reçues:', data);
+                        debugLog('Classes reçues:', data);
 
                         if (data.length === 0) {
                             $('#classe_id').html('<option value="">Aucune classe disponible</option>');
@@ -205,20 +205,20 @@
                         }
                     },
                     error: function(xhr, status, error) {
-                        console.error('Erreur lors de la récupération des classes:', error);
-                        console.error('Réponse du serveur:', xhr.responseText);
+                        debugError('Erreur lors de la récupération des classes:', error);
+                        debugError('Réponse du serveur:', xhr.responseText);
                         $('#classe_id').html('<option value="">Erreur lors du chargement des classes</option>');
                     }
                 });
             } else {
                 $('#classe_id').html('<option value="">Sélectionner une classe</option>');
-                console.log('Données manquantes pour récupérer les classes');
+                debugLog('Données manquantes pour récupérer les classes');
             }
         });
 
         // Ajouter un parent (limité à 2 parents maximum)
         $('#add-parent').on('click', function(e) {
-            console.log('Bouton Ajouter parent cliqué');
+            debugLog('Bouton Ajouter parent cliqué');
 
             if (parentCount >= 2) {
                 alert('Un maximum de 2 parents est autorisé.');
@@ -228,7 +228,7 @@
             const index = parentCount;
             parentCount++;
 
-            console.log('Ajout d\'un nouveau parent avec index:', index);
+            debugLog('Ajout d\'un nouveau parent avec index:', index);
 
             const parentHtml = `
                 <div class="parent-item mb-4 p-3 border rounded">
@@ -345,7 +345,7 @@
 
         // Supprimer un parent
         $(document).on('click', '.remove-parent', function() {
-            console.log('Bouton Supprimer parent cliqué');
+            debugLog('Bouton Supprimer parent cliqué');
             $(this).closest('.parent-item').remove();
             parentCount--;
         });

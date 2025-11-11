@@ -378,7 +378,7 @@ function soumettreApprobation(bonId) {
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
+            debugError('Erreur:', error);
             alert('Une erreur est survenue');
         });
     }

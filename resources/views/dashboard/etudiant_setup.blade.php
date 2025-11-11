@@ -155,7 +155,7 @@
                         classeSelect.disabled = false;
                     })
                     .catch(error => {
-                        console.error('Erreur lors du chargement des classes:', error);
+                        debugError('Erreur lors du chargement des classes:', error);
                         classeSelect.disabled = false;
                     });
             }

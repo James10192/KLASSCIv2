@@ -96,7 +96,7 @@ function markAttendance(studentId, date, status, button) {
             updateButtonText(button, button.getAttribute('data-original-status'));
             
             // Afficher l'erreur dans la console pour le débogage
-            console.error('Erreur:', status, responseText);
+            debugError('Erreur:', status, responseText);
         }
     );
 }
@@ -182,7 +182,7 @@ function markAllAttendance(status) {
             });
             
             // Afficher l'erreur dans la console pour le débogage
-            console.error('Erreur:', status, responseText);
+            debugError('Erreur:', status, responseText);
         }
     );
 }

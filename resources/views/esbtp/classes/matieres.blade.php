@@ -287,7 +287,7 @@ async function toggleCombination(matiereId, action, button) {
             window.filterClasseMatieresRows();
         }
     } catch (error) {
-        console.error(error);
+        debugError(error);
         showToast('error', error.message || 'Erreur lors de la mise à jour.');
         button.disabled = false;
         button.innerHTML = originalHtml;

@@ -581,48 +581,48 @@
 
 @push('scripts')
 <script>
-console.log('🔥 SCRIPT SHOW.BLADE.PHP EXÉCUTÉ!'); // Test immédiat
+debugLog('🔥 SCRIPT SHOW.BLADE.PHP EXÉCUTÉ!'); // Test immédiat
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Script de frais chargé');
+    debugLog('🚀 Script de frais chargé');
     
     // Charger les frais automatiquement si une classe est pré-sélectionnée
     const classeSelect = document.getElementById('nouvelle_classe_id');
     
     if (classeSelect) {
-        console.log('✅ Element nouvelle_classe_id trouvé', classeSelect);
-        console.log('📊 Valeur actuelle:', classeSelect.value);
+        debugLog('✅ Element nouvelle_classe_id trouvé', classeSelect);
+        debugLog('📊 Valeur actuelle:', classeSelect.value);
         
         if (classeSelect.value) {
-            console.log('🎯 Chargement auto des frais pour classe:', classeSelect.value);
+            debugLog('🎯 Chargement auto des frais pour classe:', classeSelect.value);
             loadFraisForReinscription(classeSelect.value);
         }
         
         // Écouter les changements de classe
         classeSelect.addEventListener('change', function() {
-            console.log('🔄 Changement de classe détecté!', this.value);
+            debugLog('🔄 Changement de classe détecté!', this.value);
             if (this.value) {
-                console.log('📞 Appel loadFraisForReinscription avec:', this.value);
+                debugLog('📞 Appel loadFraisForReinscription avec:', this.value);
                 loadFraisForReinscription(this.value);
             } else {
-                console.log('🔄 Reset container (pas de valeur)');
+                debugLog('🔄 Reset container (pas de valeur)');
                 resetFraisContainer();
             }
         });
         
-        console.log('✅ Event listener ajouté sur nouvelle_classe_id');
+        debugLog('✅ Event listener ajouté sur nouvelle_classe_id');
     } else {
-        console.error('❌ ERREUR: Element nouvelle_classe_id NON TROUVÉ!');
-        console.log('📋 Elements select disponibles:', document.querySelectorAll('select'));
+        debugError('❌ ERREUR: Element nouvelle_classe_id NON TROUVÉ!');
+        debugLog('📋 Elements select disponibles:', document.querySelectorAll('select'));
     }
 });
 
 let isLoadingFrais = false;
 
 function loadFraisForReinscription(classeId) {
-    console.log('🔥 loadFraisForReinscription appelée avec:', classeId);
+    debugLog('🔥 loadFraisForReinscription appelée avec:', classeId);
     
     if (isLoadingFrais) {
-        console.log('⏳ Chargement des frais déjà en cours, ignoré');
+        debugLog('⏳ Chargement des frais déjà en cours, ignoré');
         return;
     }
     
@@ -631,13 +631,13 @@ function loadFraisForReinscription(classeId) {
     const fraisContainer = document.getElementById('fraisContainer');
     const resumeMontants = document.getElementById('resumeMontants');
     
-    console.log('📦 Containers trouvés:', { 
+    debugLog('📦 Containers trouvés:', { 
         fraisContainer: !!fraisContainer, 
         resumeMontants: !!resumeMontants 
     });
     
     if (classeId && fraisContainer) {
-        console.log('✅ Conditions OK, début chargement pour classe:', classeId);
+        debugLog('✅ Conditions OK, début chargement pour classe:', classeId);
         
         // Interface de chargement
         fraisContainer.innerHTML = `
@@ -653,7 +653,7 @@ function loadFraisForReinscription(classeId) {
         
         // Charger les frais
         const url = `/esbtp/inscriptions/frais-by-classe/${classeId}`;
-        console.log('📡 Requête AJAX vers:', url);
+        debugLog('📡 Requête AJAX vers:', url);
         
         fetch(url, {
             method: 'GET',
@@ -664,16 +664,16 @@ function loadFraisForReinscription(classeId) {
             }
         })
         .then(response => {
-            console.log('📥 Response reçue, status:', response.status);
+            debugLog('📥 Response reçue, status:', response.status);
             if (!response.ok) {
                 throw new Error(`Erreur HTTP ! Statut: ${response.status}`);
             }
             return response.json();
         })
         .then(data => {
-            console.log('📊 Données frais reçues:', data);
+            debugLog('📊 Données frais reçues:', data);
             if (data.success) {
-                console.log('✅ Success=true, affichage des frais, nombre:', data.frais ? data.frais.length : 0);
+                debugLog('✅ Success=true, affichage des frais, nombre:', data.frais ? data.frais.length : 0);
                 displayFraisForReinscription(data.frais);
                 updateResumeMontants();
             } else {
@@ -681,7 +681,7 @@ function loadFraisForReinscription(classeId) {
             }
         })
         .catch(error => {
-            console.error('❌ Erreur AJAX:', error);
+            debugError('❌ Erreur AJAX:', error);
             fraisContainer.innerHTML = `
                 <div class="alert alert-danger">
                     <i class="fas fa-exclamation-triangle me-2"></i>
@@ -690,19 +690,19 @@ function loadFraisForReinscription(classeId) {
             `;
         })
         .finally(() => {
-            console.log('🏁 Requête terminée, isLoadingFrais = false');
+            debugLog('🏁 Requête terminée, isLoadingFrais = false');
             isLoadingFrais = false;
         });
     }
 }
 
 function displayFraisForReinscription(fraisData) {
-    console.log('🎨 displayFraisForReinscription appelée avec:', fraisData);
+    debugLog('🎨 displayFraisForReinscription appelée avec:', fraisData);
     const fraisContainer = document.getElementById('fraisContainer');
     
     // Vérifier s'il y a des frais configurés
     if (!fraisData || fraisData.length === 0) {
-        console.log('⚠️ Aucun frais configuré, affichage du message d\'alerte');
+        debugLog('⚠️ Aucun frais configuré, affichage du message d\'alerte');
         fraisContainer.innerHTML = `
             <div class="alert alert-warning">
                 <i class="fas fa-exclamation-triangle me-2"></i>

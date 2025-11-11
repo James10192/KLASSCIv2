@@ -569,7 +569,7 @@
             },
             error: function(xhr) {
                 $('#config-loading').hide();
-                console.error('Erreur AJAX:', xhr);
+                debugError('Erreur AJAX:', xhr);
                 showAlert('error', 'Erreur de communication avec le serveur');
                 $('#matieres-container').html('<div class="text-center text-muted py-4">Erreur de chargement</div>').show();
             }
@@ -641,7 +641,7 @@
                 }
             },
             error: function(xhr) {
-                console.error('Erreur AJAX:', xhr);
+                debugError('Erreur AJAX:', xhr);
                 let message = 'Erreur lors de la sauvegarde';
                 
                 if (xhr.responseJSON && xhr.responseJSON.message) {

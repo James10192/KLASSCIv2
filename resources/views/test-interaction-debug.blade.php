@@ -210,7 +210,7 @@
         let diagnosticResults = [];
 
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Diagnostic KLASSCI démarré');
+            debugLog('🚀 Diagnostic KLASSCI démarré');
             
             // Test automatique initial
             setTimeout(() => {
@@ -229,15 +229,15 @@
         function logElementState(event) {
             const el = event.target;
             const computedStyle = window.getComputedStyle(el);
-            console.log(`Hover ${el.tagName}#${el.id}: cursor=${computedStyle.cursor}, pointer-events=${computedStyle.pointerEvents}`);
+            debugLog(`Hover ${el.tagName}#${el.id}: cursor=${computedStyle.cursor}, pointer-events=${computedStyle.pointerEvents}`);
         }
 
         function logFocusState(event) {
-            console.log(`✅ Focus réussi sur: ${event.target.tagName}#${event.target.id}`);
+            debugLog(`✅ Focus réussi sur: ${event.target.tagName}#${event.target.id}`);
         }
 
         function logClickState(event) {
-            console.log(`🖱️ Click réussi sur: ${event.target.tagName}#${event.target.id}`);
+            debugLog(`🖱️ Click réussi sur: ${event.target.tagName}#${event.target.id}`);
         }
 
         function runBasicDiagnostic() {
@@ -339,7 +339,7 @@
             
             const element = document.getElementById(elementId);
             if (!element) {
-                alert('Élément non trouvé: ' + elementId);
+                debugAlert('Élément non trouvé: ' + elementId);
                 return;
             }
             
@@ -354,7 +354,7 @@
                 display: style.display
             };
             
-            alert('Debug ' + elementId + ':\n' + JSON.stringify(info, null, 2));
+            debugAlert('Debug ' + elementId + ':\n' + JSON.stringify(info, null, 2));
             
             // Test d'interaction
             try {
@@ -362,9 +362,9 @@
                 if (element.type === 'text' || element.tagName === 'TEXTAREA') {
                     element.value = 'Test spécifique ' + Date.now();
                 }
-                alert('✅ Interaction réussie avec ' + elementId);
+                debugAlert('✅ Interaction réussie avec ' + elementId);
             } catch (e) {
-                alert('❌ Erreur d\'interaction: ' + e.message);
+                debugAlert('❌ Erreur d\'interaction: ' + e.message);
             }
         }
 
@@ -372,10 +372,10 @@
             const modalInput = document.getElementById('modal-nom');
             try {
                 modalInput.value = 'Test Modal OK';
-                alert('✅ Modal interaction réussie');
+                debugAlert('✅ Modal interaction réussie');
                 bootstrap.Modal.getInstance(document.getElementById('testModal')).hide();
             } catch (e) {
-                alert('❌ Modal interaction échouée: ' + e.message);
+                debugAlert('❌ Modal interaction échouée: ' + e.message);
             }
         }
 
@@ -397,7 +397,7 @@
         // Test en temps réel des événements
         document.addEventListener('click', function(e) {
             if (e.target.matches('input, select, textarea, button')) {
-                console.log(`Event Click capturé sur: ${e.target.tagName}#${e.target.id}`);
+                debugLog(`Event Click capturé sur: ${e.target.tagName}#${e.target.id}`);
             }
         });
     </script>

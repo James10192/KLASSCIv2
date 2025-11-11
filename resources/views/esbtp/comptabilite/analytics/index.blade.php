@@ -348,7 +348,7 @@ function loadProjections() {
             $('#projections-content').show();
         })
         .catch(error => {
-            console.error('Erreur lors du chargement des projections:', error);
+            debugError('Erreur lors du chargement des projections:', error);
             showError('Erreur lors du chargement des projections', 'projections-loading');
         });
 }
@@ -367,7 +367,7 @@ function loadAnomalies() {
             $('#anomalies-content').show();
         })
         .catch(error => {
-            console.error('Erreur lors du chargement des anomalies:', error);
+            debugError('Erreur lors du chargement des anomalies:', error);
             showError('Erreur lors du chargement des anomalies', 'anomalies-loading');
         });
 }
@@ -386,7 +386,7 @@ function loadRecommandations() {
             $('#recommandations-content').show();
         })
         .catch(error => {
-            console.error('Erreur lors du chargement des recommandations:', error);
+            debugError('Erreur lors du chargement des recommandations:', error);
             showError('Erreur lors du chargement des recommandations', 'recommandations-loading');
         });
 }
@@ -404,7 +404,7 @@ function loadBenchmarking() {
             $('#benchmarking-content').show();
         })
         .catch(error => {
-            console.error('Erreur lors du chargement du benchmarking:', error);
+            debugError('Erreur lors du chargement du benchmarking:', error);
             showError('Erreur lors du chargement du benchmarking', 'benchmarking-loading');
         });
 }
@@ -586,7 +586,7 @@ function updateProjections() {
 // Actualisation automatique
 function startAutoRefresh() {
     setInterval(() => {
-        console.log('Actualisation automatique des données...');
+        debugLog('Actualisation automatique des données...');
         const activeTab = $('.nav-link.active').attr('href');
         if (activeTab) {
             loadTabContent(activeTab.substring(1));
@@ -614,7 +614,7 @@ function loadTabContent(tabName) {
 // Fonction d'export
 function exportAnalytics(format) {
     // Implementation de l'export
-    console.log(`Export en format ${format}`);
+    debugLog(`Export en format ${format}`);
 }
 
 // Placeholder functions pour les autres rendus

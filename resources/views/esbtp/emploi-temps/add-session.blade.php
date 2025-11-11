@@ -516,10 +516,10 @@
         
         // Fonction pour afficher la grille de disponibilités
         function displayAvailabilityGrid(availabilityData) {
-            console.log('Affichage disponibilités:', availabilityData);
+            debugLog('Affichage disponibilités:', availabilityData);
             
             if (!availabilityData) {
-                console.log('Pas de données disponibilités');
+                debugLog('Pas de données disponibilités');
                 availabilityCard.style.display = 'none';
                 return;
             }
@@ -549,27 +549,27 @@
             
             availabilityGrid.innerHTML = gridHTML;
             availabilityCard.style.display = 'block';
-            console.log('Grille affichée');
+            debugLog('Grille affichée');
         }
         
         // Événement de changement de sélection d'enseignant
         enseignantSelect.addEventListener('change', function() {
-            console.log('Changement enseignant détecté');
+            debugLog('Changement enseignant détecté');
             const selectedOption = this.options[this.selectedIndex];
-            console.log('Option sélectionnée:', selectedOption);
+            debugLog('Option sélectionnée:', selectedOption);
             
             if (selectedOption.value && selectedOption.dataset.availability) {
-                console.log('Données brutes:', selectedOption.dataset.availability);
+                debugLog('Données brutes:', selectedOption.dataset.availability);
                 try {
                     const availabilityData = JSON.parse(selectedOption.dataset.availability);
-                    console.log('Données parsées:', availabilityData);
+                    debugLog('Données parsées:', availabilityData);
                     displayAvailabilityGrid(availabilityData);
                 } catch (error) {
-                    console.error('Erreur lors du parsing des données de disponibilité:', error);
+                    debugError('Erreur lors du parsing des données de disponibilité:', error);
                     availabilityCard.style.display = 'none';
                 }
             } else {
-                console.log('Pas de valeur ou données disponibilités');
+                debugLog('Pas de valeur ou données disponibilités');
                 availabilityCard.style.display = 'none';
             }
         });
@@ -636,7 +636,7 @@
                     const volumeInfo = JSON.parse(selectedOption.dataset.volumeInfo);
                     displayMatiereVolumeInfo(volumeInfo);
                 } catch (error) {
-                    console.error('Erreur lors du parsing des données de volume:', error);
+                    debugError('Erreur lors du parsing des données de volume:', error);
                     matiereVolumeInfo.style.display = 'none';
                 }
             } else {

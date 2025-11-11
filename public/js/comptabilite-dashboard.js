@@ -20,7 +20,7 @@ class ComptabiliteManager {
     init(options = {}) {
         this.config = { ...this.config, ...options };
 
-        console.log("🚀 Initialisation Dashboard Comptabilité Avancé");
+        debugLog("🚀 Initialisation Dashboard Comptabilité Avancé");
 
         // Initialiser les graphiques
         this.initCharts(options);
@@ -33,7 +33,7 @@ class ComptabiliteManager {
         // Événements
         this.bindEvents();
 
-        console.log("✅ Dashboard initialisé avec succès");
+        debugLog("✅ Dashboard initialisé avec succès");
     }
 
     /**
@@ -360,7 +360,7 @@ class ComptabiliteManager {
      * Démarre l'auto-refresh des données
      */
     startAutoRefresh() {
-        console.log(
+        debugLog(
             `🔄 Auto-refresh démarré (${this.config.refreshInterval / 1000}s)`
         );
 
@@ -376,7 +376,7 @@ class ComptabiliteManager {
         if (this.refreshInterval) {
             clearInterval(this.refreshInterval);
             this.refreshInterval = null;
-            console.log("⏹️ Auto-refresh arrêté");
+            debugLog("⏹️ Auto-refresh arrêté");
         }
     }
 
@@ -390,7 +390,7 @@ class ComptabiliteManager {
         this.showLoading();
 
         try {
-            console.log("🔄 Actualisation des données...");
+            debugLog("🔄 Actualisation des données...");
 
             const response = await fetch(
                 "/esbtp/comptabilite/kpis-temps-reel",
@@ -418,15 +418,15 @@ class ComptabiliteManager {
                 this.updateKPIs(data.data);
                 this.updateCharts(data.data);
                 this.updateLastUpdateTime();
-                console.log("✅ Données actualisées avec succès");
+                debugLog("✅ Données actualisées avec succès");
             } else {
-                console.error(
+                debugError(
                     "❌ Erreur lors de l'actualisation:",
                     data.message
                 );
             }
         } catch (error) {
-            console.error("❌ Erreur AJAX:", error);
+            debugError("❌ Erreur AJAX:", error);
         } finally {
             this.isRefreshing = false;
             this.hideLoading();
@@ -624,17 +624,17 @@ class ComptabiliteManager {
  * Fonctions globales pour les actions des composants
  */
 function refreshChart(chartId) {
-    console.log(`🔄 Actualisation du graphique: ${chartId}`);
+    debugLog(`🔄 Actualisation du graphique: ${chartId}`);
     // Logique de refresh spécifique au graphique
 }
 
 function downloadChart(chartId) {
-    console.log(`💾 Téléchargement du graphique: ${chartId}`);
+    debugLog(`💾 Téléchargement du graphique: ${chartId}`);
     // Logique de téléchargement du graphique
 }
 
 function handleAlerte(alerteId) {
-    console.log(`🚨 Gestion de l'alerte: ${alerteId}`);
+    debugLog(`🚨 Gestion de l'alerte: ${alerteId}`);
     // Logique de gestion des alertes
 }
 

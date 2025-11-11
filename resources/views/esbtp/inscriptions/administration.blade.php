@@ -382,24 +382,24 @@
 @section('scripts')
 <script>
     function openPaymentModal(inscriptionId) {
-        console.log('openPaymentModal called with ID:', inscriptionId);
+        debugLog('openPaymentModal called with ID:', inscriptionId);
         
         const form = document.getElementById('paymentForm');
         const modalElement = document.getElementById('paymentModal');
         
         if (!form) {
-            console.error('Form paymentForm not found');
+            debugError('Form paymentForm not found');
             return;
         }
         
         if (!modalElement) {
-            console.error('Modal paymentModal not found');
+            debugError('Modal paymentModal not found');
             return;
         }
         
         // Check if Bootstrap is loaded
         if (typeof bootstrap === 'undefined') {
-            console.error('Bootstrap is not loaded');
+            debugError('Bootstrap is not loaded');
             alert('Erreur: Bootstrap n\'est pas chargé. Veuillez recharger la page.');
             return;
         }
@@ -422,9 +422,9 @@
                 focus: true
             });
             modal.show();
-            console.log('Modal should be open now');
+            debugLog('Modal should be open now');
         } catch (error) {
-            console.error('Error opening modal:', error);
+            debugError('Error opening modal:', error);
         }
     }
 

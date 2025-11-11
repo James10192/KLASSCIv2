@@ -274,13 +274,13 @@
 
         function updateRequiredState() {
             const isAbsent = absentCheckbox.is(':checked');
-            console.log('Updating required state - Absent:', isAbsent);
+            debugLog('Updating required state - Absent:', isAbsent);
 
             noteInput.prop('required', !isAbsent);
             noteInput.prop('disabled', isAbsent);
 
-            console.log('Required state after update:', noteInput.prop('required'));
-            console.log('Disabled state after update:', noteInput.prop('disabled'));
+            debugLog('Required state after update:', noteInput.prop('required'));
+            debugLog('Disabled state after update:', noteInput.prop('disabled'));
 
             if (isAbsent) {
                 noteInput.val('');
@@ -292,7 +292,7 @@
         }
 
         // Initial state
-        console.log('Setting initial state');
+        debugLog('Setting initial state');
         updateRequiredState();
 
         // Calcul automatique de la note sur 20
@@ -307,7 +307,7 @@
 
         // Gestion de la case à cocher "Absent"
         $('#is_absent').change(function() {
-            console.log('Absent checkbox changed');
+            debugLog('Absent checkbox changed');
             updateRequiredState();
             if ($(this).is(':checked')) {
                 $('#note_sur_20').text('--');
@@ -318,7 +318,7 @@
 
         // Reset button handler
         $('button[type="reset"]').click(function() {
-            console.log('Form reset triggered');
+            debugLog('Form reset triggered');
             setTimeout(updateRequiredState, 0);
         });
     });

@@ -532,7 +532,7 @@ tr[data-seance-id].is-loading {
      * Rafraîchit une ligne de séance après update statut
      */
     window.refreshSeanceLigne = function(seanceId, actionType = 'present') {
-        console.log('🔄 Refresh ligne séance:', seanceId, 'action:', actionType);
+        debugLog('🔄 Refresh ligne séance:', seanceId, 'action:', actionType);
 
         const refreshUrl = `{{ url('/esbtp/teacher-attendance/seance') }}/${seanceId}/refresh-ligne`;
         const existingRow = document.querySelector(`tr[data-seance-id="${seanceId}"]`);
@@ -578,7 +578,7 @@ tr[data-seance-id].is-loading {
                 }
                 setSeanceRowLoadingState(seanceId, false);
                 triggerSeanceRowHighlight(newRow, actionType);
-                console.log('🎉 Ligne rafraîchie (nouvelle ligne ajoutée):', seanceId);
+                debugLog('🎉 Ligne rafraîchie (nouvelle ligne ajoutée):', seanceId);
                 return;
             }
 
@@ -640,10 +640,10 @@ tr[data-seance-id].is-loading {
                 }
             }, SEANCE_HIGHLIGHT_DURATION + 100);
 
-            console.log('🎉 Ligne rafraîchie avec succès:', seanceId);
+            debugLog('🎉 Ligne rafraîchie avec succès:', seanceId);
         })
         .catch(error => {
-            console.error('❌ Erreur refresh ligne:', error);
+            debugError('❌ Erreur refresh ligne:', error);
             setSeanceRowLoadingState(seanceId, false);
             alert('Erreur lors de la mise à jour: ' + error.message);
         });
@@ -653,7 +653,7 @@ tr[data-seance-id].is-loading {
      * Initialisation au chargement
      */
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('✅ Scripts séances initialisés');
+        debugLog('✅ Scripts séances initialisés');
 
         // Auto-submit form when filters change (optional)
         const filterSelects = document.querySelectorAll('.filter-form select, .filter-form input[type="date"]');
@@ -672,9 +672,9 @@ tr[data-seance-id].is-loading {
 
         // Event delegation pour les boutons mark-status
         document.addEventListener('click', function(e) {
-            console.log('🖱️ Click détecté sur:', e.target);
+            debugLog('🖱️ Click détecté sur:', e.target);
             const btn = e.target.closest('.mark-status-btn');
-            console.log('🔍 Bouton trouvé:', btn);
+            debugLog('🔍 Bouton trouvé:', btn);
             if (!btn) return;
 
             e.preventDefault();
@@ -685,7 +685,7 @@ tr[data-seance-id].is-loading {
             const type = btn.getAttribute('data-type') || 'start';
 
             if (!seanceId || !status) {
-                console.error('❌ Pas de seance ID ou status sur le bouton');
+                debugError('❌ Pas de seance ID ou status sur le bouton');
                 return;
             }
 
@@ -694,7 +694,7 @@ tr[data-seance-id].is-loading {
                 return;
             }
 
-            console.log('🔄 Marquage statut:', { seanceId, status, type });
+            debugLog('🔄 Marquage statut:', { seanceId, status, type });
 
             setSeanceRowLoadingState(seanceId, true);
 
@@ -716,9 +716,9 @@ tr[data-seance-id].is-loading {
                 return response.json();
             })
             .then(data => {
-                console.log('📦 Réponse serveur:', data);
+                debugLog('📦 Réponse serveur:', data);
                 if (data.success) {
-                    console.log('✅ Statut mis à jour, refresh ligne');
+                    debugLog('✅ Statut mis à jour, refresh ligne');
                     // Rafraîchir la ligne avec animation
                     window.refreshSeanceLigne(seanceId, status === 'absent' ? 'absent' : 'present');
                 } else {
@@ -727,13 +727,13 @@ tr[data-seance-id].is-loading {
                 }
             })
             .catch(error => {
-                console.error('❌ Erreur update statut:', error);
+                debugError('❌ Erreur update statut:', error);
                 setSeanceRowLoadingState(seanceId, false);
                 alert('Erreur lors de la mise à jour: ' + error.message);
             });
         }, true); // Capture phase
 
-        console.log('✅ Event listeners installés');
+        debugLog('✅ Event listeners installés');
     });
 })();
 </script>

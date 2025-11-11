@@ -932,12 +932,12 @@ document.getElementById('addVariantForm').addEventListener('submit', function(e)
             // Recharger la page après un délai
             setTimeout(() => location.reload(), 1500);
         } else {
-            console.error('Erreur API:', data);
+            debugError('Erreur API:', data);
             alert(`Erreur lors de l'ajout du variant: ${data.message || data.error || 'Erreur inconnue'}`);
         }
     })
     .catch(error => {
-        console.error('Erreur fetch:', error);
+        debugError('Erreur fetch:', error);
         alert(`Erreur lors de l'ajout du variant: ${error.message}`);
     });
 });
@@ -945,7 +945,7 @@ document.getElementById('addVariantForm').addEventListener('submit', function(e)
 // Fonction pour éditer un variant
 function editVariant(variantId) {
     // Implémenter l'édition de variant
-    console.log('Edit variant:', variantId);
+    debugLog('Edit variant:', variantId);
 }
 
 // Fonction pour supprimer un variant

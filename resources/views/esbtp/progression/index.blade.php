@@ -443,7 +443,7 @@ new Vue({
                         : ''
                 }));
             } catch (error) {
-                console.error('Error loading recommendations:', error);
+                debugError('Error loading recommendations:', error);
                 Swal.fire({
                     icon: 'error',
                     title: 'Erreur',
@@ -499,7 +499,7 @@ new Vue({
                 // Reload recommendations
                 await this.loadRecommendations();
             } catch (error) {
-                console.error('Error submitting progressions:', error);
+                debugError('Error submitting progressions:', error);
                 Swal.fire({
                     icon: 'error',
                     title: 'Erreur',

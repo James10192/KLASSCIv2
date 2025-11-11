@@ -340,8 +340,8 @@
     const monthlyData = @json($monthlyStats);
 
     // Debug: afficher les données dans la console
-    console.log('📊 Données mensuelles pour le graphique:', monthlyData);
-    console.log('📊 Vérification des étudiants créés (courbe verte):', monthlyData.map(item => ({
+    debugLog('📊 Données mensuelles pour le graphique:', monthlyData);
+    debugLog('📊 Vérification des étudiants créés (courbe verte):', monthlyData.map(item => ({
         month: item.month + ' ' + item.year,
         students: item.students,
         inscriptions: item.inscriptions,

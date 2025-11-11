@@ -332,7 +332,7 @@ $(document).ready(function() {
             width: '100%'
         });
     } else {
-        console.log('Select2 not available, skipping initialization');
+        debugLog('Select2 not available, skipping initialization');
     }
 
     const ajaxUrl = '{{ route("esbtp.resultats.load-etudiants") }}';
@@ -388,7 +388,7 @@ $(document).ready(function() {
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Error fetching class data:', error);
+                    debugError('Error fetching class data:', error);
                 }
             });
         }
@@ -554,7 +554,7 @@ $(document).ready(function() {
                 currentPage = response.current_page || page;
             },
             error: function(xhr, status, error) {
-                console.error('Erreur AJAX:', error);
+                debugError('Erreur AJAX:', error);
                 showErrorState();
                 isLoading = false;
             }

@@ -578,7 +578,7 @@
             }
         })
         .catch(error => {
-            console.error(error);
+            debugError(error);
             alert(error.message || 'Impossible de charger les données pour le moment.');
         })
         .finally(() => {
@@ -760,7 +760,7 @@
                 }
             })
             .catch(error => {
-                console.error('Erreur lors du chargement des étudiants:', error);
+                debugError('Erreur lors du chargement des étudiants:', error);
                 container.innerHTML = `
                     <div class="alert alert-danger" style="margin: 20px;">
                         <i class="fas fa-exclamation-triangle me-2"></i>
@@ -845,7 +845,7 @@ $(function() {
         category_id: categoryId
     };
 
-    console.log("🚀 DEBUG PAIEMENTS: Page ready, initialisation du lazy loading");
+    debugLog("🚀 DEBUG PAIEMENTS: Page ready, initialisation du lazy loading");
 
     // Auto-charger le premier onglet avec des étudiants - EXACT COMME RÉINSCRIPTIONS
     const statistiques = {
@@ -854,7 +854,7 @@ $(function() {
         'a_jour': {{ $detailsCategorie['etudiants_a_jour']->count() }}
     };
 
-    console.log("📊 DEBUG PAIEMENTS: Statistiques disponibles:", statistiques);
+    debugLog("📊 DEBUG PAIEMENTS: Statistiques disponibles:", statistiques);
 
     // Trouver la catégorie avec le plus d'étudiants
     let maxCategory = null;
@@ -867,10 +867,10 @@ $(function() {
         }
     });
 
-    console.log(`🎯 DEBUG PAIEMENTS: Catégorie avec le plus d'étudiants: "${maxCategory}" (${maxCount} étudiants)`);
+    debugLog(`🎯 DEBUG PAIEMENTS: Catégorie avec le plus d'étudiants: "${maxCategory}" (${maxCount} étudiants)`);
 
     if (maxCategory && maxCount > 0) {
-        console.log(`🚀 DEBUG PAIEMENTS: Activation de l'onglet "${maxCategory}"`);
+        debugLog(`🚀 DEBUG PAIEMENTS: Activation de l'onglet "${maxCategory}"`);
 
         const tabLink = $(`.student-tab[data-statut="${maxCategory}"]`);
         const tabPane = $(`#${maxCategory}`);
@@ -883,7 +883,7 @@ $(function() {
         const maxSpinner = maxTabPane.find('.paiement-spinner');
         maxSpinner.addClass('hidden');
 
-        console.log(`📞 DEBUG PAIEMENTS: Appel loadTabContent("${maxCategory}")`);
+        debugLog(`📞 DEBUG PAIEMENTS: Appel loadTabContent("${maxCategory}")`);
         loadTabContent(maxCategory);
     }
 
@@ -892,7 +892,7 @@ $(function() {
         e.preventDefault();
 
         const statut = $(this).data('statut');
-        console.log(`🖱️  DEBUG PAIEMENTS: Clic sur onglet "${statut}"`);
+        debugLog(`🖱️  DEBUG PAIEMENTS: Clic sur onglet "${statut}"`);
 
         // Gérer les onglets Bootstrap
         $('.student-tab').removeClass('active');
@@ -903,29 +903,29 @@ $(function() {
 
         // Charger le contenu si pas encore fait
         if (loadedTabs[statut]) {
-            console.log(`✅ DEBUG PAIEMENTS: Statut "${statut}" déjà en cache, pas de rechargement`);
+            debugLog(`✅ DEBUG PAIEMENTS: Statut "${statut}" déjà en cache, pas de rechargement`);
         } else {
-            console.log(`🚀 DEBUG PAIEMENTS: Chargement par clic du statut "${statut}"`);
+            debugLog(`🚀 DEBUG PAIEMENTS: Chargement par clic du statut "${statut}"`);
             loadTabContent(statut);
         }
     });
 
     // FONCTION PRINCIPALE - COPIE EXACTE DES RÉINSCRIPTIONS
     function loadTabContent(statut, page = 1) {
-        console.log(`🔥 DEBUG PAIEMENTS: loadTabContent("${statut}", ${page})`);
+        debugLog(`🔥 DEBUG PAIEMENTS: loadTabContent("${statut}", ${page})`);
 
         const tabPane = $(`[data-statut="${statut}"]`);
         const loadingSpinner = tabPane.find('.paiement-spinner');
         const contentContainer = tabPane.find('.content-container');
 
-        console.log(`🔍 DEBUG PAIEMENTS: Éléments trouvés:`);
-        console.log(`  - tabPane:`, tabPane.length > 0, tabPane);
-        console.log(`  - loadingSpinner:`, loadingSpinner.length > 0, loadingSpinner);
-        console.log(`  - contentContainer:`, contentContainer.length > 0, contentContainer);
+        debugLog(`🔍 DEBUG PAIEMENTS: Éléments trouvés:`);
+        debugLog(`  - tabPane:`, tabPane.length > 0, tabPane);
+        debugLog(`  - loadingSpinner:`, loadingSpinner.length > 0, loadingSpinner);
+        debugLog(`  - contentContainer:`, contentContainer.length > 0, contentContainer);
 
         // Afficher le spinner si c'est la première page
         if (page === 1) {
-            console.log(`🔄 DEBUG PAIEMENTS: Affichage du spinner pour page 1`);
+            debugLog(`🔄 DEBUG PAIEMENTS: Affichage du spinner pour page 1`);
             loadingSpinner.removeClass('hidden');
             contentContainer.hide();
         }
@@ -939,25 +939,25 @@ $(function() {
             per_page: 20
         };
 
-        console.log(`📡 DEBUG PAIEMENTS: AJAX vers ${ajaxUrl} avec params:`, params);
+        debugLog(`📡 DEBUG PAIEMENTS: AJAX vers ${ajaxUrl} avec params:`, params);
 
         $.ajax({
             url: ajaxUrl,
             method: 'GET',
             data: params,
             success: function(response) {
-                console.log(`✅ DEBUG PAIEMENTS: AJAX Success pour "${statut}", page ${page}`);
-                console.log(`📊 DEBUG PAIEMENTS: Réponse:`, response);
+                debugLog(`✅ DEBUG PAIEMENTS: AJAX Success pour "${statut}", page ${page}`);
+                debugLog(`📊 DEBUG PAIEMENTS: Réponse:`, response);
 
                 if (page === 1) {
-                    console.log(`🎯 DEBUG PAIEMENTS: Traitement première page`);
+                    debugLog(`🎯 DEBUG PAIEMENTS: Traitement première page`);
                     // Première page : remplacer le contenu
-                    console.log(`🚫 DEBUG PAIEMENTS: Masquage du spinner`);
+                    debugLog(`🚫 DEBUG PAIEMENTS: Masquage du spinner`);
                     loadingSpinner.addClass('hidden');
 
                     // Gérer les statuts vides
                     if (response.total === 0) {
-                        console.log(`🔍 DEBUG PAIEMENTS: Statut vide pour "${statut}"`);
+                        debugLog(`🔍 DEBUG PAIEMENTS: Statut vide pour "${statut}"`);
                         contentContainer.html(`
                             <div style="text-align: center; padding: 40px; color: #64748b;">
                                 <i class="fas fa-info-circle fa-3x mb-3"></i>
@@ -973,27 +973,27 @@ $(function() {
                     currentPage[statut] = 1;
 
                 } else {
-                    console.log(`➕ DEBUG PAIEMENTS: Ajout page ${page}`);
+                    debugLog(`➕ DEBUG PAIEMENTS: Ajout page ${page}`);
                     // Pages suivantes : ajouter le contenu directement
                     const studentsList = contentContainer.find('.students-list');
                     const newCards = $(response.html);
                     studentsList.append(newCards);
                     currentPage[statut] = page;
-                    console.log(`➕ ${newCards.length} nouvelles cartes ajoutées`);
+                    debugLog(`➕ ${newCards.length} nouvelles cartes ajoutées`);
                 }
 
                 // Mettre à jour le bouton "Charger plus"
                 updateLoadMoreButton(statut, response);
             },
             error: function(xhr, status, error) {
-                console.error(`❌ DEBUG PAIEMENTS: Erreur AJAX pour "${statut}":`, error);
+                debugError(`❌ DEBUG PAIEMENTS: Erreur AJAX pour "${statut}":`, error);
                 showErrorState(statut);
             }
         });
     }
 
     function loadMore(statut, nextPage) {
-        console.log(`🔄 DEBUG PAIEMENTS: loadMore("${statut}", ${nextPage})`);
+        debugLog(`🔄 DEBUG PAIEMENTS: loadMore("${statut}", ${nextPage})`);
         loadTabContent(statut, nextPage);
     }
 
@@ -1022,7 +1022,7 @@ $(function() {
         const loadingSpinner = tabPane.find('.paiement-spinner');
         const contentContainer = tabPane.find('.content-container');
 
-        console.log(`🛑 DEBUG PAIEMENTS: Masquage spinner et affichage erreur`);
+        debugLog(`🛑 DEBUG PAIEMENTS: Masquage spinner et affichage erreur`);
         loadingSpinner.addClass('hidden');
         contentContainer.html(`
             <div style="text-align: center; padding: 40px; color: #dc2626;">
@@ -1041,12 +1041,12 @@ $(function() {
 // Définition globale de la fonction loadMore pour les boutons onclick
 @if($detailsCategorie)
 window.loadMore = function(statut, nextPage) {
-    console.log(`🔄 DEBUG PAIEMENTS GLOBAL: loadMore("${statut}", ${nextPage})`);
+    debugLog(`🔄 DEBUG PAIEMENTS GLOBAL: loadMore("${statut}", ${nextPage})`);
 
     // Éviter les clics multiples
     const loadMoreBtn = event ? $(event.target) : $(`.load-more-btn[data-statut="${statut}"]`);
     if (loadMoreBtn.prop('disabled')) {
-        console.log('🚫 Bouton déjà en cours de chargement, abandon');
+        debugLog('🚫 Bouton déjà en cours de chargement, abandon');
         return;
     }
 
@@ -1076,15 +1076,15 @@ window.loadMore = function(statut, nextPage) {
         per_page: 20
     };
 
-    console.log(`📡 DEBUG PAIEMENTS GLOBAL: AJAX vers ${ajaxUrl}`);
-    console.log(`📋 DEBUG PAIEMENTS GLOBAL: Params:`, params);
+    debugLog(`📡 DEBUG PAIEMENTS GLOBAL: AJAX vers ${ajaxUrl}`);
+    debugLog(`📋 DEBUG PAIEMENTS GLOBAL: Params:`, params);
 
     $.ajax({
         url: ajaxUrl,
         method: 'GET',
         data: params,
         success: function(response) {
-            console.log(`✅ SUCCESS: Page ${nextPage} chargée pour "${statut}"`);
+            debugLog(`✅ SUCCESS: Page ${nextPage} chargée pour "${statut}"`);
 
             const contentContainer = $(`#${statut} .content-container`);
             const newStudents = $(response.html);
@@ -1095,10 +1095,10 @@ window.loadMore = function(statut, nextPage) {
                 // Les pages suivantes retournent directement les student-cards, pas dans un conteneur
                 const newCards = $(response.html);
                 studentsList.append(newCards);
-                console.log(`➕ ${newCards.length} nouvelles cartes ajoutées à .students-list`);
+                debugLog(`➕ ${newCards.length} nouvelles cartes ajoutées à .students-list`);
             } else {
                 contentContainer.append(response.html);
-                console.log(`📄 Contenu ajouté directement au conteneur`);
+                debugLog(`📄 Contenu ajouté directement au conteneur`);
             }
 
             // Supprimer l'ancien bouton charger plus
@@ -1120,7 +1120,7 @@ window.loadMore = function(statut, nextPage) {
             }
         },
         error: function(xhr, status, error) {
-            console.error('❌ ERREUR AJAX:', {
+            debugError('❌ ERREUR AJAX:', {
                 status: xhr.status,
                 statusText: xhr.statusText,
                 error: error,

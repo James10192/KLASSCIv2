@@ -197,7 +197,7 @@
             document.getElementById('parent_search_query').value = '';
             document.getElementById('parent_search_filter').value = 'all';
 
-            console.log('Parent existant ajouté:', parentData);
+            debugLog('Parent existant ajouté:', parentData);
         });
 
         // Mettre à jour la relation dans le input hidden quand le select change
@@ -281,7 +281,7 @@
                     displayParentsTable(allParents);
                 })
                 .catch(error => {
-                    console.error('Error loading parents:', error);
+                    debugError('Error loading parents:', error);
                     tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erreur lors du chargement des parents.</td></tr>';
                 });
         }

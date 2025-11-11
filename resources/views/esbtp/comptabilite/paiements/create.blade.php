@@ -223,7 +223,7 @@
                             montantInput.value = data.montant;
                         }
                     })
-                    .catch(error => console.error('Erreur lors du chargement des frais:', error));
+                    .catch(error => debugError('Erreur lors du chargement des frais:', error));
                 */
             }
         }

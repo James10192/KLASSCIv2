@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const etablissementSelect = document.getElementById('currentEtablissement');
 
     if (!matriculeModeSelect || !etablissementSelect) {
-        console.error('Elements not found!');
+        debugError('Elements not found!');
         return;
     }
 
@@ -185,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error(error);
+            debugError(error);
             Swal.fire('Erreur', 'Une erreur est survenue', 'error');
         });
     });
@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error(error);
+            debugError(error);
             Swal.fire('Erreur', 'Une erreur est survenue', 'error');
         });
     });
@@ -325,7 +325,7 @@ function updateNomenclatureSection() {
         }
     })
     .catch(error => {
-        console.error('Erreur lors de la mise à jour des nomenclatures:', error);
+        debugError('Erreur lors de la mise à jour des nomenclatures:', error);
     });
 }
 </script>

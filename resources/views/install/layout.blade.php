@@ -414,9 +414,9 @@
             response => response,
             error => {
                 if (error.response && error.response.data && error.response.data.message) {
-                    console.error('API Error:', error.response.data.message);
+                    debugError('API Error:', error.response.data.message);
                 } else {
-                    console.error('API Error:', error.message);
+                    debugError('API Error:', error.message);
                 }
                 return Promise.reject(error);
             }

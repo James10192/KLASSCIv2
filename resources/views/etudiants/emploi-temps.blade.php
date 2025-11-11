@@ -786,7 +786,7 @@
                 card.style.transform = '';
             }, 150);
             
-            console.log(`Cours sélectionné: ${matiere} - ${time} - ${prof}`);
+            debugLog(`Cours sélectionné: ${matiere} - ${time} - ${prof}`);
             // Ici vous pourriez ouvrir un modal avec plus de détails
         }
     }

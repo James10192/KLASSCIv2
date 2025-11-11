@@ -445,9 +445,9 @@ document.addEventListener('DOMContentLoaded', () => {
             window.toastr[type](message);
         } else {
             if (type === 'error') {
-                console.error(message);
+                debugError(message);
             } else {
-                console.log(message);
+                debugLog(message);
             }
         }
     }

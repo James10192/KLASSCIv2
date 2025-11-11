@@ -168,7 +168,7 @@
                     password_confirmation: this.form.password_confirmation
                 };
                 
-                console.log('Envoi des données au serveur:', formData); // Pour debug
+                debugLog('Envoi des données au serveur:', formData); // Pour debug
                 
                 // Token CSRF
                 const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -183,13 +183,13 @@
                 })
                 .then(response => {
                     this.loading = false;
-                    console.log('Réponse du serveur:', response.data); // Pour debug
+                    debugLog('Réponse du serveur:', response.data); // Pour debug
                     
                     if (response.data && (response.data.status === 'success' || response.data.success === true)) {
                         this.success = response.data.message || 'Administrateur créé avec succès!';
                         
                         // Log de succès
-                        console.log('Redirection vers:', response.data.redirect || '{{ route("install.complete") }}');
+                        debugLog('Redirection vers:', response.data.redirect || '{{ route("install.complete") }}');
                         
                         // Rediriger vers la page suivante après 2 secondes
                         setTimeout(() => {
@@ -197,13 +197,13 @@
                         }, 2000);
                     } else {
                         this.error = (response.data && response.data.message) ? response.data.message : 'Une erreur est survenue';
-                        console.error('Erreur détectée dans la réponse:', this.error);
+                        debugError('Erreur détectée dans la réponse:', this.error);
                     }
                 })
                 .catch(error => {
                     this.loading = false;
-                    console.error('Erreur complète:', error); // Pour debug
-                    console.error('Détails de la réponse d\'erreur:', error.response); // Pour debug
+                    debugError('Erreur complète:', error); // Pour debug
+                    debugError('Détails de la réponse d\'erreur:', error.response); // Pour debug
                     
                     if (error.response && error.response.data) {
                         if (error.response.data.errors) {
@@ -218,23 +218,23 @@
                                 }
                             }
                             this.error = errorMessages.join('<br>');
-                            console.error('Erreurs de validation:', errorMessages);
+                            debugError('Erreurs de validation:', errorMessages);
                         } else if (error.response.data.message) {
                             this.error = error.response.data.message;
-                            console.error('Message d\'erreur:', error.response.data.message);
+                            debugError('Message d\'erreur:', error.response.data.message);
                         } else if (error.response.data.error) {
                             this.error = error.response.data.error;
-                            console.error('Message d\'erreur:', error.response.data.error);
+                            debugError('Message d\'erreur:', error.response.data.error);
                         } else {
                             this.error = 'Une erreur est survenue lors de la création de l\'administrateur. Consultez la console pour plus de détails.';
-                            console.error('Erreur sans message spécifique:', error.response.data);
+                            debugError('Erreur sans message spécifique:', error.response.data);
                         }
                     } else if (error.message) {
                         this.error = 'Erreur de connexion: ' + error.message;
-                        console.error('Message d\'erreur général:', error.message);
+                        debugError('Message d\'erreur général:', error.message);
                     } else {
                         this.error = 'Une erreur de connexion est survenue. Veuillez réessayer.';
-                        console.error('Erreur non spécifiée');
+                        debugError('Erreur non spécifiée');
                     }
                 });
             }

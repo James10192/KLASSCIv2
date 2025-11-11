@@ -789,7 +789,7 @@ document.getElementById('resetPasswordForm').addEventListener('submit', function
         }
     })
     .catch(error => {
-        console.error('Erreur:', error);
+        debugError('Erreur:', error);
         showNotification('Erreur de connexion', 'danger');
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalBtnText;
@@ -801,7 +801,7 @@ function copyPassword() {
     navigator.clipboard.writeText(password).then(() => {
         showNotification('Mot de passe copié dans le presse-papiers !', 'success');
     }).catch(err => {
-        console.error('Erreur copie:', err);
+        debugError('Erreur copie:', err);
         showNotification('Erreur lors de la copie', 'danger');
     });
 }

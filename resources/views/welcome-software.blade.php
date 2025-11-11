@@ -3930,7 +3930,7 @@
             const message = input.value.trim();
             if (message) {
                 // Ici vous pouvez ajouter la logique pour envoyer le message
-                console.log('Message envoyé:', message);
+                debugLog('Message envoyé:', message);
                 input.value = '';
                 
                 // Simulation d'une réponse automatique éducative
@@ -4385,7 +4385,7 @@
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
+            debugError('Erreur:', error);
             submitBtn.innerHTML = '<i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>Erreur';
             submitBtn.style.background = '#EF4444';
             

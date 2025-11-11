@@ -160,7 +160,7 @@ $(document).ready(function() {
     if (typeof $.fn.select2 !== 'undefined') {
         $('.select2').select2({ width: '100%' });
     } else {
-        console.log('Select2 not available for classe selector');
+        debugLog('Select2 not available for classe selector');
     }
 
     // Fonction de filtrage AJAX
@@ -239,7 +239,7 @@ $(document).ready(function() {
                     'opacity': '1'
                 });
 
-                console.error('Erreur AJAX:', error);
+                debugError('Erreur AJAX:', error);
                 alert('Une erreur est survenue lors du filtrage.');
             }
         });

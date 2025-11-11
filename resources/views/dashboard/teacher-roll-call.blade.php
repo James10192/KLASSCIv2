@@ -429,7 +429,7 @@
 (function() {
     'use strict';
 
-    console.log('🎯 Initialisation du système d\'appel...');
+    debugLog('🎯 Initialisation du système d\'appel...');
 
     // Auto-hide alerts after 5 seconds
     setTimeout(function() {
@@ -444,19 +444,19 @@
 
     // Handle attendance button clicks with SIMPLE event handling
     const attendanceButtons = document.querySelectorAll('.attendance-btn');
-    console.log('📊 Nombre de boutons trouvés:', attendanceButtons.length);
+    debugLog('📊 Nombre de boutons trouvés:', attendanceButtons.length);
 
     attendanceButtons.forEach(function(button, index) {
         button.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
 
-            console.log('🖱️ Clic sur bouton', index + 1);
+            debugLog('🖱️ Clic sur bouton', index + 1);
 
             // Get the student's other buttons
             const studentItem = this.closest('.student-item');
             if (!studentItem) {
-                console.error('❌ Impossible de trouver student-item');
+                debugError('❌ Impossible de trouver student-item');
                 return;
             }
 
@@ -469,15 +469,15 @@
 
             // Add active class to clicked button
             this.classList.add('active');
-            console.log('✅ Classe active ajoutée');
+            debugLog('✅ Classe active ajoutée');
 
             // Check the radio button inside this label
             const radioInput = this.querySelector('input[type="radio"]');
             if (radioInput) {
                 radioInput.checked = true;
-                console.log('✅ Radio checked:', radioInput.value);
+                debugLog('✅ Radio checked:', radioInput.value);
             } else {
-                console.error('❌ Radio input non trouvé');
+                debugError('❌ Radio input non trouvé');
             }
 
             // Update statistics
@@ -531,7 +531,7 @@
 
     // Initialize stats
     updateStats();
-    console.log('✅ Stats initialisées');
+    debugLog('✅ Stats initialisées');
 
     // Form submission confirmation
     if (form) {
@@ -551,7 +551,7 @@
         });
     }
 
-    console.log('✅ Système d\'appel prêt !');
+    debugLog('✅ Système d\'appel prêt !');
 })();
 </script>
 @endpush

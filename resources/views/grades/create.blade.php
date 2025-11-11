@@ -380,7 +380,7 @@
                                 sectionSelect.appendChild(option);
                             });
                         })
-                        .catch(error => console.error('Erreur:', error));
+                        .catch(error => debugError('Erreur:', error));
                 }
             });
             

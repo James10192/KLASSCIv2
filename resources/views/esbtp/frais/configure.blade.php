@@ -677,11 +677,11 @@ input[type="number"]:focus {
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM ready - Simple modal system');
+    debugLog('DOM ready - Simple modal system');
     
     // Fonction simple pour ouvrir le modal
     window.openConfigurationModal = function(button) {
-        console.log('Opening configuration modal...');
+        debugLog('Opening configuration modal...');
         
         const filiereId = button.dataset.filiereId;
         const niveauId = button.dataset.niveauId;
@@ -725,7 +725,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Erreur:', error);
+                debugError('Erreur:', error);
                 container.innerHTML = '<div class="alert alert-danger">Erreur de chargement</div>';
             });
     }
@@ -787,7 +787,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
+            debugError('Erreur:', error);
             alert('Erreur de connexion');
         });
     });

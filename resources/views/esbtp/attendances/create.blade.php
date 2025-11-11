@@ -307,9 +307,9 @@
 <script>
     // Fonction simple pour marquer tous les étudiants avec un statut spécifique
     function marquerTous(statut) {
-        console.log('Marquer tous comme ' + statut);
+        debugLog('Marquer tous comme ' + statut);
         var radios = document.querySelectorAll('input[type="radio"][value="' + statut + '"]');
-        console.log('Nombre de boutons radio trouvés: ' + radios.length);
+        debugLog('Nombre de boutons radio trouvés: ' + radios.length);
         for (var i = 0; i < radios.length; i++) {
             radios[i].checked = true;
         }
@@ -330,7 +330,7 @@
 
     // Charger les séances via AJAX quand la classe change
     function loadSeances(classeId) {
-        console.log('📡 [AJAX] Chargement séances pour classe:', classeId);
+        debugLog('📡 [AJAX] Chargement séances pour classe:', classeId);
 
         const seanceSelect = document.getElementById('seance_id');
         const seanceContainer = document.getElementById('seance-select-container');
@@ -343,7 +343,7 @@
             spinner.className = 'loading-spinner';
             classeLabel.appendChild(spinner);
         } else {
-            console.warn('⚠️ Label classe introuvable pour spinner');
+            debugWarn('⚠️ Label classe introuvable pour spinner');
         }
 
         const url = '{{ route("esbtp.attendances.load-seances") }}?classe_id=' + classeId;
@@ -364,13 +364,13 @@
             if (spinner) spinner.remove();
 
             if (data.success) {
-                console.log('✅ [AJAX] Séances reçues:', data.nbSeances);
+                debugLog('✅ [AJAX] Séances reçues:', data.nbSeances);
 
                 // Créer le conteneur de séance s'il n'existe pas
                 if (!seanceContainer) {
                     const formRow = document.getElementById('selectionForm');
                     if (!formRow) {
-                        console.error('❌ Formulaire introuvable #selectionForm');
+                        debugError('❌ Formulaire introuvable #selectionForm');
                         alert('Erreur: impossible de trouver le formulaire de sélection');
                         return;
                     }
@@ -417,15 +417,15 @@
                 const newUrl = '{{ route("esbtp.attendances.create") }}?classe_id=' + classeId;
                 history.pushState({}, '', newUrl);
 
-                console.log('✅ Séances chargées, attendez sélection d\'une séance');
+                debugLog('✅ Séances chargées, attendez sélection d\'une séance');
             } else {
-                console.error('❌ Erreur:', data.message);
+                debugError('❌ Erreur:', data.message);
                 alert('Erreur: ' + data.message);
             }
         })
         .catch(error => {
             if (spinner) spinner.remove();
-            console.error('❌ Erreur AJAX:', error);
+            debugError('❌ Erreur AJAX:', error);
             alert('Une erreur est survenue lors du chargement des séances: ' + error.message);
         });
     }
@@ -459,7 +459,7 @@
             if (spinner) spinner.remove();
 
             if (data.success) {
-                console.log('✅ [AJAX] Données reçues:', data);
+                debugLog('✅ [AJAX] Données reçues:', data);
 
                 // Remplacer le contenu du tbody
                 tableBody.innerHTML = data.html;
@@ -533,27 +533,27 @@
                     }, index * 100);
                 });
 
-                console.log('✅ Étudiants chargés:', data.nbEtudiants, 'Mode:', data.mode);
+                debugLog('✅ Étudiants chargés:', data.nbEtudiants, 'Mode:', data.mode);
             } else {
-                console.error('❌ Erreur:', data.message);
+                debugError('❌ Erreur:', data.message);
                 alert('Erreur: ' + data.message);
             }
         })
         .catch(error => {
             const spinner = label.querySelector('.loading-spinner');
             if (spinner) spinner.remove();
-            console.error('❌ Erreur AJAX:', error);
+            debugError('❌ Erreur AJAX:', error);
             alert('Une erreur est survenue lors du chargement des étudiants.');
         });
     }
 
     // PATTERN EXACT DE PAIEMENTS.INDEX - jQuery + .off().on()
     $(document).ready(function() {
-        console.log('🚀 [ATTENDANCES] Script jQuery chargé');
+        debugLog('🚀 [ATTENDANCES] Script jQuery chargé');
 
         // 1. AJAX quand classe change - charger les séances sans reload
         $('#classe_id').off('change').on('change', function(e) {
-            console.log('🔵 [ATTENDANCES] Classe changée:', $(this).val());
+            debugLog('🔵 [ATTENDANCES] Classe changée:', $(this).val());
 
             // BLOQUER la soumission du formulaire
             e.preventDefault();
@@ -562,7 +562,7 @@
             const classeId = $(this).val();
 
             if (classeId) {
-                console.log('📡 [ATTENDANCES] Chargement AJAX des séances - PAS DE RELOAD!');
+                debugLog('📡 [ATTENDANCES] Chargement AJAX des séances - PAS DE RELOAD!');
                 // Charger les séances via AJAX
                 loadSeances(classeId);
             } else {
@@ -580,7 +580,7 @@
 
         // 2. AJAX UNIQUEMENT quand séance change - EVENT DELEGATION car élément dynamique
         $(document).off('change', '#seance_id').on('change', '#seance_id', function(e) {
-            console.log('🔵 [ATTENDANCES] Séance changée:', $(this).val());
+            debugLog('🔵 [ATTENDANCES] Séance changée:', $(this).val());
 
             // BLOQUER la soumission du formulaire
             e.preventDefault();
@@ -590,7 +590,7 @@
             const seanceId = $(this).val();
 
             if (classeId && seanceId) {
-                console.log('📡 [ATTENDANCES] Lancement AJAX - PAS DE RELOAD!');
+                debugLog('📡 [ATTENDANCES] Lancement AJAX - PAS DE RELOAD!');
 
                 // Construire l'URL avec paramètres
                 const newUrl = '{{ route("esbtp.attendances.create") }}?classe_id=' + classeId + '&seance_id=' + seanceId;
@@ -608,7 +608,7 @@
         // 3. Intercepter la soumission du formulaire pour save AJAX + refresh badge
         $(document).off('submit', '#attendanceForm').on('submit', '#attendanceForm', function(e) {
             e.preventDefault();
-            console.log('🔵 [ATTENDANCES] Soumission formulaire interceptée');
+            debugLog('🔵 [ATTENDANCES] Soumission formulaire interceptée');
 
             const form = $(this);
             const formData = new FormData(this);
@@ -628,7 +628,7 @@
             .then(response => {
                 // Si redirection = succès
                 if (response.redirected || response.ok) {
-                    console.log('✅ [ATTENDANCES] Présences enregistrées avec succès');
+                    debugLog('✅ [ATTENDANCES] Présences enregistrées avec succès');
 
                     // Afficher un message de succès
                     const alertContainer = document.querySelector('.main-card-body');
@@ -648,7 +648,7 @@
                     const seanceId = $('#seance_id').val();
 
                     if (classeId && seanceId) {
-                        console.log('🔄 [ATTENDANCES] Rechargement séances pour MAJ badge...');
+                        debugLog('🔄 [ATTENDANCES] Rechargement séances pour MAJ badge...');
 
                         // Recharger les séances
                         const url = '{{ route("esbtp.attendances.load-seances") }}?classe_id=' + classeId;
@@ -669,7 +669,7 @@
                                 }
 
                                 // Recharger les étudiants pour afficher les badges "Modification"
-                                console.log('🔄 [ATTENDANCES] Rechargement étudiants...');
+                                debugLog('🔄 [ATTENDANCES] Rechargement étudiants...');
                                 loadStudents(classeId, seanceId);
                             }
                         });
@@ -686,13 +686,13 @@
             })
             .then(data => {
                 if (data && !data.success) {
-                    console.error('❌ [ATTENDANCES] Erreur:', data.message || data.errors);
+                    debugError('❌ [ATTENDANCES] Erreur:', data.message || data.errors);
                     alert('Erreur: ' + (data.message || JSON.stringify(data.errors)));
                     submitBtn.prop('disabled', false).html(originalText);
                 }
             })
             .catch(error => {
-                console.error('❌ [ATTENDANCES] Erreur AJAX:', error);
+                debugError('❌ [ATTENDANCES] Erreur AJAX:', error);
                 alert('Une erreur est survenue lors de l\'enregistrement.');
                 submitBtn.prop('disabled', false).html(originalText);
             });
@@ -700,7 +700,7 @@
             return false;
         });
 
-        console.log('✅ [ATTENDANCES] Event delegation configuré - ZERO RELOAD MODE');
+        debugLog('✅ [ATTENDANCES] Event delegation configuré - ZERO RELOAD MODE');
     });
 </script>
 @endpush

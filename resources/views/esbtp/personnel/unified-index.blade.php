@@ -964,7 +964,7 @@ function toggleTeacherStatus(teacherId) {
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
+            debugError('Erreur:', error);
             alert('Une erreur est survenue lors de la mise à jour du statut');
         });
     }
@@ -994,7 +994,7 @@ function toggleSecretaireStatus(secretaireId) {
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
+            debugError('Erreur:', error);
             alert('Une erreur est survenue lors de la mise à jour du statut');
         });
     }

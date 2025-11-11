@@ -365,7 +365,7 @@
             document.getElementById('technique-count').textContent = techniqueCount;
             document.getElementById('excluded-count').textContent = excludedCount;
 
-            console.log('Compteurs mis à jour:', {
+            debugLog('Compteurs mis à jour:', {
                 total: totalCount,
                 general: generalCount,
                 technique: techniqueCount,

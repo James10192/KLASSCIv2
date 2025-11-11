@@ -362,7 +362,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Variables chargées avec succès
         } catch (error) {
-            console.error('Error loading data from controller, using defaults:', error);
+            debugError('Error loading data from controller, using defaults:', error);
             // Utiliser les valeurs par défaut en cas d'erreur
             chartLabelsData = defaultLabels;
             recettesDataChart = defaultRecettes;

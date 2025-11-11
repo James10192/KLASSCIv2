@@ -612,7 +612,7 @@ window.saveAvailability = function() {
     })
     .catch(error => {
         window.showNotification('Erreur de communication avec le serveur.', 'error');
-        console.error('Error:', error);
+        debugError('Error:', error);
     })
     .finally(() => {
         // Réactiver le bouton

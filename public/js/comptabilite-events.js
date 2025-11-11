@@ -23,7 +23,7 @@ class ComptabiliteEventsManager {
     setupEventListeners() {
         // Vérifier si Laravel Echo est disponible
         if (typeof Echo !== "undefined") {
-            console.log(
+            debugLog(
                 "Laravel Echo détecté - Configuration des écouteurs d'événements"
             );
 
@@ -45,7 +45,7 @@ class ComptabiliteEventsManager {
                     this.handleKPIsCalcules(e);
                 });
         } else {
-            console.warn(
+            debugWarn(
                 "Laravel Echo non disponible - Utilisation du polling comme fallback"
             );
         }
@@ -65,7 +65,7 @@ class ComptabiliteEventsManager {
      * Gestionnaire pour l'événement PaiementRecu
      */
     handlePaiementRecu(event) {
-        console.log("Paiement reçu:", event);
+        debugLog("Paiement reçu:", event);
 
         // Mettre à jour l'interface utilisateur
         this.showNotification(
@@ -89,7 +89,7 @@ class ComptabiliteEventsManager {
      * Gestionnaire pour l'événement BonApprouve
      */
     handleBonApprouve(event) {
-        console.log("Bon approuvé:", event);
+        debugLog("Bon approuvé:", event);
 
         this.showNotification(
             "success",
@@ -109,7 +109,7 @@ class ComptabiliteEventsManager {
      * Gestionnaire pour l'événement SeuilAtteint
      */
     handleSeuilAtteint(event) {
-        console.log("Seuil atteint:", event);
+        debugLog("Seuil atteint:", event);
 
         let alertType =
             event.niveau === "critique"
@@ -134,7 +134,7 @@ class ComptabiliteEventsManager {
      * Gestionnaire pour l'événement RelanceEnvoyee
      */
     handleRelanceEnvoyee(event) {
-        console.log("Relance envoyée:", event);
+        debugLog("Relance envoyée:", event);
 
         this.showNotification(
             "info",
@@ -152,7 +152,7 @@ class ComptabiliteEventsManager {
      * Gestionnaire pour l'événement KPIsCalcules
      */
     handleKPIsCalcules(event) {
-        console.log("KPIs calculés:", event);
+        debugLog("KPIs calculés:", event);
 
         this.showNotification(
             "info",
@@ -257,7 +257,7 @@ class ComptabiliteEventsManager {
                 }
             })
             .catch((error) =>
-                console.error("Erreur lors de la mise à jour des KPIs:", error)
+                debugError("Erreur lors de la mise à jour des KPIs:", error)
             );
     }
 

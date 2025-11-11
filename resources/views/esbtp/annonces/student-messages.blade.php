@@ -652,7 +652,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+                debugError('Error:', error);
             });
         });
     }
@@ -685,7 +685,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
+            debugError('Error:', error);
         });
     }
 

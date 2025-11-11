@@ -1548,7 +1548,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Erreur lors du chargement des parents:', error);
+            debugError('Erreur lors du chargement des parents:', error);
         });
     }
 
@@ -1610,7 +1610,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const parentsContainer = document.getElementById('parents-container');
         
         if (!template || !parentsContainer) {
-            console.error('Template ou container des parents introuvable');
+            debugError('Template ou container des parents introuvable');
             return;
         }
 
@@ -1704,7 +1704,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.target.id === 'classe_id') {
             // Empêcher les déclenchements multiples
             if (isLoadingFrais) {
-                console.log('Chargement des frais déjà en cours, ignoré');
+                debugLog('Chargement des frais déjà en cours, ignoré');
                 return;
             }
             
@@ -1714,14 +1714,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const classeId = e.target.value;
             const fraisContainer = document.getElementById('fraisContainer');
             
-            console.log('Changement de classe détecté:', classeId);
+            debugLog('Changement de classe détecté:', classeId);
             
             if (classeId && fraisContainer) {
                 isLoadingFrais = true; // Marquer comme en cours
                 
                 // Sauvegarder les données du formulaire
                 const savedData = saveFormData();
-                console.log('Données sauvegardées:', savedData);
+                debugLog('Données sauvegardées:', savedData);
                 // Afficher le loader
                 fraisContainer.innerHTML = `
                     <div class="row">
@@ -1754,7 +1754,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         return response.json();
                     })
                     .then(data => {
-                        console.log('Données frais reçues:', data);
+                        debugLog('Données frais reçues:', data);
                         if (data.success) {
                             updateFraisContainer(data.frais, data.has_unconfigured_fees, data.configure_url);
                             updateResumeFrais();
@@ -1762,7 +1762,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             // Restaurer les données du formulaire après chargement des frais
                             setTimeout(() => {
                                 restoreFormData(savedData);
-                                console.log('Données restaurées');
+                                debugLog('Données restaurées');
                             }, 100);
                         } else {
                             fraisContainer.innerHTML = `
@@ -1776,7 +1776,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         isLoadingFrais = false; // Réinitialiser le flag
                     })
                     .catch(error => {
-                        console.error('Erreur lors du chargement des frais:', error);
+                        debugError('Erreur lors du chargement des frais:', error);
                         fraisContainer.innerHTML = `
                             <div class="alert alert-danger">
                                 <i class="fas fa-exclamation-triangle"></i>
@@ -1787,7 +1787,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Restaurer les données même en cas d'erreur
                         setTimeout(() => {
                             restoreFormData(savedData);
-                            console.log('Données restaurées après erreur');
+                            debugLog('Données restaurées après erreur');
                         }, 100);
                         
                         isLoadingFrais = false; // Réinitialiser le flag
@@ -1820,9 +1820,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // DEBUG : Vérifier les données avant soumission
-        console.log('SUBMIT EVENT TRIGGERED!');
-        console.log('Event details:', e);
-        console.log('Target:', e.target);
+        debugLog('SUBMIT EVENT TRIGGERED!');
+        debugLog('Event details:', e);
+        debugLog('Target:', e.target);
         
         const form = e.target;
         const formData = new FormData(form);
@@ -1831,23 +1831,23 @@ document.addEventListener('DOMContentLoaded', function() {
         const photoInput = form.querySelector('input[name="photo"]');
         if (photoInput && photoInput.files.length > 0) {
             const file = photoInput.files[0];
-            console.log(`Photo: ${file.name} (${file.size} bytes, ${file.type})`);
+            debugLog(`Photo: ${file.name} (${file.size} bytes, ${file.type})`);
         } else {
-            console.log('Photo: AUCUNE SÉLECTIONNÉE');
+            debugLog('Photo: AUCUNE SÉLECTIONNÉE');
         }
         
         // Informations sur les autres champs principaux
-        console.log(`Nom: ${formData.get('nom') || 'VIDE'}`);
-        console.log(`Prénom: ${formData.get('prenoms') || 'VIDE'}`);
-        console.log(`Matricule: ${formData.get('matricule') || 'VIDE'}`);
-        console.log(`Classe: ${formData.get('classe_id') || 'VIDE'}`);
+        debugLog(`Nom: ${formData.get('nom') || 'VIDE'}`);
+        debugLog(`Prénom: ${formData.get('prenoms') || 'VIDE'}`);
+        debugLog(`Matricule: ${formData.get('matricule') || 'VIDE'}`);
+        debugLog(`Classe: ${formData.get('classe_id') || 'VIDE'}`);
         
         // Vérifier les frais sélectionnés
         const selectedFrais = document.querySelectorAll('.frais-option:checked');
-        console.log(`Frais sélectionnés: ${selectedFrais.length}`);
+        debugLog(`Frais sélectionnés: ${selectedFrais.length}`);
         
-        console.log('Form data complète:', [...formData.entries()]);
-        console.log('Photo file:', photoInput ? photoInput.files[0] : 'null');
+        debugLog('Form data complète:', [...formData.entries()]);
+        debugLog('Photo file:', photoInput ? photoInput.files[0] : 'null');
         
         // Laisser le formulaire se soumettre normalement
     });
@@ -2102,12 +2102,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const label = option.closest('.form-check').querySelector('label').textContent;
                 
                 // Debug : afficher la structure pour comprendre le problème
-                console.log('DEBUG - Option sélectionnée:', option);
-                console.log('DEBUG - Label:', label);
+                debugLog('DEBUG - Option sélectionnée:', option);
+                debugLog('DEBUG - Label:', label);
                 
                 // Récupérer le nom de la catégorie depuis le titre de la card
                 const fraisCard = option.closest('.card');
-                console.log('DEBUG - FraisCard trouvée:', fraisCard);
+                debugLog('DEBUG - FraisCard trouvée:', fraisCard);
                 
                 // Essayer plusieurs sélecteurs pour trouver le titre
                 let titleElement = fraisCard ? fraisCard.querySelector('.card-title') : null;
@@ -2118,8 +2118,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     titleElement = fraisCard ? fraisCard.querySelector('.card-header h6') : null;
                 }
                 
-                console.log('DEBUG - TitleElement:', titleElement);
-                console.log('DEBUG - TitleElement text:', titleElement ? titleElement.textContent : 'null');
+                debugLog('DEBUG - TitleElement:', titleElement);
+                debugLog('DEBUG - TitleElement text:', titleElement ? titleElement.textContent : 'null');
                 
                 // Extraire le nom de la catégorie plus robustement
                 let categoryName = 'Frais';
@@ -2137,11 +2137,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
                 
-                console.log('DEBUG - CategoryName final:', categoryName);
+                debugLog('DEBUG - CategoryName final:', categoryName);
                 
                 // Alternative : essayer d'extraire l'ID de catégorie du name de l'input
                 const nameAttr = option.getAttribute('name');
-                console.log('DEBUG - Name attribute:', nameAttr);
+                debugLog('DEBUG - Name attribute:', nameAttr);
                 
                 // Si on n'a pas trouvé le nom via le DOM, utiliser une méthode alternative
                 if (categoryName === 'Frais' && nameAttr) {
@@ -2150,7 +2150,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const categoryId = categoryIdMatch[1];
                         // Essayer de trouver le nom via le data-attribute ou créer un nom générique
                         categoryName = `Catégorie ${categoryId}`;
-                        console.log('DEBUG - CategoryName via name attr:', categoryName);
+                        debugLog('DEBUG - CategoryName via name attr:', categoryName);
                     }
                 }
                 
@@ -2296,7 +2296,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const affectationSelect = document.getElementById('affectation_status');
 
         if (!classeSelect || !classeSelect.value) {
-            console.log('Aucune classe sélectionnée pour recharger les frais');
+            debugLog('Aucune classe sélectionnée pour recharger les frais');
             return;
         }
 
@@ -2335,7 +2335,7 @@ document.addEventListener('DOMContentLoaded', function() {
         updateMatriculeUI();
     })
     .catch(error => {
-        console.log('Erreur lors du chargement du mode matricule:', error);
+        debugLog('Erreur lors du chargement du mode matricule:', error);
         updateMatriculeUI();
     });
 
@@ -2399,7 +2399,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
+            debugError('Erreur:', error);
             showMatriculeStatus('Erreur de connexion', 'danger');
         })
         .finally(() => {
@@ -2451,7 +2451,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
+            debugError('Erreur:', error);
             showMatriculeStatus('Erreur de vérification', 'warning');
         })
         .finally(() => {
@@ -2504,7 +2504,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 })
                 .catch(error => {
-                    console.error('Erreur:', error);
+                    debugError('Erreur:', error);
                     niveauConfig = null;
                 });
             }

@@ -963,7 +963,7 @@
             fetch(`/esbtp/matieres/${matiereId}/liaisons`)
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Liaisons existantes:', data);
+                    debugLog('Liaisons existantes:', data);
                     
                     // Cocher les filières existantes
                     if (data.filieres) {
@@ -982,7 +982,7 @@
                     updateCombinationsPreview();
                 })
                 .catch(error => {
-                    console.error('Erreur lors du chargement des liaisons:', error);
+                    debugError('Erreur lors du chargement des liaisons:', error);
                 });
         }
 
@@ -1042,7 +1042,7 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Erreur lors du chargement des matières:', error);
+                    debugError('Erreur lors du chargement des matières:', error);
                     matieresListDiv.html(`
                         <div class="d-flex align-items-center justify-content-center py-4 text-danger">
                             <i class="fas fa-exclamation-triangle me-2"></i>
@@ -1178,7 +1178,7 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Erreur:', error);
+                    debugError('Erreur:', error);
                     alert('Erreur lors de l\'ajout des matières: ' + error.message);
                 })
                 .finally(() => {
@@ -1238,7 +1238,7 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Erreur:', error);
+                    debugError('Erreur:', error);
                     alert('Erreur lors de la sauvegarde');
                 })
                 .finally(() => {

@@ -462,7 +462,7 @@ $(document).ready(function() {
                 setLoading(false);
             })
             .catch(error => {
-                console.error(error);
+                debugError(error);
                 alert('Impossible de charger les classes. Veuillez réessayer.');
                 setLoading(false);
             });
@@ -553,7 +553,7 @@ $(document).ready(function() {
                 exportUrl = '{{ route("esbtp.classes.export.pdf") }}';
                 break;
             default:
-                console.error('Format d\'export non reconnu:', format);
+                debugError('Format d\'export non reconnu:', format);
                 return;
         }
 

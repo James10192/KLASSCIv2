@@ -9,7 +9,7 @@
 @section('content')
 <!-- Debug: Afficher les données de session -->
 @if(session('inscriptions_problemes'))
-    <script>console.log('Inscriptions avec problèmes:', @json(session('inscriptions_problemes')));</script>
+    <script>debugLog('Inscriptions avec problèmes:', @json(session('inscriptions_problemes')));</script>
 @endif
 
 <div class="dashboard-acasi">
@@ -490,7 +490,7 @@ function triggerInscriptionRowHighlight(row, actionType = 'update', options = {}
 window.triggerInscriptionRowHighlight = triggerInscriptionRowHighlight;
 
 function showYearChangeInfo() {
-    console.log('Tentative ouverture modal');
+    debugLog('Tentative ouverture modal');
     
     // Essayer avec différentes méthodes Bootstrap
     if (typeof bootstrap !== 'undefined') {
@@ -854,7 +854,7 @@ document.addEventListener('DOMContentLoaded', function () {
             clearInscriptionSelection();
         })
         .catch(error => {
-            console.error(error);
+            debugError(error);
             alert('Impossible de charger les inscriptions. Veuillez réessayer.');
         })
         .finally(() => setLoading(false));
@@ -897,7 +897,7 @@ function ouvrirModalValiderPaiement(inscriptionId) {
             }
         })
         .catch(error => {
-            console.error(error);
+            debugError(error);
             alert('Erreur lors du chargement des données');
         });
 }
@@ -968,7 +968,7 @@ function ouvrirModalChangerClasse(inscriptionId) {
             }
         })
         .catch(error => {
-            console.error(error);
+            debugError(error);
             alert('Erreur lors du chargement des données');
         });
 }
@@ -997,7 +997,7 @@ function ouvrirModalCreerPaiement(inscriptionId) {
             }
         })
         .catch(error => {
-            console.error(error);
+            debugError(error);
             alert('Erreur lors du chargement des données');
         });
 }
@@ -1014,12 +1014,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Protection double-clic
             if (isSubmitting) {
-                console.warn('⚠️ formValiderPaiement - Soumission déjà en cours, blocage du double-clic');
+                debugWarn('⚠️ formValiderPaiement - Soumission déjà en cours, blocage du double-clic');
                 return false;
             }
 
             isSubmitting = true;
-            console.log('🔒 formValiderPaiement - Formulaire verrouillé');
+            debugLog('🔒 formValiderPaiement - Formulaire verrouillé');
 
             // Désactiver le bouton submit
             const $submitBtn = this.querySelector('button[type="submit"]');
@@ -1049,7 +1049,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error(error);
+                debugError(error);
                 alert('Erreur lors de la validation du paiement');
             })
             .finally(() => {
@@ -1086,7 +1086,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error(error);
+            debugError(error);
             alert('Erreur lors du changement de classe');
         });
     });
@@ -1101,12 +1101,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Protection double-clic
             if (isSubmitting) {
-                console.warn('⚠️ formCreerPaiement - Soumission déjà en cours, blocage du double-clic');
+                debugWarn('⚠️ formCreerPaiement - Soumission déjà en cours, blocage du double-clic');
                 return false;
             }
 
             isSubmitting = true;
-            console.log('🔒 formCreerPaiement - Formulaire verrouillé');
+            debugLog('🔒 formCreerPaiement - Formulaire verrouillé');
 
             // Désactiver le bouton submit
             const $submitBtn = this.querySelector('button[type="submit"]');
@@ -1136,7 +1136,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error(error);
+                debugError(error);
                 alert('Erreur lors de la création du paiement');
             })
             .finally(() => {
@@ -1153,12 +1153,12 @@ document.addEventListener('DOMContentLoaded', function() {
      * Inclut spinner de chargement et sauvegarde de l'état du checkbox
      */
     window.refreshInscriptionLigne = function(inscriptionId, actionType = 'update') {
-        console.log('🔄 refreshInscriptionLigne() appelé pour ID:', inscriptionId);
+        debugLog('🔄 refreshInscriptionLigne() appelé pour ID:', inscriptionId);
 
         const row = document.querySelector(`tr[data-inscription-id="${inscriptionId}"]`);
 
         if (!row) {
-            console.error('❌ Ligne non trouvée pour inscription ID:', inscriptionId);
+            debugError('❌ Ligne non trouvée pour inscription ID:', inscriptionId);
             location.reload();
             return;
         }
@@ -1176,7 +1176,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .then(response => {
-            console.log('📥 Réponse reçue, status:', response.status);
+            debugLog('📥 Réponse reçue, status:', response.status);
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
@@ -1196,7 +1196,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (!rowFragment) {
-                console.error('❌ Contenu HTML reçu:', data.html);
+                debugError('❌ Contenu HTML reçu:', data.html);
                 throw new Error('HTML retourné invalide (pas de TR)');
             }
 
@@ -1274,7 +1274,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 setInscriptionRowLoadingState(inscriptionId, false);
                 updateInscriptionSelectionCount();
 
-                console.log('🎉 Ligne rafraîchie avec succès:', inscriptionId);
+                debugLog('🎉 Ligne rafraîchie avec succès:', inscriptionId);
             };
 
             triggerInscriptionRowHighlight(row, actionType, {
@@ -1290,9 +1290,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }, INSCRIPTION_HIGHLIGHT_DURATION + 150);
         })
         .catch(error => {
-            console.error('❌ Erreur refresh ligne:', error);
-            console.error('❌ Message d\'erreur:', error.message);
-            console.error('❌ Stack trace:', error.stack);
+            debugError('❌ Erreur refresh ligne:', error);
+            debugError('❌ Message d\'erreur:', error.message);
+            debugError('❌ Stack trace:', error.stack);
 
             setInscriptionRowLoadingState(inscriptionId, false);
 

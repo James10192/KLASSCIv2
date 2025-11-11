@@ -712,7 +712,7 @@ function saveConfiguration() {
         }
     })
     .catch(error => {
-        console.error('Erreur:', error);
+        debugError('Erreur:', error);
         showError('Erreur de connexion');
     });
 }
@@ -738,7 +738,7 @@ function toggleConfiguration(configId, newStatus) {
         }
     })
     .catch(error => {
-        console.error('Erreur:', error);
+        debugError('Erreur:', error);
         showError('Erreur de connexion');
     });
 }
@@ -788,7 +788,7 @@ function saveOption() {
         }
     })
     .catch(error => {
-        console.error('Erreur:', error);
+        debugError('Erreur:', error);
         showError('Erreur de connexion');
     });
 }
@@ -814,7 +814,7 @@ function toggleOption(optionId, newStatus) {
         }
     })
     .catch(error => {
-        console.error('Erreur:', error);
+        debugError('Erreur:', error);
         showError('Erreur de connexion');
     });
 }
@@ -839,7 +839,7 @@ function deleteOption(optionId) {
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
+            debugError('Erreur:', error);
             showError('Erreur de connexion lors de la suppression');
         });
     }
@@ -861,7 +861,7 @@ function manageOptions(configId, filiereName, niveauName) {
             }
         })
         .catch(error => {
-            console.error('Erreur:', error);
+            debugError('Erreur:', error);
             showError('Erreur de connexion');
         });
 }

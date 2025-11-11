@@ -524,7 +524,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const pageLoadTime = new Date().toISOString();
     const pageId = Math.random().toString(36).substr(2, 9);
 
-    console.log('🔥 PAGE PAYWALL-CONFIG CHARGÉE', {
+    debugLog('🔥 PAGE PAYWALL-CONFIG CHARGÉE', {
         timestamp: pageLoadTime,
         pageId: pageId,
         url: window.location.href,
@@ -576,17 +576,17 @@ function updatePlanFields() {
         document.getElementById('max_inscriptions_per_year').value = template.max_inscriptions_per_year;
 
         // Show feedback
-        console.log('Plan template applied:', template.name);
+        debugLog('Plan template applied:', template.name);
     }
 }
 
 function saveConfiguration() {
-    console.log('saveConfiguration called');
+    debugLog('saveConfiguration called');
 
     // Empêcher les multiples clics
     const submitBtn = document.querySelector('#paywallConfigForm button[type="submit"]');
     if (submitBtn.disabled) {
-        console.log('Save already in progress, ignoring click');
+        debugLog('Save already in progress, ignoring click');
         return;
     }
 
@@ -611,7 +611,7 @@ function saveConfiguration() {
         data['is_active'] = false;
     }
 
-    console.log('Data to send:', data);
+    debugLog('Data to send:', data);
 
     fetch('{{ route("esbtp.paywall-config.store") }}', {
         method: 'POST',
@@ -623,7 +623,7 @@ function saveConfiguration() {
     })
     .then(response => response.json())
     .then(data => {
-        console.log('Response:', data);
+        debugLog('Response:', data);
         // Réactiver le bouton
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Sauvegarder Configuration';
@@ -636,7 +636,7 @@ function saveConfiguration() {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+        debugError('Error:', error);
         // Réactiver le bouton
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Sauvegarder Configuration';
@@ -681,7 +681,7 @@ function extendSubscription() {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+        debugError('Error:', error);
         Swal.fire({
             icon: 'error',
             title: 'Erreur',
@@ -711,7 +711,7 @@ function generateEmergencyCode() {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+        debugError('Error:', error);
         alert('Erreur lors de la génération du code d\'urgence');
     });
 }

@@ -19,7 +19,7 @@ class BonSortiePreview {
 
         this.previewContainer = document.getElementById("preview-container");
         if (!this.previewContainer) {
-            console.warn("Container de prévisualisation non trouvé");
+            debugWarn("Container de prévisualisation non trouvé");
             return;
         }
 
@@ -28,7 +28,7 @@ class BonSortiePreview {
         this.updatePreview();
         this.isInitialized = true;
 
-        console.log("BonSortiePreview initialisé");
+        debugLog("BonSortiePreview initialisé");
     }
 
     /**
@@ -48,7 +48,7 @@ class BonSortiePreview {
         // Vérifier que tous les champs existent
         for (const [key, field] of Object.entries(this.formFields)) {
             if (!field) {
-                console.warn(`Champ ${key} non trouvé`);
+                debugWarn(`Champ ${key} non trouvé`);
             }
         }
     }

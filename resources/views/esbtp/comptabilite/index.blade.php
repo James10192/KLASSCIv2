@@ -405,13 +405,13 @@
         
         if (nouveauPaiementBtn) {
             nouveauPaiementBtn.addEventListener('click', function(e) {
-                console.log('Navigation vers création de paiement');
+                debugLog('Navigation vers création de paiement');
             });
         }
         
         if (nouvelleDepenseBtn) {
             nouvelleDepenseBtn.addEventListener('click', function(e) {
-                console.log('Navigation vers création de dépense');
+                debugLog('Navigation vers création de dépense');
             });
         }
     });

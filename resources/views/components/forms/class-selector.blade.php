@@ -322,7 +322,7 @@ body.modal-open * {
 
 <script>
     function selectClasse(classeId, classeName) {
-        console.log(`Classe sélectionnée : ${classeName} (ID: ${classeId})`);
+        debugLog(`Classe sélectionnée : ${classeName} (ID: ${classeId})`);
         document.getElementById('classe_id').value = classeId;
         document.getElementById('classe_display').value = classeName;
         
@@ -343,7 +343,7 @@ body.modal-open * {
                 return response.json();
             })
             .then(data => {
-                console.log('Places disponibles:', data);
+                debugLog('Places disponibles:', data);
                 if (data.available_places !== undefined) {
                     let message = `Places disponibles: <strong>${data.available_places}</strong> / ${data.capacity}`;
                     let alertClass = 'alert-success';
@@ -358,7 +358,7 @@ body.modal-open * {
                 }
             })
             .catch(error => {
-                console.error('Erreur de vérification des places:', error);
+                debugError('Erreur de vérification des places:', error);
                 placesInfo.innerHTML = `<div class="alert alert-danger p-2 mt-2">Erreur lors de la récupération des places.</div>`;
             });
 
@@ -396,7 +396,7 @@ body.modal-open * {
                             }
                         })
                         .catch(error => {
-                            console.error('Erreur de vérification des places:', error);
+                            debugError('Erreur de vérification des places:', error);
                             // Simulation temporaire - afficher un nombre aléatoire de places
                             const placesSimulees = Math.floor(Math.random() * 20) + 5; // Entre 5 et 25 places
                             let alertClass = 'alert-success';
@@ -417,26 +417,26 @@ body.modal-open * {
 
     // Function to load classes
     function loadClasses() {
-        console.log('Loading classes...');
+        debugLog('Loading classes...');
         const tableBody = document.getElementById('classes-table-body');
         tableBody.innerHTML = '<tr><td colspan="5">Chargement...</td></tr>';
 
         // Load classes using the existing API
         fetch('/esbtp/inscriptions/getClasses')
             .then(response => {
-                console.log('Response status:', response.status);
+                debugLog('Response status:', response.status);
                 if (!response.ok) {
                     throw new Error(`Erreur HTTP ! Statut: ${response.status}`);
                 }
                 return response.json();
             })
             .then(classes => {
-                console.log('Classes loaded:', classes);
+                debugLog('Classes loaded:', classes);
                 allClasses = classes; // Stocker toutes les classes
                 displayClasses(allClasses);
             })
             .catch(error => {
-                console.error('Error loading classes:', error);
+                debugError('Error loading classes:', error);
                 const tableBody = document.getElementById('classes-table-body');
                 tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erreur lors du chargement des classes.</td></tr>';
             });
@@ -605,7 +605,7 @@ body.modal-open * {
 
     // Add AJAX loading logic for classes when modal opens
     document.getElementById('classeSelectorModal').addEventListener('show.bs.modal', function () {
-        console.log('Modal show event triggered');
+        debugLog('Modal show event triggered');
         loadClasses();
         
         // STOPPER TOUTES LES ANIMATIONS pour éviter curseur erratique
@@ -638,7 +638,7 @@ body.modal-open * {
 
     // SOLUTION DRASTIQUE - Forcer le modal au premier plan avec z-index élevé
     document.getElementById('classeSelectorModal').addEventListener('shown.bs.modal', function () {
-        console.log('Modal shown - Applying FORCE fixes');
+        debugLog('Modal shown - Applying FORCE fixes');
         
         const modal = document.getElementById('classeSelectorModal');
         const modalDialog = modal.querySelector('.modal-dialog');
@@ -680,12 +680,12 @@ body.modal-open * {
         modalDialog.style.setProperty('pointer-events', 'auto', 'important');
         modalContent.style.setProperty('pointer-events', 'auto', 'important');
         
-        console.log('FORCE fixes applied - Modal should be visible and centered');
+        debugLog('FORCE fixes applied - Modal should be visible and centered');
     });
 
     // SOLUTION ALTERNATIVE - Si la première ne marche pas, forcer manuellement
     document.getElementById('selectClasseBtn').addEventListener('click', function() {
-        console.log('Button clicked - Setting up manual modal fix');
+        debugLog('Button clicked - Setting up manual modal fix');
         
         // Attendre que Bootstrap ouvre le modal
         setTimeout(() => {
@@ -694,7 +694,7 @@ body.modal-open * {
             
             // Appliquer le fix manuellement après un délai
             if (modal && modalDialog) {
-                console.log('Applying manual modal fixes...');
+                debugLog('Applying manual modal fixes...');
                 
                 // Supprimer la classe fade temporairement pour éviter les animations
                 modal.classList.remove('fade');
@@ -724,7 +724,7 @@ body.modal-open * {
 
     // RÉTABLIR LES ANIMATIONS quand le modal se ferme
     document.getElementById('classeSelectorModal').addEventListener('hidden.bs.modal', function () {
-        console.log('Modal hidden - Restoring animations');
+        debugLog('Modal hidden - Restoring animations');
 
         // Retirer la classe spéciale
         document.body.classList.remove('modal-open-safe');
@@ -747,7 +747,7 @@ body.modal-open * {
     window.originalSelectClasse = window.selectClasse || selectClasse;
 
     function selectClasse(classeId, classeName) {
-        console.log(`Classe sélectionnée : ${classeName} (ID: ${classeId})`);
+        debugLog(`Classe sélectionnée : ${classeName} (ID: ${classeId})`);
         document.getElementById('classe_id').value = classeId;
         document.getElementById('classe_display').value = classeName;
 
@@ -768,7 +768,7 @@ body.modal-open * {
                 return response.json();
             })
             .then(data => {
-                console.log('Places disponibles:', data);
+                debugLog('Places disponibles:', data);
                 if (data.available_places !== undefined) {
                     let message = `Places disponibles: <strong>${data.available_places}</strong> / ${data.capacity}`;
                     let alertClass = 'alert-success';
@@ -783,7 +783,7 @@ body.modal-open * {
                 }
             })
             .catch(error => {
-                console.error('Erreur de vérification des places:', error);
+                debugError('Erreur de vérification des places:', error);
                 placesInfo.innerHTML = `<div class="alert alert-danger p-2 mt-2">Erreur lors de la récupération des places.</div>`;
             });
 
@@ -791,7 +791,7 @@ body.modal-open * {
         fetch(`/esbtp/inscriptions/check-transfert/${classeId}`)
             .then(response => response.json())
             .then(data => {
-                console.log('Vérification transfert:', data);
+                debugLog('Vérification transfert:', data);
                 if (data.success && data.necessite_confirmation) {
                     // Classe de 2ème année ou plus -> afficher modal de transfert
                     document.getElementById('transfert-niveau-nom').textContent = data.niveau_nom || data.niveau_code;
@@ -805,7 +805,7 @@ body.modal-open * {
                 }
             })
             .catch(error => {
-                console.error('Erreur vérification transfert:', error);
+                debugError('Erreur vérification transfert:', error);
                 // En cas d'erreur, on déclenche l'événement quand même
                 triggerClasseChangeEvent();
             });
@@ -859,7 +859,7 @@ body.modal-open * {
                     etablissementOrigineField.value = '';
                 }
 
-                console.log('Transfert confirmé:', {
+                debugLog('Transfert confirmé:', {
                     est_transfert: estTransfertField.value,
                     etablissement_origine: etablissementOrigineField.value
                 });

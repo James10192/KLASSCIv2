@@ -655,14 +655,14 @@ function toggleView(viewType) {
 // KPI Detail Modal
 function showDetail(type) {
     // Implementation for detailed KPI views
-    console.log(`Showing details for: ${type}`);
+    debugLog(`Showing details for: ${type}`);
     // Could open modal with detailed charts/tables
 }
 
 // Quick Planning Modal
 function openQuickPlanModal() {
     // Implementation for quick planning assistant
-    console.log('Opening quick plan modal');
+    debugLog('Opening quick plan modal');
     // Could open modal with AI-assisted planning
 }
 
@@ -710,7 +710,7 @@ if ('serviceWorker' in navigator) {
 const observer = new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) {
         if (entry.entryType === 'navigation') {
-            console.log('Page Load Time:', entry.loadEventEnd - entry.loadEventStart);
+            debugLog('Page Load Time:', entry.loadEventEnd - entry.loadEventStart);
         }
     }
 });

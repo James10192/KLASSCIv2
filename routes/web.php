@@ -186,6 +186,13 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     // Dashboard - Route principale qui redirige vers le tableau de bord approprié selon le rôle
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Route de test debug mode (uniquement en développement)
+    if (config('app.debug')) {
+        Route::get('/test-debug-mode', function () {
+            return view('test-debug-mode');
+        })->name('test.debug.mode');
+    }
+
     // Routes spécifiques pour chaque type de tableau de bord
     Route::middleware(['role:superAdmin'])->group(function () {
         Route::get('/dashboard/superadmin', [DashboardController::class, 'superadmin'])->name('dashboard.superadmin');

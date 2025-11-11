@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Erreur lors de la vérification des prérequis:', error);
+                debugError('Erreur lors de la vérification des prérequis:', error);
                 // Afficher un message d'erreur
                 requirementsList.innerHTML = '<li class="text-danger"><i class="fas fa-exclamation-triangle"></i> Impossible de vérifier les prérequis. Vérifiez votre connexion.</li>';
             });
@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Erreur lors des migrations:', error);
+            debugError('Erreur lors des migrations:', error);
             appendToConsole('❌ Erreur de connexion. Veuillez réessayer.', consoleOutput);
             // Réactiver le bouton
             migrationButton.disabled = false;
@@ -222,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Erreur lors de la création de l\'administrateur:', error);
+            debugError('Erreur lors de la création de l\'administrateur:', error);
             errorContainer.innerHTML = '<div class="alert alert-danger">Erreur de connexion. Veuillez réessayer.</div>';
             
             // Réactiver le bouton
@@ -270,7 +270,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Erreur lors de la finalisation:', error);
+            debugError('Erreur lors de la finalisation:', error);
             finalStep.innerHTML = `
                 <div class="text-center">
                     <i class="fas fa-exclamation-circle text-danger fa-5x mb-3"></i>

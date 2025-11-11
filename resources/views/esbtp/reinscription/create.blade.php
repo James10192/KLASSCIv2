@@ -507,7 +507,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 placesInfo.innerHTML = `<div class="alert ${alertClass} p-2 mt-2">${message}</div>`;
             })
             .catch(function(error) {
-                console.error('Erreur de vérification des places:', error);
+                debugError('Erreur de vérification des places:', error);
                 placesInfo.innerHTML = '<div class="alert alert-danger p-2 mt-2">Erreur lors de la récupération des places.</div>';
                 setReinscriptionButtonState(false, 'Erreur lors de la récupération des places. Réessayez ou sélectionnez une autre classe.');
             });
@@ -545,7 +545,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Erreur:', error);
+                debugError('Erreur:', error);
                 fraisContainer.innerHTML = `<div class="alert alert-danger">Erreur lors du chargement des frais</div>`;
             });
         }

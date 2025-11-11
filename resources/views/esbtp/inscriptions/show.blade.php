@@ -2972,22 +2972,22 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
 </div>
 
 <script>
-    console.log('🚀 SCRIPT CHARGÉ - Fonctions modales en cours de définition...');
+    debugLog('🚀 SCRIPT CHARGÉ - Fonctions modales en cours de définition...');
     
     // Logs simples pour debug - Style class-selector  
     function logModal(modalId, message) {
-        console.log(`📝 Modal ${modalId}: ${message}`);
+        debugLog(`📝 Modal ${modalId}: ${message}`);
     }
 
     // Fonction simple pour préparer les modals - comme class-selector
     function setupModalBasic(modalId) {
-        console.log(`📝 Configuration basique pour modal ${modalId}`);
+        debugLog(`📝 Configuration basique pour modal ${modalId}`);
         // Laisser Bootstrap gérer tout le reste
     }
 
     // Fonctions globales simples pour les boutons onclick - Style class-selector
     function preparePaymentModal(inscriptionId) {
-        console.log('🎯 preparePaymentModal appelé avec ID:', inscriptionId);
+        debugLog('🎯 preparePaymentModal appelé avec ID:', inscriptionId);
         
         const form = document.getElementById('paymentForm');
         const correctAction = `/esbtp/inscriptions/${inscriptionId}/valider-avec-paiement`;
@@ -3002,22 +3002,22 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
             dateInput.value = new Date().toISOString().split('T')[0];
         }
         
-        console.log('✅ Formulaire de paiement préparé, action:', form.action);
+        debugLog('✅ Formulaire de paiement préparé, action:', form.action);
     }
 
     function openValidationModal(inscriptionId) {
-        console.log('🎯 openValidationModal appelé avec ID:', inscriptionId);
+        debugLog('🎯 openValidationModal appelé avec ID:', inscriptionId);
         
         const form = document.getElementById('validationForm');
         const correctAction = `/esbtp/inscriptions/${inscriptionId}/valider-definitivement`;
         form.action = correctAction;
         form.reset();
         
-        console.log('✅ Formulaire de validation préparé, action:', form.action);
+        debugLog('✅ Formulaire de validation préparé, action:', form.action);
     }
 
     function preparePaymentModalForCategory(inscriptionId, categoryId) {
-        console.log('🎯 preparePaymentModalForCategory appelé avec ID:', inscriptionId, 'Category:', categoryId);
+        debugLog('🎯 preparePaymentModalForCategory appelé avec ID:', inscriptionId, 'Category:', categoryId);
         
         preparePaymentModal(inscriptionId);
         
@@ -3028,7 +3028,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                 categorySelect.value = categoryId;
                 const event = new Event('change');
                 categorySelect.dispatchEvent(event);
-                console.log('✅ Catégorie pré-sélectionnée:', categoryId);
+                debugLog('✅ Catégorie pré-sélectionnée:', categoryId);
             }
         }, 100);
     }
@@ -3047,12 +3047,12 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
     };
 
     function prepareTransferModal(inscriptionId, sourceCategoryId, availableAmount, sourceCategoryName) {
-        console.log('🔄 prepareTransferModal appelé (multi-destinations):', {
+        debugLog('🔄 prepareTransferModal appelé (multi-destinations):', {
             inscriptionId, sourceCategoryId, availableAmount, sourceCategoryName
         });
         
         // Debug : vérifier les types de données
-        console.log('📊 Types des données reçues:', {
+        debugLog('📊 Types des données reçues:', {
             inscriptionId: typeof inscriptionId,
             sourceCategoryId: typeof sourceCategoryId,
             availableAmount: typeof availableAmount,
@@ -3067,7 +3067,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
             sourceCategoryName
         };
         
-        console.log('📦 Données stockées dans transferData:', transferData);
+        debugLog('📦 Données stockées dans transferData:', transferData);
         
         // Forcer l'application des données immédiatement
         applyTransferData();
@@ -3079,10 +3079,10 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
     }
     
     function applyTransferData() {
-        console.log('🔧 applyTransferData appelé avec:', transferData);
+        debugLog('🔧 applyTransferData appelé avec:', transferData);
         
         if (!transferData.sourceCategoryId) {
-            console.warn('⚠️ Pas de données de transfert disponibles');
+            debugWarn('⚠️ Pas de données de transfert disponibles');
             return;
         }
         
@@ -3099,42 +3099,42 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
             submitBtn: document.getElementById('transfer_submit_btn')
         };
         
-        console.log('🔍 Éléments trouvés:', Object.keys(elements).filter(key => elements[key] !== null));
-        console.log('❌ Éléments manquants:', Object.keys(elements).filter(key => elements[key] === null));
+        debugLog('🔍 Éléments trouvés:', Object.keys(elements).filter(key => elements[key] !== null));
+        debugLog('❌ Éléments manquants:', Object.keys(elements).filter(key => elements[key] === null));
         
         // Appliquer les données aux champs cachés
         if (elements.sourceCategoryField) {
             elements.sourceCategoryField.value = transferData.sourceCategoryId;
-            console.log('✅ Source category définie:', transferData.sourceCategoryId);
+            debugLog('✅ Source category définie:', transferData.sourceCategoryId);
         }
         
         if (elements.amountHiddenField) {
             elements.amountHiddenField.value = transferData.availableAmount;
-            console.log('✅ Amount défini:', transferData.availableAmount);
+            debugLog('✅ Amount défini:', transferData.availableAmount);
         }
         
         // Appliquer les données d'affichage
         if (elements.sourceNameEl) {
             elements.sourceNameEl.textContent = transferData.sourceCategoryName || 'Catégorie inconnue';
-            console.log('✅ Source name affiché:', transferData.sourceCategoryName);
+            debugLog('✅ Source name affiché:', transferData.sourceCategoryName);
         }
         
         if (elements.sourceDisplayEl) {
             elements.sourceDisplayEl.textContent = transferData.sourceCategoryName || 'Catégorie inconnue';
-            console.log('✅ Source display affiché:', transferData.sourceCategoryName);
+            debugLog('✅ Source display affiché:', transferData.sourceCategoryName);
         }
         
         if (elements.amountDisplayEl) {
             const formattedAmount = new Intl.NumberFormat('fr-FR').format(transferData.availableAmount || 0) + ' FCFA';
             elements.amountDisplayEl.textContent = formattedAmount;
-            console.log('✅ Amount display affiché:', formattedAmount);
+            debugLog('✅ Amount display affiché:', formattedAmount);
         }
         
         // Réinitialiser et configurer le conteneur des destinations
         if (elements.container) {
             elements.container.innerHTML = '';
             destinationCounter = 0;
-            console.log('✅ Container des destinations réinitialisé');
+            debugLog('✅ Container des destinations réinitialisé');
             
             // Ajouter la première destination
             addDestinationRow(transferData.sourceCategoryId, transferData.availableAmount);
@@ -3153,7 +3153,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
             elements.submitBtn.disabled = true;
         }
         
-        console.log('✅ Données de transfert appliquées avec succès');
+        debugLog('✅ Données de transfert appliquées avec succès');
     }
     
     // Fonction pour ajouter une ligne de destination
@@ -3437,16 +3437,16 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
         });
     }
     
-    console.log('✅ FONCTIONS MODALES DÉFINIES:');
-    console.log('  - preparePaymentModal:', typeof preparePaymentModal);
-    console.log('  - openValidationModal:', typeof openValidationModal);
-    console.log('  - preparePaymentModalForCategory:', typeof preparePaymentModalForCategory);
-    console.log('  - prepareTransferModal:', typeof prepareTransferModal);
-    console.log('  - prepareEditSubscriptionModal:', typeof window.prepareEditSubscriptionModal);
+    debugLog('✅ FONCTIONS MODALES DÉFINIES:');
+    debugLog('  - preparePaymentModal:', typeof preparePaymentModal);
+    debugLog('  - openValidationModal:', typeof openValidationModal);
+    debugLog('  - preparePaymentModalForCategory:', typeof preparePaymentModalForCategory);
+    debugLog('  - prepareTransferModal:', typeof prepareTransferModal);
+    debugLog('  - prepareEditSubscriptionModal:', typeof window.prepareEditSubscriptionModal);
 
     // Debug des éléments du modal d'édition
     const editModal = document.getElementById('editSubscriptionModal');
-    console.log('🔍 Modal d\'édition présent:', !!editModal);
+    debugLog('🔍 Modal d\'édition présent:', !!editModal);
 
     if (editModal) {
         const requiredElements = [
@@ -3460,13 +3460,13 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
 
         requiredElements.forEach(id => {
             const element = document.getElementById(id);
-            console.log(`  - ${id}:`, !!element);
+            debugLog(`  - ${id}:`, !!element);
         });
     }
 
     // Initialisation au chargement de la page
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('🚀 Initialisation du diagnostic des modals');
+        debugLog('🚀 Initialisation du diagnostic des modals');
         
         // Surveillance simple des événements de modals - Style class-selector
         const modals = ['paymentModal', 'validationModal', 'subscriptionModal', 'transferModal', 'reliquatPaymentModal'];
@@ -3476,14 +3476,14 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
         if (transferModal) {
             // À l'ouverture : appliquer les données de transfert
             transferModal.addEventListener('shown.bs.modal', function() {
-                console.log('🎯 Modal de transfert ouvert - Application des données');
+                debugLog('🎯 Modal de transfert ouvert - Application des données');
                 
                 // Forcer l'application des données stockées
                 if (transferData.sourceCategoryId) {
                     applyTransferData();
-                    console.log('🔄 Données de transfert réappliquées');
+                    debugLog('🔄 Données de transfert réappliquées');
                 } else {
-                    console.warn('⚠️ Aucune donnée de transfert stockée');
+                    debugWarn('⚠️ Aucune donnée de transfert stockée');
                 }
             });
             
@@ -3504,7 +3504,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                     sourceCategoryName: null
                 };
                 
-                console.log('📝 Modal de transfert réinitialisé et données nettoyées');
+                debugLog('📝 Modal de transfert réinitialisé et données nettoyées');
             });
         }
         
@@ -3535,7 +3535,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
             if (modal) {
                 // Événement pour forcer z-index correct à l'ouverture
                 modal.addEventListener('show.bs.modal', function(e) {
-                    console.log(`🔧 Préparation modal ${modalId}`);
+                    debugLog(`🔧 Préparation modal ${modalId}`);
                     
                     // Désactiver toutes les animations pendant l'ouverture
                     document.body.style.setProperty('overflow', 'hidden', 'important');
@@ -3551,7 +3551,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                 });
                 
                 modal.addEventListener('shown.bs.modal', function(e) {
-                    console.log(`✅ Modal ${modalId} ouvert - Application des corrections`);
+                    debugLog(`✅ Modal ${modalId} ouvert - Application des corrections`);
                     
                     // Forcer z-index très élevé
                     modal.style.setProperty('z-index', '9999', 'important');
@@ -3585,7 +3585,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                 
                 // Nettoyer à la fermeture
                 modal.addEventListener('hidden.bs.modal', function(e) {
-                    console.log(`🧹 Nettoyage modal ${modalId}`);
+                    debugLog(`🧹 Nettoyage modal ${modalId}`);
                     
                     // Supprimer style anti-cursor
                     const antiCursorStyle = document.getElementById(`anti-cursor-${modalId}`);
@@ -3609,7 +3609,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                 const defaultAmount = selectedOption.getAttribute('data-default-amount');
                 if (defaultAmount) {
                     montantInput.value = defaultAmount;
-                    console.log('💰 Montant auto-rempli:', defaultAmount);
+                    debugLog('💰 Montant auto-rempli:', defaultAmount);
                 }
             });
         }
@@ -3624,14 +3624,14 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                 const defaultAmount = selectedOption.getAttribute('data-default-amount');
                 if (defaultAmount) {
                     subscriptionAmountInput.value = defaultAmount;
-                    console.log('💰 Montant souscription auto-rempli:', defaultAmount);
+                    debugLog('💰 Montant souscription auto-rempli:', defaultAmount);
                 }
             });
         }
 
         // Fonction pour préparer le modal de paiement de reliquat
         window.prepareReliquatPaymentModal = function(reliquatId, montantRestant, nomFrais) {
-            console.log('🔄 Préparation modal paiement reliquat:', { reliquatId, montantRestant, nomFrais });
+            debugLog('🔄 Préparation modal paiement reliquat:', { reliquatId, montantRestant, nomFrais });
 
             // Remplir les données du reliquat
             document.getElementById('reliquat_id').value = reliquatId;
@@ -3647,7 +3647,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
 
         // Fonction pour préparer le modal d'édition de souscription (SuperAdmin)
         window.prepareEditSubscriptionModal = function(subscriptionId, categoryName, currentAmount) {
-            console.log('✏️ Préparation modal édition souscription:', { subscriptionId, categoryName, currentAmount });
+            debugLog('✏️ Préparation modal édition souscription:', { subscriptionId, categoryName, currentAmount });
 
             try {
                 // Vérifier que tous les éléments existent
@@ -3660,12 +3660,12 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                     form: document.getElementById('editSubscriptionForm')
                 };
 
-                console.log('🔍 Éléments trouvés:', elements);
+                debugLog('🔍 Éléments trouvés:', elements);
 
                 // Vérifier si tous les éléments existent
                 for (const [key, element] of Object.entries(elements)) {
                     if (!element) {
-                        console.error(`❌ Élément manquant: ${key}`);
+                        debugError(`❌ Élément manquant: ${key}`);
                         alert(`Erreur: Élément manquant dans le modal: ${key}`);
                         return;
                     }
@@ -3684,8 +3684,8 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                 const currentInscriptionId = {{ $inscription->id }};
                 elements.form.action = `/esbtp/inscriptions/${currentInscriptionId}/subscriptions/${subscriptionId}`;
 
-                console.log('✅ Modal édition souscription préparé, action:', elements.form.action);
-                console.log('✅ Valeurs définies:', {
+                debugLog('✅ Modal édition souscription préparé, action:', elements.form.action);
+                debugLog('✅ Valeurs définies:', {
                     id: elements.id.value,
                     categoryName: elements.categoryName.value,
                     currentAmount: elements.currentAmount.value,
@@ -3693,7 +3693,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                 });
 
             } catch (error) {
-                console.error('❌ Erreur dans prepareEditSubscriptionModal:', error);
+                debugError('❌ Erreur dans prepareEditSubscriptionModal:', error);
                 alert('Erreur lors de la préparation du modal: ' + error.message);
             }
         };
@@ -3728,7 +3728,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
             formData.append('_method', 'PUT');
 
             // Debug: afficher les données envoyées
-            console.log('📤 Données envoyées:', {
+            debugLog('📤 Données envoyées:', {
                 action: this.action,
                 amount: formData.get('amount'),
                 reason: formData.get('reason'),
@@ -3759,12 +3759,12 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                 }
             })
             .catch(error => {
-                console.error('Erreur:', error);
+                debugError('Erreur:', error);
                 alert('Une erreur est survenue lors de la mise à jour');
             });
             });
         } else {
-            console.warn('⚠️ Formulaire editSubscriptionForm non trouvé');
+            debugWarn('⚠️ Formulaire editSubscriptionForm non trouvé');
         }
     });
 
@@ -3782,7 +3782,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
         const $modal = $(modalSelector);
 
         if ($form.length === 0) {
-            console.warn(`⚠️ Formulaire ${formSelector} non trouvé`);
+            debugWarn(`⚠️ Formulaire ${formSelector} non trouvé`);
             return;
         }
 
@@ -3797,13 +3797,13 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
             if (isSubmitting) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
-                console.warn(`⚠️ ${formSelector} - Clic bloqué, soumission déjà en cours`);
+                debugWarn(`⚠️ ${formSelector} - Clic bloqué, soumission déjà en cours`);
                 return false;
             }
 
             // Marquer comme en cours de soumission IMMÉDIATEMENT
             isSubmitting = true;
-            console.log(`🔒 ${formSelector} - Bouton cliqué, verrouillage immédiat`);
+            debugLog(`🔒 ${formSelector} - Bouton cliqué, verrouillage immédiat`);
 
             // Sauvegarder le texte original
             originalButtonText = $submitBtn.html();
@@ -3836,7 +3836,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
         if ($modal.length > 0) {
             $modal.on('hidden.bs.modal', function() {
                 if (isSubmitting) {
-                    console.log(`🔓 ${formSelector} - Modal fermé, réinitialisation`);
+                    debugLog(`🔓 ${formSelector} - Modal fermé, réinitialisation`);
                     isSubmitting = false;
 
                     const $submitBtn = $form.find('button[type="submit"]');
@@ -3852,7 +3852,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
             });
         }
 
-        console.log(`✅ Protection double-clic activée pour ${formSelector} (modal: ${modalSelector})`);
+        debugLog(`✅ Protection double-clic activée pour ${formSelector} (modal: ${modalSelector})`);
     }
 
     // Appliquer la protection sur tous les formulaires de paiement

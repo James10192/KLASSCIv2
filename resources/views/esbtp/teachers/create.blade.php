@@ -372,7 +372,7 @@
                                 laboratorySelect.appendChild(option);
                             });
                         })
-                        .catch(error => console.error('Error fetching laboratories:', error));
+                        .catch(error => debugError('Error fetching laboratories:', error));
                 }
             });
         }

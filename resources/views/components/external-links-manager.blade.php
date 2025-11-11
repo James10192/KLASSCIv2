@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } catch (error) {
                 this.showError('Erreur de connexion');
-                console.error(error);
+                debugError(error);
             } finally {
                 this.setLoading(this.generateBtn, false);
             }
@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         async loadActiveLinks() {
             if (!this.linksContainer) {
-                console.log('Container des liens non trouvé, skip loadActiveLinks');
+                debugLog('Container des liens non trouvé, skip loadActiveLinks');
                 return;
             }
 
@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const links = await response.json();
                 this.renderActiveLinks(links);
             } catch (error) {
-                console.error('Erreur lors du chargement des liens actifs:', error);
+                debugError('Erreur lors du chargement des liens actifs:', error);
                 
                 if (this.linksContainer) {
                     this.linksContainer.innerHTML = `
@@ -343,7 +343,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } catch (error) {
                 this.showError('Erreur de connexion');
-                console.error(error);
+                debugError(error);
             }
         },
 

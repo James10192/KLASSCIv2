@@ -867,10 +867,10 @@
     // Fonction d'initialisation de Choices.js
     function initializeChoices(selectElement, customConfig = {}) {
         const selectId = selectElement.id;
-        console.log("Initialisation de Choices.js pour:", selectId);
+        debugLog("Initialisation de Choices.js pour:", selectId);
 
         if (!selectElement) {
-            console.error("Élément select non trouvé:", selectId);
+            debugError("Élément select non trouvé:", selectId);
             return null;
         }
 
@@ -886,10 +886,10 @@
         try {
             const choices = new Choices(selectElement, config);
             choicesInstances[selectId] = choices;
-            console.log("Instance Choices.js créée avec succès pour:", selectId);
+            debugLog("Instance Choices.js créée avec succès pour:", selectId);
             return choices;
         } catch (error) {
-            console.error("Erreur lors de la création de l'instance Choices.js:", error);
+            debugError("Erreur lors de la création de l'instance Choices.js:", error);
             return null;
         }
     }

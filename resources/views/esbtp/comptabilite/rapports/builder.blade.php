@@ -613,7 +613,7 @@
 
         configureComponent(id) {
             // Open configuration modal for component
-            console.log('Configure component:', id);
+            debugLog('Configure component:', id);
             // Implementation would open a modal with component-specific settings
         }
 
@@ -672,7 +672,7 @@
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+                debugError('Error:', error);
                 alert('Erreur lors de la génération du rapport.');
             });
         }
@@ -694,7 +694,7 @@
 
     // Global functions
     function addPredictiveAnalysis(type) {
-        console.log('Adding predictive analysis:', type);
+        debugLog('Adding predictive analysis:', type);
         // Implementation would add AI-powered analytics components
     }
 

@@ -1054,7 +1054,7 @@
                             @if(config('app.debug'))
                             // DEBUG JavaScript sur page SHOW
                             document.addEventListener('DOMContentLoaded', function() {
-                                console.log('🔍 DEBUG PAGE SHOW CHARGÉE à {{ date('H:i:s') }}');
+                                debugLog('🔍 DEBUG PAGE SHOW CHARGÉE à {{ date('H:i:s') }}');
 
                                 @if($teacher->availabilities && $teacher->availabilities->count() > 0)
                                 let availCount = {{ $teacher->availabilities->count() }};
@@ -1079,8 +1079,8 @@
                                 // Afficher après 1 seconde pour laisser la page se charger
                                 setTimeout(() => {
                                     if(confirm(debugShowInfo + '\n\nVoulez-vous voir les détails dans la console ?')) {
-                                        console.log('🔍 Données brutes DB:', @json($teacher->availabilities->toArray()));
-                                        console.log('🔍 Données finales:', finalData);
+                                        debugLog('🔍 Données brutes DB:', @json($teacher->availabilities->toArray()));
+                                        debugLog('🔍 Données finales:', finalData);
                                     }
                                 }, 1000);
                                 @endif
@@ -1244,7 +1244,7 @@
                             // Envoyer les données via AJAX
                             const teacherId = {{ $teacher->id }};
                             @if(config('app.debug'))
-                            console.log('Données à envoyer:', { changes: changedSlots });
+                            debugLog('Données à envoyer:', { changes: changedSlots });
                             @endif
 
                             fetch(`/esbtp/enseignants/${teacherId}/update-availability`, {
@@ -1257,13 +1257,13 @@
                             })
                             .then(response => {
                                 @if(config('app.debug'))
-                                console.log('Réponse reçue:', response);
+                                debugLog('Réponse reçue:', response);
                                 @endif
                                 return response.json();
                             })
                             .then(data => {
                                 @if(config('app.debug'))
-                                console.log('Données reçues:', data);
+                                debugLog('Données reçues:', data);
                                 @endif
                                 if (data.success) {
                                     showNotification('Disponibilités mises à jour avec succès !', 'success');
@@ -1285,7 +1285,7 @@
                                 }
                             })
                             .catch(error => {
-                                console.error('Erreur complète:', error);
+                                debugError('Erreur complète:', error);
                                 showNotification('Erreur de connexion lors de la sauvegarde: ' + error.message, 'danger');
                             });
                         }
@@ -1527,7 +1527,7 @@ document.getElementById('resetPasswordForm').addEventListener('submit', function
         }
     })
     .catch(error => {
-        console.error('Erreur:', error);
+        debugError('Erreur:', error);
         showNotification('Erreur de connexion', 'danger');
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalBtnText;
@@ -1539,7 +1539,7 @@ function copyPassword() {
     navigator.clipboard.writeText(password).then(() => {
         showNotification('Mot de passe copié dans le presse-papiers !', 'success');
     }).catch(err => {
-        console.error('Erreur copie:', err);
+        debugError('Erreur copie:', err);
         showNotification('Erreur lors de la copie', 'danger');
     });
 }
