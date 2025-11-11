@@ -1166,7 +1166,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                     justify-content: center;
                                     font-size: 24px;
                                     flex-shrink: 0;
-                                    margin-right: var(--space-md, 16px);
+                                    margin-right: 24px;
                                 }
 
                                 .financial-icon-wrapper.status-paid { background: #dcfce7; color: #10b981; }
