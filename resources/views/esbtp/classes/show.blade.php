@@ -23,12 +23,20 @@
                 @endif
 
                 @if(auth()->user()->hasRole('superAdmin'))
-                <a href="{{ route('esbtp.classes.edit', ['classe' => $classe->id]) }}" class="btn-acasi warning">
+                {{-- Lien "Modifier" avec return_url vers show actuelle --}}
+                <a href="{{ route('esbtp.classes.edit', array_merge(['classe' => $classe->id], ['return_url' => request()->fullUrl()])) }}" class="btn-acasi warning">
                     <i class="fas fa-edit"></i>Modifier
                 </a>
                 @endif
 
-                <a href="{{ route('esbtp.student.classes.index') }}" class="btn-acasi secondary">
+                {{-- Bouton "Retour à la liste" avec préservation des filtres si présents dans l'URL --}}
+                @php
+                    $queryParams = request()->query();
+                    // Retirer le paramètre 'classe' si présent
+                    unset($queryParams['classe']);
+                    $returnToIndexUrl = route('esbtp.student.classes.index', $queryParams);
+                @endphp
+                <a href="{{ $returnToIndexUrl }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>Retour à la liste
                 </a>
             </div>

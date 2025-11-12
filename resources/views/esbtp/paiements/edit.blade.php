@@ -104,7 +104,7 @@
                                     <option value="">-- Sélectionner --</option>
                                     <option value="Espèces" {{ old('mode_paiement', $paiement->mode_paiement) == 'Espèces' ? 'selected' : '' }}>Espèces</option>
                                     <option value="Chèque" {{ old('mode_paiement', $paiement->mode_paiement) == 'Chèque' ? 'selected' : '' }}>Chèque</option>
-                                    <option value="Virement" {{ old('mode_paiement', $paiement->mode_paiement) == 'Virement' ? 'selected' : '' }}>Virement bancaire</option>
+                                    <option value="Virement bancaire" {{ old('mode_paiement', $paiement->mode_paiement) == 'Virement bancaire' ? 'selected' : '' }}>Virement bancaire</option>
                                     <option value="Mobile Money" {{ old('mode_paiement', $paiement->mode_paiement) == 'Mobile Money' ? 'selected' : '' }}>Mobile Money</option>
                                     <option value="Carte bancaire" {{ old('mode_paiement', $paiement->mode_paiement) == 'Carte bancaire' ? 'selected' : '' }}>Carte bancaire</option>
                                 </select>
@@ -132,21 +132,21 @@
                             <i class="fas fa-tags"></i>
                             Classification du Paiement
                         </div>
-                        <div class="main-card-subtitle">Motif, tranche et commentaires</div>
+                        <div class="main-card-subtitle">Catégorie, tranche et commentaires</div>
                     </div>
                     <div class="main-card-body">
                         <div class="form-grid">
                             <div class="form-group">
-                                <label for="motif" class="form-label">Motif du paiement <span class="text-danger">*</span></label>
-                                <select name="motif" id="motif" class="form-select @error('motif') error @enderror" required>
+                                <label for="frais_category_id" class="form-label">Catégorie de frais <span class="text-danger">*</span></label>
+                                <select name="frais_category_id" id="frais_category_id" class="form-select @error('frais_category_id') error @enderror" required>
                                     <option value="">-- Sélectionner --</option>
-                                    <option value="Frais d'inscription" {{ old('motif', $paiement->motif) == "Frais d'inscription" ? 'selected' : '' }}>Frais d'inscription</option>
-                                    <option value="Scolarité" {{ old('motif', $paiement->motif) == 'Scolarité' ? 'selected' : '' }}>Scolarité</option>
-                                    <option value="Frais d'examen" {{ old('motif', $paiement->motif) == "Frais d'examen" ? 'selected' : '' }}>Frais d'examen</option>
-                                    <option value="Frais de diplôme" {{ old('motif', $paiement->motif) == 'Frais de diplôme' ? 'selected' : '' }}>Frais de diplôme</option>
-                                    <option value="Frais divers" {{ old('motif', $paiement->motif) == 'Frais divers' ? 'selected' : '' }}>Frais divers</option>
+                                    @foreach($feeCategories as $category)
+                                        <option value="{{ $category->id }}" {{ old('frais_category_id', $selectedCategoryId) == $category->id ? 'selected' : '' }}>
+                                            {{ $category->name }}
+                                        </option>
+                                    @endforeach
                                 </select>
-                                @error('motif')
+                                @error('frais_category_id')
                                     <div class="form-error">{{ $message }}</div>
                                 @enderror
                             </div>

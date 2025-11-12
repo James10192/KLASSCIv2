@@ -359,8 +359,53 @@ class ESBTPClasseController extends Controller
             }
         }
 
-        return redirect()->route('esbtp.classes.index')
+        // Récupérer et valider le return_url
+        $returnUrl = $this->validateReturnUrl($request->input('return_url'));
+
+        return redirect($returnUrl)
             ->with('success', 'La classe a été mise à jour avec succès.');
+    }
+
+    /**
+     * Valide et nettoie l'URL de retour pour éviter les attaques d'open redirect.
+     *
+     * @param  string|null  $url
+     * @return string
+     */
+    private function validateReturnUrl($url)
+    {
+        // Si pas d'URL fournie, retourner la page show de la classe par défaut (Option B)
+        if (!$url) {
+            return route('esbtp.classes.show', ['classe' => request()->route('classe')->id]);
+        }
+
+        // Parser l'URL fournie
+        $parsedUrl = parse_url($url);
+
+        // Si l'URL n'est pas valide, retourner le fallback
+        if ($parsedUrl === false) {
+            return route('esbtp.classes.show', ['classe' => request()->route('classe')->id]);
+        }
+
+        // Vérifier que l'URL est interne (pas de domaine externe)
+        if (isset($parsedUrl['host'])) {
+            $appUrl = parse_url(config('app.url'));
+
+            // Si l'URL a un host différent de notre app, c'est une tentative de redirect externe
+            if ($parsedUrl['host'] !== ($appUrl['host'] ?? '')) {
+                \Log::warning('Tentative de redirect externe bloquée', [
+                    'url' => $url,
+                    'host' => $parsedUrl['host'],
+                    'expected_host' => $appUrl['host'] ?? '',
+                    'user_id' => auth()->id()
+                ]);
+
+                return route('esbtp.classes.show', ['classe' => request()->route('classe')->id]);
+            }
+        }
+
+        // URL valide et interne, on la retourne
+        return $url;
     }
 
     /**

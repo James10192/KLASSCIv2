@@ -63,12 +63,14 @@
                 @endif
             </div>
             <div style="display: flex; gap: var(--space-xs);">
-                <a href="{{ route('esbtp.classes.show', ['classe' => $classe->id]) }}" class="btn-acasi secondary" style="padding: var(--space-xs);" title="Voir les détails">
+                {{-- Lien "Voir détails" avec filtres préservés dans l'URL --}}
+                <a href="{{ route('esbtp.classes.show', array_merge(['classe' => $classe->id], request()->query())) }}" class="btn-acasi secondary" style="padding: var(--space-xs);" title="Voir les détails">
                     <i class="fas fa-eye"></i>
                 </a>
 
                 @if(auth()->user()->hasRole('superAdmin'))
-                <a href="{{ route('esbtp.classes.edit', ['classe' => $classe->id]) }}" class="btn-acasi primary" style="padding: var(--space-xs);" title="Modifier">
+                {{-- Lien "Modifier" avec return_url vers index filtrée --}}
+                <a href="{{ route('esbtp.classes.edit', array_merge(['classe' => $classe->id], ['return_url' => request()->fullUrl()])) }}" class="btn-acasi primary" style="padding: var(--space-xs);" title="Modifier">
                     <i class="fas fa-edit"></i>
                 </a>
                 @endif

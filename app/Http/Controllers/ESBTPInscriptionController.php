@@ -1552,10 +1552,23 @@ class ESBTPInscriptionController extends Controller
         ]);
 
         try {
+            // Normaliser le mode de paiement (première lettre en majuscule)
+            // Pour correspondre aux valeurs du select edit (Espèces, Chèque, Virement bancaire, Mobile Money)
+            $modePaiementNormalized = $request->mode_paiement;
+            if ($modePaiementNormalized === 'especes') {
+                $modePaiementNormalized = 'Espèces';
+            } elseif ($modePaiementNormalized === 'cheque') {
+                $modePaiementNormalized = 'Chèque';
+            } elseif ($modePaiementNormalized === 'virement') {
+                $modePaiementNormalized = 'Virement bancaire';
+            } elseif ($modePaiementNormalized === 'mobile_money') {
+                $modePaiementNormalized = 'Mobile Money';
+            }
+
             $paiementData = [
                 'montant' => $request->montant,
                 'fee_category_id' => $request->fee_category_id,
-                'mode_paiement' => $request->mode_paiement,
+                'mode_paiement' => $modePaiementNormalized,
                 'reference_paiement' => $request->reference_paiement,
                 'date_paiement' => $request->date_paiement,
                 'observations' => $request->observations,

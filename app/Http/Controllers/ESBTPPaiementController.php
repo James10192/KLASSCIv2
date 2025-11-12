@@ -969,7 +969,22 @@ class ESBTPPaiementController extends Controller
                 ->with('error', 'Ce paiement a déjà été validé et ne peut plus être modifié.');
         }
 
-        return view('esbtp.paiements.edit', compact('paiement'));
+        // Charger toutes les catégories de frais actives pour le select "Catégorie"
+        $feeCategories = \App\Models\ESBTPFraisCategory::active()->ordered()->get();
+
+        // Essayer de retrouver la catégorie correspondant au motif actuel
+        // (pour pré-sélectionner la bonne option même si frais_category_id est null/vide)
+        $selectedCategoryId = $paiement->frais_category_id;
+
+        if (!$selectedCategoryId && $paiement->motif) {
+            // Si pas de frais_category_id, chercher par nom de motif
+            $matchingCategory = $feeCategories->firstWhere('name', $paiement->motif);
+            if ($matchingCategory) {
+                $selectedCategoryId = $matchingCategory->id;
+            }
+        }
+
+        return view('esbtp.paiements.edit', compact('paiement', 'feeCategories', 'selectedCategoryId'));
     }
 
     /**
@@ -1002,15 +1017,19 @@ class ESBTPPaiementController extends Controller
             'mode_paiement' => 'required|string',
             'reference_paiement' => 'nullable|string',
             'tranche' => 'nullable|string',
-            'motif' => 'required|string',
+            'frais_category_id' => 'required|exists:esbtp_frais_categories,id',
             'commentaire' => 'nullable|string',
         ]);
 
         try {
             DB::beginTransaction();
 
+            // Récupérer la catégorie de frais pour mettre à jour le motif automatiquement
+            $fraisCategory = \App\Models\ESBTPFraisCategory::find($validated['frais_category_id']);
+
             // Mettre à jour le paiement
             $paiement->fill($validated);
+            $paiement->motif = $fraisCategory->name; // Synchroniser le motif avec la catégorie
             $paiement->updated_by = Auth::id();
             $paiement->save();
 

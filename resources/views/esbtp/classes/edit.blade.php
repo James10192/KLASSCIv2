@@ -16,11 +16,18 @@
                 <p class="header-subtitle">{{ $classe->name }}</p>
             </div>
             <div class="header-actions">
-                <a href="{{ route('esbtp.classes.show', ['classe' => $classe->id]) }}" class="btn-acasi info">
+                {{-- Lien "Voir les détails" avec filtres préservés --}}
+                @php
+                    $returnUrl = request()->input('return_url', route('esbtp.classes.show', ['classe' => $classe->id]));
+                    $queryParams = request()->query();
+                    unset($queryParams['return_url']);
+                @endphp
+                <a href="{{ route('esbtp.classes.show', array_merge(['classe' => $classe->id], $queryParams)) }}" class="btn-acasi info">
                     <i class="fas fa-eye"></i>Voir les détails
                 </a>
-                <a href="{{ route('esbtp.student.classes.index') }}" class="btn-acasi secondary">
-                    <i class="fas fa-arrow-left"></i>Retour à la liste
+                {{-- Bouton "Retour" avec return_url --}}
+                <a href="{{ $returnUrl }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i>Retour
                 </a>
             </div>
         </div>
@@ -41,6 +48,11 @@
                 <form action="{{ route('esbtp.classes.update', ['classe' => $classe->id]) }}" method="POST">
                     @csrf
                     @method('PUT')
+
+                    {{-- Input caché pour préserver l'URL de retour --}}
+                    @if(request()->has('return_url'))
+                        <input type="hidden" name="return_url" value="{{ request()->input('return_url') }}">
+                    @endif
                     <div class="row mb-4">
                         <div class="col-12">
                             <div class="card border-0 shadow-lg rounded-4 premium-glass mb-4">
@@ -151,7 +163,8 @@
                     </div>
 
                     <div class="d-flex justify-content-end gap-3 mt-4">
-                        <a href="{{ route('esbtp.student.classes.index') }}" class="btn btn-lg btn-secondary fw-bold shadow rounded-3 px-4 py-2 d-flex align-items-center gap-2">
+                        {{-- Bouton "Annuler" avec return_url --}}
+                        <a href="{{ request()->input('return_url', route('esbtp.classes.show', ['classe' => $classe->id])) }}" class="btn btn-lg btn-secondary fw-bold shadow rounded-3 px-4 py-2 d-flex align-items-center gap-2">
                             <i class="fas fa-times"></i> Annuler
                         </a>
                         <button type="submit" class="btn btn-lg btn-primary fw-bold shadow rounded-3 px-4 py-2 d-flex align-items-center gap-2 animate-fade-in-up">

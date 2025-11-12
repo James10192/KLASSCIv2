@@ -5194,6 +5194,284 @@ Route::get('/parents/search', [App\Http\Controllers\ESBTP\ParentController::clas
 
 ---
 
+### 🧭 Navigation Intelligente Classes - Préservation Filtres & Contexte (7 novembre)
+
+**Pages concernées** : `/esbtp/classes/index`, `/esbtp/classes/show`, `/esbtp/classes/edit`
+
+**Problème** : Perte du contexte de navigation lors de l'édition d'une classe - les filtres appliqués sur la page index n'étaient pas préservés après modification, et les boutons "Retour"/"Annuler" ne savaient pas d'où venait l'utilisateur.
+
+#### Architecture Implémentée
+
+**Système basé sur `return_url`** : Paramètre URL passé à travers toute la navigation pour tracer le chemin de l'utilisateur.
+
+**Principe** :
+1. Quand l'utilisateur clique sur "Modifier" depuis `classes.index` ou `classes.show`, l'URL complète de la page actuelle est encodée dans le paramètre `return_url`
+2. Le formulaire d'édition préserve ce paramètre via un champ caché
+3. Après soumission, le système redirige vers l'URL d'origine (avec tous ses filtres)
+4. Tous les boutons "Retour"/"Annuler" utilisent également ce paramètre
+
+**Sécurité** : Validation stricte contre les attaques "Open Redirect" avec vérification du host.
+
+---
+
+#### Modifications Controller
+
+**Fichier** : `app/Http/Controllers/ESBTPClasseController.php`
+
+**Nouvelle méthode `validateReturnUrl()`** (lignes 369-409) :
+```php
+/**
+ * Valide l'URL de retour pour éviter les redirections malveillantes (Open Redirect)
+ *
+ * @param string|null $url L'URL à valider
+ * @return string L'URL validée ou le fallback (classes.show)
+ */
+private function validateReturnUrl($url)
+{
+    // Si pas d'URL fournie, retourner la page show de la classe par défaut (Option B)
+    if (!$url) {
+        return route('esbtp.classes.show', ['classe' => request()->route('classe')->id]);
+    }
+
+    // Parser l'URL fournie
+    $parsedUrl = parse_url($url);
+
+    // Si l'URL n'est pas valide, retourner le fallback
+    if ($parsedUrl === false) {
+        return route('esbtp.classes.show', ['classe' => request()->route('classe')->id]);
+    }
+
+    // Vérifier que l'URL est interne (pas de domaine externe)
+    if (isset($parsedUrl['host'])) {
+        $appUrl = parse_url(config('app.url'));
+
+        // Si l'URL a un host différent de notre app, c'est une tentative de redirect externe
+        if ($parsedUrl['host'] !== ($appUrl['host'] ?? '')) {
+            \Log::warning('Tentative de redirect externe bloquée', [
+                'url' => $url,
+                'host' => $parsedUrl['host'],
+                'expected_host' => $appUrl['host'] ?? '',
+                'user_id' => auth()->id()
+            ]);
+
+            return route('esbtp.classes.show', ['classe' => request()->route('classe')->id]);
+        }
+    }
+
+    // URL valide et interne, on la retourne
+    return $url;
+}
+```
+
+**Modification méthode `update()`** (lignes 362-366) :
+```php
+// Récupérer et valider le return_url
+$returnUrl = $this->validateReturnUrl($request->input('return_url'));
+
+return redirect($returnUrl)
+    ->with('success', 'La classe a été mise à jour avec succès.');
+```
+
+**Validation de sécurité** :
+- ✅ Vérification que l'URL est bien formée via `parse_url()`
+- ✅ Comparaison du host avec `config('app.url')`
+- ✅ Logging des tentatives suspectes avec user_id
+- ✅ Fallback automatique vers `classes.show` si URL invalide
+
+---
+
+#### Modifications Vues
+
+**1. Liste des classes** : `resources/views/esbtp/classes/partials/items.blade.php` (lignes 66-76)
+
+**Liens "Voir détails" et "Modifier"** :
+```blade
+{{-- Lien "Voir détails" avec filtres préservés dans l'URL --}}
+<a href="{{ route('esbtp.classes.show', array_merge(['classe' => $classe->id], request()->query())) }}"
+   class="btn-acasi secondary"
+   style="padding: var(--space-xs);"
+   title="Voir les détails">
+    <i class="fas fa-eye"></i>
+</a>
+
+@if(auth()->user()->hasRole('superAdmin'))
+{{-- Lien "Modifier" avec return_url vers index filtrée --}}
+<a href="{{ route('esbtp.classes.edit', array_merge(['classe' => $classe->id], ['return_url' => request()->fullUrl()])) }}"
+   class="btn-acasi primary"
+   style="padding: var(--space-xs);"
+   title="Modifier">
+    <i class="fas fa-edit"></i>
+</a>
+@endif
+```
+
+**Explications** :
+- `request()->query()` : Récupère TOUS les paramètres GET (filiere_id, niveau_id, statut, etc.)
+- `array_merge()` : Fusionne l'ID classe avec les paramètres existants
+- `request()->fullUrl()` : URL complète avec tous les paramètres (pour return_url)
+
+---
+
+**2. Page détails classe** : `resources/views/esbtp/classes/show.blade.php`
+
+**Header actions** (lignes 25-41) :
+```blade
+@if(auth()->user()->hasRole('superAdmin'))
+{{-- Lien "Modifier" avec return_url vers show actuelle --}}
+<a href="{{ route('esbtp.classes.edit', array_merge(['classe' => $classe->id], ['return_url' => request()->fullUrl()])) }}"
+   class="btn-acasi warning">
+    <i class="fas fa-edit"></i>Modifier
+</a>
+@endif
+
+{{-- Bouton "Retour à la liste" avec préservation des filtres si présents dans l'URL --}}
+@php
+    $queryParams = request()->query();
+    // Retirer le paramètre 'classe' si présent
+    unset($queryParams['classe']);
+    $returnToIndexUrl = route('esbtp.student.classes.index', $queryParams);
+@endphp
+<a href="{{ $returnToIndexUrl }}" class="btn-acasi secondary">
+    <i class="fas fa-arrow-left"></i>Retour à la liste
+</a>
+```
+
+**Logique** :
+- Si l'utilisateur vient de `classes.index` avec filtres, ces filtres sont dans l'URL de `classes.show`
+- Le bouton "Retour à la liste" récupère ces filtres et les transmet à l'index
+- Le paramètre `classe` est retiré (inutile pour l'index)
+
+---
+
+**3. Formulaire d'édition** : `resources/views/esbtp/classes/edit.blade.php`
+
+**Header dynamique** (lignes 18-32) :
+```blade
+<div class="header-actions">
+    {{-- Lien "Voir les détails" avec filtres préservés --}}
+    @php
+        $returnUrl = request()->input('return_url', route('esbtp.classes.show', ['classe' => $classe->id]));
+        $queryParams = request()->query();
+        unset($queryParams['return_url']);
+    @endphp
+    <a href="{{ route('esbtp.classes.show', array_merge(['classe' => $classe->id], $queryParams)) }}"
+       class="btn-acasi info">
+        <i class="fas fa-eye"></i>Voir les détails
+    </a>
+    {{-- Bouton "Retour" avec return_url --}}
+    <a href="{{ $returnUrl }}" class="btn-acasi secondary">
+        <i class="fas fa-arrow-left"></i>Retour
+    </a>
+</div>
+```
+
+**Champ caché dans le formulaire** (lignes 48-55) :
+```blade
+<form action="{{ route('esbtp.classes.update', ['classe' => $classe->id]) }}" method="POST">
+    @csrf
+    @method('PUT')
+
+    {{-- Input caché pour préserver l'URL de retour --}}
+    @if(request()->has('return_url'))
+        <input type="hidden" name="return_url" value="{{ request()->input('return_url') }}">
+    @endif
+```
+
+**Bouton Annuler dynamique** (lignes 165-173) :
+```blade
+<div class="d-flex justify-content-end gap-3 mt-4">
+    {{-- Bouton "Annuler" avec return_url --}}
+    <a href="{{ request()->input('return_url', route('esbtp.classes.show', ['classe' => $classe->id])) }}"
+       class="btn btn-lg btn-secondary fw-bold shadow rounded-3 px-4 py-2 d-flex align-items-center gap-2">
+        <i class="fas fa-times"></i> Annuler
+    </a>
+    <button type="submit"
+            class="btn btn-lg btn-primary fw-bold shadow rounded-3 px-4 py-2 d-flex align-items-center gap-2 animate-fade-in-up">
+        <i class="fas fa-save"></i> Mettre à jour la classe
+    </button>
+</div>
+```
+
+---
+
+#### Scénarios de Navigation
+
+**Scénario 1 : Édition depuis Index avec filtres** ✅
+```
+1. Utilisateur sur /esbtp/classes?filiere_id=1&niveau_id=3&statut=active
+2. Clique "Modifier" sur une classe
+3. Arrive sur /esbtp/classes/15/edit?return_url=/esbtp/classes?filiere_id=1&niveau_id=3&statut=active
+4. Modifie et soumet
+5. Redirigé vers /esbtp/classes?filiere_id=1&niveau_id=3&statut=active (filtres préservés)
+```
+
+**Scénario 2 : Édition depuis Show** ✅
+```
+1. Utilisateur sur /esbtp/classes/15 (show)
+2. Clique "Modifier"
+3. Arrive sur /esbtp/classes/15/edit?return_url=/esbtp/classes/15
+4. Modifie et soumet
+5. Redirigé vers /esbtp/classes/15 (show) pour voir les modifications
+```
+
+**Scénario 3 : Accès direct URL (sans return_url)** ✅
+```
+1. Utilisateur tape directement /esbtp/classes/15/edit dans le navigateur
+2. Pas de return_url dans l'URL
+3. Modifie et soumet
+4. Redirigé vers /esbtp/classes/15 (show) par défaut (fallback)
+```
+
+**Scénario 4 : Bouton "Retour" depuis Edit** ✅
+```
+1. Utilisateur sur /esbtp/classes/15/edit?return_url=/esbtp/classes?filiere_id=1
+2. Clique "Retour" (header) ou "Annuler" (footer)
+3. Redirigé vers /esbtp/classes?filiere_id=1 (page d'origine)
+```
+
+---
+
+#### Fichiers Modifiés
+
+| Fichier | Lignes | Modifications |
+|---------|--------|---------------|
+| `app/Http/Controllers/ESBTPClasseController.php` | 362-366, 369-409 | Nouvelle méthode `validateReturnUrl()` + modification `update()` |
+| `resources/views/esbtp/classes/partials/items.blade.php` | 66-76 | Liens avec filtres + return_url |
+| `resources/views/esbtp/classes/show.blade.php` | 25-41 | Boutons header avec return_url dynamique |
+| `resources/views/esbtp/classes/edit.blade.php` | 18-32, 48-55, 165-173 | Header dynamique + champ caché + bouton annuler |
+
+**Total** : 4 fichiers modifiés
+
+---
+
+#### Avantages de la Solution
+
+✅ **Préservation du contexte** : Tous les filtres (filière, niveau, statut, capacité, recherche) sont conservés
+✅ **Navigation intelligente** : Le système sait toujours d'où vient l'utilisateur
+✅ **Sécurité renforcée** : Protection contre les redirections malveillantes (Open Redirect)
+✅ **UX optimale** : Pas de frustration à réappliquer les filtres après modification
+✅ **Fallback intelligent** : Redirige vers `classes.show` par défaut pour voir les modifications
+✅ **URLs bookmarkables** : L'URL contient tous les paramètres nécessaires
+✅ **Logging des tentatives suspectes** : Traçabilité des attaques potentielles
+
+---
+
+#### Pattern Réutilisable
+
+Ce système peut être appliqué à d'autres entités (étudiants, enseignants, inscriptions, etc.) :
+
+**Checklist implémentation** :
+1. Ajouter méthode `validateReturnUrl()` dans le controller (réutiliser le code)
+2. Modifier `update()` pour utiliser `return_url` validé
+3. Ajouter `return_url` aux liens "Modifier" via `request()->fullUrl()`
+4. Ajouter champ caché `<input type="hidden" name="return_url">` dans le formulaire
+5. Utiliser `request()->input('return_url', $fallback)` pour les boutons "Retour"/"Annuler"
+6. Préserver les filtres avec `array_merge(['id' => $id], request()->query())`
+
+**Estimation réutilisation** : 30-45 minutes par entité
+
+---
+
 ### 📧 Fix Affichage Email Étudiant - email vs email_personnel (7 novembre)
 
 **Pages concernées** : `/esbtp/etudiants/{id}` (show) et `/esbtp/inscriptions/{id}` (show)
@@ -5284,6 +5562,243 @@ Route::get('/parents/search', [App\Http\Controllers\ESBTP\ParentController::clas
 **Après le fix** :
 1. Utilisateur saisit email dans `inscriptions.create` → Enregistré dans `email_personnel`
 2. Utilisateur consulte `etudiants.show` → Affiche `email_personnel` → Email visible ✅
+
+---
+
+### 🐛 Fix Pré-remplissage Paiements - Mode & Catégorie (12 novembre)
+
+**Page** : `/esbtp/paiements/{id}/edit`
+
+**Problème** : Lors de l'édition d'un paiement créé depuis le modal d'association dans `inscriptions.show`, deux champs n'étaient pas pré-remplis correctement :
+1. **mode_paiement** : Affichait une valeur vide au lieu du mode sélectionné
+2. **motif/catégorie** : N'affichait pas la catégorie de frais associée
+
+#### Analyse du Problème
+
+**Workflow de création paiement** :
+```
+1. Page inscriptions.show
+2. Modal "Associer un paiement" (ligne 2234+)
+3. Champs modal : montant, fee_category_id, mode_paiement, reference, date, observations
+4. Soumission → ESBTPInscriptionController@validerAvecPaiement
+5. Service InscriptionWorkflowService::associerPaiement → Crée ESBTPPaiement
+6. Génère motif automatiquement depuis frais_category.name
+7. Redirection vers paiements.edit
+```
+
+**Bug #1 - Mode paiement** :
+- Modal envoie : `"especes"`, `"cheque"`, `"virement"`, `"mobile_money"` (lowercase)
+- Select edit attend : `"Espèces"`, `"Chèque"`, `"Virement bancaire"`, `"Mobile Money"` (capitalized)
+- Résultat : Aucune option pré-sélectionnée
+
+**Bug #2 - Motif/Catégorie** :
+- Edit page affichait une liste fixe de motifs (ex: "Inscription", "Scolarité S1", "Réinscription")
+- Ces motifs ne correspondaient PAS aux noms de catégories réelles
+- De plus, certains paiements avaient `frais_category_id = null` mais `motif = "Nom catégorie"`
+
+---
+
+#### Solution Implémentée
+
+**1. Normalisation mode_paiement (Backend)** :
+
+**Fichier** : `app/Http/Controllers/ESBTPInscriptionController.php` (lignes 1555-1575)
+
+```php
+// Normaliser le mode de paiement (première lettre en majuscule)
+// Pour correspondre aux valeurs du select edit (Espèces, Chèque, Virement bancaire, Mobile Money)
+$modePaiementNormalized = $request->mode_paiement;
+if ($modePaiementNormalized === 'especes') {
+    $modePaiementNormalized = 'Espèces';
+} elseif ($modePaiementNormalized === 'cheque') {
+    $modePaiementNormalized = 'Chèque';
+} elseif ($modePaiementNormalized === 'virement') {
+    $modePaiementNormalized = 'Virement bancaire';
+} elseif ($modePaiementNormalized === 'mobile_money') {
+    $modePaiementNormalized = 'Mobile Money';
+}
+
+$paiementData = [
+    'montant' => $request->montant,
+    'fee_category_id' => $request->fee_category_id,
+    'mode_paiement' => $modePaiementNormalized,
+    'reference_paiement' => $request->reference_paiement,
+    'date_paiement' => $request->date_paiement,
+    'observations' => $request->observations,
+];
+```
+
+**Avantage** : La conversion se fait UNE FOIS à la création, toutes les futures éditions affichent la bonne valeur.
+
+---
+
+**2. Remplacement Motif → Catégorie de frais (Frontend)** :
+
+**Fichier** : `resources/views/esbtp/paiements/edit.blade.php` (lignes 135-152)
+
+**AVANT** :
+```blade
+<label>Motif <span class="text-danger">*</span></label>
+<select name="motif">
+    <option value="Inscription">Inscription</option>
+    <option value="Scolarité Semestre 1">Scolarité Semestre 1</option>
+    <option value="Réinscription">Réinscription</option>
+    <!-- ... options fixes qui ne correspondent pas aux catégories réelles -->
+</select>
+```
+
+**APRÈS** :
+```blade
+<label>Catégorie de frais <span class="text-danger">*</span></label>
+<select name="frais_category_id">
+    <option value="">-- Sélectionner --</option>
+    @foreach($feeCategories as $category)
+        <option value="{{ $category->id }}" {{ old('frais_category_id', $selectedCategoryId) == $category->id ? 'selected' : '' }}>
+            {{ $category->name }}
+        </option>
+    @endforeach
+</select>
+```
+
+**Changements** :
+- ❌ Plus de champ `motif` visible (géré automatiquement en backend)
+- ✅ Affichage de `frais_category_id` avec liste dynamique des catégories actives
+- ✅ Titre section changé : "Catégorie, tranche et commentaires" (au lieu de "Motif, tranche...")
+- ✅ Pré-sélection intelligente via `$selectedCategoryId`
+
+---
+
+**3. Chargement dynamique catégories (Backend)** :
+
+**Fichier** : `app/Http/Controllers/ESBTPPaiementController.php` (lignes 972-987)
+
+```php
+public function edit(ESBTPPaiement $paiement)
+{
+    // Charger toutes les catégories de frais actives pour le select "Catégorie"
+    $feeCategories = \App\Models\ESBTPFraisCategory::active()->ordered()->get();
+
+    // Essayer de retrouver la catégorie correspondant au motif actuel
+    // (pour pré-sélectionner la bonne option même si frais_category_id est null/vide)
+    $selectedCategoryId = $paiement->frais_category_id;
+
+    if (!$selectedCategoryId && $paiement->motif) {
+        // Si pas de frais_category_id, chercher par nom de motif
+        $matchingCategory = $feeCategories->firstWhere('name', $paiement->motif);
+        if ($matchingCategory) {
+            $selectedCategoryId = $matchingCategory->id;
+        }
+    }
+
+    return view('esbtp.paiements.edit', compact('paiement', 'feeCategories', 'selectedCategoryId'));
+}
+```
+
+**Logique smart** :
+1. Si `frais_category_id` existe → Utiliser cet ID
+2. Sinon, si `motif` existe → Chercher catégorie par nom de motif
+3. Pré-sélectionner automatiquement la bonne option dans le select
+
+**Avantage** : Fonctionne même avec les anciens paiements qui n'ont pas de `frais_category_id`.
+
+---
+
+**4. Auto-synchronisation motif (Backend)** :
+
+**Fichier** : `app/Http/Controllers/ESBTPPaiementController.php` (lignes 1001-1024)
+
+```php
+public function update(Request $request, ESBTPPaiement $paiement)
+{
+    // Valider les données du formulaire
+    $validated = $request->validate([
+        'montant' => 'required|numeric|min:0',
+        'date_paiement' => 'required|date',
+        'mode_paiement' => 'required|string',
+        'reference_paiement' => 'nullable|string',
+        'tranche' => 'nullable|string',
+        'frais_category_id' => 'required|exists:esbtp_frais_categories,id',
+        'commentaire' => 'nullable|string',
+    ]);
+
+    try {
+        DB::beginTransaction();
+
+        // Récupérer la catégorie de frais pour mettre à jour le motif automatiquement
+        $fraisCategory = \App\Models\ESBTPFraisCategory::find($validated['frais_category_id']);
+
+        // Mettre à jour le paiement
+        $paiement->fill($validated);
+        $paiement->motif = $fraisCategory->name; // ← Synchroniser le motif avec la catégorie
+        $paiement->updated_by = Auth::id();
+        $paiement->save();
+
+        DB::commit();
+        // ...
+```
+
+**Principe** :
+- Utilisateur change `frais_category_id` dans le select
+- Backend récupère le nom de la catégorie sélectionnée
+- Met à jour automatiquement le champ `motif` avec ce nom
+- L'utilisateur ne voit JAMAIS le champ `motif` (géré en coulisses)
+
+---
+
+**5. Fix option "Virement bancaire"** :
+
+**Fichier** : `resources/views/esbtp/paiements/edit.blade.php` (ligne 107)
+
+**AVANT** :
+```blade
+<option value="Virement">Virement bancaire</option>
+```
+
+**APRÈS** :
+```blade
+<option value="Virement bancaire">Virement bancaire</option>
+```
+
+**Raison** : La normalisation produit `"Virement bancaire"`, donc le `value` doit matcher.
+
+---
+
+#### Fichiers Modifiés
+
+| Fichier | Lignes | Modifications |
+|---------|--------|---------------|
+| `app/Http/Controllers/ESBTPInscriptionController.php` | 1555-1575 | Normalisation mode_paiement à la création |
+| `app/Http/Controllers/ESBTPPaiementController.php` | 972-987, 1001-1024 | Chargement catégories + auto-sync motif |
+| `resources/views/esbtp/paiements/edit.blade.php` | 107, 135-152 | Fix option "Virement bancaire" + remplacement motif par catégorie |
+
+**Total** : 3 fichiers modifiés
+
+---
+
+#### Impact
+
+✅ **Mode paiement pré-rempli** : Le select affiche la bonne valeur dès l'ouverture de la page edit
+✅ **Catégorie pré-sélectionnée** : La catégorie de frais associée est automatiquement sélectionnée
+✅ **Motif invisible** : L'utilisateur ne voit plus le champ motif (source de confusion)
+✅ **Synchronisation automatique** : Changement de catégorie → motif mis à jour automatiquement
+✅ **Rétrocompatible** : Fonctionne même avec anciens paiements (`frais_category_id = null`)
+✅ **Liste dynamique** : Les catégories affichées correspondent aux catégories réelles en BDD
+✅ **Validation backend** : `frais_category_id` maintenant requis (au lieu de motif)
+
+---
+
+#### Workflow Utilisateur
+
+**Avant le fix** :
+1. Créer paiement depuis inscriptions.show → Mode "especes", Catégorie "Inscription"
+2. Ouvrir paiements.edit → Mode vide ❌, Motif ne correspond pas ❌
+3. Utilisateur doit re-saisir mode et motif manuellement
+
+**Après le fix** :
+1. Créer paiement depuis inscriptions.show → Mode "especes", Catégorie "Inscription"
+2. Backend normalise mode en "Espèces", génère motif = "Inscription"
+3. Ouvrir paiements.edit → Mode "Espèces" pré-sélectionné ✅, Catégorie "Inscription" pré-sélectionnée ✅
+4. Changement de catégorie → Motif auto-sync en backend (invisible pour utilisateur)
 
 ---
 
