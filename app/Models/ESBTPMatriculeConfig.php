@@ -69,6 +69,7 @@ class ESBTPMatriculeConfig extends Model
 
     /**
      * Obtenir le prochain numéro séquentiel pour un genre et une année
+     * Recherche les trous dans les 100 derniers numéros pour optimiser la réutilisation
      *
      * @param string $genre
      * @param string $anneeFormatee
@@ -82,8 +83,9 @@ class ESBTPMatriculeConfig extends Model
                   $this->etablissement_code .
                   $anneeFormatee . '-%';
 
-        // Chercher le dernier matricule avec ce pattern
+        // Chercher le dernier matricule avec ce pattern (excluant soft deleted)
         $dernierEtudiant = ESBTPEtudiant::where('matricule', 'LIKE', $pattern)
+            ->whereNull('deleted_at')
             ->orderByRaw("CAST(SUBSTRING_INDEX(matricule, '-', -1) AS UNSIGNED) DESC")
             ->first();
 
@@ -93,9 +95,33 @@ class ESBTPMatriculeConfig extends Model
 
         // Extraire le numéro du matricule
         $parts = explode('-', $dernierEtudiant->matricule);
-        $dernierNumero = intval(end($parts));
+        $maxNumero = intval(end($parts));
 
-        return $dernierNumero + 1;
+        // Recherche incrémentale dans les 100 DERNIERS numéros pour trouver un trou
+        $searchStart = max(1, $maxNumero - 99);
+
+        for ($i = $searchStart; $i <= $maxNumero; $i++) {
+            // Construire le matricule complet à tester
+            $numeroFormate = str_pad($i, $this->numero_digits, '0', STR_PAD_LEFT);
+            $testMatricule = $genre .
+                            ($this->prefixe ? $this->prefixe : '') .
+                            $this->etablissement_code .
+                            $anneeFormatee . '-' .
+                            $numeroFormate;
+
+            // Vérifier si ce matricule existe (requête EXISTS rapide)
+            $exists = ESBTPEtudiant::where('matricule', $testMatricule)
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if (!$exists) {
+                // Trou trouvé, retourner ce numéro
+                return $i;
+            }
+        }
+
+        // Aucun trou trouvé dans les 100 derniers, retourner max + 1
+        return $maxNumero + 1;
     }
 
     /**

@@ -101,13 +101,37 @@ class MatriculeGenerator
         $matriculePrefix = Str::upper($filiereCode . $niveauCode . $anneeCode);
 
         $lastMatricule = ESBTPEtudiant::where('matricule', 'like', "{$matriculePrefix}%")
+            ->whereNull('deleted_at')
             ->orderByRaw('CAST(SUBSTRING(matricule, ' . (strlen($matriculePrefix) + 1) . ') AS UNSIGNED) DESC')
             ->first();
 
         $seq = 1;
         if ($lastMatricule) {
             $seqStr = substr($lastMatricule->matricule, strlen($matriculePrefix));
-            $seq = ((int) $seqStr) + 1;
+            $maxSeq = (int) $seqStr;
+
+            // Recherche incrémentale dans les 100 DERNIERS numéros pour trouver un trou
+            $searchStart = max(1, $maxSeq - 99);
+
+            for ($i = $searchStart; $i <= $maxSeq; $i++) {
+                $testMatricule = $matriculePrefix . str_pad($i, 6, '0', STR_PAD_LEFT);
+
+                // Vérifier si ce matricule existe (requête EXISTS rapide)
+                $exists = ESBTPEtudiant::where('matricule', $testMatricule)
+                    ->whereNull('deleted_at')
+                    ->exists();
+
+                if (!$exists) {
+                    // Trou trouvé, utiliser ce numéro
+                    $seq = $i;
+                    break;
+                }
+            }
+
+            // Si aucun trou trouvé, utiliser max + 1
+            if ($seq === 1) {
+                $seq = $maxSeq + 1;
+            }
         }
 
         $seqFormatted = str_pad($seq, 6, '0', STR_PAD_LEFT);
