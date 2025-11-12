@@ -1646,7 +1646,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                                     </a>
                                                 @endif
                                             @if($montantEnAttente > 0)
-                                                <a href="{{ route('esbtp.paiements.index') }}?etudiant={{ $inscription->etudiant_id }}" class="btn btn-sm btn-outline-warning">
+                                                <a href="{{ route('esbtp.paiements.index') }}?search={{ urlencode($inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms) }}" class="btn btn-sm btn-outline-warning">
                                                     <i class="fas fa-external-link-alt me-1"></i>Valider paiement
                                                 </a>
                                             @endif
@@ -1748,7 +1748,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                                             <i class="fas fa-credit-card me-1"></i>Payer reliquat
                                                         </button>
                                                         @if($paiementsReliquatEnAttente > 0)
-                                                            <a href="{{ route('esbtp.paiements.index') }}?search={{ $reliquat->id }}" class="btn btn-sm btn-outline-warning">
+                                                            <a href="{{ route('esbtp.paiements.index') }}?search={{ urlencode($inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms) }}" class="btn btn-sm btn-outline-warning">
                                                                 <i class="fas fa-external-link-alt me-1"></i>Valider paiement
                                                             </a>
                                                         @endif
