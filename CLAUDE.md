@@ -5977,6 +5977,404 @@ if ($lastMatricule) {
 
 ---
 
+### 💰 Validation Montants Paiements - Deux Modals (12 novembre)
+
+**Pages** : `/esbtp/inscriptions/{id}` (show)
+
+**Problème** : Les modals de paiement permettaient de saisir des montants dépassant le montant restant à payer, créant des incohérences comptables.
+
+**Exemple** :
+```
+Étudiant doit payer 350,000 FCFA pour "Inscription"
+Déjà payé : 0 FCFA
+Modal permettait : 800,000 FCFA ❌ (dépassement de 450,000 FCFA)
+```
+
+#### Solution Implémentée
+
+**Validation sur DEUX modals** :
+1. **`paymentModal`** : Associer un paiement à l'inscription actuelle
+2. **`reliquatPaymentModal`** : Payer un reliquat d'année précédente
+
+---
+
+#### Modal #1 : paymentModal (Inscription Actuelle)
+
+**Validation Frontend + Backend complète**
+
+**1. Nouvelle route API** : `routes/web.php` (ligne 877)
+```php
+Route::get('/inscriptions/{inscription}/frais/{category}/montant-restant',
+    [ESBTPInscriptionController::class, 'getMontantRestant'])
+    ->name('inscriptions.frais.montant-restant');
+```
+
+**2. Méthode Controller** : `ESBTPInscriptionController.php` (lignes 1548-1604)
+```php
+public function getMontantRestant(ESBTPInscription $inscription, $category)
+{
+    // Vérifier que la catégorie existe
+    $fraisCategory = \App\Models\ESBTPFraisCategory::find($category);
+    if (!$fraisCategory) {
+        return response()->json(['success' => false, 'message' => 'Catégorie introuvable.'], 404);
+    }
+
+    // Récupérer la souscription
+    $subscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+        ->where('frais_category_id', $category)
+        ->first();
+
+    if (!$subscription) {
+        return response()->json([
+            'success' => false,
+            'message' => 'L\'étudiant n\'est pas souscrit à cette catégorie de frais.',
+            'is_subscribed' => false
+        ], 400);
+    }
+
+    // Calculer le total déjà payé (validé + en_attente)
+    // Exclure les paiements rejetés et soft deleted
+    $totalPaye = \App\Models\ESBTPPaiement::where('inscription_id', $inscription->id)
+        ->where('frais_category_id', $category)
+        ->whereIn('status', ['validé', 'en_attente'])
+        ->whereNull('deleted_at')
+        ->sum('montant');
+
+    // Calculer le montant restant
+    $montantRestant = $subscription->amount - $totalPaye;
+
+    // Sécurité : si négatif (corruption données), forcer à 0
+    if ($montantRestant < 0) {
+        \Log::warning('Montant restant négatif détecté', [...]);
+        $montantRestant = 0;
+    }
+
+    return response()->json([
+        'success' => true,
+        'is_subscribed' => true,
+        'montant_total' => $subscription->amount,
+        'montant_paye' => $totalPaye,
+        'montant_restant' => $montantRestant,
+        'nom_categorie' => $fraisCategory->name
+    ]);
+}
+```
+
+**3. Validation Backend** : `ESBTPInscriptionController.php` (lignes 1620-1655)
+```php
+public function validerAvecPaiement(Request $request, ESBTPInscription $inscription)
+{
+    $request->validate([
+        'montant' => 'required|numeric|min:0',
+        // ... autres validations
+    ]);
+
+    // Validation personnalisée montant
+    $subscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+        ->where('frais_category_id', $request->fee_category_id)
+        ->first();
+
+    if (!$subscription) {
+        return redirect()->back()
+            ->withErrors(['fee_category_id' => 'L\'étudiant n\'est pas souscrit à cette catégorie de frais.'])
+            ->withInput();
+    }
+
+    $totalPaye = \App\Models\ESBTPPaiement::where('inscription_id', $inscription->id)
+        ->where('frais_category_id', $request->fee_category_id)
+        ->whereIn('status', ['validé', 'en_attente'])
+        ->whereNull('deleted_at')
+        ->sum('montant');
+
+    $montantRestant = $subscription->amount - $totalPaye;
+
+    if ($request->montant > $montantRestant) {
+        $fraisCategory = \App\Models\ESBTPFraisCategory::find($request->fee_category_id);
+        $errorMessage = sprintf(
+            'Le montant saisi (%s FCFA) dépasse le montant restant à payer pour "%s" (%s FCFA). Montant total: %s FCFA, Déjà payé: %s FCFA.',
+            number_format($request->montant, 0, ',', ' '),
+            $fraisCategory->name ?? 'ce frais',
+            number_format($montantRestant, 0, ',', ' '),
+            number_format($subscription->amount, 0, ',', ' '),
+            number_format($totalPaye, 0, ',', ' ')
+        );
+
+        return redirect()->back()
+            ->withErrors(['montant' => $errorMessage])
+            ->withInput();
+    }
+
+    // ... reste de la logique
+}
+```
+
+**4. Validation Frontend JavaScript** : `inscriptions/show.blade.php` (lignes 3864-4005)
+
+**Workflow** :
+1. Changement de `fee_category_id` → Appel AJAX `getMontantRestant()`
+2. Mise à jour attribut `max` de l'input `montant`
+3. Affichage message informatif :
+   ```
+   ℹ️ Montant maximum autorisé : 350,000 FCFA
+   Total: 350,000 FCFA • Déjà payé: 0 FCFA
+   ```
+4. Validation en temps réel sur `input` :
+   ```javascript
+   montantInput.addEventListener('input', function() {
+       const montantSaisi = parseFloat(this.value) || 0;
+       if (montantSaisi > data.montant_restant) {
+           this.setCustomValidity(`Le montant ne peut pas dépasser ${data.montant_restant.toLocaleString('fr-FR')} FCFA`);
+           this.reportValidity();
+       } else {
+           this.setCustomValidity('');
+       }
+   });
+   ```
+5. Validation finale avant submit :
+   ```javascript
+   paymentForm.addEventListener('submit', function(e) {
+       const montantSaisi = parseFloat(montantInput.value) || 0;
+       const montantMax = parseFloat(montantInput.getAttribute('max')) || Infinity;
+
+       if (categoryId && montantSaisi > montantMax) {
+           e.preventDefault();
+           alert(`Le montant saisi (${montantSaisi.toLocaleString('fr-FR')} FCFA) dépasse le montant maximum autorisé (${montantMax.toLocaleString('fr-FR')} FCFA).`);
+           montantInput.focus();
+           return false;
+       }
+   });
+   ```
+
+**Messages d'erreur différenciés** :
+- ✅ **Succès** : Fond bleu avec icône `fa-info-circle`
+- ⚠️ **Non souscrit** : Fond jaune avec icône `fa-exclamation-triangle`
+- ❌ **Erreur AJAX** : Fond rouge avec icône `fa-times-circle`
+
+---
+
+#### Modal #2 : reliquatPaymentModal (Paiement Reliquat)
+
+**Validation Frontend + Backend déjà présent**
+
+**1. Validation Backend** : `ESBTPPaiementController.php` (lignes 2099-2101)
+```php
+public function payReliquat(Request $request)
+{
+    // ... validation base
+
+    $reliquat = \App\Models\ESBTPReliquatDetail::findOrFail($reliquatId);
+
+    // ✅ Validation déjà présente
+    if ($montantPaye > $reliquat->solde_restant) {
+        return redirect()->back()->with('error', 'Le montant à payer ne peut pas dépasser le solde restant (' . number_format($reliquat->solde_restant, 0, ',', ' ') . ' FCFA).');
+    }
+
+    // ... création paiement
+}
+```
+
+**2. Pré-remplissage max** : `inscriptions/show.blade.php` (ligne 3641)
+```javascript
+window.prepareReliquatPaymentModal = function(reliquatId, montantRestant, nomFrais) {
+    document.getElementById('reliquat_id').value = reliquatId;
+    document.getElementById('reliquat_frais_name').textContent = nomFrais;
+    document.getElementById('reliquat_amount').textContent = new Intl.NumberFormat('fr-FR').format(montantRestant);
+    document.getElementById('reliquat_montant').value = montantRestant;
+    document.getElementById('reliquat_montant').max = montantRestant; // ← Attribut max défini
+};
+```
+
+**3. Validation Frontend JavaScript** : `inscriptions/show.blade.php` (lignes 4006-4077)
+
+**Workflow** :
+1. Input déjà pré-rempli avec `max=montantRestant`
+2. Validation en temps réel sur `input` :
+   ```javascript
+   reliquatMontantInput.addEventListener('input', function() {
+       const montantSaisi = parseFloat(this.value) || 0;
+       const montantMax = parseFloat(this.getAttribute('max')) || Infinity;
+
+       if (montantSaisi > montantMax && montantMax !== Infinity) {
+           // Afficher message d'erreur
+           messageDiv.innerHTML = `
+               <div style="background: linear-gradient(135deg, #f8d7da 0%, #f5c2c7 100%); ...">
+                   <strong>Montant trop élevé !</strong><br>
+                   Le montant saisi (${montantSaisi.toLocaleString('fr-FR')} FCFA) dépasse le solde restant (${montantMax.toLocaleString('fr-FR')} FCFA).
+               </div>
+           `;
+           this.setCustomValidity(`Le montant ne peut pas dépasser ${montantMax.toLocaleString('fr-FR')} FCFA`);
+       } else {
+           messageDiv.style.display = 'none';
+           this.setCustomValidity('');
+       }
+   });
+   ```
+3. Validation finale avant submit :
+   ```javascript
+   reliquatPaymentForm.addEventListener('submit', function(e) {
+       const montantSaisi = parseFloat(reliquatMontantInput.value) || 0;
+       const montantMax = parseFloat(reliquatMontantInput.getAttribute('max')) || Infinity;
+
+       if (montantSaisi > montantMax && montantMax !== Infinity) {
+           e.preventDefault();
+           alert(`Le montant saisi (${montantSaisi.toLocaleString('fr-FR')} FCFA) dépasse le solde restant du reliquat (${montantMax.toLocaleString('fr-FR')} FCFA).`);
+           reliquatMontantInput.focus();
+           return false;
+       }
+   });
+   ```
+
+---
+
+#### Fichiers Modifiés
+
+| Fichier | Lignes | Modifications |
+|---------|--------|---------------|
+| `routes/web.php` | 877 | Nouvelle route API `getMontantRestant` |
+| `app/Http/Controllers/ESBTPInscriptionController.php` | 1548-1604, 1620-1655 | Méthode API + validation backend |
+| `resources/views/esbtp/inscriptions/show.blade.php` | 3864-4077 | Validation frontend 2 modals |
+
+**Total** : 3 fichiers modifiés, ~300 lignes ajoutées
+
+---
+
+#### Impact
+
+**Avant** :
+- ❌ Paiement de 800,000 FCFA accepté quand montant dû = 350,000 FCFA
+- ❌ Incohérence comptable (trop-perçu non géré)
+- ❌ Confusion secrétaires (aucun feedback visuel)
+
+**Après** :
+- ✅ **Frontend** : Message informatif montant restant dès sélection catégorie
+- ✅ **Frontend** : Validation temps réel sur `input` event
+- ✅ **Frontend** : Blocage submit si montant > montant restant
+- ✅ **Backend** : Double validation sécurité (paymentModal + reliquatModal)
+- ✅ **UX** : Messages d'erreur explicites avec montants formatés
+- ✅ **Sécurité** : Logging montants négatifs (détection corruption données)
+
+**Avantages** :
+- 🔒 **Double sécurité** : Frontend (UX) + Backend (sécurité)
+- 📊 **Calcul intelligent** : Exclut paiements rejetés et soft deleted
+- 💬 **Messages clairs** : "Le montant saisi (800,000 FCFA) dépasse le montant restant (350,000 FCFA). Total: 350,000 FCFA, Déjà payé: 0 FCFA."
+- 🎨 **Design moderne** : Cards gradient avec bordures colorées (bleu/jaune/rouge)
+
+---
+
+#### Algorithme Calcul Montant Restant
+
+```php
+// 1. Récupérer la souscription (montant que l'étudiant doit payer)
+$subscription = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+    ->where('frais_category_id', $category)
+    ->first();
+
+// 2. Calculer le total déjà payé (SEULEMENT validé + en_attente)
+$totalPaye = ESBTPPaiement::where('inscription_id', $inscription->id)
+    ->where('frais_category_id', $category)
+    ->whereIn('status', ['validé', 'en_attente']) // ← Exclut 'rejeté'
+    ->whereNull('deleted_at')                     // ← Exclut soft deleted
+    ->sum('montant');
+
+// 3. Calculer le montant restant
+$montantRestant = $subscription->amount - $totalPaye;
+
+// 4. Sécurité : forcer à 0 si négatif (corruption données)
+if ($montantRestant < 0) {
+    \Log::warning('Montant restant négatif détecté', [...]);
+    $montantRestant = 0;
+}
+```
+
+**Cas particuliers gérés** :
+- ✅ **Frais optionnels non souscrits** : Retourne erreur 400 avec message explicite
+- ✅ **Paiements rejetés** : Non comptés dans `$totalPaye`
+- ✅ **Paiements soft deleted** : Non comptés (gestion cohérente)
+- ✅ **Montant restant négatif** : Forcé à 0 + log warning (détection corruption)
+
+---
+
+### 🐛 Fix Critique: Blocage Paiements Non-Souscrits (12 novembre)
+
+**Problème** : Les étudiants non souscrits à une catégorie de frais pouvaient créer des paiements avec des montants illimités (ex: 20,000,000,000 FCFA).
+
+**Découvert avec** : Étudiant MOROKRO JOEL PRINCE ISRAËL (MBTS2025/168) - Non souscrit à "Frais d'inscription"
+
+**Cause racine** :
+- Ligne 3962 (ancien) : `montantInput.removeAttribute('max');` supprimait la validation max
+- Ligne 4000 (ancien) : `parseFloat(montantInput.getAttribute('max')) || Infinity` = Infinity quand max supprimé
+- Submit handler (ligne 4002) : `if (montantSaisi > montantMax)` → Jamais vrai car Infinity
+
+**Solution implémentée** :
+
+**1. Variable de tracking** (ligne 3880) :
+```javascript
+let isSubscribedToCategory = false;
+```
+
+**2. Marquage état souscription** :
+```javascript
+// Cas souscrit (ligne 3899)
+isSubscribedToCategory = true;
+montantInput.removeAttribute('disabled');
+
+// Cas NON souscrit (ligne 3943)
+isSubscribedToCategory = false;
+montantInput.setAttribute('disabled', 'disabled');
+montantInput.value = '';
+
+// Cas erreur réseau (ligne 3979)
+isSubscribedToCategory = false;
+montantInput.setAttribute('disabled', 'disabled');
+```
+
+**3. Blocage soumission** (ligne 4007-4012) :
+```javascript
+paymentForm.addEventListener('submit', function(e) {
+    if (!isSubscribedToCategory) {
+        e.preventDefault();
+        alert(`❌ Impossible de soumettre ce paiement.\n\nL'étudiant n'est pas souscrit...`);
+        feeCategorySelect.focus();
+        return false;
+    }
+    // ...
+});
+```
+
+**4. Message d'erreur amélioré** :
+- Couleur changée : Jaune (warning) → Rouge (erreur)
+- Icône : `exclamation-triangle` → `times-circle`
+- Texte : "Impossible d'associer ce paiement" (plus explicite)
+
+**5. Réinitialisation propre** (ligne 3888-3897) :
+```javascript
+if (!categoryId || !montantInput) {
+    isSubscribedToCategory = false;
+    montantInput.setAttribute('disabled', 'disabled');
+    montantInput.value = '';
+    messageDiv.style.display = 'none';
+    return;
+}
+```
+
+**Fichiers modifiés** :
+- `resources/views/esbtp/inscriptions/show.blade.php` (lignes 3880-4024)
+
+**Impact** :
+- ✅ Input montant désactivé si non souscrit (UX claire)
+- ✅ Message d'erreur rouge au lieu de warning jaune
+- ✅ Soumission bloquée avec alert explicite
+- ✅ Réactivation automatique si catégorie valide sélectionnée
+- ✅ Gestion erreurs réseau (également bloqué)
+
+**Tests recommandés** :
+1. Tester avec étudiant MOROKRO JOEL PRINCE ISRAËL (MBTS2025/168)
+2. Sélectionner "Frais d'inscription" → Input désactivé + message rouge
+3. Essayer de soumettre → Alert bloquant
+4. Sélectionner catégorie souscrite → Input réactivé + validation max
+
+---
+
 ## 📝 TODO & Prochaines Étapes
 
 ### 🔴 Priorité Haute
