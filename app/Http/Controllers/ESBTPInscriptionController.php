@@ -1538,6 +1538,72 @@ class ESBTPInscriptionController extends Controller
     }
 
     /**
+     * API pour récupérer le montant restant à payer pour une catégorie de frais.
+     * Utilisé par le modal de paiement pour valider que le montant ne dépasse pas le solde.
+     *
+     * @param ESBTPInscription $inscription
+     * @param int $category ID de la catégorie de frais
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getMontantRestant(ESBTPInscription $inscription, $category)
+    {
+        // Vérifier que la catégorie existe
+        $fraisCategory = \App\Models\ESBTPFraisCategory::find($category);
+        if (!$fraisCategory) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Catégorie de frais introuvable.'
+            ], 404);
+        }
+
+        // Récupérer la souscription pour cette inscription + catégorie
+        $subscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+            ->where('frais_category_id', $category)
+            ->first();
+
+        // Si l'étudiant n'est pas souscrit à ce frais
+        if (!$subscription) {
+            return response()->json([
+                'success' => false,
+                'message' => 'L\'étudiant n\'est pas souscrit à cette catégorie de frais.',
+                'is_subscribed' => false
+            ], 400);
+        }
+
+        // Calculer le total déjà payé (validé + en_attente)
+        // Exclure les paiements rejetés et soft deleted
+        $totalPaye = \App\Models\ESBTPPaiement::where('inscription_id', $inscription->id)
+            ->where('frais_category_id', $category)
+            ->whereIn('status', ['validé', 'en_attente'])
+            ->whereNull('deleted_at')
+            ->sum('montant');
+
+        // Calculer le montant restant
+        $montantRestant = $subscription->amount - $totalPaye;
+
+        // Sécurité : si le montant restant est négatif (corruption de données), le forcer à 0
+        if ($montantRestant < 0) {
+            \Log::warning('Montant restant négatif détecté', [
+                'inscription_id' => $inscription->id,
+                'category_id' => $category,
+                'subscription_amount' => $subscription->amount,
+                'total_paye' => $totalPaye,
+                'montant_restant_calcule' => $montantRestant
+            ]);
+            $montantRestant = 0;
+        }
+
+        return response()->json([
+            'success' => true,
+            'is_subscribed' => true,
+            'montant_total' => $subscription->amount,
+            'montant_paye' => $totalPaye,
+            'montant_restant' => $montantRestant,
+            'nom_categorie' => $fraisCategory->name
+        ]);
+    }
+
+    /**
      * Valider une inscription avec paiement associé.
      */
     public function validerAvecPaiement(Request $request, ESBTPInscription $inscription)
@@ -1550,6 +1616,43 @@ class ESBTPInscriptionController extends Controller
             'date_paiement' => 'required|date',
             'observations' => 'nullable|string|max:500',
         ]);
+
+        // Validation personnalisée : vérifier que le montant ne dépasse pas le montant restant
+        $subscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+            ->where('frais_category_id', $request->fee_category_id)
+            ->first();
+
+        if (!$subscription) {
+            return redirect()->back()
+                ->withErrors(['fee_category_id' => 'L\'étudiant n\'est pas souscrit à cette catégorie de frais.'])
+                ->withInput();
+        }
+
+        // Calculer le total déjà payé (validé + en_attente)
+        $totalPaye = \App\Models\ESBTPPaiement::where('inscription_id', $inscription->id)
+            ->where('frais_category_id', $request->fee_category_id)
+            ->whereIn('status', ['validé', 'en_attente'])
+            ->whereNull('deleted_at')
+            ->sum('montant');
+
+        $montantRestant = $subscription->amount - $totalPaye;
+
+        // Vérifier que le montant ne dépasse pas le montant restant
+        if ($request->montant > $montantRestant) {
+            $fraisCategory = \App\Models\ESBTPFraisCategory::find($request->fee_category_id);
+            $errorMessage = sprintf(
+                'Le montant saisi (%s FCFA) dépasse le montant restant à payer pour "%s" (%s FCFA). Montant total: %s FCFA, Déjà payé: %s FCFA.',
+                number_format($request->montant, 0, ',', ' '),
+                $fraisCategory->name ?? 'ce frais',
+                number_format($montantRestant, 0, ',', ' '),
+                number_format($subscription->amount, 0, ',', ' '),
+                number_format($totalPaye, 0, ',', ' ')
+            );
+
+            return redirect()->back()
+                ->withErrors(['montant' => $errorMessage])
+                ->withInput();
+        }
 
         try {
             // Normaliser le mode de paiement (première lettre en majuscule)

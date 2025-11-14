@@ -2972,9 +2972,25 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
 </div>
 
 <script>
+    // ========================================
+    // FALLBACK DEBUGLOG - Au cas où debug-helper.js n'est pas chargé
+    // ========================================
+    if (typeof debugLog === 'undefined') {
+        window.debugLog = function(...args) {
+            console.log('[DEBUG]', ...args);
+        };
+        window.debugWarn = function(...args) {
+            console.warn('[WARN]', ...args);
+        };
+        window.debugError = function(...args) {
+            console.error('[ERROR]', ...args);
+        };
+        console.warn('⚠️ debug-helper.js non chargé, utilisation du fallback debugLog');
+    }
+
     debugLog('🚀 SCRIPT CHARGÉ - Fonctions modales en cours de définition...');
-    
-    // Logs simples pour debug - Style class-selector  
+
+    // Logs simples pour debug - Style class-selector
     function logModal(modalId, message) {
         debugLog(`📝 Modal ${modalId}: ${message}`);
     }
@@ -3007,28 +3023,223 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
 
     function openValidationModal(inscriptionId) {
         debugLog('🎯 openValidationModal appelé avec ID:', inscriptionId);
-        
+
         const form = document.getElementById('validationForm');
         const correctAction = `/esbtp/inscriptions/${inscriptionId}/valider-definitivement`;
         form.action = correctAction;
         form.reset();
-        
+
         debugLog('✅ Formulaire de validation préparé, action:', form.action);
     }
 
+    // ========================================
+    // VALIDATION MONTANT PAIEMENT - Fonction Globale
+    // DOIT ÊTRE DÉFINIE IMMÉDIATEMENT (pas dans DOMContentLoaded)
+    // pour être accessible par preparePaymentModalForCategory() qui est appelée via onclick
+    // ========================================
+    @if(isset($inscription) && $inscription)
+    window.updateMontantRestant = function() {
+        console.log('🔍 DEBUG updateMontantRestant() appelée (version globale)');
+
+        const inscriptionId = {{ $inscription->id ?? 'null' }};
+        const feeCategorySelect = document.getElementById('fee_category_id');
+        const montantInput = document.getElementById('montant');
+        const categoryId = feeCategorySelect ? feeCategorySelect.value : null;
+
+        console.log('  - categoryId:', categoryId);
+        console.log('  - montantInput exists:', !!montantInput);
+        console.log('  - window.isSubscribedToCategory (avant):', window.isSubscribedToCategory);
+
+        // ✅ Réinitialiser si aucune catégorie sélectionnée
+        if (!categoryId || !montantInput) {
+            console.log('  ❌ Pas de categoryId ou pas de montantInput - RÉINITIALISATION');
+            window.isSubscribedToCategory = false;
+
+            if (montantInput) {
+                montantInput.setAttribute('disabled', 'disabled');
+                montantInput.value = '';
+                console.log('  - montantInput DÉSACTIVÉ');
+            }
+
+            const messageDiv = document.getElementById('montant-validation-message');
+            if (messageDiv) {
+                messageDiv.style.display = 'none';
+            }
+            return;
+        }
+
+        console.log('  ✅ Appel AJAX pour catégorie:', categoryId);
+
+        // Appel AJAX pour récupérer le montant restant
+        fetch(`/esbtp/inscriptions/${inscriptionId}/frais/${categoryId}/montant-restant`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('  📡 Réponse API:', data);
+                const messageDiv = document.getElementById('montant-validation-message');
+
+                if (data.success && data.is_subscribed) {
+                    console.log('  ✅ ÉTUDIANT SOUSCRIT - Activation validation');
+                    window.isSubscribedToCategory = true;
+
+                    // ✅ Réactiver l'input montant si précédemment désactivé
+                    montantInput.removeAttribute('disabled');
+                    console.log('  - montantInput RÉACTIVÉ');
+
+                    // ✅ Pré-remplir automatiquement avec le montant restant
+                    montantInput.value = data.montant_restant;
+                    console.log('  - montantInput.value pré-rempli avec:', data.montant_restant, 'FCFA');
+
+                    // Mettre à jour l'attribut max de l'input montant
+                    montantInput.setAttribute('max', data.montant_restant);
+
+                    // Afficher le message informatif
+                    if (messageDiv) {
+                        messageDiv.style.display = 'block';
+                        messageDiv.innerHTML = `
+                            <div style="
+                                background: linear-gradient(135deg, #e7f3ff 0%, #f0f8ff 100%);
+                                border-left: 4px solid #0d6efd;
+                                border-radius: 8px;
+                                padding: 0.75rem 1rem;
+                            ">
+                                <div style="display: flex; align-items: start; gap: 0.5rem;">
+                                    <i class="fas fa-info-circle" style="color: #0d6efd; margin-top: 2px;"></i>
+                                    <div style="flex: 1;">
+                                        <strong style="color: #084298;">Montant maximum autorisé :</strong>
+                                        <span style="color: #052c65; font-weight: 600;">${data.montant_restant.toLocaleString('fr-FR')} FCFA</span>
+                                        <br>
+                                        <small style="color: #6c757d;">
+                                            Total: ${data.montant_total.toLocaleString('fr-FR')} FCFA •
+                                            Déjà payé: ${data.montant_paye.toLocaleString('fr-FR')} FCFA
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // Validation en temps réel sur l'input montant
+                    montantInput.addEventListener('input', function() {
+                        const montantSaisi = parseFloat(this.value) || 0;
+
+                        if (montantSaisi > data.montant_restant) {
+                            this.setCustomValidity(`Le montant ne peut pas dépasser ${data.montant_restant.toLocaleString('fr-FR')} FCFA`);
+                            this.reportValidity();
+                        } else {
+                            this.setCustomValidity('');
+                        }
+                    });
+                } else {
+                    console.log('  ❌ ÉTUDIANT NON SOUSCRIT - Blocage paiement');
+                    window.isSubscribedToCategory = false;
+                    console.log('  - window.isSubscribedToCategory mis à FALSE');
+
+                    if (messageDiv) {
+                        messageDiv.style.display = 'block';
+                        messageDiv.innerHTML = `
+                            <div style="
+                                background: linear-gradient(135deg, #f8d7da 0%, #f5c2c7 100%);
+                                border-left: 4px solid #dc3545;
+                                border-radius: 8px;
+                                padding: 0.75rem 1rem;
+                            ">
+                                <div style="display: flex; align-items: start; gap: 0.5rem;">
+                                    <i class="fas fa-times-circle" style="color: #dc3545; margin-top: 2px;"></i>
+                                    <div style="flex: 1; color: #842029;">
+                                        <strong>Impossible d'associer ce paiement :</strong><br>
+                                        ${data.message || 'L\'étudiant n\'est pas souscrit à cette catégorie de frais.'}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // Désactiver l'input montant pour empêcher la saisie
+                    montantInput.setAttribute('disabled', 'disabled');
+                    montantInput.value = '';
+                    montantInput.removeAttribute('max');
+                    console.log('  - montantInput DÉSACTIVÉ (disabled=true)');
+                    console.log('  - montantInput.disabled:', montantInput.disabled);
+                }
+            })
+            .catch(error => {
+                console.error('Erreur AJAX getMontantRestant:', error);
+
+                // ✅ FIX: Marquer comme NON souscrit en cas d'erreur réseau
+                window.isSubscribedToCategory = false;
+
+                const messageDiv = document.getElementById('montant-validation-message');
+                if (messageDiv) {
+                    messageDiv.style.display = 'block';
+                    messageDiv.innerHTML = `
+                        <div style="
+                            background: linear-gradient(135deg, #f8d7da 0%, #f5c2c7 100%);
+                            border-left: 4px solid #dc3545;
+                            border-radius: 8px;
+                            padding: 0.75rem 1rem;
+                        ">
+                            <div style="display: flex; align-items: start; gap: 0.5rem;">
+                                <i class="fas fa-times-circle" style="color: #dc3545; margin-top: 2px;"></i>
+                                <div style="flex: 1; color: #842029;">
+                                    <strong>Erreur de connexion :</strong><br>
+                                    Impossible de vérifier le montant. Veuillez réessayer.
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Désactiver l'input montant pour empêcher la saisie
+                montantInput.setAttribute('disabled', 'disabled');
+                montantInput.value = '';
+            });
+    };
+
+    // Initialiser la variable globale
+    window.isSubscribedToCategory = false;
+
+    // 🔍 DEBUG: Vérifier que la fonction est bien définie
+    console.log('✅ window.updateMontantRestant définie:', typeof window.updateMontantRestant);
+    console.log('✅ window.updateMontantRestant === function:', typeof window.updateMontantRestant === 'function');
+    @else
+    // ⚠️ $inscription n'est pas définie - fonction updateMontantRestant non créée
+    console.error('⚠️ ERREUR BLADE: $inscription non définie - window.updateMontantRestant ne sera pas créée');
+    window.updateMontantRestant = function() {
+        console.error('❌ updateMontantRestant appelée mais $inscription était undefined lors du rendu Blade');
+        alert('Erreur: Impossible de charger les données de l\'inscription.');
+    };
+    window.isSubscribedToCategory = false;
+    console.log('⚠️ Mode fallback: window.updateMontantRestant définie avec message d\'erreur');
+    @endif
+
     function preparePaymentModalForCategory(inscriptionId, categoryId) {
+        console.log('🎯 preparePaymentModalForCategory appelé');
+        console.log('  - inscriptionId:', inscriptionId);
+        console.log('  - categoryId:', categoryId);
         debugLog('🎯 preparePaymentModalForCategory appelé avec ID:', inscriptionId, 'Category:', categoryId);
-        
+
         preparePaymentModal(inscriptionId);
-        
+
         // Attendre que le modal soit prêt
         setTimeout(() => {
+            console.log('  ⏱️ Timeout 100ms écoulé - Pré-sélection catégorie');
             const categorySelect = document.getElementById('fee_category_id');
             if (categorySelect && categoryId) {
+                console.log('  - Avant: categorySelect.value =', categorySelect.value);
                 categorySelect.value = categoryId;
-                const event = new Event('change');
-                categorySelect.dispatchEvent(event);
+                console.log('  - Après: categorySelect.value =', categorySelect.value);
+
+                // ✅ FIX: Appeler updateMontantRestant() DIRECTEMENT au lieu de dispatcher un event
+                console.log('  - Appel DIRECT de window.updateMontantRestant()');
+                if (typeof window.updateMontantRestant === 'function') {
+                    window.updateMontantRestant();
+                } else {
+                    console.error('  ❌ window.updateMontantRestant n\'est pas définie!');
+                }
+
                 debugLog('✅ Catégorie pré-sélectionnée:', categoryId);
+            } else {
+                console.log('  ⚠️ categorySelect ou categoryId manquant!');
             }
         }, 100);
     }
@@ -3860,6 +4071,144 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
         protectFormAgainstDoubleClick('#paymentForm', '#paymentModal');              // Modal associer un paiement
         protectFormAgainstDoubleClick('#validationForm', '#validationModal');        // Modal validation définitive
         protectFormAgainstDoubleClick('#reliquatPaymentForm', '#reliquatPaymentModal'); // Modal paiement reliquat
+
+        // ========================================
+        // VALIDATION MONTANT PAIEMENT - PAYMENTMODAL
+        // ========================================
+        const feeCategorySelect = document.getElementById('fee_category_id');
+        const montantInput = document.getElementById('montant');
+        const paymentForm = document.getElementById('paymentForm');
+
+        // Créer un élément pour afficher le message de validation (si pas déjà créé)
+        if (montantInput && !document.getElementById('montant-validation-message')) {
+            const messageDiv = document.createElement('div');
+            messageDiv.id = 'montant-validation-message';
+            messageDiv.style.cssText = 'margin-top: 0.5rem; font-size: 0.875rem; display: none;';
+            montantInput.closest('.col-md-6').appendChild(messageDiv);
+        }
+
+        // ========================================
+        // NOTE: La fonction updateMontantRestant() est définie en GLOBAL (ligne ~3023)
+        // pour être accessible par preparePaymentModalForCategory()
+        // ========================================
+
+        // Écouter le changement de catégorie de frais
+        if (feeCategorySelect) {
+            console.log('✅ Event listener "change" attaché au select catégorie');
+            feeCategorySelect.addEventListener('change', function(e) {
+                console.log('🔔 Event "change" détecté sur fee_category_id');
+                console.log('  - Nouvelle valeur:', e.target.value);
+                window.updateMontantRestant();  // ✅ Utilisation explicite de window.
+            });
+        } else {
+            console.error('❌ feeCategorySelect NON TROUVÉ - Event listener PAS attaché!');
+        }
+
+        // Validation finale avant soumission du formulaire
+        if (paymentForm) {
+            paymentForm.addEventListener('submit', function(e) {
+                console.log('🚀 SUBMIT PAYMENTFORM - Validation avant envoi');
+                const categoryId = feeCategorySelect ? feeCategorySelect.value : null;
+                console.log('  - categoryId:', categoryId);
+                console.log('  - window.isSubscribedToCategory:', window.isSubscribedToCategory);
+
+                // ✅ FIX: Bloquer la soumission si l'étudiant n'est PAS souscrit à la catégorie
+                if (!window.isSubscribedToCategory) {
+                    console.log('  ❌ BLOCAGE: Étudiant non souscrit');
+                    e.preventDefault();
+                    alert(`❌ Impossible de soumettre ce paiement.\n\nL'étudiant n'est pas souscrit à la catégorie de frais sélectionnée.\n\nVeuillez d'abord inscrire l'étudiant à cette catégorie de frais dans la gestion des frais.`);
+                    feeCategorySelect.focus();
+                    return false;
+                }
+
+                const montantSaisi = parseFloat(montantInput.value) || 0;
+                const montantMax = parseFloat(montantInput.getAttribute('max')) || Infinity;
+                console.log('  - montantSaisi:', montantSaisi);
+                console.log('  - montantMax:', montantMax);
+
+                if (categoryId && montantSaisi > montantMax) {
+                    console.log('  ❌ BLOCAGE: Montant dépasse le maximum');
+                    e.preventDefault();
+                    alert(`❌ Le montant saisi (${montantSaisi.toLocaleString('fr-FR')} FCFA) dépasse le montant maximum autorisé (${montantMax.toLocaleString('fr-FR')} FCFA).\n\nVeuillez ajuster le montant.`);
+                    montantInput.focus();
+                    return false;
+                }
+
+                console.log('  ✅ Validation OK - Soumission autorisée');
+            });
+        }
+
+        // ========================================
+        // VALIDATION MONTANT PAIEMENT - RELIQUATPAYMENTMODAL
+        // ========================================
+        const reliquatMontantInput = document.getElementById('reliquat_montant');
+        const reliquatPaymentForm = document.getElementById('reliquatPaymentForm');
+
+        // Créer un élément pour afficher le message de validation
+        if (reliquatMontantInput && !document.getElementById('reliquat-montant-validation-message')) {
+            const messageDiv = document.createElement('div');
+            messageDiv.id = 'reliquat-montant-validation-message';
+            messageDiv.style.cssText = 'margin-top: 0.5rem; font-size: 0.875rem; display: none;';
+            reliquatMontantInput.closest('.col-md-6').appendChild(messageDiv);
+        }
+
+        // Validation en temps réel sur l'input montant reliquat
+        if (reliquatMontantInput) {
+            reliquatMontantInput.addEventListener('input', function() {
+                const montantSaisi = parseFloat(this.value) || 0;
+                const montantMax = parseFloat(this.getAttribute('max')) || Infinity;
+                const messageDiv = document.getElementById('reliquat-montant-validation-message');
+
+                if (montantSaisi > montantMax && montantMax !== Infinity) {
+                    // Afficher le message d'erreur
+                    if (messageDiv) {
+                        messageDiv.style.display = 'block';
+                        messageDiv.innerHTML = `
+                            <div style="
+                                background: linear-gradient(135deg, #f8d7da 0%, #f5c2c7 100%);
+                                border-left: 4px solid #dc3545;
+                                border-radius: 8px;
+                                padding: 0.75rem 1rem;
+                            ">
+                                <div style="display: flex; align-items: start; gap: 0.5rem;">
+                                    <i class="fas fa-exclamation-triangle" style="color: #dc3545; margin-top: 2px;"></i>
+                                    <div style="flex: 1; color: #842029;">
+                                        <strong>Montant trop élevé !</strong><br>
+                                        Le montant saisi (${montantSaisi.toLocaleString('fr-FR')} FCFA) dépasse le solde restant (${montantMax.toLocaleString('fr-FR')} FCFA).
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // Validation HTML5
+                    this.setCustomValidity(`Le montant ne peut pas dépasser ${montantMax.toLocaleString('fr-FR')} FCFA`);
+                } else {
+                    // Masquer le message d'erreur
+                    if (messageDiv) {
+                        messageDiv.style.display = 'none';
+                    }
+
+                    // Réinitialiser la validation HTML5
+                    this.setCustomValidity('');
+                }
+            });
+        }
+
+        // Validation finale avant soumission du formulaire reliquat
+        if (reliquatPaymentForm) {
+            reliquatPaymentForm.addEventListener('submit', function(e) {
+                const montantSaisi = parseFloat(reliquatMontantInput.value) || 0;
+                const montantMax = parseFloat(reliquatMontantInput.getAttribute('max')) || Infinity;
+
+                if (montantSaisi > montantMax && montantMax !== Infinity) {
+                    e.preventDefault();
+                    alert(`Le montant saisi (${montantSaisi.toLocaleString('fr-FR')} FCFA) dépasse le solde restant du reliquat (${montantMax.toLocaleString('fr-FR')} FCFA).`);
+                    reliquatMontantInput.focus();
+                    return false;
+                }
+            });
+        }
     });
 </script>
 
