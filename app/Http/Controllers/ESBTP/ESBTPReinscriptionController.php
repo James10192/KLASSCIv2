@@ -848,7 +848,8 @@ class ESBTPReinscriptionController extends Controller
     public function update(Request $request, $etudiantId)
     {
         $request->validate([
-            'nouvelle_classe_id' => 'required|exists:esbtp_classes,id',
+            'nouvelle_classe_id' => 'nullable|exists:esbtp_classes,id',
+            'autre_classe_id' => 'nullable|exists:esbtp_classes,id',
             'decision' => 'required|in:passage,redoublement,rattrapage',
             'observations' => 'nullable|string',
             'selected_optionals' => 'nullable|string', // JSON des frais optionnels
@@ -858,6 +859,14 @@ class ESBTPReinscriptionController extends Controller
         ]);
 
         try {
+            // Déterminer quelle classe utiliser (selon le choix "Même filière" ou "Autre filière")
+            $classeId = $request->input('autre_classe_id') ?: $request->input('nouvelle_classe_id');
+
+            // Vérifier qu'au moins une classe est fournie
+            if (!$classeId) {
+                return back()->withErrors(['error' => 'Vous devez sélectionner une classe pour la réinscription.']);
+            }
+
             // Décoder les frais optionnels sélectionnés
             $selectedOptionals = [];
             if ($request->selected_optionals) {
@@ -877,7 +886,7 @@ class ESBTPReinscriptionController extends Controller
 
             $nouvelleInscription = $this->reinscriptionService->effectuerReinscription(
                 $etudiantId,
-                $request->nouvelle_classe_id,
+                $classeId,  // Utiliser la classe déterminée ci-dessus
                 $request->decision,
                 $request->observations,
                 $selectedOptionals,
@@ -1155,6 +1164,104 @@ class ESBTPReinscriptionController extends Controller
             $etudiant->montant_paye = 0;
             $etudiant->solde_restant = 0;
             $etudiant->peut_reinscrire = false;
+        }
+    }
+
+    /**
+     * API : Récupérer les niveaux d'étude pour une filière donnée
+     * Utilisé par le select en cascade dans reinscription/create.blade.php
+     *
+     * @param  int  $filiereId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getNiveauxByFiliere($filiereId)
+    {
+        try {
+            // Récupérer les niveaux distincts qui ont des classes pour cette filière
+            $niveaux = \App\Models\ESBTPClasse::where('filiere_id', $filiereId)
+                ->where('is_active', 1)
+                ->with('niveau')
+                ->get()
+                ->pluck('niveau')
+                ->filter() // Enlever les null
+                ->unique('id')
+                ->sortBy('name')
+                ->values()
+                ->map(function($niveau) {
+                    return [
+                        'id' => $niveau->id,
+                        'name' => $niveau->name
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'niveaux' => $niveaux
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erreur getNiveauxByFiliere: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du chargement des niveaux',
+                'niveaux' => []
+            ], 500);
+        }
+    }
+
+    /**
+     * API : Récupérer les classes pour une filière et un niveau donnés
+     * Utilisé par le searchable select en cascade dans reinscription/create.blade.php
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getClassesByFiliereNiveau(Request $request)
+    {
+        try {
+            $filiereId = $request->input('filiere_id');
+            $niveauId = $request->input('niveau_id');
+
+            if (!$filiereId || !$niveauId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Filière et niveau requis',
+                    'classes' => []
+                ], 400);
+            }
+
+            // Récupérer les classes actives pour cette combinaison filière + niveau
+            $classes = \App\Models\ESBTPClasse::with(['filiere', 'niveau'])
+                ->where('filiere_id', $filiereId)
+                ->where('niveau_etude_id', $niveauId)
+                ->where('is_active', 1)
+                ->orderBy('name')
+                ->get()
+                ->map(function($classe) {
+                    return [
+                        'id' => $classe->id,
+                        'name' => $classe->name,
+                        'filiere' => [
+                            'id' => $classe->filiere->id ?? null,
+                            'name' => $classe->filiere->name ?? 'N/A'
+                        ],
+                        'niveau' => [
+                            'id' => $classe->niveau->id ?? null,
+                            'name' => $classe->niveau->name ?? 'N/A'
+                        ]
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'classes' => $classes
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erreur getClassesByFiliereNiveau: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du chargement des classes',
+                'classes' => []
+            ], 500);
         }
     }
 }

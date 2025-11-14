@@ -400,6 +400,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 // Route AJAX pour lazy loading des catégories
                 Route::get('load-category/{category}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'loadCategory'])->name('load-category');
 
+                // Routes API pour les selects en cascade (Filière → Niveau → Classe)
+                Route::get('api/niveaux-by-filiere/{filiere}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'getNiveauxByFiliere'])->name('api.niveaux-by-filiere');
+                Route::get('api/classes-by-filiere-niveau', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'getClassesByFiliereNiveau'])->name('api.classes-by-filiere-niveau');
+
                 // Route pour la page de finalisation de réinscription
                 Route::get('{etudiant}/finaliser', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'create'])->name('create');
 
@@ -868,6 +872,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/inscriptions/{inscription}/paiement-en-attente', [ESBTPInscriptionController::class, 'getPaiementEnAttente'])->name('inscriptions.paiement-en-attente');
             Route::get('/inscriptions/{inscription}/classes-alternatives', [ESBTPInscriptionController::class, 'getClassesAlternatives'])->name('inscriptions.classes-alternatives');
             Route::post('/inscriptions/{inscription}/changer-classe-rapide', [ESBTPInscriptionController::class, 'changerClasseRapide'])->name('inscriptions.changer-classe-rapide');
+
+            // Route API pour validation montant paiement (AJAX)
+            Route::get('/inscriptions/{inscription}/frais/{category}/montant-restant', [ESBTPInscriptionController::class, 'getMontantRestant'])->name('inscriptions.frais.montant-restant');
             Route::get('/inscriptions/{inscription}/refresh-ligne', [ESBTPInscriptionController::class, 'refreshLigne'])->name('inscriptions.refresh-ligne');
 
             // Routes pour l'administration des inscriptions

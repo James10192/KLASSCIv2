@@ -26,6 +26,181 @@
         padding: 15px;
         margin-bottom: 10px;
     }
+
+    /* Searchable Select Component CSS (from etudiants.index) */
+    .searchable-select {
+        position: relative;
+        width: 100%;
+    }
+
+    .searchable-select-trigger {
+        width: 100%;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 10px 40px 10px 14px;
+        font-size: 14px;
+        color: #1e293b;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 42px;
+    }
+
+    .searchable-select-trigger:hover {
+        border-color: #cbd5e1;
+    }
+
+    .searchable-select-trigger:focus,
+    .searchable-select.active .searchable-select-trigger {
+        outline: none;
+        border-color: #0453cb;
+        box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1);
+    }
+
+    .searchable-select-trigger-text {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        cursor: pointer;
+    }
+
+    .searchable-select-trigger-text.placeholder {
+        color: #64748b;
+        font-style: italic;
+    }
+
+    .searchable-select-icon {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        transition: transform 0.2s;
+        color: #64748b;
+        pointer-events: none;
+    }
+
+    .searchable-select.active .searchable-select-icon {
+        transform: translateY(-50%) rotate(180deg);
+    }
+
+    .searchable-select-dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12), 0 4px 10px rgba(15, 23, 42, 0.08);
+        z-index: 9999;
+        max-height: 320px;
+        display: flex;
+        flex-direction: column;
+        animation: slideDown 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        isolation: isolate;
+    }
+
+    .searchable-select-search {
+        padding: 12px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .searchable-select-search input {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 14px;
+        outline: none;
+        transition: all 0.2s;
+    }
+
+    .searchable-select-search input:focus {
+        border-color: #0453cb;
+        box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1);
+    }
+
+    .searchable-select-search input::placeholder {
+        color: #94a3b8;
+    }
+
+    .searchable-select-options {
+        overflow-y: auto;
+        max-height: 240px;
+    }
+
+    .searchable-select-option {
+        padding: 10px 14px;
+        cursor: pointer;
+        transition: background-color 0.15s;
+        font-size: 14px;
+        color: #1e293b;
+    }
+
+    .searchable-select-option:hover {
+        background-color: #f8fafc;
+    }
+
+    .searchable-select-option.selected {
+        background-color: #eff6ff;
+        color: #0453cb;
+        font-weight: 500;
+    }
+
+    .searchable-select-option.highlighted {
+        background-color: #0453cb;
+        color: white;
+    }
+
+    .searchable-select-no-results {
+        padding: 24px 14px;
+        text-align: center;
+        color: #94a3b8;
+        font-size: 14px;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Scrollbar styling */
+    .searchable-select-options::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .searchable-select-options::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+    }
+
+    .searchable-select-options::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+
+    .searchable-select-options::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    /* Alpine.js cloak */
+    [x-cloak] {
+        display: none !important;
+    }
 </style>
 @endsection
 
@@ -202,7 +377,7 @@
                     </div>
 
                     <!-- Sélection nouvelle classe et statut d'affectation -->
-                    <div class="row mb-4">
+                    <div class="row mb-4" x-data="{ choixFiliere: 'meme' }">
                         <div class="col-md-6">
                             <div class="form-group-moderne">
                                 <label for="affectation_status" class="form-label-moderne">Statut d'affectation *</label>
@@ -217,16 +392,147 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group-moderne">
-                                <label for="nouvelle_classe_id" class="form-label-moderne">Nouvelle Classe pour {{ $anneeDestinationName }} *</label>
-                                <select name="nouvelle_classe_id" id="nouvelle_classe_id" class="form-select-moderne" required
-                                        data-initial-value="{{ old('nouvelle_classe_id') }}">
-                                    <option value="">Sélectionnez d'abord une décision...</option>
-                                </select>
+                            <!-- Radio buttons pour choix de filière -->
+                            <div class="form-group-moderne mb-3">
+                                <label class="form-label-moderne">Choix de filière *</label>
+                                <div class="d-flex gap-3">
+                                    <div class="form-check">
+                                        <input type="radio" class="form-check-input" name="choix_filiere_radio" value="meme" id="meme_filiere"
+                                               x-model="choixFiliere" checked>
+                                        <label class="form-check-label" for="meme_filiere">Même filière</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="radio" class="form-check-input" name="choix_filiere_radio" value="autre" id="autre_filiere"
+                                               x-model="choixFiliere">
+                                        <label class="form-check-label" for="autre_filiere">Autre filière</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Affichage conditionnel selon le choix -->
+
+                            <!-- OPTION 1: Même filière (comportement par défaut) -->
+                            <div x-show="choixFiliere === 'meme'" class="form-group-moderne">
+                                <label class="form-label-moderne">Nouvelle Classe pour {{ $anneeDestinationName }} *</label>
+                                <div x-data="window.searchableSelect({
+                                    options: [],
+                                    selected: '',
+                                    name: 'nouvelle_classe',
+                                    placeholder: 'Sélectionnez d\'abord une décision...'
+                                })"
+                                class="searchable-select"
+                                :class="{ 'active': open }"
+                                @click.away="open = false"
+                                x-init="window.nouvelleClasseSelector = $data"
+                                data-initial-value="{{ old('nouvelle_classe_id') }}">
+                                    <input type="hidden" name="nouvelle_classe_id" :value="selectedValue" id="nouvelle_classe_id">
+                                    <button type="button" class="searchable-select-trigger" @click="open = !open" :disabled="!choixFiliere || choixFiliere !== 'meme'">
+                                        <span class="searchable-select-trigger-text" :class="{ 'placeholder': selectedValue === '' }" x-text="selectedLabel || placeholder"></span>
+                                        <i class="fas fa-chevron-down searchable-select-icon"></i>
+                                    </button>
+                                    <div x-show="open" class="searchable-select-dropdown" x-cloak>
+                                        <div class="searchable-select-search">
+                                            <input type="text"
+                                                   x-model="search"
+                                                   @input="filterOptions"
+                                                   placeholder="Tapez pour rechercher..."
+                                                   @click.stop
+                                                   x-ref="searchInput">
+                                        </div>
+                                        <div class="searchable-select-options">
+                                            <template x-if="filteredOptions.length === 0">
+                                                <div class="searchable-select-no-results">
+                                                    <i class="fas fa-search mb-2"></i>
+                                                    <div>Aucune classe trouvée</div>
+                                                </div>
+                                            </template>
+                                            <template x-for="option in filteredOptions" :key="option.value">
+                                                <div class="searchable-select-option"
+                                                     :class="{ 'selected': option.value === selectedValue }"
+                                                     @click="selectOption(option)">
+                                                    <span x-text="option.label"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div id="nouvelleClassePlacesInfo" class="mt-2"></div>
                                 <small class="form-text text-muted" id="classes-help">
                                     Les classes dépendent de votre décision académique
                                 </small>
+                            </div>
+
+                            <!-- OPTION 2: Autre filière (nouveaux selects en cascade) -->
+                            <div x-show="choixFiliere === 'autre'" x-cloak>
+                                <!-- Select Filière -->
+                                <div class="form-group-moderne mb-3">
+                                    <label for="autre_filiere_id" class="form-label-moderne">Filière *</label>
+                                    <select id="autre_filiere_id" class="form-select-moderne"
+                                            :required="choixFiliere === 'autre'"
+                                            @change="handleFiliereChange">
+                                        <option value="">Sélectionner une filière...</option>
+                                        @foreach(\App\Models\ESBTPFiliere::active()->orderBy('name')->get() as $filiere)
+                                            <option value="{{ $filiere->id }}">{{ $filiere->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <!-- Select Niveau -->
+                                <div class="form-group-moderne mb-3">
+                                    <label for="autre_niveau_id" class="form-label-moderne">Niveau d'étude *</label>
+                                    <select id="autre_niveau_id" class="form-select-moderne"
+                                            :required="choixFiliere === 'autre'"
+                                            @change="handleNiveauChange">
+                                        <option value="">Sélectionner d'abord une filière...</option>
+                                    </select>
+                                </div>
+
+                                <!-- Searchable Select Classe (Alpine.js) -->
+                                <div class="form-group-moderne">
+                                    <label class="form-label-moderne">Classe *</label>
+                                    <div x-data="window.searchableSelect({
+                                        options: [],
+                                        selected: '',
+                                        name: 'autre_classe',
+                                        placeholder: '👉 Sélectionnez d\'abord une filière et un niveau'
+                                    })"
+                                    class="searchable-select"
+                                    :class="{ 'active': open }"
+                                    @click.away="open = false"
+                                    x-init="window.autreClasseSelector = $data">
+                                        <input type="hidden" name="autre_classe_id" :value="selectedValue" id="autre_classe_id">
+                                        <button type="button" class="searchable-select-trigger" @click="open = !open">
+                                            <span class="searchable-select-trigger-text" :class="{ 'placeholder': selectedValue === '' }" x-text="selectedLabel || placeholder"></span>
+                                            <i class="fas fa-chevron-down searchable-select-icon"></i>
+                                        </button>
+                                        <div x-show="open" class="searchable-select-dropdown" x-cloak>
+                                            <div class="searchable-select-search">
+                                                <input type="text"
+                                                       x-model="search"
+                                                       @input="filterOptions"
+                                                       placeholder="Tapez pour rechercher..."
+                                                       @click.stop
+                                                       x-ref="searchInput">
+                                            </div>
+                                            <div class="searchable-select-options">
+                                                <template x-if="filteredOptions.length === 0">
+                                                    <div class="searchable-select-no-results">
+                                                        <i class="fas fa-search mb-2"></i>
+                                                        <div>Aucune classe trouvée</div>
+                                                    </div>
+                                                </template>
+                                                <template x-for="option in filteredOptions" :key="option.value">
+                                                    <div class="searchable-select-option"
+                                                         :class="{ 'selected': option.value === selectedValue }"
+                                                         @click="selectOption(option)">
+                                                        <span x-text="option.label"></span>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="autreClassePlacesInfo" class="mt-2"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -283,6 +589,335 @@
 @endsection
 
 @push('scripts')
+<script>
+    // ========================================
+    // SEARCHABLE SELECT COMPONENT (from etudiants.index)
+    // ========================================
+    window.searchableSelect = function(config) {
+        return {
+            options: config.options || [],
+            filteredOptions: [],
+            search: '',
+            open: false,
+            selectedValue: config.selected || '',
+            selectedLabel: '',
+            placeholder: config.placeholder || 'Sélectionner...',
+
+            init() {
+                this.filteredOptions = this.options;
+                this.updateSelectedLabel();
+
+                // Watch for open changes to focus search input
+                this.$watch('open', value => {
+                    if (value) {
+                        this.$nextTick(() => {
+                            this.$refs.searchInput?.focus();
+                        });
+                    } else {
+                        this.search = '';
+                        this.filteredOptions = this.options;
+                    }
+                });
+            },
+
+            filterOptions() {
+                const searchLower = this.search.toLowerCase();
+                this.filteredOptions = this.options.filter(option =>
+                    option.label.toLowerCase().includes(searchLower)
+                );
+            },
+
+            selectOption(option) {
+                this.selectedValue = option.value;
+                this.selectedLabel = option.label;
+                this.open = false;
+                this.search = '';
+                this.filteredOptions = this.options;
+
+                // Déclencher les fonctions appropriées selon le type de select
+                this.$nextTick(() => {
+                    // Pour le select "Même filière"
+                    if (config.name === 'nouvelle_classe') {
+                        if (option.value) {
+                            if (typeof window.fetchAvailablePlaces === 'function') {
+                                window.fetchAvailablePlaces(option.value);
+                            }
+                            if (typeof window.loadFraisForClasse === 'function') {
+                                window.loadFraisForClasse(option.value);
+                            }
+                        } else {
+                            // Option vide sélectionnée - réinitialiser
+                            const placesInfo = document.getElementById('nouvelleClassePlacesInfo');
+                            if (placesInfo) {
+                                placesInfo.innerHTML = '';
+                            }
+                            const fraisContainer = document.getElementById('fraisContainer');
+                            if (fraisContainer) {
+                                fraisContainer.innerHTML = '<div class="text-center py-4"><p class="text-muted">Sélectionnez une classe pour voir les frais applicables</p></div>';
+                            }
+                        }
+                    }
+                    // Pour le select "Autre filière"
+                    else if (config.name === 'autre_classe') {
+                        if (typeof window.checkAutrePlacesDisponibles === 'function') {
+                            window.checkAutrePlacesDisponibles(option.value);
+                        }
+                        if (option.value && typeof window.loadAutreFrais === 'function') {
+                            window.loadAutreFrais(option.value);
+                        }
+                    }
+                });
+            },
+
+            updateSelectedLabel() {
+                const selected = this.options.find(opt => opt.value === this.selectedValue);
+                this.selectedLabel = selected ? selected.label : '';
+            }
+        }
+    }
+
+    // ========================================
+    // LOGIQUE CASCADING SELECTS (Filière → Niveau → Classe)
+    // ========================================
+    window.handleFiliereChange = function(event) {
+        const filiereId = event.target.value;
+        const niveauSelect = document.getElementById('autre_niveau_id');
+
+        // Réinitialiser le select niveau
+        niveauSelect.innerHTML = '<option value="">⏳ Chargement...</option>';
+
+        // Réinitialiser le searchable select classe
+        if (window.autreClasseSelector) {
+            window.autreClasseSelector.options = [];
+            window.autreClasseSelector.filteredOptions = [];
+            window.autreClasseSelector.selectedValue = '';
+            window.autreClasseSelector.selectedLabel = '';
+            window.autreClasseSelector.placeholder = '👉 Sélectionnez d\'abord un niveau';
+        }
+
+        // Réinitialiser l'info des places
+        const placesInfo = document.getElementById('autreClassePlacesInfo');
+        if (placesInfo) {
+            placesInfo.innerHTML = '';
+        }
+
+        if (!filiereId) {
+            niveauSelect.innerHTML = '<option value="">Sélectionner d\'abord une filière...</option>';
+            return;
+        }
+
+        // Afficher un indicateur de chargement pendant le fetch AJAX
+        niveauSelect.innerHTML = '<option value="">⏳ Chargement des niveaux...</option>';
+
+        // Charger les niveaux pour cette filière via AJAX
+        fetch(`/esbtp/reinscription/api/niveaux-by-filiere/${filiereId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.niveaux && data.niveaux.length > 0) {
+                    let options = '<option value="">Sélectionner un niveau...</option>';
+                    data.niveaux.forEach(niveau => {
+                        options += `<option value="${niveau.id}">${niveau.name}</option>`;
+                    });
+                    niveauSelect.innerHTML = options;
+                } else {
+                    niveauSelect.innerHTML = '<option value="">Aucun niveau disponible pour cette filière</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Erreur chargement niveaux:', error);
+                niveauSelect.innerHTML = '<option value="">❌ Erreur de chargement</option>';
+            });
+    }
+
+    window.handleNiveauChange = function(event) {
+        const niveauId = event.target.value;
+        const filiereId = document.getElementById('autre_filiere_id').value;
+
+        // Réinitialiser l'info des places
+        const placesInfo = document.getElementById('autreClassePlacesInfo');
+        if (placesInfo) {
+            placesInfo.innerHTML = '';
+        }
+
+        if (!niveauId || !filiereId) {
+            if (window.autreClasseSelector) {
+                window.autreClasseSelector.options = [];
+                window.autreClasseSelector.filteredOptions = [];
+                window.autreClasseSelector.selectedValue = '';
+                window.autreClasseSelector.selectedLabel = '';
+                window.autreClasseSelector.placeholder = '👉 Sélectionnez d\'abord une filière et un niveau';
+            }
+            return;
+        }
+
+        // Afficher un indicateur de chargement pendant le fetch AJAX
+        if (window.autreClasseSelector) {
+            window.autreClasseSelector.options = [];
+            window.autreClasseSelector.filteredOptions = [];
+            window.autreClasseSelector.selectedValue = '';
+            window.autreClasseSelector.selectedLabel = '';
+            window.autreClasseSelector.placeholder = '⏳ Chargement des classes...';
+        }
+
+        // Charger les classes pour cette filière + niveau via AJAX
+        fetch(`/esbtp/reinscription/api/classes-by-filiere-niveau?filiere_id=${filiereId}&niveau_id=${niveauId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.classes && data.classes.length > 0) {
+                    // Ajouter une option par défaut au début de la liste
+                    const defaultOption = {
+                        value: '',
+                        label: 'Sélectionner une classe...'
+                    };
+
+                    const classesOptions = [
+                        defaultOption,
+                        ...data.classes.map(classe => ({
+                            value: classe.id.toString(),
+                            label: `${classe.name} - ${classe.filiere.name} (${classe.niveau.name})`
+                        }))
+                    ];
+
+                    if (window.autreClasseSelector) {
+                        window.autreClasseSelector.options = classesOptions;
+                        window.autreClasseSelector.filteredOptions = classesOptions;
+                        // Pré-sélectionner l'option par défaut
+                        window.autreClasseSelector.selectedValue = '';
+                        window.autreClasseSelector.selectedLabel = 'Sélectionner une classe...';
+                        window.autreClasseSelector.placeholder = 'Sélectionner une classe...';
+                    }
+                } else {
+                    if (window.autreClasseSelector) {
+                        window.autreClasseSelector.options = [{
+                            value: '',
+                            label: 'Aucune classe disponible pour cette combinaison'
+                        }];
+                        window.autreClasseSelector.filteredOptions = [{
+                            value: '',
+                            label: 'Aucune classe disponible pour cette combinaison'
+                        }];
+                        window.autreClasseSelector.selectedValue = '';
+                        window.autreClasseSelector.selectedLabel = 'Aucune classe disponible pour cette combinaison';
+                        window.autreClasseSelector.placeholder = 'Aucune classe disponible';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Erreur chargement classes:', error);
+                if (window.autreClasseSelector) {
+                    window.autreClasseSelector.options = [{
+                        value: '',
+                        label: '❌ Erreur de chargement'
+                    }];
+                    window.autreClasseSelector.filteredOptions = [{
+                        value: '',
+                        label: '❌ Erreur de chargement'
+                    }];
+                    window.autreClasseSelector.selectedValue = '';
+                    window.autreClasseSelector.selectedLabel = '❌ Erreur de chargement';
+                    window.autreClasseSelector.placeholder = '❌ Erreur de chargement';
+                }
+            });
+    }
+
+    // ========================================
+    // VÉRIFICATION PLACES DISPONIBLES (pour "autre filière")
+    // ========================================
+    window.checkAutrePlacesDisponibles = function(classeId) {
+        const placesInfo = document.getElementById('autreClassePlacesInfo');
+        if (!placesInfo) {
+            return;
+        }
+
+        // Si aucune classe sélectionnée (option vide), effacer l'info des places
+        if (!classeId) {
+            placesInfo.innerHTML = '';
+            return;
+        }
+
+        placesInfo.innerHTML = `
+            <div class="d-flex align-items-center text-muted small mt-2">
+                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                Vérification des places...
+            </div>
+        `;
+
+        fetch(`/esbtp/classes/${classeId}/available-places`)
+            .then(response => response.json())
+            .then(data => {
+                const available = Number(data.available_places);
+                const capacity = data.capacity !== undefined ? Number(data.capacity) : null;
+
+                const capacityText = capacity !== null && !isNaN(capacity) ? ` / ${capacity}` : '';
+                let message = `Places disponibles: <strong>${Math.max(available, 0)}</strong>${capacityText}`;
+                let alertClass = 'alert-success';
+
+                if (available <= 5) {
+                    alertClass = 'alert-warning';
+                    if (available > 0) {
+                        message += `<br><small class="text-warning">Il ne reste que ${available} place(s) disponibles.</small>`;
+                    }
+                }
+
+                if (available <= 0) {
+                    alertClass = 'alert-danger';
+                    message = capacityText
+                        ? `<strong>Aucune place disponible !</strong> (0${capacityText})`
+                        : '<strong>Aucune place disponible !</strong>';
+                    message += '<br><small class="text-danger">Veuillez sélectionner une autre classe avant de poursuivre.</small>';
+                }
+
+                placesInfo.innerHTML = `<div class="alert ${alertClass} p-2 mt-2">${message}</div>`;
+
+                // Charger les frais pour cette classe
+                loadAutreFrais(classeId);
+            })
+            .catch(error => {
+                console.error('Erreur vérification places:', error);
+                placesInfo.innerHTML = '<div class="alert alert-danger p-2 mt-2">Erreur lors de la récupération des places.</div>';
+            });
+    }
+
+    // ========================================
+    // CHARGEMENT FRAIS POUR "AUTRE FILIÈRE"
+    // ========================================
+    function loadAutreFrais(classeId) {
+        const fraisContainer = document.getElementById('fraisContainer');
+        if (!fraisContainer) {
+            return;
+        }
+
+        const affectationSelect = document.getElementById('affectation_status');
+        const affectation = affectationSelect ? affectationSelect.value : 'affecté';
+
+        fraisContainer.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 text-muted">Chargement des frais...</p>
+            </div>
+        `;
+
+        // Appeler l'endpoint AJAX pour récupérer les frais
+        fetch(`/esbtp/inscriptions/frais-by-classe/${classeId}?affectation_status=${encodeURIComponent(affectation)}`, {
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && typeof window.displayFrais === 'function') {
+                window.displayFrais(data.frais);
+            } else {
+                fraisContainer.innerHTML = `<div class="alert alert-danger">Erreur: ${data.message || 'Impossible de charger les frais'}</div>`;
+            }
+        })
+        .catch(error => {
+            console.error('Erreur chargement frais:', error);
+            fraisContainer.innerHTML = `<div class="alert alert-danger">Erreur lors du chargement des frais</div>`;
+        });
+    }
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const classeSelect = document.getElementById('nouvelle_classe_id');
@@ -349,9 +984,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const decision = decisionSelect.value;
         const affectation = affectationSelect.value;
 
-
-        // Réinitialiser le select des classes
-        classeSelect.innerHTML = '<option value="">Chargement...</option>';
+        // Réinitialiser les infos
         fraisContainer.innerHTML = '<div class="text-center py-4"><p class="text-muted">Sélectionnez une classe pour voir les frais applicables</p></div>';
         if (placesInfo) {
             placesInfo.innerHTML = '';
@@ -359,33 +992,73 @@ document.addEventListener('DOMContentLoaded', function() {
         setReinscriptionButtonState(false, 'Sélectionnez une classe disponible pour finaliser la réinscription.');
 
         if (decision && classesParDecision[decision]) {
-            let options = '<option value="">Sélectionner une classe...</option>';
             const classes = classesParDecision[decision];
 
-            classes.forEach(function(classe) {
-                const niveauName = classe.niveau ? classe.niveau.name : 'N/A';
-                const filiereName = classe.filiere ? classe.filiere.name : 'N/A';
-                options += `<option value="${classe.id}">${classe.name || classe.nom} - ${niveauName} ${filiereName}</option>`;
-            });
+            // Créer les options pour le searchable select
+            const defaultOption = {
+                value: '',
+                label: 'Sélectionner une classe...'
+            };
 
-            classeSelect.innerHTML = options;
-            document.getElementById('classes-help').textContent = `${classes.length} classe(s) disponible(s) pour ${decision}`;
+            const classesOptions = [
+                defaultOption,
+                ...classes.map(function(classe) {
+                    const niveauName = classe.niveau ? classe.niveau.name : 'N/A';
+                    const filiereName = classe.filiere ? classe.filiere.name : 'N/A';
+                    return {
+                        value: String(classe.id),
+                        label: `${classe.name || classe.nom} - ${niveauName} ${filiereName}`
+                    };
+                })
+            ];
 
-            const initialValue = classeSelect.dataset.initialValue;
-            if (initialValue) {
-                const hasMatch = classes.some(function(classe) {
-                    return String(classe.id) === String(initialValue);
-                });
+            // Mettre à jour le searchable select
+            if (window.nouvelleClasseSelector) {
+                window.nouvelleClasseSelector.options = classesOptions;
+                window.nouvelleClasseSelector.filteredOptions = classesOptions;
+                window.nouvelleClasseSelector.selectedValue = '';
+                window.nouvelleClasseSelector.selectedLabel = 'Sélectionner une classe...';
+                window.nouvelleClasseSelector.placeholder = 'Sélectionner une classe...';
 
-                if (hasMatch) {
-                    classeSelect.value = initialValue;
-                    classeSelect.dataset.initialValue = '';
-                    fetchAvailablePlaces(initialValue);
-                    loadFraisForClasse(initialValue);
+                // Restaurer la valeur initiale si présente
+                const searchableSelectDiv = document.querySelector('[x-init="window.nouvelleClasseSelector = $data"]');
+                const initialValue = searchableSelectDiv ? searchableSelectDiv.dataset.initialValue : '';
+
+                if (initialValue) {
+                    const hasMatch = classes.some(function(classe) {
+                        return String(classe.id) === String(initialValue);
+                    });
+
+                    if (hasMatch) {
+                        const matchingOption = classesOptions.find(opt => opt.value === String(initialValue));
+                        if (matchingOption) {
+                            window.nouvelleClasseSelector.selectedValue = matchingOption.value;
+                            window.nouvelleClasseSelector.selectedLabel = matchingOption.label;
+                            searchableSelectDiv.dataset.initialValue = '';
+                            fetchAvailablePlaces(initialValue);
+                            loadFraisForClasse(initialValue);
+                        }
+                    }
                 }
             }
+
+            document.getElementById('classes-help').textContent = `${classes.length} classe(s) disponible(s) pour ${decision}`;
         } else {
-            classeSelect.innerHTML = '<option value="">Aucune classe disponible</option>';
+            // Aucune classe disponible
+            if (window.nouvelleClasseSelector) {
+                window.nouvelleClasseSelector.options = [{
+                    value: '',
+                    label: 'Aucune classe disponible'
+                }];
+                window.nouvelleClasseSelector.filteredOptions = [{
+                    value: '',
+                    label: 'Aucune classe disponible'
+                }];
+                window.nouvelleClasseSelector.selectedValue = '';
+                window.nouvelleClasseSelector.selectedLabel = 'Aucune classe disponible';
+                window.nouvelleClasseSelector.placeholder = 'Aucune classe disponible';
+            }
+
             document.getElementById('classes-help').textContent = 'Aucune classe trouvée pour cette décision';
             setReinscriptionButtonState(false, 'Aucune classe disponible pour cette décision.');
         }
@@ -403,9 +1076,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Recharger les classes (l'affectation peut influencer les classes disponibles)
             updateClassesParDecision();
             // Recharger les frais si une classe est sélectionnée
-            if (classeSelect.value) {
-                fetchAvailablePlaces(classeSelect.value);
-                loadFraisForClasse(classeSelect.value);
+            if (window.nouvelleClasseSelector && window.nouvelleClasseSelector.selectedValue) {
+                fetchAvailablePlaces(window.nouvelleClasseSelector.selectedValue);
+                loadFraisForClasse(window.nouvelleClasseSelector.selectedValue);
             } else if (placesInfo) {
                 placesInfo.innerHTML = '';
                 setReinscriptionButtonState(false, 'Sélectionnez une classe disponible pour finaliser la réinscription.');
@@ -416,23 +1089,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialisation au chargement
     updateClassesParDecision();
 
-    // Chargement des frais quand une classe est sélectionnée
-    if (classeSelect && fraisContainer) {
-        classeSelect.addEventListener('change', function() {
-            if (this.value) {
-                fetchAvailablePlaces(this.value);
-                loadFraisForClasse(this.value);
-            } else {
-                fraisContainer.innerHTML = '<div class="text-center py-4"><p class="text-muted">Sélectionnez une classe pour voir les frais applicables</p></div>';
-                if (placesInfo) {
-                    placesInfo.innerHTML = '';
-                }
-                setReinscriptionButtonState(false, 'Sélectionnez une classe disponible pour finaliser la réinscription.');
-            }
-        });
-    }
-
-    function fetchAvailablePlaces(classeId) {
+    // Rendre les fonctions globales pour le composant Alpine
+    window.fetchAvailablePlaces = function fetchAvailablePlaces(classeId) {
         if (!placesInfo) {
             return;
         }
@@ -513,7 +1171,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    function loadFraisForClasse(classeId) {
+    window.loadFraisForClasse = function loadFraisForClasse(classeId) {
         const affectation = affectationSelect.value;
 
         fraisContainer.innerHTML = `
@@ -551,7 +1209,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function displayFrais(fraisData) {
+    // Exposer globalement pour être utilisée par loadAutreFrais()
+    window.displayFrais = function displayFrais(fraisData) {
         if (!fraisData || fraisData.length === 0) {
             fraisContainer.innerHTML = `
                 <div class="alert alert-info">
