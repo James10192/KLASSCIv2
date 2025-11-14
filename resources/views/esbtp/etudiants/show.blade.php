@@ -4,6 +4,30 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+    /* Style pour la carte d'ajout de réinscription */
+    .add-reinscription-card {
+        border: 2px dashed var(--primary);
+        background: linear-gradient(135deg, rgba(4, 83, 203, 0.02) 0%, rgba(94, 145, 222, 0.02) 100%);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .add-reinscription-card:hover {
+        border-color: var(--secondary);
+        background: linear-gradient(135deg, rgba(4, 83, 203, 0.05) 0%, rgba(94, 145, 222, 0.05) 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(4, 83, 203, 0.15);
+    }
+
+    .add-reinscription-card i {
+        transition: transform 0.3s ease;
+    }
+
+    .add-reinscription-card:hover i {
+        transform: scale(1.1);
+    }
+</style>
 @endsection
 
 @section('content')
@@ -578,6 +602,30 @@
                                             </div>
                                         </div>
                                     @endforeach
+
+                                    {{-- Carte pour ajouter une nouvelle réinscription --}}
+                                    @if($anneeCourante)
+                                    <div class="col-md-6 mb-4">
+                                        <a href="{{ route('esbtp.reinscription.show', $etudiant->id) }}?annee_academique={{ $anneeCourante->name }}"
+                                           class="text-decoration-none">
+                                            <div class="card-moderne add-reinscription-card h-100">
+                                                <div class="p-md h-100 d-flex flex-column align-items-center justify-content-center text-center"
+                                                     style="min-height: 300px;">
+                                                    <div class="mb-3">
+                                                        <i class="fas fa-plus-circle" style="font-size: 4rem; color: var(--primary);"></i>
+                                                    </div>
+                                                    <h5 class="mb-2 font-semibold" style="color: var(--primary);">
+                                                        Nouvelle Réinscription
+                                                    </h5>
+                                                    <p class="text-secondary mb-0">
+                                                        Réinscrire pour l'année<br>
+                                                        <strong>{{ $anneeCourante->name }}</strong>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div>
+                                    @endif
                                 </div>
                             @else
                                 <div class="alert alert-info mb-0">

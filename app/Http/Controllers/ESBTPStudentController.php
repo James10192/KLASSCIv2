@@ -354,7 +354,10 @@ class ESBTPStudentController extends Controller
             }
         ]);
 
-        return view('esbtp.etudiants.show', compact('etudiant'));
+        // Récupérer l'année universitaire courante pour le lien de réinscription
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        return view('esbtp.etudiants.show', compact('etudiant', 'anneeCourante'));
     }
 
     public function edit(Request $request, ESBTPEtudiant $etudiant)
