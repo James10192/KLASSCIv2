@@ -16,7 +16,7 @@
                 {{ substr($paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet, 0, 2) }}
             </div>
             <div>
-                <a href="{{ route('esbtp.etudiants.show', $paiement->etudiant_id) }}" class="text-decoration-none">
+                <a href="{{ route('esbtp.inscriptions.situation-financiere.preview', $paiement->inscription_id) }}" class="text-decoration-none">
                     <strong>{{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet }}</strong>
                 </a>
                 <div class="text-muted small">

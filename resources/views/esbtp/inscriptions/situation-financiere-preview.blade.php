@@ -85,7 +85,20 @@
                 <button onclick="window.print()" class="btn-acasi primary">
                     <i class="fas fa-print"></i>Imprimer
                 </button>
-                <a href="{{ route('esbtp.inscriptions.show', $inscription->id) }}" class="btn-acasi secondary">
+                @php
+                    // Récupérer l'URL de la page précédente (referrer)
+                    $returnUrl = request()->headers->get('referer')
+                        ? request()->headers->get('referer')
+                        : route('esbtp.inscriptions.show', $inscription->id);
+
+                    // Sécurité : Vérifier que le referrer est sur le même domaine
+                    $parsedUrl = parse_url($returnUrl);
+                    $appUrl = parse_url(config('app.url'));
+                    if (isset($parsedUrl['host']) && $parsedUrl['host'] !== ($appUrl['host'] ?? '')) {
+                        $returnUrl = route('esbtp.inscriptions.show', $inscription->id); // Fallback sécurisé
+                    }
+                @endphp
+                <a href="{{ $returnUrl }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>Retour
                 </a>
             </div>
