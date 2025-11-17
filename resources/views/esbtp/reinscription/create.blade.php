@@ -841,6 +841,7 @@
                 Vérification des places...
             </div>
         `;
+        setReinscriptionButtonState(false, 'Vérification des places disponibles en cours...');
 
         fetch(`/esbtp/classes/${classeId}/available-places`)
             .then(response => response.json())
@@ -851,9 +852,13 @@
                 const capacityText = capacity !== null && !isNaN(capacity) ? ` / ${capacity}` : '';
                 let message = `Places disponibles: <strong>${Math.max(available, 0)}</strong>${capacityText}`;
                 let alertClass = 'alert-success';
+                let buttonMessage = '';
 
                 if (available <= 5) {
                     alertClass = 'alert-warning';
+                    buttonMessage = available > 0
+                        ? `Il reste ${available} place(s).`
+                        : buttonMessage;
                     if (available > 0) {
                         message += `<br><small class="text-warning">Il ne reste que ${available} place(s) disponibles.</small>`;
                     }
@@ -865,6 +870,14 @@
                         ? `<strong>Aucune place disponible !</strong> (0${capacityText})`
                         : '<strong>Aucune place disponible !</strong>';
                     message += '<br><small class="text-danger">Veuillez sélectionner une autre classe avant de poursuivre.</small>';
+                    setReinscriptionButtonState(false, 'Classe complète. Choisissez une autre classe pour finaliser la réinscription.');
+                } else {
+                    // Places disponibles - activer le bouton
+                    if (buttonMessage) {
+                        setReinscriptionButtonState(true, buttonMessage);
+                    } else {
+                        setReinscriptionButtonState(true);
+                    }
                 }
 
                 placesInfo.innerHTML = `<div class="alert ${alertClass} p-2 mt-2">${message}</div>`;
@@ -875,6 +888,7 @@
             .catch(error => {
                 console.error('Erreur vérification places:', error);
                 placesInfo.innerHTML = '<div class="alert alert-danger p-2 mt-2">Erreur lors de la récupération des places.</div>';
+                setReinscriptionButtonState(false, 'Erreur lors de la récupération des places. Réessayez ou sélectionnez une autre classe.');
             });
     }
 
