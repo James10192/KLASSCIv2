@@ -166,11 +166,22 @@ class ESBTPClasseController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function create()
+    public function create(Request $request)
     {
         $filieres = ESBTPFiliere::where('is_active', true)->get();
         $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
         $annees = ESBTPAnneeUniversitaire::where('is_active', true)->get();
+
+        // Si c'est une requête AJAX (pour le modal), retourner seulement le partial
+        if ($request->ajax() || $request->input('ajax') === '1') {
+            return view('esbtp.classes.partials.form', [
+                'filieres' => $filieres,
+                'niveaux' => $niveaux,
+                'annees' => $annees,
+                'isModal' => true,
+                'classe' => null, // Pas de classe pour création
+            ]);
+        }
 
         return view('esbtp.classes.create', compact('filieres', 'niveaux', 'annees'));
     }
@@ -184,16 +195,27 @@ class ESBTPClasseController extends Controller
     public function store(Request $request)
     {
         // Valider les données du formulaire
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:esbtp_classes,code',
-            'filiere_id' => 'required|exists:esbtp_filieres,id',
-            'niveau_etude_id' => 'required|exists:esbtp_niveau_etudes,id',
-            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-            'places_totales' => 'required|integer|min:1',
-            'description' => 'nullable|string',
-            'is_active' => 'boolean',
-        ]);
+        try {
+            $validatedData = $request->validate([
+                'name' => 'required|string|max:255',
+                'code' => 'required|string|max:50|unique:esbtp_classes,code',
+                'filiere_id' => 'required|exists:esbtp_filieres,id',
+                'niveau_etude_id' => 'required|exists:esbtp_niveau_etudes,id',
+                'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+                'places_totales' => 'required|integer|min:1',
+                'description' => 'nullable|string',
+                'is_active' => 'boolean',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Si c'est une requête AJAX, retourner les erreurs en JSON
+            if ($request->ajax() || $request->input('is_ajax') === '1') {
+                return response()->json([
+                    'success' => false,
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+            throw $e;
+        }
 
         // Ajouter les champs de traçabilité
         $validatedData['created_by'] = Auth::id();
@@ -215,6 +237,27 @@ class ESBTPClasseController extends Controller
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now()
+            ]);
+        }
+
+        // Charger les relations pour la réponse JSON
+        $classe->load(['filiere', 'niveau', 'annee']);
+
+        // Si c'est une requête AJAX, retourner une réponse JSON
+        if ($request->ajax() || $request->input('is_ajax') === '1') {
+            return response()->json([
+                'success' => true,
+                'message' => 'La classe a été créée avec succès.',
+                'classe' => [
+                    'id' => $classe->id,
+                    'name' => $classe->name,
+                    'code' => $classe->code,
+                    'filiere' => $classe->filiere ? $classe->filiere->name : null,
+                    'niveau' => $classe->niveau ? $classe->niveau->name : null,
+                    'annee' => $classe->annee ? $classe->annee->name : null,
+                    'places_totales' => $classe->places_totales,
+                    'is_active' => $classe->is_active,
+                ],
             ]);
         }
 
@@ -301,11 +344,22 @@ class ESBTPClasseController extends Controller
      * @param  \App\Models\ESBTPClasse  $classe
      * @return \Illuminate\Http\Response
      */
-    public function edit(ESBTPClasse $classe)
+    public function edit(Request $request, ESBTPClasse $classe)
     {
         $filieres = ESBTPFiliere::where('is_active', true)->get();
         $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
         $annees = ESBTPAnneeUniversitaire::where('is_active', true)->get();
+
+        // Si c'est une requête AJAX (pour le modal), retourner seulement le partial
+        if ($request->ajax() || $request->input('ajax') === '1') {
+            return view('esbtp.classes.partials.form', [
+                'filieres' => $filieres,
+                'niveaux' => $niveaux,
+                'annees' => $annees,
+                'isModal' => true,
+                'classe' => $classe, // Classe existante pour édition
+            ]);
+        }
 
         return view('esbtp.classes.edit', compact('classe', 'filieres', 'niveaux', 'annees'));
     }
@@ -320,16 +374,27 @@ class ESBTPClasseController extends Controller
     public function update(Request $request, ESBTPClasse $classe)
     {
         // Valider les données du formulaire
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:esbtp_classes,code,' . $classe->id,
-            'filiere_id' => 'required|exists:esbtp_filieres,id',
-            'niveau_etude_id' => 'required|exists:esbtp_niveau_etudes,id',
-            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-            'places_totales' => 'required|integer|min:1',
-            'description' => 'nullable|string',
-            'is_active' => 'boolean',
-        ]);
+        try {
+            $validatedData = $request->validate([
+                'name' => 'required|string|max:255',
+                'code' => 'required|string|max:50|unique:esbtp_classes,code,' . $classe->id,
+                'filiere_id' => 'required|exists:esbtp_filieres,id',
+                'niveau_etude_id' => 'required|exists:esbtp_niveau_etudes,id',
+                'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+                'places_totales' => 'required|integer|min:1',
+                'description' => 'nullable|string',
+                'is_active' => 'boolean',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Si c'est une requête AJAX, retourner les erreurs en JSON
+            if ($request->ajax() || $request->input('is_ajax') === '1') {
+                return response()->json([
+                    'success' => false,
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+            throw $e;
+        }
 
         // Mettre à jour les champs de traçabilité
         $validatedData['updated_by'] = Auth::id();
@@ -359,11 +424,77 @@ class ESBTPClasseController extends Controller
             }
         }
 
+        // Charger les relations pour la réponse JSON
+        $classe->load(['filiere', 'niveau', 'annee']);
+
+        // Si c'est une requête AJAX, retourner une réponse JSON
+        if ($request->ajax() || $request->input('is_ajax') === '1') {
+            return response()->json([
+                'success' => true,
+                'message' => 'La classe a été mise à jour avec succès.',
+                'classe' => [
+                    'id' => $classe->id,
+                    'name' => $classe->name,
+                    'code' => $classe->code,
+                    'filiere' => $classe->filiere ? $classe->filiere->name : null,
+                    'niveau' => $classe->niveau ? $classe->niveau->name : null,
+                    'annee' => $classe->annee ? $classe->annee->name : null,
+                    'places_totales' => $classe->places_totales,
+                    'is_active' => $classe->is_active,
+                ],
+            ]);
+        }
+
         // Récupérer et valider le return_url
         $returnUrl = $this->validateReturnUrl($request->input('return_url'));
 
         return redirect($returnUrl)
             ->with('success', 'La classe a été mise à jour avec succès.');
+    }
+
+    /**
+     * Rafraîchir une carte de classe spécifique (AJAX pour mise à jour partielle)
+     * Pattern identique à paiements.refreshLigne
+     */
+    public function refreshLigne(ESBTPClasse $classe)
+    {
+        try {
+            // Charger toutes les relations nécessaires
+            $classe->load([
+                'filiere.parent',
+                'niveau',
+                'annee'
+            ]);
+
+            // Rendu de la partial classe-card
+            $html = view('esbtp.classes.partials.classe-card', [
+                'classe' => $classe
+            ])->render();
+
+            \Log::info('Carte classe rafraîchie avec succès', [
+                'classe_id' => $classe->id,
+                'user_id' => auth()->id(),
+                'is_active' => $classe->is_active
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'classe_id' => $classe->id,
+                'is_active' => $classe->is_active
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur refreshLigne classe: ' . $e->getMessage(), [
+                'classe_id' => $classe->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors du rafraîchissement de la carte: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

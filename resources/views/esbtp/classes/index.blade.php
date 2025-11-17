@@ -17,9 +17,9 @@
             </div>
             <div class="header-actions">
                 @if(auth()->user()->hasRole('superAdmin'))
-                <a href="{{ route('esbtp.classes.create') }}" class="btn-acasi primary">
+                <button type="button" class="btn-acasi primary" id="btn-open-create-modal">
                     <i class="fas fa-plus-circle"></i>Nouvelle Classe
-                </a>
+                </button>
                 @endif
             </div>
         </div>
@@ -232,6 +232,66 @@
             </div>
         </div>
 
+    </div>
+</div>
+
+{{-- Modal Création Classe AJAX --}}
+<div class="modal fade" id="createClasseModal" tabindex="-1" aria-labelledby="createClasseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createClasseModalLabel">
+                    <i class="fas fa-plus-circle me-2"></i>Nouvelle Classe
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modal-create-body">
+                {{-- Chargé via AJAX --}}
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Chargement...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Annuler
+                </button>
+                <button type="button" class="btn btn-primary" id="modal-create-submit-btn" disabled>
+                    <i class="fas fa-save"></i> Enregistrer la classe
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Modal Édition Classe AJAX --}}
+<div class="modal fade" id="editClasseModal" tabindex="-1" aria-labelledby="editClasseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editClasseModalLabel">
+                    <i class="fas fa-edit me-2"></i>Modifier la Classe
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="modal-edit-body">
+                {{-- Chargé via AJAX --}}
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Chargement...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Annuler
+                </button>
+                <button type="button" class="btn btn-primary" id="modal-edit-submit-btn" disabled>
+                    <i class="fas fa-save"></i> Mettre à jour la classe
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 @endsection
@@ -570,6 +630,578 @@ $(document).ready(function() {
 
         // Rediriger vers l'URL d'export (déclenche le téléchargement)
         window.location.href = finalUrl;
+    }
+
+    // ========================================
+    // GESTION DES MODALS AJAX (Création + Édition)
+    // ========================================
+
+    /**
+     * Initialise Select2 sur les selects du formulaire chargé en AJAX
+     * @param {string} formId - ID du formulaire
+     */
+    function initClasseFormScripts(formId) {
+        // Initialiser Select2 si disponible
+        if (typeof $.fn.select2 !== 'undefined') {
+            $(`#${formId}_filiere_id, #${formId}_niveau_etude_id, #${formId}_annee_universitaire_id`).select2({
+                theme: 'bootstrap4',
+                placeholder: 'Sélectionner une option',
+                allowClear: true,
+                dropdownParent: formId.includes('modal') ? $(`#${formId}`).closest('.modal') : undefined
+            });
+        }
+
+        // Auto-génération du code de classe basé sur le nom (seulement si vide)
+        $(`#${formId}_name`).on('blur', function() {
+            const codeInput = $(`#${formId}_code`);
+            if (codeInput.val() === '') {
+                const name = $(this).val();
+                if (name) {
+                    // Extraire les premières lettres de chaque mot et les convertir en majuscules
+                    const code = name.split(' ')
+                        .map(word => word.charAt(0).toUpperCase())
+                        .join('');
+                    codeInput.val(code);
+                }
+            }
+        });
+    }
+
+    // ========================================
+    // MODAL CRÉATION - Ouverture et chargement
+    // ========================================
+
+    const btnOpenCreateModal = document.getElementById('btn-open-create-modal');
+    const createClasseModal = new bootstrap.Modal(document.getElementById('createClasseModal'));
+    const modalCreateBody = document.getElementById('modal-create-body');
+    const modalCreateSubmitBtn = document.getElementById('modal-create-submit-btn');
+
+    if (btnOpenCreateModal) {
+        btnOpenCreateModal.addEventListener('click', function() {
+            console.log('🟢 Ouverture modal création classe');
+
+            // Afficher le spinner
+            modalCreateBody.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Chargement...</span>
+                    </div>
+                </div>
+            `;
+
+            // Désactiver le bouton submit pendant le chargement
+            modalCreateSubmitBtn.disabled = true;
+
+            // Charger le formulaire via AJAX
+            fetch('{{ route("esbtp.classes.create") }}?ajax=1', {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.text();
+            })
+            .then(html => {
+                console.log('✅ Formulaire création chargé');
+
+                // Charger le formulaire partial dans le modal
+                modalCreateBody.innerHTML = html;
+
+                // Initialiser Select2 et scripts du formulaire
+                initClasseFormScripts('modal-create-classe-form');
+
+                // Activer le bouton submit
+                modalCreateSubmitBtn.disabled = false;
+
+                // Ouvrir le modal
+                createClasseModal.show();
+            })
+            .catch(error => {
+                console.error('❌ Erreur chargement formulaire création:', error);
+                modalCreateBody.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Erreur lors du chargement du formulaire. Veuillez réessayer.
+                    </div>
+                `;
+            });
+        });
+    }
+
+    // ========================================
+    // MODAL CRÉATION - Soumission AJAX
+    // ========================================
+
+    if (modalCreateSubmitBtn) {
+        modalCreateSubmitBtn.addEventListener('click', function() {
+            const form = document.getElementById('modal-create-classe-form');
+            if (!form) {
+                console.error('❌ Formulaire création introuvable');
+                return;
+            }
+
+            console.log('📤 Soumission formulaire création');
+
+            // Désactiver le bouton pour éviter les doubles clics
+            modalCreateSubmitBtn.disabled = true;
+            modalCreateSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement...';
+
+            // Collecter les données du formulaire
+            const formData = new FormData(form);
+
+            // Soumettre via AJAX
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('✅ Classe créée avec succès:', data.classe);
+
+                    // Réactiver le bouton
+                    modalCreateSubmitBtn.disabled = false;
+                    modalCreateSubmitBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer la classe';
+
+                    // Fermer le modal
+                    createClasseModal.hide();
+
+                    // Ajouter la nouvelle carte directement sans recharger la page
+                    addNewClasseCard(data.classe, data.message || 'La classe a été créée avec succès.');
+                } else {
+                    // Afficher les erreurs de validation
+                    console.warn('⚠️ Erreurs de validation:', data.errors);
+                    displayValidationErrors(data.errors, 'modal-create-classe-form');
+
+                    // Réactiver le bouton
+                    modalCreateSubmitBtn.disabled = false;
+                    modalCreateSubmitBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer la classe';
+                }
+            })
+            .catch(error => {
+                console.error('❌ Erreur soumission formulaire:', error);
+                alert('Une erreur est survenue lors de l\'enregistrement. Veuillez réessayer.');
+
+                // Réactiver le bouton
+                modalCreateSubmitBtn.disabled = false;
+                modalCreateSubmitBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer la classe';
+            });
+        });
+    }
+
+    // ========================================
+    // MODAL ÉDITION - Ouverture et chargement
+    // ========================================
+
+    const editClasseModal = new bootstrap.Modal(document.getElementById('editClasseModal'));
+    const modalEditBody = document.getElementById('modal-edit-body');
+    const modalEditSubmitBtn = document.getElementById('modal-edit-submit-btn');
+
+    // Délégation d'événement pour les boutons "Modifier" (car générés dynamiquement)
+    document.addEventListener('click', function(e) {
+        const btnEdit = e.target.closest('.btn-open-edit-modal');
+        if (!btnEdit) return;
+
+        e.preventDefault();
+
+        const classeId = btnEdit.getAttribute('data-classe-id');
+        if (!classeId) {
+            console.error('❌ ID classe manquant sur le bouton');
+            return;
+        }
+
+        console.log('🟠 Ouverture modal édition classe:', classeId);
+
+        // Afficher le spinner
+        modalEditBody.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+            </div>
+        `;
+
+        // Désactiver le bouton submit pendant le chargement
+        modalEditSubmitBtn.disabled = true;
+
+        // Stocker l'ID de la classe en cours d'édition
+        modalEditSubmitBtn.setAttribute('data-classe-id', classeId);
+
+        // Charger le formulaire d'édition via AJAX
+        fetch(`/esbtp/classes/${classeId}/edit?ajax=1`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(html => {
+            console.log('✅ Formulaire édition chargé pour classe:', classeId);
+
+            // Charger le formulaire partial dans le modal
+            modalEditBody.innerHTML = html;
+
+            // Initialiser Select2 et scripts du formulaire
+            initClasseFormScripts('modal-edit-classe-form');
+
+            // Activer le bouton submit
+            modalEditSubmitBtn.disabled = false;
+
+            // Ouvrir le modal
+            editClasseModal.show();
+        })
+        .catch(error => {
+            console.error('❌ Erreur chargement formulaire édition:', error);
+            modalEditBody.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Erreur lors du chargement du formulaire. Veuillez réessayer.
+                </div>
+            `;
+        });
+    });
+
+    // ========================================
+    // MODAL ÉDITION - Soumission AJAX
+    // ========================================
+
+    if (modalEditSubmitBtn) {
+        modalEditSubmitBtn.addEventListener('click', function() {
+            const form = document.getElementById('modal-edit-classe-form');
+            if (!form) {
+                console.error('❌ Formulaire édition introuvable');
+                return;
+            }
+
+            const classeId = modalEditSubmitBtn.getAttribute('data-classe-id');
+            console.log('📤 Soumission formulaire édition pour classe:', classeId);
+
+            // Désactiver le bouton pour éviter les doubles clics
+            modalEditSubmitBtn.disabled = true;
+            modalEditSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Mise à jour...';
+
+            // Collecter les données du formulaire
+            const formData = new FormData(form);
+
+            // Soumettre via AJAX
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: formData
+            })
+            .then(response => {
+                console.log('📥 Réponse reçue, status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('📊 Données reçues:', data);
+
+                if (data.success) {
+                    console.log('✅ Classe mise à jour avec succès:', data.classe);
+
+                    // Réactiver le bouton IMMÉDIATEMENT
+                    modalEditSubmitBtn.disabled = false;
+                    modalEditSubmitBtn.innerHTML = '<i class="fas fa-save"></i> Mettre à jour la classe';
+
+                    // Fermer le modal
+                    editClasseModal.hide();
+
+                    // Mettre à jour uniquement la carte de la classe modifiée
+                    // Le message de succès sera affiché APRÈS le refresh de la carte
+                    updateClasseCard(data.classe, data.message || 'La classe a été mise à jour avec succès.');
+                } else {
+                    console.warn('⚠️ Erreurs de validation:', data.errors);
+
+                    // Afficher les erreurs de validation
+                    displayValidationErrors(data.errors, 'modal-edit-classe-form');
+
+                    // Réactiver le bouton
+                    modalEditSubmitBtn.disabled = false;
+                    modalEditSubmitBtn.innerHTML = '<i class="fas fa-save"></i> Mettre à jour la classe';
+                }
+            })
+            .catch(error => {
+                console.error('❌ Erreur soumission formulaire:', error);
+                alert('Une erreur est survenue lors de la mise à jour. Veuillez réessayer.');
+
+                // Réactiver le bouton
+                modalEditSubmitBtn.disabled = false;
+                modalEditSubmitBtn.innerHTML = '<i class="fas fa-save"></i> Mettre à jour la classe';
+            });
+        });
+    }
+
+    // ========================================
+    // FONCTIONS UTILITAIRES
+    // ========================================
+
+    /**
+     * Affiche les erreurs de validation dans le formulaire
+     * @param {Object} errors - Objet des erreurs retourné par Laravel
+     * @param {string} formId - ID du formulaire
+     */
+    function displayValidationErrors(errors, formId) {
+        // Réinitialiser les erreurs précédentes
+        $(`#${formId} .is-invalid`).removeClass('is-invalid');
+        $(`#${formId} .invalid-feedback`).remove();
+
+        // Afficher les nouvelles erreurs
+        for (const [field, messages] of Object.entries(errors)) {
+            const input = document.getElementById(`${formId}_${field}`);
+            if (input) {
+                input.classList.add('is-invalid');
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'invalid-feedback';
+                errorDiv.textContent = messages[0]; // Première erreur seulement
+                input.parentNode.appendChild(errorDiv);
+            }
+        }
+    }
+
+    /**
+     * Affiche un message de succès en haut de la page
+     * @param {string} message - Message à afficher
+     */
+    function showSuccessMessage(message) {
+        const alertHtml = `
+            <div class="alert alert-success alert-dismissible fade show" role="alert" style="margin-bottom: 1rem;">
+                <i class="fas fa-check-circle me-2"></i>${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+
+        // Insérer au début de .main-content
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.insertAdjacentHTML('afterbegin', alertHtml);
+
+            // Auto-dismiss après 5 secondes
+            setTimeout(() => {
+                const alert = mainContent.querySelector('.alert');
+                if (alert) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+    }
+
+    /**
+     * Ajoute une nouvelle carte de classe après création
+     * Pattern identique à updateClasseCard mais pour insertion au début de la liste
+     * @param {Object} classe - Données de la nouvelle classe
+     * @param {String} successMessage - Message de succès à afficher après l'ajout
+     */
+    function addNewClasseCard(classe, successMessage = null) {
+        console.log('➕ Ajout nouvelle carte classe:', classe.id);
+
+        const classeId = classe.id;
+        const refreshUrl = `/esbtp/classes/${classeId}/refresh-ligne`;
+
+        // Trouver le conteneur de la liste des classes
+        const resultsContainer = document.querySelector('.results-container');
+        if (!resultsContainer) {
+            console.warn('⚠️ Conteneur résultats non trouvé - rechargement complet');
+            window.location.reload();
+            return;
+        }
+
+        // Fetch la nouvelle carte HTML depuis le serveur
+        fetch(refreshUrl, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.success || !data.html) {
+                throw new Error(data.message || 'Réponse serveur invalide');
+            }
+
+            console.log('✅ HTML reçu du serveur pour nouvelle classe:', classeId);
+
+            // Créer un élément temporaire pour parser le HTML
+            const template = document.createElement('template');
+            template.innerHTML = data.html.trim();
+
+            // Récupérer la nouvelle carte depuis le template
+            let newCardFragment = template.content.querySelector(`[data-classe-id="${classeId}"]`);
+
+            if (!newCardFragment) {
+                // Si pas de data-classe-id, prendre le premier élément
+                newCardFragment = template.content.querySelector('.card-moderne');
+            }
+
+            if (!newCardFragment) {
+                console.error('❌ HTML retourné sans carte valide:', data.html);
+                throw new Error('HTML retourné sans carte de classe valide');
+            }
+
+            // Cloner la nouvelle carte
+            const newCard = newCardFragment.cloneNode(true);
+
+            // Récupérer le modal de suppression si présent
+            const modalFragment = template.content.querySelector(`#deleteModal${classeId}`);
+            if (modalFragment) {
+                const newModal = modalFragment.cloneNode(true);
+                document.body.appendChild(newModal);
+            }
+
+            // Insérer la nouvelle carte AU DÉBUT de la liste (prepend)
+            resultsContainer.insertBefore(newCard, resultsContainer.firstChild);
+
+            console.log('✅ Nouvelle carte classe ajoutée avec succès:', classeId);
+
+            // Animation visuelle (flash vert + slide down)
+            newCard.style.opacity = '0';
+            newCard.style.transform = 'translateY(-20px)';
+            newCard.style.transition = 'opacity 0.3s ease, transform 0.3s ease, background-color 0.3s ease';
+
+            // Forcer le reflow pour que la transition fonctionne
+            newCard.offsetHeight;
+
+            newCard.style.opacity = '1';
+            newCard.style.transform = 'translateY(0)';
+            newCard.style.backgroundColor = 'rgba(16, 185, 129, 0.1)'; // Vert léger
+
+            setTimeout(() => {
+                newCard.style.backgroundColor = '';
+            }, 1000);
+
+            // Afficher le message de succès APRÈS l'ajout de la carte
+            if (successMessage) {
+                showSuccessMessage(successMessage);
+            }
+
+            // Scroll vers la nouvelle carte
+            newCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        })
+        .catch(error => {
+            console.error('❌ Erreur ajout nouvelle carte classe:', error);
+            // En cas d'erreur, on reload la page
+            console.log('🔄 Rechargement de la page suite à l\'erreur...');
+            window.location.reload();
+        });
+    }
+
+    /**
+     * Met à jour la carte d'une classe après édition
+     * @param {Object} classe - Données de la classe mise à jour
+     * @param {String} successMessage - Message de succès à afficher après le refresh
+     */
+    function updateClasseCard(classe, successMessage = null) {
+        console.log('🔄 Refresh carte classe:', classe.id);
+
+        const classeId = classe.id;
+        const refreshUrl = `/esbtp/classes/${classeId}/refresh-ligne`;
+        const existingCard = document.querySelector(`[data-classe-id="${classeId}"]`);
+
+        if (!existingCard) {
+            console.warn('⚠️ Carte non trouvée pour ID:', classeId, '- rechargement complet');
+            window.location.reload();
+            return;
+        }
+
+        // Fetch la nouvelle carte HTML depuis le serveur
+        fetch(refreshUrl, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.success || !data.html) {
+                throw new Error(data.message || 'Réponse serveur invalide');
+            }
+
+            console.log('✅ HTML reçu du serveur pour classe:', classeId);
+
+            // Créer un élément temporaire pour parser le HTML
+            const template = document.createElement('template');
+            template.innerHTML = data.html.trim();
+
+            // Récupérer la nouvelle carte depuis le template
+            let newCardFragment = template.content.querySelector(`[data-classe-id="${classeId}"]`);
+
+            if (!newCardFragment) {
+                // Si pas de data-classe-id, prendre le premier élément
+                newCardFragment = template.content.querySelector('.card-moderne');
+            }
+
+            if (!newCardFragment) {
+                console.error('❌ HTML retourné sans carte valide:', data.html);
+                throw new Error('HTML retourné sans carte de classe valide');
+            }
+
+            // Cloner la nouvelle carte
+            const newCard = newCardFragment.cloneNode(true);
+
+            // Récupérer le modal de suppression si présent
+            const modalFragment = template.content.querySelector(`#deleteModal${classeId}`);
+            if (modalFragment) {
+                const newModal = modalFragment.cloneNode(true);
+                const existingModal = document.getElementById(`deleteModal${classeId}`);
+                if (existingModal) {
+                    existingModal.replaceWith(newModal);
+                } else {
+                    document.body.appendChild(newModal);
+                }
+            }
+
+            // Remplacer l'ancienne carte par la nouvelle
+            existingCard.replaceWith(newCard);
+
+            console.log('✅ Carte classe rafraîchie avec succès:', classeId);
+
+            // Animation visuelle rapide (flash vert)
+            newCard.style.transition = 'background-color 0.3s ease';
+            newCard.style.backgroundColor = 'rgba(16, 185, 129, 0.1)'; // Vert léger
+            setTimeout(() => {
+                newCard.style.backgroundColor = '';
+            }, 500);
+
+            // Afficher le message de succès APRÈS le refresh de la carte
+            if (successMessage) {
+                showSuccessMessage(successMessage);
+            }
+
+        })
+        .catch(error => {
+            console.error('❌ Erreur refresh carte classe:', error);
+            // En cas d'erreur, on reload la page
+            console.log('🔄 Rechargement de la page suite à l\'erreur...');
+            window.location.reload();
+        });
     }
 </script>
 @endpush

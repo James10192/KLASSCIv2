@@ -1761,6 +1761,9 @@ Route::get('/esbtp/classes-export/excel', [ESBTPClasseController::class, 'export
 Route::get('/esbtp/classes-export/csv', [ESBTPClasseController::class, 'exportCsv'])->name('esbtp.classes.export.csv');
 Route::get('/esbtp/classes-export/pdf', [ESBTPClasseController::class, 'exportPdf'])->name('esbtp.classes.export.pdf');
 
+// Route AJAX pour rafraîchir une carte de classe spécifique (pattern identique à paiements.refreshLigne)
+Route::get('/esbtp/classes/{classe}/refresh-ligne', [ESBTPClasseController::class, 'refreshLigne'])->name('esbtp.classes.refresh-ligne');
+
 // Route pour mettre à jour les matières d'une classe
 Route::post('/esbtp/classes/{classe}/update-matieres', [ESBTPClasseController::class, 'updateMatieres'])->name('esbtp.classes.update-matieres');
 
