@@ -172,16 +172,25 @@ class ESBTPClasse extends Model
     {
         // Récupérer l'année universitaire courante
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        
-        if ($anneeCourante) {
-            return $this->inscriptions()
-                        ->where('status', 'active')
-                        ->where('annee_universitaire_id', $anneeCourante->id)
-                        ->count();
+
+        if (!$anneeCourante) {
+            // Pas d'année courante définie → retourner 0 au lieu de compter toutes les années
+            // Ceci évite des incohérences dans le calcul des places disponibles
+            \Log::warning("Aucune année universitaire courante définie pour le calcul de nombre_etudiants de la classe {$this->id}");
+            return 0;
         }
-        
-        // Fallback si aucune année courante définie
-        return $this->inscriptions()->where('status', 'active')->count();
+
+        $count = $this->inscriptions()
+                    ->where('status', 'active')
+                    ->where('annee_universitaire_id', $anneeCourante->id)
+                    ->count();
+
+        // Log pour debugging (à retirer en production)
+        if (config('app.debug')) {
+            \Log::debug("Classe {$this->id} ({$this->name}): {$count} étudiants actifs pour l'année {$anneeCourante->name}");
+        }
+
+        return $count;
     }
 
     /**
@@ -191,7 +200,16 @@ class ESBTPClasse extends Model
      */
     public function getPlacesDisponiblesAttribute()
     {
-        return max(0, $this->places_totales - $this->nombre_etudiants);
+        $nombreEtudiants = $this->nombre_etudiants;
+        $placesTotales = $this->places_totales ?? 0;
+        $placesDisponibles = max(0, $placesTotales - $nombreEtudiants);
+
+        // Log pour debugging (à retirer en production)
+        if (config('app.debug')) {
+            \Log::debug("Classe {$this->id} ({$this->name}): Capacité={$placesTotales}, Inscrits={$nombreEtudiants}, Disponibles={$placesDisponibles}");
+        }
+
+        return $placesDisponibles;
     }
 
     /**
