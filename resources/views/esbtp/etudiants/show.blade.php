@@ -71,7 +71,7 @@
                         </a></li>
                         @if($etudiant->paiements->where('status', 'validé')->count() > 0)
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{{ route('esbtp.paiements.index') }}?etudiant={{ $etudiant->id }}">
+                        <li><a class="dropdown-item" href="{{ route('esbtp.paiements.index') }}?search={{ urlencode($etudiant->nom . ' ' . $etudiant->prenoms) }}">
                             <i class="fas fa-receipt me-1"></i>Historique des reçus
                         </a></li>
                         @endif
