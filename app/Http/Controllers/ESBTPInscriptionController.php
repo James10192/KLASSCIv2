@@ -575,6 +575,7 @@ class ESBTPInscriptionController extends Controller
                 'sexe' => $request->sexe,
                 'date_naissance' => $request->date_naissance,
                 'lieu_naissance' => $request->lieu_naissance,
+                'nationalite' => $request->nationalite,
                 'email_personnel' => $request->email_personnel,
                 'telephone' => $request->telephone,
                 'adresse' => $request->adresse,
