@@ -737,15 +737,34 @@ $(document).ready(function() {
     // MODAL CRÉATION - Soumission AJAX
     // ========================================
 
+    // Click sur le bouton submit du modal → déclenche le submit du formulaire
     if (modalCreateSubmitBtn) {
         modalCreateSubmitBtn.addEventListener('click', function() {
+            console.log('🔵 Click sur bouton submit création');
             const form = document.getElementById('modal-create-classe-form');
-            if (!form) {
+            if (form) {
+                console.log('🔵 Déclenchement submit manuel du formulaire');
+                form.requestSubmit(); // Déclenche l'événement submit du formulaire
+            } else {
                 console.error('❌ Formulaire création introuvable');
-                return;
             }
+        });
+    }
 
-            console.log('📤 Soumission formulaire création');
+    // Délégation d'événements pour intercepter le submit du formulaire création
+    // IMPORTANT: Phase de CAPTURE (true en 3ème paramètre) pour intercepter AVANT tous les autres handlers
+    document.addEventListener('submit', function(e) {
+        // Vérifier si c'est le formulaire de création qui est soumis
+        if (e.target && e.target.id === 'modal-create-classe-form') {
+            // BLOQUER IMMÉDIATEMENT la soumission normale
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation(); // Empêche même les autres listeners sur le même élément
+
+            console.log('📤 Submit formulaire création intercepté');
+            console.log('🛑 preventDefault() appelé - la page NE DEVRAIT PAS se recharger');
+
+            const form = e.target;
 
             // Désactiver le bouton pour éviter les doubles clics
             modalCreateSubmitBtn.disabled = true;
@@ -755,16 +774,41 @@ $(document).ready(function() {
             const formData = new FormData(form);
 
             // Soumettre via AJAX
+            console.log('🌐 Envoi requête AJAX vers:', form.action);
+            console.log('📋 Headers:', {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json'
+            });
+
             fetch(form.action, {
                 method: 'POST',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
                 },
                 body: formData
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('📥 Réponse création reçue');
+                console.log('  Status:', response.status);
+                console.log('  Content-Type:', response.headers.get('content-type'));
+                console.log('  Redirected:', response.redirected);
+                console.log('  URL:', response.url);
+
+                // Vérifier si c'est vraiment du JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    console.error('❌ La réponse n\'est pas du JSON! Content-Type:', contentType);
+                    throw new Error('La réponse n\'est pas du JSON');
+                }
+
+                return response.json();
+            })
             .then(data => {
+                console.log('📊 Données création reçues:', data);
+
                 if (data.success) {
                     console.log('✅ Classe créée avec succès:', data.classe);
 
@@ -795,8 +839,11 @@ $(document).ready(function() {
                 modalCreateSubmitBtn.disabled = false;
                 modalCreateSubmitBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer la classe';
             });
-        });
-    }
+
+            // IMPORTANT: Retourner false pour garantir qu'aucun submit ne se produise
+            return false;
+        }
+    }, true); // ← Phase de CAPTURE (3ème paramètre = true) pour intercepter AVANT bubbling
 
     // ========================================
     // MODAL ÉDITION - Ouverture et chargement
@@ -880,14 +927,34 @@ $(document).ready(function() {
     // MODAL ÉDITION - Soumission AJAX
     // ========================================
 
+    // Click sur le bouton submit du modal édition → déclenche le submit du formulaire
     if (modalEditSubmitBtn) {
         modalEditSubmitBtn.addEventListener('click', function() {
+            console.log('🔵 Click sur bouton submit édition');
             const form = document.getElementById('modal-edit-classe-form');
-            if (!form) {
+            if (form) {
+                console.log('🔵 Déclenchement submit manuel du formulaire édition');
+                form.requestSubmit(); // Déclenche l'événement submit du formulaire
+            } else {
                 console.error('❌ Formulaire édition introuvable');
-                return;
             }
+        });
+    }
 
+    // Délégation d'événements pour intercepter le submit du formulaire édition
+    // IMPORTANT: Phase de CAPTURE (true en 3ème paramètre) pour intercepter AVANT tous les autres handlers
+    document.addEventListener('submit', function(e) {
+        // Vérifier si c'est le formulaire d'édition qui est soumis
+        if (e.target && e.target.id === 'modal-edit-classe-form') {
+            // BLOQUER IMMÉDIATEMENT la soumission normale
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation(); // Empêche même les autres listeners sur le même élément
+
+            console.log('📤 Submit formulaire édition intercepté');
+            console.log('🛑 preventDefault() appelé - la page NE DEVRAIT PAS se recharger');
+
+            const form = e.target;
             const classeId = modalEditSubmitBtn.getAttribute('data-classe-id');
             console.log('📤 Soumission formulaire édition pour classe:', classeId);
 
@@ -903,7 +970,8 @@ $(document).ready(function() {
                 method: 'POST',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json'
                 },
                 body: formData
             })
@@ -946,8 +1014,11 @@ $(document).ready(function() {
                 modalEditSubmitBtn.disabled = false;
                 modalEditSubmitBtn.innerHTML = '<i class="fas fa-save"></i> Mettre à jour la classe';
             });
-        });
-    }
+
+            // IMPORTANT: Retourner false pour garantir qu'aucun submit ne se produise
+            return false;
+        }
+    }, true); // ← Phase de CAPTURE (3ème paramètre = true) pour intercepter AVANT bubbling
 
     // ========================================
     // FONCTIONS UTILITAIRES
@@ -1016,9 +1087,11 @@ $(document).ready(function() {
         const refreshUrl = `/esbtp/classes/${classeId}/refresh-ligne`;
 
         // Trouver le conteneur de la liste des classes
-        const resultsContainer = document.querySelector('.results-container');
+        const resultsContainer = document.querySelector('#classes-grid');
+        console.log('📦 Conteneur trouvé:', resultsContainer ? 'OUI ✅' : 'NON ❌');
+
         if (!resultsContainer) {
-            console.warn('⚠️ Conteneur résultats non trouvé - rechargement complet');
+            console.error('❌ Conteneur #classes-grid non trouvé - rechargement complet');
             window.location.reload();
             return;
         }
