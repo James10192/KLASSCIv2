@@ -1329,7 +1329,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                                         <span class="text-warning">{{ number_format($montantEnAttente, 0, ',', ' ') }} FCFA</span>
                                                         <br><small class="text-warning">
                                                             <i class="fas fa-hourglass-half me-1"></i>En attente -
-                                                            <a href="{{ route('esbtp.paiements.index') }}?etudiant={{ $inscription->etudiant_id }}" class="text-warning">
+                                                            <a href="{{ route('esbtp.paiements.index') }}?search={{ urlencode($inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms) }}" class="text-warning">
                                                                 <i class="fas fa-external-link-alt"></i>Valider
                                                             </a>
                                                         </small>

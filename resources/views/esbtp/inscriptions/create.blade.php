@@ -774,7 +774,7 @@
                                 @enderror
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-4" id="matriculeContainer">
                             <div class="form-group mb-3">
                                 <label class="form-label fw-bold">
                                     Matricule <span class="text-danger">*</span>
@@ -2310,6 +2310,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // ========================
 
     const matriculeInput = document.getElementById('matriculeInput');
+    const matriculeContainer = document.getElementById('matriculeContainer');
     const generateBtn = document.getElementById('generateMatriculeBtn');
     const checkBtn = document.getElementById('checkMatriculeBtn');
     const matriculeStatus = document.getElementById('matriculeStatus');
@@ -2341,14 +2342,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateMatriculeUI() {
         if (currentMatriculeMode === 'automatique') {
-            matriculeMode.textContent = 'AUTO';
-            matriculeMode.className = 'badge bg-success ms-1';
-            matriculeHelp.textContent = 'Matricule généré automatiquement selon le niveau d\'études';
-            generateBtn.style.display = 'block';
-            checkBtn.style.display = 'none';
-            matriculeInput.readOnly = true;
-            matriculeInput.placeholder = 'Sera généré automatiquement...';
+            // MODE AUTO : Cacher complètement le container
+            if (matriculeContainer) {
+                matriculeContainer.style.display = 'none';
+            }
+            // Vider l'input (sera rempli automatiquement au submit)
+            matriculeInput.value = '';
         } else {
+            // MODE MANUEL : Afficher le container avec les contrôles
+            if (matriculeContainer) {
+                matriculeContainer.style.display = 'block';
+            }
             matriculeMode.textContent = 'MANUEL';
             matriculeMode.className = 'badge bg-warning ms-1';
             matriculeHelp.textContent = 'Saisissez manuellement le matricule (vérification anti-doublon)';
@@ -2476,6 +2480,85 @@ document.addEventListener('DOMContentLoaded', function() {
         matriculeStatus.innerHTML = `<small class="alert ${alertClass} p-1 m-0">${message}</small>`;
     }
 
+    // Fonction async pour générer automatiquement le matricule (mode AUTO)
+    async function generateMatriculeAuto() {
+        const genre = genreSelect ? genreSelect.value : null;
+
+        if (!genre) {
+            debugLog('Genre non renseigné pour la génération auto');
+            return null;
+        }
+
+        if (!niveauConfig) {
+            debugLog('Niveau config non trouvé pour la génération auto');
+            return null;
+        }
+
+        try {
+            const response = await fetch('/esbtp/matricule-config/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    niveau_etude_code: niveauConfig.code,
+                    genre: genre,
+                    annee: new Date().getFullYear()
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.matricule) {
+                debugLog('Matricule généré avec succès:', data.matricule);
+                return data.matricule;
+            } else {
+                debugError('Erreur lors de la génération:', data.message || 'Erreur inconnue');
+                return null;
+            }
+        } catch (error) {
+            debugError('Erreur réseau lors de la génération du matricule:', error);
+            return null;
+        }
+    }
+
+    // Fonction async pour vérifier la disponibilité du matricule (mode MANUEL)
+    async function checkMatriculeDisponible() {
+        const matricule = matriculeInput.value.trim();
+
+        if (!matricule) {
+            debugLog('Aucun matricule à vérifier');
+            return false;
+        }
+
+        try {
+            const response = await fetch('/esbtp/matricule-config/check', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ matricule: matricule })
+            });
+
+            const data = await response.json();
+
+            if (data.exists) {
+                debugLog('Matricule existe déjà:', matricule);
+                return false;
+            } else {
+                debugLog('Matricule disponible:', matricule);
+                return true;
+            }
+        } catch (error) {
+            debugError('Erreur lors de la vérification du matricule:', error);
+            return false;
+        }
+    }
+
     // Détecter le niveau d'études depuis la classe sélectionnée
     if (classeSelect) {
         classeSelect.addEventListener('change', function() {
@@ -2509,6 +2592,97 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
         });
+    }
+
+    // ========================================
+    // EVENT LISTENER SUBMIT - GÉNÉRATION AUTO & VÉRIFICATION MANUELLE
+    // ========================================
+
+    const inscriptionForm = document.getElementById('inscriptionForm');
+
+    if (inscriptionForm) {
+        inscriptionForm.addEventListener('submit', async function(e) {
+            debugLog('🚀 Soumission formulaire - Mode:', currentMatriculeMode);
+
+            // ====================================
+            // MODE AUTOMATIQUE
+            // ====================================
+            if (currentMatriculeMode === 'automatique') {
+                e.preventDefault(); // Bloquer le submit pour générer le matricule
+
+                // Vérifications pré-requis
+                if (!genreSelect || !genreSelect.value) {
+                    alert('⚠️ Veuillez sélectionner le genre/sexe avant de soumettre le formulaire.');
+                    if (genreSelect) genreSelect.focus();
+                    return;
+                }
+
+                if (!niveauConfig) {
+                    alert('⚠️ La classe sélectionnée n\'a pas de configuration de matricule.\n\nContactez l\'équipe technique ou sélectionnez une autre classe.');
+                    if (classeSelect) classeSelect.focus();
+                    return;
+                }
+
+                // Générer le matricule automatiquement
+                debugLog('⏳ Génération automatique du matricule...');
+                const matricule = await generateMatriculeAuto();
+
+                if (matricule) {
+                    // ✅ Matricule généré avec succès
+                    matriculeInput.value = matricule;
+                    debugLog('✅ Matricule généré et assigné:', matricule);
+
+                    // Soumettre RÉELLEMENT le formulaire
+                    debugLog('📤 Soumission réelle du formulaire...');
+                    inscriptionForm.submit();
+                } else {
+                    // ❌ Erreur de génération
+                    alert('❌ Impossible de générer le matricule automatiquement.\n\nVeuillez vérifier que:\n• Le genre/sexe est sélectionné\n• La classe a une configuration de matricule valide\n\nSi le problème persiste, contactez l\'équipe technique.');
+                    debugError('Échec de la génération du matricule');
+                }
+            }
+
+            // ====================================
+            // MODE MANUEL
+            // ====================================
+            else if (currentMatriculeMode === 'manuel') {
+                e.preventDefault(); // Bloquer le submit pour vérifier le matricule
+
+                const matricule = matriculeInput.value.trim();
+
+                // Vérification que le matricule est renseigné
+                if (!matricule) {
+                    alert('⚠️ Le matricule est obligatoire.\n\nVeuillez saisir un matricule avant de soumettre le formulaire.');
+                    matriculeInput.focus();
+                    return;
+                }
+
+                // Vérification de disponibilité
+                debugLog('⏳ Vérification disponibilité du matricule:', matricule);
+                const isAvailable = await checkMatriculeDisponible();
+
+                if (isAvailable) {
+                    // ✅ Matricule disponible
+                    debugLog('✅ Matricule disponible, soumission du formulaire');
+                    inscriptionForm.submit();
+                } else {
+                    // ❌ Matricule déjà existant
+                    alert('❌ Ce matricule existe déjà dans la base de données.\n\n' +
+                          'Veuillez en saisir un autre.\n\n' +
+                          'Matricule saisi: ' + matricule);
+                    matriculeInput.focus();
+                    matriculeInput.select();
+                    debugError('Matricule déjà existant:', matricule);
+
+                    // Afficher le message d'erreur visuel
+                    showMatriculeStatus('❌ Ce matricule existe déjà', 'danger');
+                }
+            }
+        });
+
+        debugLog('✅ Event listener submit configuré pour le formulaire inscription');
+    } else {
+        debugError('❌ Formulaire #inscriptionForm introuvable');
     }
 });
 </script>
