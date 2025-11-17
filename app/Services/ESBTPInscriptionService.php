@@ -368,6 +368,7 @@ class ESBTPInscriptionService
                         'telephone' => $parentData['telephone'] ?? null,
                         'email' => $parentData['email'] ?? null,
                         'profession' => $parentData['profession'] ?? null,
+                        'adresse' => $parentData['adresse'] ?? null,
                         'created_by' => $userId,
                         'updated_by' => $userId,
                     ]);
