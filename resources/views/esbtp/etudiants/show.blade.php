@@ -604,7 +604,8 @@
                                     @endforeach
 
                                     {{-- Carte pour ajouter une nouvelle réinscription --}}
-                                    @if($anneeCourante)
+                                    {{-- Afficher seulement si l'étudiant n'a pas déjà une inscription pour l'année courante --}}
+                                    @if($anneeCourante && !$etudiant->inscriptions->contains('annee_universitaire_id', $anneeCourante->id))
                                     <div class="col-md-6 mb-4">
                                         <a href="{{ route('esbtp.reinscription.show', $etudiant->id) }}?annee_academique={{ $anneeCourante->name }}"
                                            class="text-decoration-none">
