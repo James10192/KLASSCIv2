@@ -154,29 +154,38 @@ class ESBTPStudentController extends Controller
         if ($search) {
             $candidatesQuery = clone $baseQuery;
 
-            $searchTokens = collect(preg_split('/[\s,]+/u', $search ?: '', -1, PREG_SPLIT_NO_EMPTY))
+            // Normaliser le terme de recherche (enlever tirets, apostrophes, caractères spéciaux)
+            $normalizeSearch = static fn (string $value): string => str_replace(
+                ['-', "'", ''', '`', '.', ','],
+                ' ',
+                $value
+            );
+
+            $searchNormalized = $normalizeSearch($search);
+            $searchTokens = collect(preg_split('/[\s,]+/u', $searchNormalized ?: '', -1, PREG_SPLIT_NO_EMPTY))
                 ->map(fn ($token) => trim($token))
                 ->filter();
 
-            $candidatesQuery->where(function ($q) use ($search, $searchTokens, $escapeLike) {
-                $escapedSearch = $escapeLike($search);
+            $candidatesQuery->where(function ($q) use ($search, $searchNormalized, $searchTokens, $escapeLike) {
+                $escapedSearch = $escapeLike($searchNormalized);
                 $likeSearch = "%{$escapedSearch}%";
 
+                // Recherche dans les colonnes normalisées (REPLACE pour enlever tirets/apostrophes)
                 $q->where('matricule', 'like', $likeSearch)
-                  ->orWhere('nom', 'like', $likeSearch)
-                  ->orWhere('prenoms', 'like', $likeSearch)
+                  ->orWhereRaw("REPLACE(REPLACE(REPLACE(nom, '-', ' '), '''', ' '), ''', ' ') LIKE ?", [$likeSearch])
+                  ->orWhereRaw("REPLACE(REPLACE(REPLACE(prenoms, '-', ' '), '''', ' '), ''', ' ') LIKE ?", [$likeSearch])
                   ->orWhere('telephone', 'like', $likeSearch)
                   ->orWhere('email_personnel', 'like', $likeSearch)
-                  ->orWhereRaw("CONCAT_WS(' ', prenoms, nom) LIKE ?", [$likeSearch])
-                  ->orWhereRaw("CONCAT_WS(' ', nom, prenoms) LIKE ?", [$likeSearch]);
+                  ->orWhereRaw("REPLACE(REPLACE(REPLACE(CONCAT_WS(' ', prenoms, nom), '-', ' '), '''', ' '), ''', ' ') LIKE ?", [$likeSearch])
+                  ->orWhereRaw("REPLACE(REPLACE(REPLACE(CONCAT_WS(' ', nom, prenoms), '-', ' '), '''', ' '), ''', ' ') LIKE ?", [$likeSearch]);
 
                 if ($searchTokens->isNotEmpty()) {
                     $q->orWhere(function ($subQuery) use ($searchTokens, $escapeLike) {
                         foreach ($searchTokens as $token) {
                             $escapedToken = $escapeLike($token);
                             $likeToken = "%{$escapedToken}%";
-                            $subQuery->orWhere('nom', 'like', $likeToken)
-                                     ->orWhere('prenoms', 'like', $likeToken)
+                            $subQuery->orWhereRaw("REPLACE(REPLACE(REPLACE(nom, '-', ' '), '''', ' '), ''', ' ') LIKE ?", [$likeToken])
+                                     ->orWhereRaw("REPLACE(REPLACE(REPLACE(prenoms, '-', ' '), '''', ' '), ''', ' ') LIKE ?", [$likeToken])
                                      ->orWhere('matricule', 'like', $likeToken)
                                      ->orWhere('email_personnel', 'like', $likeToken)
                                      ->orWhere('telephone', 'like', $likeToken);
@@ -186,7 +195,7 @@ class ESBTPStudentController extends Controller
             });
 
             $candidates = $candidatesQuery
-                ->limit(200)
+                ->limit(500)
                 ->get();
 
             $scored = $matcher->match($search, $candidates, function ($etudiant) {
