@@ -1819,10 +1819,6 @@
                                     <span class="menu-dot"></span>
                                     <span>Suivi par Catégorie</span>
                                 </a>
-                                <!--<a href="{{ route('esbtp.comptabilite.configuration') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.configuration.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Configuration</span>
-                                </a>-->
                             </div>
                         </div>
                     @endif

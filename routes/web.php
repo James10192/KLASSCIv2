@@ -1342,8 +1342,7 @@ Route::middleware(['auth', 'permission:access_comptabilite_module'])->prefix('es
     // Dashboard comptabilité
     Route::get('/', [ESBTPComptabiliteController::class, 'index'])->name('index');
 
-    // Dashboard avancé avec KPIs temps réel
-    Route::get('/dashboard-avance', [ESBTPComptabiliteController::class, 'dashboardAvance'])->name('dashboard-avance');
+    // KPIs temps réel
     Route::get('/kpis-temps-reel', [ESBTPComptabiliteController::class, 'kpisTempsReel'])->name('kpis-temps-reel');
 
     // Paiements
@@ -1367,24 +1366,6 @@ Route::middleware(['auth', 'permission:access_comptabilite_module'])->prefix('es
     Route::put('/frais-scolarite/{id}', [ESBTPComptabiliteController::class, 'updateFraisScolarite'])->name('frais-scolarite.update');
     Route::delete('/frais-scolarite/{id}', [ESBTPComptabiliteController::class, 'destroyFraisScolarite'])->name('frais-scolarite.destroy');
 
-    // Gestion des dépenses
-    Route::get('/depenses', [ESBTPComptabiliteController::class, 'depenses'])->name('depenses');
-    Route::get('/depenses/create', [ESBTPComptabiliteController::class, 'createDepense'])->name('depenses.create');
-    Route::post('/depenses', [ESBTPComptabiliteController::class, 'storeDepense'])->name('depenses.store');
-    Route::get('/depenses/{id}', [ESBTPComptabiliteController::class, 'showDepense'])->name('depenses.show');
-    Route::get('/depenses/{id}/edit', [ESBTPComptabiliteController::class, 'editDepense'])->name('depenses.edit');
-    Route::put('/depenses/{id}', [ESBTPComptabiliteController::class, 'updateDepense'])->name('depenses.update');
-    Route::delete('/depenses/{id}', [ESBTPComptabiliteController::class, 'destroyDepense'])->name('depenses.destroy');
-
-    // Gestion des catégories de dépenses
-    Route::get('/depenses/categories', [ESBTPComptabiliteController::class, 'categoriesDepenses'])->name('depenses.categories');
-    Route::post('/depenses/categories', [ESBTPComptabiliteController::class, 'storeCategorieDepense'])->name('depenses.categories.store');
-    Route::put('/depenses/categories/{id}', [ESBTPComptabiliteController::class, 'updateCategorieDepense'])->name('depenses.categories.update');
-    Route::delete('/depenses/categories/{id}', [ESBTPComptabiliteController::class, 'destroyCategorieDepense'])->name('depenses.categories.destroy');
-
-    // Route AJAX pour créer un fournisseur
-    Route::post('/fournisseurs/ajax', [ESBTPComptabiliteController::class, 'storeFournisseurAjax'])->name('fournisseurs.ajax.store');
-
     // Gestion des bourses et aides
     Route::get('/bourses', [ESBTPComptabiliteController::class, 'bourses'])->name('bourses');
     Route::get('/bourses/create', [ESBTPComptabiliteController::class, 'createBourse'])->name('bourses.create');
@@ -1393,35 +1374,6 @@ Route::middleware(['auth', 'permission:access_comptabilite_module'])->prefix('es
     Route::get('/bourses/{id}/edit', [ESBTPComptabiliteController::class, 'editBourse'])->name('bourses.edit');
     Route::put('/bourses/{id}', [ESBTPComptabiliteController::class, 'updateBourse'])->name('bourses.update');
     Route::delete('/bourses/{id}', [ESBTPComptabiliteController::class, 'destroyBourse'])->name('bourses.destroy');
-
-    // Gestion des salaires
-    Route::get('/salaires', [ESBTPComptabiliteController::class, 'salaires'])->name('salaires');
-    Route::get('/salaires/create', [ESBTPComptabiliteController::class, 'createSalaire'])->name('salaires.create');
-    Route::post('/salaires', [ESBTPComptabiliteController::class, 'storeSalaire'])->name('salaires.store');
-    Route::get('/salaires/{id}', [ESBTPComptabiliteController::class, 'showSalaire'])->name('salaires.show');
-    Route::get('/salaires/{id}/edit', [ESBTPComptabiliteController::class, 'editSalaire'])->name('salaires.edit');
-    Route::put('/salaires/{id}', [ESBTPComptabiliteController::class, 'updateSalaire'])->name('salaires.update');
-    Route::delete('/salaires/{id}', [ESBTPComptabiliteController::class, 'destroySalaire'])->name('salaires.destroy');
-    Route::get('/salaires/{id}/bulletin', [ESBTPComptabiliteController::class, 'bulletinSalaire'])->name('salaires.bulletin');
-
-    // Gestion des fournisseurs
-    Route::get('/fournisseurs', [ESBTPComptabiliteController::class, 'fournisseurs'])->name('fournisseurs');
-    Route::get('/fournisseurs/create', [ESBTPComptabiliteController::class, 'createFournisseur'])->name('fournisseurs.create');
-    Route::post('/fournisseurs', [ESBTPComptabiliteController::class, 'storeFournisseur'])->name('fournisseurs.store');
-    Route::get('/fournisseurs/{id}', [ESBTPComptabiliteController::class, 'showFournisseur'])->name('fournisseurs.show');
-    Route::get('/fournisseurs/{id}/edit', [ESBTPComptabiliteController::class, 'editFournisseur'])->name('fournisseurs.edit');
-    Route::put('/fournisseurs/{id}', [ESBTPComptabiliteController::class, 'updateFournisseur'])->name('fournisseurs.update');
-    Route::delete('/fournisseurs/{id}', [ESBTPComptabiliteController::class, 'destroyFournisseur'])->name('fournisseurs.destroy');
-
-    // Gestion des factures
-    Route::get('/factures', [ESBTPComptabiliteController::class, 'factures'])->name('factures');
-    Route::get('/factures/create', [ESBTPComptabiliteController::class, 'createFacture'])->name('factures.create');
-    Route::post('/factures', [ESBTPComptabiliteController::class, 'storeFacture'])->name('factures.store');
-    Route::get('/factures/{id}', [ESBTPComptabiliteController::class, 'showFacture'])->name('factures.show');
-    Route::get('/factures/{id}/edit', [ESBTPComptabiliteController::class, 'editFacture'])->name('factures.edit');
-    Route::put('/factures/{id}', [ESBTPComptabiliteController::class, 'updateFacture'])->name('factures.update');
-    Route::delete('/factures/{id}', [ESBTPComptabiliteController::class, 'destroyFacture'])->name('factures.destroy');
-    Route::get('/factures/{id}/pdf', [ESBTPComptabiliteController::class, 'pdfFacture'])->name('factures.pdf');
 
     // Tableau de bord et rapports financiers
     Route::get('/rapports', [ESBTPComptabiliteController::class, 'rapports'])->name('rapports');
@@ -1477,10 +1429,6 @@ Route::middleware(['auth', 'permission:access_comptabilite_module'])->prefix('es
             ->middleware(['permission:comptabilite.dashboard.view', 'throttle:60,1']);
     });
 
-    // Configuration du module comptabilité
-    Route::get('/configuration', [ESBTPComptabiliteController::class, 'configuration'])->name('configuration');
-    Route::post('/configuration', [ESBTPComptabiliteController::class, 'updateConfiguration'])->name('configuration.update');
-
     // Gestion des catégories de paiement
     Route::prefix('categories-paiement')->name('categories-paiement.')->group(function () {
         Route::get('/', [ESBTPCategoriePaiementController::class, 'index'])->name('index');
@@ -1491,30 +1439,6 @@ Route::middleware(['auth', 'permission:access_comptabilite_module'])->prefix('es
         Route::put('/{categorie}', [ESBTPCategoriePaiementController::class, 'update'])->name('update');
         Route::delete('/{categorie}', [ESBTPCategoriePaiementController::class, 'destroy'])->name('destroy');
         Route::patch('/{categorie}/toggle-status', [ESBTPCategoriePaiementController::class, 'toggleStatus'])->name('toggle-status');
-    });
-
-    // Gestion des bons de sortie avec workflow
-    Route::prefix('bons-sortie')->name('bons-sortie.')->group(function () {
-        Route::get('/', [ESBTPComptabiliteController::class, 'bonsSortie'])->name('index');
-        Route::get('/create', [ESBTPComptabiliteController::class, 'createBonSortie'])->name('create');
-        Route::post('/', [ESBTPComptabiliteController::class, 'storeBonSortie'])->name('store');
-        Route::get('/{id}', [ESBTPComptabiliteController::class, 'showBonSortie'])->name('show')->where('id', '[0-9]+');
-        Route::get('/{id}/edit', [ESBTPComptabiliteController::class, 'editBonSortie'])->name('edit')->where('id', '[0-9]+');
-        Route::put('/{id}', [ESBTPComptabiliteController::class, 'updateBonSortie'])->name('update')->where('id', '[0-9]+');
-
-        // Actions workflow
-        Route::post('/{id}/approuver', [ESBTPComptabiliteController::class, 'approuverBon'])->name('approuver')->where('id', '[0-9]+')
-            ->middleware(['permission:comptabilite.bons.approve', 'throttle:30,1']);
-        Route::post('/{id}/rejeter', [ESBTPComptabiliteController::class, 'rejeterBon'])->name('rejeter')->where('id', '[0-9]+')
-            ->middleware(['permission:comptabilite.bons.approve', 'throttle:30,1']);
-        Route::post('/{id}/soumettre', [ESBTPComptabiliteController::class, 'soumettreApprobation'])->name('soumettre')->where('id', '[0-9]+')
-            ->middleware(['throttle:20,1']);
-        Route::post('/{id}/payer', [ESBTPComptabiliteController::class, 'marquerCommePaye'])->name('payer')->where('id', '[0-9]+')
-            ->middleware(['permission:comptabilite.bons.pay', 'throttle:20,1']);
-
-        // Génération PDF
-        Route::get('/{id}/pdf', [ESBTPComptabiliteController::class, 'genererPDFBon'])->name('pdf')->where('id', '[0-9]+')
-            ->middleware(['throttle:5,1']);
     });
 
     // Gestion des relances automatisées
