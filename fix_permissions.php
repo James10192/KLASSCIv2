@@ -56,7 +56,12 @@ try {
         'inscriptions.edit',
         'inscriptions.delete',
         'inscriptions.validate',
-        
+        // Inscriptions avec syntaxe espace (utilisées dans les vues)
+        'edit inscriptions',
+        'valider inscriptions',
+        'annuler inscriptions',
+        'delete inscriptions',
+
         // Paiements avec syntaxe point
         'paiements.view',
         'paiements.create',
@@ -252,6 +257,7 @@ try {
         'view_students', 'create_students', 'edit_students',
         'view_inscriptions', 'create_inscriptions', 'edit_inscriptions',
         'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.delete', 'inscriptions.validate',
+        'edit inscriptions', 'valider inscriptions', 'annuler inscriptions', 'delete inscriptions',
         'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.validate',
         'frais.view', 'frais.create', 'frais.edit', 'frais.configure',
         'view cycles', 'create cycles', 'edit cycles', 'delete cycles',
