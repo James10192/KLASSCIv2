@@ -117,22 +117,22 @@
 
                 <!-- Année -->
                 <div class="col-md-6 mb-lg">
-                    <label for="year" style="color: var(--text-primary); font-weight: 600; margin-bottom: var(--space-sm); display: block;">
+                    <label for="niveau" style="color: var(--text-primary); font-weight: 600; margin-bottom: var(--space-sm); display: block;">
                         <i class="fas fa-calendar-alt" style="color: var(--primary);"></i>
                         Année d'étude
                     </label>
-                    <select class="form-select @error('year') is-invalid @enderror"
-                            id="year"
-                            name="year"
+                    <select class="form-select @error('niveau') is-invalid @enderror"
+                            id="niveau"
+                            name="niveau"
                             style="border: 2px solid #e5e7eb; border-radius: var(--radius-medium); padding: var(--space-md); font-size: var(--text-normal); transition: all 0.3s ease; background: var(--surface);">
                         <option value="">-- Sélectionner une année --</option>
-                        <option value="1" {{ old('year') == '1' ? 'selected' : '' }}>1ère année</option>
-                        <option value="2" {{ old('year') == '2' ? 'selected' : '' }}>2ème année</option>
-                        <option value="3" {{ old('year') == '3' ? 'selected' : '' }}>3ème année</option>
-                        <option value="4" {{ old('year') == '4' ? 'selected' : '' }}>4ème année</option>
-                        <option value="5" {{ old('year') == '5' ? 'selected' : '' }}>5ème année</option>
+                        <option value="1" {{ old('niveau') == '1' ? 'selected' : '' }}>1ère année</option>
+                        <option value="2" {{ old('niveau') == '2' ? 'selected' : '' }}>2ème année</option>
+                        <option value="3" {{ old('niveau') == '3' ? 'selected' : '' }}>3ème année</option>
+                        <option value="4" {{ old('niveau') == '4' ? 'selected' : '' }}>4ème année</option>
+                        <option value="5" {{ old('niveau') == '5' ? 'selected' : '' }}>5ème année</option>
                     </select>
-                    @error('year')
+                    @error('niveau')
                         <div class="invalid-feedback" style="color: var(--danger); font-size: var(--text-small); margin-top: var(--space-xs);">{{ $message }}</div>
                     @enderror
                     <div style="color: var(--text-secondary); font-size: var(--text-small); margin-top: var(--space-xs);">Année du cursus d'étude</div>
