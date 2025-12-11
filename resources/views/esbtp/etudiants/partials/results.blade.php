@@ -3,6 +3,24 @@
     $currentYearId = $currentYear->id ?? null;
 @endphp
 
+{{-- COMPTEUR D'ÉTUDIANTS AVEC FILTRES --}}
+<div class="students-counter-widget mb-4">
+    <div class="counter-content">
+        <span class="counter-icon">
+            <i class="fas fa-users"></i>
+        </span>
+        <div class="counter-info">
+            <span class="counter-label">Total d'étudiants</span>
+            <span class="counter-value">{{ number_format($etudiants->total(), 0, ',', ' ') }}</span>
+        </div>
+        @if($etudiants->total() > $etudiants->perPage())
+            <span class="counter-context">
+                ({{ $etudiants->count() }} sur cette page)
+            </span>
+        @endif
+    </div>
+</div>
+
 <!-- Vue Desktop : Tableau (visible > 992px) -->
 <div class="table-responsive desktop-view">
     <table class="table table-hover align-middle mb-0" id="etudiants-table">

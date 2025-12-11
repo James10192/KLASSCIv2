@@ -2032,6 +2032,138 @@
     .card-moderne:has(.searchable-select.active):hover {
         transform: none !important;
     }
+
+    /* ========================================
+       COMPTEUR D'ÉTUDIANTS AVEC FILTRES
+       ======================================== */
+    .students-counter-widget {
+        display: flex;
+        align-items: center;
+        padding: 24px;  /* 8px grid × 3 */
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 2px solid #0284c7;
+        border-radius: 16px;  /* 8px grid × 2 */
+        box-shadow: 0 4px 12px rgba(4, 83, 203, 0.08);
+        animation: fadeInDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .counter-content {
+        display: flex;
+        align-items: center;
+        gap: 16px;  /* 8px grid × 2 */
+        width: 100%;
+    }
+
+    .counter-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 56px;  /* 8px grid × 7 */
+        height: 56px;
+        background: linear-gradient(135deg, #0453cb 0%, #0284c7 100%);
+        border-radius: 12px;  /* 8px grid × 1.5 */
+        color: white;
+        font-size: 24px;
+        flex-shrink: 0;
+    }
+
+    .counter-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex-grow: 1;
+    }
+
+    .counter-label {
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: #075985;
+    }
+
+    .counter-value {
+        font-size: 32px;
+        font-weight: 700;
+        color: #0453cb;
+        line-height: 1;
+    }
+
+    .counter-context {
+        font-size: 14px;
+        color: #0c4a6e;
+        opacity: 0.8;
+        font-weight: 500;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    /* Animation fadeInDown */
+    @keyframes fadeInDown {
+        0% {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* RESPONSIVE - Tablet */
+    @media (max-width: 768px) {
+        .students-counter-widget {
+            padding: 20px;  /* 8px grid × 2.5 */
+        }
+
+        .counter-icon {
+            width: 48px;  /* 8px grid × 6 */
+            height: 48px;
+            font-size: 20px;
+        }
+
+        .counter-value {
+            font-size: 28px;
+        }
+
+        .counter-label {
+            font-size: 12px;
+        }
+
+        .counter-context {
+            font-size: 13px;
+        }
+    }
+
+    /* RESPONSIVE - Mobile */
+    @media (max-width: 576px) {
+        .students-counter-widget {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 16px;  /* 8px grid × 2 */
+        }
+
+        .counter-content {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .counter-icon {
+            width: 44px;  /* 8px grid × 5.5 */
+            height: 44px;
+            font-size: 18px;
+        }
+
+        .counter-value {
+            font-size: 24px;
+        }
+
+        .counter-context {
+            margin-top: 4px;
+            font-size: 12px;
+        }
+    }
 </style>
 @endsection
 
