@@ -296,11 +296,27 @@
                                             <tr>
                                                 <td>
                                                     <div class="d-flex align-items-center">
-                                                        <div class="avatar-sm me-2">
-                                                            {{ $inscription->etudiant ? substr($inscription->etudiant->prenom ?? '', 0, 2) : 'NN' }}
-                                                        </div>
+                                                        @if($inscription->etudiant && $inscription->etudiant->photo_url)
+                                                            <img src="{{ $inscription->etudiant->photo_url }}"
+                                                                 alt="{{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenom }}"
+                                                                 class="me-2"
+                                                                 style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                                                        @else
+                                                            <div class="avatar-sm me-2">
+                                                                {{ $inscription->etudiant ? substr($inscription->etudiant->prenom ?? '', 0, 2) : 'NN' }}
+                                                            </div>
+                                                        @endif
                                                         <div>
-                                                            <div class="fw-medium">{{ $inscription->etudiant->nom ?? 'N/A' }} {{ $inscription->etudiant->prenom ?? '' }}</div>
+                                                            @if($inscription->etudiant)
+                                                                <a href="{{ route('esbtp.etudiants.show', $inscription->etudiant->id) }}"
+                                                                   class="text-decoration-none">
+                                                                    <div class="fw-medium text-primary" style="cursor: pointer;">
+                                                                        {{ $inscription->etudiant->nom ?? 'N/A' }} {{ $inscription->etudiant->prenom ?? '' }}
+                                                                    </div>
+                                                                </a>
+                                                            @else
+                                                                <div class="fw-medium">N/A</div>
+                                                            @endif
                                                         </div>
                                                     </div>
                                                 </td>

@@ -156,12 +156,27 @@
                         <tr style="border-bottom: 1px solid #f3f4f6;">
                             <td style="padding: var(--space-md);">
                                 <div style="display: flex; align-items: center;">
-                                    <div style="width: 44px; height: 44px; border-radius: var(--radius-circle); background-color: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; margin-right: var(--space-md);">
-                                        {{ strtoupper(substr($inscription->etudiant->prenoms ?? 'N', 0, 1) . substr($inscription->etudiant->nom ?? 'A', 0, 1)) }}
-                                    </div>
+                                    @if($inscription->etudiant && $inscription->etudiant->photo_url)
+                                        <img src="{{ $inscription->etudiant->photo_url }}"
+                                             alt="{{ $inscription->etudiant->prenoms }} {{ $inscription->etudiant->nom }}"
+                                             style="width: 44px; height: 44px; border-radius: var(--radius-circle); object-fit: cover; margin-right: var(--space-md);">
+                                    @else
+                                        <div style="width: 44px; height: 44px; border-radius: var(--radius-circle); background-color: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; margin-right: var(--space-md);">
+                                            {{ strtoupper(substr($inscription->etudiant->prenoms ?? 'N', 0, 1) . substr($inscription->etudiant->nom ?? 'A', 0, 1)) }}
+                                        </div>
+                                    @endif
                                     <div>
-                                        <div style="font-weight: 600; color: var(--text-primary);">{{ $inscription->etudiant->prenoms ?? 'N/A' }} {{ $inscription->etudiant->nom ?? 'N/A' }}</div>
-                                        <small style="color: var(--text-secondary);">{{ $inscription->etudiant->email ?? 'Email non disponible' }}</small>
+                                        @if($inscription->etudiant)
+                                            <a href="{{ route('esbtp.etudiants.show', $inscription->etudiant->id) }}"
+                                               style="text-decoration: none;">
+                                                <div style="font-weight: 600; color: var(--primary); cursor: pointer;">
+                                                    {{ $inscription->etudiant->prenoms ?? 'N/A' }} {{ $inscription->etudiant->nom ?? 'N/A' }}
+                                                </div>
+                                            </a>
+                                        @else
+                                            <div style="font-weight: 600; color: var(--text-primary);">N/A</div>
+                                        @endif
+                                        <small style="color: var(--text-secondary);">{{ $inscription->etudiant->email_personnel ?? $inscription->etudiant->email ?? 'Email non disponible' }}</small>
                                     </div>
                                 </div>
                             </td>
