@@ -9,11 +9,19 @@
 
 echo "=== DÉPLOIEMENT DES PARAMÈTRES ESBTP ===\n";
 
+// Définir la racine du projet (2 niveaux au-dessus de bin/deploy/)
+define('PROJECT_ROOT', dirname(__DIR__, 2));
+
+// Vérifier que PROJECT_ROOT est correct
+if (!file_exists(PROJECT_ROOT . '/artisan')) {
+    die("❌ ERREUR: PROJECT_ROOT incorrecte. Artisan non trouvé.\n");
+}
+
 // Inclure l'autoloader Laravel
-require_once __DIR__ . '/vendor/autoload.php';
+require_once PROJECT_ROOT . '/vendor/autoload.php';
 
 // Bootstrapper l'application Laravel
-$app = require_once __DIR__ . '/bootstrap/app.php';
+$app = require_once PROJECT_ROOT . '/bootstrap/app.php';
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 

@@ -5,14 +5,22 @@
  * Script pour ajouter les permissions manquantes au rôle de secrétaire
  *
  * Ce script doit être exécuté à la racine du projet avec la commande :
- * php fix_permissions.php
+ * php bin/deploy/fix_permissions.php
  */
 
+// Définir la racine du projet (2 niveaux au-dessus de bin/deploy/)
+define('PROJECT_ROOT', dirname(__DIR__, 2));
+
+// Vérifier que PROJECT_ROOT est correct
+if (!file_exists(PROJECT_ROOT . '/artisan')) {
+    die("❌ ERREUR: PROJECT_ROOT incorrecte. Artisan non trouvé.\n");
+}
+
 // Autoloader de Composer
-require __DIR__ . '/vendor/autoload.php';
+require PROJECT_ROOT . '/vendor/autoload.php';
 
 // Charger l'application Laravel
-$app = require_once __DIR__ . '/bootstrap/app.php';
+$app = require_once PROJECT_ROOT . '/bootstrap/app.php';
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 $response = $kernel->handle(
     $request = Illuminate\Http\Request::capture()

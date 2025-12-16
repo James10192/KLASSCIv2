@@ -116,10 +116,10 @@ class KLASSCISetup
     {
         $this->info("📁 Initialisation du stockage...");
 
-        $script = $this->baseDir . '/init_storage.php';
+        $script = $this->baseDir . '/bin/deploy/init_storage.php';
 
         if (!file_exists($script)) {
-            throw new Exception("Script init_storage.php introuvable");
+            throw new Exception("Script init_storage.php introuvable dans bin/deploy/");
         }
 
         $output = [];
@@ -155,10 +155,10 @@ class KLASSCISetup
     {
         $this->info("🔐 Configuration des permissions...");
 
-        $script = $this->baseDir . '/fix_permissions.php';
+        $script = $this->baseDir . '/bin/deploy/fix_permissions.php';
 
         if (!file_exists($script)) {
-            throw new Exception("Script fix_permissions.php introuvable");
+            throw new Exception("Script fix_permissions.php introuvable dans bin/deploy/");
         }
 
         $output = [];
@@ -194,10 +194,10 @@ class KLASSCISetup
     {
         $this->info("⚙️  Déploiement des paramètres...");
 
-        $script = $this->baseDir . '/deploy_settings.php';
+        $script = $this->baseDir . '/bin/deploy/deploy_settings.php';
 
         if (!file_exists($script)) {
-            throw new Exception("Script deploy_settings.php introuvable");
+            throw new Exception("Script deploy_settings.php introuvable dans bin/deploy/");
         }
 
         $output = [];

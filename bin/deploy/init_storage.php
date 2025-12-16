@@ -15,7 +15,8 @@ echo "=== INITIALISATION DU STOCKAGE ESBTP ===\n";
 
 try {
     // Configuration des chemins
-    $baseDir = __DIR__;
+    // Remonter de 2 niveaux : bin/deploy/ → bin/ → racine
+    $baseDir = dirname(__DIR__, 2);
     $storagePublicPath = $baseDir . '/storage/app/public';
     $publicStoragePath = $baseDir . '/public/storage';
 
