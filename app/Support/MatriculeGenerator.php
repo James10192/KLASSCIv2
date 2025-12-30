@@ -92,6 +92,7 @@ class MatriculeGenerator
 
         $filiere = $filiereId ? ESBTPFiliere::find($filiereId) : null;
         $niveau = $niveauId ? ESBTPNiveauEtude::find($niveauId) : null;
+
         $filiereCode = $filiere ? ($filiere->code ?? Str::upper(Str::substr(Str::ascii($filiere->name ?? $filiere->nom ?? ''), 0, 2))) : 'XX';
         $niveauCode = $niveau ? ($niveau->code ?? ($niveau->year ?? 'XX')) : 'XX';
 
@@ -100,37 +101,31 @@ class MatriculeGenerator
 
         $matriculePrefix = Str::upper($filiereCode . $niveauCode . $anneeCode);
 
-        $lastMatricule = ESBTPEtudiant::where('matricule', 'like', "{$matriculePrefix}%")
+        // ⚡ Optimisation : récupérer toutes les séquences existantes en une seule requête
+        $existing = ESBTPEtudiant::where('matricule', 'like', "{$matriculePrefix}%")
             ->whereNull('deleted_at')
-            ->orderByRaw('CAST(SUBSTRING(matricule, ' . (strlen($matriculePrefix) + 1) . ') AS UNSIGNED) DESC')
-            ->first();
+            ->pluck('matricule')
+            ->map(function ($m) use ($matriculePrefix) {
+                return (int) substr($m, strlen($matriculePrefix));
+            })
+            ->filter(fn($seq) => $seq > 0)
+            ->sort()
+            ->values();
 
         $seq = 1;
-        if ($lastMatricule) {
-            $seqStr = substr($lastMatricule->matricule, strlen($matriculePrefix));
-            $maxSeq = (int) $seqStr;
 
-            // Recherche incrémentale dans les 100 DERNIERS numéros pour trouver un trou
-            $searchStart = max(1, $maxSeq - 99);
-
-            for ($i = $searchStart; $i <= $maxSeq; $i++) {
-                $testMatricule = $matriculePrefix . str_pad($i, 6, '0', STR_PAD_LEFT);
-
-                // Vérifier si ce matricule existe (requête EXISTS rapide)
-                $exists = ESBTPEtudiant::where('matricule', $testMatricule)
-                    ->whereNull('deleted_at')
-                    ->exists();
-
-                if (!$exists) {
-                    // Trou trouvé, utiliser ce numéro
+        if ($existing->isNotEmpty()) {
+            // Trouver le premier trou dans la séquence
+            for ($i = 1; $i <= $existing->last(); $i++) {
+                if (!$existing->contains($i)) {
                     $seq = $i;
                     break;
                 }
             }
 
-            // Si aucun trou trouvé, utiliser max + 1
+            // Si aucun trou trouvé, incrémenter le max
             if ($seq === 1) {
-                $seq = $maxSeq + 1;
+                $seq = $existing->last() + 1;
             }
         }
 
