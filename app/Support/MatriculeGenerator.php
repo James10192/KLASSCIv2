@@ -105,8 +105,9 @@ class MatriculeGenerator
         $existing = ESBTPEtudiant::where('matricule', 'like', "{$matriculePrefix}%")
             ->whereNull('deleted_at')
             ->pluck('matricule')
-            ->map(function ($m) use ($matriculePrefix) {
-                return (int) substr($m, strlen($matriculePrefix));
+            ->map(function ($m) {
+                // Récupérer la partie après le tiret
+                return (int) Str::afterLast($m, '-');
             })
             ->filter(fn($seq) => $seq > 0)
             ->sort()
@@ -130,7 +131,16 @@ class MatriculeGenerator
         }
 
         $seqFormatted = str_pad($seq, 6, '0', STR_PAD_LEFT);
+        $matricule = $matriculePrefix . $seqFormatted;
 
-        return $matriculePrefix . $seqFormatted;
+        // 🔒 Double vérification finale pour éviter toute collision
+        if (ESBTPEtudiant::where('matricule', $matricule)->exists()) {
+            // Si collision, on incrémente automatiquement
+            $seq = $existing->isNotEmpty() ? $existing->last() + 1 : 1;
+            $seqFormatted = str_pad($seq, 6, '0', STR_PAD_LEFT);
+            $matricule = $matriculePrefix . $seqFormatted;
+        }
+
+        return $matricule;
     }
 }
