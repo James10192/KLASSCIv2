@@ -5,9 +5,9 @@
 @section('content')
 <div class="main-content">
     <!-- Header -->
-    <div class="dashboard-header mb-xl" style="background-color: var(--primary); color: white; border-radius: var(--radius-medium);">
+    <div class="dashboard-header mb-xl" style="background-color: var(--primary); color: white; border-radius: var(--radius-medium); display: block;">
         <div class="row align-items-center">
-            <div class="col-lg-8">
+            <div class="col-12 col-lg-7">
                 <div style="display: flex; align-items: center; gap: var(--space-lg);">
                     <div style="width: 80px; height: 80px; border-radius: var(--radius-circle); background-color: var(--accent-blue); color: white; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; box-shadow: var(--shadow-elevated);">
                         <i class="fas fa-crown"></i>
@@ -18,10 +18,10 @@
                     </div>
                 </div>
             </div>
-            <div class="col-lg-4 text-end">
-                <div class="header-actions">
-                    <div class="d-inline-block me-2">
-                        <span class="badge rounded-pill bg-light text-dark">
+            <div class="col-12 col-lg-5 d-flex">
+                <div class="header-actions" style="display: flex; justify-content: flex-end; align-items: center; gap: var(--space-sm); width: 100%;">
+                    <div>
+                        <span class="badge rounded-pill" style="background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.35); box-shadow: 0 6px 16px rgba(0,0,0,0.18); padding: 0.55rem 0.9rem; font-weight: 600; letter-spacing: 0.2px;">
                             <i class="fas fa-calendar me-1"></i>
                             {{ $anneeEnCours->name ?? 'Année non définie' }}
                         </span>
