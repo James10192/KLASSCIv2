@@ -2305,6 +2305,21 @@ document.addEventListener('DOMContentLoaded', function() {
         classeSelect.dispatchEvent(changeEvent);
     };
 
+    function initClasseAffectationState() {
+        const classeSelect = document.getElementById('classe_id');
+        const affectationSelect = document.getElementById('affectation_status');
+
+        if (affectationSelect && affectationSelect.value) {
+            updateAffectationInfo();
+        }
+
+        if (classeSelect && classeSelect.value) {
+            loadFraisForClasse();
+        }
+    }
+
+    initClasseAffectationState();
+
     // ========================
     // GESTION DES MATRICULES
     // ========================

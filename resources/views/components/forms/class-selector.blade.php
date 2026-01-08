@@ -325,6 +325,18 @@ body.modal-open * {
         debugLog(`Classe sélectionnée : ${classeName} (ID: ${classeId})`);
         document.getElementById('classe_id').value = classeId;
         document.getElementById('classe_display').value = classeName;
+        try {
+            sessionStorage.setItem('inscription_classe_id', String(classeId));
+            sessionStorage.setItem('inscription_classe_label', classeName);
+        } catch (e) {
+            debugWarn('SessionStorage indisponible pour classe sélectionnée');
+        }
+        try {
+            sessionStorage.setItem('inscription_classe_id', String(classeId));
+            sessionStorage.setItem('inscription_classe_label', classeName);
+        } catch (e) {
+            debugWarn('SessionStorage indisponible pour classe sélectionnée');
+        }
         
         // Fermer le modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('classeSelectorModal'));
@@ -826,6 +838,24 @@ body.modal-open * {
     document.addEventListener('DOMContentLoaded', function() {
         const radioButtons = document.querySelectorAll('input[name="est_transfert_choice"]');
         const etablissementContainer = document.getElementById('etablissement-origine-container');
+        const classeField = document.getElementById('classe_id');
+        const classeDisplay = document.getElementById('classe_display');
+
+        if (classeField && !classeField.value) {
+            try {
+                const storedClasseId = sessionStorage.getItem('inscription_classe_id');
+                const storedClasseLabel = sessionStorage.getItem('inscription_classe_label');
+                if (storedClasseId && storedClasseLabel) {
+                    classeField.value = storedClasseId;
+                    if (classeDisplay) {
+                        classeDisplay.value = storedClasseLabel;
+                    }
+                    triggerClasseChangeEvent();
+                }
+            } catch (e) {
+                debugWarn('SessionStorage indisponible pour restauration classe');
+            }
+        }
 
         radioButtons.forEach(radio => {
             radio.addEventListener('change', function() {
