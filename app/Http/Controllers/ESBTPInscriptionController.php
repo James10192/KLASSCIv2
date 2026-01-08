@@ -475,6 +475,10 @@ class ESBTPInscriptionController extends Controller
             'telephone.required' => 'Le numéro de téléphone est obligatoire',
             'matricule.required' => 'Le matricule est obligatoire',
             'matricule.unique' => 'Ce matricule existe déjà',
+            'photo.image' => 'Le fichier photo doit être une image valide.',
+            'photo.mimes' => 'La photo doit être au format JPEG, PNG, JPG ou GIF.',
+            'photo.max' => 'La photo ne doit pas dépasser 2 Mo.',
+            'photo.uploaded' => 'La photo n\'a pas pu être téléchargée. Vérifiez la taille du fichier, le format et les limites d\'upload du serveur.',
         ];
         $parents = $request->input('parents', []);
         
