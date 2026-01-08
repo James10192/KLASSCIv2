@@ -15,6 +15,12 @@
         padding: var(--space-xl);
         position: relative;
         overflow: hidden;
+        border-radius: var(--radius-large);
+        box-shadow: var(--shadow-card);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-xl);
     }
     
     .profile-header::before {
@@ -35,6 +41,9 @@
         gap: var(--space-lg);
         position: relative;
         z-index: 2;
+        flex: 1;
+        min-width: 0;
+        flex-wrap: wrap;
     }
     
     .profile-avatar {
@@ -55,7 +64,7 @@
     .profile-info h1 {
         margin: 0 0 var(--space-xs) 0;
         font-size: 2rem;
-        font-weight: 600;
+        font-weight: 700;
     }
     
     .profile-info p {
@@ -66,8 +75,9 @@
     
     .profile-meta {
         display: flex;
-        gap: var(--space-lg);
+        gap: var(--space-md);
         margin-top: var(--space-md);
+        flex-wrap: wrap;
     }
     
     .meta-item {
@@ -77,13 +87,17 @@
         font-size: 0.9rem;
     }
     
+    .meta-item i {
+        line-height: 1;
+        transform: translateY(1px);
+    }
+    
     .profile-actions {
-        position: absolute;
-        top: var(--space-lg);
-        right: var(--space-lg);
+        position: static;
         display: flex;
         gap: var(--space-sm);
         z-index: 3;
+        flex-shrink: 0;
     }
     
     .profile-content {
@@ -170,30 +184,38 @@
     
     .quick-stats {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: var(--space-md);
-        margin-bottom: var(--space-lg);
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: var(--space-lg);
+        margin-bottom: var(--space-xl);
     }
     
     .stat-card {
-        background: var(--background);
-        border-radius: var(--radius-medium);
-        padding: var(--space-md);
+        background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.85));
+        border-radius: var(--radius-large);
+        padding: var(--space-lg);
         text-align: center;
         border: 1px solid var(--border);
+        box-shadow: var(--shadow-card);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: var(--space-xs);
+        min-height: 110px;
     }
     
     .stat-number {
-        font-size: 1.5rem;
+        font-size: 1.7rem;
         font-weight: 700;
         color: var(--primary);
         display: block;
+        line-height: 1.1;
     }
     
     .stat-label {
-        font-size: 0.8rem;
+        font-size: 0.85rem;
         color: var(--text-secondary);
         margin-top: var(--space-xs);
+        line-height: 1.3;
     }
     
     .sidebar-actions {
@@ -297,7 +319,6 @@
         }
         
         .profile-actions {
-            position: static;
             justify-content: center;
             margin-top: var(--space-md);
         }

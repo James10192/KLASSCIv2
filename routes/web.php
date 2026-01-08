@@ -355,6 +355,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // Routes pour les secrétaires
             Route::resource('secretaires', ESBTPSecretaireController::class);
+            Route::post('secretaires/{secretaire}/reset-password', [ESBTPSecretaireController::class, 'resetPassword'])
+                ->name('secretaires.reset-password');
 
             // Dashboard superAdmin
             Route::get('/dashboard', [App\Http\Controllers\ESBTP\SuperAdminController::class, 'dashboard'])->name('superadmin.dashboard');

@@ -433,7 +433,7 @@
                             <li><a class="dropdown-item" href="{{ route('esbtp.enseignants.create') }}">
                                 <i class="fas fa-chalkboard-teacher me-2"></i>Enseignant
                             </a></li>
-                            <li><a class="dropdown-item" href="#" onclick="alert('Fonctionnalité en développement')">
+                            <li><a class="dropdown-item" href="{{ route('esbtp.secretaires.create') }}">
                                 <i class="fas fa-user-secretary me-2"></i>Secrétaire
                             </a></li>
                         </ul>
@@ -744,7 +744,7 @@
                             <input type="text" class="search-input" placeholder="Rechercher un secrétaire..." 
                                    id="search-secretaires">
                         </div>
-                        <a href="#" onclick="alert('Fonctionnalité en développement')" class="btn-acasi primary">
+                        <a href="{{ route('esbtp.secretaires.create') }}" class="btn-acasi primary">
                             <i class="fas fa-plus me-1"></i>Nouveau Secrétaire
                         </a>
                     </div>
@@ -804,11 +804,11 @@
                                         </div>
                                     </div>
                                     <div class="personnel-actions-group">
-                                        <a href="#" onclick="alert('Fonctionnalité en développement')" 
+                                        <a href="{{ route('esbtp.secretaires.show', $secretaire) }}" 
                                            class="btn-acasi secondary btn-sm" title="Voir détails">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="#" onclick="alert('Fonctionnalité en développement')" 
+                                        <a href="{{ route('esbtp.secretaires.edit', $secretaire) }}" 
                                            class="btn-acasi primary btn-sm" title="Modifier">
                                             <i class="fas fa-edit"></i>
                                         </a>
@@ -831,7 +831,7 @@
                                 </div>
                                 <h5>Aucun secrétaire</h5>
                                 <p>Commencez par créer votre premier secrétaire.</p>
-                                <a href="#" onclick="alert('Fonctionnalité en développement')" class="btn-acasi primary">
+                                <a href="{{ route('esbtp.secretaires.create') }}" class="btn-acasi primary">
                                     <i class="fas fa-plus me-1"></i>Créer un secrétaire
                                 </a>
                             </div>

@@ -173,4 +173,61 @@ class ESBTPSecretaireController extends Controller
 
         return redirect()->back()->with('success', 'Statut mis à jour avec succès');
     }
-} 
+
+    /**
+     * Reset password for a secretaire.
+     */
+    public function resetPassword(User $secretaire)
+    {
+        $this->authorize('manage-users');
+
+        if (!$secretaire->hasRole('secretaire')) {
+            abort(404, 'Secrétaire non trouvé.');
+        }
+
+        try {
+            $defaultPassword = 'Bonjour@2025';
+
+            $secretaire->password = Hash::make($defaultPassword);
+            $secretaire->must_change_password = true;
+            $secretaire->save();
+
+            \Log::info('🔑 Password reset for secretaire to default', [
+                'secretaire_id' => $secretaire->id,
+                'secretaire_name' => $secretaire->name,
+                'reset_by' => auth()->user()->name,
+                'timestamp' => now(),
+                'must_change_password' => true
+            ]);
+
+            if (request()->wantsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'password' => $defaultPassword,
+                    'message' => 'Mot de passe réinitialisé avec succès!'
+                ]);
+            }
+
+            return redirect()
+                ->back()
+                ->with('success', 'Mot de passe réinitialisé à Bonjour@2025 avec succès! Le secrétaire devra changer son mot de passe à la première connexion.')
+                ->with('new_password', $defaultPassword);
+        } catch (\Exception $e) {
+            \Log::error('❌ Password reset failed for secretaire', [
+                'secretaire_id' => $secretaire->id,
+                'error' => $e->getMessage()
+            ]);
+
+            if (request()->wantsJson() || request()->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la réinitialisation du mot de passe: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()
+                ->back()
+                ->with('error', 'Erreur lors de la réinitialisation du mot de passe: ' . $e->getMessage());
+        }
+    }
+}
