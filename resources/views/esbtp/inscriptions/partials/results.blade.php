@@ -53,23 +53,29 @@
                                     @endphp
 
                                     @if($isPaiementNonValide)
-                                        <button type="button" class="btn btn-sm btn-action-quick"
-                                                onclick="ouvrirModalValiderPaiement({{ $inscription->id }})"
-                                                style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
-                                            <i class="fas fa-check-circle me-1"></i>Valider paiement
-                                        </button>
+                                        @can('paiements.validate')
+                                            <button type="button" class="btn btn-sm btn-action-quick"
+                                                    onclick="ouvrirModalValiderPaiement({{ $inscription->id }})"
+                                                    style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
+                                                <i class="fas fa-check-circle me-1"></i>Valider paiement
+                                            </button>
+                                        @endcan
                                     @elseif($isClassePleine)
-                                        <button type="button" class="btn btn-sm btn-action-quick"
-                                                onclick="ouvrirModalChangerClasse({{ $inscription->id }})"
-                                                style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
-                                            <i class="fas fa-exchange-alt me-1"></i>Changer classe
-                                        </button>
+                                        @can('inscriptions.validate')
+                                            <button type="button" class="btn btn-sm btn-action-quick"
+                                                    onclick="ouvrirModalChangerClasse({{ $inscription->id }})"
+                                                    style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
+                                                <i class="fas fa-exchange-alt me-1"></i>Changer classe
+                                            </button>
+                                        @endcan
                                     @elseif($isSansPaiement)
-                                        <button type="button" class="btn btn-sm btn-action-quick"
-                                                onclick="ouvrirModalCreerPaiement({{ $inscription->id }})"
-                                                style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
-                                            <i class="fas fa-plus-circle me-1"></i>Créer paiement
-                                        </button>
+                                        @can('paiements.create')
+                                            <button type="button" class="btn btn-sm btn-action-quick"
+                                                    onclick="ouvrirModalCreerPaiement({{ $inscription->id }})"
+                                                    style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
+                                                <i class="fas fa-plus-circle me-1"></i>Créer paiement
+                                            </button>
+                                        @endcan
                                     @endif
                                 </div>
                             @else

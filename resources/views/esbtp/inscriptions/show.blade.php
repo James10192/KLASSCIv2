@@ -1328,10 +1328,12 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                                         <br>
                                                         <span class="text-warning">{{ number_format($montantEnAttente, 0, ',', ' ') }} FCFA</span>
                                                         <br><small class="text-warning">
-                                                            <i class="fas fa-hourglass-half me-1"></i>En attente -
-                                                            <a href="{{ route('esbtp.paiements.index') }}?search={{ urlencode($inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms) }}" class="text-warning">
-                                                                <i class="fas fa-external-link-alt"></i>Valider
-                                                            </a>
+                                                            <i class="fas fa-hourglass-half me-1"></i>En attente
+                                                            @can('paiements.validate')
+                                                                - <a href="{{ route('esbtp.paiements.index') }}?search={{ urlencode($inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms) }}" class="text-warning">
+                                                                    <i class="fas fa-external-link-alt"></i>Valider
+                                                                </a>
+                                                            @endcan
                                                         </small>
                                                     @endif
                                                 </td>
@@ -1342,13 +1344,15 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                                         <strong class="text-success">{{ number_format(abs($item['solde']), 0, ',', ' ') }} FCFA</strong>
                                                         <br><small class="text-success">
                                                             <i class="fas fa-arrow-up me-1"></i>Trop-perçu
-                                                            <button class="btn btn-sm btn-outline-primary ms-1" 
-                                                                    data-bs-toggle="modal" 
-                                                                    data-bs-target="#transferModal" 
-                                                                    onclick="prepareTransferModal({{ $inscription->id }}, {{ $item['category']->id }}, {{ abs($item['solde']) }}, {{ json_encode($item['category']->name) }})"
-                                                                    title="Transférer vers un autre frais">
-                                                                <i class="fas fa-exchange-alt"></i>
-                                                            </button>
+                                                            @can('paiements.edit')
+                                                                <button class="btn btn-sm btn-outline-primary ms-1" 
+                                                                        data-bs-toggle="modal" 
+                                                                        data-bs-target="#transferModal" 
+                                                                        onclick="prepareTransferModal({{ $inscription->id }}, {{ $item['category']->id }}, {{ abs($item['solde']) }}, {{ json_encode($item['category']->name) }})"
+                                                                        title="Transférer vers un autre frais">
+                                                                    <i class="fas fa-exchange-alt"></i>
+                                                                </button>
+                                                            @endcan
                                                         </small>
                                                     @else
                                                         <span class="badge bg-success">Soldé</span>
@@ -1388,9 +1392,11 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                                             </button>
                                                         @endif
                                                         @if(!$item['is_configured'])
-                                                            <a href="{{ route('esbtp.frais.configure') }}?filiere_id={{ $inscription->filiere_id }}&niveau_id={{ $inscription->niveau_id }}" class="btn btn-sm btn-warning" title="Configurer ce frais">
-                                                                <i class="fas fa-cogs"></i>
-                                                            </a>
+                                                            @can('frais.configure')
+                                                                <a href="{{ route('esbtp.frais.configure') }}?filiere_id={{ $inscription->filiere_id }}&niveau_id={{ $inscription->niveau_id }}" class="btn btn-sm btn-warning" title="Configurer ce frais">
+                                                                    <i class="fas fa-cogs"></i>
+                                                                </a>
+                                                            @endcan
                                                         @endif
                                                     </div>
                                                 </td>
@@ -1446,10 +1452,12 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                                                 <br>
                                                                 <span class="text-warning">{{ number_format($paiementsReliquatEnAttente, 0, ',', ' ') }} FCFA</span>
                                                                 <br><small class="text-warning">
-                                                                    <i class="fas fa-hourglass-half me-1"></i>En attente -
-                                                                    <a href="{{ route('esbtp.paiements.index') }}?search={{ $reliquat->id }}" class="text-warning">
-                                                                        <i class="fas fa-external-link-alt"></i>Valider
-                                                                    </a>
+                                                                    <i class="fas fa-hourglass-half me-1"></i>En attente
+                                                                    @can('paiements.validate')
+                                                                        - <a href="{{ route('esbtp.paiements.index') }}?search={{ $reliquat->id }}" class="text-warning">
+                                                                            <i class="fas fa-external-link-alt"></i>Valider
+                                                                        </a>
+                                                                    @endcan
                                                                 </small>
                                                             @endif
                                                         </td>
@@ -1463,13 +1471,15 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                                         </td>
                                                         <td>
                                                             <div class="btn-group">
-                                                                <button class="btn btn-sm btn-success"
-                                                                        data-bs-toggle="modal"
-                                                                        data-bs-target="#reliquatPaymentModal"
-                                                                        onclick="prepareReliquatPaymentModal({{ $reliquat->id }}, {{ $reliquat->solde_restant }}, {{ json_encode($reliquat->fraisSubscription->fraisConfiguration->name ?? $reliquat->fraisSubscription->fraisCategory->name ?? 'N/A') }})"
-                                                                        title="Payer ce reliquat">
-                                                                    <i class="fas fa-credit-card"></i>
-                                                                </button>
+                                                                @can('paiements.create')
+                                                                    <button class="btn btn-sm btn-success"
+                                                                            data-bs-toggle="modal"
+                                                                            data-bs-target="#reliquatPaymentModal"
+                                                                            onclick="prepareReliquatPaymentModal({{ $reliquat->id }}, {{ $reliquat->solde_restant }}, {{ json_encode($reliquat->fraisSubscription->fraisConfiguration->name ?? $reliquat->fraisSubscription->fraisCategory->name ?? 'N/A') }})"
+                                                                            title="Payer ce reliquat">
+                                                                        <i class="fas fa-credit-card"></i>
+                                                                    </button>
+                                                                @endcan
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -1636,19 +1646,25 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                                     </button>
                                                 @endif
                                                 @if($item['solde'] < 0)
-                                                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#transferModal" onclick="prepareTransferModal({{ $inscription->id }}, {{ $item['category']->id }}, {{ abs($item['solde']) }}, {{ json_encode($item['category']->name) }})" title="Transférer">
-                                                        <i class="fas fa-exchange-alt me-1"></i>Transférer
-                                                    </button>
+                                                    @can('paiements.edit')
+                                                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#transferModal" onclick="prepareTransferModal({{ $inscription->id }}, {{ $item['category']->id }}, {{ abs($item['solde']) }}, {{ json_encode($item['category']->name) }})" title="Transférer">
+                                                            <i class="fas fa-exchange-alt me-1"></i>Transférer
+                                                        </button>
+                                                    @endcan
                                                 @endif
                                                 @if(!$item['is_configured'])
-                                                    <a href="{{ route('esbtp.frais.configure') }}?filiere_id={{ $inscription->filiere_id }}&niveau_id={{ $inscription->niveau_id }}" class="btn btn-sm btn-warning">
-                                                        <i class="fas fa-cogs me-1"></i>Configurer
-                                                    </a>
+                                                    @can('frais.configure')
+                                                        <a href="{{ route('esbtp.frais.configure') }}?filiere_id={{ $inscription->filiere_id }}&niveau_id={{ $inscription->niveau_id }}" class="btn btn-sm btn-warning">
+                                                            <i class="fas fa-cogs me-1"></i>Configurer
+                                                        </a>
+                                                    @endcan
                                                 @endif
                                             @if($montantEnAttente > 0)
-                                                <a href="{{ route('esbtp.paiements.index') }}?search={{ urlencode($inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms) }}" class="btn btn-sm btn-outline-warning">
-                                                    <i class="fas fa-external-link-alt me-1"></i>Valider paiement
-                                                </a>
+                                                @can('paiements.validate')
+                                                    <a href="{{ route('esbtp.paiements.index') }}?search={{ urlencode($inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms) }}" class="btn btn-sm btn-outline-warning">
+                                                        <i class="fas fa-external-link-alt me-1"></i>Valider paiement
+                                                    </a>
+                                                @endcan
                                             @endif
                                         </div>
                                     </div>
@@ -1744,13 +1760,17 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
 
                                                     <!-- Actions reliquat -->
                                                     <div class="financial-actions">
-                                                        <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#reliquatPaymentModal" onclick="prepareReliquatPaymentModal({{ $reliquat->id }}, {{ $reliquat->solde_restant }}, {{ json_encode($reliquat->fraisSubscription->fraisConfiguration->name ?? $reliquat->fraisSubscription->fraisCategory->name ?? 'N/A') }})" title="Payer ce reliquat">
-                                                            <i class="fas fa-credit-card me-1"></i>Payer reliquat
-                                                        </button>
+                                                        @can('paiements.create')
+                                                            <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#reliquatPaymentModal" onclick="prepareReliquatPaymentModal({{ $reliquat->id }}, {{ $reliquat->solde_restant }}, {{ json_encode($reliquat->fraisSubscription->fraisConfiguration->name ?? $reliquat->fraisSubscription->fraisCategory->name ?? 'N/A') }})" title="Payer ce reliquat">
+                                                                <i class="fas fa-credit-card me-1"></i>Payer reliquat
+                                                            </button>
+                                                        @endcan
                                                         @if($paiementsReliquatEnAttente > 0)
-                                                            <a href="{{ route('esbtp.paiements.index') }}?search={{ urlencode($inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms) }}" class="btn btn-sm btn-outline-warning">
-                                                                <i class="fas fa-external-link-alt me-1"></i>Valider paiement
-                                                            </a>
+                                                            @can('paiements.validate')
+                                                                <a href="{{ route('esbtp.paiements.index') }}?search={{ urlencode($inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms) }}" class="btn btn-sm btn-outline-warning">
+                                                                    <i class="fas fa-external-link-alt me-1"></i>Valider paiement
+                                                                </a>
+                                                            @endcan
                                                         @endif
                                                     </div>
                                                 </div>

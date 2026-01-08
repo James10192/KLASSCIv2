@@ -1830,14 +1830,6 @@ Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur', 'paywall']
 
 // Routes pour les coordinateurs avec permissions spécifiques
 Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.')->group(function () {
-    // Routes pour les inscriptions (lecture seule pour coordinateurs)
-    Route::get('/inscriptions', [\App\Http\Controllers\ESBTPInscriptionController::class, 'index'])->name('inscriptions.index')
-        ->middleware('permission:view_inscriptions');
-    Route::get('/inscriptions/{inscription}', [\App\Http\Controllers\ESBTPInscriptionController::class, 'show'])->name('inscriptions.show')
-        ->middleware('permission:view_inscriptions');
-    Route::get('/etudiants-inscriptions', [\App\Http\Controllers\ESBTPEtudiantController::class, 'indexFusionne'])->name('etudiants-inscriptions.index')
-        ->middleware('permission:view_inscriptions');
-    
     // Routes pour les notes
     Route::prefix('notes')->name('notes.')->group(function () {
         Route::get('/', [\App\Http\Controllers\ESBTPNoteController::class, 'index'])->name('index')
