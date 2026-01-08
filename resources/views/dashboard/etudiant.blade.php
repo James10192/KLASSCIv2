@@ -19,7 +19,7 @@
                 @if(isset($student))
                     <div class="year-selector">
                         <i class="fas fa-calendar me-1"></i>
-                        Année {{ date('Y') }}-{{ date('Y')+1 }}
+                        {{ $anneeEnCours->name ?? 'Année non définie' }}
                     </div>
                 @endif
             </div>

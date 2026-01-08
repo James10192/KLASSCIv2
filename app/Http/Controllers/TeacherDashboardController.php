@@ -13,6 +13,7 @@ use App\Models\ESBTPDailyCode;
 use App\Models\ESBTPTeacherAttendance;
 use App\Models\ESBTPTeacherAvailability;
 use App\Models\ESBTPTeacher;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +36,7 @@ class TeacherDashboardController extends Controller
         $user = Auth::user();
         $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
         $teacherId = $teacher ? $teacher->id : null;
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         \Log::info('Dashboard enseignant - user_id', ['user_id' => $user->id, 'teacher_id' => $teacherId]);
         // 1. Séances à venir (7 prochains jours)
         $today = Carbon::today();
@@ -145,7 +147,8 @@ class TeacherDashboardController extends Controller
             'dailyCode',
             'todayAttendance',
             'todayClasses',
-            'pendingRollCalls'
+            'pendingRollCalls',
+            'anneeEnCours'
         ));
     }
 

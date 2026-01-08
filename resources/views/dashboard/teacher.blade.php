@@ -422,6 +422,10 @@
                 <p class="header-subtitle">Bienvenue, <strong>{{ Auth::user()->name }}</strong> ! Gérez vos cours et émargements</p>
             </div>
             <div class="header-actions">
+                <span class="badge rounded-pill bg-light text-dark me-2">
+                    <i class="fas fa-calendar me-1"></i>
+                    {{ $anneeEnCours->name ?? 'Année non définie' }}
+                </span>
                 <span class="text-muted">{{ \Carbon\Carbon::now()->isoFormat('dddd D MMMM YYYY') }}</span>
             </div>
         </div>

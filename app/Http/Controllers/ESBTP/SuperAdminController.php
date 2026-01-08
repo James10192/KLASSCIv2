@@ -9,6 +9,7 @@ use App\Models\Grade;
 use App\Models\Message;
 use App\Models\Notification;
 use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\User;
 use App\Models\Filiere;
 use App\Models\NiveauEtude;
@@ -62,6 +63,8 @@ class SuperAdminController extends Controller
         $recentNotifications = Notification::orderBy('created_at', 'desc')
             ->take(5)
             ->get();
+
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         
         return view('dashboard.superadmin', compact(
             'user',
@@ -75,7 +78,8 @@ class SuperAdminController extends Controller
             'totalExamens',
             'upcomingExamens',
             'recentMessages',
-            'recentNotifications'
+            'recentNotifications',
+            'anneeEnCours'
         ));
     }
 } 

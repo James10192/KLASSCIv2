@@ -20,6 +20,12 @@
             </div>
             <div class="col-lg-4 text-end">
                 <div class="header-actions">
+                    <div class="d-inline-block me-2">
+                        <span class="badge rounded-pill bg-light text-dark">
+                            <i class="fas fa-calendar me-1"></i>
+                            {{ $anneeEnCours->name ?? 'Année non définie' }}
+                        </span>
+                    </div>
                     <button class="btn-acasi secondary" style="margin-right: var(--space-md);" onclick="location.reload()" title="Actualiser les données">
                         <i class="fas fa-sync-alt"></i>
                     </button>

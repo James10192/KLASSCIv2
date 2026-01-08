@@ -105,6 +105,7 @@ class DashboardController extends Controller
 
         // Récupérer l'année universitaire en cours
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $data['anneeEnCours'] = $anneeEnCours;
 
         // Inscriptions en attente - SuperAdmin peut voir toutes les inscriptions (filtré par année en cours)
         if ($anneeEnCours) {
@@ -496,6 +497,9 @@ class DashboardController extends Controller
             'user' => $user
         ];
 
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $data['anneeEnCours'] = $anneeEnCours;
+
         // Inscriptions en attente
         $data['pendingInscriptionsCount'] = \App\Models\ESBTPInscription::where('status', 'pending')->count();
 
@@ -503,7 +507,8 @@ class DashboardController extends Controller
         try {
             $data['totalStudents'] = ESBTPEtudiant::count();
             $data['recentStudents'] = ESBTPEtudiant::with(['inscriptions' => function($q) {
-                    $q->orderBy('created_at', 'desc');
+                    $q->with(['classe', 'anneeUniversitaire'])
+                        ->orderBy('created_at', 'desc');
                 }])
                 ->whereHas('inscriptions')
                 ->orderBy('created_at', 'desc')
@@ -577,6 +582,7 @@ class DashboardController extends Controller
 
         // Récupérer l'année universitaire en cours
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $data['anneeEnCours'] = $anneeEnCours;
 
         // Statistiques accessibles aux coordinateurs
         try {
@@ -778,6 +784,8 @@ class DashboardController extends Controller
             'user' => $user,
             'student' => $student
         ];
+
+        $data['anneeEnCours'] = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         // Récupérer l'emploi du temps d'aujourd'hui pour l'étudiant
         try {

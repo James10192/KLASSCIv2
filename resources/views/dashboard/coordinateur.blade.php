@@ -198,6 +198,10 @@
                 </div>
                 <div class="col-lg-4 text-end">
                     <div class="header-actions">
+                        <span class="badge rounded-pill bg-light text-dark me-2">
+                            <i class="fas fa-calendar me-1"></i>
+                            {{ $anneeEnCours->name ?? 'Année non définie' }}
+                        </span>
                         <button class="btn-acasi secondary" style="margin-right: var(--space-md);" onclick="location.reload()" title="Actualiser les données">
                             <i class="fas fa-sync-alt"></i>
                         </button>

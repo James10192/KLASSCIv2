@@ -2,261 +2,328 @@
 
 @section('title', 'Tableau de bord Secrétaire')
 
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+    body {
+        background-color: var(--background);
+    }
+
+    .kpi-card {
+        border-radius: var(--radius-medium);
+        padding: var(--space-lg);
+    }
+
+    .kpi-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(4, 83, 203, 0.08);
+        color: var(--primary);
+    }
+
+    .notification-card {
+        border-left: 4px solid;
+        padding: var(--space-md);
+        border-radius: var(--radius-small);
+        background: rgba(245, 158, 11, 0.05);
+        border-color: var(--warning);
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-header {
+            flex-direction: column;
+            text-align: center;
+            gap: var(--space-md);
+        }
+    }
+</style>
+@endsection
+
 @section('content')
-<div class="container-fluid px-4">
-    <h1 class="my-4">Bienvenue, {{ $user->name }}</h1>
-    <p class="text-muted">Gestion administrative ESBTP-yAKRO</p>
-
-    @php
-        $pendingInscriptionsCount = \App\Models\ESBTPInscription::where('status', 'pending')->count();
-    @endphp
-
-    @if($pendingInscriptionsCount > 0)
-    <div class="alert alert-warning alert-dismissible fade show" role="alert">
-        <div class="d-flex align-items-center">
-            <i class="fas fa-exclamation-circle fa-2x me-3"></i>
-            <div>
-                <strong>Attention!</strong> Il y a {{ $pendingInscriptionsCount }} inscription(s) en attente de validation.
-                <p class="mb-0">Ces inscriptions nécessitent votre vérification pour finaliser le processus d'admission des étudiants.</p>
-                <a href="{{ route('esbtp.inscriptions.index', ['status' => 'pending']) }}" class="btn btn-sm btn-warning mt-2">
-                    <i class="fas fa-check-circle me-1"></i> Consulter et valider
-                </a>
+<div class="dashboard-acasi">
+    <div class="main-content" style="padding: 1.5rem; max-width: 100%; overflow-x: hidden;">
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-user-tie me-2"></i>Tableau de bord secrétaire</h1>
+                <p class="header-subtitle">Bienvenue, <strong>{{ $user->name }}</strong> ! Suivez les opérations clés</p>
+            </div>
+            <div class="header-actions">
+                <span class="badge rounded-pill bg-light text-dark me-2">
+                    <i class="fas fa-calendar me-1"></i>
+                    {{ $anneeEnCours->name ?? 'Année non définie' }}
+                </span>
+                <span class="text-muted">{{ \Carbon\Carbon::now()->isoFormat('dddd D MMMM YYYY') }}</span>
             </div>
         </div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-    @endif
 
-    <div class="row">
         @if($pendingInscriptionsCount > 0)
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2" style="border-left: 5px solid #f6c23e;">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Inscriptions en attente</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $pendingInscriptionsCount }}</div>
+            <div class="card-moderne mb-4 notification-card">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+                    <div>
+                        <div class="fw-semibold mb-1">
+                            <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                            {{ $pendingInscriptionsCount }} inscription(s) en attente
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-user-clock fa-2x text-warning"></i>
+                        <div class="text-muted small">
+                            Ces dossiers requièrent une vérification pour finaliser l’admission.
                         </div>
                     </div>
-                    <a href="{{ route('esbtp.inscriptions.index', ['status' => 'pending']) }}" class="btn btn-sm btn-warning mt-3">
-                        <i class="fas fa-check me-1"></i>Valider les inscriptions
+                    <a href="{{ route('esbtp.inscriptions.index', ['status' => 'pending']) }}" class="btn-acasi warning">
+                        <i class="fas fa-check-circle me-1"></i>Consulter
                     </a>
                 </div>
             </div>
-        </div>
         @endif
 
-        @if(isset($totalStudents))
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2" style="border-left: 5px solid #4e73df;">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Étudiants</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $totalStudents }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-users fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                    <a href="{{ route('esbtp.etudiants-inscriptions.index') }}" class="btn btn-sm btn-primary mt-3">Gérer les étudiants</a>
-                </div>
-            </div>
-        </div>
-        @endif
-
-        @if(isset($todayAttendances))
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Présences aujourd'hui</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $todayAttendances }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-clipboard-check fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                    <a href="{{ route('esbtp.attendances.index') }}" class="btn btn-sm btn-success mt-3">Gérer les présences</a>
-                </div>
-            </div>
-        </div>
-        @endif
-
-        @if(isset($pendingJustifications))
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Justifications en attente</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $pendingJustifications }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                    <a href="{{ route('esbtp.attendances.index') }}" class="btn btn-sm btn-warning mt-3">Traiter les justifications</a>
-                </div>
-            </div>
-        </div>
-        @endif
-    </div>
-
-    <div class="row">
-        @if(isset($totalTimetables))
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Emplois du temps</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $totalTimetables }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-calendar-alt fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                    <a href="{{ route('esbtp.emploi-temps.index') }}" class="btn btn-sm btn-info mt-3">Gérer les emplois du temps</a>
-                </div>
-            </div>
-        </div>
-        @endif
-
-        @if(isset($todayClasses))
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Cours aujourd'hui</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $todayClasses }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-chalkboard fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                    <a href="{{ route('esbtp.timetables.today') }}" class="btn btn-sm btn-primary mt-3">Voir les cours d'aujourd'hui</a>
-                </div>
-            </div>
-        </div>
-        @endif
-
-        @if(isset($pendingBulletins))
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card border-left-danger shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                                Bulletins en attente</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ $pendingBulletins }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-file-alt fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                    <a href="{{ route('esbtp.bulletins.pending') }}" class="btn btn-sm btn-danger mt-3">Traiter les bulletins</a>
-                </div>
-            </div>
-        </div>
-        @endif
-    </div>
-
-    <!-- Étudiants récents -->
-    @if(isset($recentStudents) && $recentStudents->count() > 0)
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Étudiants récemment inscrits</h6>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered" width="100%" cellspacing="0">
-                            <thead>
-                                <tr>
-                                    <th>Nom</th>
-                                    <th>Prénom</th>
-                                    <th>Matricule</th>
-                                    <th>Classe</th>
-                                    <th>Date d'inscription</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($recentStudents as $etudiant)
-                                <tr>
-                                    <td>{{ $etudiant->nom }}</td>
-                                    <td>{{ $etudiant->prenoms }}</td>
-                                    <td>{{ $etudiant->matricule }}</td>
-                                    <td>{{ $etudiant->classe->nom ?? 'Non assigné' }}</td>
-                                    <td>{{ $etudiant->created_at->format('d/m/Y') }}</td>
-                                    <td>
-                                        <a href="{{ route('esbtp.etudiants.show', $etudiant->id) }}" class="btn btn-sm btn-info">Détails</a>
-                                    </td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endif
-
-    <!-- Messages récents -->
-    @if(isset($recentMessages) && $recentMessages->count() > 0)
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Messages récents</h6>
-                </div>
-                <div class="card-body">
-                    <div class="list-group">
-                        @foreach($recentMessages as $message)
-                        <a href="{{ route('messages.show', $message->id) }}" class="list-group-item list-group-item-action">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h5 class="mb-1">{{ $message->subject }}</h5>
-                                <small>{{ $message->created_at->diffForHumans() }}</small>
+        <div class="row g-3 mb-4">
+            @if(isset($pendingInscriptionsCount))
+                <div class="col-lg-3 col-md-6 col-12">
+                    <div class="card-moderne kpi-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="text-muted small text-uppercase">Inscriptions en attente</div>
+                                <div class="h4 mb-1">{{ $pendingInscriptionsCount }}</div>
+                                <a href="{{ route('esbtp.inscriptions.index', ['status' => 'pending']) }}" class="btn btn-sm btn-outline-warning">Valider</a>
                             </div>
-                            <p class="mb-1">{{ Str::limit($message->content, 100) }}</p>
-                            <small>De: {{ $message->sender->name ?? 'Système' }}</small>
-                        </a>
-                        @endforeach
+                            <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.12); color: var(--warning);">
+                                <i class="fas fa-user-clock"></i>
+                            </div>
+                        </div>
                     </div>
-                    <div class="text-center mt-3">
-                        <a href="{{ route('messages.index') }}" class="btn btn-primary">Voir tous les messages</a>
+                </div>
+            @endif
+
+            @if(isset($totalStudents))
+                <div class="col-lg-3 col-md-6 col-12">
+                    <div class="card-moderne kpi-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="text-muted small text-uppercase">Étudiants</div>
+                                <div class="h4 mb-1">{{ $totalStudents }}</div>
+                                <a href="{{ route('esbtp.etudiants-inscriptions.index') }}" class="btn btn-sm btn-outline-primary">Gérer</a>
+                            </div>
+                            <div class="kpi-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            @if(isset($todayAttendances))
+                <div class="col-lg-3 col-md-6 col-12">
+                    <div class="card-moderne kpi-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="text-muted small text-uppercase">Présences aujourd'hui</div>
+                                <div class="h4 mb-1">{{ $todayAttendances }}</div>
+                                <a href="{{ route('esbtp.attendances.index') }}" class="btn btn-sm btn-outline-success">Suivre</a>
+                            </div>
+                            <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: var(--success);">
+                                <i class="fas fa-clipboard-check"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            @if(isset($pendingJustifications))
+                <div class="col-lg-3 col-md-6 col-12">
+                    <div class="card-moderne kpi-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="text-muted small text-uppercase">Justifications en attente</div>
+                                <div class="h4 mb-1">{{ $pendingJustifications }}</div>
+                                <a href="{{ route('esbtp.attendances.index') }}" class="btn btn-sm btn-outline-warning">Traiter</a>
+                            </div>
+                            <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.12); color: var(--warning);">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            @if(isset($totalTimetables))
+                <div class="col-lg-3 col-md-6 col-12">
+                    <div class="card-moderne kpi-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="text-muted small text-uppercase">Emplois du temps</div>
+                                <div class="h4 mb-1">{{ $totalTimetables }}</div>
+                                <a href="{{ route('esbtp.emploi-temps.index') }}" class="btn btn-sm btn-outline-info">Gérer</a>
+                            </div>
+                            <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.12); color: var(--accent-blue);">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            @if(isset($todayClasses))
+                <div class="col-lg-3 col-md-6 col-12">
+                    <div class="card-moderne kpi-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="text-muted small text-uppercase">Cours aujourd'hui</div>
+                                <div class="h4 mb-1">{{ $todayClasses }}</div>
+                                <a href="{{ route('esbtp.timetables.today') }}" class="btn btn-sm btn-outline-primary">Voir</a>
+                            </div>
+                            <div class="kpi-icon">
+                                <i class="fas fa-chalkboard"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            @if(isset($pendingBulletins))
+                <div class="col-lg-3 col-md-6 col-12">
+                    <div class="card-moderne kpi-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="text-muted small text-uppercase">Bulletins en attente</div>
+                                <div class="h4 mb-1">{{ $pendingBulletins }}</div>
+                                <a href="{{ route('esbtp.bulletins.pending') }}" class="btn btn-sm btn-outline-danger">Traiter</a>
+                            </div>
+                            <div class="kpi-icon" style="background: rgba(239, 68, 68, 0.12); color: var(--danger);">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>
+
+        <div class="row g-3">
+            <div class="col-lg-7 col-12">
+                <div class="card-moderne">
+                    <div class="p-lg">
+                        <div class="section-title mb-md">
+                            <i class="fas fa-user-graduate me-2"></i>Étudiants récemment inscrits
+                        </div>
+                        @if(isset($recentStudents) && $recentStudents->count() > 0)
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th>Photo</th>
+                                            <th>Nom</th>
+                                            <th>Prénom</th>
+                                            <th>Matricule</th>
+                                            <th>Classe</th>
+                                            <th>Date d'inscription</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($recentStudents as $etudiant)
+                                            @php
+                                                $currentYearId = $anneeEnCours->id ?? null;
+                                                $latestInscription = $etudiant->inscriptions
+                                                    ->sortByDesc('created_at')
+                                                    ->first();
+                                                $currentInscription = $currentYearId
+                                                    ? $etudiant->inscriptions
+                                                        ->where('annee_universitaire_id', $currentYearId)
+                                                        ->sortByDesc('created_at')
+                                                        ->first()
+                                                    : null;
+                                                $displayInscription = $currentInscription ?: $latestInscription;
+                                                $displayDate = $displayInscription?->date_inscription ?? $displayInscription?->created_at;
+                                                $classeName = $displayInscription?->classe?->name ?? $displayInscription?->classe?->nom;
+                                            @endphp
+                                            <tr>
+                                                <td>
+                                                    @if(!empty($etudiant->photo_url))
+                                                        <img src="{{ $etudiant->photo_url }}" alt="Photo de profil" class="rounded-circle" style="width: 40px; height: 40px; object-fit: cover;">
+                                                    @else
+                                                        <div class="rounded-circle bg-light d-inline-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                                            <i class="fas fa-user text-muted"></i>
+                                                        </div>
+                                                    @endif
+                                                </td>
+                                                <td>{{ $etudiant->nom }}</td>
+                                                <td>{{ $etudiant->prenoms }}</td>
+                                                <td>{{ $etudiant->matricule }}</td>
+                                                <td>
+                                                    @if($displayInscription)
+                                                        {{ $classeName ?? 'Classe non définie' }}
+                                                        @if($displayInscription->status === 'pending' || $displayInscription->status === 'en_attente')
+                                                            <span class="text-warning"> — En attente</span>
+                                                        @endif
+                                                        @if(!$currentInscription && $latestInscription)
+                                                            <span class="text-muted">
+                                                                — Hors année
+                                                                @if(!empty($latestInscription->anneeUniversitaire?->name))
+                                                                    ({{ $latestInscription->anneeUniversitaire->name }})
+                                                                @endif
+                                                            </span>
+                                                        @endif
+                                                    @else
+                                                        <span class="text-muted">Aucune inscription</span>
+                                                    @endif
+                                                </td>
+                                                <td>{{ $displayDate?->format('d/m/Y') ?? 'N/A' }}</td>
+                                                <td>
+                                                    <a href="{{ route('esbtp.etudiants.show', $etudiant->id) }}" class="btn btn-sm btn-outline-info">Détails</a>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @else
+                            <div class="text-muted">Aucun étudiant récent pour le moment.</div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5 col-12">
+                <div class="card-moderne">
+                    <div class="p-lg">
+                        <div class="section-title mb-md">
+                            <i class="fas fa-envelope me-2"></i>Messages récents
+                        </div>
+                        @if(isset($recentMessages) && $recentMessages->count() > 0)
+                            <div class="list-group list-group-flush">
+                                @foreach($recentMessages as $message)
+                                    <a href="{{ route('messages.show', $message->id) }}" class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <strong>{{ $message->subject }}</strong>
+                                            <small class="text-muted">{{ $message->created_at->diffForHumans() }}</small>
+                                        </div>
+                                        <div class="small text-muted">{{ Str::limit($message->content, 90) }}</div>
+                                        <div class="small">De: {{ $message->sender->name ?? 'Système' }}</div>
+                                    </a>
+                                @endforeach
+                            </div>
+                            <div class="mt-3 text-end">
+                                <a href="{{ route('messages.index') }}" class="btn btn-sm btn-outline-primary">Voir tous les messages</a>
+                            </div>
+                        @else
+                            <div class="text-muted">Aucun message récent.</div>
+                        @endif
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    @endif
 
-    <!-- Formulaire pour envoyer un message -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Envoyer un message</h6>
+        <div class="card-moderne mt-4">
+            <div class="p-lg">
+                <div class="section-title mb-md">
+                    <i class="fas fa-paper-plane me-2"></i>Envoyer un message
                 </div>
-                <div class="card-body">
-                    <form action="{{ route('esbtp.annonces.store') }}" method="POST">
-                        @csrf
-                        <div class="mb-3">
+                <form action="{{ route('esbtp.annonces.store') }}" method="POST">
+                    @csrf
+                    <div class="row g-3">
+                        <div class="col-md-4">
                             <label for="recipient_type" class="form-label">Destinataire</label>
                             <select class="form-select" id="recipient_type" name="recipient_type" required>
                                 <option value="">Sélectionner un destinataire</option>
@@ -267,7 +334,7 @@
                             </select>
                         </div>
 
-                        <div class="mb-3" id="specific_user_container" style="display: none;">
+                        <div class="col-md-4" id="specific_user_container" style="display: none;">
                             <label for="recipient_id" class="form-label">Sélectionner un étudiant</label>
                             <select class="form-select" id="recipient_id" name="recipient_id">
                                 <option value="">Choisir un étudiant</option>
@@ -277,7 +344,7 @@
                             </select>
                         </div>
 
-                        <div class="mb-3" id="specific_class_container" style="display: none;">
+                        <div class="col-md-4" id="specific_class_container" style="display: none;">
                             <label for="recipient_group" class="form-label">Sélectionner une classe</label>
                             <select class="form-select" id="recipient_group" name="recipient_group">
                                 <option value="">Choisir une classe</option>
@@ -287,17 +354,21 @@
                             </select>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="col-md-6">
                             <label for="subject" class="form-label">Sujet</label>
                             <input type="text" class="form-control" id="subject" name="subject" required>
                         </div>
-                        <div class="mb-3">
+                        <div class="col-12">
                             <label for="content" class="form-label">Message</label>
                             <textarea class="form-control" id="content" name="content" rows="3" required></textarea>
                         </div>
-                        <button type="submit" class="btn btn-primary">Envoyer</button>
-                    </form>
-                </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn-acasi primary">
+                                <i class="fas fa-paper-plane me-1"></i>Envoyer
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
