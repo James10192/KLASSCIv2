@@ -518,22 +518,33 @@ class ESBTPInscriptionController extends Controller
             ]);
             
             if (isset($parent['type']) && $parent['type'] === 'nouveau') {
-                Log::info("Parent $index: Type NOUVEAU détecté - Ajout des règles de validation");
-                $rules["parents.$index.nom"] = 'required|string|max:100';
-                $rules["parents.$index.prenoms"] = 'required|string|max:100';
-                $rules["parents.$index.telephone"] = 'required|string|max:20';
-                $rules["parents.$index.relation"] = 'required|string';
-                $messages["parents.$index.nom.required"] = 'Le nom du parent/tuteur est obligatoire';
-                $messages["parents.$index.prenoms.required"] = 'Le(s) prénom(s) du parent/tuteur est/sont obligatoire(s)';
-                $messages["parents.$index.telephone.required"] = 'Le téléphone du parent/tuteur est obligatoire';
-                $messages["parents.$index.relation.required"] = 'La relation avec le parent/tuteur est obligatoire';
+                $hasParentData = !empty($parent['nom'])
+                    || !empty($parent['prenoms'])
+                    || !empty($parent['telephone'])
+                    || !empty($parent['email'])
+                    || !empty($parent['profession'])
+                    || !empty($parent['adresse']);
+
+                if ($hasParentData) {
+                    Log::info("Parent $index: Type NOUVEAU détecté - Ajout des règles de validation");
+                    $rules["parents.$index.nom"] = 'required|string|max:100';
+                    $rules["parents.$index.prenoms"] = 'required|string|max:100';
+                    $rules["parents.$index.telephone"] = 'required|string|max:20';
+                    $rules["parents.$index.relation"] = 'required|string';
+                    $messages["parents.$index.nom.required"] = 'Le nom du parent/tuteur est obligatoire';
+                    $messages["parents.$index.prenoms.required"] = 'Le(s) prénom(s) du parent/tuteur est/sont obligatoire(s)';
+                    $messages["parents.$index.telephone.required"] = 'Le téléphone du parent/tuteur est obligatoire';
+                    $messages["parents.$index.relation.required"] = 'La relation avec le parent/tuteur est obligatoire';
+                }
             } else if (isset($parent['type']) && $parent['type'] === 'existant') {
-                Log::info("Parent $index: Type EXISTANT détecté - Ajout des règles pour parent existant");
-                $rules["parents.$index.parent_id"] = 'required|exists:esbtp_parents,id';
-                $rules["parents.$index.relation"] = 'required|string';
-                $messages["parents.$index.parent_id.required"] = 'Veuillez sélectionner un parent existant';
-                $messages["parents.$index.parent_id.exists"] = 'Le parent sélectionné n\'existe pas';
-                $messages["parents.$index.relation.required"] = 'La relation avec le parent/tuteur est obligatoire';
+                if (!empty($parent['parent_id'])) {
+                    Log::info("Parent $index: Type EXISTANT détecté - Ajout des règles pour parent existant");
+                    $rules["parents.$index.parent_id"] = 'required|exists:esbtp_parents,id';
+                    $rules["parents.$index.relation"] = 'required|string';
+                    $messages["parents.$index.parent_id.required"] = 'Veuillez sélectionner un parent existant';
+                    $messages["parents.$index.parent_id.exists"] = 'Le parent sélectionné n\'existe pas';
+                    $messages["parents.$index.relation.required"] = 'La relation avec le parent/tuteur est obligatoire';
+                }
                 // NE PAS ajouter de règle sur nom/prenoms/telephone pour un parent existant
             } else {
                 Log::warning("Parent $index: Type non reconnu ou manquant", [
@@ -654,7 +665,7 @@ class ESBTPInscriptionController extends Controller
                             'relation' => $parent['relation'] ?? 'Autre'
                         ];
                     }
-                    elseif (isset($parent['type']) && $parent['type'] === 'nouveau' && !empty($parent['nom']) && !empty($parent['prenoms'])) {
+                    elseif (isset($parent['type']) && $parent['type'] === 'nouveau' && !empty($parent['nom']) && !empty($parent['prenoms']) && !empty($parent['telephone'])) {
                         // Nouveau parent
                         $parentsData[] = [
                             'nom' => $parent['nom'],

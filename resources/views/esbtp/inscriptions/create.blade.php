@@ -923,7 +923,7 @@
                             <h5 class="section-title">Informations du/des parent(s)/tuteur(s)</h5>
                             <div class="alert alert-info">
                                 <i class="fas fa-info-circle me-2"></i>
-                                Ajoutez les informations des parents ou tuteurs de l'étudiant. Vous pouvez rechercher des parents existants ou en créer de nouveaux.
+                                Ajoutez les informations des parents ou tuteurs de l'étudiant. Cette section est facultative.
                         </div>
                         </div>
                     </div>
@@ -961,7 +961,8 @@
                                     <!-- Champ relation pour parent existant -->
                                     <div class="form-group mt-2">
                                         <label class="form-label fw-bold">Relation avec l'étudiant</label>
-                                        <select class="form-control" name="parents[0][relation]" data-required="true">
+                                        <select class="form-control" name="parents[0][relation]">
+                                            <option value="">Sélectionner une relation</option>
                                             <option value="Père">Père</option>
                                             <option value="Mère">Mère</option>
                                             <option value="Tuteur">Tuteur</option>
@@ -976,13 +977,13 @@
                                         <div class="col-md-6">
                                             <div class="form-group mb-3">
                                                 <label class="form-label fw-bold">Nom</label>
-                                                <input type="text" class="form-control" name="parents[0][nom]" data-required="true">
+                                                <input type="text" class="form-control" name="parents[0][nom]">
                                         </div>
                                         </div>
                                         <div class="col-md-6">
                                             <div class="form-group mb-3">
                                                 <label class="form-label fw-bold">Prénom(s)</label>
-                                                <input type="text" class="form-control" name="parents[0][prenoms]" data-required="true">
+                                                <input type="text" class="form-control" name="parents[0][prenoms]">
                                             </div>
                                         </div>
                                     </div>
@@ -991,7 +992,7 @@
                                         <div class="col-md-6">
                                             <div class="form-group mb-3">
                                                 <label class="form-label fw-bold">Téléphone</label>
-                                                <input type="tel" class="form-control" name="parents[0][telephone]" data-required="true" placeholder="+225 XX XX XXX XXX">
+                                                <input type="tel" class="form-control" name="parents[0][telephone]" placeholder="+225 XX XX XXX XXX">
                                         </div>
                                         </div>
                                         <div class="col-md-6">
@@ -1012,7 +1013,8 @@
                                         <div class="col-md-6">
                                             <div class="form-group mb-3">
                                                 <label class="form-label fw-bold">Relation</label>
-                                                <select class="form-control" name="parents[0][relation]" data-required="true">
+                                                <select class="form-control" name="parents[0][relation]">
+                                                    <option value="">Sélectionner une relation</option>
                                                     <option value="Père">Père</option>
                                                     <option value="Mère">Mère</option>
                                                     <option value="Tuteur">Tuteur</option>
@@ -1075,6 +1077,7 @@
                                     <div class="form-group mt-2">
                                         <label class="form-label fw-bold">Relation avec l'étudiant</label>
                                         <select class="form-control" name="parents[template][relation]">
+                                            <option value="">Sélectionner une relation</option>
                                             <option value="Père">Père</option>
                                             <option value="Mère">Mère</option>
                                             <option value="Tuteur">Tuteur</option>
@@ -1125,11 +1128,12 @@
                                         <div class="col-md-6">
                                             <div class="form-group mb-3">
                                                 <label class="form-label fw-bold">Relation</label>
-                                                <select class="form-control" name="parents[template][relation]">
-                                                <option value="Père">Père</option>
-                                                <option value="Mère">Mère</option>
-                                                <option value="Tuteur">Tuteur</option>
-                                                <option value="Autre">Autre</option>
+                                        <select class="form-control" name="parents[template][relation]">
+                                            <option value="">Sélectionner une relation</option>
+                                            <option value="Père">Père</option>
+                                            <option value="Mère">Mère</option>
+                                            <option value="Tuteur">Tuteur</option>
+                                            <option value="Autre">Autre</option>
                                             </select>
                                         </div>
                                     </div>
