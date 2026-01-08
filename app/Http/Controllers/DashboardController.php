@@ -1052,21 +1052,7 @@ class DashboardController extends Controller
             abort(403, 'Accès non autorisé');
         }
 
-        // Statistiques pour secrétaire
-        $totalStudents = ESBTPEtudiant::count();
-        $pendingInscriptions = ESBTPInscription::where('status', 'pending')->count();
-        $totalClasses = ESBTPClasse::count();
-        $recentStudents = ESBTPEtudiant::with('classe.filiere')
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
-
-        return view('dashboard.secretaire', compact(
-            'totalStudents',
-            'pendingInscriptions',
-            'totalClasses',
-            'recentStudents'
-        ));
+        return $this->secretaireDashboard();
     }
 
     /**
@@ -1079,50 +1065,7 @@ class DashboardController extends Controller
         if (!$user->hasRole('etudiant')) {
             abort(403, 'Accès non autorisé');
         }
-
-        // Récupérer l'étudiant associé
-        $etudiant = ESBTPEtudiant::where('user_id', $user->id)->first();
-
-        if (!$etudiant) {
-            abort(404, 'Profil étudiant non trouvé');
-        }
-
-        // Prochains examens pour cet étudiant
-        $upcomingExams = ESBTPEvaluation::where('classe_id', $etudiant->classe_id)
-            ->where('date_evaluation', '>=', now())
-            ->with('matiere')
-            ->orderBy('date_evaluation', 'asc')
-            ->limit(5)
-            ->get();
-
-        // Dernières notes
-        $recentGrades = DB::table('esbtp_notes')
-            ->join('esbtp_evaluations', 'esbtp_notes.evaluation_id', '=', 'esbtp_evaluations.id')
-            ->join('esbtp_matieres', 'esbtp_evaluations.matiere_id', '=', 'esbtp_matieres.id')
-            ->where('esbtp_notes.etudiant_id', $etudiant->id)
-            ->select('esbtp_notes.*', 'esbtp_matieres.nom as matiere_nom', 'esbtp_evaluations.type')
-            ->orderBy('esbtp_notes.created_at', 'desc')
-            ->limit(5)
-            ->get();
-
-        // Annonces pour la classe
-        $announcements = ESBTPAnnonce::whereHas('destinataires', function($query) use ($etudiant) {
-                $query->where('destinataire_type', 'classe')
-                      ->where('destinataire_id', $etudiant->classe_id);
-            })
-            ->orWhereHas('destinataires', function($query) {
-                $query->where('destinataire_type', 'tous');
-            })
-            ->orderBy('created_at', 'desc')
-            ->limit(3)
-            ->get();
-
-        return view('dashboard.etudiant', compact(
-            'etudiant',
-            'upcomingExams',
-            'recentGrades',
-            'announcements'
-        ));
+        return $this->etudiantDashboard();
     }
 
     /**

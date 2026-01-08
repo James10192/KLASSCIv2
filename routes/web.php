@@ -1119,13 +1119,17 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:serviceTechniq
     Route::post('/matricule-config', [ESBTPMatriculeConfigController::class, 'store'])->name('matricule-config.store');
     Route::delete('/matricule-config/{id}', [ESBTPMatriculeConfigController::class, 'destroy'])->name('matricule-config.destroy');
     Route::post('/matricule-config/preview', [ESBTPMatriculeConfigController::class, 'previewMatricule'])->name('matricule-config.preview');
-    Route::post('/matricule-config/generate', [ESBTPMatriculeConfigController::class, 'genererMatricule'])->name('matricule-config.generate');
-    Route::post('/matricule-config/check', [ESBTPMatriculeConfigController::class, 'checkMatricule'])->name('matricule-config.check');
     Route::post('/matricule-config/change-mode', [ESBTPMatriculeConfigController::class, 'changeMode'])->name('matricule-config.change-mode');
     Route::post('/matricule-config/change-etablissement', [ESBTPMatriculeConfigController::class, 'changeEtablissement'])->name('matricule-config.change-etablissement');
-    Route::get('/matricule-config/mode-info', [ESBTPMatriculeConfigController::class, 'getModeInfo'])->name('matricule-config.mode-info');
     Route::post('/matricule-config/get-configurations', [ESBTPMatriculeConfigController::class, 'getConfigurations'])->name('matricule-config.get-configurations');
 
+});
+
+// Endpoints matricule utilisés par les inscriptions (superAdmin, secrétaire, coordinateur)
+Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin|secretaire|coordinateur', 'paywall'])->group(function () {
+    Route::get('/matricule-config/mode-info', [ESBTPMatriculeConfigController::class, 'getModeInfo'])->name('matricule-config.mode-info');
+    Route::post('/matricule-config/generate', [ESBTPMatriculeConfigController::class, 'genererMatricule'])->name('matricule-config.generate');
+    Route::post('/matricule-config/check', [ESBTPMatriculeConfigController::class, 'checkMatricule'])->name('matricule-config.check');
 });
 
 // Routes pour la configuration du paywall - Service Technique ADC seulement
