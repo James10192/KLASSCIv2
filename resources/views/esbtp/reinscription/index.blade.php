@@ -227,11 +227,14 @@
             </div>
         </div>
 
-        @if ($errors->any())
+        @php
+            $errorsList = array_filter($errors->all(), fn($error) => trim((string) $error) !== '');
+        @endphp
+        @if (!empty($errorsList))
             <div class="card-moderne mb-md" style="border-left: 4px solid var(--danger); background-color: rgba(239, 68, 68, 0.05);">
                 <div class="p-lg">
                     <ul style="margin: 0; padding-left: 20px; color: var(--danger);">
-                        @foreach ($errors->all() as $error)
+                        @foreach ($errorsList as $error)
                             <li>{{ $error }}</li>
                         @endforeach
                     </ul>
@@ -621,6 +624,10 @@
 </div>
 
 <script>
+// Fallback si debug-helper n'est pas encore chargé
+window.debugLog = window.debugLog || function () {};
+window.debugError = window.debugError || function () {};
+
 // LOGS IMMÉDIATS AVANT CHARGEMENT JQUERY (PAGE REINSCRIPTIONS)
 debugLog('🟢 DEBUG REINSCRIPTIONS: Script debug DÉBUT');
 debugLog('🟢 DEBUG REINSCRIPTIONS: jQuery disponible avant chargement?', typeof $ !== 'undefined');
