@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Liste des filières - ESBTP-yAKRO')
+@section('title', 'Liste des filières - KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Créer une classe - ESBTP-yAKRO')
+@section('title', 'Créer une classe - KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

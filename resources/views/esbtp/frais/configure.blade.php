@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Configuration des Frais - ESBTP-yAKRO')
+@section('title', 'Configuration des Frais - KLASSCI')
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Attacher des matières aux classes - ESBTP-yAKRO')
+@section('title', 'Attacher des matières aux classes - KLASSCI')
 
 @section('styles')
 <style>

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Détails de l\'inscription - ' . $inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms . ' - ESBTP-yAKRO')
+@section('title', 'Détails de l\'inscription - ' . $inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms . ' - KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

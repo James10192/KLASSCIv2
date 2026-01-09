@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', config('app.name', 'ESBTP-Yakro') . ' - Page non trouvée')
+@section('title', config('app.name', 'KLASSCI') . ' - Page non trouvée')
 
 @section('page_title', 'Page non trouvée')
 

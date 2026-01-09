@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Filière : ' . $filiere->name . ' - ESBTP-yAKRO')
+@section('title', 'Filière : ' . $filiere->name . ' - KLASSCI')
 
 @section('content')
 <div class="container-fluid">

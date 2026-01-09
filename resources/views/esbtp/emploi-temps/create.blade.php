@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Créer un emploi du temps - ESBTP-yAKRO')
+@section('title', 'Créer un emploi du temps - KLASSCI')
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

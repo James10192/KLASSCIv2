@@ -328,7 +328,7 @@
         
         <!-- Pied de page -->
         <div class="footer">
-            <p>ESBTP-yAKRO - Bulletin généré le {{ \Carbon\Carbon::now()->format('d/m/Y à H:i') }} - Page 1/1</p>
+            <p>KLASSCI - Bulletin généré le {{ \Carbon\Carbon::now()->format('d/m/Y à H:i') }} - Page 1/1</p>
         </div>
     </div>
 </body>

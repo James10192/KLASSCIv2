@@ -13,7 +13,7 @@
         <div class="dashboard-header">
             <div class="header-left">
                 <h1>Bienvenue, {{ $user->name }}</h1>
-                <p class="header-subtitle">Votre espace étudiant ESBTP-yAKRO</p>
+                <p class="header-subtitle">Votre espace étudiant KLASSCI</p>
             </div>
             <div class="header-actions">
                 @if(isset($student))

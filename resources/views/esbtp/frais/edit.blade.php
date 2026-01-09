@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Modifier Catégorie de Frais - ESBTP-yAKRO')
+@section('title', 'Modifier Catégorie de Frais - KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

@@ -162,7 +162,7 @@
                                             <i class="fas fa-envelope me-2 text-primary"></i>finance@esbtp-yakro.ci
                                         </li>
                                         <li>
-                                            <i class="fas fa-map-marker-alt me-2 text-primary"></i>Bureau des finances, Campus ESBTP-yAKRO
+                                            <i class="fas fa-map-marker-alt me-2 text-primary"></i>Bureau des finances, Campus KLASSCI
                                         </li>
                                     </ul>
                                     <div class="mt-3">

@@ -375,7 +375,7 @@
                 <img src="data:image/{{ pathinfo($etablissement['logo'], PATHINFO_EXTENSION) }};base64,{{ base64_encode(file_get_contents(storage_path('app/public/' . $etablissement['logo']))) }}" class="header-logo" alt="Logo">
             @endif
 
-            <div class="school-name">{{ $etablissement['nom'] ?? 'ESBTP-yAKRO' }}</div>
+            <div class="school-name">{{ $etablissement['nom'] ?? 'KLASSCI' }}</div>
 
             @if($etablissement['adresse'] || $etablissement['telephone'] || $etablissement['email'])
             <div class="school-info">
@@ -521,7 +521,7 @@
                         </div>
                         <div class="info-field">
                             <div class="info-label">Etablissement :</div>
-                            <div class="info-value">{{ $etablissement['nom'] ?? 'ESBTP-yAKRO' }}</div>
+                            <div class="info-value">{{ $etablissement['nom'] ?? 'KLASSCI' }}</div>
                         </div>
                     </div>
                 </div>
@@ -536,7 +536,7 @@
         <!-- Generation Info -->
         <div class="generation-info">
             <strong>Document genere automatiquement le {{ now()->format('d/m/Y a H:i') }}</strong><br>
-            {{ $etablissement['nom'] ?? 'ESBTP-yAKRO' }} - Systeme de Gestion des Inscriptions
+            {{ $etablissement['nom'] ?? 'KLASSCI' }} - Systeme de Gestion des Inscriptions
         </div>
     </div>
 </body>

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', config('app.name', 'ESBTP-Yakro') . ' - Accès refusé')
+@section('title', config('app.name', 'KLASSCI') . ' - Accès refusé')
 
 @section('page_title', 'Accès refusé')
 

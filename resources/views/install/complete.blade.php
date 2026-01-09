@@ -7,7 +7,7 @@
     <div class="text-center mb-8">
         <i class="fas fa-check-circle text-6xl text-green-500 mb-4"></i>
         <h2 class="text-2xl font-bold text-gray-800">Installation terminée avec succès!</h2>
-        <p class="text-gray-600 mt-2">Votre application ESBTP-Yakro est maintenant prête à être utilisée</p>
+        <p class="text-gray-600 mt-2">Votre application KLASSCI est maintenant prête à être utilisée</p>
     </div>
 
     <div class="bg-white rounded-lg shadow-md p-6">

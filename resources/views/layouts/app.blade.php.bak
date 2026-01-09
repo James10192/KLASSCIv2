@@ -1,5 +1,5 @@
 <!--
-    Layout principal de l'application ESBTP-yAKRO
+    Layout principal de l'application KLASSCI
 
     Ce fichier a été modifié pour :
     1. Corriger les routes non définies (erreurs 'Route [xxx] not defined')
@@ -18,7 +18,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', config('app.name', 'ESBTP-yAKRO'))</title>
+    <title>@yield('title', config('app.name', 'KLASSCI'))</title>
 
     <!-- Fonts -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap">
@@ -423,7 +423,7 @@
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <!--<img src="{{ asset('images/esbtp_logo.png') }}" alt="ESBTP Logo" class="sidebar-logo">
-            <div class="sidebar-brand">ESBTP-yAKRO</div>
+            <div class="sidebar-brand">KLASSCI</div>
             <div class="sidebar-subtitle">Gestion Universitaire</div>-->
             <div class="sidebar-brand">KLASSCI</div>
             <div class="sidebar-subtitle">Gestion Universitaire</div>

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Planning Général - ESBTP-yAKRO')
+@section('title', 'Planning Général - KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

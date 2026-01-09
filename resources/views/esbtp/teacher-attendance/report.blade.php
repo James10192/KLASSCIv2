@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Rapport d\'émargement des enseignants - ESBTP-yAKRO')
+@section('title', 'Rapport d\'émargement des enseignants - KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

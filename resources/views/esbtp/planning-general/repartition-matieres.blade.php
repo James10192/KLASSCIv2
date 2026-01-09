@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Répartition des Matières - ESBTP-yAKRO')
+@section('title', 'Répartition des Matières - KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

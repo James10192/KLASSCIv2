@@ -30,7 +30,7 @@
                             <form>
                                 <div class="mb-3">
                                     <label for="siteName" class="form-label">Nom de l'établissement</label>
-                                    <input type="text" class="form-control" id="siteName" value="ESBTP-yAKRO">
+                                    <input type="text" class="form-control" id="siteName" value="KLASSCI">
                                 </div>
                                 <div class="mb-3">
                                     <label for="siteDescription" class="form-label">Description</label>

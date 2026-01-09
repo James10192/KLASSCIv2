@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Modifier l\'évaluation : ' . $evaluation->titre . ' - ESBTP-yAKRO')
+@section('title', 'Modifier l\'évaluation : ' . $evaluation->titre . ' - KLASSCI')
 
 @section('content')
 <div class="dashboard-acasi">

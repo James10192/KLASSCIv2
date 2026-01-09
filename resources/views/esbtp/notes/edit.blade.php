@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Modifier une note - ESBTP-yAKRO')
+@section('title', 'Modifier une note - KLASSCI')
 
 @section('content')
 <div class="dashboard-acasi">

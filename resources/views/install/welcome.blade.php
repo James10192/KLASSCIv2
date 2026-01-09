@@ -5,7 +5,7 @@
 @section('content')
     <div class="text-center mb-8">
         <i class="fas fa-school text-5xl text-blue-500 mb-4"></i>
-        <h2 class="text-2xl font-bold text-gray-800 mb-2">Bienvenue dans l'assistant d'installation de ESBTP-Yakro</h2>
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">Bienvenue dans l'assistant d'installation de KLASSCI</h2>
         <p class="text-gray-600">Nous allons vous guider à travers quelques étapes simples pour configurer votre application.</p>
     </div>
     

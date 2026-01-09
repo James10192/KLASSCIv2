@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Modifier un Paiement - ESBTP-yAKRO')
+@section('title', 'Modifier un Paiement - KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

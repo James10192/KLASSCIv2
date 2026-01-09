@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Saisie des notes : ' . $evaluation->titre . ' - ESBTP-yAKRO')
+@section('title', 'Saisie des notes : ' . $evaluation->titre . ' - KLASSCI')
 
 @section('page_title', 'Saisie rapide des notes')
 

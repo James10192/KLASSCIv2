@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Profil Secrétaire - ESBTP-yAKRO')
+@section('title', 'Profil Secrétaire - KLASSCI')
 
 @section('content')
 <div class="dashboard-acasi">

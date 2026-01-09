@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Gestion des Étudiants et Inscriptions - ESBTP-yAKRO')
+@section('title', 'Gestion des Étudiants et Inscriptions - KLASSCI')
 
 @section('content')
 <div class="container-fluid">

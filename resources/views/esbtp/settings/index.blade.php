@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Paramètres du Système - ESBTP-yAKRO')
+@section('title', 'Paramètres du Système - KLASSCI')
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
@@ -329,7 +329,7 @@
                         </label>
                         <input type="text" class="form-control form-control-modern @error('setting_school_name') is-invalid @enderror"
                                name="setting_school_name"
-                               value="{{ old('setting_school_name', \App\Helpers\SettingsHelper::get('school_name', 'ESBTP-yAKRO')) }}"
+                               value="{{ old('setting_school_name', \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI')) }}"
                                placeholder="Ex: École Spéciale du Bâtiment et des Travaux Publics"
                                required>
                         @error('setting_school_name')

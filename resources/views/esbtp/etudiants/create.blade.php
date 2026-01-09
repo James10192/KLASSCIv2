@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Ajouter un étudiant - ESBTP-yAKRO')
+@section('title', 'Ajouter un étudiant - KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

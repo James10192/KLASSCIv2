@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Liste d\'appel - ' . $classe->name . ' - ESBTP-yAKRO')
+@section('title', 'Liste d\'appel - ' . $classe->name . ' - KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
@@ -78,7 +78,7 @@
                         </div>
                     @endif
 
-                    <h2 style="margin: 0 0 8px 0; font-size: 1.8rem; font-weight: 700;">{{ $etablissement['nom'] ?? 'ESBTP-yAKRO' }}</h2>
+                    <h2 style="margin: 0 0 8px 0; font-size: 1.8rem; font-weight: 700;">{{ $etablissement['nom'] ?? 'KLASSCI' }}</h2>
 
                     @if($etablissement['adresse'] || $etablissement['telephone'] || $etablissement['email'])
                     <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 15px;">
@@ -224,7 +224,7 @@
         <div class="text-center mt-4">
             <small class="text-muted">
                 <i class="fas fa-info-circle me-1"></i>
-                Document généré le {{ now()->format('d/m/Y à H:i') }} par {{ $etablissement['nom'] ?? 'ESBTP-yAKRO' }}
+                Document généré le {{ now()->format('d/m/Y à H:i') }} par {{ $etablissement['nom'] ?? 'KLASSCI' }}
             </small>
         </div>
     </div>

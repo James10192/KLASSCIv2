@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Emplois du temps - ESBTP-yAKRO')
+@section('title', 'Emplois du temps - KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

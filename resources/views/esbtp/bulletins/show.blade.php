@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Bulletin de ' . $bulletin->etudiant->nom . ' ' . $bulletin->etudiant->prenom . ' - ESBTP-yAKRO')
+@section('title', 'Bulletin de ' . $bulletin->etudiant->nom . ' ' . $bulletin->etudiant->prenom . ' - KLASSCI')
 
 @section('content')
 <div class="container-fluid">

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Bulletins de ' . $etudiant->nom . ' ' . $etudiant->prenoms . ' | ESBTP-yAKRO')
+@section('title', 'Bulletins de ' . $etudiant->nom . ' ' . $etudiant->prenoms . ' | KLASSCI')
 
 @section('content')
 <div class="container-fluid py-4">

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Évaluation : ' . $evaluation->titre . ' - ESBTP-yAKRO')
+@section('title', 'Évaluation : ' . $evaluation->titre . ' - KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

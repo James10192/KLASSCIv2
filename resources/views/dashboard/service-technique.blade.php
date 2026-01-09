@@ -460,7 +460,7 @@
                     </h1>
                     <p class="mb-0 opacity-90">
                         Bienvenue, {{ auth()->user()->name }} !
-                        Gestion centralisée des établissements ESBTP-yAKRO
+                        Gestion centralisée des établissements KLASSCI
                     </p>
                 </div>
                 <div class="col-lg-4 text-lg-end">

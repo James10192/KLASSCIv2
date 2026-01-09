@@ -11,7 +11,7 @@
 
                 <div class="card-body">
                     <div class="alert alert-info">
-                        <h5 class="alert-heading">Bienvenue à ESBTP-yAKRO!</h5>
+                        <h5 class="alert-heading">Bienvenue à KLASSCI!</h5>
                         <p>Votre compte a été créé avec succès, mais vous devez compléter votre profil étudiant pour accéder à toutes les fonctionnalités.</p>
                     </div>
 

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Gestion des bulletins - ESBTP-yAKRO')
+@section('title', 'Gestion des bulletins - KLASSCI')
 
 @section('content')
 <div class="container-fluid">

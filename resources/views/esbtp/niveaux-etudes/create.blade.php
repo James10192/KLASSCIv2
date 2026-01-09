@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Créer un nouveau niveau d\'étude - ESBTP-yAKRO')
+@section('title', 'Créer un nouveau niveau d\'étude - KLASSCI')
 
 @section('content')
 <div class="main-content">

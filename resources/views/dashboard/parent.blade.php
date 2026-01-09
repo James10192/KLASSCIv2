@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Tableau de bord parent | ESBTP-yAKRO')
+@section('title', 'Tableau de bord parent | KLASSCI')
 
 @section('content')
 <div class="container-fluid px-4">

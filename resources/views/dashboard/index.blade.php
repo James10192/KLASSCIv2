@@ -23,7 +23,7 @@
                     @endif
 
                     <h4>Bienvenue, {{ $user->name }} !</h4>
-                    <p>Vous êtes connecté à l'application ESBTP-yAKRO.</p>
+                    <p>Vous êtes connecté à l'application KLASSCI.</p>
                     
                     <div class="alert alert-info mt-4">
                         <p><strong>Remarque :</strong> Votre profil utilisateur n'est pas encore associé à un rôle spécifique dans le système.</p>

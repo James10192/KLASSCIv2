@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Gestion des Notes | ESBTP-yAKRO')
+@section('title', 'Gestion des Notes | KLASSCI')
 
 @section('page_title', 'Gestion des Notes')
 

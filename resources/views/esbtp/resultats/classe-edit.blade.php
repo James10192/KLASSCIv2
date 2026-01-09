@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Édition Groupée - ' . $classe->name . ' - ESBTP-yAKRO')
+@section('title', 'Édition Groupée - ' . $classe->name . ' - KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

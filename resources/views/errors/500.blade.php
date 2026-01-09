@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', config('app.name', 'ESBTP-Yakro') . ' - Erreur serveur')
+@section('title', config('app.name', 'KLASSCI') . ' - Erreur serveur')
 
 @section('page_title', 'Erreur serveur')
 

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Emplois du temps d\'aujourd\'hui - ' . $jourActuelTexte . ' - ESBTP-yAKRO')
+@section('title', 'Emplois du temps d\'aujourd\'hui - ' . $jourActuelTexte . ' - KLASSCI')
 
 @section('styles')
 <style>

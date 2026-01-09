@@ -3,9 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KLASSCI - Système de Gestion Scolaire Moderne</title>
-    <meta name="description" content="KLASSCI est un système de gestion scolaire complet et moderne pour les établissements d'enseignement supérieur. Gérez facilement vos étudiants, classes, notes et bien plus.">
+    <title>KLASSCI - Plateforme de gestion scolaire tout-en-un</title>
+    <meta name="description" content="KLASSCI est une plateforme tout-en-un de gestion scolaire pour universités, écoles et centres de formation. Centralisez admissions, classes, emplois du temps, notes, finances et communication en temps réel.">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="application-name" content="KLASSCI">
+    <meta name="author" content="KLASSCI">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="canonical" href="https://klassci.com/">
+    <link rel="icon" href="/images/Images landingPage/logo_klassci.png" type="image/png">
+    <link rel="apple-touch-icon" href="/images/Images landingPage/logo_klassci.png">
+    <meta property="og:site_name" content="KLASSCI">
+    <meta property="og:title" content="KLASSCI - Plateforme de gestion scolaire tout-en-un">
+    <meta property="og:description" content="Centralisez admissions, classes, emplois du temps, notes, finances et communication avec KLASSCI, la plateforme tout-en-un pour les etablissements d'enseignement.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://klassci.com/">
+    <meta property="og:image" content="https://klassci.com/images/Images%20landingPage/Sans%20titre%20-%202_Plan%20de%20travail%201.png">
+    <meta property="og:image:alt" content="Apercu du tableau de bord KLASSCI">
+    <meta property="og:locale" content="fr_FR">
+    <meta property="og:locale:alternate" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="KLASSCI - Plateforme de gestion scolaire tout-en-un">
+    <meta name="twitter:description" content="Une plateforme tout-en-un pour gerer admissions, classes, emplois du temps, notes et finances.">
+    <meta name="twitter:image" content="https://klassci.com/images/Images%20landingPage/Sans%20titre%20-%202_Plan%20de%20travail%201.png">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "name": "KLASSCI",
+          "url": "https://klassci.com/",
+          "logo": "https://klassci.com/images/Images%20landingPage/logo_klassci.png",
+          "sameAs": [
+            "https://klassci.com/",
+            "https://esbtp-abidjan.klassci.com/",
+            "https://esbtp-yakro.klassci.com/"
+          ]
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "KLASSCI",
+          "applicationCategory": "EducationApplication",
+          "operatingSystem": "Web",
+          "url": "https://klassci.com/",
+          "description": "Plateforme tout-en-un de gestion scolaire pour universites, ecoles et centres de formation.",
+          "inLanguage": ["fr-FR", "en-US"]
+        }
+      ]
+    }
+    </script>
 
     <!-- Preconnect pour optimisation fonts & CDN -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net">

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Détails du Paiement #' . $paiement->numero_recu . ' - ESBTP-yAKRO')
+@section('title', 'Détails du Paiement #' . $paiement->numero_recu . ' - KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

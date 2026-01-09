@@ -300,7 +300,7 @@
                     <img src="{{ public_path('storage/' . $settings['logo']) }}" alt="Logo" class="header-logo">
                 @endif
 
-                <div class="school-name">{{ $settings['nom'] ?? 'ESBTP-yAKRO' }}</div>
+                <div class="school-name">{{ $settings['nom'] ?? 'KLASSCI' }}</div>
 
                 @if(!empty($settings['adresse']) || !empty($settings['telephone']))
                     <div class="school-meta">

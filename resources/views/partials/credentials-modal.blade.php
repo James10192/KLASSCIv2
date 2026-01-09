@@ -194,7 +194,7 @@ function printCredentials() {
         </head>
         <body>
             <div class="header">
-                <h2>ESBTP-yAKRO - Informations de connexion</h2>
+                <h2>KLASSCI - Informations de connexion</h2>
                 <p>Date : ${credentials.date}</p>
             </div>
             <div class="credentials">

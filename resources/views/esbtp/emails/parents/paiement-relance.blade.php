@@ -1,7 +1,7 @@
 @extends('esbtp.emails.parents.layout', [
     'emailTitle' => 'Rappel de Paiement',
     'parentName' => $parentName,
-    'schoolName' => $schoolName ?? 'ESBTP-yAKRO',
+    'schoolName' => $schoolName ?? 'KLASSCI',
     'schoolAddress' => $schoolAddress ?? 'École Supérieure du Bâtiment et des Travaux Publics',
     'schoolPhone' => $schoolPhone ?? '+225 00 00 00 00',
     'schoolEmail' => $schoolEmail ?? 'contact@esbtp-yakro.com',

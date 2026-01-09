@@ -1,5 +1,5 @@
 <!--
-    Layout principal de l'application ESBTP-yAKRO
+    Layout principal de l'application KLASSCI
 
     Ce fichier a été modifié pour :
     1. Corriger les routes non définies (erreurs 'Route [xxx] not defined')

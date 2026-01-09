@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Annonce : ' . $annonce->titre . ' - ESBTP-yAKRO')
+@section('title', 'Annonce : ' . $annonce->titre . ' - KLASSCI')
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

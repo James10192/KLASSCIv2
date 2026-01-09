@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Ajouter une matière - ESBTP-yAKRO')
+@section('title', 'Ajouter une matière - KLASSCI')
 
 @section('styles')
 <link href="{{ asset('css/dashboard-moderne.css') }}" rel="stylesheet">

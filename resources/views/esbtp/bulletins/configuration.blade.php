@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Configuration des Bulletins - ESBTP-yAKRO')
+@section('title', 'Configuration des Bulletins - KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
