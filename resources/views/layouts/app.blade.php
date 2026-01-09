@@ -181,10 +181,8 @@
             opacity: 0.8;
             margin-bottom: 2px;
             line-height: 1.4;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+            white-space: normal;
+            word-break: break-word;
         }
 
         .notification-time {
@@ -381,16 +379,35 @@
             color: #64748b !important;
             line-height: 1.4 !important;
             margin-bottom: 6px !important;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+            white-space: normal;
+            word-break: break-word;
         }
 
         .notification-time {
             font-size: 12px !important;
             color: #94a3b8 !important;
             font-weight: 400 !important;
+        }
+
+        .notification-footer {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .notification-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(245, 158, 11, 0.12);
+            color: #b45309;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            border-radius: 999px;
+            padding: 2px 8px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 6px;
         }
 
         .notification-actions {
@@ -1054,10 +1071,8 @@
             font-size: 13px;
             line-height: 1.4;
             margin-bottom: 6px;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
+            white-space: normal;
+            word-break: break-word;
         }
 
         .notification-time {
@@ -2546,21 +2561,32 @@
             let html = '';
             notifications.forEach(notification => {
                 const hasLink = notification.url && notification.url !== '#';
+                const isVirtual = notification.is_virtual;
+                const clickHandler = hasLink && !isVirtual
+                    ? `onclick="openNotificationLink('${notification.url}', ${notification.id})"`
+                    : hasLink
+                        ? `onclick="window.location.href='${notification.url}'"`
+                        : `onclick="markNotificationAsRead(${notification.id})"`;
                 html += `
                     <li class="notification-item-container">
-                        <div class="dropdown-item notification-item ${notification.read ? '' : 'unread'}" data-notification-id="${notification.id}" ${hasLink ? `onclick="openNotificationLink('${notification.url}', ${notification.id})"` : ''}>
+                        <div class="dropdown-item notification-item ${notification.read ? '' : 'unread'}" data-notification-id="${notification.id}" ${clickHandler}>
                             <div class="notification-icon bg-${notification.type || 'primary'}">
                                 <i class="${notification.icon || 'fas fa-bell'}"></i>
                             </div>
                             <div class="notification-content" style="text-align: left; width: 100%;">
                                 <div class="notification-title">${escapeHtml(notification.title)}</div>
                                 <div class="notification-text">${escapeHtml(notification.message)}</div>
-                                <div class="notification-time">${notification.time}</div>
+                                <div class="notification-footer">
+                                    <div class="notification-time">${notification.time}</div>
+                                    ${isVirtual ? '<span class="notification-pill">Action rapide</span>' : ''}
+                                </div>
                             </div>
                             <div class="notification-actions">
-                                <button class="notification-delete-btn" onclick="deleteNotification(${notification.id})" title="Supprimer">
-                                    <i class="fas fa-times"></i>
-                                </button>
+                                ${isVirtual ? '' : `
+                                    <button class="notification-delete-btn" onclick="deleteNotification(${notification.id})" title="Supprimer">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                `}
                             </div>
                         </div>
                     </li>
@@ -2860,7 +2886,7 @@
 
             // Nouvelles fonctions pour notifications améliorées
             window.markNotificationAsRead = function(notificationId) {
-                fetch('{{ route("notifications.mark-as-read", "") }}/' + notificationId, {
+                fetch(`{{ url('/navbar/notifications') }}/${notificationId}/read`, {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -3112,7 +3138,7 @@
                 }
 
                 // Marquer toutes les notifications comme vues (pas supprimées, juste vues)
-                fetch('{{ route("notifications.markAllAsRead") ?? "#" }}', {
+                fetch('{{ route("navbar.notifications.mark-all-read") }}', {
                     method: 'POST',
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
@@ -3129,6 +3155,7 @@
 
                         // Mettre à jour le badge en utilisant la nouvelle fonction
                         updateNotificationBadge();
+                        loadNavbarData();
 
                         debugLog('✅ Notifications marquées comme vues');
                     }

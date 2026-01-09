@@ -1,18 +1,65 @@
+@if(!empty($timetableShortcut) && ($timetableShortcut['show'] ?? false))
+    <div class="emploi-card emploi-shortcut-card">
+        <div class="emploi-card-body">
+            <div class="emploi-shortcut-title">
+                <i class="fas fa-calendar-exclamation me-2"></i>Raccourci emplois du temps
+            </div>
+            <div class="emploi-shortcut-meta">
+                Créez rapidement les emplois du temps pour les classes sans planning ou en fin de validité.
+                <button type="button" class="btn btn-link btn-sm p-0 ms-1" data-bs-toggle="modal" data-bs-target="#quickGenerateHelpModal">
+                    <i class="fas fa-info-circle me-1"></i>Voir le fonctionnement
+                </button>
+            </div>
+            <div class="emploi-shortcut-stats">
+                @if($timetableShortcut['missing'] > 0)
+                    <span class="emploi-shortcut-chip">{{ $timetableShortcut['missing'] }} sans emploi du temps</span>
+                @endif
+                @if($timetableShortcut['expired'] > 0)
+                    <span class="emploi-shortcut-chip">{{ $timetableShortcut['expired'] }} expiré(s)</span>
+                @endif
+                @if($timetableShortcut['expiring_soon'] > 0)
+                    <span class="emploi-shortcut-chip">{{ $timetableShortcut['expiring_soon'] }} expire(nt) bientôt</span>
+                @endif
+            </div>
+            @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('create_timetable'))
+                <div class="emploi-actions" style="border-top: none; padding-top: 0;">
+                    <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#quickGenerateModal">
+                        <i class="fas fa-bolt me-1"></i>Créer maintenant
+                    </button>
+                </div>
+            @endif
+        </div>
+    </div>
+@endif
+
 @forelse($emploisTemps as $emploiTemps)
-    <div class="emploi-card {{ $emploiTemps->is_active ? 'active' : '' }}">
+    @php
+        $today = \Carbon\Carbon::today();
+        $startDate = $emploiTemps->date_debut ? \Carbon\Carbon::parse($emploiTemps->date_debut) : null;
+        $endDate = $emploiTemps->date_fin ? \Carbon\Carbon::parse($emploiTemps->date_fin) : null;
+        $isExpired = $endDate && $endDate->lt($today);
+        $isUpcoming = $startDate && $startDate->gt($today);
+        $isCurrentPeriod = $startDate && $endDate && $today->between($startDate, $endDate);
+        $isExpiringSoon = $endDate && $endDate->gte($today) && $endDate->diffInDays($today) <= 3;
+    @endphp
+    <div class="emploi-card {{ $isCurrentPeriod ? 'active' : '' }} {{ $isExpired ? 'expired' : '' }} {{ $isUpcoming ? 'upcoming' : '' }}">
         <div class="emploi-card-header">
             <h6 class="emploi-card-title">
                 <i class="fas fa-calendar-alt me-2"></i>
                 {{ $emploiTemps->titre ?? 'Emploi du temps' }}
             </h6>
             <div class="emploi-status-badges">
-                @if($emploiTemps->is_active)
+                @if($isExpired)
+                    <span class="badge-moderne danger">Expiré</span>
+                @elseif($isCurrentPeriod)
                     <span class="badge-moderne success">Actif</span>
+                @elseif($isUpcoming)
+                    <span class="badge-moderne secondary">Inactif</span>
                 @else
                     <span class="badge-moderne secondary">Inactif</span>
                 @endif
-                @if(optional($emploiTemps)->is_current)
-                    <span class="badge-moderne info">Courant</span>
+                @if($isExpiringSoon && !$isExpired)
+                    <span class="badge-moderne warning">Expire bientôt</span>
                 @endif
             </div>
         </div>

@@ -15,6 +15,7 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPTeacher;
 use App\Models\ESBTPPlanificationAcademique;
+use App\Services\TimetableShortcutService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Services\ESBTPPDFService;
@@ -67,12 +68,16 @@ class ESBTPEmploiTempsController extends Controller
             $emploisTempsQuery->where('classe_id', $request->classe_id);
         }
 
-        // Filtrage par statut
-        if ($request->filled('status')) {
-            if ($request->status === 'active') {
-                $emploisTempsQuery->where('is_active', true);
-            } elseif ($request->status === 'inactive') {
-                $emploisTempsQuery->where('is_active', false);
+        // Filtrage par période automatique (basée sur les dates)
+        if ($request->filled('period_status')) {
+            $today = Carbon::today();
+            if ($request->period_status === 'current') {
+                $emploisTempsQuery->whereDate('date_debut', '<=', $today)
+                    ->whereDate('date_fin', '>=', $today);
+            } elseif ($request->period_status === 'upcoming') {
+                $emploisTempsQuery->whereDate('date_debut', '>', $today);
+            } elseif ($request->period_status === 'expired') {
+                $emploisTempsQuery->whereDate('date_fin', '<', $today);
             }
         }
 
@@ -112,7 +117,15 @@ class ESBTPEmploiTempsController extends Controller
 
         // Statistiques
         $totalEmploisTemps = $emploisTemps->count();
-        $emploisTempsActifs = $emploisTemps->where('is_active', true)->count();
+        $today = Carbon::today();
+        $emploisTempsActifs = $emploisTemps->filter(function ($emploiTemps) use ($today) {
+            if (!$emploiTemps->date_debut || !$emploiTemps->date_fin) {
+                return false;
+            }
+            $startDate = Carbon::parse($emploiTemps->date_debut);
+            $endDate = Carbon::parse($emploiTemps->date_fin);
+            return $today->between($startDate, $endDate);
+        })->count();
         $totalSeances = ESBTPSeanceCours::count();
 
         // Emplois du temps de l'année en cours (déjà filtrés)
@@ -121,9 +134,11 @@ class ESBTPEmploiTempsController extends Controller
         // Passer l'année courante avec le bon nom pour la vue
         $anneeUniversitaireCourante = $anneeEnCours;
 
+        $timetableShortcut = app(TimetableShortcutService::class)->getShortcutSummary($anneeEnCours);
+
         return view('esbtp.emploi-temps.index', compact(
             'emploisTemps', 'filieres', 'niveaux', 'classes', 'annees', 'anneeUniversitaireCourante',
-            'totalEmploisTemps', 'emploisTempsActifs', 'totalSeances', 'emploisTempsAnneeEnCours'
+            'totalEmploisTemps', 'emploisTempsActifs', 'totalSeances', 'emploisTempsAnneeEnCours', 'timetableShortcut'
         ));
     }
 
@@ -1743,12 +1758,16 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             $query->where('classe_id', $request->classe_id);
         }
 
-        // Filtrage par statut
-        if ($request->filled('status')) {
-            if ($request->status === 'active') {
-                $query->where('is_active', true);
-            } elseif ($request->status === 'inactive') {
-                $query->where('is_active', false);
+        // Filtrage par période automatique (basée sur les dates)
+        if ($request->filled('period_status')) {
+            $today = Carbon::today();
+            if ($request->period_status === 'current') {
+                $query->whereDate('date_debut', '<=', $today)
+                    ->whereDate('date_fin', '>=', $today);
+            } elseif ($request->period_status === 'upcoming') {
+                $query->whereDate('date_debut', '>', $today);
+            } elseif ($request->period_status === 'expired') {
+                $query->whereDate('date_fin', '<', $today);
             }
         }
 
@@ -1778,11 +1797,138 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         \Log::info('✅ Résultats trouvés', ['count' => $emploisTemps->count()]);
 
         // Render les partiels
+        $timetableShortcut = app(TimetableShortcutService::class)->getShortcutSummary($anneeUniversitaire);
+
         return response()->json([
             'success' => true,
-            'html_cards' => view('esbtp.emploi-temps.partials.cards', compact('emploisTemps'))->render(),
-            'html_table' => view('esbtp.emploi-temps.partials.table-rows', compact('emploisTemps'))->render(),
+            'html_cards' => view('esbtp.emploi-temps.partials.cards', compact('emploisTemps', 'timetableShortcut'))->render(),
+            'html_table' => view('esbtp.emploi-temps.partials.table-rows', compact('emploisTemps', 'timetableShortcut'))->render(),
             'count' => $emploisTemps->count()
         ]);
+    }
+
+    public function quickGenerate(Request $request, TimetableShortcutService $shortcutService)
+    {
+        $user = auth()->user();
+
+        if (!$user || (! $user->hasRole('superAdmin') && ! $user->hasRole('secretaire') && ! $user->can('create_timetable'))) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'classes' => 'required|array|min:1',
+            'classes.*' => 'integer',
+            'modes' => 'array',
+            'modes.*' => 'in:empty,duplicate',
+        ]);
+
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (!$anneeEnCours) {
+            return redirect()->back()->with('error', "Aucune année universitaire active n'est définie.");
+        }
+
+        $items = $shortcutService->getClassesNeedingTimetables($anneeEnCours);
+        if (empty($items)) {
+            return redirect()->back()->with('info', "Aucune classe n'a besoin d'un nouvel emploi du temps.");
+        }
+
+        $itemsByClass = collect($items)->keyBy(function ($item) {
+            return $item['class']->id;
+        })->all();
+        $selectedClasses = array_map('intval', $validated['classes']);
+
+        $createdCount = 0;
+        $skippedCount = 0;
+        $fallbackCount = 0;
+
+        DB::beginTransaction();
+        try {
+            foreach ($selectedClasses as $classeId) {
+                if (!isset($itemsByClass[$classeId])) {
+                    $skippedCount++;
+                    continue;
+                }
+
+                $item = $itemsByClass[$classeId];
+                $classe = $item['class'];
+                $targetStart = $item['target_start'];
+                $targetEnd = $item['target_end'];
+                $source = $item['source'];
+
+                $mode = $validated['modes'][$classeId] ?? ($source ? 'duplicate' : 'empty');
+                if ($mode === 'duplicate' && !$source) {
+                    $mode = 'empty';
+                    $fallbackCount++;
+                }
+
+                $alreadyExists = ESBTPEmploiTemps::where('annee_universitaire_id', $anneeEnCours->id)
+                    ->where('classe_id', $classe->id)
+                    ->whereDate('date_debut', $targetStart->toDateString())
+                    ->whereDate('date_fin', $targetEnd->toDateString())
+                    ->exists();
+
+                if ($alreadyExists) {
+                    $skippedCount++;
+                    continue;
+                }
+
+                $isActive = $targetStart->lte(Carbon::today()) && $targetEnd->gte(Carbon::today());
+
+                $emploiTemps = ESBTPEmploiTemps::create([
+                    'titre' => $source?->titre ?? 'Emploi du temps - ' . $classe->name,
+                    'classe_id' => $classe->id,
+                    'annee_universitaire_id' => $anneeEnCours->id,
+                    'semestre' => $source?->semestre,
+                    'date_debut' => $targetStart->toDateString(),
+                    'date_fin' => $targetEnd->toDateString(),
+                    'is_active' => $isActive,
+                    'is_current' => false,
+                    'created_by' => $user->id,
+                    'updated_by' => $user->id,
+                ]);
+
+                if ($mode === 'duplicate' && $source) {
+                    foreach ($source->seances as $seance) {
+                        $newSeance = $seance->replicate();
+                        $newSeance->emploi_temps_id = $emploiTemps->id;
+                        $newSeance->classe_id = $classe->id;
+                        $newSeance->annee_universitaire_id = $anneeEnCours->id;
+                        $newSeance->homework_evaluation_id = null;
+                        $newSeance->is_active = $isActive;
+
+                        $dayOffset = is_numeric($seance->jour) ? ((int) $seance->jour - 1) : 0;
+                        $newDateSeance = $targetStart->copy()->addDays($dayOffset);
+                        $newSeance->date_seance = $newDateSeance->toDateString();
+
+                        if ($seance->homework_due_date && $seance->date_seance) {
+                            $deltaDays = Carbon::parse($seance->date_seance)->diffInDays($newDateSeance, false);
+                            $newSeance->homework_due_date = Carbon::parse($seance->homework_due_date)->addDays($deltaDays)->toDateString();
+                        }
+
+                        $newSeance->save();
+                    }
+                }
+
+                $createdCount++;
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            \Log::error('Erreur génération rapide emplois du temps', [
+                'error' => $e->getMessage(),
+            ]);
+            return redirect()->back()->with('error', "Erreur lors de la génération rapide: {$e->getMessage()}");
+        }
+
+        $message = "Génération terminée: {$createdCount} emploi(s) du temps créé(s).";
+        if ($skippedCount > 0) {
+            $message .= " {$skippedCount} déjà existant(s) ont été ignoré(s).";
+        }
+        if ($fallbackCount > 0) {
+            $message .= " {$fallbackCount} classe(s) ont été créées en mode vide (aucun emploi du temps à dupliquer).";
+        }
+
+        return redirect()->back()->with('success', $message);
     }
 }

@@ -124,12 +124,57 @@
     .emploi-card.active::before {
         background: var(--success);
     }
+
+    .emploi-card.expired::before {
+        background: var(--danger);
+    }
+
+    .emploi-card.upcoming::before {
+        background: var(--accent-blue);
+    }
+
+    .emploi-card.current-period::before {
+        background: var(--warning);
+    }
+
+    .emploi-shortcut-card {
+        border: 1px dashed rgba(245, 158, 11, 0.6);
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.02));
+    }
+
+    .emploi-shortcut-title {
+        font-weight: 700;
+        color: var(--warning);
+        margin-bottom: var(--space-xs);
+    }
+
+    .emploi-shortcut-meta {
+        color: var(--text-secondary);
+        font-size: var(--text-small);
+        margin-bottom: var(--space-sm);
+    }
+
+    .emploi-shortcut-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-xs);
+    }
+
+    .emploi-shortcut-chip {
+        background: rgba(245, 158, 11, 0.12);
+        color: var(--warning);
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 600;
+    }
     
     .emploi-card-header {
         padding: var(--space-md);
         border-bottom: 1px solid #f3f4f6;
         display: flex;
-        justify-content: between;
+        justify-content: space-between;
         align-items: center;
     }
     
@@ -146,13 +191,13 @@
     
     .emploi-info-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: var(--space-sm);
         margin-bottom: var(--space-md);
     }
     
     .emploi-info-item {
-        text-align: center;
+        text-align: left;
     }
     
     .emploi-info-label {
@@ -176,13 +221,30 @@
         border-top: 1px solid #f3f4f6;
         margin-top: var(--space-sm);
     }
+
+    .table-container {
+        overflow-x: auto;
+        border-radius: var(--radius-medium);
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
     
     /* Conteneur des cards */
     .emplois-cards-container {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: var(--space-md);
         margin-bottom: var(--space-lg);
+        align-items: stretch;
+        grid-auto-flow: row dense;
+        width: 100%;
+    }
+
+    .emploi-card {
+        min-width: 0;
     }
     
     /* Header du toggle vue */
@@ -215,13 +277,21 @@
     .emploi-card, .table-container {
         transition: all 0.3s ease;
     }
-    
+
     /* Responsive pour les cards */
-    @media (max-width: 768px) {
+    @media (min-width: 1400px) {
+        .emplois-cards-container {
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        }
+    }
+
+    @media (max-width: 991px) {
         .emplois-cards-container {
             grid-template-columns: 1fr;
         }
-        
+    }
+
+    @media (max-width: 768px) {
         .emploi-view-toggle {
             order: -1;
             margin-bottom: var(--space-sm);
@@ -236,6 +306,9 @@
     
     .table-moderne {
         margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0 8px;
+        min-width: 960px;
     }
     
     .table-moderne th {
@@ -253,10 +326,35 @@
     
     .table-moderne td {
         padding: var(--space-md);
+        border-top: 1px solid #f3f4f6;
         border-bottom: 1px solid #f3f4f6;
         vertical-align: middle;
         white-space: nowrap;
         min-width: fit-content;
+    }
+
+    .table-moderne tbody tr {
+        background: #ffffff;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+    }
+
+    .table-moderne tbody tr td:first-child {
+        border-left: 1px solid #f3f4f6;
+        border-top-left-radius: 10px;
+        border-bottom-left-radius: 10px;
+    }
+
+    .table-moderne tbody tr td:last-child {
+        border-right: 1px solid #f3f4f6;
+        border-top-right-radius: 10px;
+        border-bottom-right-radius: 10px;
+    }
+
+    .table-shortcut-row td {
+        background: rgba(245, 158, 11, 0.08);
+        border: 1px dashed rgba(245, 158, 11, 0.4);
+        border-radius: 10px;
+        padding: var(--space-md);
     }
     
     /* Largeurs spécifiques pour les colonnes */
@@ -328,6 +426,16 @@
     .badge-moderne.info {
         background-color: rgba(6, 182, 212, 0.1);
         color: var(--accent-blue);
+    }
+
+    .badge-moderne.warning {
+        background-color: rgba(245, 158, 11, 0.1);
+        color: var(--warning);
+    }
+
+    .badge-moderne.danger {
+        background-color: rgba(239, 68, 68, 0.1);
+        color: var(--danger);
     }
     
     .btn-group-moderne {
@@ -436,8 +544,8 @@
                     <div class="emploi-stat-icon">
                         <i class="fas fa-graduation-cap"></i>
                     </div>
-                    <div class="emploi-stat-value">{{ $emploisTempsAnneeEnCours }}</div>
-                    <div class="emploi-stat-label">Année en cours</div>
+                    <div class="emploi-stat-value">{{ $anneeUniversitaireCourante->name ?? 'Année non définie' }}</div>
+                    <div class="emploi-stat-label">Année universitaire</div>
                 </div>
             </div>
         </div>
@@ -482,7 +590,7 @@
                     <div class="card-body">
                         <!-- Vue en cards (par défaut) -->
                         <div id="cardsContainer" class="emplois-cards-container">
-                            @include('esbtp.emploi-temps.partials.cards', ['emploisTemps' => $emploisTemps])
+                            @include('esbtp.emploi-temps.partials.cards', ['emploisTemps' => $emploisTemps, 'timetableShortcut' => $timetableShortcut ?? null])
                         </div>
 
                         <!-- Vue tableau (masquée par défaut) -->
@@ -502,7 +610,7 @@
                                 </tr>
                             </thead>
                             <tbody id="tableBody">
-                                    @include('esbtp.emploi-temps.partials.table-rows', ['emploisTemps' => $emploisTemps])
+                                    @include('esbtp.emploi-temps.partials.table-rows', ['emploisTemps' => $emploisTemps, 'timetableShortcut' => $timetableShortcut ?? null])
                                 </tbody>
                             </table>
                             </div>
@@ -588,10 +696,10 @@
                         </div>
 
                         <div class="mb-3">
-                            <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 8px;">
+                            <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: 8px;">
                                 <label for="annee_id" class="form-label mb-0" style="font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Universitaire Courante</label>
-                                <button type="button" class="btn btn-link btn-sm p-0" data-bs-toggle="modal" data-bs-target="#yearChangeModal" style="font-size: 12px; text-decoration: none;">
-                                    <i class="fas fa-info-circle"></i>Changer d'année
+                                <button type="button" class="btn btn-sm" data-bs-toggle="modal" data-bs-target="#yearChangeModal" style="background: rgba(6, 182, 212, 0.12); color: var(--accent-blue); border: 1px solid rgba(6, 182, 212, 0.35); border-radius: 999px; padding: 2px 10px; font-weight: 600;">
+                                    <i class="fas fa-info-circle me-1"></i>Changer d'année
                                 </button>
                             </div>
                             <select name="annee_id" id="annee_id" class="form-select" style="background-color: #f8f9fa; cursor: not-allowed;" disabled>
@@ -621,11 +729,12 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="status" class="form-label">Statut</label>
-                            <select class="form-select" id="status" name="status">
+                            <label for="period_status" class="form-label">Statut automatique</label>
+                            <select class="form-select" id="period_status" name="period_status">
                                 <option value="">Tous les statuts</option>
-                                <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Actifs uniquement</option>
-                                <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactifs uniquement</option>
+                                <option value="current" {{ request('period_status') == 'current' ? 'selected' : '' }}>Actifs (période en cours)</option>
+                                <option value="upcoming" {{ request('period_status') == 'upcoming' ? 'selected' : '' }}>Inactifs (période à venir)</option>
+                                <option value="expired" {{ request('period_status') == 'expired' ? 'selected' : '' }}>Expirés</option>
                             </select>
                         </div>
 
@@ -706,6 +815,135 @@
     </div>
 </div>
 
+@if(!empty($timetableShortcut) && ($timetableShortcut['show'] ?? false) && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('create_timetable')))
+<div class="modal fade" id="quickGenerateModal" tabindex="-1" aria-labelledby="quickGenerateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('esbtp.emploi-temps.quick-generate') }}">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title" id="quickGenerateModalLabel">
+                        <i class="fas fa-bolt me-2 text-warning"></i>Génération rapide des emplois du temps
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <strong>Classes concernées :</strong>
+                        <div class="mt-2">
+                            @if($timetableShortcut['missing'] > 0)
+                                <div>• {{ $timetableShortcut['missing'] }} classe(s) sans emploi du temps (semaine courante)</div>
+                            @endif
+                            @if($timetableShortcut['expired'] > 0)
+                                <div>• {{ $timetableShortcut['expired'] }} emploi(s) expiré(s) (semaine prochaine)</div>
+                            @endif
+                            @if($timetableShortcut['expiring_soon'] > 0)
+                                <div>• {{ $timetableShortcut['expiring_soon'] }} emploi(s) expirant sous 3 jours (semaine prochaine)</div>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Choisir les classes et le mode</label>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40px;"></th>
+                                        <th>Classe</th>
+                                        <th>Statut</th>
+                                        <th>Période cible</th>
+                                        <th>Mode</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($timetableShortcut['items'] as $item)
+                                        @php
+                                            $classe = $item['class'];
+                                            $hasSource = !empty($item['source']);
+                                            $statusLabel = $item['status'] === 'missing'
+                                                ? 'Sans emploi'
+                                                : ($item['status'] === 'expiring_soon' ? 'Expire bientôt' : 'Expiré');
+                                        @endphp
+                                        <tr>
+                                            <td>
+                                                <input class="form-check-input" type="checkbox" name="classes[]" value="{{ $classe->id }}" checked>
+                                            </td>
+                                            <td>
+                                                <strong>{{ $classe->name }}</strong>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-warning text-dark">{{ $statusLabel }}</span>
+                                            </td>
+                                            <td>
+                                                {{ $item['target_start']->format('d/m') }} → {{ $item['target_end']->format('d/m/Y') }}
+                                            </td>
+                                            <td>
+                                                <select name="modes[{{ $classe->id }}]" class="form-select form-select-sm">
+                                                    <option value="empty" {{ $hasSource ? '' : 'selected' }}>Vide</option>
+                                                    <option value="duplicate" {{ $hasSource ? 'selected' : 'disabled' }}>Dupliquer</option>
+                                                </select>
+                                                @if(!$hasSource)
+                                                    <small class="text-muted">Aucune base à dupliquer</small>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <small class="text-muted">
+                        Le système évite de créer des doublons si un emploi du temps existe déjà pour la période cible.
+                    </small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-link me-auto" data-bs-toggle="modal" data-bs-target="#quickGenerateHelpModal">
+                        <i class="fas fa-info-circle me-1"></i>Comment ça marche ?
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-bolt me-1"></i>Générer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
+@if(!empty($timetableShortcut) && ($timetableShortcut['show'] ?? false))
+<div class="modal fade" id="quickGenerateHelpModal" tabindex="-1" aria-labelledby="quickGenerateHelpModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="quickGenerateHelpModalLabel">
+                    <i class="fas fa-info-circle me-2 text-warning"></i>À propos de la génération rapide
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Objectif :</strong> créer rapidement des emplois du temps pour les classes sans planning, expirées ou qui expirent bientôt.</p>
+                <ul class="mb-3">
+                    <li><strong>Mode Vide :</strong> crée un emploi du temps sans séances.</li>
+                    <li><strong>Mode Dupliquer :</strong> copie le dernier emploi du temps de la classe (séances + horaires).</li>
+                </ul>
+                <p class="mb-0"><strong>Dates générées automatiquement :</strong></p>
+                <ul>
+                    <li>Sans emploi du temps → semaine courante.</li>
+                    <li>Expiré ou expiring sous 3 jours → semaine prochaine.</li>
+                </ul>
+                <small class="text-muted">Astuce : décoche les classes que tu veux gérer manuellement.</small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -718,7 +956,7 @@
         // Gérer le changement de vue
         function toggleView() {
             if (cardView.checked) {
-                cardsContainer.style.display = 'block';
+                cardsContainer.style.display = 'grid';
                 tableContainer.style.display = 'none';
                 localStorage.setItem('emploiTempsViewMode', 'cards');
             } else if (tableView.checked) {
@@ -883,6 +1121,15 @@
             fetchEmploisTempsData();
             return false;
         });
+
+        const searchParams = new URLSearchParams(window.location.search);
+        if (searchParams.has('quick_generate')) {
+            const quickGenerateModal = document.getElementById('quickGenerateModal');
+            if (quickGenerateModal && typeof bootstrap !== 'undefined') {
+                const modal = new bootstrap.Modal(quickGenerateModal);
+                modal.show();
+            }
+        }
     });
 </script>
 @endpush

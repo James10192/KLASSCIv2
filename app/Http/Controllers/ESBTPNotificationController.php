@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Notification; // Notre modèle personnalisé
+use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPInscription;
+use App\Services\TimetableShortcutService;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
@@ -24,6 +28,7 @@ class ESBTPNotificationController extends Controller
     public function index()
     {
         $user = Auth::user();
+        $timetableShortcut = $this->getTimetableShortcutForUser($user);
 
         // Si la requête est AJAX (pour le dropdown), retourner une vue partielle
         if (request()->ajax()) {
@@ -31,7 +36,7 @@ class ESBTPNotificationController extends Controller
                 ->latest()
                 ->take(5)
                 ->get();
-            return view('notifications.partials.dropdown-items', compact('notifications'));
+            return view('notifications.partials.dropdown-items', compact('notifications', 'timetableShortcut'));
         }
 
         // Sinon, retourner la vue complète avec pagination
@@ -39,7 +44,79 @@ class ESBTPNotificationController extends Controller
             ->latest()
             ->paginate(10);
 
-        return view('notifications.index', compact('notifications'));
+        $notifications->setCollection(
+            $notifications->getCollection()->map(function ($notification) {
+                return $this->decorateNotification($notification);
+            })
+        );
+
+        return view('notifications.index', compact('notifications', 'timetableShortcut'));
+    }
+
+    private function getTimetableShortcutForUser(User $user): array
+    {
+        if (!$this->userCanSeeTimetableShortcut($user)) {
+            return ['show' => false];
+        }
+
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (!$anneeEnCours) {
+            return ['show' => false];
+        }
+
+        return app(TimetableShortcutService::class)->getShortcutSummary($anneeEnCours);
+    }
+
+    private function userCanSeeTimetableShortcut(User $user): bool
+    {
+        return $user->hasRole('superAdmin')
+            || $user->hasRole('secretaire')
+            || $user->hasRole('coordinateur')
+            || $user->can('view_timetables')
+            || $user->can('view-all-timetables');
+    }
+
+    private function decorateNotification(Notification $notification): Notification
+    {
+        $notification->display_primary = null;
+        $notification->display_labels = [];
+        $notification->display_cta = null;
+
+        if ($notification->link && preg_match('/inscriptions\\/(\\d+)/', $notification->link, $matches)) {
+            $inscriptionId = (int) $matches[1];
+            $inscription = ESBTPInscription::with(['etudiant', 'classe.filiere', 'paiements'])
+                ->find($inscriptionId);
+
+            if ($inscription) {
+                $studentName = trim(($inscription->etudiant->nom ?? '') . ' ' . ($inscription->etudiant->prenoms ?? ''));
+                $filiereName = $inscription->classe?->filiere?->name;
+                $primary = "L'étudiant {$studentName} s'est inscrit";
+                if ($filiereName) {
+                    $primary .= " en {$filiereName}";
+                }
+                $primary .= '.';
+
+                $labels = [];
+                if ($inscription->classe?->name) {
+                    $labels[] = "Classe: {$inscription->classe->name}";
+                }
+                $labels[] = 'Statut: ' . ($inscription->status ?? 'Non défini');
+                $labels[] = 'Étape: ' . ($inscription->workflow_step_label ?? $inscription->workflow_step ?? 'Non définie');
+
+                $paymentStatus = 'Non renseigné';
+                $latestPayment = $inscription->paiements?->sortByDesc('created_at')->first();
+                if ($latestPayment && $latestPayment->status) {
+                    $paymentStatus = Str::ucfirst(str_replace('_', ' ', $latestPayment->status));
+                }
+                $labels[] = "Paiement: {$paymentStatus}";
+
+                $notification->display_primary = $primary;
+                $notification->display_labels = $labels;
+                $notification->display_cta = 'Cliquez pour consulter le dossier complet.';
+            }
+        }
+
+        return $notification;
     }
 
     public function markAsRead($id)

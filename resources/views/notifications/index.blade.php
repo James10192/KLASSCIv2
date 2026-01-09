@@ -2,55 +2,122 @@
 
 @section('title', 'Notifications')
 
+@section('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+    body {
+        background-color: var(--background);
+    }
+
+    .notification-avatar {
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(4, 83, 203, 0.12);
+        color: var(--primary);
+        font-size: 1.4rem;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+    }
+
+    .notifications-panel {
+        background: #ffffff;
+        border-radius: 20px;
+        border: 1px solid #e7edf5;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+    }
+
+    .notifications-toolbar {
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf2f7;
+        background: linear-gradient(135deg, rgba(4, 83, 203, 0.06), rgba(4, 83, 203, 0.02));
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .notifications-body {
+        padding: 12px 0;
+    }
+</style>
+@endsection
+
 @section('content')
-<div class="container py-4">
-    <div class="row justify-content-center">
-        <div class="col-md-10">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+<div class="dashboard-acasi">
+    <div class="main-content" style="padding: 1.5rem; max-width: 100%; overflow-x: hidden;">
+        <div class="dashboard-header mb-4">
+            <div class="header-left">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="notification-avatar">
+                        <i class="fas fa-bell"></i>
+                    </div>
                     <div>
-                        <h5 class="mb-0">
+                        <h1 class="mb-1">
                             @if(auth()->user()->hasRole('coordinateur'))
                                 Notifications - Coordination
                             @else
                                 Notifications
                             @endif
-                        </h5>
+                        </h1>
                         @if(auth()->user()->hasRole('coordinateur'))
-                            <small class="text-muted">Suivi des activités d'émargement et d'appel</small>
-                        @endif
-                    </div>
-                    <div class="d-flex gap-2">
-                        @if(auth()->user()->hasRole('coordinateur'))
-                            {{-- Lien vers le tableau de bord des présences --}}
-                            <a href="{{ route('esbtp.attendances.index') }}" class="btn btn-primary btn-sm">
-                                <i class="fas fa-chart-bar me-1"></i> Présences & Tableau de Bord
-                            </a>
-                            {{-- Filtres rapides pour coordinateur --}}
-                            <div class="btn-group" role="group">
-                                <button type="button" class="btn btn-outline-primary btn-sm filter-notifications" data-filter="all">
-                                    Toutes
-                                </button>
-                                <button type="button" class="btn btn-outline-info btn-sm filter-notifications" data-filter="émargement">
-                                    Émargements
-                                </button>
-                                <button type="button" class="btn btn-outline-success btn-sm filter-notifications" data-filter="appel">
-                                    Appels
-                                </button>
-                                <button type="button" class="btn btn-outline-warning btn-sm filter-notifications" data-filter="retard">
-                                    Retards
-                                </button>
-                            </div>
-                        @endif
-                        @if($notifications->where('is_read', false)->isNotEmpty())
-                            <button class="btn btn-outline-secondary btn-sm mark-all-read">
-                                <i class="fas fa-check-double me-1"></i> Tout marquer comme lu
-                            </button>
+                            <p class="header-subtitle">Suivi des activités d'émargement et d'appel</p>
+                        @else
+                            <p class="header-subtitle">Restez informé des événements récents</p>
                         @endif
                     </div>
                 </div>
-                <div class="card-body p-0">
-                    @if($notifications->isEmpty())
+            </div>
+            <div class="header-actions">
+                <span class="badge rounded-pill bg-light text-dark">
+                    <i class="fas fa-calendar me-1"></i>
+                    {{ now()->format('d/m/Y') }}
+                </span>
+            </div>
+        </div>
+
+        <div class="notifications-panel">
+            <div class="notifications-toolbar">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    @if(auth()->user()->hasRole('coordinateur'))
+                        {{-- Lien vers le tableau de bord des présences --}}
+                        <a href="{{ route('esbtp.attendances.index') }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-chart-bar me-1"></i> Présences & Tableau de Bord
+                        </a>
+                        {{-- Filtres rapides pour coordinateur --}}
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-primary btn-sm filter-notifications" data-filter="all">
+                                Toutes
+                            </button>
+                            <button type="button" class="btn btn-outline-info btn-sm filter-notifications" data-filter="émargement">
+                                Émargements
+                            </button>
+                            <button type="button" class="btn btn-outline-success btn-sm filter-notifications" data-filter="appel">
+                                Appels
+                            </button>
+                            <button type="button" class="btn btn-outline-warning btn-sm filter-notifications" data-filter="retard">
+                                Retards
+                            </button>
+                        </div>
+                    @endif
+                </div>
+                <div>
+                    @if($notifications->where('is_read', false)->isNotEmpty())
+                        <button class="btn btn-outline-secondary btn-sm mark-all-read">
+                            <i class="fas fa-check-double me-1"></i> Tout marquer comme lu
+                        </button>
+                    @endif
+                </div>
+            </div>
+                <div class="notifications-body">
+                    @php
+                        $hasShortcut = !empty($timetableShortcut) && ($timetableShortcut['show'] ?? false);
+                    @endphp
+                    @if($notifications->isEmpty() && !$hasShortcut)
                         <div class="text-center p-5">
                             <div class="empty-state mb-3">
                                 <i class="fas fa-bell-slash fa-3x text-muted"></i>
@@ -60,18 +127,60 @@
                         </div>
                     @else
                         <div class="list-group list-group-flush">
+                            @if($hasShortcut)
+                                <div class="list-group-item notification-item timetable-shortcut-item"
+                                     onclick="window.location.href='{{ route('esbtp.emploi-temps.index', ['quick_generate' => 1]) }}';"
+                                     style="cursor: pointer;">
+                                    <div class="d-flex align-items-start justify-content-between notification-row">
+                                        <div class="flex-grow-1 me-3">
+                                            <div class="d-flex align-items-center mb-2 notification-title-row">
+                                                <span class="notification-icon bg-warning-light text-warning me-2">
+                                                    <i class="fas fa-calendar-exclamation"></i>
+                                                </span>
+                                                <div>
+                                                    <h6 class="mb-0 fw-semibold">Emplois du temps à renouveler</h6>
+                                                    <small class="text-muted">Génération rapide disponible</small>
+                                                </div>
+                                            </div>
+                                            <div class="notification-meta-row">
+                                                @if($timetableShortcut['missing'] > 0)
+                                                    <span class="notification-meta-pill meta-info">
+                                                        <i class="fas fa-layer-group"></i>
+                                                        classes sans emploi du temps: {{ $timetableShortcut['missing'] }}
+                                                    </span>
+                                                @endif
+                                                @if($timetableShortcut['expired'] > 0)
+                                                    <span class="notification-meta-pill meta-danger">
+                                                        <i class="fas fa-calendar-times"></i>
+                                                        classes avec emploi du temps expiré: {{ $timetableShortcut['expired'] }}
+                                                    </span>
+                                                @endif
+                                                @if($timetableShortcut['expiring_soon'] > 0)
+                                                    <span class="notification-meta-pill meta-warning">
+                                                        <i class="fas fa-clock"></i>
+                                                        classes expirant bientôt: {{ $timetableShortcut['expiring_soon'] }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge bg-warning text-dark">Action rapide</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
                             @foreach($notifications as $notification)
                                 <div class="list-group-item notification-item {{ !$notification->is_read ? 'unread' : '' }}"
                                      id="notification-{{ $notification->id }}"
                                      @if($notification->link)
-                                         onclick="window.location.href='{{ $notification->link }}'; markAsRead('{{ $notification->id }}');"
+                                         onclick="markAsReadAndNavigate('{{ $notification->id }}', '{{ $notification->link }}');"
                                      @else
                                          onclick="markAsRead('{{ $notification->id }}');"
                                      @endif
                                      style="cursor: pointer;">
-                                    <div class="d-flex align-items-start justify-content-between">
+                                    <div class="d-flex align-items-start justify-content-between notification-row">
                                         <div class="flex-grow-1 me-3">
-                                            <div class="d-flex align-items-center mb-2">
+                                            <div class="d-flex align-items-center mb-2 notification-title-row">
                                                 @if($notification->type == 'danger' || $notification->type == 'error')
                                                     <span class="notification-icon bg-danger-light text-danger me-2">
                                                         <i class="fas fa-exclamation-circle"></i>
@@ -94,7 +203,90 @@
                                                     <span class="ms-2 badge bg-warning">Nouveau</span>
                                                 @endif
                                             </div>
-                                            <p class="notification-message">{{ $notification->message ?? '' }}</p>
+                                            @php
+                                                $labels = [];
+                                                $cta = null;
+                                                $primaryLine = $notification->display_primary;
+
+                                                if (!$primaryLine) {
+                                                    $safeMessage = strip_tags($notification->message ?? '', '<i><strong><em><b><br>');
+                                                    $primaryLine = trim(preg_split('/(Statut:|Étape:|Paiement:|Cliquez)/i', $safeMessage)[0] ?? '');
+
+                                                    if (preg_match_all('/(<i[^>]*>.*?<\\/i>\\s*)?(Statut:|Étape:|Paiement:)\\s*([^<|]*)/i', $safeMessage, $matches, PREG_SET_ORDER)) {
+                                                        foreach ($matches as $match) {
+                                                            $labels[] = trim($match[0]);
+                                                        }
+                                                    }
+
+                                                    if (preg_match('/Cliquez[^<]*/i', $safeMessage, $ctaMatch)) {
+                                                        $cta = trim($ctaMatch[0]);
+                                                    }
+                                                } else {
+                                                    $labels = $notification->display_labels ?? [];
+                                                    $cta = $notification->display_cta;
+                                                }
+                                            @endphp
+                                            <div class="notification-lines">
+                                                @if($primaryLine !== '')
+                                                    <div class="notification-line">{!! $primaryLine !!}</div>
+                                                @endif
+                                                @if(!empty($labels))
+                                                    <div class="notification-meta-row">
+                                                        @foreach($labels as $label)
+                                                            @php
+                                                                $key = trim(Str::before($label, ':'));
+                                                                $value = trim(Str::after($label, ':'));
+                                                                $valueLower = Str::lower($value);
+                                                                $pillClass = 'meta-neutral';
+                                                                $icon = 'fas fa-tag';
+
+                                                                if (Str::lower($key) === 'classe') {
+                                                                    $icon = 'fas fa-school';
+                                                                    $pillClass = 'meta-info';
+                                                                } elseif (Str::lower($key) === 'statut') {
+                                                                    $icon = 'fas fa-info-circle';
+                                                                    if (Str::contains($valueLower, ['active', 'valid', 'valide'])) {
+                                                                        $pillClass = 'meta-success';
+                                                                    } elseif (Str::contains($valueLower, ['attente', 'pending'])) {
+                                                                        $pillClass = 'meta-warning';
+                                                                    } elseif (Str::contains($valueLower, ['rejet', 'refus', 'annul'])) {
+                                                                        $pillClass = 'meta-danger';
+                                                                    }
+                                                                } elseif (Str::lower($key) === 'étape' || Str::lower($key) === 'etape') {
+                                                                    $icon = 'fas fa-clipboard-check';
+                                                                    if (Str::contains($valueLower, ['prospect'])) {
+                                                                        $pillClass = 'meta-secondary';
+                                                                    } elseif (Str::contains($valueLower, ['document'])) {
+                                                                        $pillClass = 'meta-info';
+                                                                    } elseif (Str::contains($valueLower, ['validation'])) {
+                                                                        $pillClass = 'meta-warning';
+                                                                    } elseif (Str::contains($valueLower, ['valid', 'valide'])) {
+                                                                        $pillClass = 'meta-success';
+                                                                    } elseif (Str::contains($valueLower, ['étudiant', 'etudiant'])) {
+                                                                        $pillClass = 'meta-primary';
+                                                                    }
+                                                                } elseif (Str::lower($key) === 'paiement') {
+                                                                    $icon = 'fas fa-money-bill-wave';
+                                                                    if (Str::contains($valueLower, ['valid', 'payé', 'paye', 'réglé', 'regle'])) {
+                                                                        $pillClass = 'meta-success';
+                                                                    } elseif (Str::contains($valueLower, ['attente', 'pending'])) {
+                                                                        $pillClass = 'meta-warning';
+                                                                    } elseif (Str::contains($valueLower, ['rejet', 'refus'])) {
+                                                                        $pillClass = 'meta-danger';
+                                                                    }
+                                                                }
+                                                            @endphp
+                                                            <span class="notification-meta-pill {{ $pillClass }}">
+                                                                <i class="{{ $icon }}"></i>
+                                                                {{ $key }}: {{ $value }}
+                                                            </span>
+                                                        @endforeach
+                                                    </div>
+                                                @endif
+                                                @if($cta)
+                                                    <div class="notification-cta">{!! $cta !!}</div>
+                                                @endif
+                                            </div>
                                             <div class="d-flex align-items-center mt-2">
                                                 <small class="text-muted">{{ $notification->created_at->diffForHumans() }}</small>
                                                 @if($notification->sender)
@@ -170,17 +362,126 @@
 .notification-message {
     color: #495057;
     margin-bottom: 0;
+    white-space: normal;
+    word-break: break-word;
 }
 .notification-item {
     padding: 15px;
     transition: all 0.2s ease;
+    border: 1px solid #eef2f7;
+    border-radius: 14px;
+    margin: 12px 16px;
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    display: block;
+}
+.notification-row {
+    width: 100%;
+}
+.notifications-panel .list-group-item {
+    width: 100%;
+}
+.notifications-panel .notification-item {
+    width: 100%;
+}
+.notification-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #eef2f7;
+}
+.notification-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    color: #475569;
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+.notification-line i {
+    color: var(--primary);
+}
+.notification-item .badge.bg-warning {
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-weight: 600;
+}
+.notification-title-row {
+    gap: 10px;
+}
+.notification-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.notification-meta-pill {
+    background: #eef2ff;
+    color: #1e3a8a;
+    border: 1px solid #c7d2fe;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.notification-cta {
+    color: #1e293b;
+    font-weight: 600;
+}
+.notification-meta-pill.meta-success {
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+    border-color: rgba(16, 185, 129, 0.4);
+}
+.notification-meta-pill.meta-warning {
+    background: rgba(245, 158, 11, 0.12);
+    color: #b45309;
+    border-color: rgba(245, 158, 11, 0.4);
+}
+.notification-meta-pill.meta-danger {
+    background: rgba(239, 68, 68, 0.12);
+    color: #b91c1c;
+    border-color: rgba(239, 68, 68, 0.4);
+}
+.notification-meta-pill.meta-info {
+    background: rgba(59, 130, 246, 0.12);
+    color: #1d4ed8;
+    border-color: rgba(59, 130, 246, 0.4);
+}
+.notification-meta-pill.meta-primary {
+    background: rgba(4, 83, 203, 0.12);
+    color: #1e3a8a;
+    border-color: rgba(4, 83, 203, 0.4);
+}
+.notification-meta-pill.meta-secondary {
+    background: rgba(100, 116, 139, 0.12);
+    color: #475569;
+    border-color: rgba(100, 116, 139, 0.4);
+}
+.notification-meta-pill.meta-neutral {
+    background: rgba(148, 163, 184, 0.14);
+    color: #475569;
+    border-color: rgba(148, 163, 184, 0.4);
 }
 .notification-item:hover {
-    background-color: rgba(1, 99, 47, 0.05);
+    background-color: rgba(59, 130, 246, 0.06);
+    transform: translateY(-1px);
 }
 .notification-item.unread {
     background-color: rgba(242, 148, 0, 0.1);
     border-left: 3px solid #f29400;
+}
+.timetable-shortcut-item {
+    background: rgba(245, 158, 11, 0.08);
+    border-left: 3px solid #f59e0b;
+}
+.list-group.list-group-flush {
+    padding-bottom: 12px;
 }
 .empty-state {
     padding: 20px;
@@ -225,6 +526,19 @@ function markAsRead(id) {
             const badge = item.querySelector('.badge');
             if (badge) badge.remove();
         }
+    });
+}
+
+function markAsReadAndNavigate(id, url) {
+    fetch(`{{ route('notifications.mark-as-read', '') }}/${id}`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .finally(() => {
+        window.location.href = url;
     });
 }
 

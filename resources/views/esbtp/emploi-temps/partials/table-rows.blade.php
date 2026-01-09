@@ -1,4 +1,44 @@
+@if(!empty($timetableShortcut) && ($timetableShortcut['show'] ?? false))
+    <tr class="table-shortcut-row">
+        <td colspan="8">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div>
+                    <strong><i class="fas fa-calendar-exclamation me-2"></i>Raccourci emplois du temps</strong>
+                    <div class="text-muted small">
+                        @if($timetableShortcut['missing'] > 0)
+                            {{ $timetableShortcut['missing'] }} classe(s) sans emploi du temps
+                        @endif
+                        @if($timetableShortcut['expired'] > 0)
+                            {{ $timetableShortcut['missing'] > 0 ? ' • ' : '' }}{{ $timetableShortcut['expired'] }} expiré(s)
+                        @endif
+                        @if($timetableShortcut['expiring_soon'] > 0)
+                            {{ ($timetableShortcut['missing'] > 0 || $timetableShortcut['expired'] > 0) ? ' • ' : '' }}{{ $timetableShortcut['expiring_soon'] }} expire(nt) bientôt
+                        @endif
+                    </div>
+                    <button type="button" class="btn btn-link btn-sm p-0 mt-1" data-bs-toggle="modal" data-bs-target="#quickGenerateHelpModal">
+                        <i class="fas fa-info-circle me-1"></i>Voir le fonctionnement
+                    </button>
+                </div>
+                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('create_timetable'))
+                    <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#quickGenerateModal">
+                        <i class="fas fa-bolt me-1"></i>Créer maintenant
+                    </button>
+                @endif
+            </div>
+        </td>
+    </tr>
+@endif
+
 @forelse($emploisTemps as $emploiTemps)
+    @php
+        $today = \Carbon\Carbon::today();
+        $startDate = $emploiTemps->date_debut ? \Carbon\Carbon::parse($emploiTemps->date_debut) : null;
+        $endDate = $emploiTemps->date_fin ? \Carbon\Carbon::parse($emploiTemps->date_fin) : null;
+        $isExpired = $endDate && $endDate->lt($today);
+        $isUpcoming = $startDate && $startDate->gt($today);
+        $isCurrentPeriod = $startDate && $endDate && $today->between($startDate, $endDate);
+        $isExpiringSoon = $endDate && $endDate->gte($today) && $endDate->diffInDays($today) <= 3;
+    @endphp
     <tr>
         <td class="col-classe">{{ $emploiTemps->classe->name ?? 'Non définie' }}</td>
         <td class="col-filiere">{{ $emploiTemps->classe->filiere->name ?? 'Non définie' }}</td>
@@ -24,13 +64,17 @@
             @endif
         </td>
         <td class="col-statut">
-            @if($emploiTemps->is_active)
+            @if($isExpired)
+                <span class="badge-moderne danger">Expiré</span>
+            @elseif($isCurrentPeriod)
                 <span class="badge-moderne success">Actif</span>
+            @elseif($isUpcoming)
+                <span class="badge-moderne secondary">Inactif</span>
             @else
                 <span class="badge-moderne secondary">Inactif</span>
             @endif
-            @if(optional($emploiTemps)->is_current)
-                <span class="badge-moderne info">Courant</span>
+            @if($isExpiringSoon && !$isExpired)
+                <span class="badge-moderne warning">Expire bientôt</span>
             @endif
         </td>
         <td class="col-actions">

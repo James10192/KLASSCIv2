@@ -8,6 +8,8 @@ use App\Models\ESBTPAnnonce;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
+use App\Models\ESBTPAnneeUniversitaire;
+use App\Services\TimetableShortcutService;
 use Carbon\Carbon;
 
 class NavbarController extends Controller
@@ -19,6 +21,7 @@ class NavbarController extends Controller
     {
         $user = auth()->user();
         $notifications = collect();
+        $shortcutItems = $this->getTimetableShortcutNotifications($user);
 
         if ($user->hasRole('superAdmin') || $user->hasRole('secretaire') || $user->hasRole('coordinateur')) {
             // Notifications pour admin/secrétaire/coordinateur
@@ -31,7 +34,7 @@ class NavbarController extends Controller
                     return [
                         'id' => $notification->id,
                         'title' => $notification->title,
-                        'message' => $notification->message,
+                        'message' => strip_tags($notification->message ?? ''),
                         'type' => $notification->type,
                         'icon' => $this->getNotificationIcon($notification->type),
                         'time' => $notification->created_at->diffForHumans(),
@@ -51,7 +54,7 @@ class NavbarController extends Controller
                     return [
                         'id' => $notification->id,
                         'title' => $notification->title,
-                        'message' => $notification->message,
+                        'message' => strip_tags($notification->message ?? ''),
                         'type' => $notification->type,
                         'icon' => $this->getNotificationIcon($notification->type),
                         'time' => $notification->created_at->diffForHumans(),
@@ -71,7 +74,7 @@ class NavbarController extends Controller
                     return [
                         'id' => $notification->id,
                         'title' => $notification->title,
-                        'message' => $notification->message,
+                        'message' => strip_tags($notification->message ?? ''),
                         'type' => $notification->type,
                         'icon' => $this->getNotificationIcon($notification->type),
                         'time' => $notification->created_at->diffForHumans(),
@@ -82,11 +85,61 @@ class NavbarController extends Controller
                 });
         }
 
+        $notifications = $shortcutItems->concat($notifications);
         $unreadCount = $notifications->where('read', false)->count();
 
         return response()->json([
             'notifications' => $notifications,
             'unread_count' => $unreadCount
+        ]);
+    }
+
+    private function getTimetableShortcutNotifications($user): \Illuminate\Support\Collection
+    {
+        $canSee = $user->hasRole('superAdmin')
+            || $user->hasRole('secretaire')
+            || $user->hasRole('coordinateur')
+            || $user->can('view_timetables')
+            || $user->can('view-all-timetables');
+
+        if (!$canSee) {
+            return collect();
+        }
+
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (!$anneeEnCours) {
+            return collect();
+        }
+
+        $summary = app(TimetableShortcutService::class)->getShortcutSummary($anneeEnCours);
+        if (empty($summary['show'])) {
+            return collect();
+        }
+
+        $parts = [];
+        if ($summary['missing'] > 0) {
+            $parts[] = $summary['missing'] . ' classe(s) sans emploi du temps';
+        }
+        if ($summary['expired'] > 0) {
+            $parts[] = $summary['expired'] . ' expiré(s)';
+        }
+        if ($summary['expiring_soon'] > 0) {
+            $parts[] = $summary['expiring_soon'] . ' expire(nt) bientôt';
+        }
+
+        return collect([
+            [
+                'id' => 'shortcut-timetable',
+                'title' => 'Emplois du temps à renouveler',
+                'message' => implode(' • ', $parts),
+                'type' => 'warning',
+                'icon' => 'fas fa-calendar-exclamation',
+                'time' => 'Action rapide',
+                'read' => true,
+                'url' => route('esbtp.emploi-temps.index', ['quick_generate' => 1]),
+                'sender' => 'Système',
+                'is_virtual' => true,
+            ],
         ]);
     }
 

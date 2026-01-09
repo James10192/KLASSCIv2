@@ -1,8 +1,38 @@
-@if($notifications->isEmpty())
+@php
+    $hasShortcut = !empty($timetableShortcut) && ($timetableShortcut['show'] ?? false);
+@endphp
+
+@if(!$hasShortcut && $notifications->isEmpty())
     <div class="text-center p-3">
         <small>Aucune notification</small>
     </div>
 @else
+    @if($hasShortcut)
+        <div class="notification-item timetable-shortcut-item"
+             onclick="window.location.href='{{ route('esbtp.emploi-temps.index', ['quick_generate' => 1]) }}';"
+             style="cursor: pointer;">
+            <div class="d-flex align-items-center mb-1">
+                <span class="notification-icon bg-warning-light text-warning me-2">
+                    <i class="fas fa-calendar-exclamation"></i>
+                </span>
+                <div>
+                    <h6 class="notification-title mb-0">Emplois du temps à renouveler</h6>
+                    <small class="text-muted">Clique pour lancer la génération rapide</small>
+                </div>
+            </div>
+            <p class="notification-message mb-0">
+                @if($timetableShortcut['missing'] > 0)
+                    {{ $timetableShortcut['missing'] }} classe(s) sans emploi du temps
+                @endif
+                @if($timetableShortcut['expired'] > 0)
+                    {{ $timetableShortcut['missing'] > 0 ? ' • ' : '' }}{{ $timetableShortcut['expired'] }} expiré(s)
+                @endif
+                @if($timetableShortcut['expiring_soon'] > 0)
+                    {{ ($timetableShortcut['missing'] > 0 || $timetableShortcut['expired'] > 0) ? ' • ' : '' }}{{ $timetableShortcut['expiring_soon'] }} expire(nt) bientôt
+                @endif
+            </p>
+        </div>
+    @endif
     @foreach($notifications as $notification)
         <div class="notification-item {{ !$notification->read_at ? 'unread' : '' }}"
              id="notification-{{ $notification->id }}"
@@ -60,6 +90,8 @@
 .notification-message {
     color: #495057;
     font-size: 0.9rem;
+    white-space: normal;
+    word-break: break-word;
 }
 .notification-item {
     padding: 12px 15px;
@@ -67,6 +99,9 @@
     transition: all 0.3s ease;
     height: auto;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
 }
 .notification-item:hover {
     background-color: rgba(1, 99, 47, 0.05);
@@ -74,6 +109,16 @@
 .notification-item.unread {
     background-color: rgba(242, 148, 0, 0.1);
     border-left: 3px solid #f29400;
+}
+.custom-dropdown .notification-item {
+    align-items: flex-start;
+}
+.custom-dropdown .notification-title {
+    white-space: normal;
+}
+.timetable-shortcut-item {
+    background: rgba(245, 158, 11, 0.08);
+    border-left: 3px solid #f59e0b;
 }
 .notification-item.fadeOut {
     opacity: 0;
