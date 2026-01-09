@@ -16,6 +16,12 @@
                 <p class="header-subtitle">Créer une nouvelle évaluation pour vos étudiants</p>
             </div>
             <div class="header-actions">
+                @if(!empty($anneeUniversitaire))
+                <span class="badge rounded-pill bg-light text-dark">
+                    <i class="fas fa-calendar me-1"></i>
+                    Année courante: {{ $anneeUniversitaire->name }}
+                </span>
+                @endif
                 @if(auth()->check() && auth()->user() && !auth()->user()->hasRole(['teacher', 'enseignant']))
                 <a href="{{ route('esbtp.evaluations.index') }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>Retour à la liste

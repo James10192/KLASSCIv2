@@ -285,6 +285,7 @@ class ESBTPEvaluationController extends Controller
         //     }
         // }
 
+        $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
         $matieres = ESBTPMatiere::where('is_active', true)->orderBy('name')->get();
         $types = ESBTPEvaluation::getTypes();
@@ -308,7 +309,7 @@ class ESBTPEvaluationController extends Controller
             ];
         });
 
-        return view('esbtp.evaluations.create', compact('classes', 'matieres', 'matieresJson', 'matiere_id', 'types', 'enseignants'));
+        return view('esbtp.evaluations.create', compact('classes', 'matieres', 'matieresJson', 'matiere_id', 'types', 'enseignants', 'anneeUniversitaire'));
     }
 
     /**

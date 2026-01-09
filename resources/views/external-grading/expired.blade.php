@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lien expiré - ESBTP</title>
+    <title>Lien expiré - KLASSCI</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -37,7 +37,7 @@
                     </div>
                     <div class="mt-4">
                         <i class="fas fa-university text-primary fa-2x"></i>
-                        <p class="text-muted mt-2 mb-0">ESBTP - École Supérieure</p>
+                        <p class="text-muted mt-2 mb-0">KLASSCI</p>
                     </div>
                 </div>
             </div>

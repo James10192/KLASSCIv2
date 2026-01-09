@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPAnneeUniversitaire;
 
 class ExternalGradingController extends Controller
 {
@@ -23,10 +24,16 @@ class ExternalGradingController extends Controller
             return view('external-grading.expired')->with('error', 'Ce lien a expiré ou n\'est pas valide.');
         }
 
-        // Récupérer les étudiants de la classe
-        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function($query) use ($evaluation) {
+        // Récupérer les étudiants de la classe pour l'année courante de l'évaluation
+        $anneeId = $evaluation->annee_universitaire_id
+            ?: ESBTPAnneeUniversitaire::where('is_current', true)->value('id');
+
+        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function($query) use ($evaluation, $anneeId) {
             $query->where('classe_id', $evaluation->classe_id)
-                  ->where('statut', 'active');
+                  ->where('status', 'active');
+            if ($anneeId) {
+                $query->where('annee_universitaire_id', $anneeId);
+            }
         })->orderBy('nom')->orderBy('prenoms')->get();
 
         // Récupérer les notes existantes
