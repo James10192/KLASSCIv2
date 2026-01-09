@@ -65,23 +65,30 @@
         </div>
 
         <div class="emploi-card-body">
-            <div class="emploi-info-pills">
-                <span class="emploi-info-pill primary">
+            <div class="emploi-info-list">
+                <div class="emploi-info-row">
                     <i class="fas fa-users"></i>
-                    Classe: {{ $emploiTemps->classe->name ?? 'Non définie' }}
-                </span>
-                <span class="emploi-info-pill info">
+                    <span class="emploi-info-key">Classe</span>
+                    <span class="emploi-info-val">{{ $emploiTemps->classe->name ?? 'Non définie' }}</span>
+                </div>
+                <div class="emploi-info-row">
                     <i class="fas fa-sitemap"></i>
-                    Filière: {{ $emploiTemps->classe->filiere->name ?? 'Non définie' }}
-                </span>
-                <span class="emploi-info-pill success">
+                    <span class="emploi-info-key">Filière</span>
+                    <span class="emploi-info-val">{{ $emploiTemps->classe->filiere->name ?? 'Non définie' }}</span>
+                </div>
+                <div class="emploi-info-row">
                     <i class="fas fa-layer-group"></i>
-                    Niveau: {{ $emploiTemps->classe->niveau->name ?? 'Non défini' }}
-                </span>
-                <span class="emploi-info-pill warning">
+                    <span class="emploi-info-key">Niveau</span>
+                    <span class="emploi-info-val">{{ $emploiTemps->classe->niveau->name ?? 'Non défini' }}</span>
+                </div>
+                <div class="emploi-info-row">
                     <i class="fas fa-calendar"></i>
-                    Année: {{ Str::limit($emploiTemps->annee->name ?? 'Non définie', 15) }}
-                </span>
+                    <span class="emploi-info-key">Année</span>
+                    <span class="emploi-info-val">{{ Str::limit($emploiTemps->annee->name ?? 'Non définie', 15) }}</span>
+                </div>
+            </div>
+
+            <div class="emploi-info-pills">
                 <span class="emploi-info-pill primary">
                     <i class="fas fa-clock"></i>
                     Période:

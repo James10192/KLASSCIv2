@@ -196,6 +196,38 @@
         margin-bottom: var(--space-md);
     }
 
+    .emploi-info-list {
+        display: grid;
+        gap: 8px;
+        margin-bottom: var(--space-md);
+    }
+
+    .emploi-info-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: var(--text-small);
+        color: var(--text-secondary);
+    }
+
+    .emploi-info-row i {
+        color: var(--primary);
+        font-size: 13px;
+    }
+
+    .emploi-info-key {
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        font-size: 11px;
+    }
+
+    .emploi-info-val {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
     .emploi-info-pills {
         display: flex;
         flex-wrap: wrap;
