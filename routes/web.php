@@ -911,8 +911,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     'destroy' => 'esbtp.notes.destroy'
                 ])
                 ->middleware(['permission:view_grades|create_grade|edit_grades|delete_grades']);
-            Route::get('evaluations/{evaluation}/saisie-rapide', [ESBTPNoteController::class, 'saisieRapide'])->name('esbtp.notes.saisie-rapide');
-            Route::get('evaluations/{evaluation}/saisie-rapide/pdf', [ESBTPNoteController::class, 'saisieRapidePDF'])->name('esbtp.notes.saisie-rapide.pdf');
+            Route::get('evaluations/{evaluation}/saisie-rapide', [ESBTPNoteController::class, 'saisieRapide'])->name('notes.saisie-rapide');
+            Route::get('evaluations/{evaluation}/saisie-rapide/pdf', [ESBTPNoteController::class, 'saisieRapidePDF'])->name('notes.saisie-rapide.pdf');
             Route::post('notes/store-batch', [ESBTPNoteController::class, 'enregistrerSaisieRapide'])->name('esbtp.notes.store-batch');
         });
 
@@ -1275,7 +1275,8 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:etudiant'])->g
 
 // Ajouter la route pour générer le PDF d'une évaluation
 Route::get('/evaluations/{evaluation}/pdf', [ESBTPEvaluationController::class, 'generatePdf'])
-    ->name('evaluations.pdf');
+    ->name('evaluations.pdf')
+    ->middleware(['auth']);
 
 // Route pour l'index des bulletins ESBTP
 Route::get('/esbtp/bulletins', [ESBTPBulletinController::class, 'index'])->name('esbtp.bulletins.index');

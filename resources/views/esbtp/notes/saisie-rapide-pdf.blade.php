@@ -228,6 +228,10 @@
             border: 2px solid #007bff;
             border-radius: 4px;
             display: inline-block;
+            text-align: center;
+            font-weight: 700;
+            font-size: 8px;
+            line-height: 8px;
             background: white;
             margin: 0 1px;
         }
@@ -373,7 +377,7 @@
 
         @page {
             margin: 0.5cm;
-            size: A4 landscape;
+            size: A4 portrait;
         }
     </style>
 </head>
@@ -463,6 +467,9 @@
                 </thead>
                 <tbody>
                     @foreach($etudiants as $index => $etudiant)
+                    @php
+                        $note = $notesByEtudiant[$etudiant->id] ?? null;
+                    @endphp
                     <tr>
                         <td>
                             <span class="student-number">{{ $index + 1 }}</span>
@@ -475,10 +482,18 @@
                             <div class="student-gender">{{ $etudiant->genre == 'M' ? 'Masculin' : 'Féminin' }}</div>
                         </td>
                         <td class="note-type-column">
-                            <div class="note-box"></div>
+                            <div class="note-box">
+                                @if(!empty($note) && !$note->is_absent)
+                                    {{ rtrim(rtrim(number_format($note->note, 2), '0'), '.') }}
+                                @endif
+                            </div>
                         </td>
                         <td>
-                            <div class="note-box" style="width: 10px; height: 10px;"></div>
+                            <div class="note-box" style="width: 10px; height: 10px; font-size: 7px; line-height: 7px;">
+                                @if(!empty($note) && $note->is_absent)
+                                    ABS
+                                @endif
+                            </div>
                         </td>
                         <td class="observations-column"></td>
                     </tr>

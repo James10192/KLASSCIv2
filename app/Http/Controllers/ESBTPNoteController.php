@@ -372,14 +372,17 @@ class ESBTPNoteController extends Controller
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
-            'nom' => \App\Models\Setting::get('school_name', 'ESBTP-yAKRO'),
+            'nom' => \App\Models\Setting::get('school_name', 'KLASSCI'),
             'adresse' => \App\Models\Setting::get('school_address', ''),
             'telephone' => \App\Models\Setting::get('school_phone', ''),
             'email' => \App\Models\Setting::get('school_email', ''),
             'logo' => \App\Models\Setting::get('school_logo', '')
         ];
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('esbtp.notes.saisie-rapide-pdf', compact('evaluation', 'etudiants', 'anneeCourante', 'etablissement'));
+        $notesByEtudiant = collect();
+        $isBlank = true;
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('esbtp.notes.saisie-rapide-pdf', compact('evaluation', 'etudiants', 'anneeCourante', 'etablissement', 'notesByEtudiant', 'isBlank'));
+        $pdf->setPaper('A4', 'portrait');
 
         $filename = 'saisie-notes-' . \Illuminate\Support\Str::slug($evaluation->titre) . '-' . date('Y-m-d') . '.pdf';
 

@@ -244,6 +244,7 @@
 
                         <input type="hidden" name="search" id="filter-search" value="{{ $filters['search'] ?? '' }}">
                         <input type="hidden" name="per_page" id="filter-per-page" value="{{ $filters['per_page'] ?? 15 }}">
+                        <input type="hidden" name="page" id="filter-page" value="{{ request('page', 1) }}">
                     </form>
 
                     <div id="evaluations-results"
@@ -610,6 +611,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const hiddenSearch = document.getElementById('filter-search');
     const clearFiltersBtn = document.getElementById('evaluations-clear-filters');
     const perPageInput = document.getElementById('filter-per-page');
+    const pageInput = document.getElementById('filter-page');
     const perPageDefault = perPageInput ? perPageInput.value : '15';
     const FILTER_DEBOUNCE = 350;
     let filterTimer;
@@ -948,6 +950,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         field.value = url.searchParams.get(name);
                     }
                 });
+                if (pageInput) {
+                    pageInput.value = url.searchParams.get('page') ?? '1';
+                }
                 submitFilterForm();
             });
         });
@@ -963,10 +968,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (perPageSelect) {
             perPageSelect.value = perPageInput.value || perPageSelect.value;
             perPageSelect.addEventListener('change', () => {
-                perPageInput.value = perPageSelect.value;
-                submitFilterForm();
-            });
-        }
+            perPageInput.value = perPageSelect.value;
+            if (pageInput) {
+                pageInput.value = '1';
+            }
+            submitFilterForm();
+        });
+    }
 
         updateBulkBar();
     }
@@ -1141,12 +1149,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (perPageInput) {
             perPageInput.value = params.get('per_page') ?? perPageDefault;
         }
+        if (pageInput) {
+            pageInput.value = params.get('page') ?? '1';
+        }
     }
 
     if (searchInput) {
         searchInput.addEventListener('input', () => {
             if (hiddenSearch) {
                 hiddenSearch.value = searchInput.value.trim();
+            }
+            if (pageInput) {
+                pageInput.value = '1';
             }
             clearTimeout(filterTimer);
             filterTimer = setTimeout(() => submitFilterForm(), FILTER_DEBOUNCE);
@@ -1157,6 +1171,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (hiddenSearch) {
                     hiddenSearch.value = searchInput.value.trim();
                 }
+                if (pageInput) {
+                    pageInput.value = '1';
+                }
                 submitFilterForm();
             }
         });
@@ -1164,6 +1181,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     filtersForm.querySelectorAll('select[name], input[type="date"]').forEach((field) => {
         field.addEventListener('change', () => {
+            if (pageInput) {
+                pageInput.value = '1';
+            }
             clearTimeout(filterTimer);
             filterTimer = setTimeout(() => submitFilterForm(), FILTER_DEBOUNCE);
         });
@@ -1181,6 +1201,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (perPageInput) {
                 perPageInput.value = perPageDefault;
+            }
+            if (pageInput) {
+                pageInput.value = '1';
             }
             updateBulkBar();
             submitFilterForm();
