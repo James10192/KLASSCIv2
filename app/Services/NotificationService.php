@@ -923,7 +923,7 @@ class NotificationService
         try {
             // Supprimer les notifications lues de plus de 30 jours
             $deletedCount = Notification::where('is_read', true)
-                ->where('read_at', '<=', Carbon::now()->subDays(30))
+                ->where('updated_at', '<=', Carbon::now()->subDays(30))
                 ->delete();
 
             // Supprimer les notifications non lues de plus de 90 jours
@@ -952,10 +952,7 @@ class NotificationService
         try {
             $count = Notification::where('user_id', $user->id)
                 ->where('is_read', false)
-                ->update([
-                    'is_read' => true,
-                    'read_at' => now()
-                ]);
+                ->update(['is_read' => true]);
 
             return $count;
         } catch (\Exception $e) {

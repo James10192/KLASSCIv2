@@ -86,7 +86,12 @@ class NavbarController extends Controller
         }
 
         $notifications = $shortcutItems->concat($notifications);
-        $unreadCount = $notifications->where('read', false)->count();
+        $unreadCount = Notification::where('user_id', $user->id)
+            ->where(function ($query) {
+                $query->where('is_read', false)
+                    ->orWhereNull('is_read');
+            })
+            ->count();
 
         return response()->json([
             'notifications' => $notifications,
@@ -429,7 +434,10 @@ class NavbarController extends Controller
         $user = auth()->user();
 
         Notification::where('user_id', $user->id)
-            ->where('is_read', false)
+            ->where(function ($query) {
+                $query->where('is_read', false)
+                    ->orWhereNull('is_read');
+            })
             ->update(['is_read' => true]);
 
         return response()->json(['success' => true]);

@@ -126,7 +126,7 @@ class ESBTPNotificationController extends Controller
             ->where('id', $id)
             ->firstOrFail();
 
-        $notification->update(['is_read' => true, 'read_at' => now()]);
+        $notification->update(['is_read' => true]);
 
         // Prune old read notifications
         $this->pruneOldReadNotifications($user);
@@ -150,8 +150,11 @@ class ESBTPNotificationController extends Controller
     {
         $user = Auth::user();
         Notification::where('user_id', $user->id)
-            ->where('is_read', false)
-            ->update(['is_read' => true, 'read_at' => now()]);
+            ->where(function ($query) {
+                $query->where('is_read', false)
+                    ->orWhereNull('is_read');
+            })
+            ->update(['is_read' => true]);
 
         // Prune old read notifications
         $this->pruneOldReadNotifications($user);
@@ -163,7 +166,10 @@ class ESBTPNotificationController extends Controller
     {
         $user = Auth::user();
         $count = Notification::where('user_id', $user->id)
-            ->where('is_read', false)
+            ->where(function ($query) {
+                $query->where('is_read', false)
+                    ->orWhereNull('is_read');
+            })
             ->count();
 
         return response()->json(['count' => $count]);
@@ -193,7 +199,7 @@ class ESBTPNotificationController extends Controller
         // Supprimer les notifications lues il y a plus de 7 jours
         Notification::where('user_id', $user->id)
             ->where('is_read', true)
-            ->where('read_at', '<=', Carbon::now()->subDays(self::DAYS_TO_KEEP_READ_NOTIFICATIONS))
+            ->where('updated_at', '<=', Carbon::now()->subDays(self::DAYS_TO_KEEP_READ_NOTIFICATIONS))
             ->delete();
     }
 

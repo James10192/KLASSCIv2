@@ -3129,40 +3129,38 @@
             document.getElementById('notificationsDropdown').addEventListener('shown.bs.dropdown', function () {
                 debugLog('🔔 Dropdown notifications ouvert - marquage comme vu');
 
-                // Vérifier s'il y a des notifications non lues avant d'appeler le serveur
                 const unreadNotifications = document.querySelectorAll('.notification-item.unread');
-
-                if (unreadNotifications.length === 0) {
-                    debugLog('ℹ️ Aucune notification non lue, pas d\'appel serveur nécessaire');
-                    return;
-                }
+                const badge = document.getElementById('notifications-count');
+                const badgeCount = badge && badge.textContent ? parseInt(badge.textContent, 10) : 0;
 
                 // Marquer toutes les notifications comme vues (pas supprimées, juste vues)
-                fetch('{{ route("navbar.notifications.mark-all-read") }}', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Mettre à jour visuellement les notifications dans le dropdown
-                        unreadNotifications.forEach(item => {
-                            item.classList.remove('unread');
-                        });
+                if (unreadNotifications.length > 0 || badgeCount > 0) {
+                    fetch('{{ route("navbar.notifications.mark-all-read") }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Mettre à jour visuellement les notifications dans le dropdown
+                            unreadNotifications.forEach(item => {
+                                item.classList.remove('unread');
+                            });
 
-                        // Mettre à jour le badge en utilisant la nouvelle fonction
-                        updateNotificationBadge();
-                        loadNavbarData();
+                            // Mettre à jour le badge en utilisant la nouvelle fonction
+                            updateNotificationBadge();
+                            loadNavbarData();
 
-                        debugLog('✅ Notifications marquées comme vues');
-                    }
-                })
-                .catch(error => {
-                    debugError('❌ Erreur marquage notifications vues:', error);
-                });
+                            debugLog('✅ Notifications marquées comme vues');
+                        }
+                    })
+                    .catch(error => {
+                        debugError('❌ Erreur marquage notifications vues:', error);
+                    });
+                }
             });
 
             // Marquer les messages comme vus quand on ouvre le dropdown
