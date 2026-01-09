@@ -142,6 +142,12 @@ class ESBTPPlanningGeneralController extends Controller
                 $totalMatieres = $matieresLieesALaCombinaisonCount; // Toutes les matières liées à cette combinaison
                 $totalHeures = $planificationsValides->sum('volume_horaire_total');
                 $matieresConfigurees = $planificationsValides->where('volume_horaire_total', '>', 0)->count(); // Matières liées ET configurées
+                $planificationsS1 = $planificationsValides->where('semestre', 1);
+                $planificationsS2 = $planificationsValides->where('semestre', 2);
+                $matieresConfigureesS1 = $planificationsS1->where('volume_horaire_total', '>', 0)->count();
+                $matieresConfigureesS2 = $planificationsS2->where('volume_horaire_total', '>', 0)->count();
+                $totalHeuresS1 = $planificationsS1->sum('volume_horaire_total');
+                $totalHeuresS2 = $planificationsS2->sum('volume_horaire_total');
                 
                 // Déterminer le statut
                 $statusClass = '';
@@ -169,6 +175,10 @@ class ESBTPPlanningGeneralController extends Controller
                     'total_matieres' => $totalMatieres,
                     'total_heures' => $totalHeures,
                     'matieres_configurees' => $matieresConfigurees,
+                    'matieres_configurees_s1' => $matieresConfigureesS1,
+                    'matieres_configurees_s2' => $matieresConfigureesS2,
+                    'total_heures_s1' => $totalHeuresS1,
+                    'total_heures_s2' => $totalHeuresS2,
                     'status_class' => $statusClass,
                     'status_icon' => $statusIcon,
                     'status_text' => $statusText,
@@ -188,6 +198,8 @@ class ESBTPPlanningGeneralController extends Controller
         $filiereId = $request->input('filiere_id');
         $niveauId = $request->input('niveau_id');
         $anneeId = $request->input('annee_id');
+        $semestre = (int) $request->input('semestre', 1);
+        $semestre = in_array($semestre, [1, 2], true) ? $semestre : 1;
         
         if (!$filiereId || !$niveauId) {
             return response()->json([
@@ -218,7 +230,8 @@ class ESBTPPlanningGeneralController extends Controller
         
         // Récupérer les planifications existantes pour cette combinaison
         $planificationsExistantes = ESBTPPlanificationAcademique::where('filiere_id', $filiereId)
-            ->where('niveau_etude_id', $niveauId);
+            ->where('niveau_etude_id', $niveauId)
+            ->where('semestre', $semestre);
             
         if ($anneeId) {
             $planificationsExistantes->where('annee_universitaire_id', $anneeId);
@@ -422,6 +435,7 @@ class ESBTPPlanningGeneralController extends Controller
             'filiere_id' => 'required|exists:esbtp_filieres,id',
             'niveau_id' => 'required|exists:esbtp_niveau_etudes,id',
             'annee_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'semestre' => 'required|integer|in:1,2',
             'volumes' => 'required|array',
             'volumes.*' => 'nullable|integer|min:0|max:200',
             'teachers' => 'nullable|array',
@@ -450,7 +464,7 @@ class ESBTPPlanningGeneralController extends Controller
                             'filiere_id' => $request->filiere_id,
                             'niveau_etude_id' => $request->niveau_id,
                             'matiere_id' => $matiereId,
-                            'semestre' => 1 // Par défaut semestre 1
+                            'semestre' => $request->semestre
                         ],
                         [
                             'volume_horaire_total' => $volume,

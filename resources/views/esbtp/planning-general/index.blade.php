@@ -1035,6 +1035,30 @@
         line-height: 1;
         margin-bottom: 0.5rem;
     }
+
+    .stat-number-lines {
+        font-size: 1rem;
+        line-height: 1.3;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-line {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+    }
+
+    .stat-pill {
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        padding: 0.15rem 0.4rem;
+        border-radius: 999px;
+        background: rgba(var(--primary-rgb), 0.12);
+        color: var(--primary);
+    }
     
     .stat-description {
         font-size: 0.75rem;
@@ -1670,11 +1694,29 @@
                                 <div class="card-body-section">
                                     <div class="stats-grid">
                                         <div class="stat-item">
-                                            <div class="stat-number">{{ $combinaison['matieres_configurees'] }}/{{ $combinaison['total_matieres'] }}</div>
+                                            <div class="stat-number stat-number-lines">
+                                                <div class="stat-line">
+                                                    <span class="stat-pill">S1</span>
+                                                    <span>{{ $combinaison['matieres_configurees_s1'] }}/{{ $combinaison['total_matieres'] }}</span>
+                                                </div>
+                                                <div class="stat-line">
+                                                    <span class="stat-pill">S2</span>
+                                                    <span>{{ $combinaison['matieres_configurees_s2'] }}/{{ $combinaison['total_matieres'] }}</span>
+                                                </div>
+                                            </div>
                                             <div class="stat-description">Matières configurées</div>
                                         </div>
                                         <div class="stat-item">
-                                            <div class="stat-number">{{ $combinaison['total_heures'] }}h</div>
+                                            <div class="stat-number stat-number-lines">
+                                                <div class="stat-line">
+                                                    <span class="stat-pill">S1</span>
+                                                    <span>{{ $combinaison['total_heures_s1'] }}h</span>
+                                                </div>
+                                                <div class="stat-line">
+                                                    <span class="stat-pill">S2</span>
+                                                    <span>{{ $combinaison['total_heures_s2'] }}h</span>
+                                                </div>
+                                            </div>
                                             <div class="stat-description">Volume horaire total</div>
                                         </div>
                                     </div>
@@ -1814,6 +1856,18 @@
                     <input type="hidden" id="config-filiere-id" name="filiere_id">
                     <input type="hidden" id="config-niveau-id" name="niveau_id">
                     <input type="hidden" id="config-annee-id" name="annee_id" value="{{ $anneeSelectionnee ? $anneeSelectionnee->id : '' }}">
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-6">
+                            <label for="config-semestre" class="form-label">
+                                <i class="fas fa-calendar-alt me-1"></i>Semestre
+                            </label>
+                            <select id="config-semestre" name="semestre" class="form-select">
+                                <option value="1" selected>Semestre 1</option>
+                                <option value="2">Semestre 2</option>
+                            </select>
+                            <small class="text-muted">Par défaut, la configuration s'applique au semestre 1.</small>
+                        </div>
+                    </div>
                     
                     <div class="config-loading text-center py-4" id="config-loading" style="display: none;">
                         <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
@@ -2316,6 +2370,12 @@ $(function() {
         // Charger les matières pour cette combinaison
         loadMatieresForConfiguration();
     });
+
+    $('#config-semestre').on('change', function() {
+        if (currentFiliereId && currentNiveauId && $('#config-annee-id').val()) {
+            loadMatieresForConfiguration();
+        }
+    });
     
     // Fonction pour charger les matières via AJAX
     function loadMatieresForConfiguration() {
@@ -2336,7 +2396,8 @@ $(function() {
             data: {
                 filiere_id: currentFiliereId,
                 niveau_id: currentNiveauId,
-                annee_id: anneeId
+                annee_id: anneeId,
+                semestre: $('#config-semestre').val()
             },
             success: function(response) {
                 $('#config-loading').hide();
@@ -2627,6 +2688,7 @@ $(function() {
             filiere_id: currentFiliereId,
             niveau_id: currentNiveauId,
             annee_id: $('#config-annee-id').val(),
+            semestre: $('#config-semestre').val(),
             volumes: {},
             teachers: {}
         };
@@ -2634,7 +2696,8 @@ $(function() {
         debugLog('📋 Données de base:', {
             filiere_id: formData.filiere_id,
             niveau_id: formData.niveau_id,
-            annee_id: formData.annee_id
+            annee_id: formData.annee_id,
+            semestre: formData.semestre
         });
 
         // Collecter tous les volumes
