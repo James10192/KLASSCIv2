@@ -498,14 +498,6 @@
                             <i class="fas fa-plus-circle me-2"></i>Nouveau
                         </a>
                     @endif
-                    @if(auth()->user()->hasRole('superAdmin'))
-                    <form action="{{ url('esbtp/activate-all-timetables') }}" method="POST" class="d-inline">
-                        @csrf
-                        <button type="submit" class="btn-acasi success" title="Active uniquement l'emploi du temps le plus récent pour chaque classe">
-                            <i class="fas fa-check-circle me-2"></i>Activer récents
-                        </button>
-                    </form>
-                    @endif
                 </div>
             </div>
         </div>
@@ -849,7 +841,9 @@
                             <table class="table table-sm align-middle mb-0">
                                 <thead>
                                     <tr>
-                                        <th style="width: 40px;"></th>
+                                        <th style="width: 40px;">
+                                            <input class="form-check-input" type="checkbox" id="quick-generate-select-all">
+                                        </th>
                                         <th>Classe</th>
                                         <th>Statut</th>
                                         <th>Période cible</th>
@@ -912,6 +906,45 @@
     </div>
 </div>
 @endif
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const quickGenerateModal = document.getElementById('quickGenerateModal');
+    if (!quickGenerateModal) {
+        return;
+    }
+
+    const selectAllCheckbox = document.getElementById('quick-generate-select-all');
+    const checkboxes = () => quickGenerateModal.querySelectorAll('input[name="classes[]"]');
+
+    const updateHeaderState = () => {
+        const boxes = Array.from(checkboxes());
+        const checked = boxes.filter((box) => box.checked).length;
+        if (!selectAllCheckbox) {
+            return;
+        }
+        selectAllCheckbox.checked = checked > 0 && checked === boxes.length;
+        selectAllCheckbox.indeterminate = checked > 0 && checked < boxes.length;
+    };
+
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', () => {
+            checkboxes().forEach((checkbox) => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+            selectAllCheckbox.indeterminate = false;
+        });
+    }
+
+    checkboxes().forEach((checkbox) => {
+        checkbox.addEventListener('change', updateHeaderState);
+    });
+
+    updateHeaderState();
+});
+</script>
+@endpush
 
 @if(!empty($timetableShortcut) && ($timetableShortcut['show'] ?? false))
 <div class="modal fade" id="quickGenerateHelpModal" tabindex="-1" aria-labelledby="quickGenerateHelpModalLabel" aria-hidden="true">
