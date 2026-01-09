@@ -2307,6 +2307,63 @@
                     </div>
                 @endif
 
+                @auth
+                    @php
+                        $anneeCouranteModal = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+                        $anneeCouranteEndDate = $anneeCouranteModal?->end_date
+                            ? \Carbon\Carbon::parse($anneeCouranteModal->end_date)
+                            : null;
+                        $anneeCouranteExpired = $anneeCouranteModal && $anneeCouranteEndDate && $anneeCouranteEndDate->isPast();
+                        $isSuperAdmin = auth()->user()?->hasRole('superAdmin');
+                    @endphp
+
+                    @if($anneeCouranteExpired)
+                        <div class="modal fade" id="anneeCouranteExpiredModal" tabindex="-1" aria-labelledby="anneeCouranteExpiredModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-warning-subtle">
+                                        <h5 class="modal-title" id="anneeCouranteExpiredModalLabel">
+                                            <i class="fas fa-exclamation-triangle me-2 text-warning"></i>Année universitaire échue
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="mb-2">
+                                            L'année universitaire courante <strong>{{ $anneeCouranteModal->name }}</strong>
+                                            s'est terminée le <strong>{{ $anneeCouranteEndDate->format('d/m/Y') }}</strong>.
+                                        </p>
+
+                                        @if($isSuperAdmin)
+                                            <div class="alert alert-warning mb-3">
+                                                <strong>Action requise :</strong> pensez à activer la nouvelle année courante.
+                                            </div>
+                                            <ol class="ps-3 mb-0">
+                                                <li>Ouvrir la page des années universitaires.</li>
+                                                <li>Cliquer sur “Activer” pour la nouvelle année.</li>
+                                                <li>Revenir ici pour recharger les données.</li>
+                                            </ol>
+                                        @else
+                                            <div class="alert alert-warning mb-0">
+                                                <strong>Info :</strong> merci de signaler à la direction qu'il faut activer la nouvelle année courante.
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                            Fermer
+                                        </button>
+                                        @if($isSuperAdmin)
+                                            <a href="{{ route('esbtp.annees-universitaires.index') }}" class="btn btn-warning">
+                                                <i class="fas fa-calendar-check me-1"></i>Aller aux années
+                                            </a>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                @endauth
+
             @yield('content')
         </div>
         </main>
@@ -2334,6 +2391,24 @@
     <script src="{{ asset('js/navbar-diagnostics.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            const anneeModal = document.getElementById('anneeCouranteExpiredModal');
+            if (anneeModal) {
+                const storageKey = 'annee-courante-expired-last-seen';
+                const lastSeen = Number(localStorage.getItem(storageKey) || 0);
+                const now = Date.now();
+                const oneHourMs = 60 * 60 * 1000;
+
+                if (now - lastSeen >= oneHourMs) {
+                    const modal = new bootstrap.Modal(anneeModal);
+                    modal.show();
+                    localStorage.setItem(storageKey, String(now));
+                }
+
+                anneeModal.addEventListener('hidden.bs.modal', function () {
+                    localStorage.setItem(storageKey, String(Date.now()));
+                });
+            }
+
             debugLog('🚀 Initialisation de l\'application...');
 
             // 1. Initialiser Bootstrap dropdowns

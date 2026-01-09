@@ -501,6 +501,20 @@
                 </div>
             </div>
         </div>
+        @php
+            $anneeCourante = $anneeUniversitaireCourante ?? null;
+            $anneeEndDate = $anneeCourante?->end_date ? \Carbon\Carbon::parse($anneeCourante->end_date) : null;
+        @endphp
+        @if($anneeCourante && $anneeEndDate && $anneeEndDate->isPast())
+            <div class="alert alert-warning d-flex align-items-start gap-2 mt-3" role="alert">
+                <i class="fas fa-exclamation-triangle mt-1"></i>
+                <div>
+                    <strong>Année universitaire échue :</strong>
+                    {{ $anneeCourante->name }} s'est terminée le {{ $anneeEndDate->format('d/m/Y') }}.
+                    Pensez à activer la nouvelle année courante.
+                </div>
+            </div>
+        @endif
 
         <!-- Statistiques des emplois du temps -->
         <div class="kpi-grid mb-xl">
