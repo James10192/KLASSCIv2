@@ -195,6 +195,56 @@
         gap: var(--space-sm);
         margin-bottom: var(--space-md);
     }
+
+    .emploi-info-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-xs);
+        margin-bottom: var(--space-md);
+    }
+
+    .emploi-info-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid transparent;
+        color: var(--text-primary);
+        background: rgba(59, 130, 246, 0.08);
+        border-color: rgba(59, 130, 246, 0.18);
+    }
+
+    .emploi-info-pill i {
+        font-size: 12px;
+        opacity: 0.8;
+    }
+
+    .emploi-info-pill.primary {
+        background: rgba(37, 99, 235, 0.12);
+        border-color: rgba(37, 99, 235, 0.22);
+        color: #1d4ed8;
+    }
+
+    .emploi-info-pill.info {
+        background: rgba(14, 165, 233, 0.12);
+        border-color: rgba(14, 165, 233, 0.22);
+        color: #0369a1;
+    }
+
+    .emploi-info-pill.success {
+        background: rgba(16, 185, 129, 0.12);
+        border-color: rgba(16, 185, 129, 0.22);
+        color: #047857;
+    }
+
+    .emploi-info-pill.warning {
+        background: rgba(245, 158, 11, 0.12);
+        border-color: rgba(245, 158, 11, 0.28);
+        color: #b45309;
+    }
     
     .emploi-info-item {
         text-align: left;

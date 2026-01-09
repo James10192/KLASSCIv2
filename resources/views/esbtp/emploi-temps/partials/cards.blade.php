@@ -65,48 +65,42 @@
         </div>
 
         <div class="emploi-card-body">
-            <div class="emploi-info-grid">
-                <div class="emploi-info-item">
-                    <div class="emploi-info-label">Classe</div>
-                    <div class="emploi-info-value">{{ $emploiTemps->classe->name ?? 'Non définie' }}</div>
-                </div>
-                <div class="emploi-info-item">
-                    <div class="emploi-info-label">Filière</div>
-                    <div class="emploi-info-value">{{ $emploiTemps->classe->filiere->name ?? 'Non définie' }}</div>
-                </div>
-                <div class="emploi-info-item">
-                    <div class="emploi-info-label">Niveau</div>
-                    <div class="emploi-info-value">{{ $emploiTemps->classe->niveau->name ?? 'Non défini' }}</div>
-                </div>
-                <div class="emploi-info-item">
-                    <div class="emploi-info-label">Année</div>
-                    <div class="emploi-info-value">{{ Str::limit($emploiTemps->annee->name ?? 'Non définie', 15) }}</div>
-                </div>
-                <div class="emploi-info-item">
-                    <div class="emploi-info-label">Période</div>
-                    <div class="emploi-info-value">
-                        @if($emploiTemps->semestre == 'Semestre 1')
-                            S1
-                        @elseif($emploiTemps->semestre == 'Semestre 2')
-                            S2
-                        @else
-                            Année
-                        @endif
-                    </div>
-                </div>
+            <div class="emploi-info-pills">
+                <span class="emploi-info-pill primary">
+                    <i class="fas fa-users"></i>
+                    Classe: {{ $emploiTemps->classe->name ?? 'Non définie' }}
+                </span>
+                <span class="emploi-info-pill info">
+                    <i class="fas fa-sitemap"></i>
+                    Filière: {{ $emploiTemps->classe->filiere->name ?? 'Non définie' }}
+                </span>
+                <span class="emploi-info-pill success">
+                    <i class="fas fa-layer-group"></i>
+                    Niveau: {{ $emploiTemps->classe->niveau->name ?? 'Non défini' }}
+                </span>
+                <span class="emploi-info-pill warning">
+                    <i class="fas fa-calendar"></i>
+                    Année: {{ Str::limit($emploiTemps->annee->name ?? 'Non définie', 15) }}
+                </span>
+                <span class="emploi-info-pill primary">
+                    <i class="fas fa-clock"></i>
+                    Période:
+                    @if($emploiTemps->semestre == 'Semestre 1')
+                        S1
+                    @elseif($emploiTemps->semestre == 'Semestre 2')
+                        S2
+                    @else
+                        Année
+                    @endif
+                </span>
                 @if($emploiTemps->date_debut && $emploiTemps->date_fin)
-                <div class="emploi-info-item" style="grid-column: 1 / -1;">
-                    <div class="emploi-info-label">
-                        <i class="fas fa-calendar-day me-1"></i>Dates
-                    </div>
-                    <div class="emploi-info-value">
-                        <small>
-                            {{ \Carbon\Carbon::parse($emploiTemps->date_debut)->format('d/m/Y') }}
-                            <i class="fas fa-arrow-right mx-1"></i>
-                            {{ \Carbon\Carbon::parse($emploiTemps->date_fin)->format('d/m/Y') }}
-                        </small>
-                    </div>
-                </div>
+                    <span class="emploi-info-pill info">
+                        <i class="fas fa-calendar-day"></i>
+                        Dates:
+                        {{ \Carbon\Carbon::parse($emploiTemps->date_debut)->format('d/m/Y') }}
+                        <i class="fas fa-arrow-right mx-1"></i>
+                        {{ \Carbon\Carbon::parse($emploiTemps->date_fin)->format('d/m/Y') }}
+                    </span>
                 @endif
             </div>
 
