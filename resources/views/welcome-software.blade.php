@@ -14,8 +14,8 @@
     <link rel="alternate" hreflang="en" href="https://klassci.com/">
     <link rel="alternate" hreflang="x-default" href="https://klassci.com/">
     <link rel="preload" as="image" href="https://klassci.com/images/Images%20landingPage/Sans%20titre%20-%202_Plan%20de%20travail%201.png">
-    <link rel="icon" href="/images/Images landingPage/logo_klassci.png" type="image/png">
-    <link rel="apple-touch-icon" href="/images/Images landingPage/logo_klassci.png">
+    <link rel="icon" href="/images/LOGO-KLASSCI-PNG.png" type="image/png">
+    <link rel="apple-touch-icon" href="/images/LOGO-KLASSCI-PNG.png">
     <meta property="og:site_name" content="KLASSCI">
     <meta property="og:title" content="KLASSCI - Plateforme de gestion scolaire tout-en-un">
     <meta property="og:description" content="Centralisez admissions, classes, emplois du temps, notes, finances et communication avec KLASSCI, la plateforme tout-en-un pour les etablissements d'enseignement.">
