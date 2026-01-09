@@ -115,9 +115,10 @@
             </div>
                 <div class="notifications-body">
                     @php
-                        $hasShortcut = !empty($timetableShortcut) && ($timetableShortcut['show'] ?? false);
+                        $hasTimetableShortcut = !empty($timetableShortcut) && ($timetableShortcut['show'] ?? false);
+                        $hasEvaluationShortcut = !empty($evaluationShortcut) && ($evaluationShortcut['show'] ?? false);
                     @endphp
-                    @if($notifications->isEmpty() && !$hasShortcut)
+                    @if($notifications->isEmpty() && !$hasTimetableShortcut && !$hasEvaluationShortcut)
                         <div class="text-center p-5">
                             <div class="empty-state mb-3">
                                 <i class="fas fa-bell-slash fa-3x text-muted"></i>
@@ -127,7 +128,53 @@
                         </div>
                     @else
                         <div class="list-group list-group-flush">
-                            @if($hasShortcut)
+                            @if($hasEvaluationShortcut)
+                                <div class="list-group-item notification-item evaluation-shortcut-item"
+                                     onclick="window.location.href='{{ route('esbtp.evaluations.index') }}';"
+                                     style="cursor: pointer;">
+                                    <div class="d-flex align-items-start justify-content-between notification-row">
+                                        <div class="flex-grow-1 me-3">
+                                            <div class="d-flex align-items-center mb-2 notification-title-row">
+                                                <span class="notification-icon bg-info-light text-info me-2">
+                                                    <i class="fas fa-clipboard-check"></i>
+                                                </span>
+                                                <div>
+                                                    <h6 class="mb-0 fw-semibold">Évaluations à activer</h6>
+                                                    <small class="text-muted">Publiez-les pour rendre la saisie disponible</small>
+                                                </div>
+                                            </div>
+                                            <div class="notification-meta-row">
+                                                <span class="notification-meta-pill meta-info">
+                                                    <i class="fas fa-layer-group"></i>
+                                                    brouillons: {{ $evaluationShortcut['total'] ?? 0 }}
+                                                </span>
+                                                @if(($evaluationShortcut['overdue'] ?? 0) > 0)
+                                                    <span class="notification-meta-pill meta-danger">
+                                                        <i class="fas fa-calendar-times"></i>
+                                                        en retard: {{ $evaluationShortcut['overdue'] }}
+                                                    </span>
+                                                @endif
+                                                @if(($evaluationShortcut['soon'] ?? 0) > 0)
+                                                    <span class="notification-meta-pill meta-warning">
+                                                        <i class="fas fa-hourglass-half"></i>
+                                                        à publier bientôt: {{ $evaluationShortcut['soon'] }}
+                                                    </span>
+                                                @endif
+                                                @if(($evaluationShortcut['undated'] ?? 0) > 0)
+                                                    <span class="notification-meta-pill meta-neutral">
+                                                        <i class="fas fa-question-circle"></i>
+                                                        sans date: {{ $evaluationShortcut['undated'] }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge bg-info text-white">Action rapide</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
+                            @if($hasTimetableShortcut)
                                 <div class="list-group-item notification-item timetable-shortcut-item"
                                      onclick="window.location.href='{{ route('esbtp.emploi-temps.index', ['quick_generate' => 1]) }}';"
                                      style="cursor: pointer;">
@@ -479,6 +526,10 @@
 .timetable-shortcut-item {
     background: rgba(245, 158, 11, 0.08);
     border-left: 3px solid #f59e0b;
+}
+.evaluation-shortcut-item {
+    background: rgba(59, 130, 246, 0.08);
+    border-left: 3px solid #3b82f6;
 }
 .list-group.list-group-flush {
     padding-bottom: 12px;

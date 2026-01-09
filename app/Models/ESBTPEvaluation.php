@@ -229,7 +229,14 @@ class ESBTPEvaluation extends Model
 
     public function canPublishNotes()
     {
-        return $this->status === self::STATUS_COMPLETED && !$this->notes_published;
+        if ($this->status !== self::STATUS_COMPLETED || $this->notes_published) {
+            return false;
+        }
+
+        $notesCount = $this->notes_count ?? null;
+        $hasNotes = $notesCount !== null ? $notesCount > 0 : $this->notes()->exists();
+
+        return $hasNotes;
     }
 
     public function isDeletable()
@@ -271,6 +278,13 @@ class ESBTPEvaluation extends Model
             return self::STATUS_CANCELLED;
         }
 
+        $notesCount = $this->notes_count ?? null;
+        $hasNotes = $notesCount !== null ? $notesCount > 0 : $this->notes()->exists();
+
+        if ($hasNotes && $this->date_evaluation instanceof Carbon && $this->date_evaluation->isPast()) {
+            return self::STATUS_COMPLETED;
+        }
+
         if (!$this->is_published) {
             return self::STATUS_DRAFT;
         }
@@ -279,11 +293,15 @@ class ESBTPEvaluation extends Model
             return self::STATUS_SCHEDULED;
         }
 
-        if ($this->date_evaluation->isFuture()) {
+        $startAt = $this->date_evaluation->copy();
+        $durationMinutes = (int) ($this->duree_minutes ?? 0);
+        $endAt = $durationMinutes > 0 ? $startAt->copy()->addMinutes($durationMinutes) : $startAt->copy()->endOfDay();
+
+        if ($startAt->isFuture()) {
             return self::STATUS_SCHEDULED;
         }
 
-        if ($this->date_evaluation->isSameDay($now)) {
+        if ($now->between($startAt, $endAt)) {
             return self::STATUS_IN_PROGRESS;
         }
 

@@ -272,7 +272,14 @@
                     </div>
                     <div class="main-card-body">
                         <div class="actions-grid">
-                            <a href="{{ route('esbtp.notes.saisie-rapide', $evaluation) }}" class="btn-acasi primary">
+                            @php
+                                $notesDisabled = !$evaluation->is_published;
+                            @endphp
+                            <a href="{{ $notesDisabled ? '#' : route('esbtp.notes.saisie-rapide', $evaluation) }}"
+                               class="btn-acasi primary {{ $notesDisabled ? 'disabled' : '' }}"
+                               title="{{ $notesDisabled ? 'Publiez l’évaluation pour saisir les notes' : 'Gérer les notes' }}"
+                               aria-disabled="{{ $notesDisabled ? 'true' : 'false' }}"
+                               tabindex="{{ $notesDisabled ? '-1' : '0' }}">
                                 <i class="fas fa-pen-alt"></i> Gérer les notes
                             </a>
 

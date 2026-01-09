@@ -94,6 +94,15 @@
             </div>
         </div>
 
+        <div class="alert alert-info d-flex align-items-start gap-2">
+            <i class="fas fa-lightbulb mt-1"></i>
+            <div>
+                <strong>Bon à savoir :</strong>
+                une évaluation non publiée reste en <strong>Brouillon</strong> (invisible aux étudiants) et la saisie des notes est désactivée.
+                Après publication, le statut évolue automatiquement (<strong>Planifiée</strong>, <strong>En cours</strong>, <strong>Terminée</strong>) selon la date et la durée.
+            </div>
+        </div>
+
         <!-- Section de gestion des liens externes (pour admins/secrétaires uniquement) -->
         @if(auth()->check() && auth()->user() && !auth()->user()->hasRole(['teacher', 'enseignant', 'etudiant']))
         <div class="main-card">
@@ -131,6 +140,31 @@
             </div>
 
             <div class="main-card-body">
+                <div class="alert alert-light border d-flex align-items-start gap-3 mb-4" style="background: #f8fafc;">
+                    <div class="mt-1 text-primary">
+                        <i class="fas fa-lightbulb fa-lg"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold mb-2">Repères rapides</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge rounded-pill" style="background: rgba(4, 83, 203, 0.12); color: #0f172a; border: 1px solid rgba(4, 83, 203, 0.35);">
+                                Publier
+                            </span>
+                            <span class="small text-muted">rend l'évaluation visible et active la saisie des notes.</span>
+                            <span class="badge rounded-pill" style="background: rgba(100, 116, 139, 0.14); color: #334155; border: 1px solid rgba(100, 116, 139, 0.35);">
+                                Masquer
+                            </span>
+                            <span class="small text-muted">cache l'évaluation et masque aussi les notes publiées.</span>
+                            <span class="badge rounded-pill" style="background: rgba(245, 158, 11, 0.12); color: #92400e; border: 1px solid rgba(245, 158, 11, 0.35);">
+                                Annuler
+                            </span>
+                            <span class="small text-muted">stoppe l'évaluation (aucune saisie possible).</span>
+                        </div>
+                        <div class="mt-2 small text-muted">
+                            Utilisez les cases à cocher pour activer la barre d'actions groupées en bas de page.
+                        </div>
+                    </div>
+                </div>
                 @if(session('success'))
                     <div class="alert alert-success alert-dismissible fade show">
                         <i class="fas fa-check-circle me-2"></i>
@@ -215,12 +249,48 @@
                     <div id="evaluations-results"
                          data-refresh-url="{{ route('esbtp.evaluations.index') }}"
                          data-row-url-template="{{ route('esbtp.evaluations.refresh-row', ['evaluation' => '__ID__']) }}"
+                         data-publish-url-template="{{ route('esbtp.evaluations.toggle-published', ['evaluation' => '__ID__']) }}"
+                         data-notes-url-template="{{ route('esbtp.evaluations.toggle-notes-published', ['evaluation' => '__ID__']) }}"
+                         data-cancel-url-template="{{ route('esbtp.evaluations.cancel', ['evaluation' => '__ID__']) }}"
+                         data-delete-url-template="{{ route('esbtp.evaluations.destroy', ['evaluation' => '__ID__']) }}"
                          data-summary='@json($summary)'
                     >
                         @include('esbtp.evaluations.partials.results', ['evaluations' => $evaluations])
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<div id="evaluations-bulk-bar" class="evaluations-bulk-bar" style="display: none;">
+    <div class="d-flex align-items-center gap-4 flex-wrap">
+        <div class="d-flex align-items-center gap-2">
+            <i class="fas fa-check-circle fa-lg"></i>
+            <span>
+                <strong id="evaluations-selected-count">0</strong>
+                évaluation(s) sélectionnée(s)
+            </span>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <button type="button" class="btn btn-light btn-sm" id="evaluations-bulk-publish">
+                <i class="fas fa-eye me-1"></i>Publier
+            </button>
+            <button type="button" class="btn btn-light btn-sm" id="evaluations-bulk-unpublish">
+                <i class="fas fa-eye-slash me-1"></i>Masquer
+            </button>
+            <button type="button" class="btn btn-outline-light btn-sm" id="evaluations-bulk-publish-notes">
+                <i class="fas fa-clipboard-check me-1"></i>Publier notes
+            </button>
+            <button type="button" class="btn btn-outline-light btn-sm" id="evaluations-bulk-cancel">
+                <i class="fas fa-times me-1"></i>Annuler
+            </button>
+            <button type="button" class="btn btn-outline-light btn-sm" id="evaluations-bulk-delete">
+                <i class="fas fa-trash me-1"></i>Supprimer
+            </button>
+            <button type="button" class="btn btn-outline-light btn-sm" id="evaluations-bulk-clear">
+                <i class="fas fa-times-circle me-1"></i>Annuler la sélection
+            </button>
         </div>
     </div>
 </div>
@@ -300,6 +370,125 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+}
+
+.evaluations-bulk-bar {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
+    color: white;
+    padding: 15px 30px;
+    border-radius: 50px;
+    box-shadow: 0 10px 40px rgba(4, 83, 203, 0.4);
+    z-index: 1050;
+    animation: slideUp 0.3s ease-out;
+}
+
+.evaluations-bulk-bar .btn {
+    border-radius: 999px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.evaluations-bulk-bar .btn-light {
+    color: #0f172a;
+}
+
+.evaluations-bulk-bar .btn.bulk-action-animate {
+    position: relative;
+    overflow: hidden;
+}
+
+.evaluations-bulk-bar .btn.bulk-action-animate::after {
+    content: "✅";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%) scale(0.4);
+    opacity: 0;
+    font-size: 1rem;
+    animation: bulkActionCheck 0.9s ease forwards;
+}
+
+.evaluations-bulk-bar .btn.bulk-action-animate::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.18);
+    opacity: 0;
+    animation: bulkActionFlash 0.5s ease forwards;
+}
+
+.evaluations-bulk-bar.is-processing {
+    opacity: 0.7;
+    pointer-events: none;
+    filter: saturate(0.85);
+}
+
+.evaluations-bulk-bar.is-processing::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 50px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    animation: bulkPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes slideUp {
+    from {
+        bottom: -100px;
+        opacity: 0;
+    }
+    to {
+        bottom: 20px;
+        opacity: 1;
+    }
+}
+
+@keyframes bulkPulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+    50% {
+        transform: scale(1.02);
+        opacity: 0.3;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+}
+
+@keyframes bulkActionCheck {
+    0% {
+        opacity: 0;
+        transform: translateY(-50%) scale(0.4);
+    }
+    50% {
+        opacity: 1;
+        transform: translateY(-50%) scale(1.05);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-50%) scale(0.8);
+    }
+}
+
+@keyframes bulkActionFlash {
+    0% {
+        opacity: 0;
+    }
+    40% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
 }
 
 #evaluations-results .table tbody tr:hover {
@@ -427,6 +616,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const selectedIds = new Set();
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const rowUrlTemplate = resultsContainer.dataset.rowUrlTemplate || '';
+    const publishUrlTemplate = resultsContainer.dataset.publishUrlTemplate || '';
+    const notesUrlTemplate = resultsContainer.dataset.notesUrlTemplate || '';
+    const cancelUrlTemplate = resultsContainer.dataset.cancelUrlTemplate || '';
+    const deleteUrlTemplate = resultsContainer.dataset.deleteUrlTemplate || '';
+
+    const bulkBar = document.getElementById('evaluations-bulk-bar');
+    const bulkCount = document.getElementById('evaluations-selected-count');
+    const bulkPublishBtn = document.getElementById('evaluations-bulk-publish');
+    const bulkUnpublishBtn = document.getElementById('evaluations-bulk-unpublish');
+    const bulkPublishNotesBtn = document.getElementById('evaluations-bulk-publish-notes');
+    const bulkCancelBtn = document.getElementById('evaluations-bulk-cancel');
+    const bulkDeleteBtn = document.getElementById('evaluations-bulk-delete');
+    const bulkClearBtn = document.getElementById('evaluations-bulk-clear');
 
     let yearModalInstance = null;
     window.showYearChangeInfo = () => {
@@ -470,6 +672,59 @@ document.addEventListener('DOMContentLoaded', () => {
                 rangeNode.textContent = 'Aucune évaluation ne correspond à vos filtres.';
             }
         }
+    }
+
+    function updateBulkBar() {
+        if (!bulkBar || !bulkCount) {
+            return;
+        }
+        const count = selectedIds.size;
+        bulkCount.textContent = count;
+        bulkBar.style.display = count > 0 ? 'block' : 'none';
+    }
+
+    function setBulkProcessing(isProcessing) {
+        if (!bulkBar) {
+            return;
+        }
+        bulkBar.classList.toggle('is-processing', Boolean(isProcessing));
+        bulkBar.querySelectorAll('button').forEach((button) => {
+            button.disabled = Boolean(isProcessing);
+        });
+    }
+
+    function clearSelection() {
+        selectedIds.clear();
+        resultsContainer.querySelectorAll('.evaluation-checkbox').forEach((checkbox) => {
+            checkbox.checked = false;
+        });
+        const selectAll = resultsContainer.querySelector('#evaluations-select-all');
+        if (selectAll) {
+            selectAll.checked = false;
+            selectAll.indeterminate = false;
+        }
+        updateBulkBar();
+    }
+
+    function resolveActionUrl(template, id) {
+        if (!template) {
+            return '';
+        }
+        return template.replace('__ID__', id);
+    }
+
+    function getRowMeta(id) {
+        const row = resultsContainer.querySelector(`tr[data-evaluation-id="${id}"]`);
+        if (!row) {
+            return {};
+        }
+        return {
+            row,
+            isPublished: row.dataset.isPublished === '1',
+            notesPublished: row.dataset.notesPublished === '1',
+            status: row.dataset.status || '',
+            canPublishNotes: row.dataset.canPublishNotes === '1',
+        };
     }
 
     function setRowLoadingState(id, isLoading) {
@@ -639,6 +894,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             selectedIds.delete(id);
         }
+        updateBulkBar();
         const selectAll = resultsContainer.querySelector('#evaluations-select-all');
         if (selectAll) {
             const total = resultsContainer.querySelectorAll('.evaluation-checkbox').length;
@@ -671,6 +927,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         selectedIds.delete(id);
                     }
                 });
+                updateBulkBar();
             });
         }
 
@@ -710,6 +967,59 @@ document.addEventListener('DOMContentLoaded', () => {
                 submitFilterForm();
             });
         }
+
+        updateBulkBar();
+    }
+
+    function performEvaluationAction({ action, url, method, evaluationId, refreshRow = true }) {
+        if (!action || !url || !evaluationId) {
+            return Promise.resolve();
+        }
+
+        const headers = {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        };
+
+        if (method !== 'GET' && csrfToken) {
+            headers['X-CSRF-TOKEN'] = csrfToken;
+        }
+
+        setRowLoadingState(evaluationId, true);
+
+        return fetch(url, {
+            method,
+            headers
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then((data) => {
+                if (!data.success) {
+                    throw new Error(data.message || 'Action impossible');
+                }
+                if (data.message) {
+                    showToast(data.message, 'success');
+                }
+                if (data.deleted || action === 'delete') {
+                    selectedIds.delete(Number(evaluationId));
+                    if (refreshRow) {
+                        submitFilterForm(false);
+                    }
+                    return;
+                }
+                if (refreshRow) {
+                    const highlightType = action === 'cancel' ? 'cancel' : 'update';
+                    return refreshEvaluationRow(evaluationId, highlightType).then(() => fetchSummaryOnly());
+                }
+            })
+            .catch((error) => {
+                showToast(error.message || "Erreur lors du traitement de l'action", 'error');
+                setRowLoadingState(evaluationId, false);
+            });
     }
 
     function handleAction(button) {
@@ -731,46 +1041,85 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const headers = {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json'
-        };
+        performEvaluationAction({ action, url, method, evaluationId, refreshRow: true });
+    }
 
-        if (method !== 'GET' && csrfToken) {
-            headers['X-CSRF-TOKEN'] = csrfToken;
+    function animateBulkButton(button) {
+        if (!button) {
+            return;
+        }
+        button.classList.remove('bulk-action-animate');
+        void button.offsetWidth;
+        button.classList.add('bulk-action-animate');
+        setTimeout(() => button.classList.remove('bulk-action-animate'), 900);
+    }
+
+    function runBulkAction(actionKey, triggerButton = null) {
+        const ids = Array.from(selectedIds);
+        if (!ids.length) {
+            return;
         }
 
-        setRowLoadingState(evaluationId, true);
+        const requiresConfirm = ['delete', 'cancel'];
+        if (requiresConfirm.includes(actionKey)) {
+            const message = actionKey === 'delete'
+                ? 'Confirmez-vous la suppression des évaluations sélectionnées ?'
+                : "Confirmez-vous l'annulation des évaluations sélectionnées ?";
+            if (!window.confirm(message)) {
+                return;
+            }
+        }
 
-        fetch(url, {
-            method,
-            headers
-        })
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                return response.json();
-            })
-            .then((data) => {
-                if (!data.success) {
-                    throw new Error(data.message || 'Action impossible');
-                }
-                if (data.message) {
-                    showToast(data.message, 'success');
-                }
-                if (data.deleted || action === 'delete') {
-                    selectedIds.delete(Number(evaluationId));
-                    submitFilterForm(false);
-                } else {
-                    const highlightType = action === 'cancel' ? 'cancel' : 'update';
-                    refreshEvaluationRow(evaluationId, highlightType).then(() => fetchSummaryOnly());
-                }
-            })
-            .catch((error) => {
-                showToast(error.message || "Erreur lors du traitement de l'action", 'error');
-                setRowLoadingState(evaluationId, false);
-            });
+        let filteredIds = ids;
+        if (actionKey === 'publish') {
+            filteredIds = ids.filter((id) => !getRowMeta(id).isPublished);
+        } else if (actionKey === 'unpublish') {
+            filteredIds = ids.filter((id) => getRowMeta(id).isPublished);
+        } else if (actionKey === 'publish-notes') {
+            filteredIds = ids.filter((id) => getRowMeta(id).canPublishNotes);
+        } else if (actionKey === 'cancel') {
+            filteredIds = ids.filter((id) => getRowMeta(id).status !== 'cancelled');
+        }
+
+        if (!filteredIds.length) {
+            showToast('Aucune évaluation éligible pour cette action.', 'error');
+            setBulkProcessing(false);
+            return;
+        }
+
+        const actionConfig = {
+            publish: { template: publishUrlTemplate, method: 'PATCH', action: 'toggle-published' },
+            unpublish: { template: publishUrlTemplate, method: 'PATCH', action: 'toggle-published' },
+            'publish-notes': { template: notesUrlTemplate, method: 'PATCH', action: 'toggle-notes' },
+            cancel: { template: cancelUrlTemplate, method: 'PATCH', action: 'cancel' },
+            delete: { template: deleteUrlTemplate, method: 'DELETE', action: 'delete' },
+        };
+
+        const config = actionConfig[actionKey];
+        if (!config || !config.template) {
+            return;
+        }
+
+        const shouldRefreshRow = actionKey !== 'delete';
+        setBulkProcessing(true);
+        filteredIds.reduce((promise, id) => {
+            const url = resolveActionUrl(config.template, id);
+            return promise.then(() => performEvaluationAction({
+                action: config.action,
+                url,
+                method: config.method,
+                evaluationId: id,
+                refreshRow: shouldRefreshRow
+            }));
+        }, Promise.resolve()).then(() => {
+            if (!shouldRefreshRow) {
+                submitFilterForm(false);
+            }
+            updateBulkBar();
+            animateBulkButton(triggerButton);
+        }).finally(() => {
+            setBulkProcessing(false);
+        });
     }
 
     function syncFiltersFromUrl() {
@@ -833,8 +1182,28 @@ document.addEventListener('DOMContentLoaded', () => {
             if (perPageInput) {
                 perPageInput.value = perPageDefault;
             }
+            updateBulkBar();
             submitFilterForm();
         });
+    }
+
+    if (bulkPublishBtn) {
+        bulkPublishBtn.addEventListener('click', () => runBulkAction('publish', bulkPublishBtn));
+    }
+    if (bulkUnpublishBtn) {
+        bulkUnpublishBtn.addEventListener('click', () => runBulkAction('unpublish', bulkUnpublishBtn));
+    }
+    if (bulkPublishNotesBtn) {
+        bulkPublishNotesBtn.addEventListener('click', () => runBulkAction('publish-notes', bulkPublishNotesBtn));
+    }
+    if (bulkCancelBtn) {
+        bulkCancelBtn.addEventListener('click', () => runBulkAction('cancel', bulkCancelBtn));
+    }
+    if (bulkDeleteBtn) {
+        bulkDeleteBtn.addEventListener('click', () => runBulkAction('delete', bulkDeleteBtn));
+    }
+    if (bulkClearBtn) {
+        bulkClearBtn.addEventListener('click', clearSelection);
     }
 
     window.addEventListener('popstate', () => {

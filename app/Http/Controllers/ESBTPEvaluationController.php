@@ -132,12 +132,11 @@ class ESBTPEvaluationController extends Controller
         if (!$currentUser->hasRole(['teacher', 'enseignant', 'etudiant'])) {
             $evaluationsForExternalLinks = ESBTPEvaluation::with(['classe', 'matiere'])
                 ->where('is_published', true)
+                ->whereDoesntHave('notes')
+                ->whereNull('enseignant_id') // Sans enseignant assigné
                 ->where(function($query) {
-                    $query->whereNull('enseignant_id') // Sans enseignant assigné
-                          ->orWhere(function($subQuery) {
-                              $subQuery->whereNull('token_saisie_externe') // Pas de token généré
-                                       ->orWhere('token_expire_at', '<', now()); // Token expiré
-                          });
+                    $query->whereNull('token_saisie_externe') // Pas de token généré
+                          ->orWhere('token_expire_at', '<', now()); // Token expiré
                 })
                 ->orderBy('date_evaluation', 'desc')
                 ->get();
@@ -928,8 +927,11 @@ class ESBTPEvaluationController extends Controller
     public function togglePublished(Request $request, ESBTPEvaluation $evaluation)
     {
         try {
+            $isPublished = !$evaluation->is_published;
+
             $evaluation->update([
-                'is_published' => !$evaluation->is_published,
+                'is_published' => $isPublished,
+                'notes_published' => $isPublished ? $evaluation->notes_published : false,
                 'updated_by' => Auth::id()
             ]);
 
@@ -939,7 +941,7 @@ class ESBTPEvaluationController extends Controller
 
             $message = $evaluation->is_published
                 ? 'Évaluation publiée avec succès.'
-                : 'Évaluation dépubliée avec succès.';
+                : 'Évaluation dépubliée avec succès. Les notes ont été masquées.';
 
             if ($request->wantsJson()) {
                 return response()->json([
@@ -977,6 +979,14 @@ class ESBTPEvaluationController extends Controller
         }
 
         try {
+            if (!$evaluation->is_published && !$evaluation->notes_published) {
+                $evaluation->is_published = true;
+                $evaluation->updated_by = Auth::id();
+                if ($evaluation->status !== ESBTPEvaluation::STATUS_CANCELLED) {
+                    $evaluation->syncAutomaticStatus();
+                }
+            }
+
             $evaluation->update([
                 'notes_published' => !$evaluation->notes_published,
                 'updated_by' => Auth::id()

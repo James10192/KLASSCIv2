@@ -251,6 +251,14 @@
                                         </label>
                                         <small class="form-text text-muted d-block">Une évaluation publiée est visible par les enseignants et permet la saisie des notes.</small>
                                     </div>
+                                    <div class="info-box">
+                                        <i class="fas fa-lightbulb"></i>
+                                        <div>
+                                            <strong>Astuce :</strong>
+                                            les évaluations non publiées restent en brouillon et ne sont pas visibles des étudiants.
+                                            La publication déclenche la progression automatique <strong>Planifiée → En cours → Terminée</strong> selon la date et la durée.
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

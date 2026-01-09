@@ -8,6 +8,7 @@ use App\Models\Notification; // Notre modèle personnalisé
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPInscription;
 use App\Services\TimetableShortcutService;
+use App\Services\EvaluationPublishShortcutService;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -29,6 +30,7 @@ class ESBTPNotificationController extends Controller
     {
         $user = Auth::user();
         $timetableShortcut = $this->getTimetableShortcutForUser($user);
+        $evaluationShortcut = $this->getEvaluationShortcutForUser($user);
 
         // Si la requête est AJAX (pour le dropdown), retourner une vue partielle
         if (request()->ajax()) {
@@ -36,7 +38,7 @@ class ESBTPNotificationController extends Controller
                 ->latest()
                 ->take(5)
                 ->get();
-            return view('notifications.partials.dropdown-items', compact('notifications', 'timetableShortcut'));
+            return view('notifications.partials.dropdown-items', compact('notifications', 'timetableShortcut', 'evaluationShortcut'));
         }
 
         // Sinon, retourner la vue complète avec pagination
@@ -50,7 +52,7 @@ class ESBTPNotificationController extends Controller
             })
         );
 
-        return view('notifications.index', compact('notifications', 'timetableShortcut'));
+        return view('notifications.index', compact('notifications', 'timetableShortcut', 'evaluationShortcut'));
     }
 
     private function getTimetableShortcutForUser(User $user): array
@@ -67,6 +69,20 @@ class ESBTPNotificationController extends Controller
         return app(TimetableShortcutService::class)->getShortcutSummary($anneeEnCours);
     }
 
+    private function getEvaluationShortcutForUser(User $user): array
+    {
+        if (!$this->userCanSeeEvaluationShortcut($user)) {
+            return ['show' => false];
+        }
+
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (!$anneeEnCours) {
+            return ['show' => false];
+        }
+
+        return app(EvaluationPublishShortcutService::class)->getShortcutSummary($anneeEnCours);
+    }
+
     private function userCanSeeTimetableShortcut(User $user): bool
     {
         return $user->hasRole('superAdmin')
@@ -74,6 +90,15 @@ class ESBTPNotificationController extends Controller
             || $user->hasRole('coordinateur')
             || $user->can('view_timetables')
             || $user->can('view-all-timetables');
+    }
+
+    private function userCanSeeEvaluationShortcut(User $user): bool
+    {
+        return $user->hasRole('superAdmin')
+            || $user->hasRole('secretaire')
+            || $user->hasRole('coordinateur')
+            || $user->hasRole('enseignant')
+            || $user->hasRole('teacher');
     }
 
     private function decorateNotification(Notification $notification): Notification

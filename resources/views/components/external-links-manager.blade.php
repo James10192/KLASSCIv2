@@ -2,11 +2,11 @@
 <div class="external-links-manager">
     <!-- Section de génération de liens -->
     <div class="card shadow-sm border-0 mb-4" id="generate-links-section">
-        <div class="card-header bg-gradient-warning text-white">
+        <div class="card-header bg-warning text-dark">
             <h5 class="mb-0">
                 <i class="fas fa-link me-2"></i>Génération de liens externes temporaires
             </h5>
-            <p class="mb-0 opacity-75">Créer des liens sécurisés pour la saisie de notes par des enseignants externes</p>
+            <p class="mb-0 text-dark opacity-75">Créer des liens sécurisés pour la saisie de notes par des enseignants externes</p>
         </div>
         <div class="card-body">
             <!-- Sélecteur d'évaluation -->

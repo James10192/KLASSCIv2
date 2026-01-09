@@ -1,13 +1,41 @@
 @php
-    $hasShortcut = !empty($timetableShortcut) && ($timetableShortcut['show'] ?? false);
+    $hasTimetableShortcut = !empty($timetableShortcut) && ($timetableShortcut['show'] ?? false);
+    $hasEvaluationShortcut = !empty($evaluationShortcut) && ($evaluationShortcut['show'] ?? false);
 @endphp
 
-@if(!$hasShortcut && $notifications->isEmpty())
+@if(!$hasTimetableShortcut && !$hasEvaluationShortcut && $notifications->isEmpty())
     <div class="text-center p-3">
         <small>Aucune notification</small>
     </div>
 @else
-    @if($hasShortcut)
+    @if($hasEvaluationShortcut)
+        <div class="notification-item evaluation-shortcut-item"
+             onclick="window.location.href='{{ route('esbtp.evaluations.index') }}';"
+             style="cursor: pointer;">
+            <div class="d-flex align-items-center mb-1">
+                <span class="notification-icon bg-info-light text-info me-2">
+                    <i class="fas fa-clipboard-check"></i>
+                </span>
+                <div>
+                    <h6 class="notification-title mb-0">Évaluations à activer</h6>
+                    <small class="text-muted">Publiez-les pour activer la saisie</small>
+                </div>
+            </div>
+            <p class="notification-message mb-0">
+                {{ $evaluationShortcut['total'] ?? 0 }} brouillon(s)
+                @if(($evaluationShortcut['overdue'] ?? 0) > 0)
+                    • {{ $evaluationShortcut['overdue'] }} en retard
+                @endif
+                @if(($evaluationShortcut['soon'] ?? 0) > 0)
+                    • {{ $evaluationShortcut['soon'] }} bientôt
+                @endif
+                @if(($evaluationShortcut['undated'] ?? 0) > 0)
+                    • {{ $evaluationShortcut['undated'] }} sans date
+                @endif
+            </p>
+        </div>
+    @endif
+    @if($hasTimetableShortcut)
         <div class="notification-item timetable-shortcut-item"
              onclick="window.location.href='{{ route('esbtp.emploi-temps.index', ['quick_generate' => 1]) }}';"
              style="cursor: pointer;">
@@ -34,24 +62,24 @@
         </div>
     @endif
     @foreach($notifications as $notification)
-        <div class="notification-item {{ !$notification->read_at ? 'unread' : '' }}"
+        <div class="notification-item {{ !$notification->is_read ? 'unread' : '' }}"
              id="notification-{{ $notification->id }}"
-             @if(isset($notification->data['link']))
-                 onclick="window.location.href='{{ $notification->data['link'] }}'; markAsRead('{{ $notification->id }}');"
+             @if($notification->link)
+                 onclick="window.location.href='{{ $notification->link }}'; markAsRead('{{ $notification->id }}');"
              @else
                  onclick="markAsRead('{{ $notification->id }}');"
              @endif
              style="cursor: pointer; opacity: 1; transition: opacity 0.3s ease;">
             <div class="d-flex align-items-center mb-1">
-                @if(isset($notification->data['type']) && $notification->data['type'] == 'danger')
+                @if($notification->type === 'danger' || $notification->type === 'error')
                     <span class="notification-icon bg-danger-light text-danger me-2">
                         <i class="fas fa-exclamation-circle"></i>
                     </span>
-                @elseif(isset($notification->data['type']) && $notification->data['type'] == 'warning')
+                @elseif($notification->type === 'warning')
                     <span class="notification-icon bg-warning-light text-warning me-2">
                         <i class="fas fa-exclamation-triangle"></i>
                     </span>
-                @elseif(isset($notification->data['type']) && $notification->data['type'] == 'success')
+                @elseif($notification->type === 'success')
                     <span class="notification-icon bg-success-light text-success me-2">
                         <i class="fas fa-check-circle"></i>
                     </span>
@@ -60,16 +88,16 @@
                         <i class="fas fa-info-circle"></i>
                     </span>
                 @endif
-                <h6 class="notification-title mb-0">{{ $notification->data['title'] ?? 'Notification' }}</h6>
-                @if(!$notification->read_at)
+                <h6 class="notification-title mb-0">{{ $notification->title ?? 'Notification' }}</h6>
+                @if(!$notification->is_read)
                     <span class="ms-auto badge bg-warning">Nouveau</span>
                 @endif
             </div>
-            <p class="notification-message mb-0">{{ Str::limit($notification->data['message'] ?? '', 100) }}</p>
+            <p class="notification-message mb-0">{{ Str::limit(strip_tags($notification->message ?? ''), 100) }}</p>
             <div class="d-flex justify-content-between align-items-center mt-1">
                 <small class="notification-time text-muted">{{ $notification->created_at->diffForHumans() }}</small>
-                @if(str_contains(strtolower($notification->data['title'] ?? ''), 'absence'))
-                    <a href="{{ $notification->data['link'] ?? route('esbtp.mes-absences.index') }}" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();">
+                @if(str_contains(strtolower($notification->title ?? ''), 'absence'))
+                    <a href="{{ $notification->link ?? route('esbtp.mes-absences.index') }}" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation();">
                         Justifier
                     </a>
                 @endif
@@ -119,6 +147,10 @@
 .timetable-shortcut-item {
     background: rgba(245, 158, 11, 0.08);
     border-left: 3px solid #f59e0b;
+}
+.evaluation-shortcut-item {
+    background: rgba(59, 130, 246, 0.08);
+    border-left: 3px solid #3b82f6;
 }
 .notification-item.fadeOut {
     opacity: 0;

@@ -80,6 +80,12 @@ class ESBTPNoteController extends Controller
     public function create()
     {
         $evaluations = ESBTPEvaluation::with(['classe', 'matiere'])
+            ->where('is_published', true)
+            ->whereIn('status', [
+                ESBTPEvaluation::STATUS_SCHEDULED,
+                ESBTPEvaluation::STATUS_IN_PROGRESS,
+                ESBTPEvaluation::STATUS_COMPLETED,
+            ])
             ->orderBy('date_evaluation', 'desc')
             ->get();
         $etudiants = ESBTPEtudiant::orderBy('nom')->get();
@@ -130,6 +136,11 @@ class ESBTPNoteController extends Controller
 
             // Récupérer l'évaluation pour obtenir le barème et la classe
             $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
+            if (!$evaluation->is_published) {
+                return redirect()->back()
+                    ->with('error', 'Cette évaluation n\'est pas publiée. Activez-la avant de saisir les notes.')
+                    ->withInput();
+            }
 
             // Récupérer la classe associée à l'évaluation
             $classe_id = $evaluation->classe_id;

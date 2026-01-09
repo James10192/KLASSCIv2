@@ -244,6 +244,14 @@
                                 <span class="toggle-description">Une évaluation publiée est visible par les enseignants et permet la saisie des notes.</span>
                             </label>
                         </div>
+                        <div class="info-box mt-3">
+                            <i class="fas fa-lightbulb"></i>
+                            <div>
+                                <strong>Astuce :</strong>
+                                tant que l'évaluation n'est pas publiée, elle reste en brouillon (invisible aux étudiants) et la saisie des notes est bloquée.
+                                Une fois publiée, le statut passe automatiquement à <strong>Planifiée</strong>, <strong>En cours</strong>, puis <strong>Terminée</strong> selon la date et la durée.
+                            </div>
+                        </div>
                     </div>
                 </div>
 

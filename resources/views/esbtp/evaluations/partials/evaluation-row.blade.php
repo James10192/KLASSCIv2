@@ -10,7 +10,12 @@
     $typeIcon = $typeIcons[$evaluation->type] ?? '<i class="fas fa-clipboard text-muted"></i>';
 @endphp
 
-<tr data-evaluation-id="{{ $evaluation->id }}" class="position-relative">
+<tr data-evaluation-id="{{ $evaluation->id }}"
+    data-is-published="{{ $evaluation->is_published ? '1' : '0' }}"
+    data-notes-published="{{ $evaluation->notes_published ? '1' : '0' }}"
+    data-status="{{ $evaluation->status }}"
+    data-can-publish-notes="{{ $evaluation->canPublishNotes() ? '1' : '0' }}"
+    class="position-relative">
     <td>
         <div class="form-check">
             <input class="form-check-input evaluation-checkbox" type="checkbox" id="evaluation-{{ $evaluation->id }}" value="{{ $evaluation->id }}">
@@ -27,8 +32,8 @@
                     {{ $evaluation->status_label }}
                 </span>
                 @if(!$evaluation->is_published)
-                    <span class="badge bg-secondary">
-                        <i class="fas fa-eye-slash me-1"></i>Brouillon interne
+                    <span class="badge bg-secondary" title="Invisible aux étudiants tant que non publiée">
+                        <i class="fas fa-eye-slash me-1"></i>Non publiée
                     </span>
                 @endif
             </div>
@@ -84,7 +89,14 @@
                 @endif
             </button>
 
-            <a href="{{ route('esbtp.notes.saisie-rapide', $evaluation) }}" class="btn btn-sm btn-outline-primary" title="Gérer la saisie rapide">
+            @php
+                $notesDisabled = !$evaluation->is_published;
+            @endphp
+            <a href="{{ $notesDisabled ? '#' : route('esbtp.notes.saisie-rapide', $evaluation) }}"
+               class="btn btn-sm btn-outline-primary {{ $notesDisabled ? 'disabled' : '' }}"
+               title="{{ $notesDisabled ? 'Publiez l’évaluation pour saisir les notes' : 'Gérer la saisie rapide' }}"
+               aria-disabled="{{ $notesDisabled ? 'true' : 'false' }}"
+               tabindex="{{ $notesDisabled ? '-1' : '0' }}">
                 <i class="fas fa-pen-alt me-1"></i>
                 {{ ($evaluation->notes_count ?? 0) > 0 ? 'Gérer (' . $evaluation->notes_count . ')' : 'Saisir' }}
             </a>

@@ -10,6 +10,7 @@ use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Services\TimetableShortcutService;
+use App\Services\EvaluationPublishShortcutService;
 use Carbon\Carbon;
 
 class NavbarController extends Controller
@@ -21,7 +22,8 @@ class NavbarController extends Controller
     {
         $user = auth()->user();
         $notifications = collect();
-        $shortcutItems = $this->getTimetableShortcutNotifications($user);
+        $shortcutItems = $this->getTimetableShortcutNotifications($user)
+            ->concat($this->getEvaluationShortcutNotifications($user));
 
         if ($user->hasRole('superAdmin') || $user->hasRole('secretaire') || $user->hasRole('coordinateur')) {
             // Notifications pour admin/secrétaire/coordinateur
@@ -142,6 +144,56 @@ class NavbarController extends Controller
                 'time' => 'Action rapide',
                 'read' => true,
                 'url' => route('esbtp.emploi-temps.index', ['quick_generate' => 1]),
+                'sender' => 'Système',
+                'is_virtual' => true,
+            ],
+        ]);
+    }
+
+    private function getEvaluationShortcutNotifications($user): \Illuminate\Support\Collection
+    {
+        $canSee = $user->hasRole('superAdmin')
+            || $user->hasRole('secretaire')
+            || $user->hasRole('coordinateur')
+            || $user->hasRole('enseignant')
+            || $user->hasRole('teacher');
+
+        if (!$canSee) {
+            return collect();
+        }
+
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (!$anneeEnCours) {
+            return collect();
+        }
+
+        $summary = app(EvaluationPublishShortcutService::class)->getShortcutSummary($anneeEnCours);
+        if (empty($summary['show'])) {
+            return collect();
+        }
+
+        $parts = [];
+        $parts[] = $summary['total'] . ' évaluation(s) en brouillon';
+        if (!empty($summary['overdue'])) {
+            $parts[] = $summary['overdue'] . ' en retard';
+        }
+        if (!empty($summary['soon'])) {
+            $parts[] = $summary['soon'] . ' à publier bientôt';
+        }
+        if (!empty($summary['undated'])) {
+            $parts[] = $summary['undated'] . ' sans date';
+        }
+
+        return collect([
+            [
+                'id' => 'shortcut-evaluations',
+                'title' => 'Évaluations à activer',
+                'message' => implode(' • ', $parts),
+                'type' => 'warning',
+                'icon' => 'fas fa-clipboard-check',
+                'time' => 'Action rapide',
+                'read' => true,
+                'url' => route('esbtp.evaluations.index'),
                 'sender' => 'Système',
                 'is_virtual' => true,
             ],
