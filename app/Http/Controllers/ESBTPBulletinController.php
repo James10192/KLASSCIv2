@@ -4159,6 +4159,21 @@ class ESBTPBulletinController extends Controller
 
         } catch (\Exception $e) {
             if (str_contains($e->getMessage(), 'Configuration bulletin manquante')) {
+                $bulletin = ESBTPBulletin::where('etudiant_id', $etudiantId)
+                    ->where('classe_id', $request->classe_id)
+                    ->where('periode', $periode)
+                    ->where('annee_universitaire_id', $request->annee_universitaire_id)
+                    ->first();
+
+                if ($bulletin && $bulletin->config_matieres && !$bulletin->professeurs) {
+                    return redirect()->route('esbtp.bulletins.edit-professeurs', [
+                        'etudiant_id' => $etudiantId,
+                        'classe_id' => $request->classe_id,
+                        'periode' => $periode,
+                        'annee_universitaire_id' => $request->annee_universitaire_id
+                    ])->with('error', 'Professeurs manquants. Veuillez les configurer avant la prévisualisation.');
+                }
+
                 $configMatieresUrl = route('esbtp.bulletins.config-matieres', [
                     'classe_id' => $request->classe_id,
                     'periode' => $periode,
@@ -6140,6 +6155,9 @@ class ESBTPBulletinController extends Controller
 
             // Sauvegarder la configuration dans le bulletin
             $bulletin->config_matieres = json_encode($configMatieres);
+            if (!$bulletin->professeurs) {
+                $bulletin->professeurs = '{}';
+            }
             $bulletin->save();
 
             \Log::info('Configuration des matières sauvegardée dans le bulletin', [
@@ -6163,7 +6181,7 @@ class ESBTPBulletinController extends Controller
                     'annee_universitaire_id' => $annee_universitaire_id
                 ]);
                 return redirect()->to($url)->with('success', 'Configuration des matières enregistrée avec succès.');
-            } else if ($action === 'return_results' || $action === 'save_and_return') {
+            } else if ($action === 'return_results' || $action === 'save_and_return' || $action === 'save') {
                 // Rediriger vers les résultats de l'étudiant
                 $url = "/esbtp/resultats/etudiant/{$etudiant_id}?" . http_build_query([
                     'classe_id' => $classe_id,
