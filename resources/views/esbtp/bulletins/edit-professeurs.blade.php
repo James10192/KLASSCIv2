@@ -150,6 +150,21 @@
                                     <div class="subject-info">
                                         <h6 class="subject-title">{{ $resultat->matiere->name ?? $resultat->matiere->nom ?? 'Matière #'.$resultat->matiere_id }}</h6>
                                         <p class="subject-code">{{ $resultat->matiere->code ?? 'Code non défini' }}</p>
+                                        @if(!empty($resultat->sources))
+                                            <div class="d-flex flex-wrap gap-1 mt-1">
+                                                @foreach($resultat->sources as $source)
+                                                    @if($source === 'classe')
+                                                        <span class="badge bg-primary text-white" style="font-size: 0.7rem;">
+                                                            <i class="fas fa-school me-1"></i>Classe
+                                                        </span>
+                                                    @elseif($source === 'notes')
+                                                        <span class="badge bg-info text-white" style="font-size: 0.7rem;">
+                                                            <i class="fas fa-clipboard-list me-1"></i>Notes
+                                                        </span>
+                                                    @endif
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
 
@@ -223,6 +238,21 @@
                                     <div class="subject-info">
                                         <h6 class="subject-title">{{ $resultat->matiere->name ?? $resultat->matiere->nom ?? 'Matière #'.$resultat->matiere_id }}</h6>
                                         <p class="subject-code">{{ $resultat->matiere->code ?? 'Code non défini' }}</p>
+                                        @if(!empty($resultat->sources))
+                                            <div class="d-flex flex-wrap gap-1 mt-1">
+                                                @foreach($resultat->sources as $source)
+                                                    @if($source === 'classe')
+                                                        <span class="badge bg-primary text-white" style="font-size: 0.7rem;">
+                                                            <i class="fas fa-school me-1"></i>Classe
+                                                        </span>
+                                                    @elseif($source === 'notes')
+                                                        <span class="badge bg-info text-white" style="font-size: 0.7rem;">
+                                                            <i class="fas fa-clipboard-list me-1"></i>Notes
+                                                        </span>
+                                                    @endif
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
 

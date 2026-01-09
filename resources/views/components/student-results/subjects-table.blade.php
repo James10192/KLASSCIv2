@@ -37,6 +37,17 @@
                                                 @if($matiereData['matiere']->code)
                                                     <small class="text-muted">{{ $matiereData['matiere']->code }}</small>
                                                 @endif
+                                                @if(isset($matiereData['origin']))
+                                                    @if($matiereData['origin'] === 'classe')
+                                                        <span class="badge bg-primary text-white" style="font-size: 0.7rem;">
+                                                            <i class="fas fa-school me-1"></i>Classe
+                                                        </span>
+                                                    @elseif($matiereData['origin'] === 'notes')
+                                                        <span class="badge bg-info text-white" style="font-size: 0.7rem;">
+                                                            <i class="fas fa-clipboard-list me-1"></i>Notes
+                                                        </span>
+                                                    @endif
+                                                @endif
                                                 @if(isset($matiereData['source']))
                                                     @if($matiereData['source'] == 'calculee')
                                                         <span class="badge bg-success bg-opacity-10 text-success" style="font-size: 0.7rem;">

@@ -188,7 +188,24 @@
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <i class="fas fa-book text-primary me-3"></i>
-                                            <span class="fw-medium">{{ $matiere->nom ?? $matiere->name }}</span>
+                                            <div>
+                                                <span class="fw-medium">{{ $matiere->nom ?? $matiere->name }}</span>
+                                                @if(!empty($matiere->sources))
+                                                    <div class="mt-1 d-flex flex-wrap gap-1">
+                                                        @foreach($matiere->sources as $source)
+                                                            @if($source === 'classe')
+                                                                <span class="badge bg-primary text-white" style="font-size: 0.7rem;">
+                                                                    <i class="fas fa-school me-1"></i>Classe
+                                                                </span>
+                                                            @elseif($source === 'notes')
+                                                                <span class="badge bg-info text-white" style="font-size: 0.7rem;">
+                                                                    <i class="fas fa-clipboard-list me-1"></i>Notes
+                                                                </span>
+                                                            @endif
+                                                        @endforeach
+                                                    </div>
+                                                @endif
+                                            </div>
                                         </div>
                                     </td>
                                     <td>

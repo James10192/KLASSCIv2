@@ -2821,6 +2821,18 @@ class ESBTPBulletinController extends Controller
         $totalPoints = 0;
         $totalCoefficients = 0;
         $nonNumericNotes = 0;
+        $classeMatieresIds = [];
+        if ($classe) {
+            $classeMatieresIds = \App\Models\ESBTPMatiere::with(['filieres:id', 'niveaux:id'])
+                ->where('is_active', true)
+                ->get()
+                ->filter(function ($matiere) use ($classe) {
+                    return $matiere->filieres->pluck('id')->contains($classe->filiere_id)
+                        && $matiere->niveaux->pluck('id')->contains($classe->niveau_etude_id);
+                })
+                ->pluck('id')
+                ->all();
+        }
 
         foreach ($notes as $note) {
             if (!$note->evaluation || !$note->evaluation->matiere) {
@@ -2855,7 +2867,8 @@ class ESBTPBulletinController extends Controller
                     'calculations' => [], // Add storage for calculations
                     'total_points' => 0,
                     'total_coefficients' => 0,
-                    'moyenne' => 0
+                    'moyenne' => 0,
+                    'origin' => in_array($matiere_id, $classeMatieresIds, true) ? 'classe' : 'notes'
                 ];
                 \Log::debug("Initialized new entry in notesByMatiere for matiere {$matiere->name} (ID: {$matiere->id})");
             }
@@ -5927,6 +5940,27 @@ class ESBTPBulletinController extends Controller
                         && $matiere->niveaux->pluck('id')->contains($classeNiveauId);
                 })
                 ->values();
+            $matieresClasseIds = $matieres->pluck('id')->all();
+
+            $matieresFromNotes = ESBTPNote::where('etudiant_id', $etudiant_id)
+                ->with(['evaluation.matiere'])
+                ->whereHas('evaluation', function($q) use ($annee_universitaire_id, $periode) {
+                    $q->where('annee_universitaire_id', $annee_universitaire_id)
+                      ->where('status', '!=', 'cancelled')
+                      ->where('periode', $periode);
+                })
+                ->get()
+                ->pluck('evaluation.matiere')
+                ->filter()
+                ->unique('id');
+            $matieresNotesIds = $matieresFromNotes->pluck('id')->all();
+
+            if ($matieresFromNotes->isNotEmpty()) {
+                $matieres = $matieres
+                    ->merge($matieresFromNotes)
+                    ->unique('id')
+                    ->values();
+            }
 
             \Log::info('📚 Matières récupérées basées sur filière + niveau de la classe (config-matieres)', [
                 'count' => $matieres->count(),
@@ -6018,6 +6052,10 @@ class ESBTPBulletinController extends Controller
             $matiereObj->nom = $matiere->nom ?? $matiere->name ?? '';
             $matiereObj->name = $matiere->name ?? $matiere->nom ?? '';
             $matiereObj->type_formation = $typeFormation;
+            $matiereObj->sources = array_values(array_filter([
+                in_array($matiere->id, $matieresClasseIds, true) ? 'classe' : null,
+                in_array($matiere->id, $matieresNotesIds, true) ? 'notes' : null,
+            ]));
 
             $matieresData[] = $matiereObj;
         }
@@ -6266,6 +6304,7 @@ class ESBTPBulletinController extends Controller
                     && $matiere->niveaux->pluck('id')->contains($classeNiveauId);
             })
             ->values();
+        $matieresClasseIds = $matieresFiltrees->pluck('id')->all();
 
         // Vérifier si la configuration des matières a été faite pour ces matières
         $configsMatieres = ESBTPConfigMatiere::where([
@@ -6287,6 +6326,19 @@ class ESBTPBulletinController extends Controller
 
         // Récupérer les matières avec leur type de formation
         $matieres = [];
+        $notesMatieres = ESBTPNote::where('etudiant_id', $etudiant_id)
+            ->with(['evaluation.matiere'])
+            ->whereHas('evaluation', function($q) use ($annee_universitaire_id, $periode) {
+                $q->where('annee_universitaire_id', $annee_universitaire_id)
+                  ->where('status', '!=', 'cancelled')
+                  ->where('periode', $periode);
+            })
+            ->get()
+            ->pluck('evaluation.matiere')
+            ->filter()
+            ->unique('id');
+        $notesMatieresIds = $notesMatieres->pluck('id')->all();
+
         foreach ($configsMatieres as $config) {
             if ($config->matiere) {
                 // Récupérer le type depuis le config en décodant le JSON et en cherchant la clé 'type'
@@ -6328,7 +6380,55 @@ class ESBTPBulletinController extends Controller
                     'id' => $config->matiere_id,
                     'nom' => $matiereName,
                     'type_formation' => $typeFormation,
-                    'professeur_nom' => $professeurNom
+                    'professeur_nom' => $professeurNom,
+                    'sources' => array_values(array_filter([
+                        in_array($config->matiere_id, $matieresClasseIds, true) ? 'classe' : null,
+                        in_array($config->matiere_id, $notesMatieresIds, true) ? 'notes' : null,
+                    ]))
+                ];
+            }
+        }
+
+        $matieresIds = collect($matieres)->pluck('id')->unique()->all();
+        if ($notesMatieres->isNotEmpty()) {
+            $configMatieres = $bulletin && $bulletin->config_matieres
+                ? (json_decode($bulletin->config_matieres, true) ?: ['generales' => [], 'techniques' => []])
+                : ['generales' => [], 'techniques' => []];
+            $professeursExisting = $bulletin && $bulletin->professeurs
+                ? (json_decode($bulletin->professeurs, true) ?: [])
+                : [];
+
+            foreach ($notesMatieres as $matiere) {
+                if (in_array($matiere->id, $matieresIds, true)) {
+                    continue;
+                }
+
+                $nomMatiere = strtolower($matiere->nom ?? $matiere->name ?? '');
+                if (in_array($matiere->id, $configMatieres['generales'] ?? [], true)) {
+                    $typeFormation = 'general';
+                } elseif (in_array($matiere->id, $configMatieres['techniques'] ?? [], true)) {
+                    $typeFormation = 'technique';
+                } elseif (
+                    str_contains($nomMatiere, 'math') ||
+                    str_contains($nomMatiere, 'anglais') ||
+                    str_contains($nomMatiere, 'français') ||
+                    str_contains($nomMatiere, 'francais') ||
+                    str_contains($nomMatiere, 'communication')
+                ) {
+                    $typeFormation = 'general';
+                } else {
+                    $typeFormation = 'technique';
+                }
+
+                $matieres[] = [
+                    'id' => $matiere->id,
+                    'nom' => $matiere->nom ?? $matiere->name ?? 'Matière #' . $matiere->id,
+                    'type_formation' => $typeFormation,
+                    'professeur_nom' => $professeursExisting[$matiere->id] ?? '',
+                    'sources' => array_values(array_filter([
+                        in_array($matiere->id, $matieresClasseIds, true) ? 'classe' : null,
+                        in_array($matiere->id, $notesMatieresIds, true) ? 'notes' : null,
+                    ]))
                 ];
             }
         }
@@ -6422,6 +6522,7 @@ class ESBTPBulletinController extends Controller
 
             return (object) [
                 'matiere_id' => $item['id'],
+                'sources' => $item['sources'] ?? [],
                 'matiere' => (object) [
                     'nom' => $item['nom'],
                     'name' => $item['nom']  // Adding both for compatibility
@@ -6438,6 +6539,7 @@ class ESBTPBulletinController extends Controller
 
             return (object) [
                 'matiere_id' => $item['id'],
+                'sources' => $item['sources'] ?? [],
                 'matiere' => (object) [
                     'nom' => $item['nom'],
                     'name' => $item['nom']  // Adding both for compatibility
