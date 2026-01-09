@@ -10,6 +10,10 @@
     <meta name="author" content="KLASSCI">
     <meta name="theme-color" content="#2563eb">
     <link rel="canonical" href="https://klassci.com/">
+    <link rel="alternate" hreflang="fr" href="https://klassci.com/">
+    <link rel="alternate" hreflang="en" href="https://klassci.com/">
+    <link rel="alternate" hreflang="x-default" href="https://klassci.com/">
+    <link rel="preload" as="image" href="https://klassci.com/images/Images%20landingPage/Sans%20titre%20-%202_Plan%20de%20travail%201.png">
     <link rel="icon" href="/images/Images landingPage/logo_klassci.png" type="image/png">
     <link rel="apple-touch-icon" href="/images/Images landingPage/logo_klassci.png">
     <meta property="og:site_name" content="KLASSCI">
@@ -18,6 +22,8 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://klassci.com/">
     <meta property="og:image" content="https://klassci.com/images/Images%20landingPage/Sans%20titre%20-%202_Plan%20de%20travail%201.png">
+    <meta property="og:image:width" content="1600">
+    <meta property="og:image:height" content="900">
     <meta property="og:image:alt" content="Apercu du tableau de bord KLASSCI">
     <meta property="og:locale" content="fr_FR">
     <meta property="og:locale:alternate" content="en_US">
@@ -49,6 +55,60 @@
           "url": "https://klassci.com/",
           "description": "Plateforme tout-en-un de gestion scolaire pour universites, ecoles et centres de formation.",
           "inLanguage": ["fr-FR", "en-US"]
+        }
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "KLASSCI est-il adapte aux universites, lycees et centres de formation ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Oui. KLASSCI est une plateforme tout-en-un modulable pour universites, ecoles techniques, lycees et centres de formation. Chaque etablissement active les modules dont il a besoin."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Que peut-on gerer avec KLASSCI ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Admissions, classes, emplois du temps, notes, bulletins, absences, paiements, communication et rapports en un seul espace."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Comment demarrer avec KLASSCI ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Demandez une demo, choisissez vos modules, puis nous configurons la plateforme, migrons les donnees utiles et formons vos equipes."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "KLASSCI est-il disponible en francais et en anglais ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Oui. L'interface est proposee en francais et en anglais pour s'adapter aux equipes locales et internationales."
+          }
+        }
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Accueil",
+          "item": "https://klassci.com/"
         }
       ]
     }
@@ -1661,12 +1721,106 @@
         box-shadow: 0 8px 32px 0 #a78bfa33;
       }
     </style>
+    <style>
+      .klassci-use-cases .use-case-card,
+      .klassci-faq .faq-card {
+        background: #ffffff;
+        border-radius: 1.5rem;
+        padding: 1.75rem;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        height: 100%;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      .klassci-use-cases .use-case-card:hover,
+      .klassci-faq .faq-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 24px 50px rgba(15, 23, 42, 0.12);
+      }
+      .klassci-use-cases .use-case-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(37, 99, 235, 0.1);
+        color: #2563eb;
+        font-size: 1.3rem;
+        margin-bottom: 1rem;
+      }
+      .klassci-use-cases .use-case-title,
+      .klassci-faq .faq-title {
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin-bottom: 0.75rem;
+        color: #1f2937;
+      }
+      .klassci-use-cases .use-case-desc,
+      .klassci-faq .faq-desc {
+        color: #4b5563;
+        font-size: 0.98rem;
+        line-height: 1.6;
+        margin-bottom: 0;
+      }
+      .klassci-faq .faq-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 1.2rem;
+      }
+      .klassci-faq .faq-tag {
+        background: rgba(37, 99, 235, 0.12);
+        color: #1d4ed8;
+        padding: 0.35rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+      .klassci-pricing .pricing-card {
+        background: #ffffff;
+        border-radius: 1.5rem;
+        padding: 1.9rem;
+        box-shadow: 0 18px 44px rgba(15, 23, 42, 0.1);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        height: 100%;
+      }
+      .klassci-pricing .pricing-title {
+        font-weight: 700;
+        font-size: 1.15rem;
+        color: #1f2937;
+        margin-bottom: 0.6rem;
+      }
+      .klassci-pricing .pricing-subtitle {
+        color: #6b7280;
+        font-size: 0.95rem;
+        margin-bottom: 1.2rem;
+      }
+      .klassci-pricing .pricing-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        background: rgba(14, 165, 233, 0.12);
+        color: #0369a1;
+        padding: 0.35rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+      }
+      @media (max-width: 768px) {
+        .klassci-use-cases .use-case-card,
+        .klassci-faq .faq-card {
+          padding: 1.4rem;
+        }
+      }
+    </style>
 </head>
 <body>
     <!-- LOADER KLASSCI -->
     <div id="klassci-loader" style="position:fixed;z-index:9999;top:0;left:0;width:100%;height:100vh;background:#fff;display:flex;align-items:center;justify-content:center;transition:opacity 0.5s;">
         <div style="display:flex;flex-direction:column;align-items:center;">
-            <img src="/images/Images landingPage/logo_klassci.png" alt="KLASSCI Loader" style="width:110px;height:110px;animation:klassci-pulse 1.2s infinite alternate;filter:drop-shadow(0 4px 16px rgba(99,102,241,0.12));"/>
+            <img src="/images/Images landingPage/logo_klassci.png" alt="KLASSCI Loader" width="110" height="110" decoding="async" style="width:110px;height:110px;animation:klassci-pulse 1.2s infinite alternate;filter:drop-shadow(0 4px 16px rgba(99,102,241,0.12));"/>
         </div>
     </div>
     <style>
@@ -1694,7 +1848,7 @@
     <nav class="navbar navbar-expand-lg">
         <div class="container">
             <a class="navbar-brand" href="#home" style="text-decoration: none;">
-                <img src="/images/Images landingPage/logo_klassci.png" alt="KLASSCI" style="height: 60px; width: auto;">
+                <img src="/images/Images landingPage/logo_klassci.png" alt="KLASSCI" width="150" height="60" decoding="async" style="height: 60px; width: auto;">
             </a>
 
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -1764,7 +1918,7 @@
         <!-- Image tablette pleine largeur -->
         <div class="hero-tablet-section scroll-animate-scale scroll-animate-delay-4" style="width: 100%; margin-top: 3rem; padding: 0; overflow: hidden; display: flex; justify-content: center; align-items: center;">
           <div class="hero-tablet-container" style="position: relative; text-align: center; width: 100%; display: flex; justify-content: center;">
-            <img src="/images/Images landingPage/Sans titre - 2_Plan de travail 1.png" alt="KLASSCI Dashboard" 
+            <img src="/images/Images landingPage/Sans titre - 2_Plan de travail 1.png" alt="KLASSCI Dashboard" width="1600" height="900" loading="eager" decoding="async" fetchpriority="high"
                  class="hero-tablet-img" style="width: 100%; height: auto; display: block; margin: 0 auto; border-radius: 0; transform: scale(1.4); max-width: 90%; mask: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 15%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 100%); -webkit-mask: linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 15%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 100%);">
           </div>
         </div>
@@ -2024,7 +2178,10 @@
                 <img src="/images/Images landingPage/Sans titre - 2-06.png"
                      alt="Chapeau de diplômé"
                      class="crm-graduation-img"
-                     loading="lazy">
+                     loading="lazy"
+                     decoding="async"
+                     width="680"
+                     height="520">
               </div>
               
               <!-- Colonne droite : Titre + 6 points -->
@@ -2044,7 +2201,10 @@
                   <img src="/images/Images landingPage/Sans titre - 2-06.png"
                        alt="Chapeau de diplômé"
                        class="crm-graduation-img"
-                       loading="lazy">
+                       loading="lazy"
+                       decoding="async"
+                       width="680"
+                       height="520">
                 </div>
                 
                 <!-- Grille des 6 points -->
@@ -2564,6 +2724,9 @@
            alt="Dashboard KLASSCI - 0 FCFA"
            class="partnership-image"
            loading="lazy"
+           decoding="async"
+           width="1600"
+           height="900"
            style="width: 100%; height: auto; min-height: 600px; object-fit: cover; object-position: center; display: block; margin: 0; padding: 0; max-width: 100vw;">
     </section>
 
@@ -3103,6 +3266,9 @@
               <img src="/images/Images landingPage/Sans titre - 2-04.png"
                    alt="Sécurité et protection des données KLASSCI"
                    loading="lazy"
+                   decoding="async"
+                   width="760"
+                   height="560"
                    style="max-width: 100%; height: auto; border-radius: 20px;">
             </div>
           </div>
@@ -3181,6 +3347,9 @@
               <img src="/images/Images landingPage/bulles.png"
                    alt="Bulles de chat support KLASSCI"
                    loading="lazy"
+                   decoding="async"
+                   width="420"
+                   height="420"
                    style="max-width: 100%; height: auto;">
             </div>
           </div>
@@ -3194,6 +3363,9 @@
            alt="CTA Transform KLASSCI"
            class="cta-transform-image"
            loading="lazy"
+           decoding="async"
+           width="1600"
+           height="900"
            style="width: 100%; height: auto; min-height: 600px; object-fit: cover; object-position: center; display: block; margin: 0; padding: 0; max-width: 100vw;">
     </section>
 
@@ -3542,6 +3714,137 @@
     </style>
 
 
+    <section id="use-cases" class="py-5 klassci-use-cases" style="background: #f8fafc;">
+      <div class="container">
+        <div class="section-title text-center mb-5">
+          <h2>Conçu pour tous les types d'établissements</h2>
+          <p>KLASSCI s'adapte aux universités, écoles techniques, lycées et centres de formation.</p>
+        </div>
+        <div class="row g-4">
+          <div class="col-md-6 col-lg-3">
+            <div class="use-case-card">
+              <div class="use-case-icon"><i class="fas fa-university"></i></div>
+              <div class="use-case-title">Universités</div>
+              <p class="use-case-desc">Pilotage des filières, examens, crédits et communication à grande échelle.</p>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-3">
+            <div class="use-case-card">
+              <div class="use-case-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+              <div class="use-case-title">Écoles techniques</div>
+              <p class="use-case-desc">Planification des ateliers, suivi des compétences et gestion des stages.</p>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-3">
+            <div class="use-case-card">
+              <div class="use-case-icon"><i class="fas fa-school"></i></div>
+              <div class="use-case-title">Lycées & collèges</div>
+              <p class="use-case-desc">Gestion des classes, des notes et des communications parents.</p>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-3">
+            <div class="use-case-card">
+              <div class="use-case-icon"><i class="fas fa-graduation-cap"></i></div>
+              <div class="use-case-title">Centres de formation</div>
+              <p class="use-case-desc">Suivi des inscriptions, des sessions et des certifications.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="pricing" class="py-5 klassci-pricing" style="background: #f8fafc;">
+      <div class="container">
+        <div class="section-title text-center mb-5">
+          <h2>Tarifs flexibles et déploiement rapide</h2>
+          <p>Choisissez les modules utiles et déployez KLASSCI selon la taille de votre établissement.</p>
+        </div>
+        <div class="row g-4">
+          <div class="col-md-6 col-lg-4">
+            <div class="pricing-card">
+              <span class="pricing-badge"><i class="fas fa-layer-group"></i> Essentiel</span>
+              <div class="pricing-title">Démarrage rapide</div>
+              <div class="pricing-subtitle">Admissions, classes, emplois du temps et notes.</div>
+              <p class="use-case-desc">Idéal pour structurer la gestion académique et démarrer en quelques semaines.</p>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-4">
+            <div class="pricing-card">
+              <span class="pricing-badge"><i class="fas fa-chart-line"></i> Pro</span>
+              <div class="pricing-title">Pilotage avancé</div>
+              <div class="pricing-subtitle">Finance, communication et tableaux de bord.</div>
+              <p class="use-case-desc">Pour les établissements qui veulent tout centraliser et suivre la performance.</p>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-4">
+            <div class="pricing-card">
+              <span class="pricing-badge"><i class="fas fa-sitemap"></i> Multi-campus</span>
+              <div class="pricing-title">Déploiement à grande échelle</div>
+              <div class="pricing-subtitle">Multi-établissements et personnalisation.</div>
+              <p class="use-case-desc">Parfait pour les groupes scolaires avec plusieurs campus ou filiales.</p>
+            </div>
+          </div>
+        </div>
+        <div class="text-center mt-4">
+          <button onclick="openContactModal()" class="btn-cta-modern" style="background: #2563eb; color: #fff; padding: 0.8rem 2rem; border-radius: 999px; border: none; font-weight: 600;">
+            Demander un devis
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="py-5 klassci-faq" style="background: #ffffff;">
+      <div class="container">
+        <div class="section-title text-center mb-5">
+          <h2>Questions fréquentes</h2>
+          <p>Tout ce qu'il faut savoir pour déployer KLASSCI rapidement et efficacement.</p>
+        </div>
+        <div class="row g-4">
+          <div class="col-md-6">
+            <div class="faq-card">
+              <div class="faq-title">KLASSCI est-il adapté aux universités, lycées et centres de formation ?</div>
+              <p class="faq-desc">Oui. La plateforme est modulable et s'ajuste à la taille et aux exigences de chaque établissement.</p>
+              <div class="faq-tags">
+                <span class="faq-tag">Multi-établissements</span>
+                <span class="faq-tag">Modulaire</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="faq-card">
+              <div class="faq-title">Que peut-on gérer avec KLASSCI ?</div>
+              <p class="faq-desc">Admissions, classes, emplois du temps, notes, bulletins, paiements, absences et communication.</p>
+              <div class="faq-tags">
+                <span class="faq-tag">Notes</span>
+                <span class="faq-tag">Finances</span>
+                <span class="faq-tag">Reporting</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="faq-card">
+              <div class="faq-title">Comment démarrer avec KLASSCI ?</div>
+              <p class="faq-desc">Une démo rapide, puis une configuration guidée avec migration des données et formation des équipes.</p>
+              <div class="faq-tags">
+                <span class="faq-tag">Démo</span>
+                <span class="faq-tag">Onboarding</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="faq-card">
+              <div class="faq-title">KLASSCI est-il disponible en français et en anglais ?</div>
+              <p class="faq-desc">Oui. L'interface est disponible en français et en anglais pour accompagner vos équipes.</p>
+              <div class="faq-tags">
+                <span class="faq-tag">FR</span>
+                <span class="faq-tag">EN</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Footer Compact -->
     <footer style="background: #1a202c; padding: 3rem 0 1.5rem 0; color: white; position: relative;">
         <div class="container" style="max-width: 1200px;">
@@ -3568,6 +3871,24 @@
                             <a href="#" onclick="openContactModal(); return false;" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease; cursor: pointer;"
                                onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
                                 Modules intégrés
+                            </a>
+                        </li>
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#use-cases" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                                Cas d'usage
+                            </a>
+                        </li>
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#pricing" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                                Tarifs
+                            </a>
+                        </li>
+                        <li style="margin-bottom: 0.5rem;">
+                            <a href="#faq" style="color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease;"
+                               onmouseover="this.style.color='white';" onmouseout="this.style.color='rgba(255,255,255,0.7)';">
+                                FAQ
                             </a>
                         </li>
                         <li style="margin-bottom: 0.5rem;">
