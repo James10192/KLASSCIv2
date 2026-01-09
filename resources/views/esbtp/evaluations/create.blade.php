@@ -180,6 +180,17 @@
                                 @error('matiere_id')
                                     <div class="form-error">{{ $message }}</div>
                                 @enderror
+                                <div class="form-hint mt-2" style="background: #f1f5f9; border-left: 3px solid var(--primary); padding: 10px 12px; border-radius: 6px;">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('coordinateur') || auth()->user()->hasRole('secretaire'))
+                                        Pour rattacher une matière à une classe (via filière + niveau),
+                                        allez sur <a href="{{ route('esbtp.matieres.index') }}" class="text-decoration-underline">Matières</a>
+                                        puis cliquez sur <strong>Configurer les liaisons</strong> (icône <i class="fas fa-link"></i>) sur la matière,
+                                        ou sélectionnez plusieurs matières et utilisez <strong>Attacher aux combinaisons</strong> dans la barre d’actions.
+                                    @else
+                                        Si une matière manque, signalez-le à la direction afin d'ajouter ou retirer des matières pour la classe.
+                                    @endif
+                                </div>
                             </div>
 
                             <div class="form-group">
