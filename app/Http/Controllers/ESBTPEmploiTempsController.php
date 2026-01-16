@@ -747,7 +747,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         $validated = $request->validate([
             'titre' => 'required|string|max:255',
             'classe_id' => 'required|exists:esbtp_classes,id',
-            'semestre' => 'required|string',
+            'semestre' => 'required|in:Semestre 1,Semestre 2',
             'date_debut' => 'required|date',
             'date_fin' => 'required|date|after:date_debut',
         ]);
@@ -1818,6 +1818,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         $validated = $request->validate([
             'classes' => 'required|array|min:1',
             'classes.*' => 'integer',
+            'semestre' => 'required|string',
             'modes' => 'array',
             'modes.*' => 'in:empty,duplicate',
         ]);
@@ -1878,7 +1879,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                     'titre' => $source?->titre ?? 'Emploi du temps - ' . $classe->name,
                     'classe_id' => $classe->id,
                     'annee_universitaire_id' => $anneeEnCours->id,
-                    'semestre' => $source?->semestre,
+                    'semestre' => $validated['semestre'],
                     'date_debut' => $targetStart->toDateString(),
                     'date_fin' => $targetEnd->toDateString(),
                     'is_active' => $isActive,
@@ -1931,4 +1932,5 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
 
         return redirect()->back()->with('success', $message);
     }
+
 }

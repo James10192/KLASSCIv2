@@ -932,6 +932,17 @@
                     </div>
 
                     <div class="mb-3">
+                        <label for="quick-generate-semestre" class="form-label fw-semibold">
+                            Période (obligatoire)
+                        </label>
+                        <select id="quick-generate-semestre" name="semestre" class="form-select" required>
+                            <option value="" selected disabled>Choisir la période actuelle</option>
+                            <option value="Semestre 1">Semestre 1</option>
+                            <option value="Semestre 2">Semestre 2</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label fw-semibold">Choisir les classes et le mode</label>
                         <div class="table-responsive">
                             <table class="table table-sm align-middle mb-0">
