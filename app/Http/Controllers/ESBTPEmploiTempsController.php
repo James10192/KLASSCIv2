@@ -1875,8 +1875,14 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
 
                 $isActive = $targetStart->lte(Carbon::today()) && $targetEnd->gte(Carbon::today());
 
+                $periodeLabel = sprintf(
+                    'Semaine %s-%s',
+                    $targetStart->format('d/m'),
+                    $targetEnd->format('d/m')
+                );
+
                 $emploiTemps = ESBTPEmploiTemps::create([
-                    'titre' => $source?->titre ?? 'Emploi du temps - ' . $classe->name,
+                    'titre' => $source?->titre ?? 'Emploi du temps - ' . $classe->name . ' (' . $periodeLabel . ')',
                     'classe_id' => $classe->id,
                     'annee_universitaire_id' => $anneeEnCours->id,
                     'semestre' => $validated['semestre'],
