@@ -27,6 +27,15 @@ class UserService
     }
 
     /**
+     * Génère un username unique pour un secrétaire
+     */
+    public function generateSecretaireUsername(string $prenom, string $nom): string
+    {
+        $baseUsername = $this->createBaseUsername('sec', $prenom, $nom);
+        return $this->ensureUniqueUsername($baseUsername);
+    }
+
+    /**
      * Génère le mot de passe générique de l'année courante
      */
     public function generateDefaultPassword(): string
@@ -49,6 +58,9 @@ class UserService
                 break;
             case 'enseignant':
                 $username = $this->generateEnseignantUsername($nameParts['prenom'], $nameParts['nom']);
+                break;
+            case 'secretaire':
+                $username = $this->generateSecretaireUsername($nameParts['prenom'], $nameParts['nom']);
                 break;
             default:
                 throw new \InvalidArgumentException("Type de rôle non supporté: {$roleType}");

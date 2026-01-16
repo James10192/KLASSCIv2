@@ -4,17 +4,21 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
-use Illuminate\Support\Facades\Hash;
+use App\Services\UserService;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\DB;
 
 class ESBTPSecretaireController extends Controller
 {
     /**
      * Constructeur avec middleware d'authentification
      */
-    public function __construct()
+    protected $userService;
+
+    public function __construct(UserService $userService)
     {
+        $this->userService = $userService;
         $this->middleware('auth');
         $this->middleware('role:superAdmin');
     }
@@ -44,9 +48,7 @@ class ESBTPSecretaireController extends Controller
         // Capturer les données validées pour éviter la vulnérabilité mass assignment
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'username' => 'required|string|max:255|unique:users',
-            'password' => 'required|string|min:8',
+            'email' => 'nullable|string|email|max:255|unique:users,email',
             'telephone' => 'nullable|string|max:20',
             'adresse' => 'nullable|string|max:255',
         ]);
@@ -60,23 +62,40 @@ class ESBTPSecretaireController extends Controller
         // Récupérer uniquement les données validées
         $validated = $validator->validated();
 
-        // Créer l'utilisateur avec les données validées uniquement
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'username' => $validated['username'],
-            'password' => Hash::make($validated['password']),
-            'telephone' => $validated['telephone'] ?? null,
-            'adresse' => $validated['adresse'] ?? null,
-            'is_active' => true,
-        ]);
+        DB::beginTransaction();
 
-        // Assigner le rôle secrétaire
-        $role = Role::firstOrCreate(['name' => 'secretaire']);
-        $user->assignRole($role);
+        try {
+            $user = $this->userService->createUserWithAutoCredentials([
+                'name' => $validated['name'],
+                'email' => $validated['email'] ?? null,
+                'phone' => $validated['telephone'] ?? null,
+            ], 'secretaire');
 
-        return redirect()->route('secretaires.index')
-            ->with('success', 'Secrétaire créé avec succès');
+            $user->update([
+                'telephone' => $validated['telephone'] ?? null,
+                'adresse' => $validated['adresse'] ?? null,
+                'email_verified_at' => !empty($validated['email']) ? now() : null,
+            ]);
+
+            $role = Role::firstOrCreate(['name' => 'secretaire']);
+            $user->assignRole($role);
+
+            DB::commit();
+
+            $credentials = $this->userService->getCredentialsInfo(
+                $user->username,
+                $this->userService->generateDefaultPassword()
+            );
+
+            return redirect()->route('esbtp.personnel.unified.index')
+                ->with('success', 'Secrétaire créé avec succès')
+                ->with('credentials', $credentials);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->withErrors(['error' => 'Erreur lors de la création du secrétaire: ' . $e->getMessage()])
+                ->withInput();
+        }
     }
 
     /**
@@ -107,7 +126,7 @@ class ESBTPSecretaireController extends Controller
         // Capturer les données validées pour éviter la vulnérabilité mass assignment
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $id,
+            'email' => 'nullable|string|email|max:255|unique:users,email,' . $id,
             'username' => 'required|string|max:255|unique:users,username,' . $id,
             'password' => 'nullable|string|min:8',
             'telephone' => 'nullable|string|max:20',
@@ -125,7 +144,7 @@ class ESBTPSecretaireController extends Controller
 
         // Mettre à jour l'utilisateur avec les données validées uniquement
         $secretaire->name = $validated['name'];
-        $secretaire->email = $validated['email'];
+        $secretaire->email = $validated['email'] ?? null;
         $secretaire->username = $validated['username'];
         if (isset($validated['password']) && !empty($validated['password'])) {
             $secretaire->password = Hash::make($validated['password']);

@@ -53,7 +53,7 @@ class ESBTPCoordinateurController extends Controller
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'email' => 'nullable|string|email|max:255|unique:users,email',
             'telephone' => 'nullable|string|max:20',
             'specialite' => 'nullable|string|max:255',
             'date_naissance' => 'nullable|date|before:today',
@@ -66,7 +66,7 @@ class ESBTPCoordinateurController extends Controller
             // Créer l'utilisateur avec username et password automatiques
             $user = $this->userService->createUserWithAutoCredentials([
                 'name' => $validated['name'],
-                'email' => $validated['email'],
+                'email' => $validated['email'] ?? null,
                 'phone' => $validated['telephone'] ?? null,
             ], 'coordinateur');
 
@@ -76,7 +76,7 @@ class ESBTPCoordinateurController extends Controller
                 'specialite' => $validated['specialite'] ?? null,
                 'date_naissance' => $validated['date_naissance'] ?? null,
                 'adresse' => $validated['adresse'] ?? null,
-                'email_verified_at' => now(),
+                'email_verified_at' => !empty($validated['email']) ? now() : null,
             ]);
 
             // Assigner le rôle coordinateur
@@ -148,7 +148,7 @@ class ESBTPCoordinateurController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $coordinateur->id,
+            'email' => 'nullable|string|email|max:255|unique:users,email,' . $coordinateur->id,
             'password' => 'nullable|string|min:8|confirmed',
             'telephone' => 'nullable|string|max:20',
             'specialite' => 'nullable|string|max:255',
@@ -162,7 +162,7 @@ class ESBTPCoordinateurController extends Controller
 
             $updateData = [
                 'name' => $validated['name'],
-                'email' => $validated['email'],
+                'email' => $validated['email'] ?? null,
                 'telephone' => $validated['telephone'] ?? null,
                 'specialite' => $validated['specialite'] ?? null,
                 'date_naissance' => $validated['date_naissance'] ?? null,

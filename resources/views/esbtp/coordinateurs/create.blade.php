@@ -262,7 +262,7 @@
                                 </label>
                                 <input type="email" name="email" id="email" 
                                        class="form-input-moderne @error('email') is-invalid @enderror"
-                                       value="{{ old('email') }}" required>
+                                       value="{{ old('email') }}">
                                 @error('email')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror

@@ -254,8 +254,8 @@
                             </div>
 
                             <div class="form-group-moderne">
-                                <label for="email" class="form-label-moderne">Email <span class="text-danger">*</span></label>
-                                <input type="email" class="form-input-moderne @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email') }}" required>
+                                <label for="email" class="form-label-moderne">Email</label>
+                                <input type="email" class="form-input-moderne @error('email') is-invalid @enderror" id="email" name="email" value="{{ old('email') }}">
                                 @error('email')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -282,32 +282,21 @@
                     <div class="form-section">
                         <div class="form-section-title">
                             <div class="form-section-icon">
-                                <i class="fas fa-id-badge"></i>
+                                <i class="fas fa-lock"></i>
                             </div>
-                            Compte Utilisateur
+                            Informations de Sécurité
                         </div>
 
-                        <div class="form-grid">
-                            <div class="form-group-moderne">
-                                <label for="username" class="form-label-moderne">Nom d'utilisateur <span class="text-danger">*</span></label>
-                                <input type="text" class="form-input-moderne @error('username') is-invalid @enderror" id="username" name="username" value="{{ old('username') }}" required>
-                                @error('username')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="password" class="form-label-moderne">Mot de passe <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <input type="password" class="form-control form-input-moderne @error('password') is-invalid @enderror" id="password" name="password" required>
-                                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
+                        <div style="background-color: rgba(16, 185, 129, 0.1); border-radius: var(--radius-medium); padding: var(--space-md); margin-bottom: var(--space-lg);">
+                            <div style="display: flex; align-items: flex-start; gap: var(--space-sm);">
+                                <i class="fas fa-info-circle" style="color: var(--success); margin-top: 2px;"></i>
+                                <div>
+                                    <p style="margin: 0; font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-xs);">Génération automatique des identifiants</p>
+                                    <p style="margin: 0; font-size: var(--text-small); color: var(--text-secondary);">
+                                        Le nom d'utilisateur et le mot de passe seront générés automatiquement lors de la création du compte.
+                                        Le secrétaire devra changer son mot de passe lors de sa première connexion.
+                                    </p>
                                 </div>
-                                @error('password')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <div class="form-help-text">Le mot de passe doit contenir au moins 8 caractères.</div>
                             </div>
                         </div>
                     </div>
@@ -330,17 +319,3 @@
     </div>
 </div>
 @endsection
-
-@push('scripts')
-<script>
-    document.getElementById('togglePassword').addEventListener('click', function() {
-        const passwordInput = document.getElementById('password');
-        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-        passwordInput.setAttribute('type', type);
-
-        const icon = this.querySelector('i');
-        icon.classList.toggle('fa-eye');
-        icon.classList.toggle('fa-eye-slash');
-    });
-</script>
-@endpush

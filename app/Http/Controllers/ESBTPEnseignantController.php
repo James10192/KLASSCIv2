@@ -147,7 +147,7 @@ class ESBTPEnseignantController extends Controller
         $validator = Validator::make($request->all(), [
             // Informations utilisateur - username et password automatiques
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'email' => 'nullable|string|email|max:255|unique:users,email',
             'phone' => 'nullable|string|max:20',
             
             // Informations professionnelles
@@ -198,7 +198,7 @@ class ESBTPEnseignantController extends Controller
             // Créer l'utilisateur avec username et password automatiques
             $user = $this->userService->createUserWithAutoCredentials([
                 'name' => $request->name,
-                'email' => $request->email,
+                'email' => $request->email ?: null,
                 'phone' => $request->phone,
             ], 'enseignant');
 
@@ -481,7 +481,7 @@ class ESBTPEnseignantController extends Controller
         
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $enseignant->user_id,
+            'email' => 'nullable|string|email|max:255|unique:users,email,' . $enseignant->user_id,
             'phone' => 'nullable|string|max:20',
             'titre_academique' => 'nullable|string|max:10',
             'specialization' => 'required|string|max:255',
@@ -503,7 +503,7 @@ class ESBTPEnseignantController extends Controller
             // Mettre à jour l'utilisateur
             $enseignant->user->update([
                 'name' => $request->name,
-                'email' => $request->email,
+                'email' => $request->email ?: null,
                 'phone' => $request->phone,
             ]);
 
