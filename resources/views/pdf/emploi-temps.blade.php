@@ -10,10 +10,15 @@
         }
         body {
             margin: 0;
-            padding: 8px 12px;
-            font-size: 9px;
+            padding: 6px 8px;
+            font-size: 8px;
             color: #0f172a;
             background: #ffffff;
+        }
+
+        @page {
+            size: A4 landscape;
+            margin: 6mm;
         }
 
         /* Header avec gradient KLASSCI */
@@ -21,8 +26,8 @@
             background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
             color: #ffffff;
             border-radius: 12px;
-            padding: 12px 14px;
-            margin-bottom: 8px;
+            padding: 8px 10px;
+            margin-bottom: 6px;
         }
         .header-top {
             display: table;
@@ -38,19 +43,19 @@
         }
         .header-title h1 {
             margin: 0;
-            font-size: 14px;
+            font-size: 12px;
             letter-spacing: 0.1em;
             text-transform: uppercase;
             font-weight: 700;
         }
         .header-title p {
             margin: 2px 0 0 0;
-            font-size: 9px;
+            font-size: 8px;
             opacity: 0.95;
         }
         .header-logo img {
-            max-height: 45px;
-            max-width: 120px;
+            max-height: 36px;
+            max-width: 100px;
             filter: brightness(0) invert(1);
         }
 
@@ -60,11 +65,11 @@
             background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
             color: white;
             border-radius: 12px;
-            padding: 10px 12px;
-            margin-bottom: 8px;
+            padding: 8px 10px;
+            margin-bottom: 6px;
         }
         .school-card h2 {
-            font-size: 12px;
+            font-size: 10.5px;
             font-weight: 700;
             letter-spacing: 0.08em;
             text-transform: uppercase;
@@ -72,13 +77,13 @@
         }
         .school-card p {
             margin: 0;
-            font-size: 8px;
+            font-size: 7px;
             opacity: 0.9;
         }
         .info-grid {
             display: table;
             width: 100%;
-            margin-top: 6px;
+            margin-top: 4px;
             border-spacing: 4px;
         }
         .info-badge {
@@ -86,23 +91,23 @@
             width: 25%;
             background: rgba(255, 255, 255, 0.15);
             border-radius: 8px;
-            padding: 6px 8px;
-            font-size: 7.5px;
+            padding: 5px 6px;
+            font-size: 6.8px;
         }
         .info-badge strong {
             display: block;
             font-weight: 600;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
         }
         .info-badge small {
             display: block;
-            font-size: 6.5px;
+            font-size: 6px;
             opacity: 0.85;
         }
 
         /* Grille emploi du temps avec style moderne */
         .timetable-wrapper {
-            margin-top: 8px;
+            margin-top: 6px;
             border-radius: 12px;
             border: 1px solid #e5e7eb;
             background: white;
@@ -116,24 +121,24 @@
         .timetable-grid th,
         .timetable-grid td {
             border: 1px solid #e5e7eb;
-            padding: 5px 6px;
+            padding: 3px 4px;
             text-align: center;
             vertical-align: middle;
-            font-size: 7.5px;
+            font-size: 6.8px;
         }
         .timetable-grid thead th {
             background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
             color: #ffffff;
-            font-size: 7.5px;
+            font-size: 6.8px;
             text-transform: uppercase;
             letter-spacing: 0.06em;
             font-weight: 600;
-            padding: 6px;
+            padding: 4px;
         }
         .timetable-time-cell {
             background: #f8fafc;
             font-weight: 600;
-            font-size: 7.5px;
+            font-size: 6.8px;
             color: #1f2937;
             width: 70px;
         }
@@ -166,14 +171,14 @@
 
         /* Légende modernisée */
         .legend {
-            margin-top: 8px;
+            margin-top: 6px;
             padding: 0;
             list-style: none;
         }
         .legend-item {
             display: inline-block;
             margin-right: 10px;
-            font-size: 7.5px;
+            font-size: 6.8px;
             color: #475569;
             background: #f3f4f6;
             padding: 3px 6px;
