@@ -255,9 +255,9 @@ class ESBTPPDFService
 
             $sessionTypeColors = [
                 ESBTPSeanceCours::TYPE_COURSE => ['bg' => '#0453cb', 'text' => '#ffffff'],
-                ESBTPSeanceCours::TYPE_HOMEWORK => ['bg' => '#5e91de', 'text' => '#ffffff'],
-                ESBTPSeanceCours::TYPE_BREAK => ['bg' => '#8ab2ed', 'text' => '#0f172a'],
-                ESBTPSeanceCours::TYPE_LUNCH => ['bg' => '#0f172a', 'text' => '#ffffff'],
+                ESBTPSeanceCours::TYPE_HOMEWORK => ['bg' => '#3ba54f', 'text' => '#ffffff'],
+                ESBTPSeanceCours::TYPE_BREAK => ['bg' => '#f59e0b', 'text' => '#1f2937'],
+                ESBTPSeanceCours::TYPE_LUNCH => ['bg' => '#0ea5e9', 'text' => '#ffffff'],
                 'default' => ['bg' => '#5e91de', 'text' => '#ffffff'],
             ];
 

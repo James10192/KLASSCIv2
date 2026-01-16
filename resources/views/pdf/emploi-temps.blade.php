@@ -10,7 +10,7 @@
         }
         body {
             margin: 0;
-            padding: 6px 8px;
+            padding: 4px 6px;
             font-size: 8px;
             color: #0f172a;
             background: #ffffff;
@@ -18,7 +18,7 @@
 
         @page {
             size: A4 landscape;
-            margin: 6mm;
+            margin: 4mm;
         }
 
         /* Header avec gradient KLASSCI */
@@ -26,8 +26,8 @@
             background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
             color: #ffffff;
             border-radius: 12px;
-            padding: 8px 10px;
-            margin-bottom: 6px;
+            padding: 6px 8px;
+            margin-bottom: 4px;
         }
         .header-top {
             display: table;
@@ -43,18 +43,18 @@
         }
         .header-title h1 {
             margin: 0;
-            font-size: 12px;
+            font-size: 11px;
             letter-spacing: 0.1em;
             text-transform: uppercase;
             font-weight: 700;
         }
         .header-title p {
-            margin: 2px 0 0 0;
-            font-size: 8px;
+            margin: 1px 0 0 0;
+            font-size: 7px;
             opacity: 0.95;
         }
         .header-logo img {
-            max-height: 36px;
+            max-height: 30px;
             max-width: 100px;
             filter: brightness(0) invert(1);
         }
@@ -65,11 +65,11 @@
             background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
             color: white;
             border-radius: 12px;
-            padding: 8px 10px;
-            margin-bottom: 6px;
+            padding: 6px 8px;
+            margin-bottom: 3px;
         }
         .school-card h2 {
-            font-size: 10.5px;
+            font-size: 9.5px;
             font-weight: 700;
             letter-spacing: 0.08em;
             text-transform: uppercase;
@@ -77,22 +77,22 @@
         }
         .school-card p {
             margin: 0;
-            font-size: 7px;
+            font-size: 6.5px;
             opacity: 0.9;
         }
         .info-grid {
             display: table;
             width: 100%;
-            margin-top: 4px;
-            border-spacing: 4px;
+            margin-top: 3px;
+            border-spacing: 3px;
         }
         .info-badge {
             display: table-cell;
             width: 25%;
             background: rgba(255, 255, 255, 0.15);
             border-radius: 8px;
-            padding: 5px 6px;
-            font-size: 6.8px;
+            padding: 4px 5px;
+            font-size: 6.5px;
         }
         .info-badge strong {
             display: block;
@@ -107,7 +107,7 @@
 
         /* Grille emploi du temps avec style moderne */
         .timetable-wrapper {
-            margin-top: 6px;
+            margin-top: 3px;
             border-radius: 12px;
             border: 1px solid #e5e7eb;
             background: white;
@@ -171,25 +171,26 @@
 
         /* Légende modernisée */
         .legend {
-            margin-top: 6px;
+            margin-top: 2px;
             padding: 0;
             list-style: none;
         }
         .legend-item {
             display: inline-block;
-            margin-right: 10px;
-            font-size: 6.8px;
+            margin-right: 4px;
+            margin-bottom: 1px;
+            font-size: 5.8px;
             color: #475569;
             background: #f3f4f6;
-            padding: 3px 6px;
-            border-radius: 12px;
+            padding: 1px 3px;
+            border-radius: 8px;
         }
         .legend-color {
             display: inline-block;
-            width: 10px;
-            height: 10px;
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
-            margin-right: 4px;
+            margin-right: 3px;
             vertical-align: middle;
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
