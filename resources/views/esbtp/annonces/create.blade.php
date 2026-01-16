@@ -535,6 +535,139 @@
             font-size: 10px;
         }
     }
+
+    /* Composer layout (CRM-style) */
+    .composer-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 320px;
+        gap: 24px;
+        align-items: start;
+    }
+
+    .composer-main {
+        display: grid;
+        gap: 20px;
+    }
+
+    .composer-sidebar {
+        position: sticky;
+        top: 92px;
+        display: grid;
+        gap: 16px;
+    }
+
+    .composer-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+    }
+
+    .composer-actions .btn-acasi {
+        white-space: nowrap;
+    }
+
+    .composer-section-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        color: #0f172a;
+    }
+
+    .composer-helper {
+        font-size: 12px;
+        color: #64748b;
+    }
+
+    .attachment-preview {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border: 1px dashed #cbd5f5;
+        border-radius: 10px;
+        background: #f8fafc;
+        font-size: 12px;
+        color: #334155;
+    }
+
+    .composer-picker {
+        display: none;
+        margin-top: 12px;
+        padding: 12px;
+        border: 1px dashed #cbd5f5;
+        border-radius: 12px;
+        background: #f8fafc;
+    }
+
+    .composer-picker .btn-acasi {
+        white-space: nowrap;
+    }
+
+    .composer-picker-summary {
+        font-size: 12px;
+        color: #475569;
+    }
+
+    .modal-content.main-card {
+        border: none;
+        box-shadow: none;
+    }
+
+    .modal-header.main-card-header {
+        border-bottom: none;
+        padding: 18px 20px 0;
+    }
+
+    .modal-body.main-card-body {
+        padding: 16px 20px 20px;
+    }
+
+    .modal-footer {
+        border-top: none;
+        padding: 0 20px 20px;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .modal-dialog.modal-xl {
+        max-width: 50vw !important;
+        width: 50vw !important;
+    }
+
+    #classesModal .modal-body,
+    #etudiantsModal .modal-body {
+        max-height: 70vh;
+        overflow: auto;
+    }
+
+    #classesModal .choices__inner,
+    #etudiantsModal .choices__inner {
+        max-height: 140px !important;
+        overflow-y: auto !important;
+    }
+
+    #classesModal .choices__list--multiple,
+    #etudiantsModal .choices__list--multiple {
+        max-height: 140px !important;
+        overflow-y: auto !important;
+    }
+
+    @media (max-width: 991.98px) {
+        .composer-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .composer-sidebar {
+            position: static;
+        }
+
+        .composer-actions {
+            justify-content: flex-start;
+        }
+    }
 </style>
 @endsection
 
@@ -570,30 +703,29 @@
 
         <form action="{{ route('esbtp.annonces.store') }}" method="POST" enctype="multipart/form-data">
             @csrf
-            <div class="row">
-                <div class="col-lg-8">
-                    <!-- Informations générales -->
-                    <div class="main-card mb-4">
+            <div class="composer-grid">
+                <div class="composer-main">
+                    <div class="main-card">
                         <div class="main-card-header">
                             <div class="main-card-title">
-                                <i class="fas fa-info-circle"></i>
-                                Informations générales
+                                <i class="fas fa-pen-nib"></i>
+                                Message
                             </div>
                         </div>
                         <div class="main-card-body">
                             <div class="form-group">
-                                <label for="titre" class="form-label">Titre de l'annonce <span class="required">*</span></label>
+                                <label for="titre" class="form-label">Objet de l'annonce <span class="required">*</span></label>
                                 <input type="text" id="titre" name="titre" class="form-input @error('titre') error @enderror" 
-                                       value="{{ old('titre') }}" placeholder="Titre clair et concis" required>
+                                       value="{{ old('titre') }}" placeholder="Ex: Conseil pédagogique, Infos de rentrée..." required>
                                 @error('titre')
                                     <div class="error-message">{{ $message }}</div>
                                 @enderror
                             </div>
 
                             <div class="form-group">
-                                <label for="contenu" class="form-label">Contenu <span class="required">*</span></label>
+                                <label for="contenu" class="form-label">Corps du message <span class="required">*</span></label>
                                 <textarea id="contenu" name="contenu" class="form-textarea @error('contenu') error @enderror" 
-                                          rows="6" placeholder="Contenu détaillé de l'annonce..." required>{{ old('contenu') }}</textarea>
+                                          rows="8" placeholder="Rédigez le contenu de l'annonce..." required>{{ old('contenu') }}</textarea>
                                 @error('contenu')
                                     <div class="error-message">{{ $message }}</div>
                                 @enderror
@@ -605,17 +737,19 @@
                                 @error('piece_jointe')
                                     <div class="error-message">{{ $message }}</div>
                                 @enderror
-                                <div class="form-help">Formats acceptés: PDF, Word, Excel, Images (max 5MB)</div>
+                                <div class="attachment-preview">
+                                    <i class="fas fa-paperclip"></i>
+                                    Formats acceptés: PDF, Word, Excel, Images (max 5MB)
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Destinataires -->
-                    <div class="main-card mb-4">
+                    <div class="main-card">
                         <div class="main-card-header">
                             <div class="main-card-title">
                                 <i class="fas fa-users"></i>
-                                Destinataires
+                                Ciblage des destinataires
                             </div>
                         </div>
                         <div class="main-card-body">
@@ -655,38 +789,31 @@
                                 @enderror
                             </div>
 
-                            <!-- Sélection par classe -->
-                            <div id="classes_container" class="form-group" style="display: none;">
-                                <label for="classes" class="form-label">Classes destinataires <span class="required">*</span></label>
-                                <select class="form-select-multiple @error('classes') error @enderror"
-                                    id="classes" name="classes[]" multiple>
-                                    @foreach($classes as $classe)
-                                        <option value="{{ $classe->id }}"
-                                            data-filiere="{{ $classe->filiere_id }}"
-                                            data-niveau="{{ $classe->niveau_etude_id }}"
-                                            {{ (old('classes') && in_array($classe->id, old('classes'))) ? 'selected' : '' }}>
-                                            {{ $classe->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                            <div id="classes_picker" class="composer-picker">
+                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                    <div>
+                                        <div class="composer-section-title"><i class="fas fa-chalkboard"></i>Classes sélectionnées</div>
+                                        <div class="composer-picker-summary" id="classes_summary">Aucune classe sélectionnée</div>
+                                    </div>
+                                    <button type="button" class="btn-acasi secondary" data-bs-toggle="modal" data-bs-target="#classesModal">
+                                        <i class="fas fa-layer-group"></i>Choisir les classes
+                                    </button>
+                                </div>
                                 @error('classes')
                                     <div class="error-message">{{ $message }}</div>
                                 @enderror
                             </div>
 
-                            <!-- Sélection par étudiant -->
-                            <div id="etudiants_container" class="form-group" style="display: none;">
-                                <label for="etudiants" class="form-label">Étudiants destinataires <span class="required">*</span></label>
-                                <select class="form-select-multiple @error('etudiants') error @enderror"
-                                    id="etudiants" name="etudiants[]" multiple>
-                                    @foreach($etudiants as $etudiant)
-                                        <option value="{{ $etudiant->id }}"
-                                                data-classe="{{ $etudiant->classe ? $etudiant->classe->id : '' }}"
-                                                {{ (old('etudiants') && in_array($etudiant->id, old('etudiants'))) ? 'selected' : '' }}>
-                                            {{ $etudiant->nom }} {{ $etudiant->prenoms }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                            <div id="etudiants_picker" class="composer-picker">
+                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                    <div>
+                                        <div class="composer-section-title"><i class="fas fa-user-graduate"></i>Étudiants sélectionnés</div>
+                                        <div class="composer-picker-summary" id="etudiants_summary">Aucun étudiant sélectionné</div>
+                                    </div>
+                                    <button type="button" class="btn-acasi secondary" data-bs-toggle="modal" data-bs-target="#etudiantsModal">
+                                        <i class="fas fa-user-check"></i>Choisir les étudiants
+                                    </button>
+                                </div>
                                 @error('etudiants')
                                     <div class="error-message">{{ $message }}</div>
                                 @enderror
@@ -695,22 +822,39 @@
                     </div>
                 </div>
 
-                <div class="col-lg-4">
-                    <!-- Options de publication -->
-                    <div class="main-card mb-4">
+                <aside class="composer-sidebar">
+                    <div class="main-card">
+                        <div class="main-card-body">
+                            <div class="composer-actions">
+                                <button type="submit" name="action" value="save_draft" class="btn-acasi secondary" id="saveDraftButton">
+                                    <i class="fas fa-save"></i>Sauvegarder
+                                </button>
+                                <button type="submit" name="action" value="publish" class="btn-acasi primary">
+                                    <i class="fas fa-paper-plane"></i>Envoyer
+                                </button>
+                                <button type="reset" class="btn-acasi outline">
+                                    <i class="fas fa-undo"></i>Réinitialiser
+                                </button>
+                            </div>
+                            <div class="composer-helper mt-2">
+                                Pensez à sauvegarder si vous quittez la page sans envoyer.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="main-card">
                         <div class="main-card-header">
                             <div class="main-card-title">
                                 <i class="fas fa-cog"></i>
-                                Options de publication
+                                Publication
                             </div>
                         </div>
                         <div class="main-card-body">
                             <div class="alert alert-info">
                                 <i class="fas fa-info-circle me-2"></i>
-                                <strong>Mode brouillon automatique :</strong> Votre annonce sera sauvegardée en brouillon. Cliquez sur "Envoyer l'annonce" pour la publier aux destinataires.
+                                <strong>Mode brouillon automatique :</strong> votre annonce reste en brouillon tant que vous ne l'envoyez pas.
                             </div>
 
-                            <!-- Champ caché pour définir le statut en brouillon par défaut -->
                             <input type="hidden" name="is_published" value="0">
 
                             <div class="form-group">
@@ -736,21 +880,120 @@
                             </div>
                         </div>
                     </div>
+                </aside>
+            </div>
 
-                    <!-- Actions -->
-                    <div class="main-card mb-4">
-                        <div class="main-card-body">
-                            <div class="form-actions">
-                                <button type="submit" name="action" value="save_draft" class="btn-acasi secondary me-2">
-                                    <i class="fas fa-save"></i>Sauvegarder en brouillon
-                                </button>
-                                <button type="submit" name="action" value="publish" class="btn-acasi primary">
-                                    <i class="fas fa-paper-plane"></i>Envoyer l'annonce
-                                </button>
-                                <button type="reset" class="btn-acasi outline ms-2">
-                                    <i class="fas fa-undo"></i>Réinitialiser
-                                </button>
+            <div class="modal fade" id="classesModal" tabindex="-1" aria-labelledby="classesModalLabel" aria-hidden="true" data-bs-backdrop="true">
+                <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                    <div class="modal-content main-card">
+                        <div class="modal-header main-card-header">
+                            <div>
+                                <div class="main-card-title" id="classesModalLabel">
+                                    <i class="fas fa-chalkboard"></i>
+                                    Sélectionner les classes
+                                </div>
+                                <div class="composer-helper">Sélection multiple avec recherche rapide.</div>
                             </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="btn-acasi outline" id="clear_classes_selection">
+                                    <i class="fas fa-eraser"></i>Tout désélectionner
+                                </button>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                            </div>
+                        </div>
+                        <div class="modal-body main-card-body">
+                            <div class="form-group">
+                                <label for="classes" class="form-label">Classes destinataires <span class="required">*</span></label>
+                                <select class="form-select-multiple @error('classes') error @enderror"
+                                    id="classes" name="classes[]" multiple>
+                                    @foreach($classes as $classe)
+                                        <option value="{{ $classe->id }}"
+                                            data-filiere="{{ $classe->filiere_id }}"
+                                            data-niveau="{{ $classe->niveau_etude_id }}"
+                                            data-current-count="{{ $classe->current_inscriptions_count ?? 0 }}"
+                                            {{ (old('classes') && in_array($classe->id, old('classes'))) ? 'selected' : '' }}>
+                                            {{ $classe->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('classes')
+                                    <div class="error-message">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">Terminer</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="etudiantsModal" tabindex="-1" aria-labelledby="etudiantsModalLabel" aria-hidden="true" data-bs-backdrop="true">
+                <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                    <div class="modal-content main-card">
+                        <div class="modal-header main-card-header">
+                            <div>
+                                <div class="main-card-title" id="etudiantsModalLabel">
+                                    <i class="fas fa-user-graduate"></i>
+                                    Sélectionner les étudiants
+                                </div>
+                                <div class="composer-helper">Sélection multiple avec recherche rapide.</div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <button type="button" class="btn-acasi outline" id="clear_etudiants_selection">
+                                    <i class="fas fa-eraser"></i>Tout désélectionner
+                                </button>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                            </div>
+                        </div>
+                        <div class="modal-body main-card-body">
+                            <div class="form-group">
+                                <label for="etudiants" class="form-label">Étudiants destinataires <span class="required">*</span></label>
+                                <select class="form-select-multiple @error('etudiants') error @enderror"
+                                    id="etudiants" name="etudiants[]" multiple>
+                                    @foreach($etudiants as $etudiant)
+                                        <option value="{{ $etudiant->id }}"
+                                                data-classe="{{ $etudiant->classe ? $etudiant->classe->id : '' }}"
+                                                data-current-year="{{ ($etudiant->current_inscriptions_count ?? 0) > 0 ? 1 : 0 }}"
+                                                {{ (old('etudiants') && in_array($etudiant->id, old('etudiants'))) ? 'selected' : '' }}>
+                                            {{ $etudiant->nom }} {{ $etudiant->prenoms }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('etudiants')
+                                    <div class="error-message">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">Terminer</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="leaveDraftModal" tabindex="-1" aria-labelledby="leaveDraftModalLabel" aria-hidden="true" data-bs-backdrop="static">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content main-card">
+                        <div class="modal-header main-card-header">
+                            <div class="main-card-title" id="leaveDraftModalLabel">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Quitter la création d'annonce
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                        </div>
+                        <div class="modal-body main-card-body">
+                            <p class="mb-0">
+                                Voulez-vous conserver cette annonce en brouillon avant de quitter ?
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn-acasi secondary" id="leaveSaveDraft">
+                                <i class="fas fa-save"></i>Conserver en brouillon
+                            </button>
+                            <button type="button" class="btn-acasi outline" id="leaveDiscard">
+                                Quitter sans enregistrer
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -786,7 +1029,6 @@
         maxItemCount: 50,
         renderChoiceLimit: 20,
         position: 'bottom',
-        flip: true,
         allowHTML: true
     };
 
@@ -870,6 +1112,13 @@
     };
 
     document.addEventListener('DOMContentLoaded', function() {
+        window.ANNONCES_DEBUG = @json(config('app.debug'));
+        const annoncesDebug = (...args) => {
+            if (window.ANNONCES_DEBUG) {
+                console.log('[annonces:create]', ...args);
+            }
+        };
+
         // Stocker les options originales avant initialisation de Choices.js
         const originalClassesOptions = [];
         const originalEtudiantsOptions = [];
@@ -886,11 +1135,13 @@
                         disabled: false,
                         customProperties: {
                             filiere: option.dataset.filiere,
-                            niveau: option.dataset.niveau
+                            niveau: option.dataset.niveau,
+                            currentCount: option.dataset.currentCount
                         }
                     });
                 }
             });
+            annoncesDebug('Classes options chargées', originalClassesOptions.length);
         }
         
         // Sauvegarder les options originales des étudiants
@@ -904,11 +1155,13 @@
                         selected: option.selected,
                         disabled: false,
                         customProperties: {
-                            classe: option.dataset.classe
+                            classe: option.dataset.classe,
+                            currentYear: option.dataset.currentYear
                         }
                     });
                 }
             });
+            annoncesDebug('Étudiants options chargées', originalEtudiantsOptions.length);
         }
 
         // Initialiser Choices.js pour les sélecteurs multiples
@@ -918,6 +1171,7 @@
                 placeholderValue: "Sélectionnez une ou plusieurs classes...",
                 maxItemCount: 20,
             });
+            annoncesDebug('Choices classes init', !!classesChoices);
         }
 
         if (etudiantsSelect) {
@@ -926,6 +1180,7 @@
                 placeholderValue: "Sélectionnez un ou plusieurs étudiants...",
                 maxItemCount: 50,
             });
+            annoncesDebug('Choices étudiants init', !!etudiantsChoices);
         }
 
         // Fonction pour réinitialiser les filtres
@@ -980,25 +1235,60 @@
             }
         }).trigger('change');
 
+        const updateRecipientSummaries = () => {
+            const classesChoicesInstance = choicesInstances['classes'];
+            const etudiantsChoicesInstance = choicesInstances['etudiants'];
+
+            if (classesChoicesInstance) {
+                const selectedValues = classesChoicesInstance.getValue(true);
+                const classCount = selectedValues.length;
+                const studentCount = selectedValues.reduce((sum, value) => {
+                    const option = originalClassesOptions.find(item => String(item.value) === String(value));
+                    const currentCount = parseInt(option?.customProperties?.currentCount || 0, 10);
+                    return sum + (Number.isNaN(currentCount) ? 0 : currentCount);
+                }, 0);
+                const summaryText = classCount > 0
+                    ? `${classCount} classe(s) sélectionnée(s) • ${studentCount} étudiant(s) année courante`
+                    : 'Aucune classe sélectionnée';
+                $('#classes_summary').text(summaryText);
+                annoncesDebug('Résumé classes', { classCount, studentCount, selectedValues });
+            }
+
+            if (etudiantsChoicesInstance) {
+                const selectedValues = etudiantsChoicesInstance.getValue(true);
+                const totalSelected = selectedValues.length;
+                const currentYearCount = selectedValues.reduce((sum, value) => {
+                    const option = originalEtudiantsOptions.find(item => String(item.value) === String(value));
+                    return sum + (String(option?.customProperties?.currentYear) === '1' ? 1 : 0);
+                }, 0);
+                const summaryText = totalSelected > 0
+                    ? `${totalSelected} sélectionné(s) • ${currentYearCount} année courante`
+                    : 'Aucun étudiant sélectionné';
+                $('#etudiants_summary').text(summaryText);
+                annoncesDebug('Résumé étudiants', { totalSelected, currentYearCount, selectedValues });
+            }
+        };
+
         // Animation pour l'affichage des conteneurs de destinataires
         $('input[name="type"]').change(function() {
             const selectedType = $('input[name="type"]:checked').val();
 
-            $('#classes_container, #etudiants_container').slideUp(300);
+            $('#classes_picker, #etudiants_picker').slideUp(250);
 
             if (selectedType === 'classe') {
                 setTimeout(() => {
-                    $('#classes_container').slideDown(300);
+                    $('#classes_picker').slideDown(250);
                 }, 300);
             } else if (selectedType === 'etudiant') {
                 setTimeout(() => {
-                    $('#etudiants_container').slideDown(300);
+                    $('#etudiants_picker').slideDown(250);
                 }, 300);
             }
         });
 
         // Déclencher le changement initial
         $('input[name="type"]:checked').trigger('change');
+        updateRecipientSummaries();
 
         // Filtrage amélioré des classes avec Choices.js
         $('#filiere_filter, #niveau_filter').change(function() {
@@ -1200,6 +1490,99 @@
 
             if (!isValid) {
                 e.preventDefault();
+            }
+        });
+
+        $(document).on('change', '#classes, #etudiants', function() {
+            updateRecipientSummaries();
+        });
+
+        let formDirty = false;
+        let isSubmitting = false;
+        let pendingNavigation = null;
+
+        const setDirty = () => {
+            if (!isSubmitting) {
+                formDirty = true;
+            }
+        };
+
+        $('input, textarea, select').on('input change', function() {
+            if ($(this).attr('type') === 'hidden') {
+                return;
+            }
+            setDirty();
+        });
+
+        $('form').on('submit', function() {
+            isSubmitting = true;
+        });
+
+        $(document).on('click', 'a[href]', function(e) {
+            const href = $(this).attr('href');
+            const target = $(this).attr('target');
+            if (!href || href.startsWith('#') || href.startsWith('javascript:') || target === '_blank') {
+                return;
+            }
+            if (formDirty && !isSubmitting) {
+                e.preventDefault();
+                pendingNavigation = href;
+                const modal = new bootstrap.Modal(document.getElementById('leaveDraftModal'));
+                modal.show();
+            }
+        });
+
+        window.addEventListener('beforeunload', function(e) {
+            if (formDirty && !isSubmitting) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        $('#leaveSaveDraft').on('click', function() {
+            isSubmitting = true;
+            document.getElementById('saveDraftButton').click();
+        });
+
+        $('#leaveDiscard').on('click', function() {
+            formDirty = false;
+            const modalEl = document.getElementById('leaveDraftModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) {
+                modal.hide();
+            }
+            if (pendingNavigation) {
+                window.location.href = pendingNavigation;
+            }
+        });
+
+        $('#clear_classes_selection').on('click', function() {
+            const classesChoicesInstance = choicesInstances['classes'];
+            if (classesChoicesInstance) {
+                annoncesDebug('Clear classes: before', classesChoicesInstance.getValue(true));
+                const clearedChoices = originalClassesOptions.map(option => ({
+                    ...option,
+                    selected: false
+                }));
+                classesChoicesInstance.clearStore();
+                classesChoicesInstance.setChoices(clearedChoices, 'value', 'label', true);
+                annoncesDebug('Clear classes: after', classesChoicesInstance.getValue(true));
+                updateRecipientSummaries();
+            }
+        });
+
+        $('#clear_etudiants_selection').on('click', function() {
+            const etudiantsChoicesInstance = choicesInstances['etudiants'];
+            if (etudiantsChoicesInstance) {
+                annoncesDebug('Clear étudiants: before', etudiantsChoicesInstance.getValue(true));
+                const clearedChoices = originalEtudiantsOptions.map(option => ({
+                    ...option,
+                    selected: false
+                }));
+                etudiantsChoicesInstance.clearStore();
+                etudiantsChoicesInstance.setChoices(clearedChoices, 'value', 'label', true);
+                annoncesDebug('Clear étudiants: after', etudiantsChoicesInstance.getValue(true));
+                updateRecipientSummaries();
             }
         });
     });

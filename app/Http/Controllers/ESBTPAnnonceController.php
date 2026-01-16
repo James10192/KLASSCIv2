@@ -53,8 +53,16 @@ class ESBTPAnnonceController extends Controller
      */
     public function create()
     {
-        $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
+        $classes = ESBTPClasse::where('is_active', true)
+            ->withCount(['inscriptions as current_inscriptions_count' => function ($query) {
+                $query->anneeEnCours();
+            }])
+            ->orderBy('name')
+            ->get();
         $etudiants = ESBTPEtudiant::with('classe')
+            ->withCount(['inscriptions as current_inscriptions_count' => function ($query) {
+                $query->anneeEnCours();
+            }])
             ->whereHas('classe')  // Exclure les étudiants sans classe affectée
             ->distinct()
             ->orderBy('nom')
