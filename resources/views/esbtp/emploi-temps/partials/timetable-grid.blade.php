@@ -154,7 +154,7 @@
         ];
     }
 
-    $segmentHeight = $variant === 'pdf' ? 10 : 26;
+    $segmentHeight = $variant === 'pdf' ? 12 : 26;
 
     $defaultLabels = [
         ESBTPSeanceCours::TYPE_COURSE => 'Cours',
@@ -288,7 +288,7 @@
     $daysCount = count($normalizedDays);
     $gridTemplateColumns = '80px repeat(' . $daysCount . ', 1fr)';
     $gridTemplateRows = 'auto 15px repeat(' . $segmentCount . ', ' . $segmentHeight . 'px)';
-    $pdfGridTemplateRows = '16px repeat(' . $segmentCount . ', ' . $segmentHeight . 'px)';
+    $pdfGridTemplateRows = '18px repeat(' . $segmentCount . ', ' . $segmentHeight . 'px)';
 
 @endphp
 
@@ -522,14 +522,14 @@
     </div>
 @else
     {{-- PDF: Use same CSS Grid structure as web timeline (without interactive elements) - COMPACT VERSION --}}
-    <div class="timetable-timeline timetable-variant-{{ $variant }}" style="display: grid; grid-template-columns: 40px repeat({{ count($normalizedDays) }}, 1fr); grid-template-rows: {{ $pdfGridTemplateRows }}; gap: 0; border: 1px solid #e2e8f0; background: white; font-family: Arial, sans-serif;">
+    <div class="timetable-timeline timetable-variant-{{ $variant }}" style="display: grid; grid-template-columns: 44px repeat({{ count($normalizedDays) }}, 1fr); grid-template-rows: {{ $pdfGridTemplateRows }}; gap: 0; border: 1px solid #e2e8f0; background: white; font-family: Arial, sans-serif;">
 
         {{-- Header: Time column + Day columns --}}
-        <div style="grid-column: 1; grid-row: 1; background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.55rem; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
+        <div style="grid-column: 1; grid-row: 1; background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.6rem; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
             Heure
         </div>
         @foreach($normalizedDays as $index => $dayInfo)
-            <div style="grid-column: {{ $index + 2 }}; grid-row: 1; background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.55rem; border-bottom: 1px solid #e2e8f0; @if($index < count($normalizedDays) - 1) border-right: 1px solid #e2e8f0; @endif">
+            <div style="grid-column: {{ $index + 2 }}; grid-row: 1; background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.6rem; border-bottom: 1px solid #e2e8f0; @if($index < count($normalizedDays) - 1) border-right: 1px solid #e2e8f0; @endif">
                 {{ $dayInfo['label'] }}
             </div>
         @endforeach
@@ -540,7 +540,7 @@
                 @break
             @endif
             @if(($segment['isImportant'] ?? false) || ($segment['isFullHour'] ?? false))
-                <div style="grid-column: 1; grid-row: {{ $rowIndex + 2 }}; display: flex; align-items: center; justify-content: center; font-size: 0.5rem; @if($segment['isFullHour']) font-weight: 700; color: #0f172a; @else font-weight: 500; color: #64748b; @endif border-right: 1px solid #e2e8f0; transform: translateY(50%);">
+                <div style="grid-column: 1; grid-row: {{ $rowIndex + 2 }}; display: flex; align-items: center; justify-content: center; font-size: 0.52rem; @if($segment['isFullHour']) font-weight: 700; color: #0f172a; @else font-weight: 500; color: #64748b; @endif border-right: 1px solid #e2e8f0; transform: translateY(50%);">
                     {{ $segment['label'] }}
                 </div>
             @endif
@@ -562,19 +562,19 @@
         @foreach($normalizedDays as $dayIndex => $dayInfo)
             @php $columnIndex = $dayIndex + 2; $daySlug = $dayInfo['slug']; @endphp
             @foreach($timelineSessions[$daySlug] ?? [] as $session)
-                <div style="grid-column: {{ $columnIndex }}; grid-row: {{ $session['gridRowStart'] }} / {{ $session['gridRowEnd'] }}; background: {{ $session['background'] }}; color: {{ $session['textColor'] }}; margin: 0 2px; border-radius: 4px; padding: 2px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">
+                <div style="grid-column: {{ $columnIndex }}; grid-row: {{ $session['gridRowStart'] }} / {{ $session['gridRowEnd'] }}; background: {{ $session['background'] }}; color: {{ $session['textColor'] }}; margin: 0 2px; border-radius: 4px; padding: 3px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">
                     {{-- Type en haut (petit) --}}
-                    <div style="font-size: 0.42rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; opacity: 0.8; text-align: center;">
+                    <div style="font-size: 0.45rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; opacity: 0.8; text-align: center;">
                         {{ $session['typeLabel'] }}
                     </div>
 
                     {{-- Matière au centre (GRAND titre) --}}
-                    <div style="font-size: 0.6rem; font-weight: 800; text-align: center; line-height: 1.05; flex-grow: 1; display: flex; align-items: center; justify-content: center; padding: 1px 0;">
+                    <div style="font-size: 0.68rem; font-weight: 800; text-align: center; line-height: 1.1; flex-grow: 1; display: flex; align-items: center; justify-content: center; padding: 2px 0;">
                         {{ $session['matiere'] }}
                     </div>
 
                     {{-- Détails en bas (sur la même ligne avec séparateurs) --}}
-                    <div style="font-size: 0.4rem; opacity: 0.85; text-align: center; line-height: 1.15; display: flex; flex-wrap: wrap; gap: 3px; align-items: center; justify-content: center;">
+                    <div style="font-size: 0.45rem; opacity: 0.85; text-align: center; line-height: 1.2; display: flex; flex-wrap: wrap; gap: 3px; align-items: center; justify-content: center;">
                         @if($session['enseignant'])
                             <span style="display: inline-flex; align-items: center; gap: 2px;">
                                 <i class="fas fa-user-tie" style="font-size: 0.45rem;"></i>{{ $session['enseignant'] }}

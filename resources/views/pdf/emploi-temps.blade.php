@@ -191,6 +191,8 @@
             border-radius: 50%;
             margin-right: 4px;
             vertical-align: middle;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
         }
     </style>
 </head>

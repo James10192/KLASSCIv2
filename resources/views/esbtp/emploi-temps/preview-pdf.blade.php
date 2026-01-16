@@ -199,6 +199,8 @@
         width: 14px;
         height: 14px;
         border-radius: 50%;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
     }
 
     .stat-list {
