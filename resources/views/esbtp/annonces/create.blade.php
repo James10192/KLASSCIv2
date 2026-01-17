@@ -953,7 +953,7 @@
                                     id="etudiants" name="etudiants[]" multiple>
                                     @foreach($etudiants as $etudiant)
                                         <option value="{{ $etudiant->id }}"
-                                                data-classe="{{ $etudiant->classe ? $etudiant->classe->id : '' }}"
+                                                data-classe="{{ optional($etudiant->inscriptions->first())->classe_id }}"
                                                 data-current-year="{{ ($etudiant->current_inscriptions_count ?? 0) > 0 ? 1 : 0 }}"
                                                 {{ (old('etudiants') && in_array($etudiant->id, old('etudiants'))) ? 'selected' : '' }}>
                                             {{ $etudiant->nom }} {{ $etudiant->prenoms }}

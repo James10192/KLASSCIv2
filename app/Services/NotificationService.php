@@ -517,8 +517,9 @@ class NotificationService
                 $etudiants = ESBTPEtudiant::whereHas('user')->get();
             } elseif ($annonce->type == 'classe') {
                 $etudiants = ESBTPEtudiant::whereHas('user')
-                    ->whereHas('classe_active', function($query) use ($annonce) {
-                        $query->whereIn('id', $annonce->classes->pluck('id'));
+                    ->whereHas('inscriptions', function($query) use ($annonce) {
+                        $query->anneeEnCours()
+                            ->whereIn('classe_id', $annonce->classes->pluck('id'));
                     })
                     ->get();
             } elseif ($annonce->type == 'etudiant') {
@@ -579,8 +580,9 @@ class NotificationService
             } elseif ($annonce->type == 'classe') {
                 $classes = $annonce->classes;
                 $destinataireCount = ESBTPEtudiant::whereHas('user')
-                    ->whereHas('classe_active', function($query) use ($annonce) {
-                        $query->whereIn('id', $annonce->classes->pluck('id'));
+                    ->whereHas('inscriptions', function($query) use ($annonce) {
+                        $query->anneeEnCours()
+                            ->whereIn('classe_id', $annonce->classes->pluck('id'));
                     })
                     ->count();
                 $classNames = $classes->pluck('name')->join(', ');

@@ -59,11 +59,15 @@ class ESBTPAnnonceController extends Controller
             }])
             ->orderBy('name')
             ->get();
-        $etudiants = ESBTPEtudiant::with('classe')
+        $etudiants = ESBTPEtudiant::with(['inscriptions' => function ($query) {
+                $query->anneeEnCours()->latest();
+            }])
             ->withCount(['inscriptions as current_inscriptions_count' => function ($query) {
                 $query->anneeEnCours();
             }])
-            ->whereHas('classe')  // Exclure les étudiants sans classe affectée
+            ->whereHas('inscriptions', function ($query) {
+                $query->anneeEnCours();
+            })
             ->distinct()
             ->orderBy('nom')
             ->orderBy('prenoms')
@@ -212,8 +216,12 @@ class ESBTPAnnonceController extends Controller
 
         // Chargement des données avec même structure que create
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
-        $etudiants = ESBTPEtudiant::with('classe')
-            ->whereHas('classe')
+        $etudiants = ESBTPEtudiant::with(['inscriptions' => function ($query) {
+                $query->anneeEnCours()->latest();
+            }])
+            ->whereHas('inscriptions', function ($query) {
+                $query->anneeEnCours();
+            })
             ->distinct()
             ->orderBy('nom')
             ->orderBy('prenoms')
@@ -373,9 +381,11 @@ class ESBTPAnnonceController extends Controller
         $user = Auth::user();
         $etudiant = ESBTPEtudiant::where('user_id', $user->id)->firstOrFail();
 
-        // Récupérer la classe active de l'étudiant
-        $classeActive = $etudiant->classe_active;
-        $classeId = $classeActive ? $classeActive->id : null;
+        // Récupérer la classe de l'année universitaire en cours
+        $classeId = $etudiant->inscriptions()
+            ->anneeEnCours()
+            ->latest()
+            ->value('classe_id');
 
         // Récupérer tous les messages pertinents pour l'étudiant
         $query = ESBTPAnnonce::where('is_published', true)
@@ -385,14 +395,14 @@ class ESBTPAnnonceController extends Controller
                 $q->where('type', 'general');
 
                 // Messages pour la classe de l'étudiant (si disponible)
-                if ($classeId) {
-                    $q->orWhere(function($sq) use ($classeId) {
-                        $sq->where('type', 'classe')
-                           ->whereHas('classes', function($cq) use ($classeId) {
-                                $cq->where('esbtp_classes.id', $classeId);
-                           });
-                    });
-                }
+                    if ($classeId) {
+                        $q->orWhere(function($sq) use ($classeId) {
+                            $sq->where('type', 'classe')
+                               ->whereHas('classes', function($cq) use ($classeId) {
+                                    $cq->where('esbtp_classes.id', $classeId);
+                               });
+                        });
+                    }
 
                 // Messages spécifiques à l'étudiant
                 $q->orWhere(function($sq) use ($etudiant) {
@@ -518,18 +528,23 @@ class ESBTPAnnonceController extends Controller
             DB::beginTransaction();
 
             // Récupérer tous les messages non lus de l'étudiant
+            $classeId = $etudiant->inscriptions()
+                ->anneeEnCours()
+                ->latest()
+                ->value('classe_id');
+
             $query = ESBTPAnnonce::where('is_published', true)
                 ->where('date_publication', '<=', now())
-                ->where(function($q) use ($etudiant) {
+                ->where(function($q) use ($etudiant, $classeId) {
                     // Messages généraux
                     $q->where('type', 'general');
 
                     // Messages pour la classe de l'étudiant
-                    if ($etudiant->classe_active) {
-                        $q->orWhere(function($sq) use ($etudiant) {
+                    if ($classeId) {
+                        $q->orWhere(function($sq) use ($classeId) {
                             $sq->where('type', 'classe')
-                               ->whereHas('classes', function($cq) use ($etudiant) {
-                                    $cq->where('esbtp_classes.id', $etudiant->classe_active->id);
+                               ->whereHas('classes', function($cq) use ($classeId) {
+                                    $cq->where('esbtp_classes.id', $classeId);
                                });
                         });
                     }

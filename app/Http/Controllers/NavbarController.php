@@ -246,6 +246,7 @@ class NavbarController extends Controller
         } elseif ($user->hasRole('etudiant')) {
             // Messages pour étudiant - récupérer seulement les annonces qui leur sont destinées
             $etudiant = ESBTPEtudiant::where('user_id', $user->id)->first();
+            $classeId = $etudiant ? $etudiant->inscriptions()->anneeEnCours()->latest()->value('classe_id') : null;
 
             $messages = ESBTPAnnonce::with(['createdBy', 'classes', 'etudiants']) // Charger les relations nécessaires
                 ->where(function ($query) use ($etudiant) {
@@ -253,11 +254,11 @@ class NavbarController extends Controller
                     $query->where('type', 'general');
 
                     // Si l'étudiant existe, ajouter les annonces pour sa classe
-                    if ($etudiant && $etudiant->classe_active) {
-                        $query->orWhere(function ($subQuery) use ($etudiant) {
+                    if ($classeId) {
+                        $query->orWhere(function ($subQuery) use ($classeId) {
                             $subQuery->where('type', 'classe')
-                                     ->whereHas('classes', function ($classQuery) use ($etudiant) {
-                                         $classQuery->where('esbtp_classes.id', $etudiant->classe_active->id);
+                                     ->whereHas('classes', function ($classQuery) use ($classeId) {
+                                         $classQuery->where('esbtp_classes.id', $classeId);
                                      });
                         });
                     }
