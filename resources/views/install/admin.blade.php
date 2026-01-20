@@ -102,6 +102,17 @@
 
 @section('scripts')
 <script>
+    window.debugLog = window.debugLog || function () {
+        if (window.console && console.log) {
+            console.log.apply(console, arguments);
+        }
+    };
+    window.debugError = window.debugError || function () {
+        if (window.console && console.error) {
+            console.error.apply(console, arguments);
+        }
+    };
+
     new Vue({
         el: '#adminForm',
         data: {

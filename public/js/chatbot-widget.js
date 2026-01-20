@@ -300,6 +300,343 @@
         return container;
     }
 
+    function buildChecklistFromData(data) {
+        var container = document.createElement('div');
+        container.className = 'chatbot-checklist';
+
+        if (data.title) {
+            var title = document.createElement('h4');
+            title.className = 'chatbot-checklist-title';
+            title.textContent = data.title;
+            container.appendChild(title);
+        }
+
+        if (data.summary) {
+            var summary = document.createElement('p');
+            summary.className = 'chatbot-checklist-summary';
+            summary.textContent = data.summary;
+            container.appendChild(summary);
+        }
+
+        (data.sections || []).forEach(function (section) {
+            var sectionEl = document.createElement('div');
+            sectionEl.className = 'chatbot-checklist-section';
+
+            if (section.title) {
+                var sectionTitle = document.createElement('h5');
+                sectionTitle.textContent = section.title;
+                sectionEl.appendChild(sectionTitle);
+            }
+
+            if (section.description) {
+                var sectionDesc = document.createElement('p');
+                sectionDesc.className = 'chatbot-checklist-description';
+                sectionDesc.textContent = section.description;
+                sectionEl.appendChild(sectionDesc);
+            }
+
+            if (section.progress) {
+                var sectionProgress = document.createElement('span');
+                sectionProgress.className = 'chatbot-checklist-progress';
+                sectionProgress.textContent = section.progress;
+                sectionEl.appendChild(sectionProgress);
+            }
+
+            (section.steps || []).forEach(function (step) {
+                var stepEl = document.createElement('div');
+                stepEl.className = 'chatbot-checklist-step is-' + (step.status || 'todo');
+
+                var stepHeader = document.createElement('div');
+                stepHeader.className = 'chatbot-checklist-step-header';
+
+                var stepTitle = document.createElement('div');
+                stepTitle.className = 'chatbot-checklist-step-title';
+                stepTitle.textContent = step.title || '';
+
+                stepHeader.appendChild(stepTitle);
+
+                if (step.status) {
+                    var badge = document.createElement('span');
+                    badge.className = 'chatbot-checklist-badge';
+                    badge.textContent = step.status === 'done'
+                        ? 'Terminé'
+                        : (step.status === 'next' ? 'À faire maintenant' : (step.status === 'blocked' ? 'Bloqué' : 'À faire'));
+                    stepHeader.appendChild(badge);
+                }
+
+                stepEl.appendChild(stepHeader);
+
+                if (step.description) {
+                    var stepDesc = document.createElement('p');
+                    stepDesc.className = 'chatbot-checklist-step-desc';
+                    stepDesc.textContent = step.description;
+                    stepEl.appendChild(stepDesc);
+                }
+
+                if (step.deep_link) {
+                    var action = document.createElement('a');
+                    action.className = 'btn-acasi secondary btn-xs';
+                    action.href = step.deep_link;
+                    action.target = '_blank';
+                    action.rel = 'noopener noreferrer';
+                    action.innerHTML = '<i class="fas fa-arrow-right"></i> ' + (step.action_label || 'Ouvrir');
+                    stepEl.appendChild(action);
+                }
+
+                sectionEl.appendChild(stepEl);
+            });
+
+            container.appendChild(sectionEl);
+        });
+
+        return container;
+    }
+
+    function buildFormFromData(data, widget) {
+        var container = document.createElement('div');
+        container.className = 'chatbot-form';
+
+        if (data.title) {
+            var title = document.createElement('h4');
+            title.className = 'chatbot-form-title';
+            title.textContent = data.title;
+            container.appendChild(title);
+        }
+
+        if (data.description) {
+            var desc = document.createElement('p');
+            desc.className = 'chatbot-form-description';
+            desc.textContent = data.description;
+            container.appendChild(desc);
+        }
+
+        var errorBox = document.createElement('div');
+        errorBox.className = 'chatbot-form-error';
+        errorBox.style.display = 'none';
+        container.appendChild(errorBox);
+
+        var form = document.createElement('form');
+        form.className = 'chatbot-form-body';
+        form.dataset.actionUrl = data.action_url || '';
+        form.dataset.actionMethod = data.action_method || 'POST';
+
+        var fields = data.fields || [];
+
+        function addField(field) {
+            if (!field || !field.name) {
+                return;
+            }
+
+            if (field.type === 'hidden') {
+                var hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = field.name;
+                hidden.value = field.value || '';
+                form.appendChild(hidden);
+                return;
+            }
+
+            var wrapper = document.createElement('div');
+            wrapper.className = 'chatbot-form-field';
+
+            if (field.type !== 'checkbox') {
+                var label = document.createElement('label');
+                label.textContent = field.label || field.name;
+                if (field.required) {
+                    label.innerHTML = label.textContent + ' <span class="chatbot-form-required">*</span>';
+                }
+                wrapper.appendChild(label);
+            }
+
+            var input;
+            if (field.type === 'textarea') {
+                input = document.createElement('textarea');
+                input.rows = field.rows || 3;
+            } else if (field.type === 'select') {
+                input = document.createElement('select');
+                (field.options || []).forEach(function (option) {
+                    var opt = document.createElement('option');
+                    opt.value = option.value !== undefined ? option.value : '';
+                    opt.textContent = option.label || option.value || '';
+                    if (field.value !== undefined && String(field.value) === String(opt.value)) {
+                        opt.selected = true;
+                    }
+                    input.appendChild(opt);
+                });
+            } else if (field.type === 'checkbox') {
+                input = document.createElement('input');
+                input.type = 'checkbox';
+                input.checked = !!field.value;
+            } else {
+                input = document.createElement('input');
+                input.type = field.type || 'text';
+            }
+
+            input.name = field.name;
+            if (field.placeholder && input.type !== 'select') {
+                input.placeholder = field.placeholder;
+            }
+            if (field.required) {
+                input.required = true;
+            }
+            if (field.min !== undefined) {
+                input.min = field.min;
+            }
+            if (field.max !== undefined) {
+                input.max = field.max;
+            }
+            if (field.step !== undefined) {
+                input.step = field.step;
+            }
+            if (field.value !== undefined && field.type !== 'select' && field.type !== 'checkbox') {
+                input.value = field.value;
+            }
+
+            if (field.type === 'checkbox') {
+                var checkboxWrapper = document.createElement('label');
+                checkboxWrapper.className = 'chatbot-form-checkbox';
+                checkboxWrapper.appendChild(input);
+                var checkboxLabel = document.createElement('span');
+                checkboxLabel.textContent = field.label || field.name;
+                checkboxWrapper.appendChild(checkboxLabel);
+                wrapper.appendChild(checkboxWrapper);
+            } else {
+                wrapper.appendChild(input);
+            }
+
+            if (field.help) {
+                var help = document.createElement('small');
+                help.className = 'chatbot-form-help';
+                help.textContent = field.help;
+                wrapper.appendChild(help);
+            }
+
+            var error = document.createElement('div');
+            error.className = 'chatbot-form-field-error';
+            error.style.display = 'none';
+            wrapper.appendChild(error);
+
+            form.appendChild(wrapper);
+        }
+
+        fields.forEach(addField);
+
+        if (data.hidden_fields) {
+            Object.keys(data.hidden_fields).forEach(function (key) {
+                addField({ name: key, type: 'hidden', value: data.hidden_fields[key] });
+            });
+        }
+
+        var actions = document.createElement('div');
+        actions.className = 'chatbot-form-actions';
+        var submit = document.createElement('button');
+        submit.type = 'submit';
+        submit.className = 'btn-acasi primary btn-sm';
+        submit.textContent = data.submit_label || 'Envoyer';
+        actions.appendChild(submit);
+        form.appendChild(actions);
+
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            if (!form.dataset.actionUrl) {
+                return;
+            }
+
+            errorBox.style.display = 'none';
+            errorBox.textContent = '';
+            Array.prototype.slice.call(form.querySelectorAll('.chatbot-form-field-error')).forEach(function (el) {
+                el.style.display = 'none';
+                el.textContent = '';
+            });
+
+            var payload = {};
+            Array.prototype.slice.call(form.elements).forEach(function (element) {
+                if (!element.name) {
+                    return;
+                }
+                if (element.type === 'checkbox') {
+                    payload[element.name] = element.checked ? 1 : 0;
+                } else {
+                    payload[element.name] = element.value;
+                }
+            });
+
+            if (!payload.conversation_id && widget && widget.state.currentConversationId) {
+                payload.conversation_id = widget.state.currentConversationId;
+            }
+
+            submit.disabled = true;
+            submit.textContent = 'Envoi...';
+
+            fetch(form.dataset.actionUrl, {
+                method: form.dataset.actionMethod || 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': widget && widget.config ? (widget.config.csrfToken || '') : ''
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(payload)
+            })
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (response) {
+                    if (!response || !response.success) {
+                        if (response && response.errors) {
+                            Object.keys(response.errors).forEach(function (key) {
+                                var fieldError = form.querySelector('[name="' + key + '"]');
+                                if (fieldError) {
+                                    var errorEl = fieldError.closest('.chatbot-form-field').querySelector('.chatbot-form-field-error');
+                                    if (errorEl) {
+                                        errorEl.textContent = response.errors[key][0] || 'Champ invalide.';
+                                        errorEl.style.display = 'block';
+                                    }
+                                }
+                            });
+                        }
+
+                        errorBox.textContent = (response && response.message) ? response.message : 'Erreur lors de l\'envoi.';
+                        errorBox.style.display = 'block';
+                        throw new Error('form_error');
+                    }
+
+                    if (widget && response.conversation_id) {
+                        widget.state.currentConversationId = response.conversation_id;
+                    }
+
+                    if (widget) {
+                        widget.appendAssistantMessage({
+                            content: response.message,
+                            display_type: response.display_type,
+                            display_data: response.display_data,
+                            deep_link: response.deep_link,
+                            created_at: new Date().toISOString()
+                        });
+                        widget.fetchConversations();
+                    }
+
+                    form.classList.add('is-submitted');
+                    Array.prototype.slice.call(form.elements).forEach(function (element) {
+                        element.disabled = true;
+                    });
+                })
+                .catch(function (error) {
+                    if (error && error.message !== 'form_error') {
+                        errorBox.textContent = 'Erreur lors de l\'envoi.';
+                        errorBox.style.display = 'block';
+                    }
+                })
+                .finally(function () {
+                    submit.disabled = false;
+                    submit.textContent = data.submit_label || 'Envoyer';
+                });
+        });
+
+        container.appendChild(form);
+        return container;
+    }
+
     function buildFollowUpChips(followUp) {
         if (!Array.isArray(followUp) || followUp.length === 0) {
             return null;
@@ -324,6 +661,31 @@
                     textarea.focus();
                 }
             });
+            container.appendChild(chip);
+        });
+
+        return container;
+    }
+
+    function buildActionChips(actions) {
+        if (!Array.isArray(actions) || actions.length === 0) {
+            return null;
+        }
+
+        var container = document.createElement('div');
+        container.className = 'chatbot-follow-up';
+
+        actions.forEach(function (action) {
+            if (!action || !action.label) {
+                return;
+            }
+
+            var chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'chatbot-follow-up-chip';
+            chip.textContent = action.label;
+            chip.dataset.action = action.action || '';
+            chip.dataset.value = action.value || '';
             container.appendChild(chip);
         });
 
@@ -399,6 +761,16 @@
         this.newConversationButton = this.widget.querySelector('#chatbot-new-conversation');
         this.toast = this.widget.querySelector('#chatbot-toast');
         this.resizeHandle = this.widget.querySelector('#chatbot-resize-handle');
+        this.settingsButton = this.widget.querySelector('#chatbot-settings');
+        this.settingsModal = document.getElementById('chatbot-settings-modal');
+        this.settingsClose = document.getElementById('chatbot-settings-close');
+        this.settingsCancel = document.getElementById('chatbot-settings-cancel');
+        this.settingsSave = document.getElementById('chatbot-settings-save');
+        this.settingsName = document.getElementById('chatbot-pref-name');
+        this.settingsStyle = document.getElementById('chatbot-pref-style');
+        this.settingsTone = document.getElementById('chatbot-pref-tone');
+        this.settingsClarify = document.getElementById('chatbot-pref-clarify');
+        this.settingsNotes = document.getElementById('chatbot-pref-notes');
 
         this.typingElement = null;
         this.expandButtonIcon = this.expandButton ? this.expandButton.querySelector('i') : null;
@@ -506,6 +878,38 @@
             });
         }
 
+        if (this.settingsButton && this.settingsModal) {
+            this.settingsButton.addEventListener('click', function () {
+                self.openSettingsModal();
+            });
+        }
+
+        if (this.settingsClose) {
+            this.settingsClose.addEventListener('click', function () {
+                self.closeSettingsModal();
+            });
+        }
+
+        if (this.settingsCancel) {
+            this.settingsCancel.addEventListener('click', function () {
+                self.closeSettingsModal();
+            });
+        }
+
+        if (this.settingsSave) {
+            this.settingsSave.addEventListener('click', function () {
+                self.savePreferences();
+            });
+        }
+
+        if (this.settingsModal) {
+            this.settingsModal.addEventListener('click', function (event) {
+                if (event.target === self.settingsModal) {
+                    self.closeSettingsModal();
+                }
+            });
+        }
+
         document.addEventListener('click', function (event) {
             if (!self.widget.contains(event.target) && self.conversationsPanel && self.conversationsPanel.classList.contains('is-visible')) {
                 self.conversationsPanel.classList.remove('is-visible');
@@ -514,6 +918,16 @@
                 }
             }
         });
+
+        if (this.messagesContainer) {
+            this.messagesContainer.addEventListener('click', function (event) {
+                var target = event.target.closest('.chatbot-follow-up-chip');
+                if (target && target.dataset && target.dataset.action) {
+                    event.preventDefault();
+                    self.handleActionChipClick(target);
+                }
+            });
+        }
 
         window.addEventListener('resize', function () {
             if (!self.state.isFullscreen) {
@@ -583,6 +997,205 @@
         setTimeout(function () {
             self.toast.classList.remove('is-visible');
         }, duration || 2600);
+    };
+
+    ChatbotWidget.prototype.openSettingsModal = function () {
+        if (!this.settingsModal) {
+            return;
+        }
+        this.settingsModal.classList.add('is-open');
+        this.settingsModal.setAttribute('aria-hidden', 'false');
+        this.fetchPreferences();
+    };
+
+    ChatbotWidget.prototype.closeSettingsModal = function () {
+        if (!this.settingsModal) {
+            return;
+        }
+        this.settingsModal.classList.remove('is-open');
+        this.settingsModal.setAttribute('aria-hidden', 'true');
+    };
+
+    ChatbotWidget.prototype.fetchPreferences = function () {
+        var self = this;
+        if (!this.config.routes || !this.config.routes.preferences) {
+            return;
+        }
+
+        fetch(this.config.routes.preferences, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (payload) {
+                if (!payload || !payload.preferences) {
+                    return;
+                }
+
+                var prefs = payload.preferences;
+                if (self.settingsName) self.settingsName.value = prefs.preferred_name || '';
+                if (self.settingsStyle) self.settingsStyle.value = prefs.response_style || 'standard';
+                if (self.settingsTone) self.settingsTone.value = prefs.response_tone || 'pedagogique';
+                if (self.settingsClarify) self.settingsClarify.value = prefs.clarification_mode || 'auto';
+                if (self.settingsNotes) self.settingsNotes.value = prefs.notes || '';
+            })
+            .catch(function () {
+                self.showToast('Impossible de charger les préférences');
+            });
+    };
+
+    ChatbotWidget.prototype.savePreferences = function () {
+        var self = this;
+        if (!this.config.routes || !this.config.routes.preferencesUpdate) {
+            return;
+        }
+
+        var payload = {
+            preferred_name: this.settingsName ? this.settingsName.value.trim() : '',
+            response_style: this.settingsStyle ? this.settingsStyle.value : 'standard',
+            response_tone: this.settingsTone ? this.settingsTone.value : 'pedagogique',
+            clarification_mode: this.settingsClarify ? this.settingsClarify.value : 'auto',
+            notes: this.settingsNotes ? this.settingsNotes.value.trim() : ''
+        };
+
+        fetch(this.config.routes.preferencesUpdate, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': this.config.csrfToken || ''
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload)
+        })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (payload) {
+                if (payload && payload.success) {
+                    self.showToast('Préférences enregistrées');
+                    self.closeSettingsModal();
+                    return;
+                }
+
+                self.showToast('Impossible de sauvegarder');
+            })
+            .catch(function () {
+                self.showToast('Impossible de sauvegarder');
+            });
+    };
+
+    ChatbotWidget.prototype.handleActionChipClick = function (chip) {
+        var self = this;
+        var action = chip.dataset.action;
+        var value = chip.dataset.value || '';
+
+        if (action === 'save_preferred_name' && this.config.routes && this.config.routes.preferencesMemory) {
+            fetch(this.config.routes.preferencesMemory, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': this.config.csrfToken || ''
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    type: 'preferred_name',
+                    value: value
+                })
+            })
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (payload) {
+                    if (payload && payload.success) {
+                        self.showToast('Nom préféré enregistré');
+                        chip.remove();
+                    } else {
+                        self.showToast('Impossible d\'enregistrer');
+                    }
+                })
+                .catch(function () {
+                    self.showToast('Impossible d\'enregistrer');
+                });
+            return;
+        }
+
+        if (action === 'open_form' && this.config.routes) {
+            var target = value || '';
+            var route = null;
+            var categoryId = null;
+
+            if (target.indexOf('frais_config:') === 0) {
+                route = this.config.routes.formFraisConfig;
+                categoryId = target.split(':')[1] || null;
+            } else if (target === 'frais_category') {
+                route = this.config.routes.formFraisCategory;
+            } else if (target === 'frais_config') {
+                route = this.config.routes.formFraisConfig;
+            }
+
+            if (!route) {
+                return;
+            }
+
+            chip.disabled = true;
+            var typing = createTypingIndicator();
+            this.messagesContainer.appendChild(typing);
+            this.scrollToBottom();
+
+            var url = route;
+            var params = [];
+            if (this.state.currentConversationId) {
+                params.push('conversation_id=' + encodeURIComponent(this.state.currentConversationId));
+            }
+            if (categoryId) {
+                params.push('category_id=' + encodeURIComponent(categoryId));
+            }
+            if (params.length) {
+                url += (url.indexOf('?') === -1 ? '?' : '&') + params.join('&');
+            }
+
+            fetch(url, {
+                headers: {
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (payload) {
+                    typing.remove();
+                    if (!payload || !payload.success) {
+                        throw new Error('Erreur');
+                    }
+
+                    if (payload.conversation_id) {
+                        self.state.currentConversationId = payload.conversation_id;
+                    }
+
+                    self.appendAssistantMessage({
+                        content: payload.message,
+                        display_type: payload.display_type,
+                        display_data: payload.display_data,
+                        deep_link: payload.deep_link,
+                        created_at: new Date().toISOString()
+                    });
+                })
+                .catch(function () {
+                    typing.remove();
+                    self.showToast('Impossible de charger le formulaire');
+                })
+                .finally(function () {
+                    chip.disabled = false;
+                });
+        }
     };
 
     ChatbotWidget.prototype.fetchConversations = function () {
@@ -656,6 +1269,17 @@
             var actions = document.createElement('div');
             actions.className = 'chatbot-conversation-actions';
 
+            var editBtn = document.createElement('button');
+            editBtn.className = 'chatbot-conversation-edit';
+            editBtn.setAttribute('type', 'button');
+            editBtn.setAttribute('title', 'Renommer');
+            editBtn.innerHTML = '<i class="fas fa-pen"></i>';
+
+            editBtn.addEventListener('click', function (event) {
+                event.stopPropagation();
+                self.startInlineRename(item, conversation);
+            });
+
             var deleteBtn = document.createElement('button');
             deleteBtn.className = 'chatbot-conversation-delete';
             deleteBtn.setAttribute('type', 'button');
@@ -667,6 +1291,7 @@
                 self.deleteConversation(conversation.id);
             });
 
+            actions.appendChild(editBtn);
             actions.appendChild(deleteBtn);
 
             item.appendChild(title);
@@ -674,6 +1299,9 @@
             item.appendChild(actions);
 
             item.addEventListener('click', function () {
+                if (item.querySelector('.chatbot-conversation-title-input')) {
+                    return;
+                }
                 self.loadConversation(conversation.id);
                 if (self.conversationsPanel) {
                     self.conversationsPanel.classList.remove('is-visible');
@@ -685,6 +1313,88 @@
 
             self.conversationList.appendChild(item);
         });
+    };
+
+    ChatbotWidget.prototype.startInlineRename = function (item, conversation) {
+        var self = this;
+        if (!item || !conversation) {
+            return;
+        }
+
+        var titleEl = item.querySelector('.chatbot-conversation-title');
+        if (!titleEl) {
+            return;
+        }
+
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.maxLength = 40;
+        input.className = 'chatbot-conversation-title-input';
+        input.value = conversation.title || '';
+
+        titleEl.replaceWith(input);
+        input.focus();
+
+        var commit = function () {
+            var newTitle = input.value.trim();
+            if (!newTitle) {
+                self.renderConversationList();
+                return;
+            }
+            self.updateConversationTitle(conversation.id, newTitle);
+        };
+
+        input.addEventListener('blur', commit);
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                commit();
+            } else if (event.key === 'Escape') {
+                self.renderConversationList();
+            }
+        });
+    };
+
+    ChatbotWidget.prototype.updateConversationTitle = function (conversationId, title) {
+        var self = this;
+        if (!this.config.routes || !this.config.routes.conversationTitle) {
+            return;
+        }
+
+        var url = this.config.routes.conversationTitle.replace('__ID__', conversationId);
+
+        fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': this.config.csrfToken || ''
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ title: title })
+        })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (payload) {
+                if (payload && payload.success) {
+                    self.state.conversations = self.state.conversations.map(function (item) {
+                        if (item.id === conversationId) {
+                            item.title = payload.conversation.title || title;
+                        }
+                        return item;
+                    });
+                    self.renderConversationList();
+                    self.showToast('Titre mis à jour');
+                    return;
+                }
+                self.showToast('Impossible de renommer');
+                self.renderConversationList();
+            })
+            .catch(function () {
+                self.showToast('Impossible de renommer');
+                self.renderConversationList();
+            });
     };
 
     ChatbotWidget.prototype.deleteConversation = function (conversationId) {
@@ -822,7 +1532,10 @@
         this.scrollToBottom();
 
         var payload = {
-            message: content
+            message: content,
+            current_url: window.location.href,
+            current_path: window.location.pathname,
+            page_title: document.title
         };
 
         if (this.state.currentConversationId) {
@@ -935,6 +1648,12 @@
         } else if (message.display_type === 'cards' && Array.isArray(displayData.cards)) {
             messageContent.classList.add('has-cards');
             messageContent.appendChild(buildCardsFromData(displayData));
+        } else if (message.display_type === 'checklist' && displayData.sections) {
+            messageContent.classList.add('has-checklist');
+            messageContent.appendChild(buildChecklistFromData(displayData));
+        } else if (message.display_type === 'form' && displayData.fields) {
+            messageContent.classList.add('has-form');
+            messageContent.appendChild(buildFormFromData(displayData, this));
         } else if (message.display_type === 'table' && displayData.template_html) {
             messageContent.classList.add('has-table');
             var htmlTable = renderTemplate(displayData.template_html, displayData);
@@ -974,6 +1693,13 @@
             var followUp = buildFollowUpChips(displayData.follow_up);
             if (followUp) {
                 messageContent.appendChild(followUp);
+            }
+        }
+
+        if (displayData.follow_up_actions) {
+            var actions = buildActionChips(displayData.follow_up_actions);
+            if (actions) {
+                messageContent.appendChild(actions);
             }
         }
 
@@ -1173,10 +1899,16 @@
         this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
     };
 
-    document.addEventListener('DOMContentLoaded', function () {
+    function initChatbotWidget() {
         if (!window.KLASSCI_CHATBOT_CONFIG) {
             return;
         }
         new ChatbotWidget(window.KLASSCI_CHATBOT_CONFIG);
-    });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initChatbotWidget);
+    } else {
+        initChatbotWidget();
+    }
 }());

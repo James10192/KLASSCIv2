@@ -7,6 +7,10 @@ use App\Models\ChatbotMessage;
 use App\Models\ChatbotActionLog;
 use App\Models\ChatbotDisplayTemplate;
 use App\Models\ChatbotKnowledgeBase;
+use App\Models\ChatbotUserPreference;
+use App\Models\ESBTPFraisCategory;
+use App\Models\ESBTPFiliere;
+use App\Models\ESBTPNiveauEtude;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
@@ -18,7 +22,7 @@ use Illuminate\Support\Facades\Route;
  * 1. Détection intent depuis message utilisateur
  * 2. Récupération connaissance (cache ou exploration)
  * 3. Vérification permissions Spatie
- * 4. Appel Gemini API avec function calling
+ * 4. Appel Groq API avec function calling
  * 5. Exécution requêtes Eloquent
  * 6. Formatage réponse avec templates
  * 7. Logging audit trail
@@ -28,21 +32,25 @@ class ChatbotService
     protected ChatbotExplorerService $explorer;
     protected ChatbotLLMService $llm;
     protected ChatbotNavigationService $navigation;
+    protected ChatbotSetupGuideService $setupGuide;
+    protected ?string $previousIntent = null;
 
     public function __construct(
         ChatbotExplorerService $explorer,
         ChatbotLLMService $llm,
-        ChatbotNavigationService $navigation
+        ChatbotNavigationService $navigation,
+        ChatbotSetupGuideService $setupGuide
     ) {
         $this->explorer = $explorer;
         $this->llm = $llm;
         $this->navigation = $navigation;
+        $this->setupGuide = $setupGuide;
     }
 
     /**
      * Envoyer un message et obtenir une réponse
      */
-    public function sendMessage(string $message, ?string $sessionId = null): array
+    public function sendMessage(string $message, ?string $sessionId = null, ?array $clientContext = null): array
     {
         $user = Auth::user();
         $startTime = microtime(true);
@@ -57,6 +65,11 @@ class ChatbotService
             // 1. Récupérer ou créer la conversation
             $conversation = $this->getOrCreateConversation($user->id, $sessionId);
 
+            $this->previousIntent = $conversation->context['last_intent'] ?? null;
+            $preferences = $this->getUserPreferences($user->id);
+            $preferredNameCandidate = $this->detectPreferredName($message);
+            $memoryAction = $this->buildMemoryAction($preferredNameCandidate, $preferences);
+
             // 2. Enregistrer le message utilisateur
             $userMessage = ChatbotMessage::create([
                 'conversation_id' => $conversation->id,
@@ -65,6 +78,38 @@ class ChatbotService
                 'display_type' => 'text',
             ]);
 
+            if ($clientContext || $preferences) {
+                $conversation->update([
+                    'context' => array_filter(array_merge($conversation->context ?? [], [
+                        'last_page_url' => $clientContext['current_url'] ?? null,
+                        'last_page_path' => $clientContext['current_path'] ?? null,
+                        'last_page_title' => $clientContext['page_title'] ?? null,
+                        'user_preferences' => $preferences ? $preferences->only([
+                            'preferred_name',
+                            'response_style',
+                            'response_tone',
+                            'clarification_mode',
+                            'notes',
+                        ]) : null,
+                    ])),
+                ]);
+            }
+
+            $pendingAction = $conversation->context['pending_action'] ?? null;
+            if ($pendingAction) {
+                if ($this->isAffirmativeMessage($message)) {
+                    return $this->respondWithPendingAction($conversation, $pendingAction, $memoryAction);
+                }
+
+                if ($this->isNegativeMessage($message)) {
+                    $this->clearPendingAction($conversation);
+                }
+            }
+
+            if ($this->shouldPromptForHelp($message)) {
+                return $this->respondWithHelpPrompt($conversation, $clientContext, $preferences, $memoryAction, $message);
+            }
+
             // 3. Décision LLM (intent, filtres, affichage)
             $llmDecision = $this->llm->decide($conversation, $message);
 
@@ -72,18 +117,43 @@ class ChatbotService
             $intent = $llmDecision['intent'] ?? $this->detectIntent($message, $conversation);
             Log::info('🎯 Intent detected', ['intent' => $intent]);
 
+            if ($intent === 'setup_guide' && ! $this->isExplicitGuideRequest($message)) {
+                $intent = $this->detectIntent($message, $conversation);
+                if ($intent === 'setup_guide') {
+                    $intent = 'help_context';
+                }
+            }
+
+            if ($intent === 'help_context' && $this->isHelpMessage($message)) {
+                return $this->respondWithHelpPrompt($conversation, $clientContext, $preferences, $memoryAction, $message);
+            }
+
+            if ($intent === 'setup_guide') {
+                $scope = $this->resolveSetupScope($message, $llmDecision['filters'] ?? [], $clientContext, $conversation);
+                $fullGuide = $this->shouldShowFullGuide($message, $llmDecision['filters'] ?? []);
+                $stepLimit = $preferences->response_style === 'court' ? 1 : 3;
+                return $this->respondWithSetupGuide($conversation, $user, $scope, $fullGuide, $memoryAction, $stepLimit, $message, $preferences, $intent);
+            }
+
+            if ($this->isActionRequest($message)) {
+                $actionResponse = $this->respondWithActionGuidance($conversation, $user, $intent, $message, $preferences, $memoryAction);
+                if ($actionResponse) {
+                    return $actionResponse;
+                }
+
+                $fallbackText = $llmDecision['response_text'] ?? "D'accord. Dis-moi ce que tu veux faire exactement et je te guide.";
+                return $this->respondWithSimpleMessage($conversation, $fallbackText, $memoryAction, $intent, $message, $preferences);
+            }
+
             // Répondre immédiatement aux salutations pour éviter une exploration inutile
             if ($intent === 'greeting' && empty($llmDecision['intent'])) {
-                return $this->respondWithSimpleMessage(
-                    $conversation,
-                    "Bonjour ! Comment puis-je vous aider aujourd'hui ? 😊"
-                );
+                return $this->respondWithHelpPrompt($conversation, $clientContext, $preferences, $memoryAction, $message);
             }
 
             // Réponse textuelle directe (pas de récupération de données)
             if (($llmDecision['display'] ?? null) === 'text' && empty($llmDecision['intent'])) {
                 $textResponse = $llmDecision['response_text'] ?? "Compris.";
-                return $this->respondWithSimpleMessage($conversation, $textResponse);
+                return $this->respondWithSimpleMessage($conversation, $textResponse, $memoryAction, $intent, $message, $preferences);
             }
 
             // 5. Récupérer la connaissance (cache ou exploration)
@@ -92,7 +162,8 @@ class ChatbotService
             if (!$knowledge) {
                 return $this->createErrorResponse(
                     $conversation,
-                    "Désolé, je ne sais pas encore comment récupérer cette information. Pouvez-vous reformuler ou demander autre chose ?"
+                    "Désolé, je ne sais pas encore comment récupérer cette information. Pouvez-vous reformuler ou demander autre chose ?",
+                    $memoryAction
                 );
             }
 
@@ -103,7 +174,8 @@ class ChatbotService
             if (!$this->checkPermissions($knowledge, $userRoles, $userPermissions)) {
                 return $this->createErrorResponse(
                     $conversation,
-                    "Vous n'avez pas l'autorisation d'accéder à cette information."
+                    "Vous n'avez pas l'autorisation d'accéder à cette information.",
+                    $memoryAction
                 );
             }
 
@@ -128,6 +200,7 @@ class ChatbotService
                     'content' => $responseText,
                     'display_type' => 'text',
                     'deep_link' => $deepLink,
+                    'display_data' => $this->attachMemoryAction(null, $memoryAction),
                     'metadata' => [
                         'intent' => $intent,
                         'verification_level' => $verification['level'],
@@ -140,6 +213,7 @@ class ChatbotService
                     'success' => true,
                     'message' => $assistantMessage->content,
                     'display_type' => 'text',
+                    'display_data' => $assistantMessage->display_data,
                     'deep_link' => $deepLink,
                     'action_label' => $actionLabel,
                     'conversation_id' => $conversation->session_id,
@@ -164,18 +238,23 @@ class ChatbotService
                     'role' => 'assistant',
                     'content' => $noResultMessage,
                     'display_type' => 'text',
+                    'display_data' => $this->attachMemoryAction(null, $memoryAction),
                 ]);
+
+                $this->updateConversationTitleIfNeeded($conversation, $intent, $message, $preferences);
 
                 return [
                     'success' => true,
                     'message' => $assistantMessage->content,
                     'display_type' => 'text',
+                    'display_data' => $assistantMessage->display_data,
                     'conversation_id' => $conversation->session_id,
                 ];
             }
 
             // 7. Formater la réponse avec template
             $formattedResponse = $this->formatResponse($data, $knowledge, $llmDecision);
+            $formattedResponse['display_data'] = $this->attachMemoryAction($formattedResponse['display_data'] ?? null, $memoryAction);
 
             // 8. Enregistrer le message assistant
             $assistantMessage = ChatbotMessage::create([
@@ -221,6 +300,8 @@ class ChatbotService
                     'last_display' => $formattedResponse['display_type'] ?? null,
                 ]),
             ]);
+
+            $this->updateConversationTitleIfNeeded($conversation, $intent, $message, $preferences);
 
             $duration = round((microtime(true) - $startTime) * 1000, 2);
             Log::info('✅ ChatbotService - SUCCESS', [
@@ -275,21 +356,33 @@ class ChatbotService
             }
         }
 
+        if ($this->isHelpMessage($messageLower)) {
+            return 'help_context';
+        }
+
         // Mapping mots-clés → intents
-        $intentMap = [
-            'paiement' => 'get_paiements',
-            'paye' => 'get_paiements',
-            'payment' => 'get_paiements',
-            'étudiant' => 'get_etudiants',
-            'etudiant' => 'get_etudiants',
+            $intentMap = [
+                'paiement' => 'get_paiements',
+                'paye' => 'get_paiements',
+                'payment' => 'get_paiements',
+                'étudiant' => 'get_etudiants',
+                'etudiant' => 'get_etudiants',
             'élève' => 'get_etudiants',
             'eleve' => 'get_etudiants',
             'inscription' => 'get_inscriptions',
             'inscrit' => 'get_inscriptions',
-            'classe' => 'get_classes',
-            'frais' => 'get_frais',
-            'tarif' => 'get_frais',
-            'categorie' => 'get_frais',
+                'classe' => 'get_classes',
+                'frais' => 'get_frais',
+                'tarif' => 'get_frais',
+                'categorie' => 'get_frais',
+                'setup' => 'setup_guide',
+                'démarrage' => 'setup_guide',
+                'demarrage' => 'setup_guide',
+                'mise en route' => 'setup_guide',
+                'guide' => 'setup_guide',
+                'étapes' => 'setup_guide',
+                'etapes' => 'setup_guide',
+                'checklist' => 'setup_guide',
         ];
 
         foreach ($intentMap as $keyword => $intent) {
@@ -309,6 +402,862 @@ class ChatbotService
 
         // Par défaut
         return 'get_paiements';
+    }
+
+    protected function isHelpMessage(string $message): bool
+    {
+        $normalized = trim(mb_strtolower($message, 'UTF-8'));
+        $normalized = preg_replace('/[^\p{L}\p{N}\s]/u', '', $normalized) ?: '';
+
+        return in_array($normalized, ['aide', 'help', 'assistance', 'besoin daide', 'aidez moi'], true)
+            || str_contains($normalized, 'aide')
+            || str_contains($normalized, 'help')
+            || str_contains($normalized, 'assistance');
+    }
+
+    protected function isExplicitGuideRequest(string $message): bool
+    {
+        $normalized = mb_strtolower($message, 'UTF-8');
+
+        return str_contains($normalized, 'guide')
+            || str_contains($normalized, 'checklist')
+            || str_contains($normalized, 'étapes')
+            || str_contains($normalized, 'etapes')
+            || str_contains($normalized, 'mise en route')
+            || str_contains($normalized, 'démarrer')
+            || str_contains($normalized, 'demarrer')
+            || str_contains($normalized, 'plan de démarrage')
+            || str_contains($normalized, 'plan de demarrage');
+    }
+
+    protected function isActionRequest(string $message): bool
+    {
+        $normalized = mb_strtolower($message, 'UTF-8');
+
+        $verbs = [
+            'je veux',
+            'je dois',
+            'comment',
+            'faire',
+            'créer',
+            'creer',
+            'ajouter',
+            'inscrire',
+            'enregistrer',
+            'programmer',
+            'saisir',
+        ];
+
+        foreach ($verbs as $verb) {
+            if (str_contains($normalized, $verb)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function isAffirmativeMessage(string $message): bool
+    {
+        $normalized = trim(mb_strtolower($message, 'UTF-8'));
+        $normalized = preg_replace('/[^\p{L}\p{N}\s]/u', '', $normalized) ?? '';
+
+        $keywords = [
+            'oui',
+            'ok',
+            'okay',
+            'daccord',
+            'd accord',
+            'oui stp',
+            'vas y',
+            'allons y',
+            'je veux',
+            'oui je veux',
+        ];
+
+        foreach ($keywords as $keyword) {
+            if ($normalized === $keyword || str_contains($normalized, $keyword)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function isNegativeMessage(string $message): bool
+    {
+        $normalized = trim(mb_strtolower($message, 'UTF-8'));
+        $normalized = preg_replace('/[^\p{L}\p{N}\s]/u', '', $normalized) ?? '';
+
+        $keywords = [
+            'non',
+            'pas maintenant',
+            'plus tard',
+            'annule',
+            'stop',
+            'laisse',
+        ];
+
+        foreach ($keywords as $keyword) {
+            if ($normalized === $keyword || str_contains($normalized, $keyword)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function clearPendingAction(ChatbotConversation $conversation): void
+    {
+        $context = $conversation->context ?? [];
+        $context['pending_action'] = null;
+        $context['pending_action_payload'] = null;
+        $conversation->update(['context' => $context]);
+    }
+
+    protected function respondWithPendingAction(
+        ChatbotConversation $conversation,
+        string $pendingAction,
+        ?array $memoryAction
+    ): ?array {
+        $payload = $conversation->context['pending_action_payload'] ?? [];
+
+        return match ($pendingAction) {
+            'frais_category_form' => $this->buildFormResponse($conversation, 'frais_category', $payload, $memoryAction),
+            'frais_config_form' => $this->buildFormResponse($conversation, 'frais_config', $payload, $memoryAction),
+            default => null,
+        };
+    }
+
+    protected function shouldPromptForHelp(string $message): bool
+    {
+        if (!$this->isHelpMessage($message)) {
+            return false;
+        }
+
+        $normalized = mb_strtolower($message, 'UTF-8');
+
+        return !(
+            str_contains($normalized, 'setup')
+            || str_contains($normalized, 'configuration')
+            || str_contains($normalized, 'configurer')
+            || str_contains($normalized, 'démarrage')
+            || str_contains($normalized, 'demarrage')
+            || str_contains($normalized, 'commencer')
+            || str_contains($normalized, 'guide')
+            || str_contains($normalized, 'mise en route')
+        );
+    }
+
+    protected function getUserPreferences(int $userId): ChatbotUserPreference
+    {
+        return ChatbotUserPreference::firstOrCreate(
+            ['user_id' => $userId],
+            [
+                'response_style' => 'standard',
+                'response_tone' => 'pedagogique',
+                'clarification_mode' => 'auto',
+            ]
+        );
+    }
+
+    protected function detectPreferredName(string $message): ?string
+    {
+        $patterns = [
+            '/\bappelle\s*moi\s+([\p{L}\p{M}\-\s]{2,50})/iu',
+            '/\bje\s*m\'appelle\s+([\p{L}\p{M}\-\s]{2,50})/iu',
+            '/\bmon\s+nom\s+est\s+([\p{L}\p{M}\-\s]{2,50})/iu',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $message, $matches)) {
+                return trim($matches[1]);
+            }
+        }
+
+        return null;
+    }
+
+    protected function buildMemoryAction(?string $preferredName, ChatbotUserPreference $preferences): ?array
+    {
+        if (!$preferredName) {
+            return null;
+        }
+
+        if ($preferences->preferred_name && mb_strtolower($preferences->preferred_name, 'UTF-8') === mb_strtolower($preferredName, 'UTF-8')) {
+            return null;
+        }
+
+        return [
+            'label' => "Sauvegarder \"{$preferredName}\"",
+            'action' => 'save_preferred_name',
+            'value' => $preferredName,
+        ];
+    }
+
+    protected function resolveSetupScope(
+        string $message,
+        array $filters,
+        ?array $clientContext = null,
+        ?ChatbotConversation $conversation = null
+    ): string {
+        if (!empty($filters['setup_scope'])) {
+            return (string) $filters['setup_scope'];
+        }
+
+        $contextScope = $conversation?->context['last_filters']['setup_scope'] ?? null;
+        if ($contextScope) {
+            return (string) $contextScope;
+        }
+
+        $messageLower = mb_strtolower($message, 'UTF-8');
+
+        if (str_contains($messageLower, 'financ') || str_contains($messageLower, 'frais') || str_contains($messageLower, 'paiement')) {
+            return 'financier';
+        }
+
+        if (str_contains($messageLower, 'acad') || str_contains($messageLower, 'planning') || str_contains($messageLower, 'emploi du temps')) {
+            return 'academique';
+        }
+
+        if (str_contains($messageLower, 'evaluation') || str_contains($messageLower, 'notes') || str_contains($messageLower, 'absence') || str_contains($messageLower, 'bulletin')) {
+            return 'pedagogie';
+        }
+
+        $pagePath = $clientContext['current_path'] ?? null;
+        if ($pagePath) {
+            $pagePath = mb_strtolower($pagePath, 'UTF-8');
+            if (str_contains($pagePath, 'inscriptions') || str_contains($pagePath, 'paiements') || str_contains($pagePath, 'frais')) {
+                return 'financier';
+            }
+            if (str_contains($pagePath, 'emploi-temps') || str_contains($pagePath, 'planning') || str_contains($pagePath, 'classes')) {
+                return 'academique';
+            }
+            if (str_contains($pagePath, 'evaluations') || str_contains($pagePath, 'notes') || str_contains($pagePath, 'attendances')) {
+                return 'pedagogie';
+            }
+        }
+
+        return 'global';
+    }
+
+    protected function shouldShowFullGuide(string $message, array $filters): bool
+    {
+        if (!empty($filters['full_guide'])) {
+            return (bool) $filters['full_guide'];
+        }
+
+        $normalized = mb_strtolower($message, 'UTF-8');
+
+        return str_contains($normalized, 'tout le guide')
+            || str_contains($normalized, 'guide complet')
+            || str_contains($normalized, 'phase complète')
+            || str_contains($normalized, 'toute la phase')
+            || str_contains($normalized, 'tout afficher');
+    }
+
+    protected function respondWithActionGuidance(
+        ChatbotConversation $conversation,
+        $user,
+        string $intent,
+        string $message,
+        ChatbotUserPreference $preferences,
+        ?array $memoryAction
+    ): ?array {
+        $actionMap = [
+            'get_inscriptions' => ['scope' => 'financier', 'step' => 'inscriptions', 'route' => 'esbtp.inscriptions.create'],
+            'get_paiements' => ['scope' => 'financier', 'step' => 'paiements', 'route' => 'esbtp.paiements.index'],
+            'get_evaluations' => ['scope' => 'pedagogie', 'step' => 'evaluations', 'route' => 'esbtp.evaluations.index'],
+            'get_notes' => ['scope' => 'pedagogie', 'step' => 'notes', 'route' => 'esbtp.notes.index'],
+            'get_attendances' => ['scope' => 'pedagogie', 'step' => 'absences', 'route' => 'esbtp.attendances.index'],
+        ];
+
+        if (!isset($actionMap[$intent])) {
+            return null;
+        }
+
+        $config = $actionMap[$intent];
+        $stepContext = $this->setupGuide->getStepContext($user, $config['scope'], $config['step']);
+        $deepLink = $stepContext['deep_link'] ?? ($config['route'] ? route($config['route']) : null);
+        $missingPrerequisites = $stepContext['missing_prerequisite_ids'] ?? [];
+        $missingPreviewLimit = $preferences->response_style === 'court' ? 1 : 3;
+        $missingPreview = $this->setupGuide->buildMissingStepsPreview(
+            $user,
+            $config['scope'],
+            $missingPrerequisites,
+            $missingPreviewLimit
+        );
+
+        $pendingAction = null;
+        $pendingPayload = null;
+        $followUpActions = [];
+
+        if ($intent === 'get_inscriptions' && $missingPreview) {
+            if (in_array('frais_categories', $missingPrerequisites, true)) {
+                $pendingAction = 'frais_category_form';
+                $followUpActions[] = [
+                    'label' => 'Créer la catégorie ici',
+                    'action' => 'open_form',
+                    'value' => 'frais_category',
+                ];
+            } elseif (in_array('frais_mandatory_configs', $missingPrerequisites, true)) {
+                $pendingAction = 'frais_config_form';
+                $followUpActions[] = [
+                    'label' => 'Configurer par classe ici',
+                    'action' => 'open_form',
+                    'value' => 'frais_config',
+                ];
+            }
+        }
+
+        $deepLink = $this->resolveActionDeepLink($deepLink, $missingPreview);
+        $responseText = $this->buildActionResponseText(
+            $intent,
+            $stepContext,
+            $missingPreview,
+            $conversation,
+            $message,
+            $preferences
+        );
+
+        if (!$responseText) {
+            $stepTitle = $stepContext['step']['title'] ?? 'cette action';
+            $missingTitles = $stepContext['missing_prerequisite_titles'] ?? [];
+            $missingTitles = array_values(array_filter($missingTitles));
+
+            if (!empty($missingTitles)) {
+                $responseText = sprintf(
+                    'Avant de %s, il faut d\'abord compléter : %s. Je t\'affiche la checklist juste en dessous. Tu veux que j\'ouvre la page ?'
+                    ,
+                    mb_strtolower($stepTitle, 'UTF-8'),
+                    implode(', ', $missingTitles)
+                );
+            } else {
+                $responseText = sprintf(
+                    'Tu peux lancer %s depuis la page dédiée. Je t\'ai mis le bouton d\'accès. Tu veux que je détaille un champ du formulaire ?'
+                    ,
+                    mb_strtolower($stepTitle, 'UTF-8')
+                );
+            }
+        }
+
+        $displayType = $missingPreview ? 'checklist' : 'text';
+        $displayData = $missingPreview ?: null;
+        if (!empty($followUpActions)) {
+            $displayData['follow_up_actions'] = array_values($followUpActions);
+        }
+        $displayData = $this->attachMemoryAction($displayData, $memoryAction);
+
+        $assistantMessage = ChatbotMessage::create([
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'content' => $responseText,
+            'display_type' => $displayType,
+            'display_data' => $displayData,
+            'deep_link' => $deepLink,
+        ]);
+
+        $conversation->update([
+            'last_activity_at' => now(),
+            'context' => array_filter([
+                'last_intent' => $intent,
+                'last_filters' => [],
+                'last_display' => $displayType,
+                'pending_action' => $pendingAction,
+                'pending_action_payload' => $pendingPayload,
+            ]),
+        ]);
+
+        $this->updateConversationTitleIfNeeded($conversation, $intent, $message, $preferences);
+
+        return [
+            'success' => true,
+            'message' => $assistantMessage->content,
+            'display_type' => $displayType,
+            'display_data' => $assistantMessage->display_data,
+            'deep_link' => $assistantMessage->deep_link,
+            'conversation_id' => $conversation->session_id,
+        ];
+    }
+
+    protected function resolveActionDeepLink(?string $deepLink, ?array $missingPreview): ?string
+    {
+        if (!$missingPreview) {
+            return $deepLink;
+        }
+
+        $firstStep = $missingPreview['sections'][0]['steps'][0] ?? null;
+        if ($firstStep && !empty($firstStep['deep_link'])) {
+            return $firstStep['deep_link'];
+        }
+
+        return $deepLink;
+    }
+
+    protected function buildActionResponseText(
+        string $intent,
+        array $stepContext,
+        ?array $missingPreview,
+        ChatbotConversation $conversation,
+        string $message,
+        ?ChatbotUserPreference $preferences
+    ): ?string {
+        $missingTitles = $stepContext['missing_prerequisite_titles'] ?? [];
+        $missingTitles = array_values(array_filter($missingTitles));
+
+        if (!empty($missingTitles)) {
+            $missingList = implode(', ', $missingTitles);
+            $baseResponse = "Avant de continuer, il manque encore : {$missingList}. Je te mets la checklist juste en dessous. Tu veux que je fasse l'étape manquante ici ?";
+            $rewritten = $this->llm->rewriteBackendResponse(
+                $conversation,
+                $message,
+                $intent,
+                $baseResponse,
+                $stepContext,
+                $preferences
+            );
+
+            return $rewritten ?: $baseResponse;
+        }
+
+        $response = $this->llm->generateActionGuidance(
+            $conversation,
+            $message,
+            $intent,
+            $stepContext,
+            $preferences
+        );
+
+        if ($response) {
+            return $response;
+        }
+
+        if ($intent === 'get_inscriptions') {
+            return $this->buildInscriptionActionText($stepContext, $missingPreview);
+        }
+
+        return null;
+    }
+
+    protected function buildInscriptionActionText(array $stepContext, ?array $missingPreview): string
+    {
+        $missingIds = $stepContext['missing_prerequisite_ids'] ?? [];
+
+        if ($missingPreview && in_array('frais_categories', $missingIds, true)) {
+            return "Avant l'inscription, il faut d'abord créer une catégorie de frais obligatoire. "
+                . "Menu Comptabilité > Gestion des frais, puis bouton \"Nouvelle Catégorie\" "
+                . "(ou \"Ajouter le premier frais académique\"). "
+                . "Je peux la créer pour toi ici, tu veux que j'ouvre le formulaire ?";
+        }
+
+        if ($missingPreview && in_array('frais_mandatory_configs', $missingIds, true)) {
+            return "Les catégories obligatoires existent, il reste à configurer les montants par classe. "
+                . "Va dans Gestion des frais > Configuration par classe. "
+                . "Je peux aussi le faire ici, tu veux le formulaire ?";
+        }
+
+        if ($missingPreview) {
+            return "Il manque encore une ou deux étapes avant l'inscription. "
+                . "Je te mets la checklist juste en dessous. Tu veux que j'ouvre la première page ?";
+        }
+
+        return "Pour créer une inscription, ouvre Étudiants > Nouvelle inscription dans la barre latérale. "
+            . "Renseigne les infos personnelles, puis choisis la classe (filière/niveau/année se remplissent), "
+            . "et sélectionne le statut d'affectation. Tu veux que je détaille un champ du formulaire ?";
+    }
+
+    public function buildFormResponse(
+        ChatbotConversation $conversation,
+        string $formKey,
+        array $payload,
+        ?array $memoryAction
+    ): ?array {
+        $form = match ($formKey) {
+            'frais_category' => $this->buildMandatoryFraisCategoryFormData($conversation),
+            'frais_config' => $this->buildFraisConfigFormData($conversation, $payload),
+            default => null,
+        };
+
+        if (!$form) {
+            return null;
+        }
+
+        $displayData = $this->attachMemoryAction($form['display_data'], $memoryAction);
+
+        $assistantMessage = ChatbotMessage::create([
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'content' => $form['message'],
+            'display_type' => 'form',
+            'display_data' => $displayData,
+        ]);
+
+        $context = $conversation->context ?? [];
+        $context['pending_action'] = null;
+        $context['pending_action_payload'] = null;
+        $context['last_display'] = 'form';
+
+        $conversation->update([
+            'last_activity_at' => now(),
+            'context' => $context,
+        ]);
+
+        return [
+            'success' => true,
+            'message' => $assistantMessage->content,
+            'display_type' => 'form',
+            'display_data' => $assistantMessage->display_data,
+            'conversation_id' => $conversation->session_id,
+        ];
+    }
+
+    protected function buildMandatoryFraisCategoryFormData(ChatbotConversation $conversation): array
+    {
+        $fields = [
+            [
+                'name' => 'name',
+                'label' => 'Nom de la catégorie',
+                'type' => 'text',
+                'required' => true,
+                'placeholder' => 'Frais d\'inscription',
+            ],
+            [
+                'name' => 'code',
+                'label' => 'Code unique',
+                'type' => 'text',
+                'required' => true,
+                'placeholder' => 'INSCRIPTION',
+                'help' => 'Le code sera converti en majuscules.',
+            ],
+            [
+                'name' => 'description',
+                'label' => 'Description',
+                'type' => 'textarea',
+                'placeholder' => 'Frais d\'inscription obligatoire',
+            ],
+            [
+                'name' => 'default_amount',
+                'label' => 'Montant par défaut (FCFA)',
+                'type' => 'number',
+                'required' => true,
+                'min' => 0,
+                'step' => 1,
+            ],
+            [
+                'name' => 'payment_deadline_days',
+                'label' => 'Délai de paiement (jours)',
+                'type' => 'number',
+                'required' => true,
+                'min' => 1,
+                'max' => 365,
+                'value' => 30,
+            ],
+        ];
+
+        return [
+            'message' => "Parfait. Remplis ce formulaire pour créer une catégorie de frais obligatoire.",
+            'display_data' => [
+                'title' => 'Créer une catégorie obligatoire',
+                'description' => 'Catégorie obligatoire pour les inscriptions.',
+                'action_url' => Route::has('chatbot.forms.frais-category.store')
+                    ? route('chatbot.forms.frais-category.store')
+                    : null,
+                'action_method' => 'POST',
+                'submit_label' => 'Créer la catégorie',
+                'fields' => $fields,
+                'hidden_fields' => [
+                    'conversation_id' => $conversation->session_id,
+                ],
+            ],
+        ];
+    }
+
+    protected function buildFraisConfigFormData(ChatbotConversation $conversation, array $payload): ?array
+    {
+        $categoryId = $payload['category_id'] ?? null;
+        $category = $categoryId
+            ? ESBTPFraisCategory::find($categoryId)
+            : ESBTPFraisCategory::mandatory()->orderBy('id')->first();
+
+        if (!$category) {
+            return null;
+        }
+
+        $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $niveaux = ESBTPNiveauEtude::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+
+        $fields = [
+            [
+                'name' => 'filiere_id',
+                'label' => 'Filière',
+                'type' => 'select',
+                'required' => true,
+                'options' => $filieres->map(fn ($item) => ['value' => $item->id, 'label' => $item->name])->toArray(),
+            ],
+            [
+                'name' => 'niveau_id',
+                'label' => 'Niveau',
+                'type' => 'select',
+                'required' => true,
+                'options' => $niveaux->map(fn ($item) => ['value' => $item->id, 'label' => $item->name])->toArray(),
+            ],
+            [
+                'name' => 'amount_affecte',
+                'label' => 'Montant affecté (FCFA)',
+                'type' => 'number',
+                'required' => true,
+                'min' => 0,
+                'step' => 1,
+            ],
+            [
+                'name' => 'amount_reaffecte',
+                'label' => 'Montant réaffecté (FCFA)',
+                'type' => 'number',
+                'required' => true,
+                'min' => 0,
+                'step' => 1,
+            ],
+            [
+                'name' => 'amount_non_affecte',
+                'label' => 'Montant non affecté (FCFA)',
+                'type' => 'number',
+                'required' => true,
+                'min' => 0,
+                'step' => 1,
+            ],
+            [
+                'name' => 'deadline_days',
+                'label' => 'Délai de paiement (jours)',
+                'type' => 'number',
+                'required' => true,
+                'min' => 1,
+                'max' => 365,
+                'value' => 30,
+            ],
+            [
+                'name' => 'installments_allowed',
+                'label' => 'Paiement en plusieurs fois',
+                'type' => 'checkbox',
+            ],
+            [
+                'name' => 'max_installments',
+                'label' => 'Nombre max de tranches',
+                'type' => 'number',
+                'min' => 1,
+                'max' => 12,
+                'value' => 1,
+            ],
+            [
+                'name' => 'early_payment_discount',
+                'label' => 'Remise paiement anticipé (%)',
+                'type' => 'number',
+                'min' => 0,
+                'max' => 100,
+                'value' => 0,
+            ],
+        ];
+
+        return [
+            'message' => "D'accord. Configure les montants pour \"{$category->name}\".",
+            'display_data' => [
+                'title' => 'Configuration par classe',
+                'description' => "Frais obligatoire : {$category->name}",
+                'action_url' => Route::has('chatbot.forms.frais-config.store')
+                    ? route('chatbot.forms.frais-config.store')
+                    : null,
+                'action_method' => 'POST',
+                'submit_label' => 'Enregistrer la configuration',
+                'fields' => $fields,
+                'hidden_fields' => [
+                    'conversation_id' => $conversation->session_id,
+                    'category_id' => $category->id,
+                ],
+            ],
+        ];
+    }
+
+    protected function respondWithSetupGuide(
+        ChatbotConversation $conversation,
+        $user,
+        string $scope,
+        bool $fullGuide,
+        ?array $memoryAction,
+        int $stepLimit,
+        string $message,
+        ChatbotUserPreference $preferences,
+        ?string $intent
+    ): array {
+        $guide = $fullGuide
+            ? $this->setupGuide->buildGuide($user, $scope)
+            : $this->setupGuide->buildGuidePreview($user, $scope, $stepLimit);
+
+        $displayData = $guide;
+        if (!empty($guide['is_preview'])) {
+            $displayData['follow_up'] = [
+                'Voir toute la phase',
+                'Voir tout le guide',
+            ];
+        }
+
+        $displayData = $this->attachMemoryAction($displayData, $memoryAction);
+
+        $introText = $this->llm->generateGuideIntro($conversation, $message, $scope, $displayData, $preferences);
+        if (!$introText) {
+            $introText = 'Voici les prochaines étapes que je vous recommande :';
+        }
+
+        $assistantMessage = ChatbotMessage::create([
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'content' => $introText,
+            'display_type' => 'checklist',
+            'display_data' => $displayData,
+        ]);
+
+        $conversation->update([
+            'last_activity_at' => now(),
+            'context' => array_filter([
+                'last_intent' => 'setup_guide',
+                'last_filters' => [
+                    'setup_scope' => $scope,
+                    'full_guide' => $fullGuide,
+                ],
+                'last_display' => 'checklist',
+            ]),
+        ]);
+
+        $this->updateConversationTitleIfNeeded($conversation, $intent, $message, $preferences);
+
+        return [
+            'success' => true,
+            'message' => $assistantMessage->content,
+            'display_type' => $assistantMessage->display_type,
+            'display_data' => $assistantMessage->display_data,
+            'conversation_id' => $conversation->session_id,
+        ];
+    }
+
+    protected function respondWithHelpPrompt(
+        ChatbotConversation $conversation,
+        ?array $clientContext = null,
+        ?ChatbotUserPreference $preferences = null,
+        ?array $memoryAction = null,
+        ?string $message = null
+    ): array {
+        $pageTitle = $clientContext['page_title'] ?? null;
+        $pagePath = $clientContext['current_path'] ?? null;
+
+        $contextLine = $pageTitle ? "Je vois que vous êtes sur : {$pageTitle}." : null;
+        if (!$contextLine && $pagePath) {
+            $contextLine = "Je vois que vous êtes sur : {$pagePath}.";
+        }
+
+        $followUp = $this->buildHelpSuggestions($pagePath);
+        $prompt = $this->llm->generateHelpPrompt($conversation, (string) $message, $contextLine, $followUp, $preferences);
+        if (!$prompt) {
+            $preferredName = $preferences?->preferred_name;
+            $prompt = 'Dites-moi ce que vous voulez faire et je vous guide étape par étape.';
+            if ($preferredName) {
+                $prompt = "Bonjour {$preferredName}, " . $prompt;
+            }
+            if ($contextLine) {
+                $prompt = $contextLine . ' ' . $prompt;
+            }
+        }
+
+        $assistantMessage = ChatbotMessage::create([
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'content' => $prompt,
+            'display_type' => 'text',
+            'display_data' => $this->attachMemoryAction([
+                'follow_up' => $followUp,
+            ], $memoryAction),
+        ]);
+
+        $this->updateConversationTitleIfNeeded($conversation, 'help_context', (string) $message, $preferences);
+
+        return [
+            'success' => true,
+            'message' => $assistantMessage->content,
+            'display_type' => $assistantMessage->display_type,
+            'display_data' => $assistantMessage->display_data,
+            'conversation_id' => $conversation->session_id,
+        ];
+    }
+
+    protected function buildHelpSuggestions(?string $pagePath): array
+    {
+        if ($pagePath) {
+            $path = mb_strtolower($pagePath, 'UTF-8');
+            if (str_contains($path, 'inscriptions')) {
+                return ['Nouvelle inscription', 'Valider une inscription', 'Paiement associé'];
+            }
+            if (str_contains($path, 'paiements')) {
+                return ['Créer un paiement', 'Valider paiements', 'Suivi par catégorie'];
+            }
+            if (str_contains($path, 'emploi-temps') || str_contains($path, 'planning')) {
+                return ['Créer un planning', 'Générer emploi du temps', 'Assigner enseignants'];
+            }
+            if (str_contains($path, 'evaluations') || str_contains($path, 'notes')) {
+                return ['Programmer évaluation', 'Saisie rapide notes', 'Publier notes'];
+            }
+        }
+
+        return ['Configuration académique', 'Frais & inscriptions', 'Évaluations & notes'];
+    }
+
+    protected function attachMemoryAction(?array $displayData, ?array $memoryAction): ?array
+    {
+        if (!$memoryAction) {
+            return $displayData;
+        }
+
+        $displayData = $displayData ?? [];
+        $displayData['follow_up_actions'] = array_values(array_filter(array_merge(
+            $displayData['follow_up_actions'] ?? [],
+            [$memoryAction]
+        )));
+
+        return $displayData;
+    }
+
+    protected function updateConversationTitleIfNeeded(
+        ChatbotConversation $conversation,
+        ?string $intent,
+        string $message,
+        ?ChatbotUserPreference $preferences = null
+    ): void {
+        if (!$intent || in_array($intent, ['greeting', 'help_context'], true)) {
+            return;
+        }
+
+        $previousIntent = $this->previousIntent;
+        $titleExists = !empty($conversation->title);
+
+        if ($titleExists && $previousIntent === $intent) {
+            return;
+        }
+
+        $newTitle = $this->llm->generateConversationTitle($conversation, $message, $intent, $preferences);
+        $newTitle = $this->sanitizeTitle($newTitle ?: $message);
+
+        if ($newTitle && $newTitle !== $conversation->title) {
+            $conversation->update(['title' => $newTitle]);
+        }
+    }
+
+    protected function sanitizeTitle(string $title): string
+    {
+        $title = trim(preg_replace('/\s+/', ' ', $title) ?? '');
+        $title = trim($title, " \t\n\r\0\x0B\"'");
+
+        if (mb_strlen($title, 'UTF-8') > 40) {
+            $title = mb_substr($title, 0, 40, 'UTF-8');
+            $title = rtrim($title);
+        }
+
+        return $title;
     }
 
     /**
@@ -1157,19 +2106,24 @@ class ChatbotService
     /**
      * Créer une réponse d'erreur
      */
-    protected function createErrorResponse(ChatbotConversation $conversation, string $errorMessage): array
-    {
+    protected function createErrorResponse(
+        ChatbotConversation $conversation,
+        string $errorMessage,
+        ?array $memoryAction = null
+    ): array {
         $assistantMessage = ChatbotMessage::create([
             'conversation_id' => $conversation->id,
             'role' => 'assistant',
             'content' => $errorMessage,
             'display_type' => 'text',
+            'display_data' => $this->attachMemoryAction(null, $memoryAction),
         ]);
 
         return [
             'success' => true,
             'message' => $assistantMessage->content,
             'display_type' => 'text',
+            'display_data' => $assistantMessage->display_data,
             'conversation_id' => $conversation->session_id,
         ];
     }
@@ -1177,28 +2131,38 @@ class ChatbotService
     /**
      * Réponse texte simple (sans récupération).
      */
-    protected function respondWithSimpleMessage(ChatbotConversation $conversation, string $content): array
-    {
+    protected function respondWithSimpleMessage(
+        ChatbotConversation $conversation,
+        string $content,
+        ?array $memoryAction = null,
+        ?string $intent = null,
+        ?string $message = null,
+        ?ChatbotUserPreference $preferences = null
+    ): array {
         $assistantMessage = ChatbotMessage::create([
             'conversation_id' => $conversation->id,
             'role' => 'assistant',
             'content' => $content,
             'display_type' => 'text',
+            'display_data' => $this->attachMemoryAction(null, $memoryAction),
         ]);
 
         $conversation->update([
             'last_activity_at' => now(),
             'context' => array_filter([
-                'last_intent' => 'conversation_smalltalk',
+                'last_intent' => $intent ?? 'conversation_smalltalk',
                 'last_filters' => [],
                 'last_display' => 'text',
             ]),
         ]);
 
+        $this->updateConversationTitleIfNeeded($conversation, $intent, (string) $message, $preferences);
+
         return [
             'success' => true,
             'message' => $assistantMessage->content,
             'display_type' => 'text',
+            'display_data' => $assistantMessage->display_data,
             'conversation_id' => $conversation->session_id,
         ];
     }

@@ -1925,4 +1925,12 @@ Route::middleware(['auth'])->prefix('chatbot')->name('chatbot.')->group(function
     Route::get('/conversations', [App\Http\Controllers\ChatbotController::class, 'listConversations'])->name('conversations');
     Route::get('/conversations/{conversationId}/history', [App\Http\Controllers\ChatbotController::class, 'getHistory'])->name('history');
     Route::delete('/conversations/{conversationId}', [App\Http\Controllers\ChatbotController::class, 'deleteConversation'])->name('delete');
+    Route::put('/conversations/{conversationId}/title', [App\Http\Controllers\ChatbotController::class, 'updateConversationTitle'])->name('conversations.title');
+    Route::get('/preferences', [App\Http\Controllers\ChatbotController::class, 'getPreferences'])->name('preferences');
+    Route::put('/preferences', [App\Http\Controllers\ChatbotController::class, 'updatePreferences'])->name('preferences.update');
+    Route::post('/preferences/memory', [App\Http\Controllers\ChatbotController::class, 'saveMemory'])->name('preferences.memory');
+    Route::get('/forms/frais-category', [App\Http\Controllers\ChatbotController::class, 'getMandatoryFraisCategoryForm'])->name('forms.frais-category');
+    Route::post('/forms/frais-category', [App\Http\Controllers\ChatbotController::class, 'storeMandatoryFraisCategory'])->name('forms.frais-category.store');
+    Route::get('/forms/frais-config', [App\Http\Controllers\ChatbotController::class, 'getFraisConfigForm'])->name('forms.frais-config');
+    Route::post('/forms/frais-config', [App\Http\Controllers\ChatbotController::class, 'storeFraisConfig'])->name('forms.frais-config.store');
 });
