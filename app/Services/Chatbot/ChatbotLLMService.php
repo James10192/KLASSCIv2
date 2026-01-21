@@ -523,7 +523,7 @@ PROMPT;
         $missingTitles = array_values(array_filter($missingTitles));
         $missingLine = empty($missingTitles) ? '' : 'Pré-requis manquants: ' . implode(', ', $missingTitles);
 
-        $system = "Tu es un assistant KLASSCI. Ta tache: reformuler le message de base sans changer le sens. 1 a 2 phrases, ton humain. Interdits: listes, tableaux, puces, URLs, titres. Ne pas ajouter d'etapes ni d'informations. Conserver la mention que la checklist est affichee juste en dessous. Termine par une question courte.";
+        $system = "Tu es un assistant KLASSCI. Ta tache: reformuler le message de base sans changer le sens. 1 a 2 phrases, ton humain. Interdits: listes, tableaux, puces, URLs, titres. Ne pas ajouter d'etapes ni d'informations. Si le message de base mentionne une checklist, conserve cette mention; sinon ne l'invente pas. Termine par une question courte.";
 
         $prompt = trim(implode("\n", array_filter([
             $preferencesLine,
@@ -551,6 +551,86 @@ PROMPT;
         }
 
         return $this->isRephraseValid($text, $requiredTerms) ? $text : null;
+    }
+
+    public function rewriteBaseResponse(
+        ChatbotConversation $conversation,
+        string $userMessage,
+        string $intent,
+        string $baseResponse,
+        array $stepContext,
+        ?ChatbotUserPreference $preferences
+    ): ?string {
+        if (! config('groq.api_key')) {
+            return null;
+        }
+
+        $preferencesLine = $this->buildPreferenceContext($preferences);
+        $domainContext = $this->getDomainContext();
+        $stepTitle = $stepContext['step']['title'] ?? null;
+
+        $system = "Tu es un assistant KLASSCI. Ta tache: reformuler le message de base sans changer le sens. 1 a 2 phrases, ton humain. Interdits: listes, tableaux, puces, URLs, titres. Ne pas ajouter d'etapes ni d'informations. Termine par une question courte.";
+
+        $prompt = trim(implode("\n", array_filter([
+            $preferencesLine,
+            $domainContext ? "Contexte metier: {$domainContext}" : null,
+            $stepTitle ? "Etape: {$stepTitle}" : null,
+            "Intent: {$intent}",
+            "Message utilisateur: {$userMessage}",
+            "Message de base a reformuler: {$baseResponse}",
+        ])));
+
+        $messages = [
+            ['role' => 'system', 'content' => $system],
+            ['role' => 'user', 'content' => $prompt],
+        ];
+
+        $text = $this->callGroq($messages, $this->model);
+        $text = $text ? trim($text) : null;
+
+        if ($text && strpos($text, '?') !== false) {
+            return null;
+        }
+
+        return $this->isRephraseValid($text) ? $text : null;
+    }
+
+    public function inferFilterFocusField(string $message): ?string
+    {
+        if (! config('groq.api_key')) {
+            return null;
+        }
+
+        $system = "Tu es un assistant KLASSCI. Ta tache: detecter si l'utilisateur veut appliquer un filtre sur les inscriptions. Reponds uniquement en JSON strict: {\"open_form\":true|false,\"focus_field\":\"filiere_id|niveau_id|status|\"}. Si l'utilisateur demande d'ajouter un filtre sans precision, open_form=true et focus_field vide. Ne mets rien d'autre.";
+        $prompt = "Message utilisateur: {$message}";
+
+        $messages = [
+            ['role' => 'system', 'content' => $system],
+            ['role' => 'user', 'content' => $prompt],
+        ];
+
+        $text = $this->callGroq($messages, $this->model);
+        $text = $text ? trim($text) : null;
+
+        if (! $text) {
+            return null;
+        }
+
+        $payload = json_decode($text, true);
+        if (! is_array($payload)) {
+            return null;
+        }
+
+        if (empty($payload['open_form'])) {
+            return null;
+        }
+
+        $focusField = $payload['focus_field'] ?? '';
+        if (!in_array($focusField, ['filiere_id', 'niveau_id', 'status', ''], true)) {
+            return null;
+        }
+
+        return $focusField;
     }
 
     public function generateActionGuidance(
@@ -631,6 +711,10 @@ PROMPT;
             return '';
         }
 
+        if ($this->isDefaultPreferences($preferences)) {
+            return '';
+        }
+
         $parts = [];
         if ($preferences->preferred_name) {
             $parts[] = 'Nom préféré: ' . $preferences->preferred_name;
@@ -649,6 +733,22 @@ PROMPT;
         }
 
         return empty($parts) ? '' : 'Préférences utilisateur: ' . implode(' | ', $parts);
+    }
+
+    protected function isDefaultPreferences(ChatbotUserPreference $preferences): bool
+    {
+        $hasCustomName = !empty($preferences->preferred_name);
+        $hasNotes = !empty($preferences->notes);
+
+        $styleDefault = $preferences->response_style === 'standard';
+        $toneDefault = $preferences->response_tone === 'pedagogique';
+        $clarifyDefault = $preferences->clarification_mode === 'auto';
+
+        if ($hasCustomName || $hasNotes) {
+            return false;
+        }
+
+        return $styleDefault && $toneDefault && $clarifyDefault;
     }
 
     protected function isActionGuidanceValid(?string $text): bool

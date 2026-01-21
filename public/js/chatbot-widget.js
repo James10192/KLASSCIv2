@@ -616,10 +616,19 @@
                         widget.fetchConversations();
                     }
 
-                    form.classList.add('is-submitted');
-                    Array.prototype.slice.call(form.elements).forEach(function (element) {
-                        element.disabled = true;
-                    });
+                    var successTitle = data.success_title || 'Terminé';
+                    var successText = response.form_message || data.success_message || response.message || 'Formulaire envoyé.';
+
+                    var successCard = document.createElement('div');
+                    successCard.className = 'chatbot-form-success';
+                    successCard.innerHTML = '<div class="chatbot-form-success-icon"><i class="fas fa-check"></i></div>' +
+                        '<div class="chatbot-form-success-body">' +
+                        '<div class="chatbot-form-success-title">' + successTitle + '</div>' +
+                        '<div class="chatbot-form-success-text">' + successText + '</div>' +
+                        '</div>';
+
+                    container.innerHTML = '';
+                    container.appendChild(successCard);
                 })
                 .catch(function (error) {
                     if (error && error.message !== 'form_error') {
@@ -938,6 +947,11 @@
         this.applyDimensions();
         this.updateBackdropVisibility();
         this.renderEmptyState();
+
+        if (this.settingsButton) {
+            this.settingsButton.disabled = !this.state.isOpen;
+            this.settingsButton.classList.toggle('is-disabled', !this.state.isOpen);
+        }
     };
 
     ChatbotWidget.prototype.toggle = function () {
@@ -957,6 +971,11 @@
         this.window.setAttribute('aria-modal', 'true');
         this.toggleButton.classList.add('is-active');
         this.toggleButton.setAttribute('aria-expanded', 'true');
+
+        if (this.settingsButton) {
+            this.settingsButton.disabled = false;
+            this.settingsButton.classList.remove('is-disabled');
+        }
 
         if (this.backdrop) {
             this.backdrop.classList.add('is-visible');
@@ -983,6 +1002,13 @@
         this.toggleButton.classList.remove('is-active');
         this.toggleButton.setAttribute('aria-expanded', 'false');
 
+        if (this.settingsButton) {
+            this.settingsButton.disabled = true;
+            this.settingsButton.classList.add('is-disabled');
+        }
+
+        this.closeSettingsModal();
+
         this.setFullscreen(false);
         this.updateBackdropVisibility();
     };
@@ -1000,7 +1026,7 @@
     };
 
     ChatbotWidget.prototype.openSettingsModal = function () {
-        if (!this.settingsModal) {
+        if (!this.settingsModal || !this.state.isOpen) {
             return;
         }
         this.settingsModal.classList.add('is-open');
@@ -1130,6 +1156,7 @@
             var target = value || '';
             var route = null;
             var categoryId = null;
+            var focusField = null;
 
             if (target.indexOf('frais_config:') === 0) {
                 route = this.config.routes.formFraisConfig;
@@ -1138,6 +1165,11 @@
                 route = this.config.routes.formFraisCategory;
             } else if (target === 'frais_config') {
                 route = this.config.routes.formFraisConfig;
+            } else if (target.indexOf('inscriptions_filter:') === 0) {
+                route = this.config.routes.formInscriptionsFilter;
+                focusField = target.split(':')[1] || null;
+            } else if (target === 'inscriptions_filter') {
+                route = this.config.routes.formInscriptionsFilter;
             }
 
             if (!route) {
@@ -1159,6 +1191,10 @@
             }
             if (params.length) {
                 url += (url.indexOf('?') === -1 ? '?' : '&') + params.join('&');
+            }
+
+            if (focusField) {
+                url += (url.indexOf('?') === -1 ? '?' : '&') + 'focus_field=' + encodeURIComponent(focusField);
             }
 
             fetch(url, {
@@ -1187,6 +1223,15 @@
                         deep_link: payload.deep_link,
                         created_at: new Date().toISOString()
                     });
+
+                    if (focusField) {
+                        setTimeout(function () {
+                            var field = self.messagesContainer.querySelector('[name="' + focusField + '"]');
+                            if (field) {
+                                field.focus();
+                            }
+                        }, 120);
+                    }
                 })
                 .catch(function () {
                     typing.remove();
@@ -1701,6 +1746,15 @@
             if (actions) {
                 messageContent.appendChild(actions);
             }
+        }
+
+        if (displayData.focus_field) {
+            setTimeout(function () {
+                var field = messageContent.querySelector('[name="' + displayData.focus_field + '"]');
+                if (field) {
+                    field.focus();
+                }
+            }, 120);
         }
 
         wrapper.appendChild(avatar);

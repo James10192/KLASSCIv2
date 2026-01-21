@@ -10,6 +10,7 @@ use App\Models\ChatbotKnowledgeBase;
 use App\Models\ChatbotUserPreference;
 use App\Models\ESBTPFraisCategory;
 use App\Models\ESBTPFiliere;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPNiveauEtude;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -79,12 +80,19 @@ class ChatbotService
             ]);
 
             if ($clientContext || $preferences) {
+                $hasCustomPreferences = $preferences
+                    && ($preferences->preferred_name
+                        || $preferences->notes
+                        || $preferences->response_style !== 'standard'
+                        || $preferences->response_tone !== 'pedagogique'
+                        || $preferences->clarification_mode !== 'auto');
+
                 $conversation->update([
                     'context' => array_filter(array_merge($conversation->context ?? [], [
                         'last_page_url' => $clientContext['current_url'] ?? null,
                         'last_page_path' => $clientContext['current_path'] ?? null,
                         'last_page_title' => $clientContext['page_title'] ?? null,
-                        'user_preferences' => $preferences ? $preferences->only([
+                        'user_preferences' => $hasCustomPreferences ? $preferences->only([
                             'preferred_name',
                             'response_style',
                             'response_tone',
@@ -97,6 +105,22 @@ class ChatbotService
 
             $pendingAction = $conversation->context['pending_action'] ?? null;
             if ($pendingAction) {
+                $focusField = $this->getFilterFocusField($message);
+                if ($focusField !== null) {
+                    if ($focusField === '') {
+                        $response = $this->respondWithAdditionalFilterOptions($conversation, $memoryAction, $preferences);
+                        if ($response) {
+                            return $response;
+                        }
+                    } else {
+                        $payload = $focusField ? ['focus_field' => $focusField] : [];
+                        $formResponse = $this->buildFormResponse($conversation, 'inscriptions_filter', $payload, $memoryAction);
+                        if ($formResponse) {
+                            return $formResponse;
+                        }
+                    }
+                }
+
                 if ($this->isAffirmativeMessage($message)) {
                     return $this->respondWithPendingAction($conversation, $pendingAction, $memoryAction);
                 }
@@ -108,6 +132,26 @@ class ChatbotService
 
             if ($this->shouldPromptForHelp($message)) {
                 return $this->respondWithHelpPrompt($conversation, $clientContext, $preferences, $memoryAction, $message);
+            }
+
+            if ($this->isCriteriaQuestion($message)) {
+                return $this->respondWithCriteriaExplanation($conversation, $memoryAction, $preferences);
+            }
+
+            $focusField = $this->getFilterFocusField($message);
+            if ($focusField !== null) {
+                if ($focusField === '') {
+                    $response = $this->respondWithAdditionalFilterOptions($conversation, $memoryAction, $preferences);
+                    if ($response) {
+                        return $response;
+                    }
+                } else {
+                    $payload = $focusField ? ['focus_field' => $focusField] : [];
+                    $formResponse = $this->buildFormResponse($conversation, 'inscriptions_filter', $payload, $memoryAction);
+                    if ($formResponse) {
+                        return $formResponse;
+                    }
+                }
             }
 
             // 3. Décision LLM (intent, filtres, affichage)
@@ -193,6 +237,45 @@ class ChatbotService
                 $responseText = $verification['suggestion'];
                 $actionLabel = $verification['action_label'] ?? 'En savoir plus';
                 $deepLink = $verification['deep_link'];
+                $displayData = null;
+
+                $rawFilters = $llmFilters;
+                if (!isset($rawFilters['_raw_message'])) {
+                    $rawFilters['_raw_message'] = $message;
+                }
+                $statusExplicit = $this->isStatusExplicit($rawFilters['_raw_message'] ?? null);
+                if (($rawFilters['status'] ?? null) === 'active' && ! $statusExplicit) {
+                    unset($rawFilters['status']);
+                }
+
+                $filterable = array_filter($rawFilters, function ($value, $key) {
+                    if (in_array($key, ['_raw_message', 'page', 'per_page', 'limit', 'setup_scope', 'full_guide'], true)) {
+                        return false;
+                    }
+                    if (is_array($value)) {
+                        return !empty($value);
+                    }
+                    return $value !== null && $value !== '';
+                }, ARRAY_FILTER_USE_BOTH);
+
+                if ($intent === 'get_inscriptions' && empty($filterable)) {
+                    $responseText = "Aucune inscription n'est enregistrée pour le moment.";
+                    $displayData = [
+                        'follow_up' => [
+                            'Filtrer par filière',
+                            'Filtrer par niveau',
+                            'Filtrer par statut',
+                        ],
+                        'follow_up_actions' => [
+                            [
+                                'label' => 'Ajouter un filtre',
+                                'action' => 'open_form',
+                                'value' => 'inscriptions_filter',
+                            ],
+                        ],
+                    ];
+                    $deepLink = Route::has('esbtp.inscriptions.index') ? route('esbtp.inscriptions.index') : $deepLink;
+                }
 
                 $assistantMessage = ChatbotMessage::create([
                     'conversation_id' => $conversation->id,
@@ -200,7 +283,7 @@ class ChatbotService
                     'content' => $responseText,
                     'display_type' => 'text',
                     'deep_link' => $deepLink,
-                    'display_data' => $this->attachMemoryAction(null, $memoryAction),
+                    'display_data' => $this->attachMemoryAction($displayData, $memoryAction),
                     'metadata' => [
                         'intent' => $intent,
                         'verification_level' => $verification['level'],
@@ -226,11 +309,93 @@ class ChatbotService
             if (empty($data['results'])) {
                 // Construire un message explicite avec les critères recherchés
                 $criteriaText = $this->buildCriteriaText($intent, $data['filters'] ?? $llmFilters);
-                $noResultMessage = "Je n'ai trouvé aucun résultat pour votre recherche";
-                if ($criteriaText) {
-                    $noResultMessage .= " : " . $criteriaText . ".";
+                $rawFilters = $data['filters'] ?? $llmFilters;
+                if (!isset($rawFilters['_raw_message'])) {
+                    $rawFilters['_raw_message'] = $message;
+                }
+
+                $statusExplicit = $this->isStatusExplicit($rawFilters['_raw_message'] ?? null);
+                if (($rawFilters['status'] ?? null) === 'active' && ! $statusExplicit) {
+                    unset($rawFilters['status']);
+                }
+
+                $criteriaText = $this->buildCriteriaText($intent, $rawFilters);
+                $filterable = array_filter($rawFilters, function ($value, $key) {
+                    if (in_array($key, ['_raw_message', 'page', 'per_page', 'limit', 'setup_scope', 'full_guide'], true)) {
+                        return false;
+                    }
+                    if (is_array($value)) {
+                        return !empty($value);
+                    }
+                    return $value !== null && $value !== '';
+                }, ARRAY_FILTER_USE_BOTH);
+
+                $hasCriteria = !empty($criteriaText);
+
+                if (config('app.debug')) {
+                    Log::debug('Chatbot no-result debug', [
+                        'intent' => $intent,
+                        'raw_filters' => $rawFilters,
+                        'filterable' => $filterable,
+                        'criteria_text' => $criteriaText,
+                        'has_criteria' => $hasCriteria,
+                        'status_explicit' => $statusExplicit,
+                    ]);
+                }
+
+                $noFilterContext = empty($filterable) || ! $hasCriteria;
+
+                if ($noFilterContext) {
+                    $noResultMessage = match ($intent) {
+                        'get_inscriptions' => "Aucune inscription n'est enregistrée pour le moment.",
+                        'get_paiements' => "Aucun paiement n'est enregistré pour le moment.",
+                        default => "Aucune donnée n'est enregistrée pour le moment.",
+                    };
                 } else {
-                    $noResultMessage .= ".";
+                    $noResultMessage = "Je n'ai trouvé aucun résultat pour votre recherche";
+                    if ($criteriaText) {
+                        $noResultMessage .= " : " . $criteriaText . ".";
+                    } else {
+                        $noResultMessage .= ".";
+                    }
+                }
+
+                $rewritten = $this->llm->rewriteBaseResponse(
+                    $conversation,
+                    $message,
+                    $intent,
+                    $noResultMessage,
+                    ['step' => ['title' => $intent]],
+                    $preferences
+                );
+                $noResultMessage = $rewritten ?: $noResultMessage;
+
+                $displayData = null;
+                if ($noFilterContext && $intent === 'get_inscriptions') {
+                    $displayData = [
+                        'follow_up_actions' => [
+                            [
+                                'label' => 'Filtrer par filière',
+                                'action' => 'open_form',
+                                'value' => 'inscriptions_filter:filiere_id',
+                            ],
+                            [
+                                'label' => 'Filtrer par niveau',
+                                'action' => 'open_form',
+                                'value' => 'inscriptions_filter:niveau_id',
+                            ],
+                            [
+                                'label' => 'Filtrer par statut',
+                                'action' => 'open_form',
+                                'value' => 'inscriptions_filter:status',
+                            ],
+                            [
+                                'label' => 'Ajouter un filtre',
+                                'action' => 'open_form',
+                                'value' => 'inscriptions_filter',
+                            ],
+                        ],
+                    ];
                 }
 
                 $assistantMessage = ChatbotMessage::create([
@@ -238,7 +403,7 @@ class ChatbotService
                     'role' => 'assistant',
                     'content' => $noResultMessage,
                     'display_type' => 'text',
-                    'display_data' => $this->attachMemoryAction(null, $memoryAction),
+                    'display_data' => $this->attachMemoryAction($displayData, $memoryAction),
                 ]);
 
                 $this->updateConversationTitleIfNeeded($conversation, $intent, $message, $preferences);
@@ -515,6 +680,233 @@ class ChatbotService
         $conversation->update(['context' => $context]);
     }
 
+    protected function isCriteriaQuestion(string $message): bool
+    {
+        $normalized = mb_strtolower(trim($message), 'UTF-8');
+
+        return str_contains($normalized, 'pour quel')
+            || str_contains($normalized, 'pour quelle')
+            || str_contains($normalized, 'quels critères')
+            || str_contains($normalized, 'quelles criteres')
+            || str_contains($normalized, 'quels filtres')
+            || str_contains($normalized, 'quelles filtres')
+            || $normalized === 'criteres'
+            || $normalized === 'critères'
+            || $normalized === 'filtres';
+    }
+
+    protected function getFilterFocusField(string $message): ?string
+    {
+        $normalized = mb_strtolower(trim($message), 'UTF-8');
+        $normalized = preg_replace('/\s+/u', ' ', $normalized);
+
+        $focusField = null;
+
+        if (str_contains($normalized, 'filtrer par filière') || (str_contains($normalized, 'filtr') && str_contains($normalized, 'filiere'))) {
+            $focusField = 'filiere_id';
+        }
+        if (str_contains($normalized, 'filtrer par niveau') || (str_contains($normalized, 'filtr') && str_contains($normalized, 'niveau'))) {
+            $focusField = 'niveau_id';
+        }
+        if (str_contains($normalized, 'filtrer par statut') || (str_contains($normalized, 'filtr') && str_contains($normalized, 'statut'))) {
+            $focusField = 'status';
+        }
+        if (str_contains($normalized, 'ajouter un filtre') || str_contains($normalized, 'ajouter filtre')) {
+            $focusField = '';
+        }
+
+        if ($focusField === null && str_contains($normalized, 'filtr')) {
+            $focusField = $this->llm->inferFilterFocusField($message);
+        }
+
+        if (config('app.debug')) {
+            \Log::debug('Chatbot filter shortcut check', [
+                'message' => $message,
+                'normalized' => $normalized,
+                'focus_field' => $focusField,
+            ]);
+        }
+
+        return $focusField;
+    }
+
+    protected function respondWithCriteriaExplanation(
+        ChatbotConversation $conversation,
+        ?array $memoryAction,
+        ?ChatbotUserPreference $preferences
+    ): array {
+        $lastIntent = $conversation->context['last_intent'] ?? null;
+        $lastFilters = $conversation->context['last_filters'] ?? [];
+
+        $filterable = array_filter($lastFilters, function ($value, $key) {
+            if (in_array($key, ['_raw_message', 'page', 'per_page', 'limit', 'setup_scope', 'full_guide'], true)) {
+                return false;
+            }
+            if (is_array($value)) {
+                return !empty($value);
+            }
+            return $value !== null && $value !== '';
+        }, ARRAY_FILTER_USE_BOTH);
+
+        if (empty($filterable)) {
+            $message = "Aucun critère n'a été appliqué. Si tu veux, je peux filtrer par filière, niveau ou statut.";
+            $displayData = $this->attachMemoryAction([
+                'follow_up_actions' => [
+                    [
+                        'label' => 'Filtrer par filière',
+                        'action' => 'open_form',
+                        'value' => 'inscriptions_filter:filiere_id',
+                    ],
+                    [
+                        'label' => 'Filtrer par niveau',
+                        'action' => 'open_form',
+                        'value' => 'inscriptions_filter:niveau_id',
+                    ],
+                    [
+                        'label' => 'Filtrer par statut',
+                        'action' => 'open_form',
+                        'value' => 'inscriptions_filter:status',
+                    ],
+                    [
+                        'label' => 'Ajouter un filtre',
+                        'action' => 'open_form',
+                        'value' => 'inscriptions_filter',
+                    ],
+                ],
+            ], $memoryAction);
+        } else {
+            $criteriaText = $this->buildCriteriaText($lastIntent ?? 'get_inscriptions', $filterable);
+            $message = $criteriaText
+                ? "Les critères utilisés étaient : {$criteriaText}."
+                : "Les critères utilisés sont déjà appliqués dans la recherche.";
+            $displayData = $this->attachMemoryAction(null, $memoryAction);
+        }
+
+        $rewritten = $this->llm->rewriteBaseResponse(
+            $conversation,
+            $message,
+            $lastIntent ?? 'help_context',
+            $message,
+            ['step' => ['title' => $lastIntent ?? 'criteres']],
+            $preferences
+        );
+
+        $message = $rewritten ?: $message;
+
+        $assistantMessage = ChatbotMessage::create([
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'content' => $message,
+            'display_type' => 'text',
+            'display_data' => $displayData,
+        ]);
+
+        return [
+            'success' => true,
+            'message' => $assistantMessage->content,
+            'display_type' => $assistantMessage->display_type,
+            'display_data' => $assistantMessage->display_data,
+            'conversation_id' => $conversation->session_id,
+        ];
+    }
+
+    protected function respondWithAdditionalFilterOptions(
+        ChatbotConversation $conversation,
+        ?array $memoryAction,
+        ?ChatbotUserPreference $preferences
+    ): ?array {
+        $lastFilters = $conversation->context['last_filters'] ?? [];
+        $usedKeys = array_keys(array_filter($lastFilters, static fn ($value) => $value !== null && $value !== ''));
+
+        $options = [
+            'filiere_id' => 'Filtrer par filière',
+            'niveau_id' => 'Filtrer par niveau',
+            'status' => 'Filtrer par statut',
+            'annee_id' => 'Filtrer par année',
+            'search' => 'Ajouter une recherche',
+        ];
+
+        $actions = [];
+        foreach ($options as $key => $label) {
+            if (!in_array($key, $usedKeys, true)) {
+                $actions[] = [
+                    'label' => $label,
+                    'action' => 'open_form',
+                    'value' => "inscriptions_filter:{$key}",
+                ];
+            }
+        }
+
+        $resetAction = [
+            'label' => 'Réinitialiser les filtres',
+            'action' => 'open_form',
+            'value' => 'inscriptions_filter',
+        ];
+
+        if (empty($actions)) {
+            $message = "Tu as déjà utilisé tous les filtres disponibles. Tu veux que je les réinitialise ?";
+            $displayData = $this->attachMemoryAction([
+                'follow_up_actions' => [$resetAction],
+            ], $memoryAction);
+        } else {
+            $message = "Tu veux ajouter quel filtre ?";
+            $displayData = $this->attachMemoryAction([
+                'follow_up_actions' => array_merge($actions, [$resetAction]),
+            ], $memoryAction);
+        }
+
+        $rewritten = $this->llm->rewriteBaseResponse(
+            $conversation,
+            $message,
+            'get_inscriptions',
+            $message,
+            ['step' => ['title' => 'ajouter un filtre']],
+            $preferences
+        );
+
+        $message = $rewritten ?: $message;
+
+        $assistantMessage = ChatbotMessage::create([
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'content' => $message,
+            'display_type' => 'text',
+            'display_data' => $displayData,
+        ]);
+
+        return [
+            'success' => true,
+            'message' => $assistantMessage->content,
+            'display_type' => $assistantMessage->display_type,
+            'display_data' => $assistantMessage->display_data,
+            'conversation_id' => $conversation->session_id,
+        ];
+    }
+
+    protected function buildEmploiTempsHint(): ?string
+    {
+        $currentYearId = \DB::table('esbtp_annee_universitaires')
+            ->where('is_current', true)
+            ->value('id');
+
+        if (!$currentYearId) {
+            return null;
+        }
+
+        $inscriptionsCount = \DB::table('esbtp_inscriptions')
+            ->where('annee_universitaire_id', $currentYearId)
+            ->when(\Schema::hasColumn('esbtp_inscriptions', 'deleted_at'), function ($query) {
+                $query->whereNull('esbtp_inscriptions.deleted_at');
+            })
+            ->count();
+
+        if ($inscriptionsCount > 0) {
+            return null;
+        }
+
+        return "Tu peux générer l'emploi du temps même si aucune inscription n'est encore enregistrée. Si une classe n'a pas d'étudiants sur l'année courante, c'est normal.";
+    }
+
     protected function respondWithPendingAction(
         ChatbotConversation $conversation,
         string $pendingAction,
@@ -525,8 +917,37 @@ class ChatbotService
         return match ($pendingAction) {
             'frais_category_form' => $this->buildFormResponse($conversation, 'frais_category', $payload, $memoryAction),
             'frais_config_form' => $this->buildFormResponse($conversation, 'frais_config', $payload, $memoryAction),
+            'open_page' => $this->buildOpenPageResponse($conversation, $payload, $memoryAction),
             default => null,
         };
+    }
+
+    protected function buildOpenPageResponse(
+        ChatbotConversation $conversation,
+        array $payload,
+        ?array $memoryAction
+    ): array {
+        $deepLink = $payload['deep_link'] ?? null;
+
+        $assistantMessage = ChatbotMessage::create([
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'content' => 'Très bien. Je te remets le bouton d\'accès juste ici.',
+            'display_type' => 'text',
+            'deep_link' => $deepLink,
+            'display_data' => $this->attachMemoryAction(null, $memoryAction),
+        ]);
+
+        $this->clearPendingAction($conversation);
+
+        return [
+            'success' => true,
+            'message' => $assistantMessage->content,
+            'display_type' => $assistantMessage->display_type,
+            'display_data' => $assistantMessage->display_data,
+            'deep_link' => $assistantMessage->deep_link,
+            'conversation_id' => $conversation->session_id,
+        ];
     }
 
     protected function shouldPromptForHelp(string $message): bool
@@ -670,6 +1091,7 @@ class ChatbotService
             'get_evaluations' => ['scope' => 'pedagogie', 'step' => 'evaluations', 'route' => 'esbtp.evaluations.index'],
             'get_notes' => ['scope' => 'pedagogie', 'step' => 'notes', 'route' => 'esbtp.notes.index'],
             'get_attendances' => ['scope' => 'pedagogie', 'step' => 'absences', 'route' => 'esbtp.attendances.index'],
+            'get_emploi_temps' => ['scope' => 'academique', 'step' => 'emploi_temps', 'route' => 'esbtp.emploi-temps.index'],
         ];
 
         if (!isset($actionMap[$intent])) {
@@ -678,7 +1100,7 @@ class ChatbotService
 
         $config = $actionMap[$intent];
         $stepContext = $this->setupGuide->getStepContext($user, $config['scope'], $config['step']);
-        $deepLink = $stepContext['deep_link'] ?? ($config['route'] ? route($config['route']) : null);
+        $deepLink = $stepContext['deep_link'] ?? ($config['route'] && Route::has($config['route']) ? route($config['route']) : null);
         $missingPrerequisites = $stepContext['missing_prerequisite_ids'] ?? [];
         $missingPreviewLimit = $preferences->response_style === 'court' ? 1 : 3;
         $missingPreview = $this->setupGuide->buildMissingStepsPreview(
@@ -710,6 +1132,11 @@ class ChatbotService
             }
         }
 
+        if (!$missingPreview && $deepLink) {
+            $pendingAction = 'open_page';
+            $pendingPayload = ['deep_link' => $deepLink];
+        }
+
         $deepLink = $this->resolveActionDeepLink($deepLink, $missingPreview);
         $responseText = $this->buildActionResponseText(
             $intent,
@@ -717,8 +1144,16 @@ class ChatbotService
             $missingPreview,
             $conversation,
             $message,
-            $preferences
+            $preferences,
+            (bool) $deepLink
         );
+
+        if ($intent === 'get_emploi_temps') {
+            $hint = $this->buildEmploiTempsHint();
+            if ($hint) {
+                $responseText = trim($responseText . ' ' . $hint);
+            }
+        }
 
         if (!$responseText) {
             $stepTitle = $stepContext['step']['title'] ?? 'cette action';
@@ -800,14 +1235,17 @@ class ChatbotService
         ?array $missingPreview,
         ChatbotConversation $conversation,
         string $message,
-        ?ChatbotUserPreference $preferences
+        ?ChatbotUserPreference $preferences,
+        bool $canOpenPage
     ): ?string {
         $missingTitles = $stepContext['missing_prerequisite_titles'] ?? [];
         $missingTitles = array_values(array_filter($missingTitles));
 
         if (!empty($missingTitles)) {
-            $missingList = implode(', ', $missingTitles);
-            $baseResponse = "Avant de continuer, il manque encore : {$missingList}. Je te mets la checklist juste en dessous. Tu veux que je fasse l'étape manquante ici ?";
+            $missingTags = implode(' ', array_map(function ($title) {
+                return '<span class="chatbot-inline-tag">' . e($title) . '</span>';
+            }, $missingTitles));
+            $baseResponse = "Avant de continuer, il manque encore : {$missingTags} Je te mets la checklist juste en dessous. Tu veux que je fasse l'étape manquante ici ?";
             $rewritten = $this->llm->rewriteBackendResponse(
                 $conversation,
                 $message,
@@ -819,24 +1257,28 @@ class ChatbotService
 
             return $rewritten ?: $baseResponse;
         }
+        $stepTitle = $stepContext['step']['title'] ?? 'cette action';
+        $lowerTitle = mb_strtolower($stepTitle, 'UTF-8');
+        $buttonLine = $canOpenPage
+            ? 'Je t\'ai mis le bouton d\'accès.'
+            : 'Dis-moi si tu veux que je te guide sur un champ.';
 
-        $response = $this->llm->generateActionGuidance(
+        $baseResponse = sprintf(
+            'Tu peux lancer %s depuis la page dédiée. %s Si tu as besoin d\'aide, fais-moi signe.',
+            $lowerTitle,
+            $buttonLine
+        );
+
+        $rewritten = $this->llm->rewriteBaseResponse(
             $conversation,
             $message,
             $intent,
+            $baseResponse,
             $stepContext,
             $preferences
         );
 
-        if ($response) {
-            return $response;
-        }
-
-        if ($intent === 'get_inscriptions') {
-            return $this->buildInscriptionActionText($stepContext, $missingPreview);
-        }
-
-        return null;
+        return $rewritten ?: $baseResponse;
     }
 
     protected function buildInscriptionActionText(array $stepContext, ?array $missingPreview): string
@@ -875,6 +1317,7 @@ class ChatbotService
         $form = match ($formKey) {
             'frais_category' => $this->buildMandatoryFraisCategoryFormData($conversation),
             'frais_config' => $this->buildFraisConfigFormData($conversation, $payload),
+            'inscriptions_filter' => $this->buildInscriptionsFilterFormData($conversation, $payload),
             default => null,
         };
 
@@ -965,6 +1408,110 @@ class ChatbotService
                 'action_method' => 'POST',
                 'submit_label' => 'Créer la catégorie',
                 'fields' => $fields,
+                'hidden_fields' => [
+                    'conversation_id' => $conversation->session_id,
+                ],
+            ],
+        ];
+    }
+
+    protected function buildInscriptionsFilterFormData(ChatbotConversation $conversation, array $payload = []): array
+    {
+        $filieres = ESBTPFiliere::orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
+        $annees = \App\Models\ESBTPAnneeUniversitaire::orderBy('name', 'desc')->get();
+
+        $allFields = [
+            'search' => [
+                'name' => 'search',
+                'label' => 'Recherche (nom, matricule, classe)',
+                'type' => 'text',
+                'placeholder' => 'Ex: KONAN, MBTS2025/001, BTS Bâtiment',
+            ],
+            'filiere_id' => [
+                'name' => 'filiere_id',
+                'label' => 'Filière',
+                'type' => 'select',
+                'options' => array_merge([
+                    ['value' => '', 'label' => 'Toutes les filières'],
+                ], $filieres->map(function ($filiere) {
+                    return ['value' => $filiere->id, 'label' => $filiere->name];
+                })->toArray()),
+            ],
+            'niveau_id' => [
+                'name' => 'niveau_id',
+                'label' => 'Niveau',
+                'type' => 'select',
+                'options' => array_merge([
+                    ['value' => '', 'label' => 'Tous les niveaux'],
+                ], $niveaux->map(function ($niveau) {
+                    return ['value' => $niveau->id, 'label' => $niveau->name];
+                })->toArray()),
+            ],
+            'annee_id' => [
+                'name' => 'annee_id',
+                'label' => 'Année universitaire',
+                'type' => 'select',
+                'options' => array_merge([
+                    ['value' => '', 'label' => 'Toutes les années'],
+                ], $annees->map(function ($annee) {
+                    return ['value' => $annee->id, 'label' => $annee->name];
+                })->toArray()),
+            ],
+            'status' => [
+                'name' => 'status',
+                'label' => 'Statut',
+                'type' => 'select',
+                'options' => [
+                    ['value' => 'all', 'label' => 'Toutes'],
+                    ['value' => 'active', 'label' => 'Actives'],
+                    ['value' => 'en_attente', 'label' => 'En attente'],
+                    ['value' => 'annulée', 'label' => 'Annulées'],
+                    ['value' => 'terminée', 'label' => 'Terminées'],
+                ],
+            ],
+        ];
+
+        $focusField = $payload['focus_field'] ?? null;
+        $fields = array_values($allFields);
+        $description = 'Tu peux laisser un champ vide pour ne pas filtrer.';
+        $message = "D'accord. Donne-moi les filtres à appliquer.";
+        $followUpActions = [];
+
+        if ($focusField && isset($allFields[$focusField])) {
+            $fields = [$allFields[$focusField]];
+            $message = "Ok. Choisis d'abord le filtre demandé.";
+            $description = 'Si tu veux ajouter d\'autres filtres ensuite, je peux ouvrir le formulaire complet.';
+            $followUpActions[] = [
+                'label' => 'Ajouter un autre filtre',
+                'action' => 'open_form',
+                'value' => 'inscriptions_filter',
+            ];
+        }
+
+        if (config('app.debug')) {
+            \Log::debug('Chatbot inscriptions filter form payload', [
+                'focus_field' => $focusField,
+                'fields_count' => count($fields),
+                'field_names' => array_map(static fn ($field) => $field['name'], $fields),
+            ]);
+        }
+
+        return [
+            'message' => $message,
+            'display_data' => [
+                'title' => 'Filtrer les inscriptions',
+                'description' => $description,
+                'focus_field' => $focusField,
+                'action_url' => Route::has('chatbot.forms.inscriptions-filter.store')
+                    ? route('chatbot.forms.inscriptions-filter.store')
+                    : null,
+                'action_method' => 'POST',
+                'submit_label' => 'Appliquer les filtres',
+                'success_title' => 'Filtres appliqués',
+                'success_message' => 'Je te prépare la liste filtrée.',
+                'fields' => $fields,
+                'follow_up_actions' => $followUpActions,
                 'hidden_fields' => [
                     'conversation_id' => $conversation->session_id,
                 ],
@@ -2228,13 +2775,14 @@ class ChatbotService
     protected function buildCriteriaText(string $intent, array $filters): string
     {
         $parts = [];
+        $statusExplicit = $this->isStatusExplicit($filters['_raw_message'] ?? null);
 
         // Pour "get_inscriptions"
         if ($intent === 'get_inscriptions') {
             if (isset($filters['without_paiements']) && $filters['without_paiements'] === true) {
                 $parts[] = "inscriptions sans aucun paiement";
             }
-            if (isset($filters['status'])) {
+            if (isset($filters['status']) && ($filters['status'] !== 'active' || $statusExplicit)) {
                 $statusLabel = match($filters['status']) {
                     'en_attente' => 'en attente',
                     'validé' => 'validées',
@@ -2309,5 +2857,26 @@ class ChatbotService
 
         // Sinon, label par défaut
         return "Ouvrir la page";
+    }
+
+    protected function isStatusExplicit(?string $rawMessage): bool
+    {
+        if (!$rawMessage) {
+            return false;
+        }
+
+        $normalized = mb_strtolower($rawMessage, 'UTF-8');
+
+        return str_contains($normalized, 'statut')
+            || str_contains($normalized, 'active')
+            || str_contains($normalized, 'actif')
+            || str_contains($normalized, 'en attente')
+            || str_contains($normalized, 'attente')
+            || str_contains($normalized, 'annule')
+            || str_contains($normalized, 'annulée')
+            || str_contains($normalized, 'termine')
+            || str_contains($normalized, 'terminée')
+            || str_contains($normalized, 'valide')
+            || str_contains($normalized, 'rejet');
     }
 }

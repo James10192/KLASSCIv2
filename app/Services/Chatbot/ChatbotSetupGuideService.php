@@ -152,6 +152,11 @@ class ChatbotSetupGuideService
 
     protected function buildAcademicSection(array $stats): array
     {
+        $emploiTempsDescription = 'Créer les emplois du temps à partir du planning.';
+        if (empty($stats['inscriptions'])) {
+            $emploiTempsDescription .= ' Tu peux le faire meme sans inscriptions; si une classe n\'a pas d\'etudiants inscrits (annee courante), c\'est normal.';
+        }
+
         $steps = [
             $this->step('annee_universitaire', 'Définir l\'année universitaire',
                 'Créer l\'année courante et l\'activer (is_current=true).',
@@ -178,7 +183,7 @@ class ChatbotSetupGuideService
                 'Configurer volumes horaires et assigner les enseignants.',
                 $stats['planning_general'], $this->routeUrl('esbtp.planning-general.index'), ['disponibilites']),
             $this->step('emploi_temps', 'Générer l\'emploi du temps',
-                'Créer les emplois du temps à partir du planning.',
+                $emploiTempsDescription,
                 $stats['emploi_temps'], $this->routeUrl('esbtp.emploi-temps.index'), ['planning_general']),
         ];
 
@@ -203,7 +208,7 @@ class ChatbotSetupGuideService
                 $stats['frais_optional_options'], $this->routeUrl('esbtp.frais.optional-config'), ['frais_categories']),
             $this->step('inscriptions', 'Créer les inscriptions',
                 'Inscrire les étudiants dans l\'année courante.',
-                $stats['inscriptions'], $this->routeUrl('esbtp.inscriptions.create'), ['emploi_temps', 'frais_mandatory_configs']),
+                $stats['inscriptions'], $this->routeUrl('esbtp.inscriptions.create'), ['classes', 'emploi_temps', 'frais_mandatory_configs']),
             $this->step('paiements', 'Enregistrer les paiements',
                 'Enregistrer les paiements après inscription.',
                 $stats['paiements'], $this->routeUrl('esbtp.paiements.index'), ['inscriptions']),

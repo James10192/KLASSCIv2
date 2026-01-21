@@ -38,7 +38,7 @@ Dans le formulaire \"Nouvelle Inscription\" : on saisit d'abord les infos person
 1. Réponds TOUJOURS en français
 2. Sois concis et professionnel
 3. Pour les listes de données, utilise le template 'table'
-4. Propose TOUJOURS un lien vers la page complète après avoir affiché un résumé
+4. Ne propose un lien que si une route exacte est disponible (sinon s'abstenir)
 5. Ne divulgue JAMAIS de mots de passe ou données sensibles
 6. Si tu ne peux pas répondre, oriente vers le support
 
@@ -338,14 +338,17 @@ Propose régulièrement des insights et recommandations basées sur les données
         $knowledgeEntries = [
             [
                 'intent' => 'get_inscriptions',
+                'model' => 'ESBTPInscription',
                 'deep_link_pattern' => 'http://localhost:8000/esbtp/inscriptions?annee=&filiere={filiere}&niveau={niveau}&search=&status={status}',
             ],
             [
                 'intent' => 'get_paiements',
+                'model' => 'ESBTPPaiement',
                 'deep_link_pattern' => 'http://localhost:8000/esbtp/paiements?status={status}&date_debut={date_debut}&date_fin={date_fin}&etudiant_id={etudiant_id}&filiere_id={filiere_id}&niveau_id={niveau_id}&category_id={category_id}&mode_paiement={mode_paiement}',
             ],
             [
                 'intent' => 'get_frais',
+                'model' => 'ESBTPFraisCategory',
                 'deep_link_pattern' => 'http://localhost:8000/esbtp/frais',
             ],
         ];
@@ -355,8 +358,12 @@ Propose régulièrement des insights et recommandations basées sur les données
             $knowledge = ChatbotKnowledgeBase::where('intent', $entry['intent'])->first();
 
             if ($knowledge) {
-                // Mettre à jour seulement le pattern (préserver les autres données explorées)
-                $knowledge->update(['deep_link_pattern' => $entry['deep_link_pattern']]);
+                // Mettre à jour pattern + modèle si manquant
+                $updateData = ['deep_link_pattern' => $entry['deep_link_pattern']];
+                if (empty($knowledge->model) && !empty($entry['model'])) {
+                    $updateData['model'] = $entry['model'];
+                }
+                $knowledge->update($updateData);
                 $this->command->info("✅ Updated deep_link_pattern for intent: {$entry['intent']}");
             } else {
                 // Créer une nouvelle entrée minimale (sera complétée par l'exploration)

@@ -377,6 +377,117 @@ class ChatbotController extends Controller
         ], $response ? 200 : 500);
     }
 
+    public function getInscriptionsFilterForm(Request $request)
+    {
+        $conversation = $this->resolveConversation($request->input('conversation_id'));
+        if (!$conversation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Conversation introuvable.',
+            ], 404);
+        }
+
+        $payload = [];
+        if ($request->filled('focus_field')) {
+            $payload['focus_field'] = $request->input('focus_field');
+        }
+
+        if (config('app.debug')) {
+            \Log::debug('Chatbot inscriptions filter form request', [
+                'conversation_id' => $request->input('conversation_id'),
+                'focus_field' => $payload['focus_field'] ?? null,
+                'raw_value' => $request->input('focus_field'),
+            ]);
+        }
+
+        $response = $this->chatbotService->buildFormResponse($conversation, 'inscriptions_filter', $payload, null);
+
+        return response()->json($response ?? [
+            'success' => false,
+            'message' => 'Formulaire indisponible.',
+        ], $response ? 200 : 500);
+    }
+
+    public function storeInscriptionsFilter(Request $request)
+    {
+        if (!$request->user()->can('view_inscriptions')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous n\'avez pas l\'autorisation de consulter les inscriptions.',
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'conversation_id' => 'required|string',
+            'search' => 'nullable|string|max:120',
+            'filiere_id' => 'nullable|exists:esbtp_filieres,id',
+            'niveau_id' => 'nullable|exists:esbtp_niveau_etudes,id',
+            'annee_id' => 'nullable|exists:esbtp_annee_universitaires,id',
+            'status' => 'nullable|string|in:all,active,en_attente,annulée,terminée',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Données invalides.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $conversation = $this->resolveConversation($request->input('conversation_id'));
+        if (!$conversation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Conversation introuvable.',
+            ], 404);
+        }
+
+        $newFilters = [
+            'search' => $request->input('search') ?: null,
+            'filiere' => $request->input('filiere_id') ?: null,
+            'niveau' => $request->input('niveau_id') ?: null,
+            'annee' => $request->input('annee_id') ?: null,
+            'status' => $request->input('status') ?: null,
+        ];
+
+        $existingFilters = $conversation->context['last_filters'] ?? [];
+        $mergedFilters = array_filter(array_merge($existingFilters, array_filter($newFilters, static function ($value) {
+            return $value !== null && $value !== '';
+        })), static function ($value) {
+            return $value !== null && $value !== '';
+        });
+
+        $deepLink = route('esbtp.inscriptions.index', $mergedFilters);
+
+        $assistantMessage = ChatbotMessage::create([
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'content' => 'Filtres appliqués. Je te mets le bouton pour ouvrir la liste filtrée.',
+            'display_type' => 'text',
+            'deep_link' => $deepLink,
+        ]);
+
+        $context = $conversation->context ?? [];
+        $context['pending_action'] = 'open_page';
+        $context['pending_action_payload'] = ['deep_link' => $deepLink];
+        $context['last_intent'] = 'get_inscriptions';
+        $context['last_filters'] = $mergedFilters;
+        $context['last_display'] = 'text';
+        $conversation->update([
+            'last_activity_at' => now(),
+            'context' => $context,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $assistantMessage->content,
+            'display_type' => $assistantMessage->display_type,
+            'deep_link' => $assistantMessage->deep_link,
+            'conversation_id' => $conversation->session_id,
+            'form_message' => 'Filtres enregistrés. Liste prête.',
+        ]);
+    }
+
     public function storeFraisConfig(Request $request)
     {
         if (!$request->user()->can('frais.configure')) {

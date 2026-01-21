@@ -346,7 +346,7 @@ class ChatbotNavigationService
         // Appliquer filtres simples
         foreach ($filters as $key => $value) {
             // Ignorer les clés spéciales qui ne sont pas des colonnes SQL
-            if (in_array($key, ['search', 'page', 'per_page', 'limit', '_raw_message'])) {
+            if (in_array($key, ['search', 'page', 'per_page', 'limit', '_raw_message', 'setup_scope', 'full_guide'])) {
                 continue;
             }
 

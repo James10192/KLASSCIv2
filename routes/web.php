@@ -1933,4 +1933,6 @@ Route::middleware(['auth'])->prefix('chatbot')->name('chatbot.')->group(function
     Route::post('/forms/frais-category', [App\Http\Controllers\ChatbotController::class, 'storeMandatoryFraisCategory'])->name('forms.frais-category.store');
     Route::get('/forms/frais-config', [App\Http\Controllers\ChatbotController::class, 'getFraisConfigForm'])->name('forms.frais-config');
     Route::post('/forms/frais-config', [App\Http\Controllers\ChatbotController::class, 'storeFraisConfig'])->name('forms.frais-config.store');
+    Route::get('/forms/inscriptions-filter', [App\Http\Controllers\ChatbotController::class, 'getInscriptionsFilterForm'])->name('forms.inscriptions-filter');
+    Route::post('/forms/inscriptions-filter', [App\Http\Controllers\ChatbotController::class, 'storeInscriptionsFilter'])->name('forms.inscriptions-filter.store');
 });

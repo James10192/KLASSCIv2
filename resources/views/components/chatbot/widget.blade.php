@@ -131,6 +131,8 @@
                     formFraisCategoryStore: '{{ route('chatbot.forms.frais-category.store') }}',
                     formFraisConfig: '{{ route('chatbot.forms.frais-config') }}',
                     formFraisConfigStore: '{{ route('chatbot.forms.frais-config.store') }}',
+                    formInscriptionsFilter: '{{ route('chatbot.forms.inscriptions-filter') }}',
+                    formInscriptionsFilterStore: '{{ route('chatbot.forms.inscriptions-filter.store') }}',
                 },
                 csrfToken: '{{ csrf_token() }}',
             });
