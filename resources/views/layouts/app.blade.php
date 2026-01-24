@@ -18,6 +18,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="app-debug" content="{{ config('app.debug') ? '1' : '0' }}">
+    <meta name="navbar-mark-all-read-url" content="{{ url('/navbar/notifications/mark-all-read') }}">
 
     <title>@yield('title', 'KLASSCI')</title>
 
@@ -2315,6 +2317,27 @@
                             : null;
                         $anneeCouranteExpired = $anneeCouranteModal && $anneeCouranteEndDate && $anneeCouranteEndDate->isPast();
                         $isSuperAdmin = auth()->user()?->hasRole('superAdmin');
+                        $canValidateInscriptions = auth()->user()?->can('inscriptions.validate');
+                        $pendingCurrentYearInscriptionsCount = 0;
+                        $pendingCurrentYearInscriptionsByStep = [];
+
+                        if ($canValidateInscriptions && $anneeCouranteModal) {
+                            $pendingCurrentYearQuery = \App\Models\ESBTPInscription::where('annee_universitaire_id', $anneeCouranteModal->id)
+                                ->where(function($query) {
+                                    $query->whereIn('status', ['en_attente', 'pending'])
+                                        ->orWhere(function($subQuery) {
+                                            $subQuery->where('status', 'active')
+                                                ->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation']);
+                                        });
+                                });
+
+                            $pendingCurrentYearInscriptionsCount = (clone $pendingCurrentYearQuery)->count();
+                            $pendingCurrentYearInscriptionsByStep = [
+                                'prospect' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'prospect')->count(),
+                                'documents_complets' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'documents_complets')->count(),
+                                'en_validation' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'en_validation')->count(),
+                            ];
+                        }
                     @endphp
 
                     @if($anneeCouranteExpired)
@@ -2362,6 +2385,52 @@
                             </div>
                         </div>
                     @endif
+
+                    @if($canValidateInscriptions && ($pendingCurrentYearInscriptionsCount ?? 0) > 0 && $anneeCouranteModal)
+                        <div class="modal fade" id="pendingInscriptionsReminderModal" tabindex="-1" role="dialog" aria-labelledby="pendingInscriptionsReminderModalLabel" aria-hidden="true" data-reminder-key="pendingInscriptionsReminder.user.{{ auth()->id() }}">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="pendingInscriptionsReminderModalLabel">
+                                            Inscriptions en attente - {{ $anneeCouranteModal->name }}
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p><strong>{{ $pendingCurrentYearInscriptionsCount }}</strong> inscription(s) sont en attente de validation pour l'année universitaire courante.</p>
+                                        @if(!empty($pendingCurrentYearInscriptionsByStep))
+                                            <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin: 12px 0;">
+                                                <div style="font-weight: 600; margin-bottom: 6px;">Répartition par étape :</div>
+                                                <ul style="padding-left: 20px; margin: 0;">
+                                                    <li>Prospect : <strong>{{ $pendingCurrentYearInscriptionsByStep['prospect'] ?? 0 }}</strong></li>
+                                                    <li>Documents complets : <strong>{{ $pendingCurrentYearInscriptionsByStep['documents_complets'] ?? 0 }}</strong></li>
+                                                    <li>En validation : <strong>{{ $pendingCurrentYearInscriptionsByStep['en_validation'] ?? 0 }}</strong></li>
+                                                </ul>
+                                            </div>
+                                        @endif
+                                        <ol style="padding-left: 20px; line-height: 1.6; margin: 15px 0;">
+                                            <li>Les dossiers dont le workflow n'est pas à <strong>etudiant_cree</strong> restent en attente.</li>
+                                            <li>Ces étudiants ne seront pas comptés dans KLASSCI pour l'année <strong>{{ $anneeCouranteModal->name }}</strong>.</li>
+                                            <li>Validez ou complétez les dossiers pour finaliser l'inscription.</li>
+                                        </ol>
+                                        <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-top: 15px;">
+                                            <strong>Astuce :</strong><br>
+                                            Le workflow doit atteindre <strong>etudiant_cree</strong> pour activer l'étudiant dans l'année courante.
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" onclick="localStorage.setItem(document.getElementById('pendingInscriptionsReminderModal').dataset.reminderKey, String(Date.now()))">
+                                            Rappeler plus tard
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                                        <a href="{{ route('esbtp.inscriptions.administration', ['annee' => $anneeCouranteModal->id]) }}" class="btn btn-primary">
+                                            <i class="fas fa-check-circle"></i> Consulter les inscriptions
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 @endauth
 
             @yield('content')
@@ -2374,7 +2443,8 @@
     <!-- Debug Helper - Doit être chargé en PREMIER -->
     <script>
         // Variable globale pour activer/désactiver les logs debug
-        window.DEBUG_MODE = {{ config('app.debug') ? 'true' : 'false' }};
+        const debugMeta = document.querySelector('meta[name="app-debug"]');
+        window.DEBUG_MODE = debugMeta ? debugMeta.content === '1' : false;
     </script>
     <script src="{{ asset('js/debug-helper.js') }}"></script>
 
@@ -2390,9 +2460,9 @@
     <!-- Custom JavaScript -->
     <script src="{{ asset('js/navbar-diagnostics.js') }}"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const anneeModal = document.getElementById('anneeCouranteExpiredModal');
-            if (anneeModal) {
+            document.addEventListener('DOMContentLoaded', function() {
+                const anneeModal = document.getElementById('anneeCouranteExpiredModal');
+                if (anneeModal) {
                 const storageKey = 'annee-courante-expired-last-seen';
                 const lastSeen = Number(localStorage.getItem(storageKey) || 0);
                 const now = Date.now();
@@ -2404,10 +2474,28 @@
                     localStorage.setItem(storageKey, String(now));
                 }
 
-                anneeModal.addEventListener('hidden.bs.modal', function () {
-                    localStorage.setItem(storageKey, String(Date.now()));
-                });
-            }
+                    anneeModal.addEventListener('hidden.bs.modal', function () {
+                        localStorage.setItem(storageKey, String(Date.now()));
+                    });
+                }
+
+                const pendingModalElement = document.getElementById('pendingInscriptionsReminderModal');
+                if (pendingModalElement && typeof bootstrap !== 'undefined') {
+                    const reminderKey = pendingModalElement.dataset.reminderKey || 'pendingInscriptionsReminder';
+                    const lastSeen = Number(localStorage.getItem(reminderKey) || 0);
+                    const now = Date.now();
+                    const oneHourMs = 60 * 60 * 1000;
+
+                    if (now - lastSeen >= oneHourMs) {
+                        const pendingModal = new bootstrap.Modal(pendingModalElement);
+                        pendingModal.show();
+                        localStorage.setItem(reminderKey, String(now));
+                    }
+
+                    pendingModalElement.addEventListener('hidden.bs.modal', function () {
+                        localStorage.setItem(reminderKey, String(Date.now()));
+                    });
+                }
 
             debugLog('🚀 Initialisation de l\'application...');
 
@@ -2940,7 +3028,12 @@
                     e.preventDefault();
                     debugLog('🔔 Marquage toutes notifications comme lues');
 
-                    fetch('{{ url('/navbar/notifications/mark-all-read') }}', {
+                    const markAllUrl = document.querySelector('meta[name="navbar-mark-all-read-url"]')?.content;
+                    if (!markAllUrl) {
+                        return;
+                    }
+
+                    fetch(markAllUrl, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
