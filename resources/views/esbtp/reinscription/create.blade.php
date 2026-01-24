@@ -841,7 +841,9 @@
                 Vérification des places...
             </div>
         `;
-        setReinscriptionButtonState(false, 'Vérification des places disponibles en cours...');
+        if (typeof window.setReinscriptionButtonState === 'function') {
+            window.setReinscriptionButtonState(false, 'Vérification des places disponibles en cours...');
+        }
 
         fetch(`/esbtp/classes/${classeId}/available-places`)
             .then(response => response.json())
@@ -870,13 +872,19 @@
                         ? `<strong>Aucune place disponible !</strong> (0${capacityText})`
                         : '<strong>Aucune place disponible !</strong>';
                     message += '<br><small class="text-danger">Veuillez sélectionner une autre classe avant de poursuivre.</small>';
-                    setReinscriptionButtonState(false, 'Classe complète. Choisissez une autre classe pour finaliser la réinscription.');
+                    if (typeof window.setReinscriptionButtonState === 'function') {
+                        window.setReinscriptionButtonState(false, 'Classe complète. Choisissez une autre classe pour finaliser la réinscription.');
+                    }
                 } else {
                     // Places disponibles - activer le bouton
                     if (buttonMessage) {
-                        setReinscriptionButtonState(true, buttonMessage);
+                        if (typeof window.setReinscriptionButtonState === 'function') {
+                            window.setReinscriptionButtonState(true, buttonMessage);
+                        }
                     } else {
-                        setReinscriptionButtonState(true);
+                        if (typeof window.setReinscriptionButtonState === 'function') {
+                            window.setReinscriptionButtonState(true);
+                        }
                     }
                 }
 
@@ -888,7 +896,9 @@
             .catch(error => {
                 console.error('Erreur vérification places:', error);
                 placesInfo.innerHTML = '<div class="alert alert-danger p-2 mt-2">Erreur lors de la récupération des places.</div>';
-                setReinscriptionButtonState(false, 'Erreur lors de la récupération des places. Réessayez ou sélectionnez une autre classe.');
+                if (typeof window.setReinscriptionButtonState === 'function') {
+                    window.setReinscriptionButtonState(false, 'Erreur lors de la récupération des places. Réessayez ou sélectionnez une autre classe.');
+                }
             });
     }
 
@@ -953,6 +963,8 @@ document.addEventListener('DOMContentLoaded', function() {
             btnConfirmer.removeAttribute('title');
         }
     }
+
+    window.setReinscriptionButtonState = setReinscriptionButtonState;
 
     // Champs cachés pour transmission finale
     const decisionFinale = document.getElementById('decisionFinale');
