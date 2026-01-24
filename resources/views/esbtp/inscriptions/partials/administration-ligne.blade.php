@@ -6,6 +6,15 @@
     $paymentAmount = $validatedPayment ? $validatedPayment->montant : ($pendingPayment ? $pendingPayment->montant : null);
 @endphp
 <tr data-inscription-id="{{ $inscription->id }}" data-has-payment="{{ $hasPayment ? 1 : 0 }}" data-payment-status="{{ $paymentStatus }}">
+    @if(auth()->user()->hasRole('superAdmin'))
+    <td>
+        @if($inscription->status == 'pending' || $inscription->status == 'en_attente')
+        <input type="checkbox" class="form-check-input inscription-checkbox"
+               value="{{ $inscription->id }}"
+               data-inscription-id="{{ $inscription->id }}">
+        @endif
+    </td>
+    @endif
     <td><strong>{{ $inscription->etudiant->matricule ?? 'N/A' }}</strong></td>
     <td>{{ $inscription->etudiant->nom ?? '' }} {{ $inscription->etudiant->prenoms ?? '' }}</td>
     <td>{{ optional($inscription->filiere)->nom ?? optional($inscription->filiere)->name ?? 'N/A' }}</td>

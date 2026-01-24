@@ -306,6 +306,44 @@
     </div>
 </div>
 
+@if(auth()->user()->hasRole('superAdmin'))
+<div id="bulk-actions-bar" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+     background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; padding: 15px 30px;
+     border-radius: 50px; box-shadow: 0 10px 40px rgba(4, 83, 203, 0.4); z-index: 1050;
+     animation: slideUp 0.3s ease-out;">
+    <div style="display: flex; align-items: center; gap: 20px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-check-circle" style="font-size: 1.2rem;"></i>
+            <span id="selected-count" style="font-weight: 600; font-size: 1.1rem;">0</span>
+            <span style="opacity: 0.9;">inscription(s) sélectionnée(s)</span>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn btn-light btn-sm" onclick="bulkValiderInscriptions()"
+                    style="padding: 8px 20px; border-radius: 25px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                <i class="fas fa-check-double me-1"></i>Valider la sélection
+            </button>
+            <button type="button" class="btn btn-outline-light btn-sm" onclick="clearInscriptionSelection()"
+                    style="padding: 8px 20px; border-radius: 25px; font-weight: 600;">
+                <i class="fas fa-times me-1"></i>Annuler
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes slideUp {
+    from {
+        bottom: -100px;
+        opacity: 0;
+    }
+    to {
+        bottom: 20px;
+        opacity: 1;
+    }
+}
+</style>
+@endif
+
 <!-- Modal pour associer un paiement -->
 <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -475,7 +513,7 @@
 
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
     const ADMIN_REFRESH_CONTEXT = 'administration';
 
@@ -522,12 +560,20 @@
             }
 
             const existingRow = document.querySelector(`tr[data-inscription-id="${inscriptionId}"]`);
+            const wasChecked = existingRow?.querySelector('.inscription-checkbox')?.checked ?? false;
             if (existingRow) {
                 existingRow.replaceWith(newRow);
             }
 
+            const newCheckbox = newRow.querySelector('.inscription-checkbox');
+            if (newCheckbox && wasChecked) {
+                newCheckbox.checked = true;
+            }
+
             triggerInscriptionRowHighlight(newRow, actionType);
             bindInscriptionActions();
+            bindBulkSelectionHandlers();
+            updateInscriptionSelectionCount();
         })
         .catch(error => {
             debugError(error);
@@ -688,6 +734,105 @@
         triggerInscriptionRowHighlight(row, actionType);
     }
 
+    function updateInscriptionSelectionCount() {
+        const checkboxes = document.querySelectorAll('.inscription-checkbox:checked');
+        const count = checkboxes.length;
+        const bulkBar = document.getElementById('bulk-actions-bar');
+        const selectedCountSpan = document.getElementById('selected-count');
+
+        if (selectedCountSpan) {
+            selectedCountSpan.textContent = count;
+        }
+
+        if (bulkBar) {
+            bulkBar.style.display = count > 0 ? 'block' : 'none';
+        }
+    }
+
+    function bindBulkSelectionHandlers() {
+        const selectAllCheckbox = document.getElementById('select-all-inscriptions');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.onchange = function () {
+                const checkboxes = document.querySelectorAll('.inscription-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+                updateInscriptionSelectionCount();
+            };
+        }
+
+        document.querySelectorAll('.inscription-checkbox').forEach(checkbox => {
+            checkbox.onchange = function () {
+                updateInscriptionSelectionCount();
+
+                const allCheckboxes = document.querySelectorAll('.inscription-checkbox');
+                const checkedCheckboxes = document.querySelectorAll('.inscription-checkbox:checked');
+                const selectAll = document.getElementById('select-all-inscriptions');
+
+                if (selectAll) {
+                    selectAll.checked = allCheckboxes.length === checkedCheckboxes.length && allCheckboxes.length > 0;
+                }
+            };
+        });
+    }
+
+    function clearInscriptionSelection() {
+        document.querySelectorAll('.inscription-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        const selectAll = document.getElementById('select-all-inscriptions');
+        if (selectAll) {
+            selectAll.checked = false;
+        }
+        updateInscriptionSelectionCount();
+    }
+
+    function bulkValiderInscriptions() {
+        const checkboxes = document.querySelectorAll('.inscription-checkbox:checked');
+        const inscriptionIds = Array.from(checkboxes).map(cb => cb.value);
+
+        if (inscriptionIds.length === 0) {
+            alert('Veuillez sélectionner au moins une inscription à valider.');
+            return;
+        }
+
+        const confirmMessage = `Êtes-vous sûr de vouloir valider ${inscriptionIds.length} inscription(s) ?\n\nLe système va automatiquement :\n• Valider les inscriptions avec paiements validés\n• Auto-valider les paiements en attente si nécessaire\n• Ignorer les inscriptions sans paiements\n• Envoyer les notifications aux étudiants concernés`;
+
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('_token', '{{ csrf_token() }}');
+        inscriptionIds.forEach(id => formData.append('inscription_ids[]', id));
+
+        fetch("{{ route('esbtp.inscriptions.bulk-valider') }}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                alert(data.message || 'Erreur lors de la validation groupée.');
+                return;
+            }
+
+            if (data.message) {
+                alert(data.message);
+            }
+
+            clearInscriptionSelection();
+            fetchResults(window.location.href, { pushState: false });
+        })
+        .catch(error => {
+            debugError(error);
+            alert('Erreur lors de la validation groupée.');
+        });
+    }
+
     function bindInscriptionActions(context = document) {
         context.querySelectorAll('.validate-inscription-btn').forEach(button => {
             button.addEventListener('click', function () {
@@ -707,6 +852,8 @@
         const formSearchInput = form ? form.querySelector('#filter-search') : null;
 
         bindInscriptionActions();
+        bindBulkSelectionHandlers();
+        updateInscriptionSelectionCount();
         bindPaginationLinks();
 
         if (headerSearch && formSearchInput) {
@@ -795,6 +942,8 @@
                     window.history.pushState({ url: data.url }, '', data.url);
                 }
                 bindInscriptionActions(resultsContainer);
+                bindBulkSelectionHandlers();
+                updateInscriptionSelectionCount();
                 bindPaginationLinks();
             })
             .catch(error => {
@@ -919,4 +1068,4 @@
         }
     });
 </script>
-@endsection
+@endpush
