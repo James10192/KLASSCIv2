@@ -1296,6 +1296,13 @@ class ESBTPInscriptionController extends Controller
             $result = $this->inscriptionService->annulerInscription($inscription->id, $motif, Auth::id());
 
             if ($result['success']) {
+                if ($request->ajax()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Inscription annulée avec succès.'
+                    ]);
+                }
+
                 return redirect()
                     ->route('esbtp.inscriptions.show', $inscription->id)
                     ->with('success', 'Inscription annulée avec succès.');
@@ -1304,6 +1311,13 @@ class ESBTPInscriptionController extends Controller
             }
 
         } catch (\Exception $e) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de l\'annulation: ' . $e->getMessage()
+                ], 500);
+            }
+
             return redirect()
                 ->back()
                 ->with('error', 'Erreur lors de l\'annulation: ' . $e->getMessage());
@@ -1434,9 +1448,7 @@ class ESBTPInscriptionController extends Controller
                 'niveau',
                 'classe',
                 'anneeUniversitaire',
-                'paiements' => function($q) {
-                    $q->where('status', 'validated');
-                }
+                'paiements'
             ])
             // CORRECTION: inclure les inscriptions en cours de validation (pas seulement 'en_attente')
             ->where(function($q) {
@@ -1536,6 +1548,15 @@ class ESBTPInscriptionController extends Controller
         // Récupérer les catégories de frais pour la modal de paiement
         $categoriesfrais = \App\Models\ESBTPFraisCategory::where('is_active', true)->orderBy('name')->get();
 
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('esbtp.inscriptions.partials.administration-results', [
+                    'inscriptions' => $inscriptions,
+                ])->render(),
+                'url' => $request->fullUrl(),
+            ]);
+        }
+
         return view('esbtp.inscriptions.administration', compact(
             'inscriptions',
             'filieres',
@@ -1633,6 +1654,22 @@ class ESBTPInscriptionController extends Controller
             'observations' => 'nullable|string|max:500',
         ]);
 
+        $validatePayment = $request->boolean('validate_payment');
+        $autoValidateInscription = $request->boolean('auto_validate_inscription');
+
+        if ($autoValidateInscription && !$validatePayment) {
+            $message = 'La validation de l\'inscription nécessite la validation du paiement.';
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                ], 422);
+            }
+
+            return redirect()->back()->with('error', $message)->withInput();
+        }
+
         // Validation personnalisée : vérifier que le montant ne dépasse pas le montant restant
         $subscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
             ->where('frais_category_id', $request->fee_category_id)
@@ -1695,30 +1732,53 @@ class ESBTPInscriptionController extends Controller
 
             $result = $this->workflowService->associerPaiement($inscription, $paiementData);
 
-            // Si requête AJAX, retourner JSON pour refresh partiel
-            if ($request->ajax()) {
-                if ($result['success']) {
-                    return response()->json([
-                        'success' => true,
-                        'message' => $result['message'],
-                        'inscription_id' => $inscription->id
-                    ]);
-                } else {
-                    return response()->json([
-                        'success' => false,
-                        'message' => $result['message']
-                    ], 400);
+            $paiement = $result['data']['paiement'] ?? null;
+            if (!$paiement && !empty($result['duplicate_id'])) {
+                $paiement = \App\Models\ESBTPPaiement::find($result['duplicate_id']);
+            }
+
+            $validationResult = null;
+            if ($result['success'] && $paiement && $validatePayment) {
+                $paiement->update([
+                    'status' => 'validé',
+                    'date_validation' => now(),
+                    'validateur_id' => auth()->id(),
+                ]);
+
+                if ($autoValidateInscription) {
+                    $validationResult = $this->workflowService->convertProspectToStudent(
+                        $inscription->fresh(),
+                        $request->input('observations') ?: 'Validation directe après paiement'
+                    );
                 }
             }
 
-            // Sinon, redirection standard
-            if ($result['success']) {
-                return redirect()->route('esbtp.inscriptions.show', $inscription->id)
-                    ->with('success', $result['message']);
-            } else {
-                return redirect()->back()
-                    ->with('error', $result['message']);
+            // Si requête AJAX, retourner JSON pour refresh partiel
+            if ($request->ajax()) {
+                if ($result['success'] && (!$autoValidateInscription || ($validationResult && $validationResult['success']))) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => $validationResult['message'] ?? $result['message'],
+                        'inscription_id' => $inscription->id
+                    ]);
+                }
+
+                $errorMessage = $validationResult['message'] ?? $result['message'];
+
+                return response()->json([
+                    'success' => false,
+                    'message' => $errorMessage
+                ], 400);
             }
+
+            // Sinon, redirection standard
+            if ($result['success'] && (!$autoValidateInscription || ($validationResult && $validationResult['success']))) {
+                return redirect()->route('esbtp.inscriptions.show', $inscription->id)
+                    ->with('success', $validationResult['message'] ?? $result['message']);
+            }
+
+            return redirect()->back()
+                ->with('error', $validationResult['message'] ?? $result['message']);
 
         } catch (\Exception $e) {
             Log::error('Erreur lors de l\'association du paiement: ' . $e->getMessage());
@@ -3053,6 +3113,15 @@ class ESBTPInscriptionController extends Controller
             // Debug: Log pour vérifier les données
             Log::info('Inscriptions avec problèmes:', ['problemes' => $inscriptionsAvecProblemes]);
 
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message ?: 'Aucune inscription n\'a été traitée.',
+                    'stats' => $stats,
+                    'inscriptions_problemes' => $inscriptionsAvecProblemes,
+                ]);
+            }
+
             return redirect()->back()
                 ->with('success', $message ?: 'Aucune inscription n\'a été traitée.')
                 ->with('inscriptions_problemes', $inscriptionsAvecProblemes);
@@ -3060,6 +3129,13 @@ class ESBTPInscriptionController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur validation groupée inscriptions: ' . $e->getMessage());
+
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la validation groupée: ' . $e->getMessage(),
+                ], 500);
+            }
 
             return redirect()->back()->with('error', 'Erreur lors de la validation groupée: ' . $e->getMessage());
         }
@@ -3393,8 +3469,13 @@ class ESBTPInscriptionController extends Controller
             // Mettre les problèmes en session flash pour cette requête uniquement
             session()->flash('inscriptions_problemes', $inscriptionsProblemes);
 
+            $context = request()->query('context', 'index');
+            $rowView = $context === 'administration'
+                ? 'esbtp.inscriptions.partials.administration-ligne'
+                : 'esbtp.inscriptions.partials.ligne-inscription';
+
             // Rendu de la partial ligne-inscription
-            $html = view('esbtp.inscriptions.partials.ligne-inscription', [
+            $html = view($rowView, [
                 'inscription' => $inscription
             ])->render();
 

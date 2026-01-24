@@ -4,18 +4,158 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+    .kpi-card {
+        border-radius: var(--radius-medium);
+        padding: var(--space-lg);
+    }
+
+    .kpi-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(4, 83, 203, 0.08);
+        color: var(--primary);
+    }
+
+    .notification-card {
+        border-left: 4px solid;
+        padding: var(--space-md);
+        border-radius: var(--radius-small);
+        background: rgba(245, 158, 11, 0.05);
+        border-color: var(--warning);
+    }
+
+    .inscription-actions-wrapper {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .inscription-actions-spinner {
+        display: none;
+        min-width: 32px;
+    }
+
+    .inscription-actions-wrapper.is-loading .inscription-actions-buttons {
+        display: none !important;
+    }
+
+    .inscription-actions-wrapper.is-loading .inscription-actions-spinner {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+    }
+
+    tr[data-inscription-id].is-loading {
+        opacity: 0.75;
+    }
+
+    tr[data-inscription-id] {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .inscription-row-highlight {
+        position: absolute;
+        top: 0;
+        left: -80%;
+        width: 160%;
+        height: 100%;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(-65%) skewX(-12deg);
+        background: linear-gradient(90deg, rgba(40, 167, 69, 0) 0%, rgba(40, 167, 69, 0.75) 50%, rgba(40, 167, 69, 0) 100%);
+        transition: opacity 0.2s ease;
+        z-index: 5;
+    }
+
+    .inscription-row-highlight.reject {
+        background: linear-gradient(90deg, rgba(220, 53, 69, 0) 0%, rgba(220, 53, 69, 0.75) 50%, rgba(220, 53, 69, 0) 100%);
+    }
+
+    .inscription-row-highlight.animate {
+        animation: inscription-row-highlight-move 3.2s ease-out forwards;
+    }
+
+    .inscription-row-flash {
+        animation: inscription-row-flash 0.8s ease-in-out;
+    }
+
+    .inscription-row-flash.reject {
+        animation-name: inscription-row-flash-reject;
+    }
+
+    @keyframes inscription-row-highlight-move {
+        0% {
+            opacity: 0;
+            transform: translateX(-65%) skewX(-12deg);
+        }
+        18% {
+            opacity: 0.92;
+        }
+        55% {
+            opacity: 0.7;
+        }
+        100% {
+            opacity: 0;
+            transform: translateX(115%) skewX(-12deg);
+        }
+    }
+
+    @keyframes inscription-row-flash {
+        0% {
+            background-color: transparent;
+        }
+        25% {
+            background-color: rgba(40, 167, 69, 0.12);
+        }
+        100% {
+            background-color: transparent;
+        }
+    }
+
+    @keyframes inscription-row-flash-reject {
+        0% {
+            background-color: transparent;
+        }
+        25% {
+            background-color: rgba(220, 53, 69, 0.12);
+        }
+        100% {
+            background-color: transparent;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-header {
+            flex-direction: column;
+            text-align: center;
+            gap: var(--space-md);
+        }
+    }
+</style>
 @endsection
 
 @section('content')
 <div class="dashboard-acasi">
-    <div class="main-content">
+    <div class="main-content" style="padding: 1.5rem; max-width: 100%; overflow-x: hidden;">
         <!-- Header moderne -->
         <div class="dashboard-header">
             <div class="header-left">
-                <h1>Administration des Inscriptions</h1>
+                <h1><i class="fas fa-user-check me-2"></i>Administration des Inscriptions</h1>
                 <p class="header-subtitle">Gestion et validation des inscriptions en attente</p>
             </div>
             <div class="header-actions">
+                <input type="search" class="search-bar" placeholder="Rechercher une inscription..." value="{{ request('search') }}">
+                <span class="badge rounded-pill bg-light text-dark me-2">
+                    <i class="fas fa-calendar me-1"></i>
+                    {{ $anneeEnCours->name ?? 'Année non définie' }}
+                </span>
+                <span class="text-muted me-2">{{ \Carbon\Carbon::now()->isoFormat('dddd D MMMM YYYY') }}</span>
                 <a href="{{ route('esbtp.inscriptions.index') }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>Retour aux inscriptions
                 </a>
@@ -24,48 +164,60 @@
 
         <div class="p-lg">
             <!-- Statistiques -->
-            <div class="row mb-4">
-                <div class="col-md-3 mb-3">
-                    <div class="card-moderne text-center">
-                        <div class="p-md">
-                            <div class="text-primary mb-2">
-                                <i class="fas fa-clock fa-2x"></i>
+            <div class="row g-3 mb-4">
+                <div class="col-lg-3 col-md-6 col-12">
+                    <div class="card-moderne kpi-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="text-muted small text-uppercase">Total en attente</div>
+                                <div class="h4 mb-1">{{ $stats['total_en_attente'] }}</div>
+                                <div class="small text-muted">Toutes les demandes</div>
                             </div>
-                            <h3 class="mb-1">{{ $stats['total_en_attente'] }}</h3>
-                            <p class="text-muted mb-0">Total en attente</p>
+                            <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.12); color: var(--warning);">
+                                <i class="fas fa-clock"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 mb-3">
-                    <div class="card-moderne text-center">
-                        <div class="p-md">
-                            <div class="text-success mb-2">
-                                <i class="fas fa-credit-card fa-2x"></i>
+                <div class="col-lg-3 col-md-6 col-12">
+                    <div class="card-moderne kpi-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="text-muted small text-uppercase">Avec paiement</div>
+                                <div class="h4 mb-1">{{ $stats['avec_paiement'] }}</div>
+                                <div class="small text-muted">Payés ou en attente</div>
                             </div>
-                            <h3 class="mb-1">{{ $stats['avec_paiement'] }}</h3>
-                            <p class="text-muted mb-0">Avec paiement</p>
+                            <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: var(--success);">
+                                <i class="fas fa-credit-card"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 mb-3">
-                    <div class="card-moderne text-center">
-                        <div class="p-md">
-                            <div class="text-warning mb-2">
-                                <i class="fas fa-exclamation-triangle fa-2x"></i>
+                <div class="col-lg-3 col-md-6 col-12">
+                    <div class="card-moderne kpi-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="text-muted small text-uppercase">Sans paiement</div>
+                                <div class="h4 mb-1">{{ $stats['sans_paiement'] }}</div>
+                                <div class="small text-muted">Nécessitent un règlement</div>
                             </div>
-                            <h3 class="mb-1">{{ $stats['sans_paiement'] }}</h3>
-                            <p class="text-muted mb-0">Sans paiement</p>
+                            <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.12); color: var(--warning);">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 mb-3">
-                    <div class="card-moderne text-center">
-                        <div class="p-md">
-                            <div class="text-info mb-2">
-                                <i class="fas fa-user-plus fa-2x"></i>
+                <div class="col-lg-3 col-md-6 col-12">
+                    <div class="card-moderne kpi-card">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="text-muted small text-uppercase">Prospects</div>
+                                <div class="h4 mb-1">{{ $stats['prospects'] }}</div>
+                                <div class="small text-muted">Étape initiale</div>
                             </div>
-                            <h3 class="mb-1">{{ $stats['prospects'] }}</h3>
-                            <p class="text-muted mb-0">Prospects</p>
+                            <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.12); color: var(--accent-blue);">
+                                <i class="fas fa-user-plus"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -77,13 +229,13 @@
                     <div class="section-title mb-md">
                         <i class="fas fa-filter"></i>Filtrer les inscriptions en attente
                     </div>
-                    <form method="GET" action="{{ route('esbtp.inscriptions.administration') }}">
+                    <form method="GET" action="{{ route('esbtp.inscriptions.administration') }}" id="inscriptions-admin-filter-form">
                         <div class="row">
                             <div class="col-md-3 mb-3">
-                                <label for="search" class="form-label">
+                                <label for="filter-search" class="form-label">
                                     <i class="fas fa-search me-1"></i>Recherche par nom ou matricule
                                 </label>
-                                <input type="text" class="form-control" id="search" name="search" value="{{ request('search') }}" placeholder="Tapez pour rechercher...">
+                                <input type="text" class="form-control" id="filter-search" name="search" value="{{ request('search') }}" placeholder="Tapez pour rechercher...">
                             </div>
                             <div class="col-md-2 mb-3">
                                 <label for="filiere" class="form-label">
@@ -133,7 +285,7 @@
                                 </select>
                             </div>
                             <div class="col-md-1 mb-3 d-flex align-items-end">
-                                <button type="submit" class="btn-acasi primary">
+                                <button type="submit" class="btn-acasi primary w-100">
                                     <i class="fas fa-search"></i>Filtrer
                                 </button>
                             </div>
@@ -148,104 +300,9 @@
                     <div class="section-title mb-md">
                         <i class="fas fa-list"></i>Inscriptions en attente de validation ({{ $inscriptions->total() }})
                     </div>
-                    @if($inscriptions->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Matricule</th>
-                                        <th>Nom complet</th>
-                                        <th>Filière</th>
-                                        <th>Niveau</th>
-                                        <th>Classe</th>
-                                        <th>Étape</th>
-                                        <th>Paiement</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($inscriptions as $inscription)
-                                    <tr>
-                                        <td><strong>{{ $inscription->etudiant->matricule }}</strong></td>
-                                        <td>{{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</td>
-                                        <td>{{ $inscription->filiere->nom }}</td>
-                                        <td>{{ $inscription->niveau->nom }}</td>
-                                        <td>{{ $inscription->classe->nom }}</td>
-                                        <td>
-                                            @switch($inscription->workflow_step)
-                                                @case('prospect')
-                                                    <span class="badge bg-secondary">Prospect</span>
-                                                    @break
-                                                @case('documents_complets')
-                                                    <span class="badge bg-info">Documents complets</span>
-                                                    @break
-                                                @case('en_validation')
-                                                    <span class="badge bg-warning">En validation</span>
-                                                    @break
-                                                @default
-                                                    <span class="badge bg-light text-dark">{{ $inscription->workflow_step }}</span>
-                                            @endswitch
-                                        </td>
-                                        <td>
-                                            @if($inscription->paiements->count() > 0)
-                                                <span class="badge bg-success">
-                                                    <i class="fas fa-check me-1"></i>Payé
-                                                </span>
-                                                <small class="d-block text-muted mt-1">
-                                                    {{ number_format($inscription->paiements->sum('montant'), 0, ',', ' ') }} F
-                                                </small>
-                                            @else
-                                                <span class="badge bg-danger">
-                                                    <i class="fas fa-times me-1"></i>Non payé
-                                                </span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <div class="btn-group">
-                                                <a href="{{ route('esbtp.inscriptions.show', $inscription->id) }}" 
-                                                   class="btn btn-sm btn-outline-info" title="Voir détails">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                
-                                                @if($inscription->paiements->count() == 0)
-                                                    <button class="btn btn-sm btn-outline-warning" 
-                                                            onclick="openPaymentModal({{ $inscription->id }})"
-                                                            title="Associer un paiement">
-                                                        <i class="fas fa-credit-card"></i>
-                                                    </button>
-                                                @endif
-                                                
-                                                @if($inscription->paiement_validation_id)
-                                                    <button class="btn btn-sm btn-outline-success" 
-                                                            onclick="openValidationModal({{ $inscription->id }})"
-                                                            title="Valider définitivement">
-                                                        <i class="fas fa-check"></i>
-                                                    </button>
-                                                @endif
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <!-- Pagination -->
-                        <div class="d-flex justify-content-center mt-4">
-                            {{ $inscriptions->appends(request()->query())->links() }}
-                        </div>
-                    @else
-                        <div class="text-center py-5">
-                            <div class="mb-3">
-                                <i class="fas fa-inbox fa-3x text-muted"></i>
-                            </div>
-                            <h4>Aucune inscription trouvée</h4>
-                            <p class="text-muted">Aucune inscription en attente ne correspond aux filtres appliqués.</p>
-                            <a href="{{ route('esbtp.inscriptions.administration') }}" class="btn-acasi primary">
-                                <i class="fas fa-refresh"></i>Réinitialiser les filtres
-                            </a>
-                        </div>
-                    @endif
+                    <div id="inscriptions-admin-results">
+                        @include('esbtp.inscriptions.partials.administration-results', ['inscriptions' => $inscriptions])
+                    </div>
                 </div>
             </div>
         </div>
@@ -332,6 +389,14 @@
                             </div>
                         </div>
                     </div>
+                    <input type="hidden" id="auto_validate_inscription" name="auto_validate_inscription" value="0">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="1" id="validate_payment" name="validate_payment">
+                        <label class="form-check-label" for="validate_payment">
+                            Valider le paiement immédiatement
+                        </label>
+                        <div class="text-muted small">Requis si vous souhaitez valider l'inscription dans la foulée.</div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
@@ -377,67 +442,484 @@
     </div>
 </div>
 
+<!-- Modal pour annulation -->
+<div class="modal fade" id="cancelInscriptionModal" tabindex="-1" aria-labelledby="cancelInscriptionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cancelInscriptionModalLabel">
+                    <i class="fas fa-times-circle me-2"></i>Annuler l'inscription
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="cancelInscriptionForm" method="POST">
+                @csrf
+                @method('PUT')
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Cette action annule l'inscription et retire l'étudiant du workflow en cours.
+                    </div>
+                    <div class="mb-3">
+                        <label for="cancel_motif" class="form-label">Motif d'annulation <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="cancel_motif" name="motif" rows="3" placeholder="Raison de l'annulation..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-times me-2"></i>Annuler l'inscription
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @section('scripts')
 <script>
-    function openPaymentModal(inscriptionId) {
-        debugLog('openPaymentModal called with ID:', inscriptionId);
-        
+    const ADMIN_REFRESH_CONTEXT = 'administration';
+
+    function setInscriptionRowLoadingState(inscriptionId, isLoading) {
+        const row = document.querySelector(`tr[data-inscription-id="${inscriptionId}"]`);
+        if (!row) {
+            return;
+        }
+
+        row.classList.toggle('is-loading', Boolean(isLoading));
+
+        const actionsWrapper = row.querySelector('.inscription-actions-wrapper');
+        if (actionsWrapper) {
+            actionsWrapper.classList.toggle('is-loading', Boolean(isLoading));
+        }
+    }
+
+    function refreshInscriptionLigne(inscriptionId, actionType = 'update') {
+        setInscriptionRowLoadingState(inscriptionId, true);
+
+        fetch(`/esbtp/inscriptions/${inscriptionId}/refresh-ligne?context=${ADMIN_REFRESH_CONTEXT}`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erreur lors du rafraîchissement de la ligne.');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.success || !data.html) {
+                throw new Error(data.message || 'Réponse invalide.');
+            }
+
+            const template = document.createElement('template');
+            template.innerHTML = data.html.trim();
+            const newRow = template.content.querySelector('tr');
+            if (!newRow) {
+                throw new Error('HTML de ligne invalide.');
+            }
+
+            const existingRow = document.querySelector(`tr[data-inscription-id="${inscriptionId}"]`);
+            if (existingRow) {
+                existingRow.replaceWith(newRow);
+            }
+
+            triggerInscriptionRowHighlight(newRow, actionType);
+            bindInscriptionActions();
+        })
+        .catch(error => {
+            debugError(error);
+            alert(error.message || 'Erreur lors de la mise à jour.');
+        })
+        .finally(() => setInscriptionRowLoadingState(inscriptionId, false));
+    }
+
+    function openPaymentModal(inscriptionId, options = {}) {
         const form = document.getElementById('paymentForm');
         const modalElement = document.getElementById('paymentModal');
-        
-        if (!form) {
-            debugError('Form paymentForm not found');
+        const autoValidateInput = document.getElementById('auto_validate_inscription');
+        const validatePaymentCheckbox = document.getElementById('validate_payment');
+
+        if (!form || !modalElement) {
             return;
         }
-        
-        if (!modalElement) {
-            debugError('Modal paymentModal not found');
-            return;
-        }
-        
-        // Check if Bootstrap is loaded
+
         if (typeof bootstrap === 'undefined') {
-            debugError('Bootstrap is not loaded');
             alert('Erreur: Bootstrap n\'est pas chargé. Veuillez recharger la page.');
             return;
         }
-        
-        // Définir l'action correcte du formulaire
+
         form.action = `/esbtp/inscriptions/${inscriptionId}/valider-avec-paiement`;
-        
-        // Réinitialiser le formulaire
         form.reset();
+
+        if (autoValidateInput) {
+            autoValidateInput.value = options.autoValidate ? '1' : '0';
+        }
+
+        if (validatePaymentCheckbox) {
+            validatePaymentCheckbox.checked = Boolean(options.autoValidate);
+        }
+
         const dateInput = document.getElementById('date_paiement');
         if (dateInput) {
             dateInput.value = new Date().toISOString().split('T')[0];
         }
-        
-        // Ouvrir le modal
-        try {
-            const modal = new bootstrap.Modal(modalElement, {
-                backdrop: true,
-                keyboard: true,
-                focus: true
-            });
-            modal.show();
-            debugLog('Modal should be open now');
-        } catch (error) {
-            debugError('Error opening modal:', error);
-        }
-    }
 
-    function openValidationModal(inscriptionId) {
-        const form = document.getElementById('validationForm');
-        form.action = `/esbtp/inscriptions/${inscriptionId}/valider-definitivement`;
-        
-        // Réinitialiser le formulaire
-        form.reset();
-        
-        // Ouvrir le modal
-        const modal = new bootstrap.Modal(document.getElementById('validationModal'));
+        const modal = new bootstrap.Modal(modalElement, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
         modal.show();
     }
+
+    function openCancelModal(inscriptionId) {
+        const form = document.getElementById('cancelInscriptionForm');
+        const modalElement = document.getElementById('cancelInscriptionModal');
+
+        if (!confirm('Confirmer l\'annulation de cette inscription ?')) {
+            return;
+        }
+
+        if (!form || !modalElement) {
+            return;
+        }
+
+        if (typeof bootstrap === 'undefined') {
+            alert('Erreur: Bootstrap n\'est pas chargé. Veuillez recharger la page.');
+            return;
+        }
+
+        form.action = `/esbtp/inscriptions/${inscriptionId}/annuler`;
+        form.reset();
+
+        const modal = new bootstrap.Modal(modalElement, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
+        modal.show();
+    }
+
+    function handleInscriptionValidation(inscriptionId, hasPayment) {
+        if (!hasPayment) {
+            openPaymentModal(inscriptionId, { autoValidate: true });
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('_token', '{{ csrf_token() }}');
+        formData.append('inscription_ids[]', inscriptionId);
+
+        setInscriptionRowLoadingState(inscriptionId, true);
+
+        fetch("{{ route('esbtp.inscriptions.bulk-valider') }}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erreur lors de la validation.');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.success) {
+                highlightInscriptionRow(inscriptionId, 'reject');
+                throw new Error(data.message || 'Validation échouée.');
+            }
+
+            if (data.message) {
+                alert(data.message);
+            }
+
+            refreshInscriptionLigne(inscriptionId, 'validate');
+        })
+        .catch(error => {
+            highlightInscriptionRow(inscriptionId, 'reject');
+            alert(error.message || 'Erreur lors de la validation.');
+        })
+        .finally(() => setInscriptionRowLoadingState(inscriptionId, false));
+    }
+
+    function triggerInscriptionRowHighlight(row, actionType = 'update') {
+        if (!row) {
+            return;
+        }
+
+        const isReject = ['reject', 'cancel', 'danger'].includes(actionType);
+
+        row.classList.remove('inscription-row-flash', 'reject');
+        void row.offsetWidth;
+
+        const highlight = document.createElement('div');
+        highlight.className = 'inscription-row-highlight';
+        if (isReject) {
+            highlight.classList.add('reject');
+        }
+
+        row.appendChild(highlight);
+
+        requestAnimationFrame(() => {
+            highlight.classList.add('animate');
+        });
+
+        highlight.addEventListener('animationend', () => {
+            highlight.remove();
+        });
+
+        row.classList.add('inscription-row-flash');
+        if (isReject) {
+            row.classList.add('reject');
+        }
+
+        setTimeout(() => {
+            row.classList.remove('inscription-row-flash', 'reject');
+        }, 1200);
+    }
+
+    function highlightInscriptionRow(inscriptionId, actionType = 'update') {
+        const row = document.querySelector(`tr[data-inscription-id="${inscriptionId}"]`);
+        triggerInscriptionRowHighlight(row, actionType);
+    }
+
+    function bindInscriptionActions(context = document) {
+        context.querySelectorAll('.validate-inscription-btn').forEach(button => {
+            button.addEventListener('click', function () {
+                const inscriptionId = this.dataset.inscriptionId;
+                const hasPayment = this.dataset.hasPayment === '1';
+                handleInscriptionValidation(inscriptionId, hasPayment);
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('inscriptions-admin-filter-form');
+        const resultsContainer = document.getElementById('inscriptions-admin-results');
+        const submitButton = form ? form.querySelector('button[type="submit"]') : null;
+        const filterSelects = form ? form.querySelectorAll('select') : [];
+        const headerSearch = document.querySelector('.dashboard-header .search-bar');
+        const formSearchInput = form ? form.querySelector('#filter-search') : null;
+
+        bindInscriptionActions();
+        bindPaginationLinks();
+
+        if (headerSearch && formSearchInput) {
+            headerSearch.value = headerSearch.value || formSearchInput.value || '';
+            headerSearch.addEventListener('input', function () {
+                formSearchInput.value = headerSearch.value;
+            });
+
+            headerSearch.addEventListener('keydown', function (event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    formSearchInput.value = headerSearch.value;
+                    submitFilterForm();
+                }
+            });
+        }
+
+        if (form) {
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+                submitFilterForm();
+            });
+        }
+
+        filterSelects.forEach(select => {
+            select.addEventListener('change', submitFilterForm);
+        });
+
+        function submitFilterForm() {
+            if (!form) {
+                return;
+            }
+
+            const formData = new FormData(form);
+            const params = new URLSearchParams(formData);
+            const targetUrl = `${form.action}?${params.toString()}`;
+            fetchResults(targetUrl, { pushState: true });
+        }
+
+        function bindPaginationLinks() {
+            if (!resultsContainer) {
+                return;
+            }
+
+            resultsContainer.querySelectorAll('.pagination a').forEach(link => {
+                link.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    fetchResults(this.href, { pushState: true });
+                });
+            });
+        }
+
+        function setLoading(isLoading) {
+            if (submitButton) {
+                submitButton.disabled = isLoading;
+            }
+
+            if (resultsContainer) {
+                resultsContainer.classList.toggle('opacity-50', Boolean(isLoading));
+            }
+        }
+
+        function fetchResults(url, options = {}) {
+            if (!url || !resultsContainer) {
+                return;
+            }
+
+            setLoading(true);
+
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erreur lors du chargement des inscriptions.');
+                }
+                return response.json();
+            })
+            .then(data => {
+                resultsContainer.innerHTML = data.html;
+                if (options.pushState !== false) {
+                    window.history.pushState({ url: data.url }, '', data.url);
+                }
+                bindInscriptionActions(resultsContainer);
+                bindPaginationLinks();
+            })
+            .catch(error => {
+                debugError(error);
+                alert('Impossible de charger les inscriptions. Veuillez réessayer.');
+            })
+            .finally(() => setLoading(false));
+        }
+
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState({ url: window.location.href }, '', window.location.href);
+        }
+
+        window.addEventListener('popstate', function (event) {
+            const targetUrl = event.state?.url || window.location.href;
+            fetchResults(targetUrl, { pushState: false });
+        });
+
+        const paymentForm = document.getElementById('paymentForm');
+        if (paymentForm) {
+            const validatePaymentCheckbox = paymentForm.querySelector('#validate_payment');
+            const autoValidateInput = paymentForm.querySelector('#auto_validate_inscription');
+
+            if (validatePaymentCheckbox && autoValidateInput) {
+                validatePaymentCheckbox.addEventListener('change', function () {
+                    autoValidateInput.value = this.checked ? '1' : '0';
+                });
+            }
+
+            paymentForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Traitement...';
+
+                const formData = new FormData(this);
+                const actionUrl = this.action;
+                const inscriptionId = actionUrl.split('/').slice(-2, -1)[0];
+                const autoValidate = formData.get('auto_validate_inscription') === '1';
+
+                fetch(actionUrl, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('paymentModal')).hide();
+                        refreshInscriptionLigne(inscriptionId, autoValidate ? 'validate' : 'update');
+                        if (data.message) {
+                            alert(data.message);
+                        }
+                    } else {
+                        highlightInscriptionRow(inscriptionId, 'reject');
+                        alert(data.message || 'Erreur lors de la création du paiement');
+                    }
+                })
+                .catch(error => {
+                    debugError(error);
+                    highlightInscriptionRow(inscriptionId, 'reject');
+                    alert('Erreur lors de la création du paiement');
+                })
+                .finally(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                });
+            });
+        }
+
+        const cancelForm = document.getElementById('cancelInscriptionForm');
+        if (cancelForm) {
+            cancelForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Traitement...';
+
+                const formData = new FormData(this);
+                const actionUrl = this.action;
+                const inscriptionId = actionUrl.split('/').slice(-2, -1)[0];
+
+                fetch(actionUrl, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('cancelInscriptionModal')).hide();
+                        highlightInscriptionRow(inscriptionId, 'reject');
+                        setTimeout(() => {
+                            fetchResults(window.location.href, { pushState: false });
+                        }, 500);
+                        if (data.message) {
+                            alert(data.message);
+                        }
+                    } else {
+                        highlightInscriptionRow(inscriptionId, 'reject');
+                        alert(data.message || 'Erreur lors de l\'annulation');
+                    }
+                })
+                .catch(error => {
+                    debugError(error);
+                    highlightInscriptionRow(inscriptionId, 'reject');
+                    alert('Erreur lors de l\'annulation');
+                })
+                .finally(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                });
+            });
+        }
+    });
 </script>
 @endsection
