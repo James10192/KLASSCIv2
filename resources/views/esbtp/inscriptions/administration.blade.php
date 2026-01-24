@@ -859,9 +859,17 @@
             const display = `${label} ${matricule}`.trim();
 
             if (!hasPayment || paymentStatus === 'aucun') {
-                noPaymentItems.push(display);
+                noPaymentItems.push({
+                    id: row.dataset.inscriptionId,
+                    label: display,
+                    action: 'payment'
+                });
             } else if (paymentStatus === 'en_attente') {
-                pendingPaymentItems.push(display);
+                pendingPaymentItems.push({
+                    id: row.dataset.inscriptionId,
+                    label: display,
+                    action: 'pending'
+                });
             } else {
                 ready += 1;
             }
@@ -874,8 +882,34 @@
             element.innerHTML = '';
             items.forEach(item => {
                 const li = document.createElement('li');
-                li.className = 'list-group-item d-flex align-items-center gap-2';
-                li.innerHTML = `<i class="fas fa-user text-muted"></i><span>${item}</span>`;
+                li.className = 'list-group-item d-flex align-items-center justify-content-between gap-2';
+                li.innerHTML = `
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-user text-muted"></i>
+                        <span>${item.label}</span>
+                    </div>
+                `;
+
+                if (item.action === 'payment') {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'btn btn-sm btn-outline-primary bulk-action-button';
+                    button.textContent = 'Créer paiement';
+                    button.dataset.inscriptionId = item.id;
+                    button.dataset.action = 'payment';
+                    li.appendChild(button);
+                }
+
+                if (item.action === 'pending') {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'btn btn-sm btn-outline-warning bulk-action-button';
+                    button.textContent = 'Voir dossier';
+                    button.dataset.inscriptionId = item.id;
+                    button.dataset.action = 'show';
+                    li.appendChild(button);
+                }
+
                 element.appendChild(li);
             });
         };
@@ -885,6 +919,17 @@
 
         noPaymentSection.classList.toggle('d-none', noPaymentItems.length === 0);
         pendingPaymentSection.classList.toggle('d-none', pendingPaymentItems.length === 0);
+
+        document.querySelectorAll('#bulkValidationModal .bulk-action-button').forEach(button => {
+            button.addEventListener('click', function () {
+                const inscriptionId = this.dataset.inscriptionId;
+                if (this.dataset.action === 'payment') {
+                    openPaymentModal(inscriptionId, { autoValidate: true });
+                } else if (this.dataset.action === 'show') {
+                    window.open(`/esbtp/inscriptions/${inscriptionId}`, '_blank');
+                }
+            });
+        });
 
         const modalElement = document.getElementById('bulkValidationModal');
         if (typeof bootstrap !== 'undefined' && modalElement) {
