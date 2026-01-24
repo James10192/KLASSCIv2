@@ -67,32 +67,32 @@
         <div class="inscription-actions-wrapper" data-inscription-actions="{{ $inscription->id }}">
             <div class="inscription-actions-buttons">
                 <a href="{{ route('esbtp.inscriptions.show', $inscription->id) }}"
-                   class="btn btn-sm btn-outline-info" title="Voir détails">
-                    <i class="fas fa-eye"></i>
+                   class="action-btn action-view" title="Voir le dossier">
+                    <i class="fas fa-folder-open"></i>
                 </a>
 
                 @if($inscription->workflow_step !== 'etudiant_cree')
                     <button type="button"
-                            class="btn btn-sm btn-outline-success validate-inscription-btn"
+                            class="action-btn action-validate validate-inscription-btn"
                             data-inscription-id="{{ $inscription->id }}"
                             data-has-payment="{{ $hasPayment ? 1 : 0 }}"
                             title="Valider l'inscription">
-                        <i class="fas fa-check-circle"></i>
+                        <i class="fas fa-check-double"></i>
                     </button>
                 @endif
 
                 @if(!$hasPayment)
-                    <button class="btn btn-sm btn-outline-warning"
+                    <button class="action-btn action-payment"
                             onclick="openPaymentModal({{ $inscription->id }})"
                             title="Associer un paiement">
-                        <i class="fas fa-credit-card"></i>
+                        <i class="fas fa-wallet"></i>
                     </button>
                 @endif
 
-                <button class="btn btn-sm btn-outline-danger"
+                <button class="action-btn action-cancel"
                         onclick="openCancelModal({{ $inscription->id }})"
                         title="Annuler l'inscription">
-                    <i class="fas fa-times"></i>
+                    <i class="fas fa-ban"></i>
                 </button>
 
             </div>

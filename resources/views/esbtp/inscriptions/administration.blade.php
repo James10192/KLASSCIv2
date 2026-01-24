@@ -89,6 +89,46 @@
         animation-name: inscription-row-flash-reject;
     }
 
+    .action-btn {
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.95rem;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+        background: #f8fafc;
+        color: #1f2937;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 18px rgba(15, 23, 42, 0.18);
+    }
+
+    .action-view {
+        background: #e0f2fe;
+        color: #0369a1;
+    }
+
+    .action-validate {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    .action-payment {
+        background: #fef3c7;
+        color: #b45309;
+    }
+
+    .action-cancel {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
     @keyframes inscription-row-highlight-move {
         0% {
             opacity: 0;
