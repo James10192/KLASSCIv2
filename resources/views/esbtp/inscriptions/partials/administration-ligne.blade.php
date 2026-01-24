@@ -12,7 +12,7 @@
     data-matricule="{{ $inscription->etudiant->matricule ?? '' }}">
     @if(auth()->user()->hasRole('superAdmin'))
     <td>
-        @if($inscription->status == 'pending' || $inscription->status == 'en_attente')
+        @if($inscription->workflow_step !== 'etudiant_cree')
         <input type="checkbox" class="form-check-input inscription-checkbox"
                value="{{ $inscription->id }}"
                data-inscription-id="{{ $inscription->id }}">
