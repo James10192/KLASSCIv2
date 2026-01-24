@@ -5,7 +5,11 @@
     $paymentStatus = $validatedPayment ? 'validé' : ($pendingPayment ? 'en_attente' : 'aucun');
     $paymentAmount = $validatedPayment ? $validatedPayment->montant : ($pendingPayment ? $pendingPayment->montant : null);
 @endphp
-<tr data-inscription-id="{{ $inscription->id }}" data-has-payment="{{ $hasPayment ? 1 : 0 }}" data-payment-status="{{ $paymentStatus }}">
+<tr data-inscription-id="{{ $inscription->id }}"
+    data-has-payment="{{ $hasPayment ? 1 : 0 }}"
+    data-payment-status="{{ $paymentStatus }}"
+    data-student-label="{{ ($inscription->etudiant->nom ?? '') . ' ' . ($inscription->etudiant->prenoms ?? '') }}"
+    data-matricule="{{ $inscription->etudiant->matricule ?? '' }}">
     @if(auth()->user()->hasRole('superAdmin'))
     <td>
         @if($inscription->status == 'pending' || $inscription->status == 'en_attente')

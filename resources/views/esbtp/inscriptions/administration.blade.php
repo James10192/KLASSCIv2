@@ -318,7 +318,7 @@
             <span style="opacity: 0.9;">inscription(s) sélectionnée(s)</span>
         </div>
         <div style="display: flex; gap: 10px;">
-            <button type="button" class="btn btn-light btn-sm" onclick="bulkValiderInscriptions()"
+            <button type="button" class="btn btn-light btn-sm" onclick="openBulkValidationModal()"
                     style="padding: 8px 20px; border-radius: 25px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                 <i class="fas fa-check-double me-1"></i>Valider la sélection
             </button>
@@ -343,6 +343,46 @@
 }
 </style>
 @endif
+
+<div class="modal fade" id="bulkValidationModal" tabindex="-1" aria-labelledby="bulkValidationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkValidationModalLabel">
+                    <i class="fas fa-check-double me-2"></i>Validation groupée des inscriptions
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <strong>Résumé de la sélection :</strong>
+                    <div class="mt-2">Total sélectionné : <strong id="bulk-total-count">0</strong></div>
+                    <div class="mt-1">Prêtes à valider : <strong id="bulk-ready-count">0</strong></div>
+                </div>
+
+                <div id="bulk-no-payment-section" class="mb-3 d-none">
+                    <div class="alert alert-warning">
+                        <strong>Sans paiement :</strong> ces inscriptions seront ignorées.
+                    </div>
+                    <ul id="bulk-no-payment-list" class="list-group"></ul>
+                </div>
+
+                <div id="bulk-pending-payment-section" class="mb-3 d-none">
+                    <div class="alert alert-warning">
+                        <strong>Paiements non validés :</strong> ces inscriptions seront ignorées tant que le paiement n'est pas validé.
+                    </div>
+                    <ul id="bulk-pending-payment-list" class="list-group"></ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="bulk-validation-confirm">
+                    <i class="fas fa-check-double me-1"></i>Confirmer la validation
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Modal pour associer un paiement -->
 <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
@@ -787,24 +827,83 @@
         updateInscriptionSelectionCount();
     }
 
-    function bulkValiderInscriptions() {
-        const checkboxes = document.querySelectorAll('.inscription-checkbox:checked');
-        const inscriptionIds = Array.from(checkboxes).map(cb => cb.value);
+    let bulkSelectedIds = [];
 
-        if (inscriptionIds.length === 0) {
+    function openBulkValidationModal() {
+        const checkboxes = document.querySelectorAll('.inscription-checkbox:checked');
+        const rows = Array.from(checkboxes).map(cb => cb.closest('tr')).filter(Boolean);
+
+        if (rows.length === 0) {
             alert('Veuillez sélectionner au moins une inscription à valider.');
             return;
         }
 
-        const confirmMessage = `Êtes-vous sûr de vouloir valider ${inscriptionIds.length} inscription(s) ?\n\nLe système va automatiquement :\n• Valider les inscriptions avec paiements validés\n• Auto-valider les paiements en attente si nécessaire\n• Ignorer les inscriptions sans paiements\n• Envoyer les notifications aux étudiants concernés`;
+        bulkSelectedIds = rows.map(row => row.dataset.inscriptionId);
 
-        if (!confirm(confirmMessage)) {
+        const noPaymentList = document.getElementById('bulk-no-payment-list');
+        const pendingPaymentList = document.getElementById('bulk-pending-payment-list');
+        const noPaymentSection = document.getElementById('bulk-no-payment-section');
+        const pendingPaymentSection = document.getElementById('bulk-pending-payment-section');
+        const totalCount = document.getElementById('bulk-total-count');
+        const readyCount = document.getElementById('bulk-ready-count');
+
+        const noPaymentItems = [];
+        const pendingPaymentItems = [];
+        let ready = 0;
+
+        rows.forEach(row => {
+            const hasPayment = row.dataset.hasPayment === '1';
+            const paymentStatus = row.dataset.paymentStatus || 'aucun';
+            const label = row.dataset.studentLabel || 'Étudiant';
+            const matricule = row.dataset.matricule ? `(${row.dataset.matricule})` : '';
+            const display = `${label} ${matricule}`.trim();
+
+            if (!hasPayment || paymentStatus === 'aucun') {
+                noPaymentItems.push(display);
+            } else if (paymentStatus === 'en_attente') {
+                pendingPaymentItems.push(display);
+            } else {
+                ready += 1;
+            }
+        });
+
+        totalCount.textContent = rows.length;
+        readyCount.textContent = ready;
+
+        const renderList = (element, items) => {
+            element.innerHTML = '';
+            items.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex align-items-center gap-2';
+                li.innerHTML = `<i class="fas fa-user text-muted"></i><span>${item}</span>`;
+                element.appendChild(li);
+            });
+        };
+
+        renderList(noPaymentList, noPaymentItems);
+        renderList(pendingPaymentList, pendingPaymentItems);
+
+        noPaymentSection.classList.toggle('d-none', noPaymentItems.length === 0);
+        pendingPaymentSection.classList.toggle('d-none', pendingPaymentItems.length === 0);
+
+        const modalElement = document.getElementById('bulkValidationModal');
+        if (typeof bootstrap !== 'undefined' && modalElement) {
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        }
+    }
+
+    function bulkValiderInscriptions(inscriptionIds = null) {
+        const ids = inscriptionIds && inscriptionIds.length ? inscriptionIds : bulkSelectedIds;
+
+        if (!ids.length) {
+            alert('Veuillez sélectionner au moins une inscription à valider.');
             return;
         }
 
         const formData = new FormData();
         formData.append('_token', '{{ csrf_token() }}');
-        inscriptionIds.forEach(id => formData.append('inscription_ids[]', id));
+        ids.forEach(id => formData.append('inscription_ids[]', id));
 
         fetch("{{ route('esbtp.inscriptions.bulk-valider') }}", {
             method: 'POST',
@@ -824,8 +923,15 @@
                 alert(data.message);
             }
 
+            const problems = data.inscriptions_problemes || {};
+            ids.forEach((id, index) => {
+                const actionType = problems[id] ? 'reject' : 'validate';
+                setTimeout(() => {
+                    refreshInscriptionLigne(id, actionType);
+                }, index * 120);
+            });
+
             clearInscriptionSelection();
-            fetchResults(window.location.href, { pushState: false });
         })
         .catch(error => {
             debugError(error);
@@ -1064,6 +1170,17 @@
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = originalText;
                 });
+            });
+        }
+
+        const bulkConfirmButton = document.getElementById('bulk-validation-confirm');
+        if (bulkConfirmButton) {
+            bulkConfirmButton.addEventListener('click', function () {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('bulkValidationModal'));
+                if (modal) {
+                    modal.hide();
+                }
+                bulkValiderInscriptions(bulkSelectedIds);
             });
         }
     });
