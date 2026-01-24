@@ -137,6 +137,14 @@
             gap: var(--space-md);
         }
     }
+
+    .year-selector {
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 14px;
+        color: #374151;
+    }
 </style>
 @endsection
 
@@ -156,6 +164,48 @@
                     {{ $anneeEnCours->name ?? 'Année non définie' }}
                 </span>
                 <span class="text-muted me-2">{{ \Carbon\Carbon::now()->isoFormat('dddd D MMMM YYYY') }}</span>
+            </div>
+        </div>
+
+        <div class="card-moderne mb-lg">
+            <div class="p-lg">
+                <div class="section-title mb-md">
+                    <i class="fas fa-calendar-alt me-2"></i>Année Académique Active
+                </div>
+                <div style="display: flex; gap: var(--space-md); align-items: end;">
+                    <div style="flex: 1; max-width: 300px;">
+                        <label for="annee_academique" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Académique Courante</label>
+                        <select name="annee_academique" id="annee_academique" class="year-selector" style="width: 100%; background-color: #f8f9fa; cursor: not-allowed;" disabled>
+                            <option value="{{ $anneeEnCours->id ?? '' }}" selected>
+                                {{ $anneeEnCours->name ?? 'Aucune année définie' }} (Année en cours)
+                            </option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn-acasi secondary" onclick="showYearChangeInfo()" title="Comment changer d'année ?">
+                        <i class="fas fa-info-circle"></i>Changer d'année
+                    </button>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Les inscriptions affichées correspondent à l'année académique courante.
+                        @if($inscriptions->isEmpty())
+                            <strong class="text-warning">Aucune inscription trouvée pour cette année.</strong>
+                        @endif
+                    </small>
+                </div>
+                @if($inscriptions->isEmpty())
+                    <div class="mt-3">
+                        <div class="alert alert-warning d-flex align-items-center" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <div>
+                                <strong>Aucune inscription pour l'année {{ $anneeEnCours->name ?? 'courante' }}</strong><br>
+                                <small>Il y a {{ \App\Models\ESBTPInscription::count() }} inscriptions au total dans la base, mais aucune pour l'année académique active.
+                                Utilisez le bouton "Changer d'année" pour consulter les inscriptions d'autres années.</small>
+                            </div>
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -242,7 +292,7 @@
                                     <option value="">Toutes les filières</option>
                                     @foreach($filieres as $fil)
                                         <option value="{{ $fil->id }}" {{ request('filiere') == $fil->id ? 'selected' : '' }}>
-                                            {{ $fil->nom }}
+                                            {{ $fil->name ?? $fil->nom }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -255,7 +305,7 @@
                                     <option value="">Tous les niveaux</option>
                                     @foreach($niveaux as $niv)
                                         <option value="{{ $niv->id }}" {{ request('niveau') == $niv->id ? 'selected' : '' }}>
-                                            {{ $niv->nom }}
+                                            {{ $niv->name ?? $niv->libelle ?? $niv->nom }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -551,11 +601,86 @@
     </div>
 </div>
 
+<!-- Modal pour les instructions de changement d'année -->
+<div class="modal fade" id="yearChangeModal" tabindex="-1" aria-labelledby="yearChangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="yearChangeModalLabel">Comment changer l'année académique ?</h5>
+                <button type="button" class="close btn-close" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; font-weight: bold; color: #999; cursor: pointer;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Pour consulter les inscriptions d'une autre année :</strong></p>
+                <ol style="padding-left: 20px; line-height: 1.6; margin: 15px 0;">
+                    <li><strong>Aller dans</strong> : Menu → Années Universitaires</li>
+                    <li><strong>Trouver l'année souhaitée</strong> (ex: 2023-2024)</li>
+                    <li><strong>Cliquer sur "Activer"</strong> pour la définir comme année courante</li>
+                    <li><strong>Revenir ici</strong> : Les inscriptions affichées se mettront à jour automatiquement</li>
+                </ol>
+                <hr style="margin: 15px 0;">
+                <p style="color: #6b7280; font-size: 14px;">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Note :</strong> Seule une année peut être "courante" à la fois.
+                    Changer l'année courante affecte l'affichage des inscriptions dans toute l'application.
+                </p>
+                <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-top: 15px;">
+                    <strong>Actuellement :</strong><br>
+                    • Année courante = {{ $anneeEnCours->name ?? 'Non définie' }}<br>
+                    • Inscriptions visibles = {{ $inscriptions->count() }} sur {{ \App\Models\ESBTPInscription::count() }} au total
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#yearChangeModal').modal('hide');">Fermer</button>
+                <a href="{{ route('esbtp.annees-universitaires.index') }}" target="_blank" class="btn btn-primary">
+                    <i class="fas fa-external-link-alt"></i> Aller aux Années
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
 <script>
     const ADMIN_REFRESH_CONTEXT = 'administration';
+
+    function showYearChangeInfo() {
+        if (typeof bootstrap !== 'undefined') {
+            const modal = new bootstrap.Modal(document.getElementById('yearChangeModal'));
+            modal.show();
+        } else if (typeof $ !== 'undefined' && $.fn.modal) {
+            $('#yearChangeModal').modal('show');
+        } else {
+            const modal = document.getElementById('yearChangeModal');
+            if (modal) {
+                modal.style.display = 'block';
+                modal.classList.add('show');
+                document.body.classList.add('modal-open');
+
+                const backdrop = document.createElement('div');
+                backdrop.className = 'modal-backdrop fade show';
+                backdrop.id = 'modal-backdrop';
+                document.body.appendChild(backdrop);
+            }
+        }
+    }
+
+    function closeYearModal() {
+        const modal = document.getElementById('yearChangeModal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.classList.remove('show');
+            document.body.classList.remove('modal-open');
+
+            const backdrop = document.getElementById('modal-backdrop');
+            if (backdrop) {
+                backdrop.remove();
+            }
+        }
+    }
 
     function setInscriptionRowLoadingState(inscriptionId, isLoading) {
         const row = document.querySelector(`tr[data-inscription-id="${inscriptionId}"]`);
@@ -1237,6 +1362,16 @@
                 }
                 bulkValiderInscriptions(bulkSelectedIds);
             });
+        }
+
+        const closeButton = document.querySelector('#yearChangeModal .close');
+        if (closeButton) {
+            closeButton.addEventListener('click', closeYearModal);
+        }
+
+        const cancelButton = document.querySelector('#yearChangeModal .btn-secondary');
+        if (cancelButton) {
+            cancelButton.addEventListener('click', closeYearModal);
         }
     });
 </script>

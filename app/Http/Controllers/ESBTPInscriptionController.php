@@ -2,52 +2,50 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ESBTPInscription;
-use App\Models\ESBTPEtudiant;
-use App\Models\ESBTPFiliere;
-use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
-use App\Models\ESBTPPaiement;
-use App\Models\ESBTPParent;
-use App\Services\ESBTPInscriptionService;
-use App\Services\InscriptionWorkflowService;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Database\QueryException;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
-use App\Models\User;
+use App\Models\ESBTPFiliere;
 use App\Models\ESBTPFraisCategory;
 use App\Models\ESBTPFraisConfiguration;
 use App\Models\ESBTPFraisSubscription;
-use App\Models\ESBTP\Fee;
+use App\Models\ESBTPInscription;
+use App\Models\ESBTPNiveauEtude;
+use App\Models\ESBTPPaiement;
+use App\Models\ESBTPParent;
 use App\Models\Setting;
 use App\Services\ComptabiliteService;
-use App\Services\StudentDuplicateDetector;
+use App\Services\ESBTPInscriptionService;
 use App\Services\FuzzyNameMatcher;
+use App\Services\InscriptionWorkflowService;
+use App\Services\StudentDuplicateDetector;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class ESBTPInscriptionController extends Controller
 {
     private const DUPLICATE_BLOCKING_SCORE = 80;
 
     protected $inscriptionService;
+
     protected $comptabiliteService;
+
     protected $workflowService;
 
     /**
      * Constructeur avec injection du service d'inscription
      */
     public function __construct(
-        ESBTPInscriptionService $inscriptionService, 
+        ESBTPInscriptionService $inscriptionService,
         ComptabiliteService $comptabiliteService,
         InscriptionWorkflowService $workflowService
-    )
-    {
+    ) {
         $this->inscriptionService = $inscriptionService;
         $this->comptabiliteService = $comptabiliteService;
         $this->workflowService = $workflowService;
@@ -152,28 +150,28 @@ class ESBTPInscriptionController extends Controller
                                 $escapedToken = $escapeLike($token);
                                 $likeToken = "%{$escapedToken}%";
                                 $subQuery->orWhere('nom', 'like', $likeToken)
-                                         ->orWhere('prenoms', 'like', $likeToken)
-                                         ->orWhere('matricule', 'like', $likeToken)
-                                         ->orWhere('telephone', 'like', $likeToken)
-                                         ->orWhere('email_personnel', 'like', $likeToken);
+                                    ->orWhere('prenoms', 'like', $likeToken)
+                                    ->orWhere('matricule', 'like', $likeToken)
+                                    ->orWhere('telephone', 'like', $likeToken)
+                                    ->orWhere('email_personnel', 'like', $likeToken);
                             }
                         });
                     }
                 })
-                ->orWhere('numero_recu', 'like', $likeSearch)
-                ->orWhereHas('classe', function ($classeQuery) use ($likeSearch, $searchTokens, $escapeLike) {
-                    $classeQuery->where('name', 'like', $likeSearch);
+                    ->orWhere('numero_recu', 'like', $likeSearch)
+                    ->orWhereHas('classe', function ($classeQuery) use ($likeSearch, $searchTokens, $escapeLike) {
+                        $classeQuery->where('name', 'like', $likeSearch);
 
-                    if ($searchTokens->isNotEmpty()) {
-                        $classeQuery->orWhere(function ($subQuery) use ($searchTokens, $escapeLike) {
-                            foreach ($searchTokens as $token) {
-                                $escapedToken = $escapeLike($token);
-                                $likeToken = "%{$escapedToken}%";
-                                $subQuery->orWhere('name', 'like', $likeToken);
-                            }
-                        });
-                    }
-                });
+                        if ($searchTokens->isNotEmpty()) {
+                            $classeQuery->orWhere(function ($subQuery) use ($searchTokens, $escapeLike) {
+                                foreach ($searchTokens as $token) {
+                                    $escapedToken = $escapeLike($token);
+                                    $likeToken = "%{$escapedToken}%";
+                                    $subQuery->orWhere('name', 'like', $likeToken);
+                                }
+                            });
+                        }
+                    });
             });
 
             try {
@@ -195,7 +193,7 @@ class ESBTPInscriptionController extends Controller
                             ->orWhere('nom', 'like', $likeSearch)
                             ->orWhere('prenoms', 'like', $likeSearch);
                     })
-                    ->orWhere('numero_recu', 'like', $likeSearch);
+                        ->orWhere('numero_recu', 'like', $likeSearch);
                 });
 
                 $candidates = $fallbackQuery
@@ -210,7 +208,7 @@ class ESBTPInscriptionController extends Controller
                     'matricule' => $etudiant?->matricule,
                     'nom' => $etudiant?->nom,
                     'prenoms' => $etudiant?->prenoms,
-                    'full_name' => $etudiant ? trim($etudiant->prenoms . ' ' . $etudiant->nom) : null,
+                    'full_name' => $etudiant ? trim($etudiant->prenoms.' '.$etudiant->nom) : null,
                     'classe' => $inscription->classe?->name,
                     'numero_inscription' => $inscription->numero_inscription,
                     'numero_recu' => $inscription->numero_recu,
@@ -288,6 +286,7 @@ class ESBTPInscriptionController extends Controller
                 'timestamp' => now()->toIso8601String(),
                 'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
             ]));
+
             return response()->json([
                 'html' => view('esbtp.inscriptions.partials.results', [
                     'inscriptions' => $inscriptions,
@@ -332,7 +331,7 @@ class ESBTPInscriptionController extends Controller
 
         // Ajouter $annees pour la compatibilité avec la vue
         $annees = $academicYears;
-        
+
         return view('esbtp.inscriptions.create', compact(
             'filieres', 'niveaux', 'academicYears', 'anneeEnCours',
             'anneeUniversitaires', 'niveauEtudes', 'annees'
@@ -364,6 +363,7 @@ class ESBTPInscriptionController extends Controller
             return ($item['score'] ?? 0) >= self::DUPLICATE_BLOCKING_SCORE;
         })->map(function (array $item) {
             $item['show_url'] = route('esbtp.etudiants.show', $item['id']);
+
             return $item;
         })->values();
 
@@ -412,12 +412,12 @@ class ESBTPInscriptionController extends Controller
             'method' => $request->method(),
             'url' => $request->fullUrl(),
             'all_input' => $request->all(),
-            'parents_input' => $request->input('parents', [])
+            'parents_input' => $request->input('parents', []),
         ];
-        
+
         file_put_contents($debugFile,
-            "=== INSCRIPTION DEBUG " . now() . " ===\n" .
-            json_encode($debugData, JSON_PRETTY_PRINT) . "\n\n",
+            '=== INSCRIPTION DEBUG '.now()." ===\n".
+            json_encode($debugData, JSON_PRETTY_PRINT)."\n\n",
             FILE_APPEND | LOCK_EX
         );
 
@@ -430,7 +430,7 @@ class ESBTPInscriptionController extends Controller
         }
 
         // Détection de doublons (blocage tant que non confirmé)
-        if (!$request->boolean('duplicate_override')) {
+        if (! $request->boolean('duplicate_override')) {
             $duplicates = $duplicateDetector->find(
                 $request->input('nom', ''),
                 $request->input('prenoms', ''),
@@ -481,36 +481,37 @@ class ESBTPInscriptionController extends Controller
             'photo.uploaded' => 'La photo n\'a pas pu être téléchargée. Vérifiez la taille du fichier, le format et les limites d\'upload du serveur.',
         ];
         $parents = $request->input('parents', []);
-        
+
         // Debug: Log des données parents reçues
         Log::info('Debug Parents - Données reçues:', [
             'parents' => $parents,
-            'request_all' => $request->all()
+            'request_all' => $request->all(),
         ]);
-        
+
         // Nettoyer les données parents - supprimer le template et nettoyer les parents existants
         foreach ($parents as $index => $parent) {
             // Supprimer complètement le template
             if ($index === 'template') {
                 unset($parents[$index]);
                 file_put_contents($debugFile, "Template supprimé\n", FILE_APPEND | LOCK_EX);
+
                 continue;
             }
-            
+
             if (isset($parent['type']) && $parent['type'] === 'existant') {
                 // Pour un parent existant, ne garder que parent_id, relation et type
                 $parents[$index] = [
                     'type' => 'existant',
                     'parent_id' => $parent['parent_id'] ?? null,
-                    'relation' => $parent['relation'] ?? null
+                    'relation' => $parent['relation'] ?? null,
                 ];
-                file_put_contents($debugFile, "Parent $index nettoyé pour type existant: " . json_encode($parents[$index]) . "\n", FILE_APPEND | LOCK_EX);
+                file_put_contents($debugFile, "Parent $index nettoyé pour type existant: ".json_encode($parents[$index])."\n", FILE_APPEND | LOCK_EX);
             }
         }
-        
+
         // Log des parents après nettoyage
-        file_put_contents($debugFile, "Parents après nettoyage: " . json_encode($parents, JSON_PRETTY_PRINT) . "\n", FILE_APPEND | LOCK_EX);
-        
+        file_put_contents($debugFile, 'Parents après nettoyage: '.json_encode($parents, JSON_PRETTY_PRINT)."\n", FILE_APPEND | LOCK_EX);
+
         foreach ($parents as $index => $parent) {
             Log::info("Debug Parent $index:", [
                 'parent' => $parent,
@@ -518,16 +519,16 @@ class ESBTPInscriptionController extends Controller
                 'has_nom' => isset($parent['nom']),
                 'has_prenoms' => isset($parent['prenoms']),
                 'has_telephone' => isset($parent['telephone']),
-                'has_parent_id' => isset($parent['parent_id'])
+                'has_parent_id' => isset($parent['parent_id']),
             ]);
-            
+
             if (isset($parent['type']) && $parent['type'] === 'nouveau') {
-                $hasParentData = !empty($parent['nom'])
-                    || !empty($parent['prenoms'])
-                    || !empty($parent['telephone'])
-                    || !empty($parent['email'])
-                    || !empty($parent['profession'])
-                    || !empty($parent['adresse']);
+                $hasParentData = ! empty($parent['nom'])
+                    || ! empty($parent['prenoms'])
+                    || ! empty($parent['telephone'])
+                    || ! empty($parent['email'])
+                    || ! empty($parent['profession'])
+                    || ! empty($parent['adresse']);
 
                 if ($hasParentData) {
                     Log::info("Parent $index: Type NOUVEAU détecté - Ajout des règles de validation");
@@ -540,8 +541,8 @@ class ESBTPInscriptionController extends Controller
                     $messages["parents.$index.telephone.required"] = 'Le téléphone du parent/tuteur est obligatoire';
                     $messages["parents.$index.relation.required"] = 'La relation avec le parent/tuteur est obligatoire';
                 }
-            } else if (isset($parent['type']) && $parent['type'] === 'existant') {
-                if (!empty($parent['parent_id'])) {
+            } elseif (isset($parent['type']) && $parent['type'] === 'existant') {
+                if (! empty($parent['parent_id'])) {
                     Log::info("Parent $index: Type EXISTANT détecté - Ajout des règles pour parent existant");
                     $rules["parents.$index.parent_id"] = 'required|exists:esbtp_parents,id';
                     $rules["parents.$index.relation"] = 'required|string';
@@ -552,29 +553,28 @@ class ESBTPInscriptionController extends Controller
                 // NE PAS ajouter de règle sur nom/prenoms/telephone pour un parent existant
             } else {
                 Log::warning("Parent $index: Type non reconnu ou manquant", [
-                    'parent' => $parent
+                    'parent' => $parent,
                 ]);
             }
         }
-        
+
         // Debug: Log des règles finales
         Log::info('Debug Validation - Règles appliquées:', [
             'rules' => $rules,
-            'messages' => $messages
+            'messages' => $messages,
         ]);
-        
+
         $validator = Validator::make($request->all(), $rules, $messages);
         if ($validator->fails()) {
             Log::error('Validation échouée:', [
                 'errors' => $validator->errors()->toArray(),
-                'input' => $request->all()
+                'input' => $request->all(),
             ]);
+
             return redirect()->back()
                 ->withErrors($validator)
                 ->withInput();
         }
-
-
 
         try {
             // Log des données soumises pour débogage
@@ -604,7 +604,7 @@ class ESBTPInscriptionController extends Controller
             // Ajouter un log pour déboguer
             \Log::info('Données de l\'étudiant', [
                 'etudiantData' => $etudiantData,
-                'matriculeFromRequest' => $request->matricule
+                'matriculeFromRequest' => $request->matricule,
             ]);
 
             // Ajouter un log supplémentaire pour les champs ville et commune
@@ -612,7 +612,7 @@ class ESBTPInscriptionController extends Controller
                 'ville' => $request->ville,
                 'commune' => $request->commune,
                 'lieu_naissance' => $request->lieu_naissance,
-                'adresse' => $request->adresse
+                'adresse' => $request->adresse,
             ]);
 
             // Traiter la photo si fournie
@@ -625,7 +625,7 @@ class ESBTPInscriptionController extends Controller
 
             // CORRECTION: Utiliser l'année courante au lieu de l'année de la classe
             $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-            if (!$anneeCourante) {
+            if (! $anneeCourante) {
                 throw new \Exception("Aucune année universitaire courante définie. Veuillez configurer l'année courante.");
             }
 
@@ -662,14 +662,13 @@ class ESBTPInscriptionController extends Controller
             // Traiter les parents du formulaire
             if ($request->has('parents')) {
                 foreach ($request->parents as $parent) {
-                    if (isset($parent['type']) && $parent['type'] === 'existant' && !empty($parent['parent_id'])) {
+                    if (isset($parent['type']) && $parent['type'] === 'existant' && ! empty($parent['parent_id'])) {
                         // Parent existant sélectionné
                         $parentsData[] = [
                             'parent_id' => $parent['parent_id'],
-                            'relation' => $parent['relation'] ?? 'Autre'
+                            'relation' => $parent['relation'] ?? 'Autre',
                         ];
-                    }
-                    elseif (isset($parent['type']) && $parent['type'] === 'nouveau' && !empty($parent['nom']) && !empty($parent['prenoms']) && !empty($parent['telephone'])) {
+                    } elseif (isset($parent['type']) && $parent['type'] === 'nouveau' && ! empty($parent['nom']) && ! empty($parent['prenoms']) && ! empty($parent['telephone'])) {
                         // Nouveau parent
                         $parentsData[] = [
                             'nom' => $parent['nom'],
@@ -678,7 +677,7 @@ class ESBTPInscriptionController extends Controller
                             'telephone' => $parent['telephone'] ?? null,
                             'profession' => $parent['profession'] ?? null,
                             'relation' => $parent['relation'] ?? 'Autre',
-                            'adresse' => $parent['adresse'] ?? null
+                            'adresse' => $parent['adresse'] ?? null,
                         ];
                     }
                 }
@@ -689,10 +688,10 @@ class ESBTPInscriptionController extends Controller
             // Traitement des frais sélectionnés selon la nouvelle architecture
             $fraisVariants = $request->input('frais', []);
             $selectedOptionals = []; // Format pour la nouvelle méthode ESBTPInscriptionService
-            
+
             // Convertir le format des frais pour la nouvelle architecture
             foreach ($fraisVariants as $categoryId => $fraisData) {
-                if (!empty($fraisData['variant_id'])) {
+                if (! empty($fraisData['variant_id'])) {
                     $selectedOptionals[$categoryId] = $fraisData;
                 }
             }
@@ -703,7 +702,7 @@ class ESBTPInscriptionController extends Controller
                 'inscriptionData' => $inscriptionData,
                 'parentsData' => $parentsData,
                 'selectedOptionals' => $selectedOptionals,
-                'fraisVariants' => $fraisVariants
+                'fraisVariants' => $fraisVariants,
             ]);
 
             $autoGenerateMatricule = empty(trim((string) $request->matricule));
@@ -742,6 +741,7 @@ class ESBTPInscriptionController extends Controller
                             'etudiant_nom' => $etudiantData['nom'],
                             'etudiant_prenoms' => $etudiantData['prenoms'],
                         ]);
+
                         continue;
                     }
 
@@ -752,7 +752,7 @@ class ESBTPInscriptionController extends Controller
                 }
             }
 
-            if (!$inscription) {
+            if (! $inscription) {
                 throw new \RuntimeException('Impossible de générer un matricule unique pour cet étudiant.');
             }
 
@@ -770,7 +770,7 @@ class ESBTPInscriptionController extends Controller
                     $notificationService->notifyParentsInscriptionCreated($inscription, $credentials);
                 }
             } catch (\Exception $e) {
-                Log::error('Erreur envoi notification inscription: ' . $e->getMessage());
+                Log::error('Erreur envoi notification inscription: '.$e->getMessage());
             }
 
             // Stocker les informations du compte dans la session
@@ -779,7 +779,7 @@ class ESBTPInscriptionController extends Controller
                 session()->flash('account_info', [
                     'username' => $user->username,
                     'password' => session('generated_password'),
-                    'role' => 'Étudiant'
+                    'role' => 'Étudiant',
                 ]);
             }
 
@@ -790,11 +790,11 @@ class ESBTPInscriptionController extends Controller
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
             }
-            \Log::error('Erreur lors de l\'inscription: ' . $e->getMessage());
+            \Log::error('Erreur lors de l\'inscription: '.$e->getMessage());
             \Log::error($e->getTraceAsString());
 
             return redirect()->back()
-                ->with('error', 'Une erreur est survenue lors de l\'inscription. Détails : ' . $e->getMessage())
+                ->with('error', 'Une erreur est survenue lors de l\'inscription. Détails : '.$e->getMessage())
                 ->withInput();
         }
     }
@@ -818,20 +818,20 @@ class ESBTPInscriptionController extends Controller
         // Frais/échéances liés à l'inscription
         $fees = \App\Models\ESBTP\Fee::where('inscription_id', $inscription->id)->orderBy('due_date')->get();
         // Paiements validés liés à l'inscription
-        $soldeRestant = $fees->sum(function($fee) {
+        $soldeRestant = $fees->sum(function ($fee) {
             return $fee->amount - $fee->totalPaidAmount();
         });
 
         // Récupérer les catégories de frais avec règles pour cette inscription
         $mandatoryCategories = \App\Models\ESBTPFraisCategory::where('is_mandatory', true)->active()->ordered()->get();
         $optionalCategories = \App\Models\ESBTPFraisCategory::where('is_mandatory', false)->active()->ordered()->get();
-        
+
         // Récupérer les souscriptions actives pour cette inscription
         $subscriptions = \App\Models\ESBTPFraisSubscription::getActiveSubscriptions($inscription->id);
         $subscribedCategoryIds = $subscriptions->pluck('frais_category_id')->toArray();
-        
+
         $feeCategoriesWithRules = [];
-        
+
         // Récupérer le statut d'affectation de l'inscription
         $affectationStatus = $inscription->affectation_status ?? 'affecté';
 
@@ -839,7 +839,7 @@ class ESBTPInscriptionController extends Controller
         \Log::info('Affichage inscription - Statut d\'affectation', [
             'inscription_id' => $inscription->id,
             'affectation_status' => $affectationStatus,
-            'matricule' => $inscription->etudiant->matricule ?? 'N/A'
+            'matricule' => $inscription->etudiant->matricule ?? 'N/A',
         ]);
 
         // Traiter les frais obligatoires (utiliser les souscriptions individuelles)
@@ -853,9 +853,9 @@ class ESBTPInscriptionController extends Controller
             $paiements = $inscription->paiements()
                 ->where('frais_category_id', $category->id)
                 ->where('status', 'validé')
-                ->where(function($query) {
+                ->where(function ($query) {
                     $query->where('type_paiement', '!=', 'reliquat')
-                          ->orWhereNull('type_paiement');
+                        ->orWhereNull('type_paiement');
                 })
                 ->get();
 
@@ -870,9 +870,9 @@ class ESBTPInscriptionController extends Controller
                     'category' => $category->name,
                     'montant_attendu' => $montantAttendu,
                     'subscription_amount' => $subscription->amount,
-                    'source' => 'souscription_prioritaire'
+                    'source' => 'souscription_prioritaire',
                 ]);
-            } else if ($rule) {
+            } elseif ($rule) {
                 // Fallback: utiliser les règles selon le statut d'affectation
                 $montantAttendu = $rule->getMontantByStatus($affectationStatus);
                 $isConfigured = true;
@@ -883,7 +883,7 @@ class ESBTPInscriptionController extends Controller
                     'montant_attendu' => $montantAttendu,
                     'has_rule' => true,
                     'rule_amounts' => $rule->getAllAmounts(),
-                    'source' => 'regle_fallback'
+                    'source' => 'regle_fallback',
                 ]);
             } else {
                 // Dernière solution: montant par défaut de la catégorie
@@ -894,7 +894,7 @@ class ESBTPInscriptionController extends Controller
                     'category' => $category->name,
                     'montant_attendu' => $montantAttendu,
                     'default_amount' => $category->default_amount,
-                    'source' => 'defaut_category'
+                    'source' => 'defaut_category',
                 ]);
             }
             $isSubscribed = $subscription !== null;
@@ -912,31 +912,31 @@ class ESBTPInscriptionController extends Controller
                 'is_mandatory' => true,
                 'is_subscribed' => $isSubscribed,
                 'subscription' => $subscription,
-                'status' => $solde <= 0 ? 'paid' : ($totalPaye > 0 ? 'partial' : 'unpaid')
+                'status' => $solde <= 0 ? 'paid' : ($totalPaye > 0 ? 'partial' : 'unpaid'),
             ];
         }
-        
+
         // Traiter les frais optionnels (seulement ceux souscrits)
         foreach ($optionalCategories as $category) {
             $subscription = $subscriptions->where('frais_category_id', $category->id)->first();
-            
+
             if ($subscription) {
                 $rule = $category->getApplicableRule($inscription->filiere_id, $inscription->niveau_id, $inscription->annee_universitaire_id);
-                
+
                 // Calculer les paiements pour cette catégorie (exclure les paiements de reliquats)
                 $paiements = $inscription->paiements()
                     ->where('frais_category_id', $category->id)
                     ->where('status', 'validé')
-                    ->where(function($query) {
+                    ->where(function ($query) {
                         $query->where('type_paiement', '!=', 'reliquat')
-                              ->orWhereNull('type_paiement');
+                            ->orWhereNull('type_paiement');
                     })
                     ->get();
-                
+
                 $totalPaye = $paiements->sum('montant');
                 $montantAttendu = $subscription->amount; // Utiliser le montant de la souscription
                 $solde = $montantAttendu - $totalPaye;
-                
+
                 $feeCategoriesWithRules[] = [
                     'category' => $category,
                     'rule' => $rule,
@@ -948,21 +948,21 @@ class ESBTPInscriptionController extends Controller
                     'is_mandatory' => false,
                     'is_subscribed' => true,
                     'subscription' => $subscription,
-                    'status' => $solde <= 0 ? 'paid' : ($totalPaye > 0 ? 'partial' : 'unpaid')
+                    'status' => $solde <= 0 ? 'paid' : ($totalPaye > 0 ? 'partial' : 'unpaid'),
                 ];
             }
         }
-        
+
         // Récupérer les frais optionnels non souscrits (pour permettre la souscription)
-        $availableOptionalCategories = $optionalCategories->filter(function($category) use ($subscribedCategoryIds) {
-            return !in_array($category->id, $subscribedCategoryIds);
+        $availableOptionalCategories = $optionalCategories->filter(function ($category) use ($subscribedCategoryIds) {
+            return ! in_array($category->id, $subscribedCategoryIds);
         });
 
         // Récupérer les catégories de frais pour la modal de paiement
         $categoriesfrais = collect($feeCategoriesWithRules)->pluck('category');
 
         // Filtrer les catégories obligatoires pour le debug
-        $mandatoryFeeCategoriesWithRules = collect($feeCategoriesWithRules)->filter(function($item) {
+        $mandatoryFeeCategoriesWithRules = collect($feeCategoriesWithRules)->filter(function ($item) {
             return $item['is_mandatory'];
         });
 
@@ -998,7 +998,7 @@ class ESBTPInscriptionController extends Controller
             if ($reinscriptionData['observations']) {
                 $parts = explode(' - ', $reinscriptionData['observations'], 2);
                 $reinscriptionData['decision'] = ucfirst(trim($parts[0]));
-                $reinscriptionData['decision_label'] = match(strtolower(trim($parts[0]))) {
+                $reinscriptionData['decision_label'] = match (strtolower(trim($parts[0]))) {
                     'passage' => 'Passage au niveau supérieur',
                     'redoublement' => 'Redoublement',
                     'rattrapage' => 'Session de rattrapage',
@@ -1127,19 +1127,19 @@ class ESBTPInscriptionController extends Controller
             $ancienneClasse = $inscription->classe_id;
             $ancienAffectationStatus = $inscription->affectation_status;
 
-            if ($inscription->status === 'active' && !Auth::user()->hasRole('superAdmin')) {
+            if ($inscription->status === 'active' && ! Auth::user()->hasRole('superAdmin')) {
                 // Empêcher la modification de la filière, niveau et classe pour les inscriptions actives (sauf superAdmin)
                 unset($data['filiere_id']);
                 unset($data['niveau_id']);
                 unset($data['classe_id']);
                 \Log::warning('Tentative de modification de la classe/filière/niveau après activation', [
                     'inscription_id' => $inscription->id,
-                    'user_id' => Auth::id()
+                    'user_id' => Auth::id(),
                 ]);
             } elseif ($inscription->status === 'active' && Auth::user()->hasRole('superAdmin')) {
                 \Log::info('SuperAdmin modifie une inscription active', [
                     'inscription_id' => $inscription->id,
-                    'user_id' => Auth::id()
+                    'user_id' => Auth::id(),
                 ]);
             }
 
@@ -1180,11 +1180,11 @@ class ESBTPInscriptionController extends Controller
                 if (in_array($nouveauStatut, ['annulée', 'terminée'])) {
                     $etudiant = $inscription->etudiant;
                     $autresInscriptionsActives = $etudiant->inscriptions()
-            ->where('id', '!=', $inscription->id)
+                        ->where('id', '!=', $inscription->id)
                         ->whereIn('status', ['active', 'en_attente'])
                         ->exists();
 
-                    if (!$autresInscriptionsActives && $etudiant->statut === 'actif') {
+                    if (! $autresInscriptionsActives && $etudiant->statut === 'actif') {
                         if ($nouveauStatut === 'terminée') {
                             $etudiant->statut = 'diplômé';
                         } else {
@@ -1214,7 +1214,7 @@ class ESBTPInscriptionController extends Controller
                     'nouvelle_classe' => $inscription->classe_id,
                     'ancien_affectation_status' => $ancienAffectationStatus,
                     'nouveau_affectation_status' => $inscription->affectation_status,
-                    'user_id' => Auth::id()
+                    'user_id' => Auth::id(),
                 ]);
 
                 // Régénérer les frais pour cette inscription avec les nouvelles configurations
@@ -1237,9 +1237,10 @@ class ESBTPInscriptionController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+
             return redirect()
                 ->back()
-                ->with('error', 'Erreur lors de la mise à jour: ' . $e->getMessage())
+                ->with('error', 'Erreur lors de la mise à jour: '.$e->getMessage())
                 ->withInput();
         }
     }
@@ -1262,16 +1263,17 @@ class ESBTPInscriptionController extends Controller
             $montantPaye = $request->input('montant_paye', 0);
             if ($montantPaye > 0) {
                 $this->comptabiliteService->validerPaiementInscription($inscription, $montantPaye);
-                    }
+            }
 
             DB::commit();
 
             return redirect()->route('esbtp.inscriptions.show', $inscription->id)
-                    ->with('success', 'Inscription validée avec succès.');
+                ->with('success', 'Inscription validée avec succès.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Erreur lors de la validation: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Erreur lors de la validation: '.$e->getMessage());
         }
     }
 
@@ -1299,7 +1301,7 @@ class ESBTPInscriptionController extends Controller
                 if ($request->ajax()) {
                     return response()->json([
                         'success' => true,
-                        'message' => 'Inscription annulée avec succès.'
+                        'message' => 'Inscription annulée avec succès.',
                     ]);
                 }
 
@@ -1314,13 +1316,13 @@ class ESBTPInscriptionController extends Controller
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Erreur lors de l\'annulation: ' . $e->getMessage()
+                    'message' => 'Erreur lors de l\'annulation: '.$e->getMessage(),
                 ], 500);
             }
 
             return redirect()
                 ->back()
-                ->with('error', 'Erreur lors de l\'annulation: ' . $e->getMessage());
+                ->with('error', 'Erreur lors de l\'annulation: '.$e->getMessage());
         }
     }
 
@@ -1340,15 +1342,15 @@ class ESBTPInscriptionController extends Controller
             'niveau_id' => $niveauId,
             'annee_id' => $anneeId,
             'formation_id' => $formationId,
-            'request' => $request->all()
+            'request' => $request->all(),
         ]);
 
         $query = ESBTPClasse::select(
-                'esbtp_classes.*',
-                'f.name as filiere_name',
-                'n.name as niveau_name',
-                'a.name as annee_name'
-            )
+            'esbtp_classes.*',
+            'f.name as filiere_name',
+            'n.name as niveau_name',
+            'a.name as annee_name'
+        )
             ->leftJoin('esbtp_filieres as f', 'esbtp_classes.filiere_id', '=', 'f.id')
             ->leftJoin('esbtp_niveau_etudes as n', 'esbtp_classes.niveau_etude_id', '=', 'n.id')
             ->leftJoin('esbtp_annee_universitaires as a', 'esbtp_classes.annee_universitaire_id', '=', 'a.id')
@@ -1374,7 +1376,7 @@ class ESBTPInscriptionController extends Controller
         // Log pour vérifier la requête SQL générée
         \Illuminate\Support\Facades\Log::info('Requête SQL pour les classes (Inscription)', [
             'sql' => $query->toSql(),
-            'bindings' => $query->getBindings()
+            'bindings' => $query->getBindings(),
         ]);
 
         $classes = $query->get();
@@ -1382,7 +1384,7 @@ class ESBTPInscriptionController extends Controller
         // Log pour vérifier les résultats
         \Illuminate\Support\Facades\Log::info('Classes trouvées (Inscription)', [
             'count' => $classes->count(),
-            'first_few' => $classes->take(3)
+            'first_few' => $classes->take(3),
         ]);
 
         return response()->json($classes);
@@ -1411,18 +1413,18 @@ class ESBTPInscriptionController extends Controller
                 'necessite_confirmation' => $necessiteConfirmation,
                 'niveau_code' => $niveauCode,
                 'niveau_nom' => $classe->niveau->name ?? 'N/A',
-                'classe_nom' => $classe->name
+                'classe_nom' => $classe->name,
             ]);
 
         } catch (\Exception $e) {
             Log::error('Erreur lors de la vérification de transfert', [
                 'classe_id' => $classeId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la vérification'
+                'message' => 'Erreur lors de la vérification',
             ], 500);
         }
     }
@@ -1437,7 +1439,7 @@ class ESBTPInscriptionController extends Controller
         $filiere = $request->input('filiere');
         $niveau = $request->input('niveau');
         $annee = $request->input('annee');
-        $workflow_step = $request->input('workflow_step', 'prospect');
+        $workflow_step = $request->input('workflow_step');
         $has_payment = $request->input('has_payment');
 
         // Construire la requête pour les inscriptions en attente de validation
@@ -1448,23 +1450,23 @@ class ESBTPInscriptionController extends Controller
                 'niveau',
                 'classe',
                 'anneeUniversitaire',
-                'paiements'
+                'paiements',
             ])
             // CORRECTION: inclure les inscriptions en cours de validation (pas seulement 'en_attente')
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->where('status', 'en_attente')
-                  ->orWhere(function($subQ) {
-                      $subQ->where('status', 'active')
-                           ->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation']);
-                  });
+                    ->orWhere(function ($subQ) {
+                        $subQ->where('status', 'active')
+                            ->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation']);
+                    });
             });
 
         // Appliquer les filtres
         if ($search) {
-            $query->whereHas('etudiant', function($q) use ($search) {
+            $query->whereHas('etudiant', function ($q) use ($search) {
                 $q->where('matricule', 'like', "%{$search}%")
-                  ->orWhere('nom', 'like', "%{$search}%")
-                  ->orWhere('prenoms', 'like', "%{$search}%");
+                    ->orWhere('nom', 'like', "%{$search}%")
+                    ->orWhere('prenoms', 'like', "%{$search}%");
             });
         }
 
@@ -1492,12 +1494,12 @@ class ESBTPInscriptionController extends Controller
 
         // Filtrer par statut de paiement
         if ($has_payment === 'yes') {
-            $query->whereHas('paiements', function($q) {
-                $q->where('status', 'validated');
+            $query->whereHas('paiements', function ($q) {
+                $q->where('status', 'validé');
             });
         } elseif ($has_payment === 'no') {
-            $query->whereDoesntHave('paiements', function($q) {
-                $q->where('status', 'validated');
+            $query->whereDoesntHave('paiements', function ($q) {
+                $q->where('status', 'validé');
             });
         }
 
@@ -1514,15 +1516,15 @@ class ESBTPInscriptionController extends Controller
         $anneeStatsFilter = $annee ? $annee : ($anneeEnCours ? $anneeEnCours->id : null);
 
         // Requête de base pour les statistiques (même logique que la liste)
-        $baseStatsQuery = function() use ($anneeStatsFilter) {
-            return ESBTPInscription::where(function($q) {
-                    $q->where('status', 'en_attente')
-                      ->orWhere(function($subQ) {
-                          $subQ->where('status', 'active')
-                               ->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation']);
-                      });
-                })
-                ->when($anneeStatsFilter, function($q) use ($anneeStatsFilter) {
+        $baseStatsQuery = function () use ($anneeStatsFilter) {
+            return ESBTPInscription::where(function ($q) {
+                $q->where('status', 'en_attente')
+                    ->orWhere(function ($subQ) {
+                        $subQ->where('status', 'active')
+                            ->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation']);
+                    });
+            })
+                ->when($anneeStatsFilter, function ($q) use ($anneeStatsFilter) {
                     $q->where('annee_universitaire_id', $anneeStatsFilter);
                 });
         };
@@ -1530,12 +1532,12 @@ class ESBTPInscriptionController extends Controller
         $stats = [
             'total_en_attente' => $baseStatsQuery()->count(),
             'avec_paiement' => $baseStatsQuery()
-                ->whereHas('paiements', function($q) {
-                    $q->where('status', 'validated');
+                ->whereHas('paiements', function ($q) {
+                    $q->where('status', 'validé');
                 })->count(),
             'sans_paiement' => $baseStatsQuery()
-                ->whereDoesntHave('paiements', function($q) {
-                    $q->where('status', 'validated');
+                ->whereDoesntHave('paiements', function ($q) {
+                    $q->where('status', 'validé');
                 })->count(),
             'prospects' => $baseStatsQuery()
                 ->where('workflow_step', 'prospect')->count(),
@@ -1578,18 +1580,17 @@ class ESBTPInscriptionController extends Controller
      * API pour récupérer le montant restant à payer pour une catégorie de frais.
      * Utilisé par le modal de paiement pour valider que le montant ne dépasse pas le solde.
      *
-     * @param ESBTPInscription $inscription
-     * @param int $category ID de la catégorie de frais
+     * @param  int  $category  ID de la catégorie de frais
      * @return \Illuminate\Http\JsonResponse
      */
     public function getMontantRestant(ESBTPInscription $inscription, $category)
     {
         // Vérifier que la catégorie existe
         $fraisCategory = \App\Models\ESBTPFraisCategory::find($category);
-        if (!$fraisCategory) {
+        if (! $fraisCategory) {
             return response()->json([
                 'success' => false,
-                'message' => 'Catégorie de frais introuvable.'
+                'message' => 'Catégorie de frais introuvable.',
             ], 404);
         }
 
@@ -1599,11 +1600,11 @@ class ESBTPInscriptionController extends Controller
             ->first();
 
         // Si l'étudiant n'est pas souscrit à ce frais
-        if (!$subscription) {
+        if (! $subscription) {
             return response()->json([
                 'success' => false,
                 'message' => 'L\'étudiant n\'est pas souscrit à cette catégorie de frais.',
-                'is_subscribed' => false
+                'is_subscribed' => false,
             ], 400);
         }
 
@@ -1625,7 +1626,7 @@ class ESBTPInscriptionController extends Controller
                 'category_id' => $category,
                 'subscription_amount' => $subscription->amount,
                 'total_paye' => $totalPaye,
-                'montant_restant_calcule' => $montantRestant
+                'montant_restant_calcule' => $montantRestant,
             ]);
             $montantRestant = 0;
         }
@@ -1636,7 +1637,7 @@ class ESBTPInscriptionController extends Controller
             'montant_total' => $subscription->amount,
             'montant_paye' => $totalPaye,
             'montant_restant' => $montantRestant,
-            'nom_categorie' => $fraisCategory->name
+            'nom_categorie' => $fraisCategory->name,
         ]);
     }
 
@@ -1657,7 +1658,7 @@ class ESBTPInscriptionController extends Controller
         $validatePayment = $request->boolean('validate_payment');
         $autoValidateInscription = $request->boolean('auto_validate_inscription');
 
-        if ($autoValidateInscription && !$validatePayment) {
+        if ($autoValidateInscription && ! $validatePayment) {
             $message = 'La validation de l\'inscription nécessite la validation du paiement.';
 
             if ($request->ajax()) {
@@ -1675,7 +1676,7 @@ class ESBTPInscriptionController extends Controller
             ->where('frais_category_id', $request->fee_category_id)
             ->first();
 
-        if (!$subscription) {
+        if (! $subscription) {
             return redirect()->back()
                 ->withErrors(['fee_category_id' => 'L\'étudiant n\'est pas souscrit à cette catégorie de frais.'])
                 ->withInput();
@@ -1733,7 +1734,7 @@ class ESBTPInscriptionController extends Controller
             $result = $this->workflowService->associerPaiement($inscription, $paiementData);
 
             $paiement = $result['data']['paiement'] ?? null;
-            if (!$paiement && !empty($result['duplicate_id'])) {
+            if (! $paiement && ! empty($result['duplicate_id'])) {
                 $paiement = \App\Models\ESBTPPaiement::find($result['duplicate_id']);
             }
 
@@ -1755,11 +1756,11 @@ class ESBTPInscriptionController extends Controller
 
             // Si requête AJAX, retourner JSON pour refresh partiel
             if ($request->ajax()) {
-                if ($result['success'] && (!$autoValidateInscription || ($validationResult && $validationResult['success']))) {
+                if ($result['success'] && (! $autoValidateInscription || ($validationResult && $validationResult['success']))) {
                     return response()->json([
                         'success' => true,
                         'message' => $validationResult['message'] ?? $result['message'],
-                        'inscription_id' => $inscription->id
+                        'inscription_id' => $inscription->id,
                     ]);
                 }
 
@@ -1767,12 +1768,12 @@ class ESBTPInscriptionController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => $errorMessage
+                    'message' => $errorMessage,
                 ], 400);
             }
 
             // Sinon, redirection standard
-            if ($result['success'] && (!$autoValidateInscription || ($validationResult && $validationResult['success']))) {
+            if ($result['success'] && (! $autoValidateInscription || ($validationResult && $validationResult['success']))) {
                 return redirect()->route('esbtp.inscriptions.show', $inscription->id)
                     ->with('success', $validationResult['message'] ?? $result['message']);
             }
@@ -1781,17 +1782,17 @@ class ESBTPInscriptionController extends Controller
                 ->with('error', $validationResult['message'] ?? $result['message']);
 
         } catch (\Exception $e) {
-            Log::error('Erreur lors de l\'association du paiement: ' . $e->getMessage());
+            Log::error('Erreur lors de l\'association du paiement: '.$e->getMessage());
 
             // Si requête AJAX, retourner JSON d'erreur
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Erreur lors de l\'association du paiement: ' . $e->getMessage()
+                    'message' => 'Erreur lors de l\'association du paiement: '.$e->getMessage(),
                 ], 500);
             }
 
-            return redirect()->back()->with('error', 'Erreur lors de l\'association du paiement: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors de l\'association du paiement: '.$e->getMessage());
         }
     }
 
@@ -1816,8 +1817,9 @@ class ESBTPInscriptionController extends Controller
             }
 
         } catch (\Exception $e) {
-            Log::error('Erreur lors de la validation finale: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Erreur lors de la validation: ' . $e->getMessage());
+            Log::error('Erreur lors de la validation finale: '.$e->getMessage());
+
+            return redirect()->back()->with('error', 'Erreur lors de la validation: '.$e->getMessage());
         }
     }
 
@@ -1840,15 +1842,15 @@ class ESBTPInscriptionController extends Controller
 
             // Vérifier que la catégorie de frais est bien configurée pour cette inscription
             $category = ESBTPFraisCategory::findOrFail($request->frais_category_id);
-            
+
             // Pour les frais optionnels, vérifier qu'il y a une souscription active
-            if (!$category->is_mandatory) {
+            if (! $category->is_mandatory) {
                 $subscription = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
                     ->where('frais_category_id', $category->id)
                     ->where('is_active', true)
                     ->first();
-                
-                if (!$subscription) {
+
+                if (! $subscription) {
                     return redirect()->back()->with('error', 'Vous n\'êtes pas souscrit à ce frais optionnel.');
                 }
             }
@@ -1860,7 +1862,7 @@ class ESBTPInscriptionController extends Controller
                 'annee_universitaire_id' => $inscription->annee_universitaire_id,
                 'frais_category_id' => $request->frais_category_id,
                 'type_paiement' => $category->is_mandatory ? 'frais_obligatoire' : 'frais_optionnel',
-                'motif' => 'Paiement ' . $category->name,
+                'motif' => 'Paiement '.$category->name,
                 'montant' => $request->montant,
                 'mode_paiement' => $request->mode_paiement,
                 'reference_paiement' => $request->reference_paiement,
@@ -1874,13 +1876,14 @@ class ESBTPInscriptionController extends Controller
 
             DB::commit();
 
-            return redirect()->back()->with('success', 
-                'Paiement de ' . number_format($request->montant, 0, ',', ' ') . ' FCFA enregistré avec succès pour ' . $category->name);
+            return redirect()->back()->with('success',
+                'Paiement de '.number_format($request->montant, 0, ',', ' ').' FCFA enregistré avec succès pour '.$category->name);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur lors du paiement de frais: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Erreur lors de l\'enregistrement du paiement: ' . $e->getMessage());
+            Log::error('Erreur lors du paiement de frais: '.$e->getMessage());
+
+            return redirect()->back()->with('error', 'Erreur lors de l\'enregistrement du paiement: '.$e->getMessage());
         }
     }
 
@@ -1902,43 +1905,43 @@ class ESBTPInscriptionController extends Controller
             DB::beginTransaction();
 
             $sourceCategory = ESBTPFraisCategory::findOrFail($request->source_category_id);
-            
+
             // Calculer le solde source
             $sourceBalanceInfo = $this->calculerSoldeCategorie($inscription, $sourceCategory);
-            
+
             // Vérifier qu'il y a bien un trop-perçu sur la source
             if ($sourceBalanceInfo['solde'] >= 0) {
                 return redirect()->back()->with('error', 'Aucun trop-perçu disponible pour cette catégorie de frais.');
             }
-            
+
             $availableAmount = abs($sourceBalanceInfo['solde']);
-            
+
             // Calculer le total à transférer
             $totalToTransfer = 0;
             $destinationCategories = [];
-            
+
             foreach ($request->destinations as $destination) {
                 $totalToTransfer += $destination['amount'];
                 $destinationCategories[] = ESBTPFraisCategory::findOrFail($destination['category_id']);
             }
-            
+
             // Vérifier que le total ne dépasse pas le trop-perçu disponible
             if ($totalToTransfer > $availableAmount) {
-                return redirect()->back()->with('error', 
-                    'Le montant total à transférer (' . number_format($totalToTransfer, 0, ',', ' ') . ' FCFA) ' .
-                    'dépasse le trop-perçu disponible (' . number_format($availableAmount, 0, ',', ' ') . ' FCFA).');
+                return redirect()->back()->with('error',
+                    'Le montant total à transférer ('.number_format($totalToTransfer, 0, ',', ' ').' FCFA) '.
+                    'dépasse le trop-perçu disponible ('.number_format($availableAmount, 0, ',', ' ').' FCFA).');
             }
-            
+
             // Vérifier qu'il n'y a pas de doublons dans les destinations
             $categoryIds = array_column($request->destinations, 'category_id');
             if (count($categoryIds) !== count(array_unique($categoryIds))) {
                 return redirect()->back()->with('error', 'Impossible de transférer vers la même catégorie plusieurs fois.');
             }
-            
+
             // Créer une référence unique pour ce transfert multiple
-            $transferReference = 'MULTI-TRANSFER-' . time();
+            $transferReference = 'MULTI-TRANSFER-'.time();
             $createdPayments = [];
-            
+
             // Créer les paiements sortants (un seul retrait global)
             $retrait = ESBTPPaiement::create([
                 'inscription_id' => $inscription->id,
@@ -1946,10 +1949,10 @@ class ESBTPInscriptionController extends Controller
                 'annee_universitaire_id' => $inscription->annee_universitaire_id,
                 'frais_category_id' => $sourceCategory->id,
                 'type_paiement' => 'transfert_sortant_multi',
-                'motif' => 'Transfert vers ' . count($destinationCategories) . ' destinations',
+                'motif' => 'Transfert vers '.count($destinationCategories).' destinations',
                 'montant' => -$totalToTransfer, // Montant négatif pour réduire le trop-perçu
                 'mode_paiement' => 'transfert',
-                'reference_paiement' => $transferReference . '-OUT',
+                'reference_paiement' => $transferReference.'-OUT',
                 'date_paiement' => now(),
                 'commentaire' => $request->comment ?: 'Transfert multiple automatique de trop-perçu',
                 'numero_recu' => ESBTPPaiement::genererNumeroRecu(),
@@ -1957,24 +1960,24 @@ class ESBTPInscriptionController extends Controller
                 'created_by' => auth()->id(),
                 'updated_by' => auth()->id(),
             ]);
-            
+
             $createdPayments[] = $retrait;
-            
+
             // Créer les paiements entrants pour chaque destination
             foreach ($request->destinations as $index => $destination) {
                 $destinationCategory = ESBTPFraisCategory::findOrFail($destination['category_id']);
                 $amount = $destination['amount'];
-                
+
                 $credit = ESBTPPaiement::create([
                     'inscription_id' => $inscription->id,
                     'etudiant_id' => $inscription->etudiant_id,
                     'annee_universitaire_id' => $inscription->annee_universitaire_id,
                     'frais_category_id' => $destinationCategory->id,
                     'type_paiement' => 'transfert_entrant_multi',
-                    'motif' => 'Transfert depuis ' . $sourceCategory->name . ' (partie ' . ($index + 1) . ')',
+                    'motif' => 'Transfert depuis '.$sourceCategory->name.' (partie '.($index + 1).')',
                     'montant' => $amount, // Montant positif pour créditer
                     'mode_paiement' => 'transfert',
-                    'reference_paiement' => $transferReference . '-IN-' . ($index + 1),
+                    'reference_paiement' => $transferReference.'-IN-'.($index + 1),
                     'date_paiement' => now(),
                     'commentaire' => $request->comment ?: 'Réception transfert multiple de trop-perçu',
                     'numero_recu' => ESBTPPaiement::genererNumeroRecu(),
@@ -1982,21 +1985,22 @@ class ESBTPInscriptionController extends Controller
                     'created_by' => auth()->id(),
                     'updated_by' => auth()->id(),
                 ]);
-                
+
                 $createdPayments[] = $credit;
             }
 
             DB::commit();
-            
+
             // Préparer le message de succès
-            $destinationNames = collect($request->destinations)->map(function($dest) {
+            $destinationNames = collect($request->destinations)->map(function ($dest) {
                 $category = ESBTPFraisCategory::find($dest['category_id']);
-                return $category->name . ' (' . number_format($dest['amount'], 0, ',', ' ') . ' FCFA)';
+
+                return $category->name.' ('.number_format($dest['amount'], 0, ',', ' ').' FCFA)';
             })->join(', ');
 
-            return redirect()->back()->with('success', 
-                "Transfert multiple de " . number_format($totalToTransfer, 0, ',', ' ') . " FCFA effectué avec succès " .
-                "de '{$sourceCategory->name}' vers: " . $destinationNames . "."
+            return redirect()->back()->with('success',
+                'Transfert multiple de '.number_format($totalToTransfer, 0, ',', ' ').' FCFA effectué avec succès '.
+                "de '{$sourceCategory->name}' vers: ".$destinationNames.'.'
             );
 
         } catch (\Exception $e) {
@@ -2006,10 +2010,10 @@ class ESBTPInscriptionController extends Controller
                 'source_category_id' => $request->source_category_id,
                 'destinations' => $request->destinations ?? null,
                 'total_amount' => $totalToTransfer ?? null,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
-            
-            return redirect()->back()->with('error', 'Erreur lors du transfert: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Erreur lors du transfert: '.$e->getMessage());
         }
     }
 
@@ -2022,7 +2026,7 @@ class ESBTPInscriptionController extends Controller
         if ($subscription->inscription_id !== $inscription->id) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cette souscription n\'appartient pas à cette inscription.'
+                'message' => 'Cette souscription n\'appartient pas à cette inscription.',
             ], 403);
         }
 
@@ -2056,7 +2060,7 @@ class ESBTPInscriptionController extends Controller
                 'difference' => $newAmount - $oldAmount,
                 'reason' => $request->reason,
                 'ip_address' => request()->ip(),
-                'user_agent' => request()->header('User-Agent')
+                'user_agent' => request()->header('User-Agent'),
             ]);
 
             // Optionnel: créer une entrée dans une table d'audit si elle existe
@@ -2077,8 +2081,8 @@ class ESBTPInscriptionController extends Controller
                     'subscription_id' => $subscription->id,
                     'old_amount' => $oldAmount,
                     'new_amount' => $newAmount,
-                    'difference' => $newAmount - $oldAmount
-                ]
+                    'difference' => $newAmount - $oldAmount,
+                ],
             ]);
 
         } catch (\Exception $e) {
@@ -2089,12 +2093,12 @@ class ESBTPInscriptionController extends Controller
                 'inscription_id' => $inscription->id,
                 'subscription_id' => $subscription->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la mise à jour de la souscription: ' . $e->getMessage()
+                'message' => 'Erreur lors de la mise à jour de la souscription: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -2137,19 +2141,19 @@ class ESBTPInscriptionController extends Controller
         $year = date('Y');
         $month = date('m');
         $prefix = "REC-{$year}{$month}-";
-        
-        $lastPayment = ESBTPPaiement::where('numero_recu', 'like', $prefix . '%')
+
+        $lastPayment = ESBTPPaiement::where('numero_recu', 'like', $prefix.'%')
             ->orderBy('numero_recu', 'desc')
             ->first();
-        
+
         if ($lastPayment) {
             $lastNumber = intval(substr($lastPayment->numero_recu, -4));
             $newNumber = $lastNumber + 1;
         } else {
             $newNumber = 1;
         }
-        
-        return $prefix . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+
+        return $prefix.str_pad($newNumber, 4, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -2167,20 +2171,21 @@ class ESBTPInscriptionController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->back()
-                ->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
+                ->with('error', 'Erreur lors de la suppression: '.$e->getMessage());
         }
     }
 
     /**
      * Gère l'upload de la photo de l'étudiant.
      *
-     * @param \Illuminate\Http\UploadedFile $photo
+     * @param  \Illuminate\Http\UploadedFile  $photo
      * @return string
      */
     private function handlePhotoUpload($photo)
     {
-        $filename = time() . '_' . Str::random(10) . '.' . $photo->getClientOriginalExtension();
+        $filename = time().'_'.Str::random(10).'.'.$photo->getClientOriginalExtension();
         $photo->storeAs('public/photos/etudiants', $filename);
+
         return $filename;
     }
 
@@ -2191,35 +2196,35 @@ class ESBTPInscriptionController extends Controller
     {
         try {
             $search = $request->input('search', '');
-            
+
             $query = ESBTPParent::query();
-            
-            if (!empty($search)) {
-                $query->where(function($q) use ($search) {
+
+            if (! empty($search)) {
+                $query->where(function ($q) use ($search) {
                     $q->where('nom', 'like', "%{$search}%")
-                      ->orWhere('prenoms', 'like', "%{$search}%")
-                      ->orWhere('telephone', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('prenoms', 'like', "%{$search}%")
+                        ->orWhere('telephone', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
                 });
             }
-            
+
             $parents = $query->select('id', 'nom', 'prenoms', 'telephone', 'email', 'profession')
-                           ->orderBy('nom')
-                           ->limit(50)
-                           ->get();
-            
+                ->orderBy('nom')
+                ->limit(50)
+                ->get();
+
             return response()->json([
                 'success' => true,
-                'parents' => $parents
+                'parents' => $parents,
             ]);
-            
+
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de la recherche de parents: ' . $e->getMessage());
-            
+            \Log::error('Erreur lors de la recherche de parents: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la recherche',
-                'parents' => []
+                'parents' => [],
             ], 500);
         }
     }
@@ -2232,7 +2237,7 @@ class ESBTPInscriptionController extends Controller
         $request->validate([
             'frais_category_id' => 'required|exists:esbtp_frais_categories,id',
             'amount' => 'required|numeric|min:0',
-            'notes' => 'nullable|string|max:500'
+            'notes' => 'nullable|string|max:500',
         ]);
 
         try {
@@ -2255,7 +2260,8 @@ class ESBTPInscriptionController extends Controller
                 ->with('success', 'Souscription au frais optionnel réussie !');
 
         } catch (\Exception $e) {
-            Log::error('Erreur lors de la souscription au frais optionnel: ' . $e->getMessage());
+            Log::error('Erreur lors de la souscription au frais optionnel: '.$e->getMessage());
+
             return redirect()->back()->with('error', 'Erreur lors de la souscription au frais optionnel.');
         }
     }
@@ -2276,7 +2282,8 @@ class ESBTPInscriptionController extends Controller
                 ->with('success', 'Désabonnement du frais optionnel réussi !');
 
         } catch (\Exception $e) {
-            Log::error('Erreur lors du désabonnement du frais optionnel: ' . $e->getMessage());
+            Log::error('Erreur lors du désabonnement du frais optionnel: '.$e->getMessage());
+
             return redirect()->back()->with('error', 'Erreur lors du désabonnement du frais optionnel.');
         }
     }
@@ -2290,62 +2297,62 @@ class ESBTPInscriptionController extends Controller
         try {
             $classe = ESBTPClasse::with(['filiere', 'niveau', 'annee'])->findOrFail($classeId);
             $affectationStatus = $request->get('affectation_status', 'affecté');
-            
+
             \Log::info('getFraisByClasse appelé', [
                 'classe_id' => $classeId,
                 'filiere_id' => $classe->filiere_id,
                 'niveau_etude_id' => $classe->niveau_etude_id,
-                'annee_universitaire_id' => $classe->annee_universitaire_id
+                'annee_universitaire_id' => $classe->annee_universitaire_id,
             ]);
-            
+
             // Récupérer TOUTES les catégories de frais actives
             $allCategories = ESBTPFraisCategory::where('is_active', true)
                 ->orderBy('sort_order')
                 ->get();
-            
+
             $fraisData = [];
             $hasUnconfiguredFees = false;
-            
+
             foreach ($allCategories as $category) {
                 \Log::info('Traitement catégorie', [
                     'category_id' => $category->id,
                     'category_name' => $category->name,
                     'category_type' => $category->category_type,
-                    'is_mandatory' => $category->is_mandatory
+                    'is_mandatory' => $category->is_mandatory,
                 ]);
-                
+
                 $defaultAmount = $category->default_amount;
                 $isConfigured = false;
                 $configurationType = 'default';
                 $options = collect();
-                
+
                 if ($category->is_mandatory) {
                     // FRAIS OBLIGATOIRES : Recherche configuration par classe
-                    
+
                     // 1. Chercher une configuration spécifique pour cette filière/niveau
                     $configuration = \App\Models\ESBTPFraisConfiguration::where('frais_category_id', $category->id)
                         ->where('filiere_id', $classe->filiere_id)
                         ->where('niveau_id', $classe->niveau_etude_id)
                         ->where('is_active', true)
                         ->first();
-                    
+
                     if ($configuration) {
                         $defaultAmount = $configuration->getMontantByStatus($affectationStatus);
                         $isConfigured = true;
                         $configurationType = 'configuration';
                         \Log::info("Configuration trouvée pour catégorie {$category->name}", [
-                            'affectation_status' => $affectationStatus, 
-                            'amount' => $defaultAmount
+                            'affectation_status' => $affectationStatus,
+                            'amount' => $defaultAmount,
                         ]);
                     }
-                    
+
                     // 2. Chercher des variants/options class-based pour cette catégorie
                     $classBasedOptions = \App\Models\ESBTPFraisOption::classBased()
                         ->forFraisCategory($category->id)
                         ->active()
                         ->ordered()
                         ->get();
-                    
+
                     if ($classBasedOptions->count() > 0) {
                         $options = $classBasedOptions;
                         $isConfigured = true;
@@ -2354,13 +2361,13 @@ class ESBTPInscriptionController extends Controller
                         }
                         \Log::info("Options class-based trouvées pour {$category->name}", ['count' => $classBasedOptions->count()]);
                     }
-                    
+
                 } else {
                     // SERVICES OPTIONNELS : Utiliser EXACTEMENT la même logique qu'optional-config
                     $categoryWithOptions = ESBTPFraisCategory::with(['options.assignments.filiere', 'options.assignments.niveau'])
                         ->where('id', $category->id)
                         ->first();
-                    
+
                     if ($categoryWithOptions && $categoryWithOptions->options->count() > 0) {
                         $options = $categoryWithOptions->options;
                         $isConfigured = true;
@@ -2368,12 +2375,12 @@ class ESBTPInscriptionController extends Controller
                         \Log::info("Options trouvées pour {$category->name} (logique optional-config)", ['count' => $options->count()]);
                     }
                 }
-                
-                if (!$isConfigured) {
+
+                if (! $isConfigured) {
                     $hasUnconfiguredFees = true;
                     \Log::warning("Catégorie non configurée: {$category->name}");
                 }
-                
+
                 $fraisData[] = [
                     'category' => $category,
                     'default_amount' => $defaultAmount,
@@ -2385,32 +2392,32 @@ class ESBTPInscriptionController extends Controller
                     'configuration_type' => $configurationType,
                     'category_default_amount' => $category->default_amount,
                     'category_type' => $category->category_type ?? 'academic',
-                    'affectation_status' => $affectationStatus // Pour le debug
+                    'affectation_status' => $affectationStatus, // Pour le debug
                 ];
             }
-            
+
             \Log::info('Frais processés', [
                 'frais_count' => count($fraisData),
-                'has_unconfigured_fees' => $hasUnconfiguredFees
+                'has_unconfigured_fees' => $hasUnconfiguredFees,
             ]);
-            
+
             return response()->json([
                 'success' => true,
                 'classe' => $classe,
                 'frais' => $fraisData,
                 'has_unconfigured_fees' => $hasUnconfiguredFees,
-                'configure_url' => route('esbtp.frais.configure')
+                'configure_url' => route('esbtp.frais.configure'),
             ]);
-            
+
         } catch (\Exception $e) {
-            \Log::error('Erreur getFraisByClasse: ' . $e->getMessage(), [
+            \Log::error('Erreur getFraisByClasse: '.$e->getMessage(), [
                 'classe_id' => $classeId,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des frais: ' . $e->getMessage()
+                'message' => 'Erreur lors de la récupération des frais: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -2425,7 +2432,7 @@ class ESBTPInscriptionController extends Controller
                 'inscription_id' => $inscription->id,
                 'filiere_id' => $inscription->filiere_id,
                 'niveau_id' => $inscription->niveau_id,
-                'classe_id' => $inscription->classe_id
+                'classe_id' => $inscription->classe_id,
             ]);
 
             // Charger les relations nécessaires
@@ -2462,7 +2469,7 @@ class ESBTPInscriptionController extends Controller
                             'is_active' => true,
                             'subscribed_at' => now(),
                             'created_by' => Auth::id(),
-                            'notes' => 'Régénéré automatiquement après changement de classe/filière/niveau'
+                            'notes' => 'Régénéré automatiquement après changement de classe/filière/niveau',
                         ]
                     );
 
@@ -2470,7 +2477,7 @@ class ESBTPInscriptionController extends Controller
                         'inscription_id' => $inscription->id,
                         'category_id' => $category->id,
                         'amount' => $montant,
-                        'affectation_status' => $affectationStatus
+                        'affectation_status' => $affectationStatus,
                     ]);
                 }
             }
@@ -2482,7 +2489,7 @@ class ESBTPInscriptionController extends Controller
             \Log::error('Erreur lors de la régénération des frais d\'inscription', [
                 'inscription_id' => $inscription->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
         }
@@ -2501,10 +2508,10 @@ class ESBTPInscriptionController extends Controller
             'niveau',
             'classe',
             'anneeUniversitaire',
-            'paiements' => function($query) {
+            'paiements' => function ($query) {
                 $query->where('status', 'validé')
-                      ->orderBy('date_paiement', 'desc');
-            }
+                    ->orderBy('date_paiement', 'desc');
+            },
         ]);
 
         // Récupérer les frais souscrits pour cette inscription
@@ -2573,10 +2580,10 @@ class ESBTPInscriptionController extends Controller
             'niveau',
             'classe',
             'anneeUniversitaire',
-            'paiements' => function($query) {
+            'paiements' => function ($query) {
                 $query->where('status', 'validé')
-                      ->orderBy('date_paiement', 'desc');
-            }
+                    ->orderBy('date_paiement', 'desc');
+            },
         ]);
 
         $fraisSouscrits = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
@@ -2651,10 +2658,10 @@ class ESBTPInscriptionController extends Controller
             'margin-left' => 10,
         ]);
 
-        $filename = 'situation_financiere_' .
-                   $inscription->etudiant->matricule . '_' .
-                   $inscription->anneeUniversitaire->name . '_' .
-                   now()->format('Y-m-d') . '.pdf';
+        $filename = 'situation_financiere_'.
+                   $inscription->etudiant->matricule.'_'.
+                   $inscription->anneeUniversitaire->name.'_'.
+                   now()->format('Y-m-d').'.pdf';
 
         return $pdf->download($filename);
     }
@@ -2667,7 +2674,7 @@ class ESBTPInscriptionController extends Controller
         // Vérifier si le paywall est actif
         $isPaywallActive = \App\Models\ESBTPSystemSetting::getValue('paywall_active', false);
 
-        if (!$isPaywallActive) {
+        if (! $isPaywallActive) {
             return false; // Pas de limitation
         }
 
@@ -2677,7 +2684,7 @@ class ESBTPInscriptionController extends Controller
         // Compter les inscriptions actuelles pour l'année courante
         $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', 1)->first();
 
-        if (!$anneeCourante) {
+        if (! $anneeCourante) {
             return false; // Pas d'année courante, on laisse passer
         }
 
@@ -2691,7 +2698,7 @@ class ESBTPInscriptionController extends Controller
                 'inscriptions_actuelles' => $inscriptionsActuelles,
                 'limite_configuree' => $maxInscriptionsPerYear,
                 'annee_courante' => $anneeCourante->nom,
-                'user_id' => auth()->id()
+                'user_id' => auth()->id(),
             ]);
 
             return true; // Limite atteinte, bloquer
@@ -2707,7 +2714,7 @@ class ESBTPInscriptionController extends Controller
     {
         $request->validate([
             'inscription_ids' => 'required|array',
-            'inscription_ids.*' => 'exists:esbtp_inscriptions,id'
+            'inscription_ids.*' => 'exists:esbtp_inscriptions,id',
         ]);
 
         $inscriptionIds = $request->input('inscription_ids', []);
@@ -2724,7 +2731,7 @@ class ESBTPInscriptionController extends Controller
                 'paiement_non_valide' => 0,
                 'classe_pleine' => 0,
                 'inscription_existante' => 0,
-            ]
+            ],
         ];
 
         try {
@@ -2734,21 +2741,23 @@ class ESBTPInscriptionController extends Controller
                 try {
                     $inscription = ESBTPInscription::with(['paiements', 'etudiant'])->find($id);
 
-                    if (!$inscription) {
+                    if (! $inscription) {
                         $stats['erreurs'][] = [
                             'id' => $id,
-                            'erreur' => 'Inscription introuvable'
+                            'erreur' => 'Inscription introuvable',
                         ];
+
                         continue;
                     }
 
                     // Skip si déjà validée
                     if ($inscription->status === 'active') {
                         $stats['inscriptions_deja_validees']++;
+
                         continue;
                     }
 
-                    $etudiantNom = $inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms;
+                    $etudiantNom = $inscription->etudiant->nom.' '.$inscription->etudiant->prenoms;
 
                     // Cas 1: A déjà un paiement validé ET workflow = en_validation
                     if ($inscription->paiement_validation_id && $inscription->workflow_step === 'en_validation') {
@@ -2756,25 +2765,27 @@ class ESBTPInscriptionController extends Controller
 
                         // 1. Vérifier que le paiement est validé
                         $paiement = ESBTPPaiement::find($inscription->paiement_validation_id);
-                        if (!$paiement || $paiement->status !== 'validé') {
+                        if (! $paiement || $paiement->status !== 'validé') {
                             $stats['ignorees'][] = [
                                 'id' => $inscription->id,
                                 'etudiant' => $etudiantNom,
-                                'raison' => 'Le paiement associé n\'est pas validé'
+                                'raison' => 'Le paiement associé n\'est pas validé',
                             ];
                             $stats['raisons_ignorees']['paiement_non_valide']++;
+
                             continue;
                         }
 
                         // 2. Vérifier la disponibilité de la classe
                         $classAvailability = $this->workflowService->checkClassAvailability($inscription->classe_id);
-                        if (!$classAvailability['available']) {
+                        if (! $classAvailability['available']) {
                             $stats['ignorees'][] = [
                                 'id' => $inscription->id,
                                 'etudiant' => $etudiantNom,
-                                'raison' => 'Classe pleine - ' . $classAvailability['message']
+                                'raison' => 'Classe pleine - '.$classAvailability['message'],
                             ];
                             $stats['raisons_ignorees']['classe_pleine']++;
+
                             continue;
                         }
 
@@ -2789,9 +2800,10 @@ class ESBTPInscriptionController extends Controller
                             $stats['ignorees'][] = [
                                 'id' => $inscription->id,
                                 'etudiant' => $etudiantNom,
-                                'raison' => 'L\'étudiant a déjà une inscription active pour cette année'
+                                'raison' => 'L\'étudiant a déjà une inscription active pour cette année',
                             ];
                             $stats['raisons_ignorees']['inscription_existante']++;
+
                             continue;
                         }
 
@@ -2806,8 +2818,8 @@ class ESBTPInscriptionController extends Controller
                                 $notificationService = app(\App\Services\NotificationService::class);
                                 $notificationService->createNotification(
                                     $inscription->etudiant->user,
-                                    "Inscription validée",
-                                    "Votre inscription a été validée avec succès. Vous pouvez maintenant accéder à votre espace étudiant.",
+                                    'Inscription validée',
+                                    'Votre inscription a été validée avec succès. Vous pouvez maintenant accéder à votre espace étudiant.',
                                     'success',
                                     route('esbtp.inscriptions.show', $inscription->id),
                                     auth()->user()
@@ -2821,9 +2833,10 @@ class ESBTPInscriptionController extends Controller
                             $stats['ignorees'][] = [
                                 'id' => $id,
                                 'etudiant' => $etudiantNom,
-                                'raison' => $result['message']
+                                'raison' => $result['message'],
                             ];
                         }
+
                         continue;
                     }
 
@@ -2836,13 +2849,14 @@ class ESBTPInscriptionController extends Controller
 
                         // 1. Vérifier la disponibilité de la classe
                         $classAvailability = $this->workflowService->checkClassAvailability($inscription->classe_id);
-                        if (!$classAvailability['available']) {
+                        if (! $classAvailability['available']) {
                             $stats['ignorees'][] = [
                                 'id' => $inscription->id,
                                 'etudiant' => $etudiantNom,
-                                'raison' => 'Classe pleine - ' . $classAvailability['message']
+                                'raison' => 'Classe pleine - '.$classAvailability['message'],
                             ];
                             $stats['raisons_ignorees']['classe_pleine']++;
+
                             continue;
                         }
 
@@ -2857,16 +2871,17 @@ class ESBTPInscriptionController extends Controller
                             $stats['ignorees'][] = [
                                 'id' => $inscription->id,
                                 'etudiant' => $etudiantNom,
-                                'raison' => 'L\'étudiant a déjà une inscription active pour cette année'
+                                'raison' => 'L\'étudiant a déjà une inscription active pour cette année',
                             ];
                             $stats['raisons_ignorees']['inscription_existante']++;
+
                             continue;
                         }
 
                         // Associer le paiement via le workflow
                         $inscription->update([
                             'paiement_validation_id' => $premierPaiement->id,
-                            'workflow_step' => 'en_validation'
+                            'workflow_step' => 'en_validation',
                         ]);
 
                         // Enregistrer dans l'historique workflow
@@ -2891,8 +2906,8 @@ class ESBTPInscriptionController extends Controller
                                 $notificationService = app(\App\Services\NotificationService::class);
                                 $notificationService->createNotification(
                                     $inscription->etudiant->user,
-                                    "Inscription validée",
-                                    "Votre inscription a été validée avec succès. Vous pouvez maintenant accéder à votre espace étudiant.",
+                                    'Inscription validée',
+                                    'Votre inscription a été validée avec succès. Vous pouvez maintenant accéder à votre espace étudiant.',
                                     'success',
                                     route('esbtp.inscriptions.show', $inscription->id),
                                     auth()->user()
@@ -2906,9 +2921,10 @@ class ESBTPInscriptionController extends Controller
                             $stats['ignorees'][] = [
                                 'id' => $id,
                                 'etudiant' => $etudiantNom,
-                                'raison' => $result['message']
+                                'raison' => $result['message'],
                             ];
                         }
+
                         continue;
                     }
 
@@ -2921,13 +2937,14 @@ class ESBTPInscriptionController extends Controller
 
                         // 1. Vérifier la disponibilité de la classe
                         $classAvailability = $this->workflowService->checkClassAvailability($inscription->classe_id);
-                        if (!$classAvailability['available']) {
+                        if (! $classAvailability['available']) {
                             $stats['ignorees'][] = [
                                 'id' => $inscription->id,
                                 'etudiant' => $etudiantNom,
-                                'raison' => 'Classe pleine - ' . $classAvailability['message']
+                                'raison' => 'Classe pleine - '.$classAvailability['message'],
                             ];
                             $stats['raisons_ignorees']['classe_pleine']++;
+
                             continue;
                         }
 
@@ -2942,9 +2959,10 @@ class ESBTPInscriptionController extends Controller
                             $stats['ignorees'][] = [
                                 'id' => $inscription->id,
                                 'etudiant' => $etudiantNom,
-                                'raison' => 'L\'étudiant a déjà une inscription active pour cette année'
+                                'raison' => 'L\'étudiant a déjà une inscription active pour cette année',
                             ];
                             $stats['raisons_ignorees']['inscription_existante']++;
+
                             continue;
                         }
 
@@ -2952,7 +2970,7 @@ class ESBTPInscriptionController extends Controller
                         $premierPaiement->update([
                             'status' => 'validé',
                             'date_validation' => now(),
-                            'validateur_id' => auth()->id()
+                            'validateur_id' => auth()->id(),
                         ]);
                         $stats['paiements_valides']++;
 
@@ -2961,7 +2979,7 @@ class ESBTPInscriptionController extends Controller
                             $notificationService = app(\App\Services\NotificationService::class);
                             $notificationService->notifyPaiementValide($premierPaiement, auth()->user());
                         } catch (\Exception $e) {
-                            Log::error('Erreur notification paiement validé (bulk): ' . $e->getMessage());
+                            Log::error('Erreur notification paiement validé (bulk): '.$e->getMessage());
                         }
 
                         // Désactiver les rappels du paiement
@@ -2970,7 +2988,7 @@ class ESBTPInscriptionController extends Controller
                         // Associer le paiement à l'inscription
                         $inscription->update([
                             'paiement_validation_id' => $premierPaiement->id,
-                            'workflow_step' => 'en_validation'
+                            'workflow_step' => 'en_validation',
                         ]);
 
                         // Enregistrer dans l'historique
@@ -2994,8 +3012,8 @@ class ESBTPInscriptionController extends Controller
                             if ($inscription->etudiant && $inscription->etudiant->user) {
                                 $notificationService->createNotification(
                                     $inscription->etudiant->user,
-                                    "Inscription validée",
-                                    "Votre inscription a été validée avec succès. Vous pouvez maintenant accéder à votre espace étudiant.",
+                                    'Inscription validée',
+                                    'Votre inscription a été validée avec succès. Vous pouvez maintenant accéder à votre espace étudiant.',
                                     'success',
                                     route('esbtp.inscriptions.show', $inscription->id),
                                     auth()->user()
@@ -3009,9 +3027,10 @@ class ESBTPInscriptionController extends Controller
                             $stats['ignorees'][] = [
                                 'id' => $id,
                                 'etudiant' => $etudiantNom,
-                                'raison' => $result['message']
+                                'raison' => $result['message'],
                             ];
                         }
+
                         continue;
                     }
 
@@ -3019,15 +3038,15 @@ class ESBTPInscriptionController extends Controller
                     $stats['ignorees'][] = [
                         'id' => $inscription->id,
                         'etudiant' => $etudiantNom,
-                        'raison' => 'Aucun paiement associé'
+                        'raison' => 'Aucun paiement associé',
                     ];
                     $stats['raisons_ignorees']['sans_paiement']++;
 
                 } catch (\Exception $e) {
-                    Log::error('Erreur validation inscription bulk #' . $id . ': ' . $e->getMessage());
+                    Log::error('Erreur validation inscription bulk #'.$id.': '.$e->getMessage());
                     $stats['erreurs'][] = [
                         'id' => $id,
-                        'erreur' => $e->getMessage()
+                        'erreur' => $e->getMessage(),
                     ];
                 }
             }
@@ -3042,7 +3061,7 @@ class ESBTPInscriptionController extends Controller
             Log::info('Validation groupée inscriptions terminée', [
                 'user_id' => auth()->id(),
                 'total_selectionnees' => count($inscriptionIds),
-                'stats' => $stats
+                'stats' => $stats,
             ]);
 
             // Construire le message de retour enrichi
@@ -3062,7 +3081,7 @@ class ESBTPInscriptionController extends Controller
 
             // Détail des inscriptions ignorées par raison
             if (count($stats['ignorees']) > 0) {
-                $message .= count($stats['ignorees']) . " inscription(s) ignorée(s) : ";
+                $message .= count($stats['ignorees']).' inscription(s) ignorée(s) : ';
                 $raisons = [];
                 if ($stats['raisons_ignorees']['sans_paiement'] > 0) {
                     $raisons[] = "{$stats['raisons_ignorees']['sans_paiement']} sans paiement";
@@ -3076,11 +3095,11 @@ class ESBTPInscriptionController extends Controller
                 if ($stats['raisons_ignorees']['inscription_existante'] > 0) {
                     $raisons[] = "{$stats['raisons_ignorees']['inscription_existante']} inscription existante";
                 }
-                $message .= implode(', ', $raisons) . ". ";
+                $message .= implode(', ', $raisons).'. ';
             }
 
             if (count($stats['erreurs']) > 0) {
-                $message .= count($stats['erreurs']) . " erreur(s) techniques. ";
+                $message .= count($stats['erreurs']).' erreur(s) techniques. ';
             }
 
             // Stocker les détails des erreurs et inscriptions ignorées en session pour affichage visuel
@@ -3092,7 +3111,7 @@ class ESBTPInscriptionController extends Controller
                     if (is_array($erreur) && isset($erreur['id']) && isset($erreur['erreur'])) {
                         $inscriptionsAvecProblemes[$erreur['id']] = [
                             'type' => 'error',
-                            'message' => $erreur['erreur']
+                            'message' => $erreur['erreur'],
                         ];
                     }
                 }
@@ -3104,7 +3123,7 @@ class ESBTPInscriptionController extends Controller
                     if (is_array($ignoree) && isset($ignoree['id']) && isset($ignoree['raison'])) {
                         $inscriptionsAvecProblemes[$ignoree['id']] = [
                             'type' => 'warning',
-                            'message' => $ignoree['raison']
+                            'message' => $ignoree['raison'],
                         ];
                     }
                 }
@@ -3128,16 +3147,16 @@ class ESBTPInscriptionController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur validation groupée inscriptions: ' . $e->getMessage());
+            Log::error('Erreur validation groupée inscriptions: '.$e->getMessage());
 
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Erreur lors de la validation groupée: ' . $e->getMessage(),
+                    'message' => 'Erreur lors de la validation groupée: '.$e->getMessage(),
                 ], 500);
             }
 
-            return redirect()->back()->with('error', 'Erreur lors de la validation groupée: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors de la validation groupée: '.$e->getMessage());
         }
     }
 
@@ -3154,7 +3173,7 @@ class ESBTPInscriptionController extends Controller
                 $reminder->deactivate();
             }
         } catch (\Exception $e) {
-            Log::error('Erreur désactivation reminder inscription: ' . $e->getMessage());
+            Log::error('Erreur désactivation reminder inscription: '.$e->getMessage());
         }
     }
 
@@ -3171,7 +3190,7 @@ class ESBTPInscriptionController extends Controller
                 $reminder->deactivate();
             }
         } catch (\Exception $e) {
-            Log::error('Erreur désactivation reminder paiement: ' . $e->getMessage());
+            Log::error('Erreur désactivation reminder paiement: '.$e->getMessage());
         }
     }
 
@@ -3203,19 +3222,19 @@ class ESBTPInscriptionController extends Controller
                     'annee' => [
                         'id' => $inscription->anneeUniversitaire->id,
                         'name' => $inscription->anneeUniversitaire->name,
-                    ]
-                ]
+                    ],
+                ],
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur getInscriptionData: ' . $e->getMessage(), [
+            Log::error('Erreur getInscriptionData: '.$e->getMessage(), [
                 'inscription_id' => $inscription->id,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération de l\'inscription: ' . $e->getMessage()
+                'message' => 'Erreur lors de la récupération de l\'inscription: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -3231,10 +3250,10 @@ class ESBTPInscriptionController extends Controller
                 ->with(['inscription.etudiant', 'fraisCategory'])
                 ->first();
 
-            if (!$paiement) {
+            if (! $paiement) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Aucun paiement en attente trouvé pour cette inscription.'
+                    'message' => 'Aucun paiement en attente trouvé pour cette inscription.',
                 ], 404);
             }
 
@@ -3249,19 +3268,19 @@ class ESBTPInscriptionController extends Controller
                     'etudiant' => [
                         'nom' => $paiement->inscription->etudiant->nom,
                         'prenoms' => $paiement->inscription->etudiant->prenoms,
-                    ]
-                ]
+                    ],
+                ],
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur getPaiementEnAttente: ' . $e->getMessage(), [
+            Log::error('Erreur getPaiementEnAttente: '.$e->getMessage(), [
                 'inscription_id' => $inscription->id,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération du paiement: ' . $e->getMessage()
+                'message' => 'Erreur lors de la récupération du paiement: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -3277,10 +3296,10 @@ class ESBTPInscriptionController extends Controller
 
             $classeActuelle = $inscription->classe;
 
-            if (!$classeActuelle) {
+            if (! $classeActuelle) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Classe actuelle non trouvée.'
+                    'message' => 'Classe actuelle non trouvée.',
                 ], 404);
             }
 
@@ -3293,7 +3312,7 @@ class ESBTPInscriptionController extends Controller
             // Ajouter le comptage des étudiants inscrits pour l'année courante
             $anneeCourante = $inscription->anneeUniversitaire;
 
-            $classes = $classesQuery->get()->map(function($classe) use ($anneeCourante) {
+            $classes = $classesQuery->get()->map(function ($classe) use ($anneeCourante) {
                 // Compter les inscriptions actives pour cette classe dans l'année courante
                 $nombreInscrits = ESBTPInscription::where('classe_id', $classe->id)
                     ->where('annee_universitaire_id', $anneeCourante->id)
@@ -3307,7 +3326,7 @@ class ESBTPInscriptionController extends Controller
                     'name' => $classe->name,
                     'places_totales' => $classe->places_totales,
                     'places_disponibles' => max(0, $placesDisponibles),
-                    'is_available' => $placesDisponibles > 0
+                    'is_available' => $placesDisponibles > 0,
                 ];
             })->values();
 
@@ -3319,18 +3338,18 @@ class ESBTPInscriptionController extends Controller
                     'filiere' => $classeActuelle->filiere->name ?? 'N/A',
                     'niveau' => $classeActuelle->niveauEtude->name ?? 'N/A',
                 ],
-                'classesAlternatives' => $classes
+                'classesAlternatives' => $classes,
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur getClassesAlternatives: ' . $e->getMessage(), [
+            Log::error('Erreur getClassesAlternatives: '.$e->getMessage(), [
                 'inscription_id' => $inscription->id,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des classes: ' . $e->getMessage()
+                'message' => 'Erreur lors de la récupération des classes: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -3341,7 +3360,7 @@ class ESBTPInscriptionController extends Controller
     public function changerClasseRapide(Request $request, ESBTPInscription $inscription)
     {
         $request->validate([
-            'nouvelle_classe_id' => 'required|exists:esbtp_classes,id'
+            'nouvelle_classe_id' => 'required|exists:esbtp_classes,id',
         ]);
 
         try {
@@ -3353,10 +3372,10 @@ class ESBTPInscriptionController extends Controller
             // Vérifier la disponibilité de la nouvelle classe
             $availability = $this->workflowService->checkClassAvailability($nouvelleClasseId, $inscription->annee_universitaire_id);
 
-            if (!$availability['available']) {
+            if (! $availability['available']) {
                 return response()->json([
                     'success' => false,
-                    'message' => $availability['message']
+                    'message' => $availability['message'],
                 ], 400);
             }
 
@@ -3364,14 +3383,14 @@ class ESBTPInscriptionController extends Controller
             if ($ancienneClasseId == $nouvelleClasseId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'La nouvelle classe est identique à l\'ancienne.'
+                    'message' => 'La nouvelle classe est identique à l\'ancienne.',
                 ], 400);
             }
 
             // Mettre à jour la classe
             $inscription->update([
                 'classe_id' => $nouvelleClasseId,
-                'updated_at' => now()
+                'updated_at' => now(),
             ]);
 
             DB::commit();
@@ -3380,7 +3399,7 @@ class ESBTPInscriptionController extends Controller
                 'inscription_id' => $inscription->id,
                 'ancienne_classe_id' => $ancienneClasseId,
                 'nouvelle_classe_id' => $nouvelleClasseId,
-                'user_id' => auth()->id()
+                'user_id' => auth()->id(),
             ]);
 
             // Charger les relations pour retourner les infos
@@ -3393,23 +3412,23 @@ class ESBTPInscriptionController extends Controller
                     'id' => $inscription->id,
                     'nouvelle_classe' => [
                         'id' => $inscription->classe->id,
-                        'name' => $inscription->classe->name
-                    ]
-                ]
+                        'name' => $inscription->classe->name,
+                    ],
+                ],
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
 
-            Log::error('Erreur changerClasseRapide: ' . $e->getMessage(), [
+            Log::error('Erreur changerClasseRapide: '.$e->getMessage(), [
                 'inscription_id' => $inscription->id,
                 'nouvelle_classe_id' => $request->input('nouvelle_classe_id'),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors du changement de classe: ' . $e->getMessage()
+                'message' => 'Erreur lors du changement de classe: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -3427,7 +3446,7 @@ class ESBTPInscriptionController extends Controller
                 'filiere',
                 'niveau',
                 'anneeUniversitaire',
-                'paiements'
+                'paiements',
             ]);
 
             // Recalculer les problèmes pour cette inscription (comme dans bulkValider)
@@ -3438,15 +3457,15 @@ class ESBTPInscriptionController extends Controller
                 // Vérifier paiement
                 $paiement = $inscription->paiements()->whereIn('status', ['validé', 'en_attente'])->first();
 
-                if (!$paiement) {
+                if (! $paiement) {
                     $inscriptionsProblemes[$inscription->id] = [
                         'type' => 'warning',
-                        'message' => 'Aucun paiement associé à cette inscription'
+                        'message' => 'Aucun paiement associé à cette inscription',
                     ];
                 } elseif ($paiement->status == 'en_attente') {
                     $inscriptionsProblemes[$inscription->id] = [
                         'type' => 'warning',
-                        'message' => 'Le paiement n\'est pas encore validé'
+                        'message' => 'Le paiement n\'est pas encore validé',
                     ];
                 } else {
                     // Vérifier disponibilité classe
@@ -3456,10 +3475,10 @@ class ESBTPInscriptionController extends Controller
                     if ($classeId && $anneeId) {
                         $availability = $this->workflowService->checkClassAvailability($classeId, $anneeId);
 
-                        if (!$availability['available']) {
+                        if (! $availability['available']) {
                             $inscriptionsProblemes[$inscription->id] = [
                                 'type' => 'warning',
-                                'message' => 'Classe pleine - ' . $availability['message']
+                                'message' => 'Classe pleine - '.$availability['message'],
                             ];
                         }
                     }
@@ -3476,30 +3495,30 @@ class ESBTPInscriptionController extends Controller
 
             // Rendu de la partial ligne-inscription
             $html = view($rowView, [
-                'inscription' => $inscription
+                'inscription' => $inscription,
             ])->render();
 
             Log::info('Ligne inscription rafraîchie avec succès', [
                 'inscription_id' => $inscription->id,
                 'user_id' => auth()->id(),
-                'has_problem' => isset($inscriptionsProblemes[$inscription->id])
+                'has_problem' => isset($inscriptionsProblemes[$inscription->id]),
             ]);
 
             return response()->json([
                 'success' => true,
                 'html' => $html,
-                'inscription_id' => $inscription->id
+                'inscription_id' => $inscription->id,
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erreur refreshLigne: ' . $e->getMessage(), [
+            Log::error('Erreur refreshLigne: '.$e->getMessage(), [
                 'inscription_id' => $inscription->id,
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors du rafraîchissement de la ligne: ' . $e->getMessage()
+                'message' => 'Erreur lors du rafraîchissement de la ligne: '.$e->getMessage(),
             ], 500);
         }
     }
