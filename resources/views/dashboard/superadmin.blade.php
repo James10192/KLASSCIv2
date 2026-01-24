@@ -353,10 +353,66 @@
     </div>
 </div>
 
+@if(($pendingCurrentYearInscriptionsCount ?? 0) > 0 && $anneeEnCours)
+<div class="modal fade" id="pendingInscriptionsReminderModal" tabindex="-1" role="dialog" aria-labelledby="pendingInscriptionsReminderModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pendingInscriptionsReminderModalLabel">
+                    Inscriptions en attente - {{ $anneeEnCours->name }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>{{ $pendingCurrentYearInscriptionsCount }}</strong> inscription(s) sont en attente de validation pour l'année universitaire courante.</p>
+                @if(!empty($pendingCurrentYearInscriptionsByStep))
+                    <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin: 12px 0;">
+                        <div style="font-weight: 600; margin-bottom: 6px;">Répartition par étape :</div>
+                        <ul style="padding-left: 20px; margin: 0;">
+                            <li>Prospect : <strong>{{ $pendingCurrentYearInscriptionsByStep['prospect'] ?? 0 }}</strong></li>
+                            <li>Documents complets : <strong>{{ $pendingCurrentYearInscriptionsByStep['documents_complets'] ?? 0 }}</strong></li>
+                            <li>En validation : <strong>{{ $pendingCurrentYearInscriptionsByStep['en_validation'] ?? 0 }}</strong></li>
+                        </ul>
+                    </div>
+                @endif
+                <ol style="padding-left: 20px; line-height: 1.6; margin: 15px 0;">
+                    <li>Les dossiers dont le workflow n'est pas à <strong>etudiant_cree</strong> restent en attente.</li>
+                    <li>Ces étudiants ne seront pas comptés dans KLASSCI pour l'année <strong>{{ $anneeEnCours->name }}</strong>.</li>
+                    <li>Validez ou complétez les dossiers pour finaliser l'inscription.</li>
+                </ol>
+                <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-top: 15px;">
+                    <strong>Astuce :</strong><br>
+                    Le workflow doit atteindre <strong>etudiant_cree</strong> pour activer l'étudiant dans l'année courante.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" onclick="sessionStorage.removeItem('pendingInscriptionsReminder.superadmin')">
+                    Rappeler plus tard
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <a href="{{ route('esbtp.inscriptions.administration', ['annee' => $anneeEnCours->id]) }}" class="btn btn-primary">
+                    <i class="fas fa-check-circle"></i> Consulter les inscriptions
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 <!-- Chart.js Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+    const pendingModalElement = document.getElementById('pendingInscriptionsReminderModal');
+    if (pendingModalElement && typeof bootstrap !== 'undefined') {
+        const reminderKey = 'pendingInscriptionsReminder.superadmin';
+        if (!sessionStorage.getItem(reminderKey)) {
+            const pendingModal = new bootstrap.Modal(pendingModalElement);
+            pendingModal.show();
+            sessionStorage.setItem(reminderKey, 'shown');
+        }
+    }
+
     // Données pour le graphique des inscriptions
     const monthlyData = @json($monthlyStats);
 

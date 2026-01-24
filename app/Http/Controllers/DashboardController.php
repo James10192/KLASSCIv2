@@ -115,6 +115,26 @@ class DashboardController extends Controller
             $data['pendingInscriptionsCount'] = \App\Models\ESBTPInscription::where('status', 'pending')->count();
         }
 
+        $data['pendingCurrentYearInscriptionsCount'] = 0;
+        $data['pendingCurrentYearInscriptionsByStep'] = [];
+        if ($anneeEnCours) {
+            $pendingCurrentYearQuery = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
+                ->where(function($query) {
+                    $query->whereIn('status', ['en_attente', 'pending'])
+                        ->orWhere(function($subQuery) {
+                            $subQuery->where('status', 'active')
+                                ->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation']);
+                        });
+                });
+
+            $data['pendingCurrentYearInscriptionsCount'] = (clone $pendingCurrentYearQuery)->count();
+            $data['pendingCurrentYearInscriptionsByStep'] = [
+                'prospect' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'prospect')->count(),
+                'documents_complets' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'documents_complets')->count(),
+                'en_validation' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'en_validation')->count(),
+            ];
+        }
+
         // Étudiants (filtré par année en cours)
         if ($anneeEnCours) {
             $data['totalStudents'] = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
@@ -502,6 +522,26 @@ class DashboardController extends Controller
 
         // Inscriptions en attente
         $data['pendingInscriptionsCount'] = \App\Models\ESBTPInscription::where('status', 'pending')->count();
+
+        $data['pendingCurrentYearInscriptionsCount'] = 0;
+        $data['pendingCurrentYearInscriptionsByStep'] = [];
+        if ($anneeEnCours) {
+            $pendingCurrentYearQuery = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
+                ->where(function($query) {
+                    $query->whereIn('status', ['en_attente', 'pending'])
+                        ->orWhere(function($subQuery) {
+                            $subQuery->where('status', 'active')
+                                ->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation']);
+                        });
+                });
+
+            $data['pendingCurrentYearInscriptionsCount'] = (clone $pendingCurrentYearQuery)->count();
+            $data['pendingCurrentYearInscriptionsByStep'] = [
+                'prospect' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'prospect')->count(),
+                'documents_complets' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'documents_complets')->count(),
+                'en_validation' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'en_validation')->count(),
+            ];
+        }
 
         // Étudiants - Les secrétaires peuvent voir et créer des étudiants
         try {
