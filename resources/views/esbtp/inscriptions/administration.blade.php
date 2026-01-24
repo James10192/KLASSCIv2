@@ -904,10 +904,18 @@
                     const button = document.createElement('button');
                     button.type = 'button';
                     button.className = 'btn btn-sm btn-outline-warning bulk-action-button';
-                    button.textContent = 'Voir dossier';
+                    button.textContent = 'Valider paiement';
                     button.dataset.inscriptionId = item.id;
-                    button.dataset.action = 'show';
+                    button.dataset.action = 'validate-payment';
                     li.appendChild(button);
+
+                    const viewButton = document.createElement('button');
+                    viewButton.type = 'button';
+                    viewButton.className = 'btn btn-sm btn-outline-secondary bulk-action-button';
+                    viewButton.textContent = 'Voir dossier';
+                    viewButton.dataset.inscriptionId = item.id;
+                    viewButton.dataset.action = 'show';
+                    li.appendChild(viewButton);
                 }
 
                 element.appendChild(li);
@@ -925,6 +933,8 @@
                 const inscriptionId = this.dataset.inscriptionId;
                 if (this.dataset.action === 'payment') {
                     openPaymentModal(inscriptionId, { autoValidate: true });
+                } else if (this.dataset.action === 'validate-payment') {
+                    ouvrirModalValiderPaiement(inscriptionId);
                 } else if (this.dataset.action === 'show') {
                     window.open(`/esbtp/inscriptions/${inscriptionId}`, '_blank');
                 }
