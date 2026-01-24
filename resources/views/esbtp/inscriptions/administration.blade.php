@@ -156,9 +156,6 @@
                     {{ $anneeEnCours->name ?? 'Année non définie' }}
                 </span>
                 <span class="text-muted me-2">{{ \Carbon\Carbon::now()->isoFormat('dddd D MMMM YYYY') }}</span>
-                <a href="{{ route('esbtp.inscriptions.index') }}" class="btn-acasi secondary">
-                    <i class="fas fa-arrow-left"></i>Retour aux inscriptions
-                </a>
             </div>
         </div>
 
@@ -539,7 +536,7 @@
         .finally(() => setInscriptionRowLoadingState(inscriptionId, false));
     }
 
-    function openPaymentModal(inscriptionId, options = {}) {
+    window.openPaymentModal = function openPaymentModal(inscriptionId, options = {}) {
         const form = document.getElementById('paymentForm');
         const modalElement = document.getElementById('paymentModal');
         const autoValidateInput = document.getElementById('auto_validate_inscription');
@@ -576,9 +573,9 @@
             focus: true
         });
         modal.show();
-    }
+    };
 
-    function openCancelModal(inscriptionId) {
+    window.openCancelModal = function openCancelModal(inscriptionId) {
         const form = document.getElementById('cancelInscriptionForm');
         const modalElement = document.getElementById('cancelInscriptionModal');
 
@@ -604,7 +601,7 @@
             focus: true
         });
         modal.show();
-    }
+    };
 
     function handleInscriptionValidation(inscriptionId, hasPayment) {
         if (!hasPayment) {

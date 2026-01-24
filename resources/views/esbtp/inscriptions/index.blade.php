@@ -22,6 +22,11 @@
             </div>
             <div class="header-actions">
                 <input type="search" class="search-bar" placeholder="Rechercher une inscription..." value="{{ request('search') }}">
+                @can('inscriptions.validate')
+                <a href="{{ route('esbtp.inscriptions.administration') }}" class="btn-acasi secondary">
+                    <i class="fas fa-user-check"></i>Administration
+                </a>
+                @endcan
                 @can('inscriptions.create')
                 <a href="{{ route('esbtp.inscriptions.create') }}" class="btn-acasi primary">
                     <i class="fas fa-plus-circle"></i>Nouvelle Inscription
