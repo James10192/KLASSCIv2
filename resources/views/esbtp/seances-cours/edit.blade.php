@@ -371,6 +371,10 @@
                                             <span>Créneaux sélectionnés</span>
                                         </div>
                                     </div>
+                                    <div class="availability-hint">
+                                        <i class="fas fa-mouse-pointer"></i>
+                                        Cliquez puis glissez sur la grille pour définir un créneau.
+                                    </div>
                                 </div>
                                 <div class="availability-grid-container">
                                     <div id="availability-inline-error" class="availability-inline-error" style="display: none;"></div>
@@ -786,6 +790,9 @@ function updateSelectedTimeInGrid() {
     document.querySelectorAll('.availability-cell.selected-time').forEach(cell => {
         cell.classList.remove('selected-time');
     });
+    document.querySelectorAll('.availability-cell.selecting').forEach(cell => {
+        cell.classList.remove('selecting');
+    });
     clearAvailabilityErrors();
     
     // Si tous les champs sont remplis, surligner les créneaux
@@ -958,6 +965,161 @@ function markAvailabilityErrorRange(dayNumber, startHour, endHour, message) {
     for (let hour = startHour; hour < endHour; hour++) {
         markAvailabilityError(dayNumber, hour, message);
     }
+}
+
+let availabilitySelection = {
+    active: false,
+    day: null,
+    startHour: null,
+    endHour: null,
+};
+
+function bindAvailabilityGridHandlers() {
+    const grid = document.getElementById('availability-grid');
+    if (!grid || grid.dataset.bound === 'true') {
+        return;
+    }
+
+    grid.dataset.bound = 'true';
+    grid.addEventListener('mousedown', handleAvailabilityMouseDown);
+    grid.addEventListener('mouseover', handleAvailabilityMouseOver);
+    document.addEventListener('mouseup', handleAvailabilityMouseUp);
+}
+
+function handleAvailabilityMouseDown(event) {
+    const cell = event.target.closest('.availability-cell');
+    if (!cell) {
+        return;
+    }
+
+    const status = cell.dataset.status;
+    const day = parseInt(cell.dataset.day, 10);
+    const hour = parseInt(cell.dataset.hour, 10);
+    if (Number.isNaN(day) || Number.isNaN(hour)) {
+        return;
+    }
+
+    clearAvailabilityErrors();
+
+    if (status === 'unavailable' || status === 'occupied') {
+        const errorMessage = status === 'occupied'
+            ? 'Ce créneau est déjà occupé. Choisissez un autre horaire.'
+            : 'Ce créneau est indisponible. Choisissez un autre horaire.';
+        markAvailabilityError(day, hour, errorMessage);
+        setAvailabilityErrorMessage(errorMessage);
+        return;
+    }
+
+    availabilitySelection = {
+        active: true,
+        day,
+        startHour: hour,
+        endHour: hour,
+    };
+
+    updateAvailabilitySelectionPreview();
+    event.preventDefault();
+}
+
+function handleAvailabilityMouseOver(event) {
+    if (!availabilitySelection.active) {
+        return;
+    }
+
+    const cell = event.target.closest('.availability-cell');
+    if (!cell) {
+        return;
+    }
+
+    const day = parseInt(cell.dataset.day, 10);
+    const hour = parseInt(cell.dataset.hour, 10);
+    if (Number.isNaN(day) || Number.isNaN(hour) || day !== availabilitySelection.day) {
+        return;
+    }
+
+    availabilitySelection.endHour = hour;
+    updateAvailabilitySelectionPreview();
+}
+
+function handleAvailabilityMouseUp() {
+    if (!availabilitySelection.active) {
+        return;
+    }
+
+    const selectedDay = availabilitySelection.day;
+    const startHour = Math.min(availabilitySelection.startHour, availabilitySelection.endHour);
+    const endHour = Math.max(availabilitySelection.startHour, availabilitySelection.endHour) + 1;
+
+    availabilitySelection = {
+        active: false,
+        day: null,
+        startHour: null,
+        endHour: null,
+    };
+
+    finalizeAvailabilitySelection(selectedDay, startHour, endHour);
+}
+
+function updateAvailabilitySelectionPreview() {
+    document.querySelectorAll('.availability-cell.selecting').forEach(cell => {
+        cell.classList.remove('selecting');
+    });
+
+    if (!availabilitySelection.active) {
+        return;
+    }
+
+    const startHour = Math.min(availabilitySelection.startHour, availabilitySelection.endHour);
+    const endHour = Math.max(availabilitySelection.startHour, availabilitySelection.endHour) + 1;
+
+    for (let hour = startHour; hour < endHour; hour++) {
+        const cell = getAvailabilityCell(availabilitySelection.day, hour);
+        if (cell) {
+            cell.classList.add('selecting');
+        }
+    }
+}
+
+function finalizeAvailabilitySelection(day, startHour, endHour) {
+    const invalidCells = [];
+    for (let hour = startHour; hour < endHour; hour++) {
+        const cell = getAvailabilityCell(day, hour);
+        if (!cell) {
+            continue;
+        }
+
+        const status = cell.dataset.status;
+        if (status === 'unavailable' || status === 'occupied') {
+            invalidCells.push({ hour, status });
+        }
+    }
+
+    if (invalidCells.length > 0) {
+        invalidCells.forEach(({ hour, status }) => {
+            const errorMessage = status === 'occupied'
+                ? 'Ce créneau est déjà occupé. Choisissez un autre horaire.'
+                : 'Ce créneau est indisponible. Choisissez un autre horaire.';
+            markAvailabilityError(day, hour, errorMessage);
+            setAvailabilityErrorMessage(errorMessage);
+        });
+        return;
+    }
+
+    const jourSelect = document.getElementById('jour');
+    const heureDebut = document.getElementById('heure_debut');
+    const heureFin = document.getElementById('heure_fin');
+    if (!jourSelect || !heureDebut || !heureFin) {
+        return;
+    }
+
+    jourSelect.value = day.toString();
+    heureDebut.value = `${startHour.toString().padStart(2, '0')}:00`;
+    heureFin.value = `${endHour.toString().padStart(2, '0')}:00`;
+
+    jourSelect.dispatchEvent(new Event('change'));
+    heureDebut.dispatchEvent(new Event('change'));
+    heureFin.dispatchEvent(new Event('change'));
+    updateSelectedTimeInGrid();
 }
 
 // Form validation
@@ -1293,10 +1455,11 @@ function showTeacherAvailability() {
                 // Clés des jours dans l'ordre: monday, tuesday, wednesday, thursday, friday, saturday
                 const dayKeys = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
                 
-                for (let dayKey of dayKeys) {
+                dayKeys.forEach((dayKey, dayIndex) => {
                     let cellClass = 'unavailable';
                     let cellTitle = 'Non disponible';
-                    
+                    let cellStatus = 'unavailable';
+
                     // Le format est: rawAvailability[dayKey][hourIndex] = 'available'/'preferred'/'unavailable'/'occupied'
                     if (rawAvailability[dayKey]) {
                         const hourIndex = hour - 8; // 8h = index 0
@@ -1305,23 +1468,27 @@ function showTeacherAvailability() {
                             if (status === 'occupied') {
                                 cellClass = 'occupied';
                                 cellTitle = 'Occupé par une autre séance';
+                                cellStatus = 'occupied';
                             } else if (status === 'preferred') {
                                 cellClass = 'preferred';
                                 cellTitle = 'Préféré';
+                                cellStatus = 'preferred';
                             } else if (status === 'available') {
                                 cellClass = 'available';
                                 cellTitle = 'Disponible';
+                                cellStatus = 'available';
                             }
                         }
                     }
-                    
-                    gridHtml += `<div class="availability-cell ${cellClass}" title="${cellTitle}"></div>`;
-                }
+
+                    gridHtml += `<div class="availability-cell ${cellClass}" data-day="${dayIndex + 1}" data-hour="${hour}" data-status="${cellStatus}" title="${cellTitle}"></div>`;
+                });
                 gridHtml += '</div>';
             }
             
             availabilityGrid.innerHTML = gridHtml;
             teacherAvailability.style.display = 'block';
+            bindAvailabilityGridHandlers();
             
             // Mettre à jour les créneaux sélectionnés après construction de la grille
             setTimeout(updateSelectedTimeInGrid, 100);
@@ -1853,6 +2020,12 @@ function showTeacherAvailability() {
     opacity: 1;
 }
 
+.availability-cell.selecting {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.45);
+    transform: translateY(-1px) scale(1.02);
+    z-index: 1;
+}
+
 .availability-inline-error {
     display: flex;
     align-items: center;
@@ -1871,6 +2044,15 @@ function showTeacherAvailability() {
     content: '\f071';
     font-family: 'Font Awesome 6 Free';
     font-weight: 900;
+}
+
+.availability-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
 }
 
 @keyframes selectedPulse {
