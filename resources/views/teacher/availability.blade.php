@@ -130,61 +130,69 @@
     .availability-grid {
         display: grid;
         grid-template-columns: 80px repeat(6, 1fr);
-        gap: 2px;
-        background-color: var(--border-light);
-        border-radius: var(--radius-small);
-        padding: 2px;
+        gap: 6px;
+        background: linear-gradient(135deg, rgba(4, 83, 203, 0.08), rgba(94, 145, 222, 0.06));
+        border-radius: var(--radius-medium);
+        padding: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
         max-width: 100%;
         overflow-x: auto;
     }
 
     .availability-header-cell, .availability-time-slot {
-        background-color: var(--surface);
-        padding: var(--space-sm);
+        background-color: rgba(255, 255, 255, 0.95);
+        padding: 10px 8px;
         text-align: center;
         font-weight: 600;
         font-size: 0.875rem;
         color: var(--text-secondary);
-        border-radius: var(--radius-xs);
+        border-radius: 10px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
     }
 
     .availability-header-cell {
-        background: linear-gradient(135deg, var(--primary-light), var(--primary));
+        background: linear-gradient(135deg, rgba(4, 83, 203, 0.85), rgba(94, 145, 222, 0.95));
         color: white;
-        font-size: 0.8rem;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
     }
 
     .availability-time-slot {
-        background-color: var(--neutral-light);
+        background-color: rgba(15, 23, 42, 0.04);
         font-family: 'Courier New', monospace;
         font-weight: 700;
+        color: var(--text-primary);
     }
 
     .availability-slot {
-        background-color: var(--surface);
-        border-radius: var(--radius-xs);
-        height: 45px;
+        background-color: rgba(255, 255, 255, 0.95);
+        border-radius: 12px;
+        height: 48px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.8rem;
-        transition: all 0.3s ease;
+        font-size: 0.9rem;
+        transition: all 0.25s ease;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8);
     }
 
     /* États des créneaux - identique au système admin */
     .availability-slot.unavailable {
-        background: var(--border);
-        color: var(--text-muted);
+        background: rgba(148, 163, 184, 0.18);
+        color: #64748b;
     }
 
     .availability-slot.available {
-        background: var(--success);
+        background: linear-gradient(135deg, #10b981, #34d399);
         color: white;
         font-weight: 600;
     }
 
     .availability-slot.preferred {
-        background: var(--primary);
+        background: linear-gradient(135deg, #1d4ed8, #3b82f6);
         color: white;
         font-weight: 600;
     }
@@ -197,53 +205,81 @@
     }
 
     .availability-slot.editable:hover {
-        transform: scale(1.05);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        transform: translateY(-2px) scale(1.03);
+        box-shadow: 0 12px 20px rgba(15, 23, 42, 0.18);
         z-index: 10;
     }
 
     .availability-slot.editable.unavailable:hover {
-        border-color: var(--success);
-        background: rgba(16, 185, 129, 0.1);
+        border-color: rgba(16, 185, 129, 0.6);
+        background: rgba(16, 185, 129, 0.12);
     }
 
     .availability-slot.editable.available:hover {
-        border-color: var(--primary);
-        background: rgba(30, 58, 138, 0.1);
+        border-color: rgba(4, 83, 203, 0.6);
+        background: rgba(4, 83, 203, 0.12);
     }
 
     .availability-slot.editable.preferred:hover {
-        border-color: var(--border);
-        background: rgba(107, 114, 128, 0.1);
+        border-color: rgba(148, 163, 184, 0.6);
+        background: rgba(148, 163, 184, 0.18);
     }
 
     /* Légende */
     .availability-legend {
-        display: flex;
-        justify-content: center;
-        gap: var(--space-lg);
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: var(--radius-medium);
+        padding: var(--space-lg);
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: var(--space-md);
         margin: var(--space-lg) 0;
-        flex-wrap: wrap;
+    }
+
+    .legend-title {
+        grid-column: 1 / -1;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        margin-bottom: var(--space-sm);
     }
 
     .legend-item {
         display: flex;
         align-items: center;
-        gap: var(--space-xs);
+        gap: var(--space-sm);
         font-size: 0.9rem;
-        font-weight: 500;
+        font-weight: 600;
+        color: var(--text-primary);
     }
 
     .legend-color {
-        width: 20px;
-        height: 20px;
-        border-radius: var(--radius-small);
+        width: 34px;
+        height: 34px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
         font-weight: 600;
-        font-size: 0.7rem;
+        font-size: 0.85rem;
+        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
+    }
+
+    .legend-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .legend-description {
+        font-size: 0.78rem;
+        color: var(--muted);
+        font-weight: 500;
     }
 
     /* Messages de feedback */
@@ -307,8 +343,8 @@
         }
         
         .availability-slot {
-            height: 40px;
-            font-size: 1.2rem;
+            height: 42px;
+            font-size: 1rem;
         }
         
         .availability-header h1 {
@@ -316,8 +352,7 @@
         }
         
         .availability-legend {
-            flex-direction: column;
-            gap: var(--space-md);
+            grid-template-columns: 1fr;
         }
         
         .availability-actions {
@@ -416,17 +451,30 @@
 
         <!-- Légende -->
         <div class="availability-legend">
-            <div class="legend-item">
-                <div class="legend-color" style="background: var(--primary);">★</div>
-                <span>Créneaux préférés</span>
+            <div class="legend-title">
+                <i class="fas fa-layer-group"></i>
+                Légende des disponibilités
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: var(--success);">✓</div>
-                <span>Disponible</span>
+                <div class="legend-color" style="background: linear-gradient(135deg, #1d4ed8, #3b82f6);">★</div>
+                <div class="legend-text">
+                    <span>Créneau préféré</span>
+                    <span class="legend-description">Priorité pour planification</span>
+                </div>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: var(--border);">✗</div>
-                <span>Non disponible</span>
+                <div class="legend-color" style="background: linear-gradient(135deg, #10b981, #34d399);">✓</div>
+                <div class="legend-text">
+                    <span>Disponible</span>
+                    <span class="legend-description">Planifiable sans priorité</span>
+                </div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: rgba(148, 163, 184, 0.65);">✗</div>
+                <div class="legend-text">
+                    <span>Indisponible</span>
+                    <span class="legend-description">Créneau bloqué</span>
+                </div>
             </div>
         </div>
 
