@@ -11,6 +11,12 @@
     $typeIcon = $typeIcons[$evaluation->type] ?? 'fa-clipboard-check';
     $canOpenNotesModal = $evaluation->is_published
         && (! $evaluation->date_evaluation || $evaluation->date_evaluation->isPast() || $evaluation->date_evaluation->isToday());
+    $notesDisabledReason = null;
+    if (! $evaluation->is_published) {
+        $notesDisabledReason = "Publiez l'évaluation pour saisir les notes";
+    } elseif ($evaluation->date_evaluation && $evaluation->date_evaluation->isFuture()) {
+        $notesDisabledReason = "La saisie est disponible après la date d'évaluation";
+    }
 @endphp
 
 <div class="evaluation-card" data-evaluation-id="{{ $evaluation->id }}">
@@ -70,9 +76,15 @@
                     class="btn-action success {{ $canOpenNotesModal ? '' : 'disabled' }}"
                     data-action="open-notes-modal"
                     data-evaluation-id="{{ $evaluation->id }}"
+                    title="{{ $canOpenNotesModal ? 'Saisir les notes' : $notesDisabledReason }}"
                     {{ $canOpenNotesModal ? '' : 'disabled' }}>
                 <i class="fas fa-pen-to-square"></i> Notes
             </button>
         </div>
+        @if(!$canOpenNotesModal && $notesDisabledReason)
+            <div class="evaluation-helper">
+                <i class="fas fa-info-circle"></i>{{ $notesDisabledReason }}
+            </div>
+        @endif
     </div>
 </div>

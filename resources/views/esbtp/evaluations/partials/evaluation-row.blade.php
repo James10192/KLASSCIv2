@@ -107,15 +107,24 @@
 
             @php
                 $notesDisabled = !$evaluation->is_published || $evaluationDateFuture;
+                $notesDisabledReason = null;
+                if (!$evaluation->is_published) {
+                    $notesDisabledReason = "Publiez l'évaluation pour saisir les notes";
+                } elseif ($evaluationDateFuture) {
+                    $notesDisabledReason = "La saisie est disponible après la date d'évaluation";
+                }
             @endphp
             <a href="{{ $notesDisabled ? '#' : route('esbtp.notes.saisie-rapide', $evaluation) }}"
                class="btn btn-sm btn-outline-primary {{ $notesDisabled ? 'disabled' : '' }}"
-               title="{{ $notesDisabled ? ($evaluationDateFuture ? 'La saisie est disponible après la date d\'évaluation' : 'Publiez l’évaluation pour saisir les notes') : 'Gérer la saisie rapide' }}"
+               title="{{ $notesDisabled ? $notesDisabledReason : 'Gérer la saisie rapide' }}"
                aria-disabled="{{ $notesDisabled ? 'true' : 'false' }}"
                tabindex="{{ $notesDisabled ? '-1' : '0' }}">
                 <i class="fas fa-pen-to-square me-1"></i>
                 {{ ($evaluation->notes_count ?? 0) > 0 ? 'Gérer (' . $evaluation->notes_count . ')' : 'Saisir' }}
             </a>
+            @if($notesDisabled && $notesDisabledReason)
+                <small class="text-muted d-block">{{ $notesDisabledReason }}</small>
+            @endif
         </div>
     </td>
     <td>

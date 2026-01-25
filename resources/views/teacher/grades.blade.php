@@ -394,6 +394,19 @@
     padding-top: var(--space-md);
     border-top: 1px solid var(--border);
     gap: var(--space-md);
+    flex-wrap: wrap;
+}
+
+.evaluation-helper {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    color: #64748b;
+    padding: 0.35rem 0.6rem;
+    border-radius: 10px;
+    background: rgba(148, 163, 184, 0.12);
+    border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 .status-badge {
