@@ -7,50 +7,23 @@
 <style>
 /* Styles spécifiques pour la page des annonces */
 .announcements-page {
-    background: #f8fafc;
+    background: var(--background);
     min-height: 100vh;
     padding: 0;
     overflow-x: hidden;
 }
 
-.page-header {
-    background: linear-gradient(135deg, #0453cb 0%, #1b64d4 100%);
-    color: white !important;
-    padding: 2rem 0;
-    margin-bottom: 2rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    border-radius: 0;
+.announcement-header {
+    background: linear-gradient(135deg, rgba(4, 83, 203, 0.95), rgba(94, 145, 222, 0.95));
+    color: white;
+    padding: var(--space-lg) var(--space-xl);
+    border-radius: var(--radius-medium);
+    margin-bottom: var(--space-lg);
+    box-shadow: 0 18px 36px rgba(4, 83, 203, 0.2);
 }
 
-.page-header * {
-    color: white !important;
-}
-
-.page-header h1,
-.page-header p,
-.page-header i {
-    color: white !important;
-}
-
-.page-header .container-fluid {
-    max-width: 1200px;
-}
-
-.page-title {
-    font-size: 2rem;
-    font-weight: 700;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    color: white !important;
-}
-
-.page-subtitle {
-    font-size: 1rem;
-    opacity: 0.9;
-    margin: 0.5rem 0 0;
-    color: white !important;
+.announcement-header .header-subtitle {
+    color: rgba(255, 255, 255, 0.85);
 }
 
 .header-actions {
@@ -105,20 +78,20 @@
 }
 
 .stat-card {
-    background: white;
+    background: linear-gradient(145deg, #ffffff, #f8fafc);
     padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
+    border-radius: 16px;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    transition: all 0.25s ease;
     display: flex;
     align-items: center;
     gap: 1rem;
 }
 
 .stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    box-shadow: 0 18px 32px rgba(15, 23, 42, 0.12);
 }
 
 .stat-icon {
@@ -153,16 +126,16 @@
 
 .content-card {
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    border-radius: 16px;
+    box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08);
+    border: 1px solid rgba(148, 163, 184, 0.2);
     overflow: hidden;
 }
 
 .card-header {
     padding: 1.5rem;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    background: #fafbfc;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+    background: linear-gradient(135deg, rgba(4, 83, 203, 0.05), rgba(94, 145, 222, 0.08));
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -186,8 +159,8 @@
 .search-input {
     width: 100%;
     padding: 0.75rem 1rem 0.75rem 2.5rem;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 12px;
     font-size: 0.9rem;
     transition: all 0.3s ease;
     background: white;
@@ -219,7 +192,7 @@
 }
 
 .modern-table thead th {
-    background: #f9fafb;
+    background: rgba(4, 83, 203, 0.06);
     padding: 1rem;
     font-weight: 600;
     color: #374151;
@@ -235,7 +208,7 @@
 }
 
 .modern-table tbody tr:hover {
-    background: #f9fafb;
+    background: rgba(4, 83, 203, 0.04);
 }
 
 /* Styles pour les annonces expirées */
@@ -318,7 +291,7 @@
 .btn-action {
     width: 36px;
     height: 36px;
-    border-radius: 8px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -424,16 +397,16 @@
 
 .annonce-card {
     background: white;
-    border-radius: 12px;
+    border-radius: 16px;
     padding: 1.25rem;
-    border: 1px solid #e5e7eb;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+    transition: all 0.25s ease;
 }
 
 .annonce-card:hover {
-    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
-    transform: translateY(-2px);
+    box-shadow: 0 18px 32px rgba(15, 23, 42, 0.12);
+    transform: translateY(-4px);
 }
 
 .annonce-card.expired {
@@ -478,8 +451,8 @@
     gap: 0.75rem;
     margin-bottom: 1rem;
     padding: 1rem;
-    background: #f9fafb;
-    border-radius: 8px;
+    background: rgba(4, 83, 203, 0.06);
+    border-radius: 12px;
 }
 
 .annonce-card-info-item {
@@ -510,28 +483,10 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-    .announcements-page {
-        background: linear-gradient(to bottom, #0453cb 0%, #0453cb 200px, #f8fafc 200px);
-    }
-
-    .page-header {
-        padding: 1.5rem 1rem;
-        border-radius: 0;
-        margin-bottom: 0;
-        box-shadow: none;
-    }
-
-    .page-header .container-fluid {
-        max-width: 100%;
-        padding: 0;
-    }
-
-    .page-title {
-        font-size: 1.25rem;
-    }
-
-    .page-subtitle {
-        font-size: 0.875rem;
+    .announcement-header {
+        padding: var(--space-lg);
+        border-radius: var(--radius-medium);
+        margin-bottom: var(--space-md);
     }
 
     .header-actions {
@@ -552,11 +507,6 @@
         grid-template-columns: 1fr;
         gap: 1rem;
         margin-top: 1.5rem;
-        padding: 0 1rem;
-    }
-
-    .content-card {
-        margin: 0 1rem;
     }
 
     .card-header {
@@ -608,34 +558,26 @@
 @endsection
 
 @section('content')
-<div class="announcements-page">
-    <!-- Page Header -->
-    <div class="page-header">
-        <div class="container-fluid">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="page-title">
-                        <i class="fas fa-bullhorn"></i>
-                        Gestion des annonces
-                    </h1>
-                </div>
-                <div class="header-actions">
-                    <button class="btn-modern secondary" onclick="window.location.reload()">
-                        <i class="fas fa-sync-alt"></i>
-                        Actualiser
-                    </button>
-                    @if(auth()->user()->can('create_annonces'))
-                    <a href="{{ route('esbtp.annonces.create') }}" class="btn-modern primary">
-                        <i class="fas fa-plus"></i>
-                        Nouvelle annonce
-                    </a>
-                    @endif
-                </div>
+<div class="dashboard-acasi announcements-page">
+    <div class="main-content" style="padding: 1.5rem; max-width: 100%; overflow-x: hidden;">
+        <div class="dashboard-header announcement-header">
+            <div class="header-left">
+                <h1><i class="fas fa-bullhorn me-2"></i>Gestion des annonces</h1>
+                <p class="header-subtitle">Diffusez des informations aux classes et aux étudiants.</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn-modern secondary" onclick="window.location.reload()">
+                    <i class="fas fa-sync-alt"></i>
+                    Actualiser
+                </button>
+                @if(auth()->user()->can('create_annonces'))
+                <a href="{{ route('esbtp.annonces.create') }}" class="btn-modern primary">
+                    <i class="fas fa-plus"></i>
+                    Nouvelle annonce
+                </a>
+                @endif
             </div>
         </div>
-    </div>
-
-    <div class="container-fluid" style="max-width: 1200px;">
 
         <!-- Stats Cards -->
         <div class="stats-grid">
