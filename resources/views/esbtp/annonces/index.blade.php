@@ -14,16 +14,31 @@
 }
 
 .announcement-header {
-    background: linear-gradient(135deg, rgba(4, 83, 203, 0.95), rgba(94, 145, 222, 0.95));
-    color: white;
-    padding: var(--space-lg) var(--space-xl);
+    background: linear-gradient(135deg, #0b3b86 0%, #0453cb 55%, #2b7bda 100%);
+    color: #ffffff;
+    padding: var(--space-xl) var(--space-xl);
     border-radius: var(--radius-medium);
     margin-bottom: var(--space-lg);
-    box-shadow: 0 18px 36px rgba(4, 83, 203, 0.2);
+    box-shadow: 0 20px 40px rgba(4, 83, 203, 0.25);
+    position: relative;
+    overflow: hidden;
+}
+
+.announcement-header::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.15), transparent 55%);
+    pointer-events: none;
+}
+
+.announcement-header h1 {
+    color: #ffffff;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 .announcement-header .header-subtitle {
-    color: rgba(255, 255, 255, 0.85);
+    color: rgba(224, 231, 255, 0.9);
 }
 
 .header-actions {
@@ -78,7 +93,7 @@
 }
 
 .stat-card {
-    background: linear-gradient(145deg, #ffffff, #f8fafc);
+    background: linear-gradient(145deg, #ffffff, #f6f9ff);
     padding: 1.5rem;
     border-radius: 16px;
     box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
@@ -95,14 +110,15 @@
 }
 
 .stat-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 12px;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.5rem;
     color: white;
+    box-shadow: 0 12px 20px rgba(15, 23, 42, 0.18);
 }
 
 .stat-icon.primary { background: linear-gradient(135deg, #0453cb, #1b64d4); }
@@ -188,11 +204,12 @@
 .modern-table {
     width: 100%;
     border-collapse: separate;
-    border-spacing: 0;
+    border-spacing: 0 10px;
+    padding: 0 1rem 1rem;
 }
 
 .modern-table thead th {
-    background: rgba(4, 83, 203, 0.06);
+    background: rgba(4, 83, 203, 0.08);
     padding: 1rem;
     font-weight: 600;
     color: #374151;
@@ -204,11 +221,12 @@
 }
 
 .modern-table tbody tr {
-    transition: background-color 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .modern-table tbody tr:hover {
-    background: rgba(4, 83, 203, 0.04);
+    transform: translateY(-2px);
+    box-shadow: 0 14px 26px rgba(15, 23, 42, 0.12);
 }
 
 /* Styles pour les annonces expirées */
@@ -232,8 +250,23 @@
 
 .modern-table tbody td {
     padding: 1rem;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: none;
     vertical-align: middle;
+    background: #ffffff;
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.modern-table tbody td:first-child {
+    border-left: 1px solid rgba(148, 163, 184, 0.2);
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+}
+
+.modern-table tbody td:last-child {
+    border-right: 1px solid rgba(148, 163, 184, 0.2);
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
 }
 
 .table-title {
@@ -303,7 +336,7 @@
 }
 
 .btn-action.primary {
-    background: #dbeafe;
+    background: rgba(59, 130, 246, 0.15);
     color: #1d4ed8;
 }
 
@@ -313,8 +346,8 @@
 }
 
 .btn-action.secondary {
-    background: #f3f4f6;
-    color: #374151;
+    background: rgba(148, 163, 184, 0.2);
+    color: #475569;
 }
 
 .btn-action.secondary:hover {
@@ -323,7 +356,7 @@
 }
 
 .btn-action.danger {
-    background: #fee2e2;
+    background: rgba(239, 68, 68, 0.15);
     color: #dc2626;
 }
 
