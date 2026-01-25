@@ -1770,7 +1770,16 @@
                         </div>
                     @endif
 
-                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole('teacher'))
+                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole(['teacher', 'enseignant']))
+                        <div class="menu-category">Enseignement</div>
+
+                        <div class="menu-item">
+                            <a href="{{ route('teacher.grades') }}" class="menu-link {{ Request::routeIs('teacher.grades') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-pen-to-square"></i></div>
+                                <div class="menu-text">Saisie des notes</div>
+                            </a>
+                        </div>
+
                         <div class="menu-category">Présence</div>
 
                         <!-- Émargement enseignant -->
@@ -2318,8 +2327,15 @@
                         $anneeCouranteExpired = $anneeCouranteModal && $anneeCouranteEndDate && $anneeCouranteEndDate->isPast();
                         $isSuperAdmin = auth()->user()?->hasRole('superAdmin');
                         $canValidateInscriptions = auth()->user()?->can('inscriptions.validate');
+                        $canAccessTimetable = auth()->user()?->can('view_timetables') || auth()->user()?->can('view-all-timetables');
+                        $canAccessEvaluations = auth()->user()?->can('view_exams') || auth()->user()?->can('view_evaluations');
+                        $canAccessNotes = auth()->user()?->can('view_grades') || auth()->user()?->can('create_grades') || auth()->user()?->can('edit_grades') || auth()->user()?->can('manage_own_notes');
+                        $canSeeGradingReminder = $canAccessEvaluations || $canAccessNotes;
                         $pendingCurrentYearInscriptionsCount = 0;
                         $pendingCurrentYearInscriptionsByStep = [];
+                        $timetableShortcut = ['show' => false];
+                        $evaluationGradingShortcut = ['show' => false];
+                        $evaluationPublishShortcut = ['show' => false];
 
                         if ($canValidateInscriptions && $anneeCouranteModal) {
                             $pendingCurrentYearQuery = \App\Models\ESBTPInscription::where('annee_universitaire_id', $anneeCouranteModal->id)
@@ -2337,6 +2353,20 @@
                                 'documents_complets' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'documents_complets')->count(),
                                 'en_validation' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'en_validation')->count(),
                             ];
+                        }
+
+                        if ($canAccessTimetable && $anneeCouranteModal) {
+                            $timetableShortcut = app(\App\Services\TimetableShortcutService::class)->getShortcutSummary($anneeCouranteModal);
+                        }
+
+                        if ($canSeeGradingReminder && $anneeCouranteModal) {
+                            $evaluationGradingShortcut = app(\App\Services\EvaluationGradingShortcutService::class)
+                                ->getShortcutSummary($anneeCouranteModal, auth()->user());
+                        }
+
+                        if ($canAccessEvaluations && $anneeCouranteModal) {
+                            $evaluationPublishShortcut = app(\App\Services\EvaluationPublishShortcutService::class)
+                                ->getShortcutSummary($anneeCouranteModal);
                         }
                     @endphp
 
@@ -2431,6 +2461,153 @@
                             </div>
                         </div>
                     @endif
+
+                    @if($canAccessTimetable && !empty($timetableShortcut) && ($timetableShortcut['show'] ?? false))
+                        <div class="modal fade" id="timetableReminderModal" tabindex="-1" role="dialog" aria-labelledby="timetableReminderModalLabel" aria-hidden="true" data-reminder-key="timetableReminder.user.{{ auth()->id() }}">
+                            <div class="modal-dialog modal-lg" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="timetableReminderModalLabel">
+                                            Emplois du temps a renouveler
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="mb-3">Certaines classes n'ont pas d'emploi du temps valide pour la periode courante.</p>
+                                        <ul class="mb-3">
+                                            @if($timetableShortcut['missing'] > 0)
+                                                <li><strong>{{ $timetableShortcut['missing'] }}</strong> classe(s) sans emploi du temps</li>
+                                            @endif
+                                            @if($timetableShortcut['expired'] > 0)
+                                                <li><strong>{{ $timetableShortcut['expired'] }}</strong> emploi(s) expire(s)</li>
+                                            @endif
+                                            @if($timetableShortcut['expiring_soon'] > 0)
+                                                <li><strong>{{ $timetableShortcut['expiring_soon'] }}</strong> emploi(s) expirant bientot</li>
+                                            @endif
+                                        </ul>
+                                        <div class="alert alert-warning mb-0">
+                                            <strong>Astuce :</strong> utilisez la generation rapide pour creer ou dupliquer les emplois du temps manquants.
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" onclick="localStorage.setItem(document.getElementById('timetableReminderModal').dataset.reminderKey, String(Date.now()))">
+                                            Rappeler plus tard
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                                        <a href="{{ route('esbtp.emploi-temps.index', ['quick_generate' => 1]) }}" class="btn btn-warning">
+                                            <i class="fas fa-calendar-plus me-1"></i>Aller aux emplois du temps
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if($canSeeGradingReminder && !empty($evaluationGradingShortcut) && ($evaluationGradingShortcut['show'] ?? false))
+                        @php
+                            $gradingCtaUrl = $canAccessEvaluations
+                                ? route('esbtp.evaluations.index')
+                                : route('esbtp.notes.index');
+                        @endphp
+                        <div class="modal fade" id="evaluationGradingReminderModal" tabindex="-1" role="dialog" aria-labelledby="evaluationGradingReminderModalLabel" aria-hidden="true" data-reminder-key="evaluationGradingReminder.user.{{ auth()->id() }}">
+                            <div class="modal-dialog modal-lg" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="evaluationGradingReminderModalLabel">
+                                            Notes a saisir
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="mb-3"><strong>{{ $evaluationGradingShortcut['total'] ?? 0 }}</strong> evaluation(s) sont passees et attendent la saisie des notes.</p>
+                                        <ul class="mb-3">
+                                            @if(($evaluationGradingShortcut['missing_notes'] ?? 0) > 0)
+                                                <li><strong>{{ $evaluationGradingShortcut['missing_notes'] }}</strong> sans notes saisies</li>
+                                            @endif
+                                            @if(($evaluationGradingShortcut['notes_unpublished'] ?? 0) > 0)
+                                                <li><strong>{{ $evaluationGradingShortcut['notes_unpublished'] }}</strong> notes saisies mais non publiees</li>
+                                            @endif
+                                        </ul>
+                                        @if(!empty($evaluationGradingShortcut['items']))
+                                            <div class="table-responsive">
+                                                <table class="table table-sm align-middle mb-0">
+                                                    <thead class="table-light">
+                                                        <tr>
+                                                            <th>Evaluation</th>
+                                                            <th>Classe</th>
+                                                            <th>Date</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach($evaluationGradingShortcut['items'] as $item)
+                                                            <tr>
+                                                                <td>
+                                                                    <div class="fw-semibold">{{ $item['title'] ?? '—' }}</div>
+                                                                    <small class="text-muted">{{ $item['matiere'] ?? '—' }}</small>
+                                                                </td>
+                                                                <td>{{ $item['classe'] ?? '—' }}</td>
+                                                                <td>{{ !empty($item['date']) ? \Carbon\Carbon::parse($item['date'])->format('d/m/Y') : '—' }}</td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" onclick="localStorage.setItem(document.getElementById('evaluationGradingReminderModal').dataset.reminderKey, String(Date.now()))">
+                                            Rappeler plus tard
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                                        <a href="{{ $gradingCtaUrl }}" class="btn btn-primary">
+                                            <i class="fas fa-pen-to-square me-1"></i>Aller a la saisie
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if($canAccessEvaluations && !empty($evaluationPublishShortcut) && ($evaluationPublishShortcut['show'] ?? false))
+                        <div class="modal fade" id="evaluationPublishReminderModal" tabindex="-1" role="dialog" aria-labelledby="evaluationPublishReminderModalLabel" aria-hidden="true" data-reminder-key="evaluationPublishReminder.user.{{ auth()->id() }}">
+                            <div class="modal-dialog modal-lg" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="evaluationPublishReminderModalLabel">
+                                            Evaluations a activer
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="mb-3"><strong>{{ $evaluationPublishShortcut['total'] ?? 0 }}</strong> evaluation(s) sont encore en brouillon.</p>
+                                        <ul class="mb-3">
+                                            @if(($evaluationPublishShortcut['overdue'] ?? 0) > 0)
+                                                <li><strong>{{ $evaluationPublishShortcut['overdue'] }}</strong> en retard (date depassee)</li>
+                                            @endif
+                                            @if(($evaluationPublishShortcut['soon'] ?? 0) > 0)
+                                                <li><strong>{{ $evaluationPublishShortcut['soon'] }}</strong> a publier bientot</li>
+                                            @endif
+                                            @if(($evaluationPublishShortcut['undated'] ?? 0) > 0)
+                                                <li><strong>{{ $evaluationPublishShortcut['undated'] }}</strong> sans date</li>
+                                            @endif
+                                        </ul>
+                                        <div class="alert alert-info mb-0">
+                                            <strong>Action :</strong> publiez les evaluations pour activer la saisie des notes.
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" onclick="localStorage.setItem(document.getElementById('evaluationPublishReminderModal').dataset.reminderKey, String(Date.now()))">
+                                            Rappeler plus tard
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                                        <a href="{{ route('esbtp.evaluations.index') }}" class="btn btn-primary">
+                                            <i class="fas fa-clipboard-check me-1"></i>Aller aux evaluations
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 @endauth
 
             @yield('content')
@@ -2493,6 +2670,60 @@
                     }
 
                     pendingModalElement.addEventListener('hidden.bs.modal', function () {
+                        localStorage.setItem(reminderKey, String(Date.now()));
+                    });
+                }
+
+                const timetableModalElement = document.getElementById('timetableReminderModal');
+                if (timetableModalElement && typeof bootstrap !== 'undefined') {
+                    const reminderKey = timetableModalElement.dataset.reminderKey || 'timetableReminder';
+                    const lastSeen = Number(localStorage.getItem(reminderKey) || 0);
+                    const now = Date.now();
+                    const oneHourMs = 60 * 60 * 1000;
+
+                    if (now - lastSeen >= oneHourMs) {
+                        const timetableModal = new bootstrap.Modal(timetableModalElement);
+                        timetableModal.show();
+                        localStorage.setItem(reminderKey, String(now));
+                    }
+
+                    timetableModalElement.addEventListener('hidden.bs.modal', function () {
+                        localStorage.setItem(reminderKey, String(Date.now()));
+                    });
+                }
+
+                const gradingModalElement = document.getElementById('evaluationGradingReminderModal');
+                if (gradingModalElement && typeof bootstrap !== 'undefined') {
+                    const reminderKey = gradingModalElement.dataset.reminderKey || 'evaluationGradingReminder';
+                    const lastSeen = Number(localStorage.getItem(reminderKey) || 0);
+                    const now = Date.now();
+                    const oneHourMs = 60 * 60 * 1000;
+
+                    if (now - lastSeen >= oneHourMs) {
+                        const gradingModal = new bootstrap.Modal(gradingModalElement);
+                        gradingModal.show();
+                        localStorage.setItem(reminderKey, String(now));
+                    }
+
+                    gradingModalElement.addEventListener('hidden.bs.modal', function () {
+                        localStorage.setItem(reminderKey, String(Date.now()));
+                    });
+                }
+
+                const evaluationPublishModalElement = document.getElementById('evaluationPublishReminderModal');
+                if (evaluationPublishModalElement && typeof bootstrap !== 'undefined') {
+                    const reminderKey = evaluationPublishModalElement.dataset.reminderKey || 'evaluationPublishReminder';
+                    const lastSeen = Number(localStorage.getItem(reminderKey) || 0);
+                    const now = Date.now();
+                    const oneHourMs = 60 * 60 * 1000;
+
+                    if (now - lastSeen >= oneHourMs) {
+                        const publishModal = new bootstrap.Modal(evaluationPublishModalElement);
+                        publishModal.show();
+                        localStorage.setItem(reminderKey, String(now));
+                    }
+
+                    evaluationPublishModalElement.addEventListener('hidden.bs.modal', function () {
                         localStorage.setItem(reminderKey, String(Date.now()));
                     });
                 }

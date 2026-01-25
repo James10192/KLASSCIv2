@@ -8,7 +8,7 @@
 
 @section('content')
 <div class="dashboard-acasi">
-    <div class="main-content">
+    <div class="main-content" style="padding: 1.5rem; max-width: 100%; overflow-x: hidden;">
         <!-- Header -->
         <div class="dashboard-header">
             <div class="header-left">
@@ -16,6 +16,11 @@
                 <p class="header-subtitle">Gérer les évaluations et les notes de vos étudiants</p>
             </div>
             <div class="header-actions">
+                <span class="badge rounded-pill bg-light text-dark me-2">
+                    <i class="fas fa-calendar me-1"></i>
+                    {{ $anneeEnCours->name ?? 'Année non définie' }}
+                </span>
+                <span class="text-muted me-3">{{ \Carbon\Carbon::now()->isoFormat('dddd D MMMM YYYY') }}</span>
                 <a href="{{ route('teacher.dashboard') }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>Retour
                 </a>

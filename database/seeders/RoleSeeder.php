@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RoleSeeder extends Seeder
 {
@@ -19,7 +19,7 @@ class RoleSeeder extends Seeder
         $roles = [
             'superAdmin',
             'secretaire',
-            'etudiant'
+            'etudiant',
         ];
 
         foreach ($roles as $roleName) {
@@ -77,6 +77,7 @@ class RoleSeeder extends Seeder
         Permission::create(['name' => 'edit_grades']);
         Permission::create(['name' => 'delete_grades']);
         Permission::create(['name' => 'view_own_grades']);
+        Permission::create(['name' => 'manage_own_notes']);
 
         // Pour les bulletins
         Permission::create(['name' => 'view_bulletins']);
@@ -115,14 +116,14 @@ class RoleSeeder extends Seeder
             'create_students', 'view_students', 'view_exams', 'view_matieres',
             'create_grades', 'view_grades', 'generate_bulletin', 'view_bulletins',
             'create_timetable', 'view_timetables', 'send_messages',
-            'create_attendance', 'view_attendances'
+            'create_attendance', 'view_attendances',
         ]);
 
         // L'étudiant ne peut voir que ses propres données
         $etudiantRole = Role::findByName('etudiant');
         $etudiantRole->givePermissionTo([
             'view_own_profile', 'view_own_exams', 'view_own_grades', 'view_own_bulletin',
-            'view_own_timetable', 'receive_messages', 'view_own_attendances'
+            'view_own_timetable', 'receive_messages', 'view_own_attendances',
         ]);
 
         // Permissions pour le rôle enseignant
@@ -133,7 +134,7 @@ class RoleSeeder extends Seeder
             'view_own_timetable',
             'view_own_classes',
             'manage_own_notes',
-            'view_own_students'
+            'view_own_students',
         ]);
 
         // Alias anglais du rôle enseignant pour compatibilité
@@ -144,7 +145,7 @@ class RoleSeeder extends Seeder
             'view_own_timetable',
             'view_own_classes',
             'manage_own_notes',
-            'view_own_students'
+            'view_own_students',
         ]);
     }
 }

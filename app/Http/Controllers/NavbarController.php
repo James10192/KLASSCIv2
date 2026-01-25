@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Notification;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPAnnonce;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
-use App\Models\ESBTPAnneeUniversitaire;
-use App\Services\TimetableShortcutService;
+use App\Models\Notification;
+use App\Services\EvaluationGradingShortcutService;
 use App\Services\EvaluationPublishShortcutService;
-use Carbon\Carbon;
+use App\Services\TimetableShortcutService;
 
 class NavbarController extends Controller
 {
@@ -23,7 +22,8 @@ class NavbarController extends Controller
         $user = auth()->user();
         $notifications = collect();
         $shortcutItems = $this->getTimetableShortcutNotifications($user)
-            ->concat($this->getEvaluationShortcutNotifications($user));
+            ->concat($this->getEvaluationShortcutNotifications($user))
+            ->concat($this->getEvaluationGradingShortcutNotifications($user));
 
         if ($user->hasRole('superAdmin') || $user->hasRole('secretaire') || $user->hasRole('coordinateur')) {
             // Notifications pour admin/secrétaire/coordinateur
@@ -42,7 +42,7 @@ class NavbarController extends Controller
                         'time' => $notification->created_at->diffForHumans(),
                         'read' => $notification->is_read,
                         'url' => $notification->link,
-                        'sender' => $notification->sender ? $notification->sender->name : 'Système'
+                        'sender' => $notification->sender ? $notification->sender->name : 'Système',
                     ];
                 });
         } elseif ($user->hasRole('etudiant')) {
@@ -62,7 +62,7 @@ class NavbarController extends Controller
                         'time' => $notification->created_at->diffForHumans(),
                         'read' => $notification->is_read,
                         'url' => $notification->link,
-                        'sender' => $notification->sender ? $notification->sender->name : 'Système'
+                        'sender' => $notification->sender ? $notification->sender->name : 'Système',
                     ];
                 });
         } elseif ($user->hasRole('teacher')) {
@@ -82,7 +82,7 @@ class NavbarController extends Controller
                         'time' => $notification->created_at->diffForHumans(),
                         'read' => $notification->is_read,
                         'url' => $notification->link,
-                        'sender' => $notification->sender ? $notification->sender->name : 'Système'
+                        'sender' => $notification->sender ? $notification->sender->name : 'Système',
                     ];
                 });
         }
@@ -97,24 +97,20 @@ class NavbarController extends Controller
 
         return response()->json([
             'notifications' => $notifications,
-            'unread_count' => $unreadCount
+            'unread_count' => $unreadCount,
         ]);
     }
 
     private function getTimetableShortcutNotifications($user): \Illuminate\Support\Collection
     {
-        $canSee = $user->hasRole('superAdmin')
-            || $user->hasRole('secretaire')
-            || $user->hasRole('coordinateur')
-            || $user->can('view_timetables')
-            || $user->can('view-all-timetables');
+        $canSee = $this->userCanAccessTimetablePage($user);
 
-        if (!$canSee) {
+        if (! $canSee) {
             return collect();
         }
 
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        if (!$anneeEnCours) {
+        if (! $anneeEnCours) {
             return collect();
         }
 
@@ -125,13 +121,13 @@ class NavbarController extends Controller
 
         $parts = [];
         if ($summary['missing'] > 0) {
-            $parts[] = $summary['missing'] . ' classe(s) sans emploi du temps';
+            $parts[] = $summary['missing'].' classe(s) sans emploi du temps';
         }
         if ($summary['expired'] > 0) {
-            $parts[] = $summary['expired'] . ' expiré(s)';
+            $parts[] = $summary['expired'].' expiré(s)';
         }
         if ($summary['expiring_soon'] > 0) {
-            $parts[] = $summary['expiring_soon'] . ' expire(nt) bientôt';
+            $parts[] = $summary['expiring_soon'].' expire(nt) bientôt';
         }
 
         return collect([
@@ -152,18 +148,14 @@ class NavbarController extends Controller
 
     private function getEvaluationShortcutNotifications($user): \Illuminate\Support\Collection
     {
-        $canSee = $user->hasRole('superAdmin')
-            || $user->hasRole('secretaire')
-            || $user->hasRole('coordinateur')
-            || $user->hasRole('enseignant')
-            || $user->hasRole('teacher');
+        $canSee = $this->userCanAccessEvaluationsPage($user);
 
-        if (!$canSee) {
+        if (! $canSee) {
             return collect();
         }
 
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        if (!$anneeEnCours) {
+        if (! $anneeEnCours) {
             return collect();
         }
 
@@ -173,15 +165,15 @@ class NavbarController extends Controller
         }
 
         $parts = [];
-        $parts[] = $summary['total'] . ' évaluation(s) en brouillon';
-        if (!empty($summary['overdue'])) {
-            $parts[] = $summary['overdue'] . ' en retard';
+        $parts[] = $summary['total'].' évaluation(s) en brouillon';
+        if (! empty($summary['overdue'])) {
+            $parts[] = $summary['overdue'].' en retard';
         }
-        if (!empty($summary['soon'])) {
-            $parts[] = $summary['soon'] . ' à publier bientôt';
+        if (! empty($summary['soon'])) {
+            $parts[] = $summary['soon'].' à publier bientôt';
         }
-        if (!empty($summary['undated'])) {
-            $parts[] = $summary['undated'] . ' sans date';
+        if (! empty($summary['undated'])) {
+            $parts[] = $summary['undated'].' sans date';
         }
 
         return collect([
@@ -200,6 +192,70 @@ class NavbarController extends Controller
         ]);
     }
 
+    private function getEvaluationGradingShortcutNotifications($user): \Illuminate\Support\Collection
+    {
+        $canSee = $this->userCanAccessEvaluationsPage($user) || $this->userCanAccessNotesPage($user);
+        if (! $canSee) {
+            return collect();
+        }
+
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (! $anneeEnCours) {
+            return collect();
+        }
+
+        $summary = app(EvaluationGradingShortcutService::class)->getShortcutSummary($anneeEnCours, $user);
+        if (empty($summary['show'])) {
+            return collect();
+        }
+
+        $parts = [];
+        $parts[] = $summary['total'].' évaluation(s) à noter';
+        if (! empty($summary['missing_notes'])) {
+            $parts[] = $summary['missing_notes'].' sans notes';
+        }
+        if (! empty($summary['notes_unpublished'])) {
+            $parts[] = $summary['notes_unpublished'].' notes non publiées';
+        }
+
+        $ctaUrl = $this->userCanAccessEvaluationsPage($user)
+            ? route('esbtp.evaluations.index')
+            : route('esbtp.notes.index');
+
+        return collect([
+            [
+                'id' => 'shortcut-evaluations-grading',
+                'title' => 'Notes à saisir',
+                'message' => implode(' • ', $parts),
+                'type' => 'warning',
+                'icon' => 'fas fa-pen-to-square',
+                'time' => 'Action rapide',
+                'read' => true,
+                'url' => $ctaUrl,
+                'sender' => 'Système',
+                'is_virtual' => true,
+            ],
+        ]);
+    }
+
+    private function userCanAccessTimetablePage($user): bool
+    {
+        return $user->can('view_timetables') || $user->can('view-all-timetables');
+    }
+
+    private function userCanAccessEvaluationsPage($user): bool
+    {
+        return $user->can('view_exams') || $user->can('view_evaluations');
+    }
+
+    private function userCanAccessNotesPage($user): bool
+    {
+        return $user->can('view_grades')
+            || $user->can('create_grades')
+            || $user->can('edit_grades')
+            || $user->can('manage_own_notes');
+    }
+
     /**
      * Récupérer les messages pour la navbar
      */
@@ -215,8 +271,8 @@ class NavbarController extends Controller
                     // Annonces destinées aux administrateurs (ni étudiants généraux, ni classes, ni étudiants spécifiques)
                     // Pour l'instant, les administrateurs ne voient que les annonces générales (à adapter selon besoins)
                     $query->where('type', '!=', 'general')
-                          ->where('type', '!=', 'classe')
-                          ->where('type', '!=', 'etudiant');
+                        ->where('type', '!=', 'classe')
+                        ->where('type', '!=', 'etudiant');
                 })
                 ->orWhere(function ($query) {
                     // Ou bien, inclure toutes les annonces mais avec un système de destinataires pour admin
@@ -228,7 +284,7 @@ class NavbarController extends Controller
                 ->get()
                 ->filter(function ($annonce) use ($user) {
                     // Filtrer les annonces créées par l'utilisateur actuel pour éviter l'auto-notification
-                    return !$annonce->created_by || $annonce->created_by != $user->id;
+                    return ! $annonce->created_by || $annonce->created_by != $user->id;
                 })
                 ->take(5) // Limiter à 5 après filtrage
                 ->map(function ($annonce) {
@@ -236,11 +292,11 @@ class NavbarController extends Controller
                         'id' => $annonce->id,
                         'title' => $annonce->titre,
                         'message' => \Str::limit($annonce->contenu, 50),
-                        'sender' => $annonce->createdBy ? explode(' ', $annonce->createdBy->name)[0] . ' ' . (explode(' ', $annonce->createdBy->name)[1] ?? '') : 'Système',
+                        'sender' => $annonce->createdBy ? explode(' ', $annonce->createdBy->name)[0].' '.(explode(' ', $annonce->createdBy->name)[1] ?? '') : 'Système',
                         'time' => $annonce->created_at->diffForHumans(),
                         'read' => $annonce->created_at->lt(now()->subDay()), // Marquer comme lu si plus de 24h
                         'url' => route('esbtp.annonces.show', $annonce->id),
-                        'avatar' => null
+                        'avatar' => null,
                     ];
                 });
         } elseif ($user->hasRole('etudiant')) {
@@ -257,9 +313,9 @@ class NavbarController extends Controller
                     if ($classeId) {
                         $query->orWhere(function ($subQuery) use ($classeId) {
                             $subQuery->where('type', 'classe')
-                                     ->whereHas('classes', function ($classQuery) use ($classeId) {
-                                         $classQuery->where('esbtp_classes.id', $classeId);
-                                     });
+                                ->whereHas('classes', function ($classQuery) use ($classeId) {
+                                    $classQuery->where('esbtp_classes.id', $classeId);
+                                });
                         });
                     }
 
@@ -267,9 +323,9 @@ class NavbarController extends Controller
                     if ($etudiant) {
                         $query->orWhere(function ($subQuery) use ($etudiant) {
                             $subQuery->where('type', 'etudiant')
-                                     ->whereHas('etudiants', function ($etudiantQuery) use ($etudiant) {
-                                         $etudiantQuery->where('esbtp_etudiants.id', $etudiant->id);
-                                     });
+                                ->whereHas('etudiants', function ($etudiantQuery) use ($etudiant) {
+                                    $etudiantQuery->where('esbtp_etudiants.id', $etudiant->id);
+                                });
                         });
                     }
                 })
@@ -281,11 +337,11 @@ class NavbarController extends Controller
                         'id' => $annonce->id,
                         'title' => $annonce->titre,
                         'message' => \Str::limit($annonce->contenu, 50),
-                        'sender' => $annonce->createdBy ? explode(' ', $annonce->createdBy->name)[0] . ' ' . (explode(' ', $annonce->createdBy->name)[1] ?? '') : 'Administration',
+                        'sender' => $annonce->createdBy ? explode(' ', $annonce->createdBy->name)[0].' '.(explode(' ', $annonce->createdBy->name)[1] ?? '') : 'Administration',
                         'time' => $annonce->created_at->diffForHumans(),
                         'read' => $annonce->created_at->lt(now()->subDay()), // Marquer comme lu si plus de 24h
                         'url' => route('esbtp.mes-messages.index'),
-                        'avatar' => null
+                        'avatar' => null,
                     ];
                 });
         } elseif ($user->hasRole('teacher')) {
@@ -295,8 +351,8 @@ class NavbarController extends Controller
                     // Les enseignants ne voient que les annonces destinées aux administrateurs/personnel
                     // (pas celles pour étudiants spécifiquement)
                     $query->where('type', '!=', 'general')
-                          ->where('type', '!=', 'classe')
-                          ->where('type', '!=', 'etudiant');
+                        ->where('type', '!=', 'classe')
+                        ->where('type', '!=', 'etudiant');
                 })
                 ->orWhere(function ($query) {
                     // Ou annonces générales pour le personnel
@@ -310,11 +366,11 @@ class NavbarController extends Controller
                         'id' => $annonce->id,
                         'title' => $annonce->titre,
                         'message' => \Str::limit($annonce->contenu, 50),
-                        'sender' => $annonce->createdBy ? explode(' ', $annonce->createdBy->name)[0] . ' ' . (explode(' ', $annonce->createdBy->name)[1] ?? '') : 'Administration',
+                        'sender' => $annonce->createdBy ? explode(' ', $annonce->createdBy->name)[0].' '.(explode(' ', $annonce->createdBy->name)[1] ?? '') : 'Administration',
                         'time' => $annonce->created_at->diffForHumans(),
                         'read' => $annonce->created_at->lt(now()->subDay()), // Marquer comme lu si plus de 24h
                         'url' => route('esbtp.annonces.show', $annonce->id),
-                        'avatar' => null
+                        'avatar' => null,
                     ];
                 });
         }
@@ -323,7 +379,7 @@ class NavbarController extends Controller
 
         return response()->json([
             'messages' => $messages,
-            'unread_count' => $unreadCount
+            'unread_count' => $unreadCount,
         ]);
     }
 
@@ -341,38 +397,38 @@ class NavbarController extends Controller
                     'title' => 'Nouvel étudiant',
                     'icon' => 'fas fa-user-plus',
                     'url' => route('esbtp.inscriptions.create'),
-                    'color' => 'primary'
+                    'color' => 'primary',
                 ],
                 [
                     'title' => 'Nouvelle classe',
                     'icon' => 'fas fa-users',
                     'url' => route('esbtp.classes.create'),
-                    'color' => 'info'
+                    'color' => 'info',
                 ],
                 [
                     'title' => 'Créer examen',
                     'icon' => 'fas fa-file-alt',
                     'url' => route('esbtp.evaluations.create'),
-                    'color' => 'success'
+                    'color' => 'success',
                 ],
                 [
                     'title' => 'Nouvelle annonce',
                     'icon' => 'fas fa-bullhorn',
                     'url' => route('esbtp.annonces.create'),
-                    'color' => 'warning'
+                    'color' => 'warning',
                 ],
                 [
                     'title' => 'Saisie notes',
                     'icon' => 'fas fa-clipboard-list',
                     'url' => route('esbtp.notes.index'),
-                    'color' => 'secondary'
+                    'color' => 'secondary',
                 ],
                 [
                     'title' => 'Emploi du temps',
                     'icon' => 'fas fa-calendar-alt',
                     'url' => route('esbtp.emploi-temps.index'),
-                    'color' => 'info'
-                ]
+                    'color' => 'info',
+                ],
             ];
         } elseif ($user->hasRole('secretaire')) {
             $actions = [
@@ -380,26 +436,26 @@ class NavbarController extends Controller
                     'title' => 'Nouvel étudiant',
                     'icon' => 'fas fa-user-plus',
                     'url' => route('esbtp.inscriptions.create'),
-                    'color' => 'primary'
+                    'color' => 'primary',
                 ],
                 [
                     'title' => 'Saisie notes',
                     'icon' => 'fas fa-clipboard-list',
                     'url' => route('esbtp.notes.index'),
-                    'color' => 'success'
+                    'color' => 'success',
                 ],
                 [
                     'title' => 'Nouvelle annonce',
                     'icon' => 'fas fa-bullhorn',
                     'url' => route('esbtp.annonces.create'),
-                    'color' => 'warning'
+                    'color' => 'warning',
                 ],
                 [
                     'title' => 'Présences enseignants',
                     'icon' => 'fas fa-check-circle',
                     'url' => route('esbtp.teacher-attendance.index'),
-                    'color' => 'info'
-                ]
+                    'color' => 'info',
+                ],
             ];
         } elseif ($user->hasRole('etudiant')) {
             $actions = [
@@ -407,26 +463,26 @@ class NavbarController extends Controller
                     'title' => 'Mon emploi du temps',
                     'icon' => 'fas fa-calendar-alt',
                     'url' => route('esbtp.mon-emploi-temps.index'),
-                    'color' => 'primary'
+                    'color' => 'primary',
                 ],
                 [
                     'title' => 'Mes notes',
                     'icon' => 'fas fa-clipboard-list',
                     'url' => route('esbtp.mes-notes.index'),
-                    'color' => 'success'
+                    'color' => 'success',
                 ],
                 [
                     'title' => 'Mon bulletin',
                     'icon' => 'fas fa-file-invoice',
                     'url' => route('esbtp.mon-bulletin.index'),
-                    'color' => 'info'
+                    'color' => 'info',
                 ],
                 [
                     'title' => 'Mon profil',
                     'icon' => 'fas fa-user-circle',
                     'url' => route('esbtp.mon-profil.index'),
-                    'color' => 'secondary'
-                ]
+                    'color' => 'secondary',
+                ],
             ];
         } elseif ($user->hasRole('teacher')) {
             $actions = [
@@ -434,31 +490,31 @@ class NavbarController extends Controller
                     'title' => 'Émargement',
                     'icon' => 'fas fa-clipboard-check',
                     'url' => route('esbtp.attendance.mark'),
-                    'color' => 'primary'
+                    'color' => 'primary',
                 ],
                 [
                     'title' => 'Mes cours',
                     'icon' => 'fas fa-chalkboard-teacher',
                     'url' => route('dashboard'),
-                    'color' => 'info'
+                    'color' => 'info',
                 ],
                 [
                     'title' => 'Saisie notes',
                     'icon' => 'fas fa-clipboard-list',
                     'url' => route('esbtp.notes.index'),
-                    'color' => 'success'
+                    'color' => 'success',
                 ],
                 [
                     'title' => 'Mon profil',
                     'icon' => 'fas fa-user-circle',
                     'url' => route('admin.profile'),
-                    'color' => 'secondary'
-                ]
+                    'color' => 'secondary',
+                ],
             ];
         }
 
         return response()->json([
-            'actions' => $actions
+            'actions' => $actions,
         ]);
     }
 
@@ -506,6 +562,7 @@ class NavbarController extends Controller
         // Vérifier que l'utilisateur peut supprimer cette notification
         if ($notification->user_id === auth()->id() || $notification->type === 'global') {
             $notification->delete();
+
             return response()->json(['success' => true]);
         }
 
@@ -532,7 +589,7 @@ class NavbarController extends Controller
         // Pour les annonces (messages), on ne peut pas vraiment les marquer comme lus
         // car elles n'ont pas de champ is_read dans notre système
         // On pourrait ajouter une table pivot user_announcement_read si nécessaire
-        
+
         return response()->json(['success' => true, 'message' => 'Tous les messages marqués comme lus']);
     }
 
@@ -547,6 +604,7 @@ class NavbarController extends Controller
         if ($user->hasRole(['superAdmin', 'secretaire'])) {
             $annonce = ESBTPAnnonce::findOrFail($id);
             $annonce->delete();
+
             return response()->json(['success' => true]);
         }
 
@@ -563,6 +621,7 @@ class NavbarController extends Controller
         // Seuls les admins/secrétaires peuvent supprimer toutes les annonces
         if ($user->hasRole(['superAdmin', 'secretaire'])) {
             ESBTPAnnonce::truncate(); // Supprimer toutes les annonces
+
             return response()->json(['success' => true]);
         }
 
@@ -582,7 +641,7 @@ class NavbarController extends Controller
             'presence' => 'fas fa-check-circle',
             'global' => 'fas fa-info-circle',
             'classe' => 'fas fa-users',
-            'default' => 'fas fa-bell'
+            'default' => 'fas fa-bell',
         ];
 
         return $icons[$type] ?? $icons['default'];
@@ -601,7 +660,7 @@ class NavbarController extends Controller
                 'total_etudiants' => ESBTPEtudiant::count(),
                 'nouvelles_inscriptions' => ESBTPEtudiant::whereDate('created_at', today())->count(),
                 'evaluations_en_cours' => ESBTPEvaluation::whereDate('date', '>=', today())->count(),
-                'notes_en_attente' => ESBTPNote::whereNull('valeur')->count()
+                'notes_en_attente' => ESBTPNote::whereNull('valeur')->count(),
             ];
         } elseif ($user->hasRole('etudiant')) {
             $etudiant = $user->etudiant;
@@ -612,7 +671,7 @@ class NavbarController extends Controller
                         ->count(),
                     'notes_recentes' => ESBTPNote::where('etudiant_id', $etudiant->id)
                         ->whereDate('created_at', '>=', now()->subDays(7))
-                        ->count()
+                        ->count(),
                 ];
             }
         }

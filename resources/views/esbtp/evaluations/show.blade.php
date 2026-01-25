@@ -273,14 +273,15 @@
                     <div class="main-card-body">
                         <div class="actions-grid">
                             @php
-                                $notesDisabled = !$evaluation->is_published;
+                                $evaluationDateFuture = $evaluation->date_evaluation && $evaluation->date_evaluation->isFuture();
+                                $notesDisabled = !$evaluation->is_published || $evaluationDateFuture;
                             @endphp
                             <a href="{{ $notesDisabled ? '#' : route('esbtp.notes.saisie-rapide', $evaluation) }}"
                                class="btn-acasi primary {{ $notesDisabled ? 'disabled' : '' }}"
-                               title="{{ $notesDisabled ? 'Publiez l’évaluation pour saisir les notes' : 'Gérer les notes' }}"
+                               title="{{ $notesDisabled ? ($evaluationDateFuture ? 'La saisie est disponible après la date d\'évaluation' : 'Publiez l’évaluation pour saisir les notes') : 'Gérer les notes' }}"
                                aria-disabled="{{ $notesDisabled ? 'true' : 'false' }}"
                                tabindex="{{ $notesDisabled ? '-1' : '0' }}">
-                                <i class="fas fa-pen-alt"></i> Gérer les notes
+                                <i class="fas fa-pen-to-square"></i> Gérer les notes
                             </a>
 
                             @if($evaluation->isEditable())

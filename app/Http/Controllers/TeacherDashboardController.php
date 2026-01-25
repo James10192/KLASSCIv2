@@ -2,20 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use App\Models\ESBTPSeanceCours;
-use App\Models\ESBTPEmploiTemps;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPAttendance;
-use App\Models\ESBTPNote;
-use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPDailyCode;
+use App\Models\ESBTPEvaluation;
+use App\Models\ESBTPNote;
+use App\Models\ESBTPSeanceCours;
+use App\Models\ESBTPTeacher;
 use App\Models\ESBTPTeacherAttendance;
 use App\Models\ESBTPTeacherAvailability;
-use App\Models\ESBTPTeacher;
-use App\Models\ESBTPAnneeUniversitaire;
 use App\Services\NotificationService;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class TeacherDashboardController extends Controller
@@ -56,7 +55,7 @@ class TeacherDashboardController extends Controller
                 'heure_fin' => $seance->heure_fin,
                 'matiere' => $seance->matiere->name ?? null,
                 'classe' => $seance->classe->name ?? null,
-                'teacher_id' => $seance->teacher_id
+                'teacher_id' => $seance->teacher_id,
             ]);
         }
 
@@ -73,10 +72,10 @@ class TeacherDashboardController extends Controller
         $attendedSeances = ESBTPSeanceCours::where('esbtp_seance_cours.teacher_id', $teacherId)
             ->whereNotNull('esbtp_seance_cours.date_seance')
             ->where('esbtp_seance_cours.date_seance', '<=', Carbon::today())
-            ->join('esbtp_teacher_attendances', function($join) {
+            ->join('esbtp_teacher_attendances', function ($join) {
                 $join->on('esbtp_seance_cours.id', '=', 'esbtp_teacher_attendances.course_id')
-                     ->where('esbtp_teacher_attendances.type', '=', 'start')
-                     ->whereRaw('DATE(esbtp_teacher_attendances.date) = DATE(esbtp_seance_cours.date_seance)');
+                    ->where('esbtp_teacher_attendances.type', '=', 'start')
+                    ->whereRaw('DATE(esbtp_teacher_attendances.date) = DATE(esbtp_seance_cours.date_seance)');
             })
             ->distinct('esbtp_seance_cours.id')
             ->count('esbtp_seance_cours.id');
@@ -86,14 +85,14 @@ class TeacherDashboardController extends Controller
             'totalCourses' => $totalSeances,
             'attendedCourses' => $attendedSeances,
             'absentCourses' => $totalSeances - $attendedSeances,
-            'attendanceRate' => $attendanceRate
+            'attendanceRate' => $attendanceRate,
         ];
 
         // 3. Données d'émargement
         $dailyCode = ESBTPDailyCode::where('is_active', true)
             ->where('valid_until', '>', Carbon::now())
             ->first();
-        
+
         $todayAttendance = ESBTPTeacherAttendance::where('teacher_id', $teacherId)
             ->whereDate('validated_at', $today)
             ->latest()
@@ -116,27 +115,27 @@ class TeacherDashboardController extends Controller
 
         // 6. Notifications
         $notifications = [];
-        if ($dailyCode && !$todayAttendance) {
+        if ($dailyCode && ! $todayAttendance) {
             $notifications[] = [
                 'type' => 'warning',
                 'message' => 'Vous n\'avez pas encore fait votre émargement aujourd\'hui.',
                 'action' => route('esbtp.attendance.mark'),
-                'action_text' => 'Émarger maintenant'
+                'action_text' => 'Émarger maintenant',
             ];
         }
         if ($pendingRollCalls->count() > 0) {
             $notifications[] = [
                 'type' => 'info',
-                'message' => 'Vous avez ' . $pendingRollCalls->count() . ' appel(s) à faire.',
+                'message' => 'Vous avez '.$pendingRollCalls->count().' appel(s) à faire.',
                 'action' => '#pending-roll-calls',
-                'action_text' => 'Voir les appels'
+                'action_text' => 'Voir les appels',
             ];
         }
 
         // 7. Jours de la semaine (1=Lundi, 2=Mardi, etc.)
         $joursSemaine = [
             1 => 'Lundi', 2 => 'Mardi', 3 => 'Mercredi', 4 => 'Jeudi',
-            5 => 'Vendredi', 6 => 'Samedi', 0 => 'Dimanche', 7 => 'Dimanche'
+            5 => 'Vendredi', 6 => 'Samedi', 0 => 'Dimanche', 7 => 'Dimanche',
         ];
 
         return view('dashboard.teacher', compact(
@@ -159,13 +158,13 @@ class TeacherDashboardController extends Controller
     {
         $user = Auth::user();
         $callType = request()->get('type', 'start');
-        
+
         // Récupérer le teacher associé à l'utilisateur connecté
         $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
-        if (!$teacher) {
+        if (! $teacher) {
             abort(403, 'Vous n\'êtes pas enregistré comme enseignant.');
         }
-        
+
         $seance = ESBTPSeanceCours::with(['matiere', 'classe', 'classe.etudiants'])
             ->where('id', $seanceId)
             ->where('teacher_id', $teacher->id)
@@ -175,12 +174,12 @@ class TeacherDashboardController extends Controller
         $workflow = \App\Models\ESBTPSessionWorkflow::getOrCreateForSession($seanceId, $user->id);
 
         // Vérifier si cette étape peut être exécutée
-        if ($callType === 'start' && !$workflow->canExecuteStep('call_start')) {
+        if ($callType === 'start' && ! $workflow->canExecuteStep('call_start')) {
             return redirect()->route('teacher.select-call-type', $seanceId)
                 ->with('error', 'Vous devez d\'abord compléter l\'émargement avant de faire l\'appel de début.');
         }
 
-        if ($callType === 'end' && !$workflow->canExecuteStep('call_end')) {
+        if ($callType === 'end' && ! $workflow->canExecuteStep('call_end')) {
             return redirect()->route('teacher.select-call-type', $seanceId)
                 ->with('error', 'Vous devez d\'abord effectuer l\'appel de début avant de faire l\'appel de fin.');
         }
@@ -196,7 +195,7 @@ class TeacherDashboardController extends Controller
             $fenetreDebut = $heureFin->copy()->subMinutes(20);
             if ($now < $fenetreDebut) {
                 return redirect()->route('teacher.select-call-type', $seanceId)
-                    ->with('error', 'L\'appel de fin ne peut être fait que 20 minutes avant la fin du cours (' . $fenetreDebut->format('H:i') . ').');
+                    ->with('error', 'L\'appel de fin ne peut être fait que 20 minutes avant la fin du cours ('.$fenetreDebut->format('H:i').').');
             }
 
             // FENÊTRE 2 : heure_fin - 20min → heure_fin + 30min → ✅ OK pour clôturer normalement
@@ -214,10 +213,10 @@ class TeacherDashboardController extends Controller
         // ET qui sont inscrits dans CETTE classe spécifiquement (pas une autre classe)
         $etudiants = $seance->classe->etudiants()
             ->with('user')
-            ->whereHas('inscriptions', function($query) use ($anneeUniversitaire, $seance) {
+            ->whereHas('inscriptions', function ($query) use ($anneeUniversitaire, $seance) {
                 $query->where('annee_universitaire_id', $anneeUniversitaire->id)
-                      ->where('status', 'active')
-                      ->where('classe_id', $seance->classe_id); // ← FIX: Filter par classe_id
+                    ->where('status', 'active')
+                    ->where('classe_id', $seance->classe_id); // ← FIX: Filter par classe_id
             })
             ->get();
 
@@ -244,13 +243,13 @@ class TeacherDashboardController extends Controller
     {
         $user = Auth::user();
         $callType = $request->input('call_type', 'start');
-        
+
         // Récupérer le teacher associé à l'utilisateur connecté
         $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
-        if (!$teacher) {
+        if (! $teacher) {
             abort(403, 'Vous n\'êtes pas enregistré comme enseignant.');
         }
-        
+
         $seance = ESBTPSeanceCours::where('id', $seanceId)
             ->where('teacher_id', $teacher->id)
             ->firstOrFail();
@@ -261,18 +260,18 @@ class TeacherDashboardController extends Controller
         $request->validate([
             'attendances' => 'required|array',
             'attendances.*' => 'in:present,absent,late',
-            'call_type' => 'required|in:start,end'
+            'call_type' => 'required|in:start,end',
         ]);
 
         // **WORKFLOW** : Vérifier que cette étape peut être exécutée
         $workflow = \App\Models\ESBTPSessionWorkflow::getOrCreateForSession($seanceId, $user->id);
-        
-        if ($callType === 'start' && !$workflow->canExecuteStep('call_start')) {
+
+        if ($callType === 'start' && ! $workflow->canExecuteStep('call_start')) {
             return redirect()->route('teacher.select-call-type', $seanceId)
                 ->with('error', 'Vous ne pouvez pas effectuer l\'appel de début maintenant.');
         }
-        
-        if ($callType === 'end' && !$workflow->canExecuteStep('call_end')) {
+
+        if ($callType === 'end' && ! $workflow->canExecuteStep('call_end')) {
             return redirect()->route('teacher.select-call-type', $seanceId)
                 ->with('error', 'Vous ne pouvez pas effectuer l\'appel de fin maintenant.');
         }
@@ -300,7 +299,7 @@ class TeacherDashboardController extends Controller
                         'statut' => $status,
                         'call_type' => 'start',
                         'is_justified' => false,
-                        'created_by' => $user->id
+                        'created_by' => $user->id,
                     ]);
                 }
 
@@ -321,7 +320,7 @@ class TeacherDashboardController extends Controller
                     ->whereIn('call_type', ['end', 'merged'])
                     ->delete();
 
-                if (!$withinCloseWindow) {
+                if (! $withinCloseWindow) {
                     // FENÊTRE DÉPASSÉE (30min+ après heure_fin) : Copier l'appel début avec retards → présents
                     foreach ($startAttendances as $startAtt) {
                         $finalStatus = $startAtt->statut;
@@ -344,7 +343,7 @@ class TeacherDashboardController extends Controller
                             'statut' => $finalStatus,
                             'call_type' => 'merged',
                             'is_justified' => false,
-                            'created_by' => $user->id
+                            'created_by' => $user->id,
                         ]);
                     }
 
@@ -358,7 +357,7 @@ class TeacherDashboardController extends Controller
                     // DANS LA FENÊTRE : Fusion normale avec appel de fin
                     \Log::info('🔀 FUSION des appels début + fin', [
                         'seance_id' => $seanceId,
-                        'nb_etudiants' => count($request->attendances)
+                        'nb_etudiants' => count($request->attendances),
                     ]);
 
                     foreach ($request->attendances as $etudiantId => $endStatus) {
@@ -389,7 +388,7 @@ class TeacherDashboardController extends Controller
                             $finalStatus = 'absent';
                         }
 
-                        \Log::info('  📊 Étudiant #' . $etudiantId . ': ' . $startStatus . ' (début) + ' . $endStatus . ' (fin) → ' . $finalStatus . ' (FINAL)');
+                        \Log::info('  📊 Étudiant #'.$etudiantId.': '.$startStatus.' (début) + '.$endStatus.' (fin) → '.$finalStatus.' (FINAL)');
 
                         ESBTPAttendance::create([
                             'etudiant_id' => $etudiantId,
@@ -404,7 +403,7 @@ class TeacherDashboardController extends Controller
                             'statut' => $finalStatus,
                             'call_type' => 'merged',
                             'is_justified' => false,
-                            'created_by' => $user->id
+                            'created_by' => $user->id,
                         ]);
                     }
 
@@ -417,23 +416,23 @@ class TeacherDashboardController extends Controller
             // **NOTIFICATION** : Notifier le coordinateur et les étudiants absents
             try {
                 $notificationService = app(NotificationService::class);
-                
+
                 // 1. Notifier le coordinateur de l'appel terminé
                 $notificationService->notifyCoordinateurStudentRollCallCompleted($user, $seance, $request->attendances);
-                
+
                 // 2. Notifier les étudiants absents
                 $absentStudentIds = collect($request->attendances)
-                    ->filter(fn($status) => $status === 'absent')
+                    ->filter(fn ($status) => $status === 'absent')
                     ->keys()
                     ->toArray();
-                
-                if (!empty($absentStudentIds)) {
+
+                if (! empty($absentStudentIds)) {
                     $absentStudents = \App\Models\ESBTPEtudiant::whereIn('id', $absentStudentIds)->get();
                     $notificationService->notifyStudentsAbsence($absentStudents, $seance, $user);
                 }
-                
+
             } catch (\Exception $e) {
-                \Log::error('Erreur lors de l\'envoi des notifications d\'appel: ' . $e->getMessage());
+                \Log::error('Erreur lors de l\'envoi des notifications d\'appel: '.$e->getMessage());
                 // Ne pas interrompre le processus principal
             }
 
@@ -447,7 +446,7 @@ class TeacherDashboardController extends Controller
                 // Après appel FIN → Vérifier si workflow incomplet ou normal
                 $withinCloseWindow = $request->input('within_close_window', true);
 
-                if (!$withinCloseWindow) {
+                if (! $withinCloseWindow) {
                     // Fenêtre dépassée → Dashboard avec warning
                     return redirect()->route('teacher.dashboard')
                         ->with('warning', 'Appel de fin copié depuis l\'appel de début (délai dépassé). Workflow incomplet - séance marquée présent mais non clôturée.');
@@ -457,11 +456,12 @@ class TeacherDashboardController extends Controller
                         ->with('success', 'Appel de fin enregistré avec succès. Veuillez maintenant rédiger le rapport de cours.');
                 }
             }
-                
+
         } catch (\Exception $e) {
             DB::rollback();
+
             return redirect()->back()
-                ->with('error', 'Erreur lors de l\'enregistrement de l\'appel : ' . $e->getMessage());
+                ->with('error', 'Erreur lors de l\'enregistrement de l\'appel : '.$e->getMessage());
         }
     }
 
@@ -472,15 +472,15 @@ class TeacherDashboardController extends Controller
     {
         $user = Auth::user();
         $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
-        
+
         $seance = ESBTPSeanceCours::where('id', $seanceId)
             ->where('teacher_id', $teacher->id ?? null)
             ->firstOrFail();
 
         // Vérifier que l'appel a été fait
         $hasAttendances = ESBTPAttendance::where('seance_cours_id', $seanceId)->exists();
-        
-        if (!$hasAttendances) {
+
+        if (! $hasAttendances) {
             return redirect()->back()
                 ->with('error', 'Vous devez d\'abord faire l\'appel avant de clôturer le cours.');
         }
@@ -489,7 +489,7 @@ class TeacherDashboardController extends Controller
         $seance->update([
             'status' => 'completed',
             'completed_at' => Carbon::now(),
-            'completed_by' => $user->id
+            'completed_by' => $user->id,
         ]);
 
         // **NOTIFICATION** : Notifier le coordinateur de la clôture du cours
@@ -497,7 +497,7 @@ class TeacherDashboardController extends Controller
             $notificationService = app(NotificationService::class);
             $notificationService->notifyCoordinateurCourseClosed($user, $seance, request('notes'));
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de l\'envoi de la notification de clôture: ' . $e->getMessage());
+            \Log::error('Erreur lors de l\'envoi de la notification de clôture: '.$e->getMessage());
             // Ne pas interrompre le processus principal
         }
 
@@ -538,7 +538,7 @@ class TeacherDashboardController extends Controller
             'teacher_id' => $teacherId,
             'mode' => $viewMode,
             'start_date' => $startDate->format('Y-m-d'),
-            'end_date' => $endDate->format('Y-m-d')
+            'end_date' => $endDate->format('Y-m-d'),
         ]);
 
         // Récupérer TOUTES les séances avec date_seance dans la période (HISTORIQUE COMPLET)
@@ -553,29 +553,29 @@ class TeacherDashboardController extends Controller
                 'emploiTemps.classe',
                 'matiere',
                 'classe',
-                'teacherAttendances' => function($query) use ($startDate, $endDate) {
+                'teacherAttendances' => function ($query) use ($startDate, $endDate) {
                     // Charger les attendances de la période (start + end)
                     $query->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
-                          ->orderBy('type')
-                          ->orderBy('created_at', 'desc');
-                }
+                        ->orderBy('type')
+                        ->orderBy('created_at', 'desc');
+                },
             ])
             ->get();
 
         \Log::info('📊 Séances récupérées avec historique', [
             'count' => $seances->count(),
-            'avec_attendances' => $seances->filter(fn($s) => $s->teacherAttendances->count() > 0)->count()
+            'avec_attendances' => $seances->filter(fn ($s) => $s->teacherAttendances->count() > 0)->count(),
         ]);
 
         // Calculer le statut pour chaque séance
-        $seances->each(function($seance) {
+        $seances->each(function ($seance) {
             $seance->statusInfo = $this->calculateSeanceStatusForTimetable($seance);
         });
 
         // Organiser les séances par jour de la semaine (1=Lundi, 2=Mardi, ...)
         $emploiTempsSemaine = [];
         foreach ([1, 2, 3, 4, 5, 6] as $jour) {
-            $emploiTempsSemaine[$jour] = $seances->filter(function($s) use ($jour) {
+            $emploiTempsSemaine[$jour] = $seances->filter(function ($s) use ($jour) {
                 return Carbon::parse($s->date_seance)->dayOfWeekIso == $jour;
             })->sortBy('heure_debut');
         }
@@ -590,14 +590,14 @@ class TeacherDashboardController extends Controller
             3 => 'Mercredi',
             4 => 'Jeudi',
             5 => 'Vendredi',
-            6 => 'Samedi'
+            6 => 'Samedi',
         ];
 
         // Créneaux horaires d'1h de 08:00 à 18:00
         $creneaux = [];
         for ($h = 8; $h < 18; $h++) {
-            $start = str_pad($h, 2, '0', STR_PAD_LEFT) . ':00';
-            $end = str_pad($h + 1, 2, '0', STR_PAD_LEFT) . ':00';
+            $start = str_pad($h, 2, '0', STR_PAD_LEFT).':00';
+            $end = str_pad($h + 1, 2, '0', STR_PAD_LEFT).':00';
             $creneaux[] = "$start-$end";
         }
 
@@ -631,23 +631,28 @@ class TeacherDashboardController extends Controller
     {
         $user = Auth::user();
         $userId = $user->id;
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        // Récupérer les évaluations créées par cet enseignant
-        $evaluations = ESBTPEvaluation::where('created_by', $userId)
+        // Récupérer les évaluations assignées à cet enseignant
+        $evaluations = ESBTPEvaluation::where(function ($query) use ($userId) {
+            $query->where('enseignant_id', $userId)
+                ->orWhere('created_by', $userId);
+        })
             ->with(['matiere', 'classe'])
             ->orderBy('date_evaluation', 'desc')
             ->paginate(10);
 
         // Récupérer les dernières notes saisies par cet enseignant
-        $recentGrades = ESBTPNote::whereHas('evaluation', function($query) use ($userId) {
-                $query->where('created_by', $userId);
-            })
+        $recentGrades = ESBTPNote::whereHas('evaluation', function ($query) use ($userId) {
+            $query->where('enseignant_id', $userId)
+                ->orWhere('created_by', $userId);
+        })
             ->with(['etudiant', 'evaluation.matiere'])
             ->orderBy('created_at', 'desc')
             ->take(10)
             ->get();
 
-        return view('teacher.grades', compact('evaluations', 'recentGrades', 'user'));
+        return view('teacher.grades', compact('evaluations', 'recentGrades', 'user', 'anneeEnCours'));
     }
 
     /**
@@ -701,7 +706,8 @@ class TeacherDashboardController extends Controller
                 ->take(5)
                 ->get();
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de la récupération des séances à venir: ' . $e->getMessage());
+            \Log::error('Erreur lors de la récupération des séances à venir: '.$e->getMessage());
+
             return collect();
         }
     }
@@ -725,15 +731,16 @@ class TeacherDashboardController extends Controller
                 'totalCourses' => $totalSeances,
                 'attendedCourses' => $presentSeances,
                 'absentCourses' => $totalSeances - $presentSeances,
-                'attendanceRate' => $attendanceRate
+                'attendanceRate' => $attendanceRate,
             ];
         } catch (\Exception $e) {
-            \Log::error('Erreur lors du calcul des statistiques de présence: ' . $e->getMessage());
+            \Log::error('Erreur lors du calcul des statistiques de présence: '.$e->getMessage());
+
             return [
                 'totalCourses' => 0,
                 'attendedCourses' => 0,
                 'absentCourses' => 0,
-                'attendanceRate' => 0
+                'attendanceRate' => 0,
             ];
         }
     }
@@ -745,18 +752,19 @@ class TeacherDashboardController extends Controller
     {
         try {
             return \App\Models\Notification::where('user_id', Auth::id())
-                ->orWhere(function($query) {
+                ->orWhere(function ($query) {
                     $query->where('recipient_type', 'teacher')
                         ->whereNull('recipient_id');
                 })
-                ->orWhere(function($query) {
+                ->orWhere(function ($query) {
                     $query->where('recipient_type', 'all');
                 })
                 ->orderBy('created_at', 'desc')
                 ->take(5)
                 ->get();
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de la récupération des notifications: ' . $e->getMessage());
+            \Log::error('Erreur lors de la récupération des notifications: '.$e->getMessage());
+
             return collect();
         }
     }
@@ -768,8 +776,8 @@ class TeacherDashboardController extends Controller
     {
         $user = Auth::user();
         $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
-        
-        if (!$teacher) {
+
+        if (! $teacher) {
             return redirect()->route('teacher.dashboard')
                 ->with('error', 'Profil enseignant non trouvé.');
         }
@@ -788,11 +796,11 @@ class TeacherDashboardController extends Controller
         try {
             $user = Auth::user();
             $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
-            
-            if (!$teacher) {
+
+            if (! $teacher) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Profil enseignant non trouvé.'
+                    'message' => 'Profil enseignant non trouvé.',
                 ], 404);
             }
 
@@ -802,14 +810,14 @@ class TeacherDashboardController extends Controller
                 'changes.*.day' => 'required|integer|min:0|max:6',
                 'changes.*.startTime' => 'required|string|regex:/^[0-2][0-9]:[0-5][0-9]$/',
                 'changes.*.endTime' => 'required|string|regex:/^[0-2][0-9]:[0-5][0-9]$/',
-                'changes.*.status' => 'required|string|in:available,preferred,unavailable'
+                'changes.*.status' => 'required|string|in:available,preferred,unavailable',
             ]);
 
             $changes = $request->input('changes');
-            
+
             \Log::info('🔧 DEBUG updateAvailability METHOD - TEACHER SELF-SERVICE');
-            \Log::info('Teacher ID: ' . $teacher->id . ' (User: ' . $user->name . ')');
-            \Log::info('Request changes: ' . json_encode($changes));
+            \Log::info('Teacher ID: '.$teacher->id.' (User: '.$user->name.')');
+            \Log::info('Request changes: '.json_encode($changes));
 
             DB::beginTransaction();
 
@@ -824,13 +832,13 @@ class TeacherDashboardController extends Controller
                 // Convertir les heures en entiers pour la logique de chevauchement
                 $clickedStart = (int) substr($startTime, 0, 2);
                 $clickedEnd = (int) substr($endTime, 0, 2);
-                
+
                 // Supprimer les créneaux existants qui se chevauchent
                 $existingAvailabilities = ESBTPTeacherAvailability::where([
                     'teacher_id' => $teacher->id,
-                    'day_of_week' => $day
+                    'day_of_week' => $day,
                 ])->get();
-                
+
                 foreach ($existingAvailabilities as $existing) {
                     // Parser correctement les heures depuis les timestamps
                     if ($existing->start_time instanceof \Carbon\Carbon) {
@@ -841,11 +849,11 @@ class TeacherDashboardController extends Controller
                         $existingStart = (int) substr($existing->start_time, 11, 2);
                         $existingEnd = (int) substr($existing->end_time, 11, 2);
                     }
-                    
+
                     // Vérifier s'il y a chevauchement exact ou partiel
                     $hasOverlap = ($clickedStart < $existingEnd) && ($clickedEnd > $existingStart);
                     $isExactMatch = ($clickedStart == $existingStart) && ($clickedEnd == $existingEnd);
-                    
+
                     if ($hasOverlap || $isExactMatch) {
                         \Log::info("Deleting existing availability ID={$existing->id}: {$existing->start_time}-{$existing->end_time} (overlaps/matches with {$startTime}-{$endTime})");
                         $existing->delete();
@@ -861,12 +869,12 @@ class TeacherDashboardController extends Controller
                         'end_time' => Carbon::today()->setHour($clickedEnd)->setMinute(0),
                         'availability_type' => $status,
                         'created_by' => $user->id,
-                        'updated_by' => $user->id
+                        'updated_by' => $user->id,
                     ]);
-                    
+
                     \Log::info("Created new availability: teacher_id={$teacher->id}, day_of_week=$day, start_time={$startTime}, end_time={$endTime}, type=$status");
                 } else {
-                    \Log::info("Skipping unavailable status (no DB entry needed)");
+                    \Log::info('Skipping unavailable status (no DB entry needed)');
                 }
             }
 
@@ -874,21 +882,23 @@ class TeacherDashboardController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Vos disponibilités ont été mises à jour avec succès.'
+                'message' => 'Vos disponibilités ont été mises à jour avec succès.',
             ]);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Données invalides: ' . implode(', ', $e->validator->errors()->all())
+                'message' => 'Données invalides: '.implode(', ', $e->validator->errors()->all()),
             ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Erreur lors de la mise à jour des disponibilités: ' . $e->getMessage());
+            \Log::error('Erreur lors de la mise à jour des disponibilités: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la mise à jour: ' . $e->getMessage()
+                'message' => 'Erreur lors de la mise à jour: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -946,11 +956,11 @@ class TeacherDashboardController extends Controller
         $now = Carbon::now();
 
         // Récupérer la date de la séance
-        $dateSeance = !empty($seance->date_seance)
+        $dateSeance = ! empty($seance->date_seance)
             ? Carbon::parse($seance->date_seance)
             : null;
 
-        if (!$dateSeance) {
+        if (! $dateSeance) {
             return [
                 'color' => 'secondary',
                 'bgClass' => 'bg-light',
@@ -960,7 +970,7 @@ class TeacherDashboardController extends Controller
                 'icon' => 'fa-question-circle',
                 'description' => 'Date non définie',
                 'showDetails' => false,
-                'details' => []
+                'details' => [],
             ];
         }
 
@@ -976,21 +986,23 @@ class TeacherDashboardController extends Controller
             $heureFinStr = Carbon::parse($heureFinStr)->format('H:i:s');
         }
 
-        $heureDebut = Carbon::parse($dateSeance->format('Y-m-d') . ' ' . $heureDebutStr);
-        $heureFin = Carbon::parse($dateSeance->format('Y-m-d') . ' ' . $heureFinStr);
+        $heureDebut = Carbon::parse($dateSeance->format('Y-m-d').' '.$heureDebutStr);
+        $heureFin = Carbon::parse($dateSeance->format('Y-m-d').' '.$heureFinStr);
 
         // Récupérer les émargements pour cette date spécifique
         // Filtrer par date (en comparant seulement la partie date, pas l'heure)
         $emargementDebut = $seance->teacherAttendances
-            ->filter(function($att) use ($dateSeance) {
+            ->filter(function ($att) use ($dateSeance) {
                 $attDate = Carbon::parse($att->date)->format('Y-m-d');
+
                 return $att->type === 'start' && $attDate === $dateSeance->format('Y-m-d');
             })
             ->first();
 
         $emargementFin = $seance->teacherAttendances
-            ->filter(function($att) use ($dateSeance) {
+            ->filter(function ($att) use ($dateSeance) {
                 $attDate = Carbon::parse($att->date)->format('Y-m-d');
+
                 return $att->type === 'end' && $attDate === $dateSeance->format('Y-m-d');
             })
             ->first();
@@ -1014,13 +1026,13 @@ class TeacherDashboardController extends Controller
                     'Début' => Carbon::parse($emargementDebut->validated_at)->format('H:i'),
                     'Fin' => Carbon::parse($emargementFin->validated_at)->format('H:i'),
                     'Statut début' => ucfirst($emargementDebut->status ?? 'present'),
-                    'Statut fin' => ucfirst($emargementFin->status ?? 'present')
-                ]
+                    'Statut fin' => ucfirst($emargementFin->status ?? 'present'),
+                ],
             ];
         }
 
         // 🟠 ORANGE : Partiel (seulement début)
-        if ($emargementDebut && !$emargementFin) {
+        if ($emargementDebut && ! $emargementFin) {
             // Vérifier si fenêtre de fin expirée
             if ($now->gt($fenetreClotureFin)) {
                 return [
@@ -1035,8 +1047,8 @@ class TeacherDashboardController extends Controller
                     'details' => [
                         'Début' => Carbon::parse($emargementDebut->validated_at)->format('H:i'),
                         'Fin' => 'Non émargé (expiré)',
-                        'Statut' => ucfirst($emargementDebut->status ?? 'present')
-                    ]
+                        'Statut' => ucfirst($emargementDebut->status ?? 'present'),
+                    ],
                 ];
             }
 
@@ -1052,13 +1064,13 @@ class TeacherDashboardController extends Controller
                 'details' => [
                     'Début' => Carbon::parse($emargementDebut->validated_at)->format('H:i'),
                     'Fin' => 'En attente',
-                    'Fenêtre clôture' => $heureFin->copy()->subMinutes(20)->format('H:i') . ' - ' . $fenetreClotureFin->format('H:i')
-                ]
+                    'Fenêtre clôture' => $heureFin->copy()->subMinutes(20)->format('H:i').' - '.$fenetreClotureFin->format('H:i'),
+                ],
             ];
         }
 
         // 🔴 ROUGE : Absent (délai dépassé)
-        if (!$emargementDebut && $now->gt($limite45min) && $dateSeance->isPast()) {
+        if (! $emargementDebut && $now->gt($limite45min) && $dateSeance->isPast()) {
             return [
                 'color' => 'danger',
                 'bgClass' => 'bg-danger-subtle',
@@ -1070,8 +1082,8 @@ class TeacherDashboardController extends Controller
                 'showDetails' => true,
                 'details' => [
                     'Statut' => 'Absent automatique',
-                    'Délai expiré' => $limite45min->format('H:i')
-                ]
+                    'Délai expiré' => $limite45min->format('H:i'),
+                ],
             ];
         }
 
@@ -1086,7 +1098,7 @@ class TeacherDashboardController extends Controller
                 'icon' => 'fa-calendar',
                 'description' => 'Programmé',
                 'showDetails' => false,
-                'details' => []
+                'details' => [],
             ];
         }
 
@@ -1100,7 +1112,7 @@ class TeacherDashboardController extends Controller
             'icon' => 'fa-hourglass-half',
             'description' => 'Émargement disponible maintenant',
             'showDetails' => false,
-            'details' => []
+            'details' => [],
         ];
     }
 
@@ -1118,14 +1130,14 @@ class TeacherDashboardController extends Controller
                 'partiel' => 0,
                 'absent' => 0,
                 'a_venir' => 0,
-                'taux_presence' => 0
+                'taux_presence' => 0,
             ];
         }
 
-        $complet = $seances->filter(fn($s) => $s->statusInfo['badge'] === 'Complet')->count();
-        $partiel = $seances->filter(fn($s) => in_array($s->statusInfo['badge'], ['En cours', 'Fin manquée']))->count();
-        $absent = $seances->filter(fn($s) => $s->statusInfo['badge'] === 'Absent')->count();
-        $aVenir = $seances->filter(fn($s) => $s->statusInfo['badge'] === 'À venir')->count();
+        $complet = $seances->filter(fn ($s) => $s->statusInfo['badge'] === 'Complet')->count();
+        $partiel = $seances->filter(fn ($s) => in_array($s->statusInfo['badge'], ['En cours', 'Fin manquée']))->count();
+        $absent = $seances->filter(fn ($s) => $s->statusInfo['badge'] === 'Absent')->count();
+        $aVenir = $seances->filter(fn ($s) => $s->statusInfo['badge'] === 'À venir')->count();
 
         $tauxPresence = $total > 0 ? round(($complet / $total) * 100, 1) : 0;
 
@@ -1135,7 +1147,7 @@ class TeacherDashboardController extends Controller
             'partiel' => $partiel,
             'absent' => $absent,
             'a_venir' => $aVenir,
-            'taux_presence' => $tauxPresence
+            'taux_presence' => $tauxPresence,
         ];
     }
 }

@@ -12,24 +12,23 @@
 define('PROJECT_ROOT', dirname(__DIR__, 2));
 
 // Vérifier que PROJECT_ROOT est correct
-if (!file_exists(PROJECT_ROOT . '/artisan')) {
-    die("❌ ERREUR: PROJECT_ROOT incorrecte. Artisan non trouvé.\n");
+if (! file_exists(PROJECT_ROOT.'/artisan')) {
+    exit("❌ ERREUR: PROJECT_ROOT incorrecte. Artisan non trouvé.\n");
 }
 
 // Autoloader de Composer
-require PROJECT_ROOT . '/vendor/autoload.php';
+require PROJECT_ROOT.'/vendor/autoload.php';
 
 // Charger l'application Laravel
-$app = require_once PROJECT_ROOT . '/bootstrap/app.php';
+$app = require_once PROJECT_ROOT.'/bootstrap/app.php';
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 $response = $kernel->handle(
     $request = Illuminate\Http\Request::capture()
 );
 
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 echo "=== Script de réparation des permissions ===\n";
 
@@ -44,14 +43,14 @@ try {
         // Permissions générales
         'view_dashboard',
         'access_admin',
-        
+
         // Étudiants
         'view_students',
         'create_students',
         'edit_students',
         'delete_students',
         'view_own_students',
-        
+
         // Inscriptions
         'view_inscriptions',
         'create_inscriptions',
@@ -76,32 +75,32 @@ try {
         'paiements.edit',
         'paiements.delete',
         'paiements.validate',
-        
+
         // Frais avec syntaxe point
         'frais.view',
         'frais.create',
         'frais.edit',
         'frais.delete',
         'frais.configure',
-        
+
         // Sécurité et audit
         'security.audit.view',
         'security.audit.export',
         'comptabilite.audit.view',
         'security.users.monitor',
-        
+
         // Codes d'émargement
         'generate-attendance-codes',
-        
+
         // Planning et emplois du temps
         'manage-planning',
         'view-all-timetables',
         'view_timetables',
-        'create_timetable', 
+        'create_timetable',
         'edit_timetables',
         'delete_timetables',
         'view_own_timetable',
-        
+
         // Cycles avec espaces
         'view cycles',
         'create cycles',
@@ -109,7 +108,7 @@ try {
         'delete cycles',
         'restore cycles',
         'force delete cycles',
-        
+
         // Classes et filières
         'view_classes',
         'create_classes',
@@ -118,24 +117,25 @@ try {
         'view_filieres',
         'create_filieres',
         'edit_filieres',
-        
+
         // Niveaux d'études
         'view_niveaux_etudes',
-        'create_niveaux_etudes', 
+        'create_niveaux_etudes',
         'edit_niveaux_etudes',
         'delete_niveaux_etudes',
-        
+
         // Matières
         'view_matieres',
         'create_matieres',
         'edit_matieres',
         'delete_matieres',
-        
+
         // Notes et évaluations
         'view_notes',
         'create_notes',
         'edit_notes',
         'view_own_notes',
+        'manage_own_notes',
 
         // Grades (alias for notes)
         'view_grades',
@@ -147,13 +147,13 @@ try {
         'view_own_exams',
         'create_evaluations',
         'edit_evaluations',
-        
+
         // Bulletins
         'view_bulletins',
         'generate_bulletins',
         'edit_bulletins',
         'view_own_bulletin',
-        
+
         // Présences
         'view_attendances',
         'create_attendance',
@@ -163,14 +163,14 @@ try {
         'view_own_attendances',
         'sign_attendance',
         'view_own_attendance',
-        
+
         // Paiements et comptabilité
         'view_payments',
         'create_payments',
         'edit_payments',
         'view_comptabilite',
         'manage_comptabilite',
-        
+
         // Personnel et enseignants
         'view_teachers',
         'create_teachers',
@@ -184,24 +184,24 @@ try {
         'create_coordinateurs',
         'edit_coordinateurs',
         'delete_coordinateurs',
-        
+
         // Emplois du temps
         'view_schedules',
         'create_schedules',
         'edit_schedules',
         'view_own_schedule',
-        
+
         // Messages et communication
         'send_messages',
         'receive_messages',
         'view_annonces',
         'create_annonces',
         'edit_annonces',
-        
+
         // Rapports
         'view_reports',
         'generate_reports',
-        
+
         // Paramètres système
         'view_settings',
         'edit_settings',
@@ -291,7 +291,7 @@ try {
         'view_resultats',
     ];
     $secretaireRole->syncPermissions($secretairePermissions);
-    echo "✓ Secrétaire: " . count($secretairePermissions) . " permissions accordées\n";
+    echo '✓ Secrétaire: '.count($secretairePermissions)." permissions accordées\n";
 
     // Coordinateur - Permissions de coordination
     $coordinateurRole = Role::findByName('coordinateur');
@@ -323,14 +323,14 @@ try {
         'view_resultats', 'edit_resultats',
     ];
     $coordinateurRole->syncPermissions($coordinateurPermissions);
-    echo "✓ Coordinateur: " . count($coordinateurPermissions) . " permissions accordées\n";
+    echo '✓ Coordinateur: '.count($coordinateurPermissions)." permissions accordées\n";
 
     // Enseignant - Permissions d'enseignement
     $enseignantRole = Role::findByName('enseignant');
     $enseignantPermissions = [
         'view_dashboard',
         'view_own_students',
-        'view_notes', 'create_notes', 'edit_notes', 'view_own_notes',
+        'view_notes', 'create_notes', 'edit_notes', 'view_own_notes', 'manage_own_notes',
         'view_evaluations', 'create_evaluations', 'edit_evaluations',
         'view_bulletins',
         'view_attendances', 'create_attendance', 'create_attendances', 'edit_attendances', 'view_own_attendances', 'view_own_attendance', 'sign_attendance',
@@ -343,8 +343,8 @@ try {
     // Teacher (alias anglais de enseignant) - Mêmes permissions qu'enseignant
     $teacherRole = Role::findByName('teacher');
     $teacherRole->syncPermissions($enseignantPermissions);
-    echo "✓ Teacher: " . count($enseignantPermissions) . " permissions accordées (alias de enseignant)\n";
-    echo "✓ Enseignant: " . count($enseignantPermissions) . " permissions accordées\n";
+    echo '✓ Teacher: '.count($enseignantPermissions)." permissions accordées (alias de enseignant)\n";
+    echo '✓ Enseignant: '.count($enseignantPermissions)." permissions accordées\n";
 
     // Étudiant - Permissions de consultation
     $etudiantRole = Role::findByName('etudiant');
@@ -362,7 +362,7 @@ try {
         'view_annonces',
     ];
     $etudiantRole->syncPermissions($etudiantPermissions);
-    echo "✓ Étudiant: " . count($etudiantPermissions) . " permissions accordées\n";
+    echo '✓ Étudiant: '.count($etudiantPermissions)." permissions accordées\n";
 
     // Parent - Permissions parentales
     $parentRole = Role::findByName('parent');
@@ -377,7 +377,7 @@ try {
         'view_annonces',
     ];
     $parentRole->syncPermissions($parentPermissions);
-    echo "✓ Parent: " . count($parentPermissions) . " permissions accordées\n";
+    echo '✓ Parent: '.count($parentPermissions)." permissions accordées\n";
 
     // Service Technique - Toutes les permissions + permissions spéciales paywall
     $serviceTechniqueRole = Role::findByName('serviceTechnique');
@@ -385,12 +385,12 @@ try {
         // Toutes les permissions existantes + permissions spéciales
     ]);
     $serviceTechniqueRole->syncPermissions($serviceTechniquePermissions);
-    echo "✓ Service Technique: " . count($serviceTechniquePermissions) . " permissions accordées (TOUTES + spéciales)\n";
+    echo '✓ Service Technique: '.count($serviceTechniquePermissions)." permissions accordées (TOUTES + spéciales)\n";
 
     // Vérifier les utilisateurs sans rôle et leur attribuer un rôle par défaut
     echo "\nVérification des utilisateurs sans rôle...\n";
     $usersWithoutRole = User::doesntHave('roles')->get();
-    
+
     foreach ($usersWithoutRole as $user) {
         // Attribuer un rôle basé sur l'email ou d'autres critères
         if (str_contains($user->email, 'admin') || str_contains($user->email, 'superadmin')) {
@@ -413,29 +413,29 @@ try {
     app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
     echo "\n=== Récapitulatif ===\n";
-    echo "✅ " . count($permissions) . " permissions créées/vérifiées\n";
-    echo "✅ " . count($roles) . " rôles créés/vérifiés\n";
+    echo '✅ '.count($permissions)." permissions créées/vérifiées\n";
+    echo '✅ '.count($roles)." rôles créés/vérifiés\n";
     echo "✅ Permissions attribuées à tous les rôles\n";
-    echo "✅ " . $usersWithoutRole->count() . " utilisateurs sans rôle traités\n";
+    echo '✅ '.$usersWithoutRole->count()." utilisateurs sans rôle traités\n";
     echo "✅ Cache des permissions réinitialisé\n";
 
     echo "\n=== Test des permissions ===\n";
-    
+
     // Tester quelques permissions importantes
     $testUsers = User::with('roles')->limit(3)->get();
     foreach ($testUsers as $user) {
         $roles = $user->roles->pluck('name')->join(', ');
         echo "👤 {$user->name} ({$user->email})\n";
         echo "   Rôles: $roles\n";
-        echo "   Peut voir dashboard: " . ($user->can('view_dashboard') ? '✅' : '❌') . "\n";
-        echo "   Peut voir annonces: " . ($user->can('view_annonces') ? '✅' : '❌') . "\n";
+        echo '   Peut voir dashboard: '.($user->can('view_dashboard') ? '✅' : '❌')."\n";
+        echo '   Peut voir annonces: '.($user->can('view_annonces') ? '✅' : '❌')."\n";
         echo "\n";
     }
 
 } catch (Exception $e) {
-    echo "❌ ERREUR: " . $e->getMessage() . "\n";
-    echo "Stack trace: " . $e->getTraceAsString() . "\n";
-    
+    echo '❌ ERREUR: '.$e->getMessage()."\n";
+    echo 'Stack trace: '.$e->getTraceAsString()."\n";
+
     echo "\n=== Solutions alternatives ===\n";
     echo "1. Vérifiez que la base de données est accessible\n";
     echo "2. Assurez-vous que les tables Spatie Permission existent\n";

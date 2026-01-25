@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\User;
-use App\Models\Notification; // Notre modèle personnalisé
 use App\Models\ESBTPAnneeUniversitaire;
-use App\Models\ESBTPInscription;
-use App\Services\TimetableShortcutService;
+use App\Models\ESBTPInscription; // Notre modèle personnalisé
+use App\Models\Notification;
+use App\Models\User;
+use App\Services\EvaluationGradingShortcutService;
 use App\Services\EvaluationPublishShortcutService;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Auth;
+use App\Services\TimetableShortcutService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class ESBTPNotificationController extends Controller
 {
@@ -31,6 +31,7 @@ class ESBTPNotificationController extends Controller
         $user = Auth::user();
         $timetableShortcut = $this->getTimetableShortcutForUser($user);
         $evaluationShortcut = $this->getEvaluationShortcutForUser($user);
+        $evaluationGradingShortcut = $this->getEvaluationGradingShortcutForUser($user);
 
         // Si la requête est AJAX (pour le dropdown), retourner une vue partielle
         if (request()->ajax()) {
@@ -38,7 +39,8 @@ class ESBTPNotificationController extends Controller
                 ->latest()
                 ->take(5)
                 ->get();
-            return view('notifications.partials.dropdown-items', compact('notifications', 'timetableShortcut', 'evaluationShortcut'));
+
+            return view('notifications.partials.dropdown-items', compact('notifications', 'timetableShortcut', 'evaluationShortcut', 'evaluationGradingShortcut'));
         }
 
         // Sinon, retourner la vue complète avec pagination
@@ -52,17 +54,17 @@ class ESBTPNotificationController extends Controller
             })
         );
 
-        return view('notifications.index', compact('notifications', 'timetableShortcut', 'evaluationShortcut'));
+        return view('notifications.index', compact('notifications', 'timetableShortcut', 'evaluationShortcut', 'evaluationGradingShortcut'));
     }
 
     private function getTimetableShortcutForUser(User $user): array
     {
-        if (!$this->userCanSeeTimetableShortcut($user)) {
+        if (! $this->userCanSeeTimetableShortcut($user)) {
             return ['show' => false];
         }
 
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        if (!$anneeEnCours) {
+        if (! $anneeEnCours) {
             return ['show' => false];
         }
 
@@ -71,34 +73,59 @@ class ESBTPNotificationController extends Controller
 
     private function getEvaluationShortcutForUser(User $user): array
     {
-        if (!$this->userCanSeeEvaluationShortcut($user)) {
+        if (! $this->userCanSeeEvaluationShortcut($user)) {
             return ['show' => false];
         }
 
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        if (!$anneeEnCours) {
+        if (! $anneeEnCours) {
             return ['show' => false];
         }
 
         return app(EvaluationPublishShortcutService::class)->getShortcutSummary($anneeEnCours);
     }
 
+    private function getEvaluationGradingShortcutForUser(User $user): array
+    {
+        if (! $this->userCanSeeEvaluationGradingShortcut($user)) {
+            return ['show' => false];
+        }
+
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (! $anneeEnCours) {
+            return ['show' => false];
+        }
+
+        return app(EvaluationGradingShortcutService::class)->getShortcutSummary($anneeEnCours, $user);
+    }
+
     private function userCanSeeTimetableShortcut(User $user): bool
     {
-        return $user->hasRole('superAdmin')
-            || $user->hasRole('secretaire')
-            || $user->hasRole('coordinateur')
-            || $user->can('view_timetables')
-            || $user->can('view-all-timetables');
+        return $user->can('view_timetables') || $user->can('view-all-timetables');
     }
 
     private function userCanSeeEvaluationShortcut(User $user): bool
     {
-        return $user->hasRole('superAdmin')
-            || $user->hasRole('secretaire')
-            || $user->hasRole('coordinateur')
-            || $user->hasRole('enseignant')
-            || $user->hasRole('teacher');
+        return $this->userCanAccessEvaluationsPage($user);
+    }
+
+    private function userCanSeeEvaluationGradingShortcut(User $user): bool
+    {
+        return $this->userCanAccessEvaluationsPage($user)
+            || $this->userCanAccessNotesPage($user);
+    }
+
+    private function userCanAccessEvaluationsPage(User $user): bool
+    {
+        return $user->can('view_exams') || $user->can('view_evaluations');
+    }
+
+    private function userCanAccessNotesPage(User $user): bool
+    {
+        return $user->can('view_grades')
+            || $user->can('create_grades')
+            || $user->can('edit_grades')
+            || $user->can('manage_own_notes');
     }
 
     private function decorateNotification(Notification $notification): Notification
@@ -113,7 +140,7 @@ class ESBTPNotificationController extends Controller
                 ->find($inscriptionId);
 
             if ($inscription) {
-                $studentName = trim(($inscription->etudiant->nom ?? '') . ' ' . ($inscription->etudiant->prenoms ?? ''));
+                $studentName = trim(($inscription->etudiant->nom ?? '').' '.($inscription->etudiant->prenoms ?? ''));
                 $filiereName = $inscription->classe?->filiere?->name;
                 $primary = "L'étudiant {$studentName} s'est inscrit";
                 if ($filiereName) {
@@ -125,8 +152,8 @@ class ESBTPNotificationController extends Controller
                 if ($inscription->classe?->name) {
                     $labels[] = "Classe: {$inscription->classe->name}";
                 }
-                $labels[] = 'Statut: ' . ($inscription->status ?? 'Non défini');
-                $labels[] = 'Étape: ' . ($inscription->workflow_step_label ?? $inscription->workflow_step ?? 'Non définie');
+                $labels[] = 'Statut: '.($inscription->status ?? 'Non défini');
+                $labels[] = 'Étape: '.($inscription->workflow_step_label ?? $inscription->workflow_step ?? 'Non définie');
 
                 $paymentStatus = 'Non renseigné';
                 $latestPayment = $inscription->paiements?->sortByDesc('created_at')->first();
@@ -164,7 +191,7 @@ class ESBTPNotificationController extends Controller
             return response()->json([
                 'success' => true,
                 'hide' => true,
-                'id' => $id
+                'id' => $id,
             ]);
         }
 
@@ -207,7 +234,7 @@ class ESBTPNotificationController extends Controller
             ->where('id', $id)
             ->first();
 
-        if (!$notification) {
+        if (! $notification) {
             return response()->json(['success' => false, 'message' => 'Notification non trouvée'], 404);
         }
 
@@ -248,7 +275,9 @@ class ESBTPNotificationController extends Controller
             foreach ($readNotifications as $notification) {
                 $notification->delete();
                 $excess--;
-                if ($excess <= 0) break;
+                if ($excess <= 0) {
+                    break;
+                }
             }
 
             // Si on a toujours des notifications en excès, supprimer les plus anciennes non lues

@@ -1,11 +1,11 @@
 @php
     $typeIcons = [
-        'examen' => '<i class="fas fa-file-alt text-primary"></i>',
-        'devoir' => '<i class="fas fa-pencil-alt text-success"></i>',
-        'tp' => '<i class="fas fa-flask text-warning"></i>',
-        'projet' => '<i class="fas fa-project-diagram text-info"></i>',
-        'oral' => '<i class="fas fa-comments text-secondary"></i>',
-        'controle' => '<i class="fas fa-tasks text-secondary"></i>',
+        'examen' => '<i class="fas fa-file-circle-check text-primary"></i>',
+        'devoir' => '<i class="fas fa-pen-ruler text-success"></i>',
+        'tp' => '<i class="fas fa-flask-vial text-warning"></i>',
+        'projet' => '<i class="fas fa-diagram-project text-info"></i>',
+        'oral' => '<i class="fas fa-microphone-lines text-secondary"></i>',
+        'controle' => '<i class="fas fa-list-check text-secondary"></i>',
     ];
     $typeIcon = $typeIcons[$evaluation->type] ?? '<i class="fas fa-clipboard text-muted"></i>';
 @endphp
@@ -60,16 +60,32 @@
         </span>
     </td>
     <td>
-        <div class="d-flex flex-column">
-            <span class="d-inline-flex align-items-center gap-2">
-                <i class="far fa-calendar-alt text-muted"></i>
+        @php
+            $evaluationDateFuture = $evaluation->date_evaluation && $evaluation->date_evaluation->isFuture();
+            $durationMinutes = (int) ($evaluation->duree_minutes ?? 0);
+            $durationLabel = null;
+            if ($durationMinutes > 0) {
+                $hours = intdiv($durationMinutes, 60);
+                $minutes = $durationMinutes % 60;
+                if ($hours > 0) {
+                    $durationLabel = $minutes > 0
+                        ? $hours . 'H' . str_pad((string) $minutes, 2, '0', STR_PAD_LEFT)
+                        : $hours . 'H';
+                } else {
+                    $durationLabel = $minutes . ' mn';
+                }
+            }
+        @endphp
+        <div class="d-flex flex-column gap-1">
+            @if($durationLabel)
+                <span class="d-inline-flex align-items-center gap-2">
+                    <i class="far fa-clock text-muted"></i>
+                    <span>{{ $durationLabel }} ({{ $durationMinutes }} mn)</span>
+                </span>
+            @endif
+            <span class="text-muted">
                 {{ $evaluation->date_evaluation?->format('d/m/Y') ?? '—' }}
             </span>
-            @if($evaluation->duree_minutes)
-                <small class="text-muted">
-                    <i class="far fa-clock me-1"></i>{{ $evaluation->duree_minutes }} min
-                </small>
-            @endif
         </div>
     </td>
     <td>
@@ -90,14 +106,14 @@
             </button>
 
             @php
-                $notesDisabled = !$evaluation->is_published;
+                $notesDisabled = !$evaluation->is_published || $evaluationDateFuture;
             @endphp
             <a href="{{ $notesDisabled ? '#' : route('esbtp.notes.saisie-rapide', $evaluation) }}"
                class="btn btn-sm btn-outline-primary {{ $notesDisabled ? 'disabled' : '' }}"
-               title="{{ $notesDisabled ? 'Publiez l’évaluation pour saisir les notes' : 'Gérer la saisie rapide' }}"
+               title="{{ $notesDisabled ? ($evaluationDateFuture ? 'La saisie est disponible après la date d\'évaluation' : 'Publiez l’évaluation pour saisir les notes') : 'Gérer la saisie rapide' }}"
                aria-disabled="{{ $notesDisabled ? 'true' : 'false' }}"
                tabindex="{{ $notesDisabled ? '-1' : '0' }}">
-                <i class="fas fa-pen-alt me-1"></i>
+                <i class="fas fa-pen-to-square me-1"></i>
                 {{ ($evaluation->notes_count ?? 0) > 0 ? 'Gérer (' . $evaluation->notes_count . ')' : 'Saisir' }}
             </a>
         </div>
@@ -110,7 +126,7 @@
                 </a>
                 @if($evaluation->isEditable())
                     <a href="{{ route('esbtp.evaluations.edit', $evaluation) }}" class="btn btn-sm btn-outline-warning" title="Modifier">
-                        <i class="fas fa-edit"></i>
+                        <i class="fas fa-pen-to-square"></i>
                     </a>
                 @endif
                 @if($evaluation->status === \App\Models\ESBTPEvaluation::STATUS_CANCELLED)
@@ -122,7 +138,7 @@
                         data-method="PATCH"
                         title="Réactiver l'évaluation"
                     >
-                        <i class="fas fa-undo"></i>
+                        <i class="fas fa-arrow-rotate-left"></i>
                     </button>
                 @elseif(!$evaluation->is_published)
                     <button
@@ -133,7 +149,7 @@
                         data-method="PATCH"
                         title="Activer l'évaluation"
                     >
-                        <i class="fas fa-play"></i>
+                        <i class="fas fa-circle-play"></i>
                     </button>
                 @else
                     <button
@@ -144,7 +160,7 @@
                         data-method="PATCH"
                         title="Annuler l'évaluation"
                     >
-                        <i class="fas fa-times"></i>
+                        <i class="fas fa-circle-xmark"></i>
                     </button>
                 @endif
                 @if($evaluation->isDeletable())
@@ -156,7 +172,7 @@
                         data-method="DELETE"
                         title="Supprimer"
                     >
-                        <i class="fas fa-trash-alt"></i>
+                        <i class="fas fa-trash-can"></i>
                     </button>
                 @endif
             </div>

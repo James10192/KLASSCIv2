@@ -117,8 +117,15 @@
                     @php
                         $hasTimetableShortcut = !empty($timetableShortcut) && ($timetableShortcut['show'] ?? false);
                         $hasEvaluationShortcut = !empty($evaluationShortcut) && ($evaluationShortcut['show'] ?? false);
+                        $hasEvaluationGradingShortcut = !empty($evaluationGradingShortcut) && ($evaluationGradingShortcut['show'] ?? false);
+                        $gradingCtaUrl = null;
+                        if (auth()->user()?->can('view_exams') || auth()->user()?->can('view_evaluations')) {
+                            $gradingCtaUrl = route('esbtp.evaluations.index');
+                        } elseif (auth()->user()?->can('view_grades') || auth()->user()?->can('create_grades') || auth()->user()?->can('edit_grades') || auth()->user()?->can('manage_own_notes')) {
+                            $gradingCtaUrl = route('esbtp.notes.index');
+                        }
                     @endphp
-                    @if($notifications->isEmpty() && !$hasTimetableShortcut && !$hasEvaluationShortcut)
+                    @if($notifications->isEmpty() && !$hasTimetableShortcut && !$hasEvaluationShortcut && !$hasEvaluationGradingShortcut)
                         <div class="text-center p-5">
                             <div class="empty-state mb-3">
                                 <i class="fas fa-bell-slash fa-3x text-muted"></i>
@@ -128,6 +135,46 @@
                         </div>
                     @else
                         <div class="list-group list-group-flush">
+                            @if($hasEvaluationGradingShortcut && $gradingCtaUrl)
+                                <div class="list-group-item notification-item evaluation-grading-shortcut-item"
+                                     onclick="window.location.href='{{ $gradingCtaUrl }}';"
+                                     style="cursor: pointer;">
+                                    <div class="d-flex align-items-start justify-content-between notification-row">
+                                        <div class="flex-grow-1 me-3">
+                                            <div class="d-flex align-items-center mb-2 notification-title-row">
+                                                <span class="notification-icon bg-danger-light text-danger me-2">
+                                                    <i class="fas fa-pen-to-square"></i>
+                                                </span>
+                                                <div>
+                                                    <h6 class="mb-0 fw-semibold">Notes a saisir</h6>
+                                                    <small class="text-muted">Evaluations passees, saisie attendue</small>
+                                                </div>
+                                            </div>
+                                            <div class="notification-meta-row">
+                                                <span class="notification-meta-pill meta-danger">
+                                                    <i class="fas fa-calendar-xmark"></i>
+                                                    a noter: {{ $evaluationGradingShortcut['total'] ?? 0 }}
+                                                </span>
+                                                @if(($evaluationGradingShortcut['missing_notes'] ?? 0) > 0)
+                                                    <span class="notification-meta-pill meta-danger">
+                                                        <i class="fas fa-clipboard-list"></i>
+                                                        sans notes: {{ $evaluationGradingShortcut['missing_notes'] }}
+                                                    </span>
+                                                @endif
+                                                @if(($evaluationGradingShortcut['notes_unpublished'] ?? 0) > 0)
+                                                    <span class="notification-meta-pill meta-warning">
+                                                        <i class="fas fa-eye-slash"></i>
+                                                        notes non publiees: {{ $evaluationGradingShortcut['notes_unpublished'] }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge bg-danger text-white">Action rapide</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
                             @if($hasEvaluationShortcut)
                                 <div class="list-group-item notification-item evaluation-shortcut-item"
                                      onclick="window.location.href='{{ route('esbtp.evaluations.index') }}';"
@@ -530,6 +577,10 @@
 .evaluation-shortcut-item {
     background: rgba(59, 130, 246, 0.08);
     border-left: 3px solid #3b82f6;
+}
+.evaluation-grading-shortcut-item {
+    background: rgba(239, 68, 68, 0.08);
+    border-left: 3px solid #ef4444;
 }
 .list-group.list-group-flush {
     padding-bottom: 12px;

@@ -1,13 +1,44 @@
 @php
     $hasTimetableShortcut = !empty($timetableShortcut) && ($timetableShortcut['show'] ?? false);
     $hasEvaluationShortcut = !empty($evaluationShortcut) && ($evaluationShortcut['show'] ?? false);
+    $hasEvaluationGradingShortcut = !empty($evaluationGradingShortcut) && ($evaluationGradingShortcut['show'] ?? false);
+    $gradingCtaUrl = null;
+    if (auth()->user()?->can('view_exams') || auth()->user()?->can('view_evaluations')) {
+        $gradingCtaUrl = route('esbtp.evaluations.index');
+    } elseif (auth()->user()?->can('view_grades') || auth()->user()?->can('create_grades') || auth()->user()?->can('edit_grades') || auth()->user()?->can('manage_own_notes')) {
+        $gradingCtaUrl = route('esbtp.notes.index');
+    }
 @endphp
 
-@if(!$hasTimetableShortcut && !$hasEvaluationShortcut && $notifications->isEmpty())
+@if(!$hasTimetableShortcut && !$hasEvaluationShortcut && !$hasEvaluationGradingShortcut && $notifications->isEmpty())
     <div class="text-center p-3">
         <small>Aucune notification</small>
     </div>
 @else
+    @if($hasEvaluationGradingShortcut && $gradingCtaUrl)
+        <div class="notification-item evaluation-grading-shortcut-item"
+             onclick="window.location.href='{{ $gradingCtaUrl }}';"
+             style="cursor: pointer;">
+            <div class="d-flex align-items-center mb-1">
+                <span class="notification-icon bg-danger-light text-danger me-2">
+                    <i class="fas fa-pen-to-square"></i>
+                </span>
+                <div>
+                    <h6 class="notification-title mb-0">Notes a saisir</h6>
+                    <small class="text-muted">Evaluations passees, saisie attendue</small>
+                </div>
+            </div>
+            <p class="notification-message mb-0">
+                {{ $evaluationGradingShortcut['total'] ?? 0 }} evaluation(s) a noter
+                @if(($evaluationGradingShortcut['missing_notes'] ?? 0) > 0)
+                    • {{ $evaluationGradingShortcut['missing_notes'] }} sans notes
+                @endif
+                @if(($evaluationGradingShortcut['notes_unpublished'] ?? 0) > 0)
+                    • {{ $evaluationGradingShortcut['notes_unpublished'] }} notes non publiees
+                @endif
+            </p>
+        </div>
+    @endif
     @if($hasEvaluationShortcut)
         <div class="notification-item evaluation-shortcut-item"
              onclick="window.location.href='{{ route('esbtp.evaluations.index') }}';"
@@ -151,6 +182,10 @@
 .evaluation-shortcut-item {
     background: rgba(59, 130, 246, 0.08);
     border-left: 3px solid #3b82f6;
+}
+.evaluation-grading-shortcut-item {
+    background: rgba(239, 68, 68, 0.08);
+    border-left: 3px solid #ef4444;
 }
 .notification-item.fadeOut {
     opacity: 0;
