@@ -138,13 +138,13 @@
                                 aria-disabled="{{ $isCurrentType ? 'false' : 'true' }}">
                                 <div class="session-type-icon mb-3">
                                     @if($type === 'course')
-                                        <i class="fas fa-chalkboard-teacher fa-2x" style="color: {{ $defaultColors[$type] }}"></i>
+                                        <i class="fas fa-chalkboard-teacher fa-2x session-type-color" data-color="{{ $defaultColors[$type] }}"></i>
                                     @elseif($type === 'homework')
-                                        <i class="fas fa-clipboard-check fa-2x" style="color: {{ $defaultColors[$type] }}"></i>
+                                        <i class="fas fa-clipboard-check fa-2x session-type-color" data-color="{{ $defaultColors[$type] }}"></i>
                                     @elseif($type === 'break')
-                                        <i class="fas fa-coffee fa-2x" style="color: {{ $defaultColors[$type] }}"></i>
+                                        <i class="fas fa-coffee fa-2x session-type-color" data-color="{{ $defaultColors[$type] }}"></i>
                                     @else
-                                        <i class="fas fa-utensils fa-2x" style="color: {{ $defaultColors[$type] }}"></i>
+                                        <i class="fas fa-utensils fa-2x session-type-color" data-color="{{ $defaultColors[$type] }}"></i>
                                     @endif
                                 </div>
                                 <div class="session-type-label">{{ $label }}</div>
@@ -349,25 +349,31 @@
                                     <span>Disponibilités de <strong id="selected-teacher-name">l'enseignant</strong></span>
                                 </div>
                                 <div class="availability-legend mb-3">
-                                    <div class="d-flex flex-wrap gap-3">
+                                    <div class="legend-items">
                                         <div class="legend-item">
-                                            <span class="legend-color preferred"></span>Préféré
+                                            <div class="legend-color preferred"><i class="fas fa-star"></i></div>
+                                            <span>Préféré</span>
                                         </div>
                                         <div class="legend-item">
-                                            <span class="legend-color available"></span>Disponible
+                                            <div class="legend-color available"><i class="fas fa-check"></i></div>
+                                            <span>Disponible</span>
                                         </div>
                                         <div class="legend-item">
-                                            <span class="legend-color unavailable"></span>Indisponible
+                                            <div class="legend-color unavailable"><i class="fas fa-ban"></i></div>
+                                            <span>Non disponible</span>
                                         </div>
                                         <div class="legend-item">
-                                            <span class="legend-color occupied"></span>Occupé (autre séance)
+                                            <div class="legend-color occupied"><i class="fas fa-lock"></i></div>
+                                            <span>Occupé (autre séance)</span>
                                         </div>
                                         <div class="legend-item">
-                                            <span class="legend-color selected-time"></span>Créneau sélectionné
+                                            <div class="legend-color selected-time"><i class="fas fa-bullseye"></i></div>
+                                            <span>Créneaux sélectionnés</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="availability-grid-container">
+                                    <div id="availability-inline-error" class="availability-inline-error" style="display: none;"></div>
                                     <div class="teacher-availability-grid" id="availability-grid"></div>
                                 </div>
                             </div>
@@ -526,6 +532,13 @@
         </form>
     </div>
 </div>
+
+<div id="seance-data"
+     data-default-colors='@json($defaultColors)'
+     data-session-types='@json($sessionTypes)'
+     data-teachers='@json($teachers->keyBy("id"))'
+     data-availability='@json($availabilityData ?? [])'
+     style="display: none;"></div>
 @endsection
 
 @push('scripts')
@@ -536,13 +549,29 @@
 const currentTeacherId = "{{ old('teacher_id', $seancesCour->teacher_id) }}";
 const initialSessionType = "{{ old('type', $seancesCour->type) }}";
 const initialColor = "{{ old('color', $seancesCour->color ?? ($defaultColors[$seancesCour->type] ?? '#2196F3')) }}";
-const defaultColors = @json($defaultColors);
-const sessionTypeLabels = @json($sessionTypes);
+const seanceDataElement = document.getElementById('seance-data');
+const seanceData = seanceDataElement
+    ? {
+        defaultColors: JSON.parse(seanceDataElement.dataset.defaultColors || '{}'),
+        sessionTypeLabels: JSON.parse(seanceDataElement.dataset.sessionTypes || '{}'),
+        teachers: JSON.parse(seanceDataElement.dataset.teachers || '{}'),
+        availability: JSON.parse(seanceDataElement.dataset.availability || '{}')
+    }
+    : { defaultColors: {}, sessionTypeLabels: {}, teachers: {}, availability: {} };
+const defaultColors = seanceData.defaultColors;
+const sessionTypeLabels = seanceData.sessionTypeLabels;
 const originalSessionType = initialSessionType || 'course';
-const teachersById = @json($teachers->keyBy('id'));
-const availabilityData = @json($availabilityData ?? []);
+const teachersById = seanceData.teachers;
+const availabilityData = seanceData.availability;
 
 document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.session-type-color').forEach(icon => {
+        const color = icon.dataset.color;
+        if (color) {
+            icon.style.color = color;
+        }
+    });
+
     // Initialize Select2
     $('.select2').select2({
         theme: 'bootstrap-5'
@@ -743,7 +772,7 @@ function showTypeChangeWarning(targetType) {
         warning.classList.add('active');
         setTimeout(() => warning.classList.remove('active'), 2500);
     } else {
-        debugAlert('Pour changer le type de cette séance, supprimez-la puis créez une nouvelle séance du type souhaité.');
+        showAvailabilityToast('Pour changer le type de cette séance, supprimez-la puis créez une nouvelle séance du type souhaité.', 'warning');
     }
 }
 
@@ -757,35 +786,22 @@ function updateSelectedTimeInGrid() {
     document.querySelectorAll('.availability-cell.selected-time').forEach(cell => {
         cell.classList.remove('selected-time');
     });
+    clearAvailabilityErrors();
     
     // Si tous les champs sont remplis, surligner les créneaux
     if (jourSelect.value && heureDebut.value && heureFin.value) {
         const selectedDay = parseInt(jourSelect.value);
         const startHour = parseInt(heureDebut.value.split(':')[0]);
         const endHour = parseInt(heureFin.value.split(':')[0]);
-        
-        // Mapping jour numérique vers index de colonne dans la grille
-        const dayMapping = {
-            1: 0, // Lundi -> colonne 0
-            2: 1, // Mardi -> colonne 1  
-            3: 2, // Mercredi -> colonne 2
-            4: 3, // Jeudi -> colonne 3
-            5: 4, // Vendredi -> colonne 4
-            6: 5  // Samedi -> colonne 5
-        };
-        
-        const dayColumnIndex = dayMapping[selectedDay];
+        const dayColumnIndex = getDayColumnIndex(selectedDay);
         if (dayColumnIndex !== undefined) {
             // Parcourir chaque ligne d'heure pour surligner les cellules correspondantes
             for (let hour = startHour; hour < endHour; hour++) {
                 if (hour >= 8 && hour < 18) {
                     const rowIndex = hour - 8; // 8h = row 0
-                    const timeRows = document.querySelectorAll('.availability-time-row');
-                    if (timeRows[rowIndex]) {
-                        const cells = timeRows[rowIndex].querySelectorAll('.availability-cell');
-                        if (cells[dayColumnIndex]) {
-                            cells[dayColumnIndex].classList.add('selected-time');
-                        }
+                    const cell = getAvailabilityCell(selectedDay, hour);
+                    if (cell) {
+                        cell.classList.add('selected-time');
                     }
                 }
             }
@@ -793,6 +809,7 @@ function updateSelectedTimeInGrid() {
     }
 
     updateHomeworkTimingInfo();
+    previewTeacherAvailability();
 }
 
 function updateHomeworkTimingInfo() {
@@ -831,12 +848,124 @@ function updateHomeworkTimingInfo() {
     infoBox.style.display = 'flex';
 }
 
+function showAvailabilityToast(message, type = 'danger') {
+    const containerId = 'availability-toast-container';
+    let container = document.getElementById(containerId);
+    if (!container) {
+        container = document.createElement('div');
+        container.id = containerId;
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        container.style.zIndex = '1080';
+        document.body.appendChild(container);
+    }
+
+    const toastId = `availability-toast-${Date.now()}`;
+    const safeMessage = message.replace(/\n/g, '<br>');
+    container.insertAdjacentHTML('beforeend', `
+        <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">${safeMessage}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    `);
+
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, { delay: 6000 });
+    toast.show();
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
+}
+
+function showFormError(message) {
+    showAvailabilityToast(message, 'danger');
+    debugAlert(message);
+}
+
+function setAvailabilityErrorMessage(message) {
+    const inlineError = document.getElementById('availability-inline-error');
+    if (!inlineError) {
+        return;
+    }
+
+    if (!message) {
+        inlineError.textContent = '';
+        inlineError.style.display = 'none';
+        return;
+    }
+
+    inlineError.textContent = message.replace(/\n/g, ' ');
+    inlineError.style.display = 'flex';
+}
+
+function getDayColumnIndex(dayNumber) {
+    const dayMapping = {
+        1: 0,
+        2: 1,
+        3: 2,
+        4: 3,
+        5: 4,
+        6: 5
+    };
+    return dayMapping[dayNumber];
+}
+
+function getAvailabilityCell(dayNumber, hour) {
+    const dayColumnIndex = getDayColumnIndex(dayNumber);
+    if (dayColumnIndex === undefined) {
+        return null;
+    }
+
+    const rowIndex = hour - 8;
+    const timeRows = document.querySelectorAll('.availability-time-row');
+    if (!timeRows[rowIndex]) {
+        return null;
+    }
+
+    const cells = timeRows[rowIndex].querySelectorAll('.availability-cell');
+    return cells[dayColumnIndex] || null;
+}
+
+function clearAvailabilityErrors() {
+    document.querySelectorAll('.availability-cell.error').forEach(cell => {
+        cell.classList.remove('error');
+    });
+    setAvailabilityErrorMessage('');
+}
+
+function markAvailabilityError(dayNumber, hour, message) {
+    const cell = getAvailabilityCell(dayNumber, hour);
+    if (!cell) {
+        return;
+    }
+
+    if (message) {
+        cell.dataset.error = message;
+        cell.setAttribute('title', message);
+    }
+    cell.classList.add('error');
+    setTimeout(() => {
+        cell.classList.remove('error');
+        if (message) {
+            delete cell.dataset.error;
+            cell.removeAttribute('title');
+        }
+    }, 3500);
+}
+
+function markAvailabilityErrorRange(dayNumber, startHour, endHour, message) {
+    for (let hour = startHour; hour < endHour; hour++) {
+        markAvailabilityError(dayNumber, hour, message);
+    }
+}
+
 // Form validation
 document.getElementById('sessionForm').addEventListener('submit', function(e) {
     const type = document.getElementById('sessionType').value;
     if (!type) {
         e.preventDefault();
-        debugAlert('Veuillez sélectionner un type de séance');
+        showFormError('Veuillez sélectionner un type de séance');
         return;
     }
 
@@ -844,7 +973,7 @@ document.getElementById('sessionForm').addEventListener('submit', function(e) {
     const endTime = document.getElementById('heure_fin').value;
     if (startTime && endTime && startTime >= endTime) {
         e.preventDefault();
-        debugAlert('L\'heure de fin doit être postérieure à l\'heure de début');
+        showFormError('L\'heure de fin doit être postérieure à l\'heure de début');
         return;
     }
 
@@ -876,10 +1005,10 @@ function validateTeacherAvailability() {
     const startHour = parseInt(heureDebut.value.split(':')[0]);
     const endHour = parseInt(heureFin.value.split(':')[0]);
     
-    const availabilityData = @json($availabilityData ?? []);
-    
+    clearAvailabilityErrors();
+
     if (!availabilityData[teacherId]) {
-        debugAlert('❌ Aucune disponibilité configurée pour cet enseignant.\n\nVeuillez configurer ses disponibilités avant de programmer cette séance.');
+        showFormError('Aucune disponibilité configurée pour cet enseignant.\n\nVeuillez configurer ses disponibilités avant de programmer cette séance.');
         return false;
     }
     
@@ -895,7 +1024,10 @@ function validateTeacherAvailability() {
     
     const dayKey = dayMapping[selectedDay];
     if (!dayKey || !availabilityData[teacherId][dayKey]) {
-        debugAlert('❌ L\'enseignant n\'est pas disponible ce jour-là.\n\nVeuillez choisir un autre jour ou un autre enseignant.');
+        const errorMessage = 'L\'enseignant n\'est pas disponible ce jour-là.\n\nVeuillez choisir un autre jour ou un autre enseignant.';
+        markAvailabilityErrorRange(selectedDay, startHour, endHour, errorMessage);
+        showFormError(errorMessage);
+        setAvailabilityErrorMessage(errorMessage);
         return false;
     }
     
@@ -908,16 +1040,97 @@ function validateTeacherAvailability() {
             const jourNoms = {1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi'};
             
             if (status === 'unavailable') {
-                debugAlert(`❌ L'enseignant n'est pas disponible ${jourNoms[selectedDay]} à ${hour}:00.\n\nVeuillez ajuster les horaires ou choisir un autre enseignant.`);
+                const errorMessage = `L'enseignant n'est pas disponible ${jourNoms[selectedDay]} à ${hour}:00.\n\nVeuillez ajuster les horaires ou choisir un autre enseignant.`;
+                markAvailabilityError(selectedDay, hour, errorMessage);
+                showFormError(errorMessage);
+                setAvailabilityErrorMessage(errorMessage);
                 return false;
             } else if (status === 'occupied') {
-                debugAlert(`❌ L'enseignant a déjà une séance programmée ${jourNoms[selectedDay]} à ${hour}:00 dans un autre emploi du temps.\n\nVeuillez choisir un autre créneau.`);
+                const errorMessage = `L'enseignant a déjà une séance programmée ${jourNoms[selectedDay]} à ${hour}:00 dans un autre emploi du temps.\n\nVeuillez choisir un autre créneau.`;
+                markAvailabilityError(selectedDay, hour, errorMessage);
+                showFormError(errorMessage);
+                setAvailabilityErrorMessage(errorMessage);
                 return false;
             }
         }
     }
     
     return true; // Tout est OK
+}
+
+function previewTeacherAvailability() {
+    const teacherSelect = document.getElementById('teacher_id');
+    const jourSelect = document.getElementById('jour');
+    const heureDebut = document.getElementById('heure_debut');
+    const heureFin = document.getElementById('heure_fin');
+    const currentType = document.getElementById('sessionType').value;
+
+    if (currentType !== 'course') {
+        setAvailabilityErrorMessage('');
+        return;
+    }
+
+    if (!teacherSelect.value || !jourSelect.value || !heureDebut.value || !heureFin.value) {
+        setAvailabilityErrorMessage('');
+        return;
+    }
+
+    const teacherId = teacherSelect.value;
+    const selectedDay = parseInt(jourSelect.value);
+    const startHour = parseInt(heureDebut.value.split(':')[0]);
+    const endHour = parseInt(heureFin.value.split(':')[0]);
+    const availabilityData = seanceData.availability;
+
+    clearAvailabilityErrors();
+
+    if (!availabilityData[teacherId]) {
+        const errorMessage = 'Aucune disponibilité configurée pour cet enseignant.\n\nVeuillez configurer ses disponibilités avant de programmer cette séance.';
+        markAvailabilityErrorRange(selectedDay, startHour, endHour, errorMessage);
+        setAvailabilityErrorMessage(errorMessage);
+        return;
+    }
+
+    const dayMapping = {
+        1: 'monday',
+        2: 'tuesday',
+        3: 'wednesday',
+        4: 'thursday',
+        5: 'friday',
+        6: 'saturday'
+    };
+
+    const dayKey = dayMapping[selectedDay];
+    if (!dayKey || !availabilityData[teacherId][dayKey]) {
+        const errorMessage = 'L\'enseignant n\'est pas disponible ce jour-là.\n\nVeuillez choisir un autre jour ou un autre enseignant.';
+        markAvailabilityErrorRange(selectedDay, startHour, endHour, errorMessage);
+        setAvailabilityErrorMessage(errorMessage);
+        return;
+    }
+
+    const teacherDayAvailability = availabilityData[teacherId][dayKey];
+    const jourNoms = {1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi'};
+
+    for (let hour = startHour; hour < endHour; hour++) {
+        const hourIndex = hour - 8;
+        if (hourIndex >= 0 && hourIndex < teacherDayAvailability.length) {
+            const status = teacherDayAvailability[hourIndex];
+            if (status === 'unavailable') {
+                const errorMessage = `L'enseignant n'est pas disponible ${jourNoms[selectedDay]} à ${hour}:00.\n\nVeuillez ajuster les horaires ou choisir un autre enseignant.`;
+                markAvailabilityError(selectedDay, hour, errorMessage);
+                setAvailabilityErrorMessage(errorMessage);
+                return;
+            }
+
+            if (status === 'occupied') {
+                const errorMessage = `L'enseignant a déjà une séance programmée ${jourNoms[selectedDay]} à ${hour}:00 dans un autre emploi du temps.\n\nVeuillez choisir un autre créneau.`;
+                markAvailabilityError(selectedDay, hour, errorMessage);
+                setAvailabilityErrorMessage(errorMessage);
+                return;
+            }
+        }
+    }
+
+    setAvailabilityErrorMessage('');
 }
 
 // Fonction pour mettre à jour les enseignants selon la matière sélectionnée
@@ -1435,106 +1648,127 @@ function showTeacherAvailability() {
 .availability-section {
     margin-top: 2rem;
     padding: 1.5rem;
-    background: #f8f9fa;
-    border-radius: 12px;
-    border: 1px solid #e9ecef;
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }
 
 .availability-header {
     display: flex;
     align-items: center;
+    gap: 0.6rem;
     font-weight: 600;
-    color: var(--text-dark);
+    color: var(--text-primary);
     margin-bottom: 1rem;
 }
 
 .availability-header i {
-    margin-right: 0.5rem;
-    color: var(--success-color);
+    color: var(--primary);
+    background: rgba(59, 130, 246, 0.12);
+    padding: 0.4rem;
+    border-radius: 999px;
 }
 
 .teacher-availability-grid {
-    background: white;
-    border-radius: 8px;
-    padding: 1rem;
-    border: 1px solid #dee2e6;
+    background: #fff;
+    border-radius: 12px;
+    padding: 0.75rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
 }
 
 .availability-header-row,
 .availability-time-row {
     display: grid;
     grid-template-columns: 60px repeat(6, 1fr);
-    gap: 1px;
-    margin-bottom: 1px;
+    gap: 6px;
+    margin-bottom: 6px;
 }
 
 .time-header,
 .day-header,
 .time-label,
 .availability-cell {
-    padding: 8px;
+    padding: 6px;
     text-align: center;
-    font-size: 0.8rem;
-    border: 1px solid #e9ecef;
+    font-size: 0.78rem;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
 }
 
 .time-header,
 .day-header {
-    background: #f8f9fa;
-    font-weight: 600;
-    color: var(--text-dark);
+    background: #f1f5f9;
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
 .time-label {
-    background: #f8f9fa;
-    font-weight: 500;
-    color: var(--text-muted);
-    font-size: 0.75rem;
+    background: #f8fafc;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.74rem;
 }
 
 .availability-cell {
-    height: 32px;
+    height: 34px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #fff;
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+.availability-cell::after {
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 0.65rem;
+    opacity: 0.9;
 }
 
 .availability-cell.available {
-    background: #10b981;
-    border-color: #059669;
-    color: white;
+    background: #22c55e;
+    border-color: #16a34a;
+}
+
+.availability-cell.available::after {
+    content: '\f00c';
 }
 
 .availability-cell.available:hover {
-    background: #059669;
-    transform: scale(1.05);
+    background: #16a34a;
+    transform: translateY(-1px) scale(1.04);
 }
 
 .availability-cell.preferred {
-    background: #3b82f6;
-    border-color: #2563eb;
-    color: white;
-    position: relative;
+    background: #2563eb;
+    border-color: #1d4ed8;
 }
 
 .availability-cell.preferred::after {
-    content: '⭐';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 10px;
+    content: '\f005';
 }
 
 .availability-cell.preferred:hover {
-    background: #2563eb;
-    transform: scale(1.05);
+    background: #1d4ed8;
+    transform: translateY(-1px) scale(1.04);
 }
 
 .availability-cell.unavailable {
     background: #ef4444;
     border-color: #dc2626;
-    color: white;
+    cursor: not-allowed;
+}
+
+.availability-cell.unavailable::after {
+    content: '\f05e';
 }
 
 .availability-cell.unavailable:hover {
@@ -1542,65 +1776,115 @@ function showTeacherAvailability() {
 }
 
 .availability-cell.occupied {
-    background: #5e91de;
-    border-color: #7c3aed;
-    color: white;
-    position: relative;
+    background: #64748b;
+    border-color: #475569;
+    cursor: not-allowed;
 }
 
 .availability-cell.occupied::after {
-    content: '🚫';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 10px;
-    color: white;
+    content: '\f023';
 }
 
 .availability-cell.occupied:hover {
-    background: #7c3aed;
-    transform: scale(1.05);
+    background: #475569;
+    transform: translateY(-1px) scale(1.02);
 }
 
 .availability-cell.selected-time {
     position: relative;
-    animation: pulse 2s infinite;
+    animation: selectedPulse 1.8s infinite;
+    transform: translateY(-1px);
+    z-index: 1;
 }
 
 .availability-cell.selected-time::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(245, 158, 11, 0.6);
-    border: 2px solid #f59e0b;
-    border-radius: inherit;
+    inset: 2px;
+    border: 2px solid rgba(245, 158, 11, 0.9);
+    border-radius: 6px;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
     z-index: 1;
 }
 
-.availability-cell.selected-time::after {
-    content: '📅';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 10px;
-    z-index: 2;
-    color: #d97706;
-    font-weight: bold;
-}
-
 .availability-cell.selected-time:hover::before {
-    background: rgba(245, 158, 11, 0.8);
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.4);
 }
 
-@keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.8); }
-    70% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+.availability-cell.selected-time::after {
+    content: '\f140';
+    color: #92400e;
+}
+
+.availability-cell.error {
+    background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+    border-color: #dc2626;
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.35);
+    animation: cellShake 0.35s ease-in-out 2;
+    z-index: 2;
+}
+
+.availability-cell.error[data-error]::before {
+    content: attr(data-error);
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    color: #fff;
+    font-size: 0.7rem;
+    line-height: 1.3;
+    padding: 0.35rem 0.55rem;
+    border-radius: 6px;
+    width: max-content;
+    max-width: 220px;
+    white-space: normal;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 3;
+}
+
+.availability-cell.error[data-error]::after {
+    content: '\f071';
+}
+
+.availability-cell.error[data-error]:hover::before {
+    opacity: 1;
+}
+
+.availability-inline-error {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: 10px;
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid rgba(185, 28, 28, 0.2);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.availability-inline-error::before {
+    content: '\f071';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+}
+
+@keyframes selectedPulse {
+    0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.45); }
+    70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
     100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+@keyframes cellShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-2px); }
+    40% { transform: translateX(2px); }
+    60% { transform: translateX(-2px); }
+    80% { transform: translateX(2px); }
 }
 
 .no-availability {
@@ -1612,9 +1896,9 @@ function showTeacherAvailability() {
 
 /* Styles pour la légende des disponibilités */
 .availability-legend {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
     padding: 1rem;
 }
 
@@ -1627,7 +1911,7 @@ function showTeacherAvailability() {
 
 .legend-items {
     display: flex;
-    gap: 1.5rem;
+    gap: 1.25rem;
     flex-wrap: wrap;
 }
 
@@ -1643,26 +1927,24 @@ function showTeacherAvailability() {
     border-radius: 4px;
     border: 1px solid rgba(0,0,0,0.1);
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+}
+
+.legend-color i {
+    font-size: 0.6rem;
 }
 
 .legend-color.preferred {
-    background: #3b82f6;
-    border-color: #2563eb;
-}
-
-.legend-color.preferred::after {
-    content: '⭐';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 8px;
-    color: white;
+    background: #2563eb;
+    border-color: #1d4ed8;
 }
 
 .legend-color.available {
-    background: #10b981;
-    border-color: #059669;
+    background: #22c55e;
+    border-color: #16a34a;
 }
 
 .legend-color.unavailable {
@@ -1677,27 +1959,8 @@ function showTeacherAvailability() {
 }
 
 .legend-color.occupied {
-    background: #5e91de;
-    border-color: #7c3aed;
-}
-
-.legend-color.occupied::after {
-    content: '🚫';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 8px;
-    color: white;
-}
-
-.legend-color.selected-time::after {
-    content: '📅';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 8px;
+    background: #64748b;
+    border-color: #475569;
 }
 
 .legend-item span {

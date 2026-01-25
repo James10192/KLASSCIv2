@@ -2,20 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\ESBTPSeanceCours;
-use App\Models\ESBTPEmploiTemps;
 use App\Models\ESBTPClasse;
-use App\Models\ESBTPMatiere;
-use App\Models\User;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
+use App\Models\ESBTPEmploiTemps;
+use App\Models\ESBTPEvaluation;
+use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPTeacher;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
-use App\Models\ESBTPEvaluation;
-use Carbon\Carbon;
 
 class ESBTPSeanceCoursController extends Controller
 {
@@ -87,9 +86,10 @@ class ESBTPSeanceCoursController extends Controller
                 'conflits'
             ));
         } catch (\Exception $e) {
-            Log::error('Erreur lors de l\'affichage des séances de cours: ' . $e->getMessage());
-            Log::error('Trace: ' . $e->getTraceAsString());
-            return back()->with('error', 'Une erreur est survenue lors du chargement des séances de cours: ' . $e->getMessage());
+            Log::error('Erreur lors de l\'affichage des séances de cours: '.$e->getMessage());
+            Log::error('Trace: '.$e->getTraceAsString());
+
+            return back()->with('error', 'Une erreur est survenue lors du chargement des séances de cours: '.$e->getMessage());
         }
     }
 
@@ -129,7 +129,7 @@ class ESBTPSeanceCoursController extends Controller
                             'jour' => $seance->jour,
                             'heure_debut' => $seance->heure_debut,
                             'heure_fin' => $seance->heure_fin,
-                            'seance_id' => $seance->id
+                            'seance_id' => $seance->id,
                         ];
                     }
 
@@ -141,7 +141,7 @@ class ESBTPSeanceCoursController extends Controller
                             'jour' => $seance->jour,
                             'heure_debut' => $seance->heure_debut,
                             'heure_fin' => $seance->heure_fin,
-                            'seance_id' => $seance->id
+                            'seance_id' => $seance->id,
                         ];
                     }
 
@@ -154,7 +154,7 @@ class ESBTPSeanceCoursController extends Controller
                             'jour' => $seance->jour,
                             'heure_debut' => $seance->heure_debut,
                             'heure_fin' => $seance->heure_fin,
-                            'seance_id' => $seance->id
+                            'seance_id' => $seance->id,
                         ];
                     }
                 }
@@ -164,7 +164,7 @@ class ESBTPSeanceCoursController extends Controller
         // Éliminer les doublons
         $conflitsUniques = [];
         foreach ($conflits as $conflit) {
-            $key = $conflit['type'] . '-' . $conflit['nom'] . '-' . $conflit['jour'] . '-' . $conflit['heure_debut'] . '-' . $conflit['heure_fin'];
+            $key = $conflit['type'].'-'.$conflit['nom'].'-'.$conflit['jour'].'-'.$conflit['heure_debut'].'-'.$conflit['heure_fin'];
             $conflitsUniques[$key] = $conflit;
         }
 
@@ -182,7 +182,8 @@ class ESBTPSeanceCoursController extends Controller
 
             return view('esbtp.seances-cours.show', compact('seancesCour'));
         } catch (\Exception $e) {
-            Log::error('Erreur lors de l\'affichage de la séance de cours: ' . $e->getMessage());
+            Log::error('Erreur lors de l\'affichage de la séance de cours: '.$e->getMessage());
+
             return back()->with('error', 'Une erreur est survenue lors du chargement de la séance de cours.');
         }
     }
@@ -200,19 +201,19 @@ class ESBTPSeanceCoursController extends Controller
                 'heure_debut' => 'nullable|date_format:H:i',
             ]);
 
-        // Récupérer l'emploi du temps
+            // Récupérer l'emploi du temps
             $emploiTemps = ESBTPEmploiTemps::with('classe.filiere', 'classe.niveau', 'annee')
                 ->findOrFail($request->emploi_temps_id);
 
             // Utiliser la même logique que dans l'emploi du temps pour récupérer les données de planification
-            $emploiTempsController = new ESBTPEmploiTempsController();
+            $emploiTempsController = new ESBTPEmploiTempsController;
             $reflection = new \ReflectionClass($emploiTempsController);
             $method = $reflection->getMethod('getPlanificationDataForClasse');
             $method->setAccessible(true);
-            
-            $planificationData = $method->invoke($emploiTempsController, 
-                $emploiTemps->classe, 
-                $emploiTemps->annee, 
+
+            $planificationData = $method->invoke($emploiTempsController,
+                $emploiTemps->classe,
+                $emploiTemps->annee,
                 $emploiTemps->semestre
             );
 
@@ -222,12 +223,12 @@ class ESBTPSeanceCoursController extends Controller
             // Récupérer les enseignants avec leurs disponibilités
             $teachers = collect();
             $availabilityData = [];
-            
+
             foreach ($matieres as $matiere) {
                 $enseignantsPourMatiere = $matiere['enseignants_selectables'] ?? collect();
 
                 foreach ($enseignantsPourMatiere as $teacher) {
-                    if ($teacher && !$teachers->contains('id', $teacher->id)) {
+                    if ($teacher && ! $teachers->contains('id', $teacher->id)) {
                         $teachers->push($teacher->loadMissing(['user', 'availabilities']));
                     }
                 }
@@ -236,10 +237,10 @@ class ESBTPSeanceCoursController extends Controller
             // Préparer les données de disponibilité pour tous les enseignants
             $prepareAvailabilityMethod = $reflection->getMethod('prepareAvailabilityData');
             $prepareAvailabilityMethod->setAccessible(true);
-            
+
             foreach ($teachers as $teacher) {
                 $baseAvailability = $prepareAvailabilityMethod->invoke($emploiTempsController, $teacher);
-                
+
                 // Ajouter les séances existantes comme créneaux occupés
                 $availabilityData[$teacher->id] = $this->addExistingSessionsToAvailability($baseAvailability, $teacher);
             }
@@ -249,18 +250,18 @@ class ESBTPSeanceCoursController extends Controller
                 ESBTPSeanceCours::TYPE_COURSE => 'Cours',
                 ESBTPSeanceCours::TYPE_HOMEWORK => 'Devoir',
                 ESBTPSeanceCours::TYPE_BREAK => 'Récréation',
-                ESBTPSeanceCours::TYPE_LUNCH => 'Pause déjeuner'
+                ESBTPSeanceCours::TYPE_LUNCH => 'Pause déjeuner',
             ];
 
-        // Définir les jours de la semaine
-        $joursSemaine = [
-            1 => 'Lundi',
-            2 => 'Mardi',
-            3 => 'Mercredi',
-            4 => 'Jeudi',
-            5 => 'Vendredi',
-            6 => 'Samedi'
-        ];
+            // Définir les jours de la semaine
+            $joursSemaine = [
+                1 => 'Lundi',
+                2 => 'Mardi',
+                3 => 'Mercredi',
+                4 => 'Jeudi',
+                5 => 'Vendredi',
+                6 => 'Samedi',
+            ];
 
             // Get default colors
             $defaultColors = ESBTPSeanceCours::DEFAULT_COLORS;
@@ -277,7 +278,8 @@ class ESBTPSeanceCoursController extends Controller
                 'availabilityData'
             ));
         } catch (\Exception $e) {
-            Log::error('Error in SeanceCoursController@create: ' . $e->getMessage());
+            Log::error('Error in SeanceCoursController@create: '.$e->getMessage());
+
             return back()->with('error', 'Une erreur est survenue lors du chargement du formulaire.');
         }
     }
@@ -288,9 +290,16 @@ class ESBTPSeanceCoursController extends Controller
     private function addExistingSessionsToAvailability($baseAvailability, $teacher, $ignoreSessionId = null)
     {
         // Récupérer toutes les séances du professeur dans des emplois du temps actifs
+        $today = now()->toDateString();
         $existingSessions = ESBTPSeanceCours::where('teacher_id', $teacher->id)
-            ->whereHas('emploiTemps', function($query) {
-                $query->where('is_active', true);
+            ->where('is_active', true)
+            ->whereHas('emploiTemps', function ($query) use ($today) {
+                $query->where('is_active', true)
+                    ->whereDate('date_debut', '<=', $today)
+                    ->where(function ($subQuery) use ($today) {
+                        $subQuery->whereNull('date_fin')
+                            ->orWhereDate('date_fin', '>=', $today);
+                    });
             })
             ->get();
 
@@ -324,19 +333,19 @@ class ESBTPSeanceCoursController extends Controller
                 $normalizedDay = strtolower(trim($session->jour));
                 $dayKey = $dayTranslations[$normalizedDay] ?? null;
             }
-            
-            if (!$dayKey || !isset($baseAvailability[$dayKey])) {
+
+            if (! $dayKey || ! isset($baseAvailability[$dayKey])) {
                 continue;
             }
-            
+
             // Parser les heures de la séance
-            $startHour = $session->heure_debut instanceof \Carbon\Carbon ? 
-                $session->heure_debut->hour : 
+            $startHour = $session->heure_debut instanceof \Carbon\Carbon ?
+                $session->heure_debut->hour :
                 (int) substr($session->heure_debut, 0, 2);
-            $endHour = $session->heure_fin instanceof \Carbon\Carbon ? 
-                $session->heure_fin->hour : 
+            $endHour = $session->heure_fin instanceof \Carbon\Carbon ?
+                $session->heure_fin->hour :
                 (int) substr($session->heure_fin, 0, 2);
-            
+
             // Marquer comme occupé tous les créneaux de cette séance
             for ($hour = $startHour; $hour < $endHour; $hour++) {
                 $hourIndex = $hour - 8; // 8h = index 0
@@ -345,7 +354,7 @@ class ESBTPSeanceCoursController extends Controller
                 }
             }
         }
-        
+
         return $baseAvailability;
     }
 
@@ -357,10 +366,10 @@ class ESBTPSeanceCoursController extends Controller
         try {
             // Get the emploi du temps and its associated classe_id and annee_universitaire_id
             $emploiTemps = ESBTPEmploiTemps::findOrFail($request->emploi_temps_id);
-            if (!$emploiTemps->classe_id) {
+            if (! $emploiTemps->classe_id) {
                 throw new \Exception('Aucune classe n\'est associée à cet emploi du temps.');
             }
-            if (!$emploiTemps->annee_universitaire_id) {
+            if (! $emploiTemps->annee_universitaire_id) {
                 throw new \Exception('Aucune année universitaire n\'est associée à cet emploi du temps.');
             }
 
@@ -369,10 +378,10 @@ class ESBTPSeanceCoursController extends Controller
 
             // Validate the basic required fields first
             $baseValidator = Validator::make($request->all(), [
-            'emploi_temps_id' => 'required|exists:esbtp_emploi_temps,id',
+                'emploi_temps_id' => 'required|exists:esbtp_emploi_temps,id',
                 'type' => 'required|in:course,homework,break,lunch',
-            'jour' => 'required|integer|min:1|max:7',
-            'heure_debut' => 'required|date_format:H:i',
+                'jour' => 'required|integer|min:1|max:7',
+                'heure_debut' => 'required|date_format:H:i',
                 'heure_fin' => 'required|date_format:H:i|after:heure_debut',
             ]);
 
@@ -409,6 +418,7 @@ class ESBTPSeanceCoursController extends Controller
 
             if ($validator->fails()) {
                 \Log::warning('Erreur validation création séance', $validator->errors()->toArray());
+
                 return redirect()->back()
                     ->withErrors($validator)
                     ->withInput();
@@ -420,10 +430,10 @@ class ESBTPSeanceCoursController extends Controller
             try {
                 // Check for scheduling conflicts (uniquement pour le jour principal, on peut améliorer pour tous les jours si besoin)
                 $conflicts = $this->checkSchedulingConflicts($request);
-                if (!empty($conflicts)) {
+                if (! empty($conflicts)) {
                     \Log::warning('Conflit horaire lors de la création de séance', $conflicts);
                     throw ValidationException::withMessages([
-                        'conflicts' => $conflicts
+                        'conflicts' => $conflicts,
                     ]);
                 }
 
@@ -458,11 +468,11 @@ class ESBTPSeanceCoursController extends Controller
                 \Log::info('DEBUG - is_recurring', [
                     'is_recurring' => $isRecurring,
                     'recurrence_days' => $recurrenceDays,
-                    'data' => $data
+                    'data' => $data,
                 ]);
 
                 $createdSessions = [];
-                if ($isRecurring && !empty($recurrenceDays) && is_array($recurrenceDays)) {
+                if ($isRecurring && ! empty($recurrenceDays) && is_array($recurrenceDays)) {
                     foreach ($recurrenceDays as $recurringDay) {
                         $dataForDay = $data;
                         $dataForDay['jour'] = $recurringDay;
@@ -483,19 +493,19 @@ class ESBTPSeanceCoursController extends Controller
                     $createdEvaluations = [];
                     foreach ($createdSessions as $sessionId) {
                         $seance = ESBTPSeanceCours::with('matiere')->find($sessionId);
-                        
+
                         // Calculer la durée en minutes
                         $heureDebut = Carbon::parse($seance->heure_debut);
                         $heureFin = Carbon::parse($seance->heure_fin);
                         $dureeMinutes = $heureFin->diffInMinutes($heureDebut);
-                        
+
                         // Déterminer la période selon la date
                         $periode = 'semestre1'; // Par défaut
                         $dateSeance = Carbon::parse($seance->date_seance);
                         if ($dateSeance->month >= 1 && $dateSeance->month <= 6) {
                             $periode = 'semestre2';
                         }
-                        
+
                         $evaluationStartAt = $this->combineDateAndTime($seance->date_seance, $seance->heure_debut);
                         $evaluationEndAt = $this->combineDateAndTime($seance->date_seance, $seance->heure_fin);
                         if ($evaluationEndAt->lessThanOrEqualTo($evaluationStartAt)) {
@@ -504,7 +514,7 @@ class ESBTPSeanceCoursController extends Controller
                         $dureeMinutes = $evaluationEndAt->diffInMinutes($evaluationStartAt);
 
                         $evaluationData = [
-                            'titre' => $seance->homework_description ?: 'Devoir - ' . ($seance->matiere->name ?? 'Matière'),
+                            'titre' => $seance->homework_description ?: 'Devoir - '.($seance->matiere->name ?? 'Matière'),
                             'description' => $seance->homework_description,
                             'matiere_id' => $seance->matiere_id,
                             'classe_id' => $seance->classe_id,
@@ -519,9 +529,9 @@ class ESBTPSeanceCoursController extends Controller
                             'is_published' => false,
                             'notes_published' => false,
                             'created_by' => Auth::id(),
-                            'enseignant_id' => $seance->type === ESBTPSeanceCours::TYPE_HOMEWORK ? null : $seance->teacher_id
+                            'enseignant_id' => $seance->type === ESBTPSeanceCours::TYPE_HOMEWORK ? null : $seance->teacher_id,
                         ];
-                        
+
                         $evaluation = ESBTPEvaluation::create($evaluationData);
                         $createdEvaluations[] = $evaluation->id;
 
@@ -529,35 +539,36 @@ class ESBTPSeanceCoursController extends Controller
                             $seance->homework_evaluation_id = $evaluation->id;
                             $seance->save();
                         }
-                        
+
                         \Log::info('Évaluation créée automatiquement', [
-                            'evaluation_id' => $evaluation->id, 
+                            'evaluation_id' => $evaluation->id,
                             'seance_id' => $sessionId,
                             'date_evaluation' => $evaluationStartAt->toDateTimeString(),
-                            'titre' => $evaluation->titre
+                            'titre' => $evaluation->titre,
                         ]);
                     }
-                    
+
                     \Log::info('Évaluations automatiques créées pour séances homework', [
                         'evaluation_ids' => $createdEvaluations,
-                        'session_ids' => $createdSessions
+                        'session_ids' => $createdSessions,
                     ]);
                 }
 
                 DB::commit();
                 \Log::info('Création séances terminée', ['ids' => $createdSessions]);
-                
+
                 $successMessage = 'Séance(s) ajoutée(s) avec succès.';
                 if ($request->type === 'homework') {
                     $successMessage .= ' Les évaluations correspondantes ont été créées automatiquement.';
                 }
-                
-            return redirect()
-                ->route('esbtp.emploi-temps.show', $request->emploi_temps_id)
+
+                return redirect()
+                    ->route('esbtp.emploi-temps.show', $request->emploi_temps_id)
                     ->with('success', $successMessage);
             } catch (ValidationException $e) {
                 DB::rollBack();
                 \Log::error('Erreur validation transaction création séance', $e->errors());
+
                 return redirect()->back()
                     ->withErrors($e->errors())
                     ->withInput();
@@ -568,7 +579,8 @@ class ESBTPSeanceCoursController extends Controller
             }
         } catch (\Exception $e) {
             \Log::error('Erreur globale création séance', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return back()->with('error', 'Une erreur est survenue lors de la création de la séance : ' . $e->getMessage());
+
+            return back()->with('error', 'Une erreur est survenue lors de la création de la séance : '.$e->getMessage());
         }
     }
 
@@ -582,17 +594,24 @@ class ESBTPSeanceCoursController extends Controller
         $emploiTemps = ESBTPEmploiTemps::findOrFail($request->emploi_temps_id);
         $dateDebut = $emploiTemps->date_debut instanceof \Carbon\Carbon ? $emploiTemps->date_debut : \Carbon\Carbon::parse($emploiTemps->date_debut);
         $dateSeance = $dateDebut->copy()->addDays($request->jour - 1);
+        $today = now()->toDateString();
 
         // Conflit enseignant sur tous les emplois du temps actifs
         if (in_array($request->type, ['course', 'homework']) && $request->teacher_id) {
             $teacherConflictQuery = ESBTPSeanceCours::where('teacher_id', $request->teacher_id)
                 ->where('date_seance', $dateSeance)
-                ->where(function($q) use ($request) {
+                ->where('is_active', true)
+                ->where(function ($q) use ($request) {
                     $q->where('heure_debut', '<', $request->heure_fin)
-                      ->where('heure_fin', '>', $request->heure_debut);
+                        ->where('heure_fin', '>', $request->heure_debut);
                 })
-                ->whereHas('emploiTemps', function($q) {
-                    $q->where('is_active', 1);
+                ->whereHas('emploiTemps', function ($q) use ($today) {
+                    $q->where('is_active', true)
+                        ->whereDate('date_debut', '<=', $today)
+                        ->where(function ($subQuery) use ($today) {
+                            $subQuery->whereNull('date_fin')
+                                ->orWhereDate('date_fin', '>=', $today);
+                        });
                 });
             if ($teacherConflictQuery->count() > 0) {
                 $teacher = ESBTPTeacher::find($request->teacher_id);
@@ -604,8 +623,17 @@ class ESBTPSeanceCoursController extends Controller
         if (in_array($request->type, ['course', 'homework']) && $request->salle) {
             $roomConflicts = ESBTPSeanceCours::where('salle', $request->salle)
                 ->where('date_seance', $dateSeance)
+                ->where('is_active', true)
                 ->where('heure_debut', '<', $request->heure_fin)
                 ->where('heure_fin', '>', $request->heure_debut)
+                ->whereHas('emploiTemps', function ($q) use ($today) {
+                    $q->where('is_active', true)
+                        ->whereDate('date_debut', '<=', $today)
+                        ->where(function ($subQuery) use ($today) {
+                            $subQuery->whereNull('date_fin')
+                                ->orWhereDate('date_fin', '>=', $today);
+                        });
+                })
                 ->count();
 
             if ($roomConflicts > 0) {
@@ -616,15 +644,24 @@ class ESBTPSeanceCoursController extends Controller
         // Check class conflicts
         $classConflicts = ESBTPSeanceCours::where('classe_id', $emploiTemps->classe_id)
             ->where('date_seance', $dateSeance)
-            ->where(function($q) use ($request) {
-                $q->where(function($q) use ($request) {
+            ->where('is_active', true)
+            ->where(function ($q) use ($request) {
+                $q->where(function ($q) use ($request) {
                     $q->where('heure_debut', '<', $request->heure_fin)
-                      ->where('heure_fin', '>', $request->heure_debut);
+                        ->where('heure_fin', '>', $request->heure_debut);
                 });
+            })
+            ->whereHas('emploiTemps', function ($q) use ($today) {
+                $q->where('is_active', true)
+                    ->whereDate('date_debut', '<=', $today)
+                    ->where(function ($subQuery) use ($today) {
+                        $subQuery->whereNull('date_fin')
+                            ->orWhereDate('date_fin', '>=', $today);
+                    });
             })
             ->count();
         if ($classConflicts > 0) {
-            $conflicts[] = "La classe a déjà une séance programmée à cet horaire";
+            $conflicts[] = 'La classe a déjà une séance programmée à cet horaire';
         }
 
         return $conflicts;
@@ -637,20 +674,22 @@ class ESBTPSeanceCoursController extends Controller
     {
         try {
             // Check if the session exists
-            if (!$seancesCour->exists) {
+            if (! $seancesCour->exists) {
                 Log::error('Session not found when trying to edit', [
                     'session_id' => $seancesCour->id,
-                    'user_id' => Auth::id()
+                    'user_id' => Auth::id(),
                 ]);
+
                 return back()->with('error', 'La séance de cours n\'existe pas.');
             }
 
             // Check authorization
-            if (!Auth::user()->can('edit', $seancesCour)) {
+            if (! Auth::user()->can('edit', $seancesCour)) {
                 Log::warning('Unauthorized attempt to edit session', [
                     'session_id' => $seancesCour->id,
-                    'user_id' => Auth::id()
+                    'user_id' => Auth::id(),
                 ]);
+
                 return back()->with('error', 'Vous n\'êtes pas autorisé à modifier cette séance.');
             }
 
@@ -665,17 +704,18 @@ class ESBTPSeanceCoursController extends Controller
             ]);
 
             $emploiTemps = $seancesCour->emploiTemps;
-            if (!$emploiTemps) {
+            if (! $emploiTemps) {
                 Log::error('Associated emploi du temps not found', [
                     'session_id' => $seancesCour->id,
-                    'user_id' => Auth::id()
+                    'user_id' => Auth::id(),
                 ]);
+
                 return back()->with('error', 'L\'emploi du temps associé est introuvable.');
             }
 
             // Load required data with error handling
             try {
-                $emploiTempsController = new ESBTPEmploiTempsController();
+                $emploiTempsController = new ESBTPEmploiTempsController;
                 $reflection = new \ReflectionClass($emploiTempsController);
 
                 $planificationMethod = $reflection->getMethod('getPlanificationDataForClasse');
@@ -695,14 +735,14 @@ class ESBTPSeanceCoursController extends Controller
                 foreach ($matieres as $matiere) {
                     $enseignantsPourMatiere = $matiere['enseignants_selectables'] ?? collect();
                     foreach ($enseignantsPourMatiere as $teacher) {
-                        if ($teacher && !$teachers->contains('id', $teacher->id)) {
+                        if ($teacher && ! $teachers->contains('id', $teacher->id)) {
                             $teachers->push($teacher->loadMissing(['user', 'availabilities']));
                         }
                     }
                 }
 
                 $sessionTeacher = $seancesCour->teacher()->with(['user', 'availabilities'])->first();
-                if ($sessionTeacher && !$teachers->contains('id', $sessionTeacher->id)) {
+                if ($sessionTeacher && ! $teachers->contains('id', $sessionTeacher->id)) {
                     $teachers->push($sessionTeacher);
                 }
 
@@ -745,7 +785,7 @@ class ESBTPSeanceCoursController extends Controller
                             'statut' => null,
                             'periode_debut' => null,
                             'periode_fin' => null,
-                        ]
+                        ],
                     ]);
                 }
 
@@ -764,7 +804,7 @@ class ESBTPSeanceCoursController extends Controller
                     ESBTPSeanceCours::TYPE_COURSE => 'Cours',
                     ESBTPSeanceCours::TYPE_HOMEWORK => 'Devoir',
                     ESBTPSeanceCours::TYPE_BREAK => 'Récréation',
-                    ESBTPSeanceCours::TYPE_LUNCH => 'Pause déjeuner'
+                    ESBTPSeanceCours::TYPE_LUNCH => 'Pause déjeuner',
                 ];
 
                 $joursSemaine = [
@@ -773,7 +813,7 @@ class ESBTPSeanceCoursController extends Controller
                     3 => 'Mercredi',
                     4 => 'Jeudi',
                     5 => 'Vendredi',
-                    6 => 'Samedi'
+                    6 => 'Samedi',
                 ];
 
                 $defaultColors = ESBTPSeanceCours::DEFAULT_COLORS;
@@ -781,8 +821,9 @@ class ESBTPSeanceCoursController extends Controller
                 Log::error('Error loading required data for edit form', [
                     'session_id' => $seancesCour->id,
                     'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
+                    'trace' => $e->getTraceAsString(),
                 ]);
+
                 return back()->with('error', 'Erreur lors du chargement des données du formulaire.');
             }
 
@@ -803,9 +844,10 @@ class ESBTPSeanceCoursController extends Controller
                 'session_id' => $seancesCour->id ?? null,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'user_id' => Auth::id()
+                'user_id' => Auth::id(),
             ]);
-            return back()->with('error', 'Une erreur est survenue lors du chargement du formulaire de modification: ' . $e->getMessage());
+
+            return back()->with('error', 'Une erreur est survenue lors du chargement du formulaire de modification: '.$e->getMessage());
         }
     }
 
@@ -817,11 +859,11 @@ class ESBTPSeanceCoursController extends Controller
         try {
             // Base validation rules
             $rules = [
-                'type' => 'required|in:' . implode(',', [
+                'type' => 'required|in:'.implode(',', [
                     ESBTPSeanceCours::TYPE_COURSE,
                     ESBTPSeanceCours::TYPE_HOMEWORK,
                     ESBTPSeanceCours::TYPE_BREAK,
-                    ESBTPSeanceCours::TYPE_LUNCH
+                    ESBTPSeanceCours::TYPE_LUNCH,
                 ]),
                 'jour' => 'required|integer|min:1|max:7',
                 'heure_debut' => 'required|date_format:H:i',
@@ -830,7 +872,7 @@ class ESBTPSeanceCoursController extends Controller
                 'is_recurring' => 'boolean',
                 'recurrence_days' => 'nullable|array',
                 'recurrence_days.*' => 'integer|min:1|max:7',
-                'priority' => 'integer'
+                'priority' => 'integer',
             ];
 
             // Add conditional validation rules based on session type
@@ -852,7 +894,7 @@ class ESBTPSeanceCoursController extends Controller
 
             // Validate the request
             $validated = $request->validate($rules);
-            if (!array_key_exists('teacher_id', $validated)) {
+            if (! array_key_exists('teacher_id', $validated)) {
                 $validated['teacher_id'] = null;
             }
             if (($validated['type'] ?? $seancesCour->type) === ESBTPSeanceCours::TYPE_HOMEWORK) {
@@ -870,7 +912,8 @@ class ESBTPSeanceCoursController extends Controller
                 ->route('esbtp.emploi-temps.show', $seancesCour->emploi_temps_id)
                 ->with('success', 'Séance mise à jour avec succès.');
         } catch (\Exception $e) {
-            Log::error('Error in SeanceCoursController@update: ' . $e->getMessage());
+            Log::error('Error in SeanceCoursController@update: '.$e->getMessage());
+
             return back()
                 ->withInput()
                 ->with('error', 'Une erreur est survenue lors de la mise à jour de la séance.');
@@ -883,11 +926,11 @@ class ESBTPSeanceCoursController extends Controller
             $seance->loadMissing(['matiere', 'classe', 'homeworkEvaluation']);
             $evaluation = $seance->homeworkEvaluation;
 
-            if (!$evaluation && $seance->homework_evaluation_id) {
+            if (! $evaluation && $seance->homework_evaluation_id) {
                 $evaluation = ESBTPEvaluation::find($seance->homework_evaluation_id);
             }
 
-            if (!$evaluation) {
+            if (! $evaluation) {
                 $potentialDate = $seance->date_seance
                     ? Carbon::parse($seance->date_seance)
                     : now();
@@ -905,12 +948,13 @@ class ESBTPSeanceCoursController extends Controller
                 }
             }
 
-            if (!$evaluation) {
+            if (! $evaluation) {
                 Log::warning('Aucune évaluation associée trouvée pour le devoir', [
                     'seance_id' => $seance->id,
                     'classe_id' => $seance->classe_id,
                     'matiere_id' => $seance->matiere_id,
                 ]);
+
                 return;
             }
 
@@ -920,7 +964,7 @@ class ESBTPSeanceCoursController extends Controller
             $periode = $this->determineEvaluationPeriod($startAt);
 
             $evaluation->fill([
-                'titre' => $seance->homework_description ?: 'Devoir - ' . ($seance->matiere->name ?? 'Matière'),
+                'titre' => $seance->homework_description ?: 'Devoir - '.($seance->matiere->name ?? 'Matière'),
                 'description' => $seance->homework_description,
                 'matiere_id' => $seance->matiere_id,
                 'classe_id' => $seance->classe_id,
@@ -978,7 +1022,7 @@ class ESBTPSeanceCoursController extends Controller
     {
         $dateCarbon = $date instanceof Carbon ? $date->copy() : Carbon::parse($date);
 
-        if (!$time) {
+        if (! $time) {
             return $dateCarbon;
         }
 
@@ -987,6 +1031,7 @@ class ESBTPSeanceCoursController extends Controller
         }
 
         $timeCarbon = Carbon::parse($time);
+
         return $dateCarbon->setTime($timeCarbon->hour, $timeCarbon->minute, $timeCarbon->second);
     }
 
@@ -1012,7 +1057,8 @@ class ESBTPSeanceCoursController extends Controller
                 ->route('esbtp.emploi-temps.show', $emploiTempsId)
                 ->with('success', 'Séance supprimée avec succès.');
         } catch (\Exception $e) {
-            Log::error('Error in SeanceCoursController@destroy: ' . $e->getMessage());
+            Log::error('Error in SeanceCoursController@destroy: '.$e->getMessage());
+
             return back()->with('error', 'Une erreur est survenue lors de la suppression de la séance.');
         }
     }
@@ -1020,7 +1066,6 @@ class ESBTPSeanceCoursController extends Controller
     /**
      * Vérifie s'il y a des conflits d'horaire pour une séance donnée.
      *
-     * @param ESBTPSeanceCours $seanceCours
      * @return array Liste des conflits détectés
      */
     private function verifierConflitsHoraire(ESBTPSeanceCours $seanceCours)
@@ -1031,11 +1076,11 @@ class ESBTPSeanceCoursController extends Controller
 
         // Requête pour trouver les séances qui se chevauchent le même jour
         $query = ESBTPSeanceCours::where('jour', $seanceCours->jour)
-            ->where(function($q) use ($seanceCours) {
+            ->where(function ($q) use ($seanceCours) {
                 // Chevauchement d'horaires
-                $q->where(function($q1) use ($seanceCours) {
+                $q->where(function ($q1) use ($seanceCours) {
                     $q1->where('heure_debut', '<', $seanceCours->heure_fin)
-                       ->where('heure_fin', '>', $seanceCours->heure_debut);
+                        ->where('heure_fin', '>', $seanceCours->heure_debut);
                 });
             });
 
@@ -1046,7 +1091,7 @@ class ESBTPSeanceCoursController extends Controller
 
         // Vérifier les conflits avec la même classe
         $conflitsClasse = (clone $query)
-            ->whereHas('emploiTemps', function($q) use ($classe) {
+            ->whereHas('emploiTemps', function ($q) use ($classe) {
                 $q->where('classe_id', $classe->id);
             })
             ->get();
