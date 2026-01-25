@@ -15,6 +15,19 @@
         $duration = $evaluation->duree_minutes ?? 0;
         $endAt = $startAt->copy()->addMinutes($duration > 0 ? $duration : 120);
     }
+    $durationMinutes = (int) ($evaluation->duree_minutes ?? 0);
+    $durationLabel = null;
+    if ($durationMinutes > 0) {
+        $hours = intdiv($durationMinutes, 60);
+        $minutes = $durationMinutes % 60;
+        if ($hours > 0) {
+            $durationLabel = $minutes > 0
+                ? $hours . 'H' . str_pad((string) $minutes, 2, '0', STR_PAD_LEFT)
+                : $hours . 'H';
+        } else {
+            $durationLabel = $minutes . ' mn';
+        }
+    }
     $classe = $evaluation->classe;
     $matiere = $evaluation->matiere;
     $enseignant = $evaluation->enseignant;
@@ -70,10 +83,10 @@
             <div class="kpi-card card-moderne">
                 <div class="kpi-title">Durée</div>
                 <div class="kpi-value">
-                    <i class="fas fa-stopwatch me-2"></i>{{ $evaluation->duree_minutes ?? 0 }}
+                    <i class="fas fa-stopwatch me-2"></i>{{ $durationLabel ?? '—' }}
                 </div>
                 <div class="kpi-trend">
-                    Minutes prévues pour l'épreuve
+                    {{ $durationMinutes > 0 ? $durationMinutes . ' mn' : 'Durée non définie' }}
                 </div>
             </div>
 
