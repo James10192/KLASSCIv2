@@ -86,61 +86,7 @@
                     @if($evaluations->count() > 0)
                         <div class="evaluations-grid">
                             @foreach($evaluations as $evaluation)
-                            <div class="evaluation-card">
-                                <div class="evaluation-header">
-                                    <div class="evaluation-type">
-                                        <span class="type-badge type-{{ $evaluation->type }}">
-                                            {{ ucfirst($evaluation->type) }}
-                                        </span>
-                                    </div>
-                                    <div class="evaluation-date">
-                                        {{ $evaluation->date_evaluation ? $evaluation->date_evaluation->format('d/m/Y') : 'Non définie' }}
-                                    </div>
-                                </div>
-                                
-                                <div class="evaluation-content">
-                                    <h4 class="evaluation-title">{{ $evaluation->titre }}</h4>
-                                    <div class="evaluation-details">
-                                        <div class="detail-item">
-                                            <i class="fas fa-users text-muted"></i>
-                                            <span>{{ $evaluation->classe->name ?? 'Non définie' }}</span>
-                                        </div>
-                                        <div class="detail-item">
-                                            <i class="fas fa-book text-muted"></i>
-                                            <span>{{ $evaluation->matiere->name ?? 'Non définie' }}</span>
-                                        </div>
-                                        <div class="detail-item">
-                                            <i class="fas fa-award text-muted"></i>
-                                            <span>{{ $evaluation->bareme ?? '20' }} pts</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="evaluation-footer">
-                                    <div class="evaluation-status">
-                                        @if($evaluation->is_published)
-                                            <span class="status-badge published">
-                                                <i class="fas fa-eye"></i> Publiée
-                                            </span>
-                                        @else
-                                            <span class="status-badge draft">
-                                                <i class="fas fa-eye-slash"></i> Brouillon
-                                            </span>
-                                        @endif
-                                    </div>
-                                    
-                                    <div class="evaluation-actions">
-                                        <a href="{{ route('esbtp.evaluations.show', $evaluation) }}" class="btn-action primary">
-                                            <i class="fas fa-eye"></i> Voir
-                                        </a>
-                                        @if($evaluation->is_published)
-                                        <a href="{{ route('esbtp.notes.create', ['evaluation_id' => $evaluation->id]) }}" class="btn-action success">
-                                            <i class="fas fa-edit"></i> Notes
-                                        </a>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
+                                @include('teacher.partials.evaluation-card', ['evaluation' => $evaluation])
                             @endforeach
                         </div>
 
@@ -213,6 +159,19 @@
                             <p>Commencez à saisir des notes pour voir l'activité ici.</p>
                         </div>
                     @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="teacherNoteModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content modal-premium-shell">
+                <div class="modal-body p-0" id="teacherNoteModalBody">
+                    <div class="p-4 text-center">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <div class="text-muted mt-2">Chargement...</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -291,12 +250,34 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-medium);
     padding: var(--space-lg);
-    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s ease;
+    background-image: radial-gradient(circle at 20% 0%, rgba(4, 83, 203, 0.12), transparent 55%),
+        radial-gradient(circle at 100% 20%, rgba(94, 145, 222, 0.12), transparent 50%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.9));
+}
+
+.evaluation-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(4, 83, 203, 0.08), rgba(94, 145, 222, 0));
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
 }
 
 .evaluation-card:hover {
     box-shadow: var(--shadow-hover);
-    transform: translateY(-2px);
+    transform: translateY(-4px);
+    border-color: rgba(4, 83, 203, 0.35);
+    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.18);
+}
+
+.evaluation-card:hover::before {
+    opacity: 1;
 }
 
 .evaluation-header {
@@ -304,6 +285,7 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: var(--space-md);
+    gap: var(--space-md);
 }
 
 .type-badge {
@@ -313,66 +295,105 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
 }
 
 .type-badge.type-examen {
-    background: rgba(var(--danger-rgb), 0.1);
-    color: var(--danger);
+    background: rgba(239, 68, 68, 0.12);
+    color: #b91c1c;
+    border: 1px solid rgba(239, 68, 68, 0.35);
 }
 
 .type-badge.type-devoir {
-    background: rgba(var(--warning-rgb), 0.1);
-    color: var(--warning);
+    background: rgba(245, 158, 11, 0.12);
+    color: #b45309;
+    border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
 .type-badge.type-projet {
-    background: rgba(var(--info-rgb), 0.1);
-    color: var(--info);
+    background: rgba(14, 165, 233, 0.12);
+    color: #0369a1;
+    border: 1px solid rgba(14, 165, 233, 0.3);
 }
 
 .type-badge.type-tp {
-    background: rgba(var(--success-rgb), 0.1);
-    color: var(--success);
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.type-badge.type-oral {
+    background: rgba(148, 163, 184, 0.18);
+    color: #475569;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+.type-badge.type-controle {
+    background: rgba(79, 70, 229, 0.12);
+    color: #4338ca;
+    border: 1px solid rgba(79, 70, 229, 0.3);
+}
+
+.type-badge.type-rattrapage {
+    background: rgba(236, 72, 153, 0.12);
+    color: #be185d;
+    border: 1px solid rgba(236, 72, 153, 0.3);
 }
 
 .evaluation-date {
     color: var(--muted);
     font-size: var(--text-small);
-    font-weight: 500;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+    padding: 0.35rem 0.6rem;
+    border-radius: var(--radius-large);
+    background: rgba(148, 163, 184, 0.12);
+    border: 1px solid rgba(148, 163, 184, 0.28);
 }
 
 .evaluation-title {
-    font-size: 1.1rem;
-    font-weight: 600;
+    font-size: 1.15rem;
+    font-weight: 700;
     color: var(--text);
     margin: 0 0 var(--space-md) 0;
     line-height: 1.3;
 }
 
-.evaluation-details {
+.evaluation-meta {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: var(--space-sm);
     margin-bottom: var(--space-lg);
 }
 
-.detail-item {
-    display: flex;
+.meta-pill {
+    display: inline-flex;
     align-items: center;
-    gap: var(--space-sm);
-    color: var(--muted);
+    gap: var(--space-xs);
+    padding: 0.4rem 0.65rem;
+    border-radius: var(--radius-large);
+    background: rgba(4, 83, 203, 0.08);
+    color: var(--text);
     font-size: var(--text-small);
+    font-weight: 500;
+    border: 1px solid rgba(4, 83, 203, 0.15);
 }
 
-.detail-item i {
-    width: 16px;
-    text-align: center;
+.meta-pill i {
+    color: var(--primary);
 }
 
 .evaluation-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--border);
+    gap: var(--space-md);
 }
 
 .status-badge {
@@ -386,23 +407,33 @@
 }
 
 .status-badge.published {
-    background: rgba(var(--success-rgb), 0.1);
-    color: var(--success);
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.25);
 }
 
 .status-badge.draft {
-    background: rgba(var(--muted-rgb), 0.1);
-    color: var(--muted);
+    background: rgba(148, 163, 184, 0.18);
+    color: #475569;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.status-badge.neutral {
+    background: rgba(59, 130, 246, 0.12);
+    color: #1d4ed8;
+    border: 1px solid rgba(59, 130, 246, 0.25);
 }
 
 .evaluation-actions {
     display: flex;
-    gap: var(--space-sm);
+    gap: var(--space-md);
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .btn-action {
-    padding: var(--space-sm) var(--space-md);
-    border-radius: var(--radius-small);
+    padding: 0.55rem 0.9rem;
+    border-radius: var(--radius-medium);
     font-size: var(--text-small);
     font-weight: 500;
     text-decoration: none;
@@ -410,12 +441,15 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-xs);
+    min-width: 92px;
+    justify-content: center;
 }
 
 .btn-action.primary {
     background: rgba(var(--primary-rgb), 0.1);
     color: var(--primary);
     border: 1px solid rgba(var(--primary-rgb), 0.2);
+    box-shadow: 0 8px 16px rgba(4, 83, 203, 0.1);
 }
 
 .btn-action.primary:hover {
@@ -427,6 +461,129 @@
     background: rgba(var(--success-rgb), 0.1);
     color: var(--success);
     border: 1px solid rgba(var(--success-rgb), 0.2);
+    box-shadow: 0 8px 16px rgba(16, 185, 129, 0.12);
+}
+
+.btn-action.disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.modal-premium-shell {
+    border-radius: 24px;
+    border: none;
+    overflow: hidden;
+    background: linear-gradient(135deg, rgba(4, 83, 203, 0.08), rgba(255, 255, 255, 0.95));
+}
+
+.modal-premium {
+    padding: 2rem;
+    background: radial-gradient(circle at top left, rgba(4, 83, 203, 0.08), transparent 55%),
+        radial-gradient(circle at bottom right, rgba(94, 145, 222, 0.08), transparent 55%),
+        #fff;
+}
+
+.modal-premium-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.modal-premium-title {
+    font-weight: 700;
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.modal-premium-subtitle {
+    color: var(--muted);
+    margin: 0;
+}
+
+.modal-premium-badges {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.modal-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(4, 83, 203, 0.12);
+    color: var(--primary);
+    font-size: 0.85rem;
+    border: 1px solid rgba(4, 83, 203, 0.2);
+}
+
+.modal-pill-neutral {
+    background: rgba(59, 130, 246, 0.12);
+    color: #1d4ed8;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.modal-pill-warning {
+    background: rgba(245, 158, 11, 0.12);
+    color: #b45309;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.modal-premium-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.modal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+}
+
+.modal-section {
+    background: rgba(15, 23, 42, 0.03);
+    padding: 1rem;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.modal-section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--text);
+}
+
+.modal-premium-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+}
+
+.card-flash-success {
+    animation: cardFlashSuccess 1.2s ease;
+}
+
+@keyframes cardFlashSuccess {
+    0% {
+        box-shadow: 0 0 0 rgba(16, 185, 129, 0.0);
+        transform: translateY(-4px) scale(1.01);
+    }
+    40% {
+        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.2);
+    }
+    100% {
+        box-shadow: 0 0 0 rgba(16, 185, 129, 0.0);
+        transform: translateY(0) scale(1);
+    }
 }
 
 .btn-action.success:hover {
@@ -594,7 +751,11 @@
     }
     
     .evaluation-actions {
-        justify-content: center;
+        justify-content: stretch;
+    }
+    
+    .btn-action {
+        width: 100%;
     }
     
     .grade-item {
@@ -608,4 +769,192 @@
         padding: var(--space-md);
     }
 }
-</style> 
+</style>
+
+@section('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modalElement = document.getElementById('teacherNoteModal');
+    const modalBody = document.getElementById('teacherNoteModalBody');
+    const csrfToken = '{{ csrf_token() }}';
+    const noteModalUrlTemplate = @json(route('teacher.grades.note-modal', ['evaluation' => '__id__']));
+    const refreshCardUrlTemplate = @json(route('teacher.grades.card', ['evaluation' => '__id__']));
+    let currentEvaluationId = null;
+
+    function buildUrl(template, id) {
+        return template.replace('__id__', id);
+    }
+
+    function showSuccessMessage(message) {
+        const alertHtml = `
+            <div class="alert alert-success alert-dismissible fade show" role="alert" style="margin-bottom: 1rem;">
+                <i class="fas fa-check-circle me-2"></i>${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.insertAdjacentHTML('afterbegin', alertHtml);
+            setTimeout(() => {
+                const alert = mainContent.querySelector('.alert');
+                if (alert) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+    }
+
+    function refreshEvaluationCard(evaluationId) {
+        const card = document.querySelector(`[data-evaluation-id="${evaluationId}"]`);
+        if (!card) {
+            return;
+        }
+
+        fetch(buildUrl(refreshCardUrlTemplate, evaluationId), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success || !data.html) {
+                throw new Error(data.message || 'Refresh invalide');
+            }
+            const template = document.createElement('template');
+            template.innerHTML = data.html.trim();
+            const newCard = template.content.querySelector(`[data-evaluation-id="${evaluationId}"]`) || template.content.firstElementChild;
+            if (newCard) {
+                card.replaceWith(newCard);
+                newCard.classList.add('card-flash-success');
+                setTimeout(() => {
+                    newCard.classList.remove('card-flash-success');
+                }, 1200);
+            }
+        })
+        .catch(() => {
+            window.location.reload();
+        });
+    }
+
+    function openNoteModal(evaluationId) {
+        if (!modalElement) {
+            return;
+        }
+        currentEvaluationId = evaluationId;
+        modalBody.innerHTML = `
+            <div class="p-4 text-center">
+                <div class="spinner-border text-primary" role="status"></div>
+                <div class="text-muted mt-2">Chargement...</div>
+            </div>
+        `;
+
+        fetch(buildUrl(noteModalUrlTemplate, evaluationId), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success || !data.html) {
+                throw new Error(data.message || 'Impossible de charger le modal');
+            }
+            modalBody.innerHTML = data.html;
+        })
+        .catch(() => {
+            modalBody.innerHTML = '<div class="p-4 text-danger">Erreur de chargement.</div>';
+        });
+
+        const bsModal = new bootstrap.Modal(modalElement);
+        bsModal.show();
+    }
+
+    document.addEventListener('click', function (event) {
+        const trigger = event.target.closest('[data-action="open-notes-modal"]');
+        if (!trigger) {
+            return;
+        }
+        event.preventDefault();
+        const evaluationId = trigger.dataset.evaluationId;
+        if (evaluationId) {
+            openNoteModal(evaluationId);
+        }
+    });
+
+    modalElement?.addEventListener('submit', function (event) {
+        const form = event.target.closest('#teacherNoteForm');
+        if (!form) {
+            return;
+        }
+        event.preventDefault();
+
+        const formData = new FormData(form);
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: formData
+        })
+        .then(async response => {
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || data.success === false) {
+                let message = data.message || 'Erreur lors de l\'enregistrement.';
+                if (!data.message && data.errors) {
+                    const firstKey = Object.keys(data.errors)[0];
+                    if (firstKey) {
+                        message = data.errors[firstKey][0];
+                    }
+                }
+                throw new Error(message);
+            }
+            return data;
+        })
+        .then(data => {
+            showSuccessMessage(data.message || 'Note enregistrée.');
+            const bsModal = bootstrap.Modal.getInstance(modalElement);
+            bsModal.hide();
+        })
+        .catch(error => {
+            const existingAlert = form.querySelector('.alert');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-danger mt-3';
+            alert.textContent = error.message;
+            form.prepend(alert);
+        });
+    });
+
+    modalBody?.addEventListener('change', function (event) {
+        const checkbox = event.target.closest('#teacher_note_absent');
+        if (!checkbox) {
+            return;
+        }
+        const noteInput = modalBody.querySelector('input[name="note"]');
+        if (!noteInput) {
+            return;
+        }
+        if (checkbox.checked) {
+            noteInput.value = '';
+            noteInput.setAttribute('disabled', 'disabled');
+            noteInput.removeAttribute('required');
+        } else {
+            noteInput.removeAttribute('disabled');
+            noteInput.setAttribute('required', 'required');
+        }
+    });
+
+    modalElement?.addEventListener('hidden.bs.modal', function () {
+        if (currentEvaluationId) {
+            refreshEvaluationCard(currentEvaluationId);
+        }
+    });
+});
+</script>
+@endsection

@@ -639,6 +639,7 @@ class TeacherDashboardController extends Controller
                 ->orWhere('created_by', $userId);
         })
             ->with(['matiere', 'classe'])
+            ->withCount('notes')
             ->orderBy('date_evaluation', 'desc')
             ->paginate(10);
 
@@ -653,6 +654,141 @@ class TeacherDashboardController extends Controller
             ->get();
 
         return view('teacher.grades', compact('evaluations', 'recentGrades', 'user', 'anneeEnCours'));
+    }
+
+    public function getNoteModal(ESBTPEvaluation $evaluation): JsonResponse
+    {
+        $user = Auth::user();
+        $this->ensureTeacherCanManageEvaluation($user, $evaluation);
+
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation, $anneeEnCours) {
+            $query->where('classe_id', $evaluation->classe_id)
+                ->where('status', 'active');
+            if ($anneeEnCours) {
+                $query->where('annee_universitaire_id', $anneeEnCours->id);
+            }
+        })
+            ->whereDoesntHave('notes', function ($query) use ($evaluation) {
+                $query->where('evaluation_id', $evaluation->id);
+            })
+            ->orderBy('nom')
+            ->get();
+
+        $notesTotal = ESBTPNote::where('evaluation_id', $evaluation->id)->count();
+        $absentsTotal = ESBTPNote::where('evaluation_id', $evaluation->id)
+            ->where('is_absent', 1)
+            ->count();
+
+        $evaluation->load(['classe', 'matiere']);
+
+        $html = view('teacher.partials.note-modal-content', compact('evaluation', 'etudiants', 'notesTotal', 'absentsTotal'))->render();
+
+        return response()->json([
+            'success' => true,
+            'html' => $html,
+        ]);
+    }
+
+    public function storeNote(Request $request, ESBTPEvaluation $evaluation): JsonResponse
+    {
+        $user = Auth::user();
+        $this->ensureTeacherCanManageEvaluation($user, $evaluation);
+
+        $request->validate([
+            'etudiant_id' => 'required|exists:esbtp_etudiants,id',
+            'note' => 'required_unless:is_absent,on|numeric|min:0',
+            'is_absent' => 'nullable|in:on,1,true',
+            'commentaire' => 'nullable|string',
+        ]);
+
+        if (! $evaluation->is_published) {
+            return response()->json([
+                'success' => false,
+                'message' => "Cette évaluation n'est pas publiée.",
+            ], 422);
+        }
+
+        if ($evaluation->date_evaluation && $evaluation->date_evaluation->isFuture()) {
+            return response()->json([
+                'success' => false,
+                'message' => "La saisie des notes est disponible uniquement après la date d'évaluation.",
+            ], 422);
+        }
+
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $etudiant = ESBTPEtudiant::where('id', $request->etudiant_id)
+            ->whereHas('inscriptions', function ($query) use ($evaluation, $anneeEnCours) {
+                $query->where('classe_id', $evaluation->classe_id)
+                    ->where('status', 'active');
+                if ($anneeEnCours) {
+                    $query->where('annee_universitaire_id', $anneeEnCours->id);
+                }
+            })
+            ->first();
+
+        if (! $etudiant) {
+            return response()->json([
+                'success' => false,
+                'message' => "Cet étudiant n'appartient pas à la classe de l'évaluation.",
+            ], 422);
+        }
+
+        $existingNote = ESBTPNote::where('etudiant_id', $etudiant->id)
+            ->where('evaluation_id', $evaluation->id)
+            ->first();
+
+        if ($existingNote) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Une note existe déjà pour cet étudiant.',
+            ], 422);
+        }
+
+        $isAbsent = $request->has('is_absent') && in_array($request->is_absent, ['on', '1', 'true', true], true);
+
+        $note = new ESBTPNote;
+        $note->etudiant_id = $etudiant->id;
+        $note->evaluation_id = $evaluation->id;
+        $note->classe_id = $evaluation->classe_id;
+        $note->matiere_id = $evaluation->matiere_id;
+        $note->semestre = $evaluation->periode;
+        $note->note = $isAbsent ? 0 : $request->note;
+        $note->is_absent = $isAbsent ? 1 : 0;
+        $note->commentaire = $request->commentaire;
+        $note->created_by = $user->id;
+        $note->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Note enregistrée avec succès.',
+            'evaluation_id' => $evaluation->id,
+        ]);
+    }
+
+    public function refreshEvaluationCard(ESBTPEvaluation $evaluation): JsonResponse
+    {
+        $user = Auth::user();
+        $this->ensureTeacherCanManageEvaluation($user, $evaluation);
+
+        $evaluation->load(['classe', 'matiere']);
+        $evaluation->loadCount('notes');
+        $html = view('teacher.partials.evaluation-card', compact('evaluation'))->render();
+
+        return response()->json([
+            'success' => true,
+            'html' => $html,
+        ]);
+    }
+
+    private function ensureTeacherCanManageEvaluation($user, ESBTPEvaluation $evaluation): void
+    {
+        if (($user->hasRole('enseignant') || $user->hasRole('teacher')) && $user->can('manage_own_notes')) {
+            $isOwner = $evaluation->enseignant_id === $user->id || $evaluation->created_by === $user->id;
+            if (! $isOwner) {
+                abort(403, "Vous n'êtes pas autorisé à gérer cette évaluation.");
+            }
+        }
     }
 
     /**

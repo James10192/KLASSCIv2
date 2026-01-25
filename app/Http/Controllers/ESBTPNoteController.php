@@ -9,6 +9,7 @@ use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNote;
 use App\Services\NotificationService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -78,8 +79,11 @@ class ESBTPNoteController extends Controller
      */
     public function create()
     {
+        $today = Carbon::today();
         $evaluations = ESBTPEvaluation::with(['classe', 'matiere'])
             ->where('is_published', true)
+            ->whereNotNull('date_evaluation')
+            ->whereDate('date_evaluation', '<=', $today)
             ->whereIn('status', [
                 ESBTPEvaluation::STATUS_SCHEDULED,
                 ESBTPEvaluation::STATUS_IN_PROGRESS,
@@ -134,6 +138,11 @@ class ESBTPNoteController extends Controller
 
             // Récupérer l'évaluation pour obtenir le barème et la classe
             $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
+            if ($evaluation->date_evaluation && $evaluation->date_evaluation->isFuture()) {
+                return redirect()->back()
+                    ->with('error', "La saisie des notes est disponible uniquement après la date d'évaluation.")
+                    ->withInput();
+            }
             if (! $evaluation->is_published) {
                 return redirect()->back()
                     ->with('error', 'Cette évaluation n\'est pas publiée. Activez-la avant de saisir les notes.')
