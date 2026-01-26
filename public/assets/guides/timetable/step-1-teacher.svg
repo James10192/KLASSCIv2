@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <rect width="960" height="540" fill="#e2e8f0"/>
+  <rect x="40" y="40" width="880" height="460" rx="24" fill="#f8fafc" stroke="#cbd5f5" stroke-width="2"/>
+  <text x="80" y="120" font-family="Arial, sans-serif" font-size="28" fill="#1e3a8a">Étape 1 · Créer l’enseignant</text>
+  <text x="80" y="170" font-family="Arial, sans-serif" font-size="18" fill="#64748b">Ajoutez ici la capture d’écran de la page de création enseignant.</text>
+  <rect x="80" y="210" width="800" height="250" rx="16" fill="#e0e7ff"/>
+  <text x="120" y="330" font-family="Arial, sans-serif" font-size="18" fill="#1e40af">Screenshot à remplacer</text>
+</svg>

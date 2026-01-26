@@ -137,6 +137,97 @@
         background: var(--warning);
     }
 
+    .timetable-tips-btn {
+        background: rgba(255, 255, 255, 0.18);
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        padding: 0.65rem 1rem;
+        border-radius: 10px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .timetable-tips-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        color: #ffffff;
+        transform: translateY(-1px);
+    }
+
+    .tips-modal .modal-content {
+        border-radius: 18px;
+        border: none;
+        overflow: hidden;
+        box-shadow: 0 18px 42px rgba(15, 23, 42, 0.2);
+    }
+
+    .tips-modal .modal-header {
+        background: linear-gradient(135deg, #0f3f87 0%, #0453cb 100%);
+        color: #ffffff;
+        border-bottom: none;
+    }
+
+    .tips-modal .modal-title {
+        font-weight: 700;
+    }
+
+    .tips-modal .modal-body {
+        background: #f8fafc;
+    }
+
+    .tips-steps {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1rem;
+    }
+
+    .tips-step {
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 1rem;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .tips-step-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .tips-step-title span {
+        background: rgba(4, 83, 203, 0.12);
+        color: #1d4ed8;
+        border-radius: 999px;
+        padding: 0.25rem 0.6rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .tips-step img {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+    }
+
+    .tips-note {
+        margin-top: 1rem;
+        background: rgba(14, 165, 233, 0.12);
+        border: 1px solid rgba(14, 165, 233, 0.25);
+        padding: 0.9rem 1rem;
+        border-radius: 12px;
+        color: #0369a1;
+        font-weight: 600;
+    }
+
     .emploi-shortcut-card {
         border: 1px dashed rgba(245, 158, 11, 0.6);
         background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.02));
@@ -575,6 +666,9 @@
                     </div>
                 </div>
                 <div class="d-flex gap-2">
+                    <button type="button" class="timetable-tips-btn" data-bs-toggle="modal" data-bs-target="#timetableTipsModal">
+                        <i class="fas fa-lightbulb"></i>Tips
+                    </button>
                     @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('create_timetable'))
                         <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn-acasi primary">
                             <i class="fas fa-plus-circle me-2"></i>Nouveau
@@ -858,6 +952,53 @@
                             </a>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade tips-modal" id="timetableTipsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-route me-2"></i>Guide rapide pour créer un emploi du temps</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="tips-steps">
+                    <div class="tips-step">
+                        <div class="tips-step-title">
+                            <span>Étape 1</span> Créer l’enseignant
+                        </div>
+                        <p class="text-muted mb-0">Ajoutez l’enseignant et renseignez sa spécialité pour les associations.</p>
+                        <img src="{{ asset('assets/guides/timetable/step-1-teacher.svg') }}" alt="Créer un enseignant">
+                    </div>
+                    <div class="tips-step">
+                        <div class="tips-step-title">
+                            <span>Étape 2</span> Définir la disponibilité
+                        </div>
+                        <p class="text-muted mb-0">Configurez les créneaux disponibles avant de planifier.</p>
+                        <img src="{{ asset('assets/guides/timetable/step-2-availability.svg') }}" alt="Disponibilités enseignant">
+                    </div>
+                    <div class="tips-step">
+                        <div class="tips-step-title">
+                            <span>Étape 3</span> Planning général & volumes
+                        </div>
+                        <p class="text-muted mb-0">Associez les enseignants aux filières/niveaux et aux volumes horaires.</p>
+                        <img src="{{ asset('assets/guides/timetable/step-3-planning.svg') }}" alt="Planning général">
+                    </div>
+                    <div class="tips-step">
+                        <div class="tips-step-title">
+                            <span>Étape 4</span> Générer l’emploi du temps
+                        </div>
+                        <p class="text-muted mb-0">Lancez la génération rapide ou créez manuellement la semaine.</p>
+                        <img src="{{ asset('assets/guides/timetable/step-4-generate.svg') }}" alt="Génération emploi du temps">
+                    </div>
+                </div>
+                <div class="tips-note">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Astuce : sans disponibilité ou volume horaire configuré, la duplication bascule en mode vide.
                 </div>
             </div>
         </div>
