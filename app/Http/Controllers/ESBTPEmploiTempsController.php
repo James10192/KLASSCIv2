@@ -2,25 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\ESBTPEmploiTemps;
-use App\Models\ESBTPSeanceCours;
+use App\Helpers\SettingsHelper;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
-use App\Models\ESBTPMatiere;
-use App\Models\User;
+use App\Models\ESBTPEmploiTemps;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFiliere;
+use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNiveauEtude;
-use App\Models\ESBTPAnneeUniversitaire;
-use App\Models\ESBTPTeacher;
 use App\Models\ESBTPPlanificationAcademique;
-use App\Services\TimetableShortcutService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
+use App\Models\ESBTPSeanceCours;
+use App\Models\ESBTPTeacher;
+use App\Models\User;
 use App\Services\ESBTPPDFService;
-use App\Helpers\SettingsHelper;
+use App\Services\TimetableShortcutService;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ESBTPEmploiTempsController extends Controller
 {
@@ -51,14 +50,14 @@ class ESBTPEmploiTempsController extends Controller
         // Appliquer les filtres depuis l'URL
         // Filtrage par filière
         if ($request->filled('filiere_id')) {
-            $emploisTempsQuery->whereHas('classe', function($q) use ($request) {
+            $emploisTempsQuery->whereHas('classe', function ($q) use ($request) {
                 $q->where('filiere_id', $request->filiere_id);
             });
         }
 
         // Filtrage par niveau
         if ($request->filled('niveau_id')) {
-            $emploisTempsQuery->whereHas('classe', function($q) use ($request) {
+            $emploisTempsQuery->whereHas('classe', function ($q) use ($request) {
                 $q->where('niveau_etude_id', $request->niveau_id);
             });
         }
@@ -95,13 +94,13 @@ class ESBTPEmploiTempsController extends Controller
             $dates = explode('|', $request->semaine);
             if (count($dates) === 2) {
                 $emploisTempsQuery->where('date_debut', $dates[0])
-                      ->where('date_fin', $dates[1]);
+                    ->where('date_fin', $dates[1]);
             }
         }
 
         $emploisTemps = $emploisTempsQuery->orderBy('date_debut', 'desc')
-                                         ->orderBy('created_at', 'desc')
-                                         ->get();
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         // Ajout des filières pour le filtre
         $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
@@ -119,11 +118,12 @@ class ESBTPEmploiTempsController extends Controller
         $totalEmploisTemps = $emploisTemps->count();
         $today = Carbon::today();
         $emploisTempsActifs = $emploisTemps->filter(function ($emploiTemps) use ($today) {
-            if (!$emploiTemps->date_debut || !$emploiTemps->date_fin) {
+            if (! $emploiTemps->date_debut || ! $emploiTemps->date_fin) {
                 return false;
             }
             $startDate = Carbon::parse($emploiTemps->date_debut);
             $endDate = Carbon::parse($emploiTemps->date_fin);
+
             return $today->between($startDate, $endDate);
         })->count();
         $totalSeances = ESBTPSeanceCours::count();
@@ -166,13 +166,13 @@ class ESBTPEmploiTempsController extends Controller
 
         // Initialiser les données de planification
         $planificationData = [];
-        
+
         // Si on a une classe sélectionnée (via paramètres GET ou session)
         $classeSelectionnee = request('classe_id') ? ESBTPClasse::find(request('classe_id')) : null;
-        
+
         // Utiliser seulement l'année courante (pas de choix possible)
         $anneeSelectionnee = $anneeCourante;
-        
+
         if ($classeSelectionnee && $anneeSelectionnee) {
             $semestre = request('semestre') ?: null;
             $planificationData = $this->getPlanificationDataForClasse($classeSelectionnee, $anneeSelectionnee, $semestre);
@@ -186,7 +186,7 @@ class ESBTPEmploiTempsController extends Controller
     /**
      * Génère une liste de créneaux horaires à partir des séances existantes.
      */
-private function generateTimeSlots($seances, int $intervalMinutes = 60, string $defaultStart = '07:00', string $defaultEnd = '18:00'): array
+    private function generateTimeSlots($seances, int $intervalMinutes = 60, string $defaultStart = '07:00', string $defaultEnd = '18:00'): array
     {
         $intervalMinutes = max(1, $intervalMinutes);
 
@@ -264,19 +264,19 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             'heures_totales' => 0,
             'heures_restantes' => 0,
             'message_configuration' => null,
-            'lien_configuration' => null
+            'lien_configuration' => null,
         ];
 
         // NOUVELLE LOGIQUE : Récupérer uniquement les matières liées à cette combinaison filière/niveau
         $matieresLiees = ESBTPMatiere::where('is_active', true)
-            ->whereHas('filieres', function($query) use ($classe) {
+            ->whereHas('filieres', function ($query) use ($classe) {
                 $query->where('esbtp_filieres.id', $classe->filiere_id);
             })
-            ->whereHas('niveaux', function($query) use ($classe) {
+            ->whereHas('niveaux', function ($query) use ($classe) {
                 $query->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
             })
             ->get();
-        
+
         // Récupérer les planifications pour ces matières liées uniquement
         $planifications = collect();
         foreach ($matieresLiees as $matiere) {
@@ -284,7 +284,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 ->where('filiere_id', $classe->filiere_id)
                 ->where('niveau_etude_id', $classe->niveau_etude_id)
                 ->where('matiere_id', $matiere->id)
-                ->when($semestre, function($query) use ($semestre) {
+                ->when($semestre, function ($query) use ($semestre) {
                     // Convertir le semestre string en integer si nécessaire
                     if (is_string($semestre)) {
                         if (strpos($semestre, 'Semestre 1') !== false) {
@@ -297,7 +297,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                     } else {
                         $semestreInt = $semestre;
                     }
-                    
+
                     if ($semestreInt) {
                         $query->where('semestre', $semestreInt);
                     }
@@ -305,7 +305,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 ->active()
                 ->with(['matiere', 'enseignantPrincipal', 'teachers.user', 'teachers.availabilities'])
                 ->first();
-            
+
             if ($planification) {
                 $planifications->push($planification);
             }
@@ -313,7 +313,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
 
         if ($planifications->isEmpty()) {
             // Aucune planification configurée pour les matières liées
-            $data['message_configuration'] = "Aucune planification académique n'a été configurée pour les matières de cette classe (" . $matieresLiees->count() . " matières disponibles). Veuillez d'abord configurer la planification.";
+            $data['message_configuration'] = "Aucune planification académique n'a été configurée pour les matières de cette classe (".$matieresLiees->count()." matières disponibles). Veuillez d'abord configurer la planification.";
             // Convertir le semestre string en integer pour l'URL
             $semestreUrl = 1; // Par défaut
             if ($semestre) {
@@ -327,27 +327,28 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                     $semestreUrl = $semestre;
                 }
             }
-            
+
             $data['lien_configuration'] = route('esbtp.planning-general.index', [
                 'annee_id' => $annee->id,
                 'filiere_filter' => $classe->filiere_id,
-                'niveau_filter' => $classe->niveau_etude_id
+                'niveau_filter' => $classe->niveau_etude_id,
             ]);
+
             return $data;
         }
 
         $data['planifications_configurees'] = true;
-        
+
         // Traiter chaque planification pour calculer les heures restantes
         $matieresPlanifiees = collect();
         $enseignantsIds = collect();
         $teacherCache = [];
         $getTeacherModel = function ($userId) use (&$teacherCache) {
-            if (!$userId) {
+            if (! $userId) {
                 return null;
             }
 
-            if (!array_key_exists($userId, $teacherCache)) {
+            if (! array_key_exists($userId, $teacherCache)) {
                 $teacherCache[$userId] = ESBTPTeacher::with(['user', 'availabilities'])
                     ->where('user_id', $userId)
                     ->first();
@@ -355,12 +356,12 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
 
             return $teacherCache[$userId];
         };
-        
+
         foreach ($planifications as $planification) {
             // Utiliser les heures effectuées basées sur les émargements validés
             // Si le champ n'existe pas encore, utiliser l'ancienne méthode comme fallback
             $heuresUtilisees = $planification->heures_effectuees ?? 0;
-            
+
             // Fallback : si pas d'heures effectuées, calculer à partir des séances
             // IMPORTANT: Exclure les séances où l'enseignant est marqué ABSENT
             if ($heuresUtilisees == 0) {
@@ -369,16 +370,16 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                     ->where('esbtp_seance_cours.type', ESBTPSeanceCours::TYPE_COURSE)
                     ->where('classe_id', $classe->id)
                     ->where('annee_universitaire_id', $annee->id)
-                    ->when($semestre, function($query) use ($semestre) {
+                    ->when($semestre, function ($query) {
                         // Si on a un semestre spécifique, filtrer les séances par période
                         // Cette logique peut être adaptée selon votre implémentation des semestres
                     })
                     // Left join pour obtenir l'attendance la plus récente
-                    ->leftJoin('esbtp_teacher_attendances', function($join) {
+                    ->leftJoin('esbtp_teacher_attendances', function ($join) {
                         $join->on('esbtp_teacher_attendances.course_id', '=', 'esbtp_seance_cours.id')
-                             ->where('esbtp_teacher_attendances.type', '=', 'start')
+                            ->where('esbtp_teacher_attendances.type', '=', 'start')
                              // Sous-requête pour obtenir uniquement l'attendance la plus récente
-                             ->whereRaw('esbtp_teacher_attendances.id = (
+                            ->whereRaw('esbtp_teacher_attendances.id = (
                                  SELECT ta.id FROM esbtp_teacher_attendances ta
                                  WHERE ta.course_id = esbtp_seance_cours.id
                                    AND ta.type = "start"
@@ -391,9 +392,9 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                              )');
                     })
                     // Exclure les séances où l'enseignant est absent
-                    ->where(function($query) {
+                    ->where(function ($query) {
                         $query->whereNull('esbtp_teacher_attendances.status')
-                              ->orWhere('esbtp_teacher_attendances.status', '!=', 'absent');
+                            ->orWhere('esbtp_teacher_attendances.status', '!=', 'absent');
                     })
                     ->select('esbtp_seance_cours.heure_debut', 'esbtp_seance_cours.heure_fin')
                     ->get();
@@ -408,7 +409,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             }
 
             $heuresRestantes = $planification->volume_horaire_total - $heuresUtilisees;
-            
+
             // Déterminer l'enseignant à afficher (priorité : assignations > principal)
             $enseignantAffiche = null;
             if ($planification->teachers && $planification->teachers->count() > 0) {
@@ -419,7 +420,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 // Fallback sur l'enseignant principal
                 $enseignantAffiche = $planification->enseignantPrincipal;
             }
-            
+
             $enseignantsSelectables = collect();
             if ($planification->teachers && $planification->teachers->count() > 0) {
                 $planification->teachers->each(function ($teacher) {
@@ -430,15 +431,15 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
 
             if ($planification->enseignantPrincipal) {
                 $principalTeacherModel = $getTeacherModel($planification->enseignantPrincipal->id);
-                if ($principalTeacherModel && !$enseignantsSelectables->contains('id', $principalTeacherModel->id)) {
+                if ($principalTeacherModel && ! $enseignantsSelectables->contains('id', $principalTeacherModel->id)) {
                     $enseignantsSelectables->push($principalTeacherModel);
                 }
             }
 
-            if (!empty($planification->enseignants_secondaires)) {
+            if (! empty($planification->enseignants_secondaires)) {
                 foreach ($planification->enseignants_secondaires as $secondaryUserId) {
                     $secondaryTeacherModel = $getTeacherModel($secondaryUserId);
-                    if ($secondaryTeacherModel && !$enseignantsSelectables->contains('id', $secondaryTeacherModel->id)) {
+                    if ($secondaryTeacherModel && ! $enseignantsSelectables->contains('id', $secondaryTeacherModel->id)) {
                         $enseignantsSelectables->push($secondaryTeacherModel);
                     }
                 }
@@ -447,13 +448,14 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             $enseignantsSelectables = $enseignantsSelectables->filter()->unique('id')->values();
 
             // Fonction helper pour formater les heures en XXhYY
-            $formatHeures = function($heures) {
+            $formatHeures = function ($heures) {
                 $h = floor($heures);
                 $m = round(($heures - $h) * 60);
                 if ($m > 0) {
-                    return $h . 'h' . ($m < 10 ? '0' : '') . $m;
+                    return $h.'h'.($m < 10 ? '0' : '').$m;
                 }
-                return $h . 'h';
+
+                return $h.'h';
             };
 
             $matieresPlanifiees->push([
@@ -477,14 +479,14 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 'volume_horaire_tp' => $planification->volume_horaire_tp,
                 'statut' => $planification->statut,
                 'periode_debut' => $planification->periode_debut,
-                'periode_fin' => $planification->periode_fin
+                'periode_fin' => $planification->periode_fin,
             ]);
 
             // Collecter les enseignants
             if ($planification->enseignant_principal_id) {
                 $enseignantsIds->push($planification->enseignant_principal_id);
             }
-            
+
             // Ajouter les enseignants secondaires s'ils existent
             if ($planification->enseignants_secondaires) {
                 foreach ($planification->enseignants_secondaires as $enseignantId) {
@@ -499,13 +501,14 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         $heuresRestantesTotal = $matieresPlanifiees->sum('heures_restantes');
 
         // Fonction helper pour formater les heures en XXhYY
-        $formatHeuresTotal = function($heures) {
+        $formatHeuresTotal = function ($heures) {
             $h = floor($heures);
             $m = round(($heures - $h) * 60);
             if ($m > 0) {
-                return $h . 'h' . ($m < 10 ? '0' : '') . $m;
+                return $h.'h'.($m < 10 ? '0' : '').$m;
             }
-            return $h . 'h';
+
+            return $h.'h';
         };
 
         $data['heures_totales'] = $heuresTotal;
@@ -522,7 +525,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         $enseignantsDisponibles = collect();
         foreach ($tousLesEnseignants as $enseignant) {
             $estAssigne = $enseignantsIds->contains($enseignant->id);
-            
+
             // Calculer la charge de travail actuelle de l'enseignant
             $chargeActuelle = \App\Models\ESBTPPlanificationAcademique::where('enseignant_principal_id', $enseignant->id)
                 ->where('annee_universitaire_id', $annee->id)
@@ -532,13 +535,13 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 'enseignant' => $enseignant,
                 'est_assigne_classe' => $estAssigne,
                 'charge_horaire_annuelle' => $chargeActuelle,
-                'disponibilite' => $chargeActuelle < 500 ? 'Disponible' : ($chargeActuelle < 800 ? 'Chargé' : 'Surchargé')
+                'disponibilite' => $chargeActuelle < 500 ? 'Disponible' : ($chargeActuelle < 800 ? 'Chargé' : 'Surchargé'),
             ]);
         }
 
         $data['enseignants_disponibles'] = $enseignantsDisponibles->sortBy([
             ['est_assigne_classe', 'desc'],
-            ['charge_horaire_annuelle', 'asc']
+            ['charge_horaire_annuelle', 'asc'],
         ]);
 
         return $data;
@@ -547,7 +550,6 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
     /**
      * Enregistre un nouvel emploi du temps.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
     public function store(Request $request)
@@ -569,12 +571,12 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
 
         if ($diffJours > 5) {
             return back()->withInput()->withErrors([
-                'date_fin' => 'La période de l\'emploi du temps ne doit pas dépasser 6 jours (du lundi au samedi).'
+                'date_fin' => 'La période de l\'emploi du temps ne doit pas dépasser 6 jours (du lundi au samedi).',
             ]);
         }
 
         // Créer l'emploi du temps
-        $emploiTemps = new ESBTPEmploiTemps();
+        $emploiTemps = new ESBTPEmploiTemps;
         $emploiTemps->titre = $validated['titre'];
         $emploiTemps->classe_id = $validated['classe_id'];
         $emploiTemps->annee_universitaire_id = $validated['annee_universitaire_id'];
@@ -595,7 +597,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 ->where('classe_id', $emploiTemps->classe_id)
                 ->update([
                     'is_active' => false,
-                    'is_current' => false
+                    'is_current' => false,
                 ]);
 
             // S'assurer que le nouvel emploi du temps est bien actif et courant
@@ -607,7 +609,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             \Log::info('Nouvel emploi du temps activé et défini comme courant', [
                 'emploi_temps_id' => $emploiTemps->id,
                 'classe_id' => $emploiTemps->classe_id,
-                'user_id' => Auth::id()
+                'user_id' => Auth::id(),
             ]);
         }
 
@@ -618,7 +620,6 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
     /**
      * Affiche un emploi du temps spécifique.
      *
-     * @param  \App\Models\ESBTPEmploiTemps  $emploi_temp
      * @return \Illuminate\Http\Response
      */
     public function show(ESBTPEmploiTemps $emploi_temp)
@@ -631,7 +632,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             'classe',
             'classe.filiere',
             'classe.niveau',
-            'annee'
+            'annee',
         ]);
 
         // Variable $seances pour la vue
@@ -660,7 +661,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         $matiereStats = [];
         foreach ($emploi_temp->seances as $seance) {
             $matiereName = $seance->matiere ? $seance->matiere->name : 'Non définie';
-            if (!isset($matiereStats[$matiereName])) {
+            if (! isset($matiereStats[$matiereName])) {
                 $matiereStats[$matiereName] = 0;
             }
             $matiereStats[$matiereName]++;
@@ -670,8 +671,8 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         $planificationData = [];
         if ($emploi_temp->classe && $emploi_temp->annee) {
             $planificationData = $this->getPlanificationDataForClasse(
-                $emploi_temp->classe, 
-                $emploi_temp->annee, 
+                $emploi_temp->classe,
+                $emploi_temp->annee,
                 $emploi_temp->semestre
             );
         }
@@ -688,7 +689,6 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
     /**
      * Affiche le formulaire d'édition d'un emploi du temps.
      *
-     * @param  \App\Models\ESBTPEmploiTemps  $emploi_temp
      * @return \Illuminate\Http\Response
      */
     public function edit(ESBTPEmploiTemps $emploi_temp)
@@ -697,23 +697,23 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             'emploi_temps_id' => $emploi_temp->id,
             'user_id' => auth()->id(),
             'user_permissions' => auth()->user()->getAllPermissions()->pluck('name'),
-            'user_roles' => auth()->user()->getRoleNames()
+            'user_roles' => auth()->user()->getRoleNames(),
         ]);
 
         // No policy-based authorization
         $emploiTemps = $emploi_temp;
 
         // Ensure $emploiTemps is an object
-        if (!is_object($emploiTemps)) {
+        if (! is_object($emploiTemps)) {
             \Log::error('$emploiTemps is not an object', [
                 'type' => gettype($emploiTemps),
-                'value' => $emploiTemps
+                'value' => $emploiTemps,
             ]);
 
             // Try to find the emploi_temp by ID if it's an integer
             if (is_numeric($emploiTemps)) {
                 $emploiTemps = ESBTPEmploiTemps::find($emploiTemps);
-                if (!$emploiTemps) {
+                if (! $emploiTemps) {
                     abort(404, 'Emploi du temps non trouvé');
                 }
             } else {
@@ -728,7 +728,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         \Log::info('Variables passed to edit view', [
             'emploiTemps' => $emploiTemps,
             'classes_count' => $classes->count(),
-            'annees_count' => $annees->count()
+            'annees_count' => $annees->count(),
         ]);
 
         return view('esbtp.emploi-temps.edit', compact('emploiTemps', 'classes', 'annees'));
@@ -737,8 +737,6 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
     /**
      * Met à jour un emploi du temps.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\ESBTPEmploiTemps  $emploi_temp
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, ESBTPEmploiTemps $emploi_temp)
@@ -757,8 +755,8 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         $validated['is_current'] = $request->has('is_current');
 
         // Vérifier si l'emploi du temps est activé ou défini comme courant
-        $isBeingActivated = $request->has('is_active') && !$emploi_temp->is_active;
-        $isBeingSetCurrent = $request->has('is_current') && !$emploi_temp->is_current;
+        $isBeingActivated = $request->has('is_active') && ! $emploi_temp->is_active;
+        $isBeingSetCurrent = $request->has('is_current') && ! $emploi_temp->is_current;
 
         // Mettre à jour l'emploi du temps
         $emploi_temp->update($validated);
@@ -770,7 +768,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 ->where('classe_id', $emploi_temp->classe_id)
                 ->update([
                     'is_active' => false,
-                    'is_current' => false
+                    'is_current' => false,
                 ]);
 
             // S'assurer que cet emploi du temps est bien actif et courant
@@ -782,7 +780,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             \Log::info('Emploi du temps activé et défini comme courant', [
                 'emploi_temps_id' => $emploi_temp->id,
                 'classe_id' => $emploi_temp->classe_id,
-                'user_id' => Auth::id()
+                'user_id' => Auth::id(),
             ]);
         }
 
@@ -793,14 +791,12 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
     /**
      * Supprime un emploi du temps.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\ESBTPEmploiTemps  $emploi_temp
      * @return \Illuminate\Http\Response
      */
     public function destroy(Request $request, ESBTPEmploiTemps $emploi_temp)
     {
         // Vérifier si l'utilisateur a la permission de supprimer les emplois du temps
-        if (!auth()->user()->can('delete_timetables')) {
+        if (! auth()->user()->can('delete_timetables')) {
             abort(403, 'Accès non autorisé. Permission de suppression requise.');
         }
 
@@ -808,12 +804,12 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         $seancesCount = $emploi_temp->seances()->count();
 
         // Si l'emploi du temps a des séances associées et que la suppression forcée n'est pas demandée
-        if ($seancesCount > 0 && !$request->has('force_delete')) {
+        if ($seancesCount > 0 && ! $request->has('force_delete')) {
             // Journaliser la tentative de suppression
             \Log::warning('Tentative de suppression d\'un emploi du temps avec des séances associées', [
                 'emploi_temps_id' => $emploi_temp->id,
                 'seances_count' => $seancesCount,
-                'user_id' => auth()->id()
+                'user_id' => auth()->id(),
             ]);
 
             // Rediriger avec un message d'avertissement et un paramètre pour confirmer la suppression forcée
@@ -826,7 +822,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         \Log::info('Suppression de l\'emploi du temps', [
             'emploi_temps_id' => $emploi_temp->id,
             'force_delete' => $request->has('force_delete'),
-            'user_id' => auth()->id()
+            'user_id' => auth()->id(),
         ]);
 
         // Supprimer l'emploi du temps (les séances associées seront supprimées par l'événement de modèle)
@@ -849,14 +845,14 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         $etudiant = ESBTPEtudiant::where('user_id', $user->id)->first();
         \Log::info('Étudiant trouvé:', ['etudiant_id' => $etudiant ? $etudiant->id : null]);
 
-        if (!$etudiant) {
+        if (! $etudiant) {
             return redirect()->route('dashboard')->with('error', 'Profil étudiant non trouvé.');
         }
 
         // Récupérer l'inscription active de l'étudiant pour l'année en cours
         $inscription = $etudiant->inscriptions()
             ->where('status', 'active')
-            ->whereHas('anneeUniversitaire', function($query) {
+            ->whereHas('anneeUniversitaire', function ($query) {
                 $query->where('is_current', true);
             })
             ->first();
@@ -867,24 +863,24 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             'annee_universitaire' => $inscription && $inscription->anneeUniversitaire ? [
                 'id' => $inscription->anneeUniversitaire->id,
                 'name' => $inscription->anneeUniversitaire->name,
-                'is_current' => $inscription->anneeUniversitaire->is_current
-            ] : null
+                'is_current' => $inscription->anneeUniversitaire->is_current,
+            ] : null,
         ]);
 
-        if (!$inscription) {
+        if (! $inscription) {
             return view('etudiants.emploi-temps', [
                 'etudiant' => $etudiant,
                 'emploiTemps' => null,
                 'seances' => collect(),
-                'inscription' => null
+                'inscription' => null,
             ])->with('warning', 'Aucune inscription active trouvée pour l\'année en cours.');
         }
 
         // Récupérer l'emploi du temps actif pour la classe de l'étudiant
         $emploiTemps = ESBTPEmploiTemps::where('classe_id', $inscription->classe_id)
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->where('is_active', true)
-                      ->orWhere('is_current', true);
+                    ->orWhere('is_current', true);
             })
             ->orderBy('created_at', 'desc')
             ->first();
@@ -894,34 +890,34 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             'is_active' => $emploiTemps ? $emploiTemps->is_active : null,
             'is_current' => $emploiTemps ? $emploiTemps->is_current : null,
             'sql' => ESBTPEmploiTemps::where('classe_id', $inscription->classe_id)
-                ->where(function($query) {
+                ->where(function ($query) {
                     $query->where('is_active', true)
-                          ->orWhere('is_current', true);
+                        ->orWhere('is_current', true);
                 })
                 ->orderBy('created_at', 'desc')
                 ->toSql(),
             'bindings' => ESBTPEmploiTemps::where('classe_id', $inscription->classe_id)
-                ->where(function($query) {
+                ->where(function ($query) {
                     $query->where('is_active', true)
-                          ->orWhere('is_current', true);
+                        ->orWhere('is_current', true);
                 })
                 ->orderBy('created_at', 'desc')
                 ->getBindings(),
             'total_emplois_temps' => ESBTPEmploiTemps::where('classe_id', $inscription->classe_id)->count(),
             'emplois_temps_actifs' => ESBTPEmploiTemps::where('classe_id', $inscription->classe_id)
-                ->where(function($query) {
+                ->where(function ($query) {
                     $query->where('is_active', true)
-                          ->orWhere('is_current', true);
+                        ->orWhere('is_current', true);
                 })
-                ->count()
+                ->count(),
         ]);
 
-        if (!$emploiTemps) {
+        if (! $emploiTemps) {
             return view('etudiants.emploi-temps', [
                 'etudiant' => $etudiant,
                 'emploiTemps' => null,
                 'seances' => collect(),
-                'inscription' => $inscription
+                'inscription' => $inscription,
             ])->with('warning', 'Aucun emploi du temps n\'est actuellement disponible pour votre classe.');
         }
 
@@ -935,16 +931,16 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
 
         \Log::info('Séances trouvées avant groupement:', [
             'nombre_seances' => $seances->count(),
-            'seances' => $seances->map(function($seance) {
+            'seances' => $seances->map(function ($seance) {
                 return [
                     'id' => $seance->id,
                     'jour' => $seance->jour,
                     'heure_debut' => $seance->heure_debut,
                     'heure_fin' => $seance->heure_fin,
                     'matiere' => $seance->matiere ? $seance->matiere->name : null,
-                    'enseignant' => $seance->enseignantName
+                    'enseignant' => $seance->enseignantName,
                 ];
-            })->toArray()
+            })->toArray(),
         ]);
 
         // Grouper les séances par jour
@@ -952,7 +948,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
 
         \Log::info('Séances après groupement:', [
             'jours_avec_seances' => $seancesGroupees->keys()->toArray(),
-            'nombre_seances_par_jour' => $seancesGroupees->map->count()->toArray()
+            'nombre_seances_par_jour' => $seancesGroupees->map->count()->toArray(),
         ]);
 
         return view('etudiants.emploi-temps', compact('etudiant', 'emploiTemps', 'inscription', 'seancesGroupees'));
@@ -964,6 +960,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         // No policy-based authorization
 
         ESBTPEmploiTemps::setAsCurrent($id);
+
         return redirect()->back()->with('success', 'Emploi du temps défini comme actuel.');
     }
 
@@ -973,7 +970,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             ->where('is_current', true)
             ->first();
 
-        if (!$emploiTemps) {
+        if (! $emploiTemps) {
             return response()->json(['message' => 'Aucun emploi du temps actuel trouvé pour cette classe.'], 404);
         }
 
@@ -984,7 +981,6 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
     /**
      * Affiche le formulaire pour ajouter une séance à un emploi du temps.
      *
-     * @param ESBTPEmploiTemps $emploi_temp
      * @return \Illuminate\Http\Response
      */
     public function addSession(ESBTPEmploiTemps $emploi_temp)
@@ -994,15 +990,15 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         // NOUVELLE LOGIQUE : Utiliser la même approche que la planification générale
         // 1. Récupérer les matières réellement liées à cette combinaison filière/niveau
         $matieresLiees = ESBTPMatiere::where('is_active', true)
-            ->whereHas('filieres', function($query) use ($emploi_temp) {
+            ->whereHas('filieres', function ($query) use ($emploi_temp) {
                 $query->where('esbtp_filieres.id', $emploi_temp->classe->filiere_id);
             })
-            ->whereHas('niveaux', function($query) use ($emploi_temp) {
+            ->whereHas('niveaux', function ($query) use ($emploi_temp) {
                 $query->where('esbtp_niveau_etudes.id', $emploi_temp->classe->niveau_etude_id);
             })
             ->with(['filieres', 'niveaux'])
             ->get();
-        
+
         // 2. Pour chaque matière liée, récupérer sa planification académique
         $matieres = $matieresLiees->map(function ($matiere) use ($emploi_temp) {
             $planification = ESBTPPlanificationAcademique::where('annee_universitaire_id', $emploi_temp->annee_universitaire_id)
@@ -1011,20 +1007,21 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 ->where('matiere_id', $matiere->id)
                 ->with('enseignantPrincipal')
                 ->first();
-            
+
             if ($planification) {
                 $heuresEffectuees = $planification->heures_effectuees ?? 0;
                 $volumeTotal = $planification->volume_horaire_total;
                 $heuresRestantes = max(0, $volumeTotal - $heuresEffectuees);
 
                 // Fonction helper pour formater les heures en XXh YYmin
-                $formatHeures = function($heures) {
+                $formatHeures = function ($heures) {
                     $h = floor($heures);
                     $m = round(($heures - $h) * 60);
                     if ($m > 0) {
-                        return $h . 'h' . ($m < 10 ? '0' : '') . $m;
+                        return $h.'h'.($m < 10 ? '0' : '').$m;
                     }
-                    return $h . 'h';
+
+                    return $h.'h';
                 };
 
                 $matiere->volume_info = [
@@ -1036,7 +1033,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                     'heures_restantes_formatted' => $formatHeures($heuresRestantes),
                     'pourcentage_utilise' => $volumeTotal > 0 ? round(($heuresEffectuees / $volumeTotal) * 100, 1) : 0,
                     'est_complete' => $heuresRestantes <= 0,
-                    'enseignant_principal' => $planification->enseignantPrincipal
+                    'enseignant_principal' => $planification->enseignantPrincipal,
                 ];
             } else {
                 // Matière liée mais pas encore configurée
@@ -1050,19 +1047,20 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                     'pourcentage_utilise' => 0,
                     'est_complete' => false,
                     'non_configuree' => true,
-                    'enseignant_principal' => null
+                    'enseignant_principal' => null,
                 ];
             }
-            
+
             return $matiere;
         });
 
         // Récupérer les enseignants avec leurs disponibilités
         $enseignants = ESBTPTeacher::with(['user', 'availabilities'])->get();
-        
+
         // Préparer les données de disponibilités pour chaque enseignant
         $enseignantsAvecDisponibilites = $enseignants->map(function ($enseignant) {
             $enseignant->availability_data = $this->prepareAvailabilityData($enseignant);
+
             return $enseignant;
         });
 
@@ -1072,8 +1070,6 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
     /**
      * Enregistre une nouvelle séance pour un emploi du temps.
      *
-     * @param Request $request
-     * @param ESBTPEmploiTemps $emploi_temp
      * @return \Illuminate\Http\Response
      */
     public function storeSession(Request $request, ESBTPEmploiTemps $emploi_temp)
@@ -1089,7 +1085,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             'salle' => 'nullable|string|max:50',
             'description' => 'nullable|string',
             'classe_id' => 'required|exists:esbtp_classes,id',
-            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id'
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
         ]);
 
         $validated['emploi_temps_id'] = $emploi_temp->id;
@@ -1098,30 +1094,30 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         $heureDebut = \Carbon\Carbon::parse($validated['heure_debut']);
         $heureFin = \Carbon\Carbon::parse($validated['heure_fin']);
         $dureeSeance = $heureFin->diffInMinutes($heureDebut) / 60; // Convertir en heures
-        
+
         // Vérifier s'il existe une planification académique pour cette matière
         $planification = ESBTPPlanificationAcademique::where('annee_universitaire_id', $validated['annee_universitaire_id'])
             ->where('filiere_id', $emploi_temp->classe->filiere_id)
             ->where('niveau_etude_id', $emploi_temp->classe->niveau_etude_id)
             ->where('matiere_id', $validated['matiere_id'])
             ->first();
-        
+
         // Vérifier si le volume horaire n'est pas dépassé
         if ($planification) {
             $heuresEffectuees = $planification->heures_effectuees ?? 0;
             $volumeTotal = $planification->volume_horaire_total;
-            
+
             if (($heuresEffectuees + $dureeSeance) > $volumeTotal) {
                 return redirect()->back()
                     ->withInput()
                     ->withErrors([
-                        'heure_fin' => "Cette séance dépasserait le volume horaire total de la matière. Heures disponibles: " . 
-                                      ($volumeTotal - $heuresEffectuees) . "h sur " . $volumeTotal . "h total."
+                        'heure_fin' => 'Cette séance dépasserait le volume horaire total de la matière. Heures disponibles: '.
+                                      ($volumeTotal - $heuresEffectuees).'h sur '.$volumeTotal.'h total.',
                     ]);
             }
         }
 
-        $seance = new \App\Models\ESBTPSeanceCours();
+        $seance = new \App\Models\ESBTPSeanceCours;
         $seance->emploi_temps_id = $validated['emploi_temps_id'];
         $seance->classe_id = $validated['classe_id'];
         $seance->matiere_id = $validated['matiere_id'];
@@ -1134,25 +1130,25 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         $seance->annee_universitaire_id = $validated['annee_universitaire_id'];
         $seance->is_active = true;
         $seance->save();
-        
+
         // Mettre à jour les heures effectuées dans la planification académique
         if ($planification) {
             $planification->heures_effectuees = ($planification->heures_effectuees ?? 0) + $dureeSeance;
             $planification->derniere_mise_a_jour_heures = now();
             $planification->save();
-            
+
             \Log::info('Volume horaire mis à jour', [
                 'planification_id' => $planification->id,
                 'matiere_id' => $validated['matiere_id'],
                 'duree_seance' => $dureeSeance,
                 'heures_effectuees_avant' => $planification->heures_effectuees - $dureeSeance,
                 'heures_effectuees_apres' => $planification->heures_effectuees,
-                'volume_total' => $planification->volume_horaire_total
+                'volume_total' => $planification->volume_horaire_total,
             ]);
         }
 
         return redirect()->route('esbtp.emploi-temps.show', $validated['emploi_temps_id'])
-            ->with('success', 'Séance ajoutée avec succès. ' . 
+            ->with('success', 'Séance ajoutée avec succès. '.
                    ($planification ? "Volume horaire mis à jour: {$planification->heures_effectuees}h/{$planification->volume_horaire_total}h" : ''));
     }
 
@@ -1187,7 +1183,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             ->get();
 
         // Grouper les séances par classe
-        $seancesParClasse = $seancesAujourdhui->groupBy(function($seance) {
+        $seancesParClasse = $seancesAujourdhui->groupBy(function ($seance) {
             return $seance->emploiTemps->classe->name ?? 'Non définie';
         });
 
@@ -1226,7 +1222,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
     public function activateAll()
     {
         // Check if user is superAdmin
-        if (!auth()->user()->hasRole('superAdmin')) {
+        if (! auth()->user()->hasRole('superAdmin')) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -1239,7 +1235,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             // First, set all timetables to inactive and not current
             DB::table('esbtp_emploi_temps')->update([
                 'is_active' => false,
-                'is_current' => false
+                'is_current' => false,
             ]);
 
             // For each class, find the most recent timetable and set it as active and current
@@ -1254,7 +1250,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                     // Set the most recent one to active and current
                     $mostRecentTimetable->update([
                         'is_active' => true,
-                        'is_current' => true
+                        'is_current' => true,
                     ]);
                 }
             }
@@ -1273,7 +1269,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 ->with('success', 'Les emplois du temps les plus récents pour chaque classe ont été activés avec succès.');
         } catch (\Exception $e) {
             return redirect()->route('esbtp.emploi-temps.index')
-                ->with('error', 'Une erreur est survenue lors de l\'activation des emplois du temps : ' . $e->getMessage());
+                ->with('error', 'Une erreur est survenue lors de l\'activation des emplois du temps : '.$e->getMessage());
         }
     }
 
@@ -1286,7 +1282,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
     public function setCurrent($id)
     {
         // Check if user has permission
-        if (!auth()->user()->hasRole('superAdmin') && !auth()->user()->hasRole('secretaire')) {
+        if (! auth()->user()->hasRole('superAdmin') && ! auth()->user()->hasRole('secretaire')) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -1313,7 +1309,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             }
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Une erreur est survenue : ' . $e->getMessage());
+                ->with('error', 'Une erreur est survenue : '.$e->getMessage());
         }
     }
 
@@ -1331,7 +1327,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 'classe',
                 'classe.filiere',
                 'classe.niveau',
-                'annee'
+                'annee',
             ])->findOrFail($id);
 
             // Utiliser le service PDF pour générer le document
@@ -1339,12 +1335,12 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             $pdf = $pdfService->genererEmploiTempsPDF($emploiTemps);
 
             // Générer le nom du fichier
-            $filename = 'emploi_temps_' . $emploiTemps->classe->name . '_' . now()->format('Y-m-d') . '.pdf';
+            $filename = 'emploi_temps_'.$emploiTemps->classe->name.'_'.now()->format('Y-m-d').'.pdf';
 
             // Retourner le PDF pour téléchargement (Browsershot retourne le contenu binaire directement)
             return response($pdf, 200, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'attachment; filename="' . $filename . '"'
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
             ]);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la génération du PDF de l\'emploi du temps', [
@@ -1352,7 +1348,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
-                'emploi_temps_id' => $id
+                'emploi_temps_id' => $id,
             ]);
 
             // Pour debug - afficher l'erreur complète temporairement
@@ -1361,7 +1357,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                     'error' => $e->getMessage(),
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'trace' => $e->getTraceAsString()
+                    'trace' => $e->getTraceAsString(),
                 ], 500);
             }
 
@@ -1395,7 +1391,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             'pdf_margin_bottom' => SettingsHelper::get('pdf.margin_bottom', 15),
             'pdf_margin_left' => SettingsHelper::get('pdf.margin_left', 10),
             'pdf_margin_right' => SettingsHelper::get('pdf.margin_right', 10),
-            
+
             // Configuration spécifique emploi du temps
             'timetable_show_logo' => SettingsHelper::get('timetable_show_logo', '1'),
             'timetable_show_header' => SettingsHelper::get('timetable_show_header', '1'),
@@ -1413,11 +1409,12 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         }
 
         // Priorité 1: Vérifier dans storage/app/public/ (logos uploadés)
-        $storagePath = storage_path('app/public/' . $logoPath);
+        $storagePath = storage_path('app/public/'.$logoPath);
         if (file_exists($storagePath)) {
             $logoType = pathinfo($storagePath, PATHINFO_EXTENSION);
             $logoData = file_get_contents($storagePath);
-            return 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
+
+            return 'data:image/'.$logoType.';base64,'.base64_encode($logoData);
         }
 
         // Priorité 2: Vérifier dans public/ (compatibilité)
@@ -1425,7 +1422,8 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         if (file_exists($publicPath)) {
             $logoType = pathinfo($publicPath, PATHINFO_EXTENSION);
             $logoData = file_get_contents($publicPath);
-            return 'data:image/' . $logoType . ';base64,' . base64_encode($logoData);
+
+            return 'data:image/'.$logoType.';base64,'.base64_encode($logoData);
         }
 
         return null;
@@ -1442,13 +1440,13 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 'classe',
                 'classe.filiere',
                 'classe.niveau',
-                'annee'
+                'annee',
             ])->findOrFail($id);
 
             // Récupérer la configuration PDF
             $config = $this->getPDFConfig();
             $settings = $config; // Utiliser la même structure que les bulletins
-            
+
             // Préparer le logo en base64
             $logoBase64 = $this->prepareLogoBase64($config['school_logo']);
 
@@ -1481,7 +1479,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             $matiereStats = [];
             foreach ($emploiTemps->seances as $seance) {
                 $matiereName = $seance->matiere ? $seance->matiere->name : 'Non définie';
-                if (!isset($matiereStats[$matiereName])) {
+                if (! isset($matiereStats[$matiereName])) {
                     $matiereStats[$matiereName] = 0;
                 }
                 $matiereStats[$matiereName]++;
@@ -1501,6 +1499,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                     if ($end->lessThanOrEqualTo($start)) {
                         $end = $end->addDay();
                     }
+
                     return $carry + $start->diffInMinutes($end);
                 }
 
@@ -1508,18 +1507,19 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             }, 0);
             $totalHours = $totalMinutes > 0 ? $totalMinutes / 60 : 0;
             $totalHoursFormatted = $totalHours > 0
-                ? rtrim(rtrim(number_format($totalHours, 1, ',', ' '), '0'), ',') . ' h'
+                ? rtrim(rtrim(number_format($totalHours, 1, ',', ' '), '0'), ',').' h'
                 : '0 h';
 
             $uniqueMatieres = $matiereStats->count();
             $uniqueTeachers = $emploiTemps->seances
                 ->map(function ($seance) {
                     if ($seance->teacher_id) {
-                        return 'teacher_' . $seance->teacher_id;
+                        return 'teacher_'.$seance->teacher_id;
                     }
-                    if (!empty($seance->enseignant)) {
-                        return 'name_' . $seance->enseignant;
+                    if (! empty($seance->enseignant)) {
+                        return 'name_'.$seance->enseignant;
                     }
+
                     return null;
                 })
                 ->filter()
@@ -1546,7 +1546,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             $sessionTypeSwatches = [];
             foreach ($emploiTemps->seances as $seance) {
                 $type = $seance->type ?? ESBTPSeanceCours::TYPE_COURSE;
-                if (!isset($sessionTypeSwatches[$type])) {
+                if (! isset($sessionTypeSwatches[$type])) {
                     $background = $seance->color ?: ($sessionTypeColors[$type]['bg'] ?? $sessionTypeColors['default']['bg']);
                     $sessionTypeSwatches[$type] = [
                         'bg' => $background,
@@ -1555,7 +1555,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 }
             }
             foreach ($sessionTypeLabels as $type => $label) {
-                if (!isset($sessionTypeSwatches[$type])) {
+                if (! isset($sessionTypeSwatches[$type])) {
                     $sessionTypeSwatches[$type] = $sessionTypeColors[$type] ?? $sessionTypeColors['default'];
                 }
             }
@@ -1598,12 +1598,12 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             $periodeAffichage = null;
             if ($emploiTemps->date_debut && $emploiTemps->date_fin) {
                 $periodeAffichage = Carbon::parse($emploiTemps->date_debut)->locale('fr')->isoFormat('LL')
-                    . ' → '
-                    . Carbon::parse($emploiTemps->date_fin)->locale('fr')->isoFormat('LL');
+                    .' → '
+                    .Carbon::parse($emploiTemps->date_fin)->locale('fr')->isoFormat('LL');
             } elseif ($emploiTemps->annee && $emploiTemps->annee->name) {
                 $periodeAffichage = $emploiTemps->annee->name;
-            } elseif (!empty($emploiTemps->semestre)) {
-                $periodeAffichage = 'Semestre ' . $emploiTemps->semestre;
+            } elseif (! empty($emploiTemps->semestre)) {
+                $periodeAffichage = 'Semestre '.$emploiTemps->semestre;
             }
 
             $etablissementInfo = [
@@ -1643,7 +1643,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la prévisualisation de l\'emploi du temps', [
                 'error' => $e->getMessage(),
-                'emploi_temps_id' => $id
+                'emploi_temps_id' => $id,
             ]);
 
             return redirect()->back()
@@ -1660,19 +1660,21 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         // Définition des créneaux horaires (8h-18h = 11 créneaux d'1h)
         $hours = range(8, 18);
         $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']; // Pas de dimanche
-        
+
         // Initialiser toutes les cases comme indisponibles
         $availability = [];
         foreach ($days as $day) {
             $availability[$day] = array_fill(0, count($hours), 'unavailable');
         }
-        
+
         // Traiter les disponibilités enregistrées
         foreach ($teacher->availabilities as $avail) {
             // Mapping jour de semaine (0=Lundi, 1=Mardi, etc.)
             $dayName = $days[$avail->day_of_week] ?? null;
-            if (!$dayName) continue;
-            
+            if (! $dayName) {
+                continue;
+            }
+
             // Parser les heures depuis les timestamps
             if ($avail->start_time instanceof \Carbon\Carbon) {
                 $startHour = $avail->start_time->hour;
@@ -1682,7 +1684,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 $startHour = (int) substr($avail->start_time, 11, 2); // Position 11-12 pour heure
                 $endHour = (int) substr($avail->end_time, 11, 2);
             }
-            
+
             // Décomposer les créneaux multi-heures en créneaux d'1h
             for ($hour = $startHour; $hour < $endHour; $hour++) {
                 $hourIndex = $hour - 8; // 8h = index 0
@@ -1691,7 +1693,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 }
             }
         }
-        
+
         return $availability;
     }
 
@@ -1699,7 +1701,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
     {
         $hex = ltrim($hex, '#');
         if (strlen($hex) === 3) {
-            $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
         }
 
         if (strlen($hex) !== 6) {
@@ -1725,10 +1727,10 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         // Récupérer l'année universitaire courante
         $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        if (!$anneeUniversitaire) {
+        if (! $anneeUniversitaire) {
             return response()->json([
                 'success' => false,
-                'message' => 'Aucune année universitaire active trouvée'
+                'message' => 'Aucune année universitaire active trouvée',
             ], 404);
         }
 
@@ -1736,19 +1738,19 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         $query = ESBTPEmploiTemps::with([
             'classe.filiere',
             'classe.niveau',
-            'annee'
+            'annee',
         ])->where('annee_universitaire_id', $anneeUniversitaire->id);
 
         // Filtrage par filière
         if ($request->filled('filiere_id')) {
-            $query->whereHas('classe', function($q) use ($request) {
+            $query->whereHas('classe', function ($q) use ($request) {
                 $q->where('filiere_id', $request->filiere_id);
             });
         }
 
         // Filtrage par niveau
         if ($request->filled('niveau_id')) {
-            $query->whereHas('classe', function($q) use ($request) {
+            $query->whereHas('classe', function ($q) use ($request) {
                 $q->where('niveau_etude_id', $request->niveau_id);
             });
         }
@@ -1785,14 +1787,14 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             $dates = explode('|', $request->semaine);
             if (count($dates) === 2) {
                 $query->where('date_debut', $dates[0])
-                      ->where('date_fin', $dates[1]);
+                    ->where('date_fin', $dates[1]);
             }
         }
 
         // Récupérer les résultats
         $emploisTemps = $query->orderBy('date_debut', 'desc')
-                             ->orderBy('created_at', 'desc')
-                             ->get();
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         \Log::info('✅ Résultats trouvés', ['count' => $emploisTemps->count()]);
 
@@ -1803,7 +1805,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             'success' => true,
             'html_cards' => view('esbtp.emploi-temps.partials.cards', compact('emploisTemps', 'timetableShortcut'))->render(),
             'html_table' => view('esbtp.emploi-temps.partials.table-rows', compact('emploisTemps', 'timetableShortcut'))->render(),
-            'count' => $emploisTemps->count()
+            'count' => $emploisTemps->count(),
         ]);
     }
 
@@ -1811,7 +1813,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
     {
         $user = auth()->user();
 
-        if (!$user || (! $user->hasRole('superAdmin') && ! $user->hasRole('secretaire') && ! $user->can('create_timetable'))) {
+        if (! $user || (! $user->hasRole('superAdmin') && ! $user->hasRole('secretaire') && ! $user->can('create_timetable'))) {
             abort(403);
         }
 
@@ -1824,7 +1826,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         ]);
 
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        if (!$anneeEnCours) {
+        if (! $anneeEnCours) {
             return redirect()->back()->with('error', "Aucune année universitaire active n'est définie.");
         }
 
@@ -1845,8 +1847,9 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
         DB::beginTransaction();
         try {
             foreach ($selectedClasses as $classeId) {
-                if (!isset($itemsByClass[$classeId])) {
+                if (! isset($itemsByClass[$classeId])) {
                     $skippedCount++;
+
                     continue;
                 }
 
@@ -1857,7 +1860,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 $source = $item['source'];
 
                 $mode = $validated['modes'][$classeId] ?? ($source ? 'duplicate' : 'empty');
-                if ($mode === 'duplicate' && !$source) {
+                if ($mode === 'duplicate' && ! $source) {
                     $mode = 'empty';
                     $fallbackCount++;
                 }
@@ -1870,6 +1873,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
 
                 if ($alreadyExists) {
                     $skippedCount++;
+
                     continue;
                 }
 
@@ -1882,7 +1886,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
                 );
 
                 $emploiTemps = ESBTPEmploiTemps::create([
-                    'titre' => $source?->titre ?? 'Emploi du temps - ' . $classe->name . ' (' . $periodeLabel . ')',
+                    'titre' => 'Emploi du temps - '.$classe->name.' ('.$periodeLabel.')',
                     'classe_id' => $classe->id,
                     'annee_universitaire_id' => $anneeEnCours->id,
                     'semestre' => $validated['semestre'],
@@ -1925,6 +1929,7 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
             \Log::error('Erreur génération rapide emplois du temps', [
                 'error' => $e->getMessage(),
             ]);
+
             return redirect()->back()->with('error', "Erreur lors de la génération rapide: {$e->getMessage()}");
         }
 
@@ -1938,5 +1943,4 @@ private function generateTimeSlots($seances, int $intervalMinutes = 60, string $
 
         return redirect()->back()->with('success', $message);
     }
-
 }
