@@ -1843,6 +1843,8 @@ class ESBTPEmploiTempsController extends Controller
         $createdCount = 0;
         $skippedCount = 0;
         $fallbackCount = 0;
+        $availabilityFallbackCount = 0;
+        $availabilityFallbackClasses = [];
 
         DB::beginTransaction();
         try {
@@ -1863,6 +1865,16 @@ class ESBTPEmploiTempsController extends Controller
                 if ($mode === 'duplicate' && ! $source) {
                     $mode = 'empty';
                     $fallbackCount++;
+                }
+
+                if ($mode === 'duplicate' && $source) {
+                    $source->loadMissing(['seances.teacher.availabilities']);
+                    $availabilityIssues = $this->findAvailabilityConflicts($source->seances, $targetStart);
+                    if (! empty($availabilityIssues)) {
+                        $mode = 'empty';
+                        $availabilityFallbackCount++;
+                        $availabilityFallbackClasses[] = $classe->name;
+                    }
                 }
 
                 $alreadyExists = ESBTPEmploiTemps::where('annee_universitaire_id', $anneeEnCours->id)
@@ -1940,7 +1952,140 @@ class ESBTPEmploiTempsController extends Controller
         if ($fallbackCount > 0) {
             $message .= " {$fallbackCount} classe(s) ont été créées en mode vide (aucun emploi du temps à dupliquer).";
         }
+        if ($availabilityFallbackCount > 0) {
+            $message .= " {$availabilityFallbackCount} classe(s) ont été créées en mode vide (enseignants indisponibles ou déjà occupés).";
+        }
 
         return redirect()->back()->with('success', $message);
+    }
+
+    private function findAvailabilityConflicts($seances, Carbon $targetStart): array
+    {
+        $conflicts = [];
+
+        foreach ($seances as $seance) {
+            if (! $seance->teacher_id) {
+                continue;
+            }
+
+            $check = $this->checkTeacherAvailabilityForSeance($seance, $targetStart);
+            if (! $check['ok']) {
+                $conflicts[] = $check['message'];
+            }
+        }
+
+        return $conflicts;
+    }
+
+    private function checkTeacherAvailabilityForSeance(ESBTPSeanceCours $seance, Carbon $targetStart): array
+    {
+        $teacher = $seance->teacher;
+        if (! $teacher) {
+            return ['ok' => true];
+        }
+
+        $dayIndex = $this->resolveSeanceDayIndex($seance->jour);
+        if ($dayIndex === null) {
+            return ['ok' => true];
+        }
+
+        $targetDate = $targetStart->copy()->addDays($dayIndex)->toDateString();
+        $startTime = $this->normalizeTime($seance->heure_debut);
+        $endTime = $this->normalizeTime($seance->heure_fin);
+
+        if ($startTime && $endTime) {
+            $hasAvailability = $teacher->availabilities->isNotEmpty();
+            if ($hasAvailability) {
+                $available = $teacher->availabilities
+                    ->filter(function (ESBTPTeacherAvailability $availability) use ($dayIndex) {
+                        return (int) $availability->day_of_week === (int) $dayIndex
+                            && in_array($availability->availability_type, ['available', 'preferred'], true);
+                    })
+                    ->first(function (ESBTPTeacherAvailability $availability) use ($startTime, $endTime) {
+                        $availableStart = $this->normalizeTime($availability->start_time);
+                        $availableEnd = $this->normalizeTime($availability->end_time);
+                        if (! $availableStart || ! $availableEnd) {
+                            return false;
+                        }
+
+                        return $availableStart <= $startTime && $availableEnd >= $endTime;
+                    });
+
+                if (! $available) {
+                    return [
+                        'ok' => false,
+                        'message' => "{$teacher->name} indisponible",
+                    ];
+                }
+            }
+
+            $conflictExists = ESBTPSeanceCours::where('teacher_id', $teacher->id)
+                ->whereDate('date_seance', $targetDate)
+                ->where(function ($query) use ($startTime, $endTime) {
+                    $query->where('heure_debut', '<', $endTime)
+                        ->where('heure_fin', '>', $startTime);
+                })
+                ->exists();
+
+            if ($conflictExists) {
+                return [
+                    'ok' => false,
+                    'message' => "{$teacher->name} occupé",
+                ];
+            }
+        }
+
+        return ['ok' => true];
+    }
+
+    private function resolveSeanceDayIndex($jour): ?int
+    {
+        $days = [
+            1 => 0,
+            2 => 1,
+            3 => 2,
+            4 => 3,
+            5 => 4,
+            6 => 5,
+        ];
+
+        if (is_numeric($jour)) {
+            return $days[(int) $jour] ?? null;
+        }
+
+        if (is_string($jour)) {
+            $normalized = strtolower(trim($jour));
+            $map = [
+                'lundi' => 0,
+                'mardi' => 1,
+                'mercredi' => 2,
+                'jeudi' => 3,
+                'vendredi' => 4,
+                'samedi' => 5,
+                'monday' => 0,
+                'tuesday' => 1,
+                'wednesday' => 2,
+                'thursday' => 3,
+                'friday' => 4,
+                'saturday' => 5,
+            ];
+
+            return $map[$normalized] ?? null;
+        }
+
+        return null;
+    }
+
+    private function normalizeTime($value): ?string
+    {
+        if ($value instanceof Carbon) {
+            return $value->format('H:i');
+        }
+
+        if (is_string($value)) {
+            return substr($value, 0, 5);
+        }
+
+        return null;
     }
 }
