@@ -1,3 +1,5 @@
+@extends('layouts.app')
+
 @section('title', 'Gestion Roles & Permissions')
 
 @section('styles')
