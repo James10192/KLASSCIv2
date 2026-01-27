@@ -6,6 +6,23 @@
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 @endsection
 
+<div class="modal fade coeff-modal" id="coefficientsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-sliders-h me-2"></i>Paramètres des coefficients</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="coefficientsModalBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <div class="text-muted mt-2">Chargement des coefficients...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
@@ -22,6 +39,9 @@
                        placeholder="Rechercher une évaluation..."
                        autocomplete="off"
                        value="{{ $filters['search'] ?? '' }}">
+                <button type="button" class="btn-acasi secondary" id="coeff-settings-btn">
+                    <i class="fas fa-sliders-h"></i>Coefficients
+                </button>
                 <a href="{{ route('esbtp.evaluations.create') }}" class="btn-acasi primary">
                     <i class="fas fa-plus-circle"></i>Nouvelle évaluation
                 </a>
@@ -591,8 +611,143 @@
 #evaluations-results .pagination {
     margin-bottom: 0;
 }
+
+.coeff-modal .modal-content {
+    border-radius: 16px;
+    border: none;
+    overflow: hidden;
+}
+
+.coeff-modal .modal-header {
+    background: linear-gradient(135deg, #0f3f87 0%, #0453cb 100%);
+    color: #fff;
+    border-bottom: none;
+}
+
+.coeff-modal .modal-body {
+    background: #f8fafc;
+}
+
+.coeff-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.coeff-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1rem;
+}
+
+.coeff-card {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.coeff-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.coeff-combo {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.coeff-status {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+}
+
+.status-complete {
+    background: rgba(16, 185, 129, 0.15);
+    color: #047857;
+}
+
+.status-partial {
+    background: rgba(245, 158, 11, 0.15);
+    color: #b45309;
+}
+
+.status-missing {
+    background: rgba(239, 68, 68, 0.15);
+    color: #b91c1c;
+}
+
+.status-empty {
+    background: rgba(148, 163, 184, 0.2);
+    color: #475569;
+}
+
+.coeff-grid {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.coeff-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 10px;
+    background: rgba(4, 83, 203, 0.06);
+    border: 1px solid rgba(4, 83, 203, 0.12);
+}
+
+.coeff-input {
+    max-width: 90px;
+}
+
+.coeff-card-footer {
+    display: flex;
+    justify-content: flex-end;
+}
 </style>
 @endpush
+
+<div class="modal fade coeff-modal" id="coefficientsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-sliders-h me-2"></i>Paramètres des coefficients</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="coefficientsModalBody">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <div class="text-muted mt-2">Chargement des coefficients...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="coeffMissingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-triangle-exclamation me-2"></i>Coefficient manquant</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="coeffMissingModalBody">
+            </div>
+        </div>
+    </div>
+</div>
 
 
 
@@ -1237,6 +1392,94 @@ document.addEventListener('DOMContentLoaded', () => {
     syncFiltersFromUrl();
     updateSummary(JSON.parse(resultsContainer.dataset.summary || '{}'));
     initRowInteractions();
+
+    const coeffModalElement = document.getElementById('coefficientsModal');
+    const coeffModalBody = document.getElementById('coefficientsModalBody');
+    const coeffBtn = document.getElementById('coeff-settings-btn');
+    const coeffModalUrl = "{{ route('esbtp.evaluations.coefficients.modal') }}";
+    const coeffUpdateUrl = "{{ route('esbtp.evaluations.coefficients.update') }}";
+    const coeffCheckUrl = "{{ route('esbtp.evaluations.coefficients.check') }}";
+    const coeffYearId = "{{ $anneeUniversitaire?->id ?? '' }}";
+
+    function openCoeffModal() {
+        if (!coeffModalElement || !coeffModalBody) {
+            return;
+        }
+        coeffModalBody.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status"></div>
+                <div class="text-muted mt-2">Chargement des coefficients...</div>
+            </div>
+        `;
+        fetch(coeffModalUrl, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    throw new Error(data.message || 'Chargement impossible');
+                }
+                coeffModalBody.innerHTML = data.html;
+            })
+            .catch(() => {
+                coeffModalBody.innerHTML = '<div class="alert alert-danger">Erreur de chargement des coefficients.</div>';
+            });
+
+        const modal = new bootstrap.Modal(coeffModalElement);
+        modal.show();
+    }
+
+    if (coeffBtn) {
+        coeffBtn.addEventListener('click', openCoeffModal);
+    }
+
+    coeffModalElement?.addEventListener('submit', function (event) {
+        const form = event.target.closest('.coeff-card');
+        if (!form) {
+            return;
+        }
+        event.preventDefault();
+
+        const formData = new FormData(form);
+        formData.append('filiere_id', form.dataset.filiereId || '');
+        formData.append('niveau_etude_id', form.dataset.niveauId || '');
+        formData.append('annee_universitaire_id', coeffYearId || '');
+
+        fetch(coeffUpdateUrl, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    throw new Error(data.message || 'Enregistrement impossible');
+                }
+                const toast = document.createElement('div');
+                toast.className = 'alert alert-success mt-3';
+                toast.textContent = data.message || 'Coefficients enregistrés.';
+                form.prepend(toast);
+                setTimeout(() => toast.remove(), 2500);
+            })
+            .catch(error => {
+                const toast = document.createElement('div');
+                toast.className = 'alert alert-danger mt-3';
+                toast.textContent = error.message;
+                form.prepend(toast);
+                setTimeout(() => toast.remove(), 3500);
+            });
+    });
+
+    if (new URLSearchParams(window.location.search).get('open_coefficients') === '1') {
+        openCoeffModal();
+    }
 });
 </script>
 @endpush

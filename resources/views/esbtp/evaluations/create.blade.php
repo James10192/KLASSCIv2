@@ -200,13 +200,14 @@
                             </div>
 
                             <div class="form-group">
-                                <label for="coefficient" class="form-label">Coefficient <span class="text-danger">*</span></label>
-                                <input type="number" class="form-input @error('coefficient') error @enderror" 
-                                       id="coefficient" name="coefficient" value="{{ old('coefficient', 1) }}" 
-                                       step="0.1" min="0.1" required>
-                                @error('coefficient')
-                                    <div class="form-error">{{ $message }}</div>
-                                @enderror
+                                <label for="coefficient" class="form-label">Coefficient</label>
+                                <input type="number" class="form-input" 
+                                       id="coefficient" name="coefficient" value="{{ old('coefficient', '') }}" 
+                                       step="0.1" min="0.1" disabled>
+                                <div class="form-hint mt-2" style="background: #f1f5f9; border-left: 3px solid var(--primary); padding: 10px 12px; border-radius: 6px;">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Le coefficient est défini dans Paramètres > Coefficients.
+                                </div>
                             </div>
 
                             <div class="form-group">
@@ -324,15 +325,28 @@
                     <button type="reset" class="btn-acasi secondary">
                         <i class="fas fa-undo"></i>Réinitialiser
                     </button>
-                    <button type="submit" class="btn-acasi primary">
+                    <button type="submit" class="btn-acasi primary" id="evaluation-submit">
                         <i class="fas fa-save"></i>Enregistrer l'évaluation
                     </button>
                 </div>
             </div>
         </form>
     </div>
+    </div>
 </div>
 @endsection
+
+<div class="modal fade" id="coeffMissingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-triangle-exclamation me-2"></i>Coefficient manquant</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="coeffMissingModalBody"></div>
+        </div>
+    </div>
+</div>
 
 <style>
 /* Formulaire moderne avec dashboard-moderne.css */
@@ -563,6 +577,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Pattern AJAX classe → matières (identique à attendances.create pour cohérence)
     const classeSelect = document.getElementById('classe_id');
     const matiereSelect = document.getElementById('matiere_id');
+    const coeffInput = document.getElementById('coefficient');
+    const submitBtn = document.getElementById('evaluation-submit');
+    const coeffCheckUrl = '{{ route("esbtp.evaluations.coefficients.check") }}';
+    const coeffMissingModal = document.getElementById('coeffMissingModal');
+    const coeffMissingBody = document.getElementById('coeffMissingModalBody');
 
     if (classeSelect && matiereSelect) {
         classeSelect.addEventListener('change', function(e) {
@@ -625,6 +644,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 matiereSelect.innerHTML = data.options;
                 matiereSelect.disabled = false;
 
+                if (matiereSelect.value) {
+                    checkCombinationCoefficient();
+                }
+
                 // Message si aucune matière
                 if (data.count === 0) {
                     matiereSelect.innerHTML = '<option value="">Aucune matière disponible pour cette classe</option>';
@@ -646,6 +669,61 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Une erreur est survenue lors du chargement des matières: ' + error.message);
             matiereSelect.disabled = false;
         });
+    }
+
+    function checkCombinationCoefficient() {
+        if (!classeSelect || !matiereSelect) {
+            return;
+        }
+
+        const classeId = classeSelect.value;
+        const matiereId = matiereSelect.value;
+
+        if (!classeId || !matiereId) {
+            return;
+        }
+
+        fetch(`${coeffCheckUrl}?classe_id=${classeId}&matiere_id=${matiereId}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (coeffInput) {
+                        coeffInput.value = data.coefficient;
+                    }
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                    }
+                    return;
+                }
+
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                }
+
+                if (coeffMissingModal && coeffMissingBody) {
+                    coeffMissingBody.innerHTML = `
+                        <p>Le coefficient pour cette combinaison filière/niveau n'est pas défini.</p>
+                        <p class="text-muted">Veuillez configurer les coefficients avant de créer l'évaluation.</p>
+                        <a href="${data.config_url}" class="btn btn-primary">Configurer maintenant</a>
+                    `;
+                    const modal = new bootstrap.Modal(coeffMissingModal);
+                    modal.show();
+                }
+            })
+            .catch(() => {
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                }
+            });
+    }
+
+    if (classeSelect && matiereSelect) {
+        matiereSelect.addEventListener('change', checkCombinationCoefficient);
     }
 });
 </script>

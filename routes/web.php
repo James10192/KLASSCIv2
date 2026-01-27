@@ -1240,6 +1240,9 @@ Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['aut
     // AJAX: Charger matières disponibles pour une classe (via combinaisons globales)
     // IMPORTANT: Cette route doit être AVANT les routes /{evaluation} pour éviter les conflits
     Route::get('/load-matieres', [ESBTPEvaluationController::class, 'loadMatieres'])->name('load-matieres');
+    Route::get('/coefficients/modal', [ESBTPEvaluationController::class, 'coefficientsModal'])->name('coefficients.modal');
+    Route::post('/coefficients/update', [ESBTPEvaluationController::class, 'updateCoefficients'])->name('coefficients.update');
+    Route::get('/coefficients/check', [ESBTPEvaluationController::class, 'checkCoefficient'])->name('coefficients.check');
 
     Route::get('/{evaluation}/refresh-row', [ESBTPEvaluationController::class, 'refreshRow'])->name('refresh-row');
     Route::patch('/{evaluation}/cancel', [ESBTPEvaluationController::class, 'cancel'])->name('cancel');

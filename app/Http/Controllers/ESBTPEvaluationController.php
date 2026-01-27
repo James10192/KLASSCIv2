@@ -2,16 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\ESBTPEvaluation;
-use App\Models\ESBTPClasse;
-use App\Models\ESBTPMatiere;
-use App\Models\ESBTPEtudiant;
-use App\Models\User;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPEvaluation;
+use App\Models\ESBTPMatiere;
+use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class ESBTPEvaluationController extends Controller
@@ -25,7 +24,8 @@ class ESBTPEvaluationController extends Controller
     {
         // Récupérer l'année universitaire courante
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        $anneeAcademique = $anneeCourante ? $anneeCourante->name : date('Y') . '-' . (date('Y') + 1);
+        $anneeAcademique = $anneeCourante ? $anneeCourante->name : date('Y').'-'.(date('Y') + 1);
+        $anneeUniversitaire = $anneeCourante;
 
         $query = ESBTPEvaluation::with(['classe', 'matiere', 'createdBy'])
             ->withCount('notes')
@@ -39,12 +39,12 @@ class ESBTPEvaluationController extends Controller
         $search = trim((string) $request->input('search', ''));
         if ($search !== '') {
             $query->where(function ($subQuery) use ($search) {
-                $subQuery->where('titre', 'like', '%' . $search . '%')
+                $subQuery->where('titre', 'like', '%'.$search.'%')
                     ->orWhereHas('classe', function ($classeQuery) use ($search) {
-                        $classeQuery->where('name', 'like', '%' . $search . '%');
+                        $classeQuery->where('name', 'like', '%'.$search.'%');
                     })
                     ->orWhereHas('matiere', function ($matiereQuery) use ($search) {
-                        $matiereQuery->where('name', 'like', '%' . $search . '%');
+                        $matiereQuery->where('name', 'like', '%'.$search.'%');
                     });
             });
         }
@@ -128,14 +128,14 @@ class ESBTPEvaluationController extends Controller
         // Pour les rôles non-enseignants, récupérer les évaluations pour la gestion des liens externes
         $evaluationsForExternalLinks = collect();
         $currentUser = \Auth::user();
-        if (!$currentUser->hasRole(['teacher', 'enseignant', 'etudiant'])) {
+        if (! $currentUser->hasRole(['teacher', 'enseignant', 'etudiant'])) {
             $evaluationsForExternalLinks = ESBTPEvaluation::with(['classe', 'matiere'])
                 ->where('is_published', true)
                 ->whereDoesntHave('notes')
                 ->whereNull('enseignant_id') // Sans enseignant assigné
-                ->where(function($query) {
+                ->where(function ($query) {
                     $query->whereNull('token_saisie_externe') // Pas de token généré
-                          ->orWhere('token_expire_at', '<', now()); // Token expiré
+                        ->orWhere('token_expire_at', '<', now()); // Token expiré
                 })
                 ->orderBy('date_evaluation', 'desc')
                 ->get();
@@ -164,6 +164,7 @@ class ESBTPEvaluationController extends Controller
             'evaluationsForExternalLinks',
             'anneeAcademique',
             'anneeCourante',
+            'anneeUniversitaire',
             'filters',
             'summary'
         ));
@@ -288,12 +289,12 @@ class ESBTPEvaluationController extends Controller
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
         $matieres = ESBTPMatiere::where('is_active', true)->orderBy('name')->get();
         $types = ESBTPEvaluation::getTypes();
-        
+
         // Récupérer la liste des enseignants pour l'assignation (seulement pour les non-enseignants)
         $enseignants = collect();
         $currentUser = \Auth::user();
-        if (!$currentUser->hasRole(['teacher', 'enseignant'])) {
-            $enseignants = User::whereHas('roles', function($query) {
+        if (! $currentUser->hasRole(['teacher', 'enseignant'])) {
+            $enseignants = User::whereHas('roles', function ($query) {
                 $query->whereIn('name', ['teacher', 'enseignant']);
             })->orderBy('name')->get();
         }
@@ -302,9 +303,9 @@ class ESBTPEvaluationController extends Controller
         $matieresJson = $matieres->map(function ($matiere) {
             return [
                 'id' => $matiere->id,
-                'name' => $matiere->nom ?? $matiere->name ?? 'Matière ' . $matiere->id,
+                'name' => $matiere->nom ?? $matiere->name ?? 'Matière '.$matiere->id,
                 'code' => $matiere->code ?? '',
-                'coefficient' => $matiere->coefficient ?? 1
+                'coefficient' => $matiere->coefficient ?? 1,
             ];
         });
 
@@ -314,7 +315,6 @@ class ESBTPEvaluationController extends Controller
     /**
      * Enregistre une nouvelle évaluation.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
     public function store(Request $request)
@@ -326,13 +326,13 @@ class ESBTPEvaluationController extends Controller
             'periode_type' => gettype($request->periode),
             'url' => $request->fullUrl(),
             'method' => $request->method(),
-            'user_id' => auth()->id()
+            'user_id' => auth()->id(),
         ]);
 
         // Log l'état de la classe ESBTPEvaluation
         \Log::info('Attributs attendus dans ESBTPEvaluation:', [
-            'fillable' => (new \App\Models\ESBTPEvaluation())->getFillable(),
-            'colonnes_table' => \Schema::getColumnListing('esbtp_evaluations')
+            'fillable' => (new \App\Models\ESBTPEvaluation)->getFillable(),
+            'colonnes_table' => \Schema::getColumnListing('esbtp_evaluations'),
         ]);
 
         $validator = \Validator::make($request->all(), [
@@ -344,7 +344,6 @@ class ESBTPEvaluationController extends Controller
             'heure_fin' => 'required|date_format:H:i|after:heure_debut',
             'classe_id' => 'required|exists:esbtp_classes,id',
             'matiere_id' => 'required|exists:esbtp_matieres,id',
-            'coefficient' => 'required|numeric|min:0',
             'bareme' => 'required|numeric|min:0',
             'duree_minutes' => 'nullable|integer|min:0',
             'is_published' => 'nullable|boolean',
@@ -359,7 +358,6 @@ class ESBTPEvaluationController extends Controller
             'classe_id.exists' => 'La classe sélectionnée n\'existe pas',
             'matiere_id.required' => 'La matière est obligatoire',
             'matiere_id.exists' => 'La matière sélectionnée n\'existe pas',
-            'coefficient.required' => 'Le coefficient est obligatoire',
             'bareme.required' => 'Le barème est obligatoire',
         ]);
 
@@ -370,6 +368,7 @@ class ESBTPEvaluationController extends Controller
                 'periode_type' => gettype($request->periode),
                 'request_all' => $request->all(),
             ]);
+
             return redirect()->back()
                 ->withErrors($validator)
                 ->withInput();
@@ -379,26 +378,33 @@ class ESBTPEvaluationController extends Controller
             // Récupérer l'année universitaire courante
             $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-            if (!$anneeUniversitaire) {
+            if (! $anneeUniversitaire) {
                 \Log::error('Aucune année universitaire courante trouvée');
+
                 return redirect()->back()
                     ->with('error', 'Aucune année universitaire courante n\'a été trouvée. Veuillez en créer une avant d\'ajouter une évaluation.')
                     ->withInput();
             }
 
-            $startAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation . ' ' . $request->heure_debut);
-            $endAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation . ' ' . $request->heure_fin);
+            $startAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_debut);
+            $endAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_fin);
             if ($endAt->lessThanOrEqualTo($startAt)) {
                 $endAt = $endAt->addDay();
             }
             $calculatedDuration = $endAt->diffInMinutes($startAt);
 
-            $evaluation = new ESBTPEvaluation();
+            $evaluation = new ESBTPEvaluation;
             $evaluation->titre = $request->titre;
             $evaluation->description = $request->description;
             $evaluation->type = $request->type;
             $evaluation->date_evaluation = $startAt;
-            $evaluation->coefficient = $request->coefficient;
+            $coefficient = $this->getCoefficientForCombination($request->classe_id, $request->matiere_id, $anneeUniversitaire->id);
+            if ($coefficient === null) {
+                return redirect()->back()
+                    ->with('error', 'Le coefficient pour cette combinaison filière/niveau n\'est pas configuré. Veuillez le définir dans Paramètres > Coefficients.')
+                    ->withInput();
+            }
+            $evaluation->coefficient = $coefficient;
             $evaluation->bareme = $request->bareme;
             $evaluation->duree_minutes = $request->filled('duree_minutes')
                 ? (int) $request->duree_minutes
@@ -413,7 +419,7 @@ class ESBTPEvaluationController extends Controller
             $evaluation->status = $evaluation->is_published
                 ? $evaluation->determineAutomaticStatus(null, false)
                 : ESBTPEvaluation::STATUS_DRAFT;
-            
+
             // Auto-assigner l'enseignant si c'est un rôle enseignant qui crée l'évaluation
             $user = \Auth::user();
             if ($user->hasRole(['teacher', 'enseignant'])) {
@@ -444,7 +450,7 @@ class ESBTPEvaluationController extends Controller
                 'duree_minutes' => $evaluation->duree_minutes,
                 'is_published' => $evaluation->is_published,
                 'periode' => $evaluation->periode,
-                'annee_universitaire_id' => $evaluation->annee_universitaire_id
+                'annee_universitaire_id' => $evaluation->annee_universitaire_id,
             ]);
 
             // Vérifier que la classe et la matière existent
@@ -455,7 +461,7 @@ class ESBTPEvaluationController extends Controller
                 'classe_exists' => $classe ? 'oui' : 'non',
                 'classe_nom' => $classe ? ($classe->nom ?? $classe->name ?? 'N/A') : 'N/A',
                 'matiere_exists' => $matiere ? 'oui' : 'non',
-                'matiere_nom' => $matiere ? ($matiere->nom ?? $matiere->name ?? 'N/A') : 'N/A'
+                'matiere_nom' => $matiere ? ($matiere->nom ?? $matiere->name ?? 'N/A') : 'N/A',
             ]);
 
             // Log aussi les attributs du modèle avant sauvegarde
@@ -463,26 +469,26 @@ class ESBTPEvaluationController extends Controller
 
             $evaluation->save();
 
-            \Log::info('Évaluation créée avec succès. ID: ' . $evaluation->id);
+            \Log::info('Évaluation créée avec succès. ID: '.$evaluation->id);
 
             $successMessage = 'L\'évaluation a été créée avec succès';
-            
+
             // Si un lien externe a été généré, l'ajouter au message
             if ($evaluation->token_saisie_externe) {
                 $externalLink = route('external-grading.show', $evaluation->token_saisie_externe);
                 $successMessage .= '. <br><strong>Lien de saisie externe généré :</strong><br>';
-                $successMessage .= '<div class="mt-2"><input type="text" class="form-control" value="' . $externalLink . '" onclick="this.select()" readonly></div>';
-                $successMessage .= '<small class="text-muted">Copiez ce lien et envoyez-le à l\'enseignant externe. Le lien expire le ' . $evaluation->token_expire_at->format('d/m/Y à H:i') . '</small>';
+                $successMessage .= '<div class="mt-2"><input type="text" class="form-control" value="'.$externalLink.'" onclick="this.select()" readonly></div>';
+                $successMessage .= '<small class="text-muted">Copiez ce lien et envoyez-le à l\'enseignant externe. Le lien expire le '.$evaluation->token_expire_at->format('d/m/Y à H:i').'</small>';
             }
 
             return redirect()->route('esbtp.evaluations.index')
                 ->with('success', $successMessage);
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de la création de l\'évaluation: ' . $e->getMessage());
-            \Log::error('Trace: ' . $e->getTraceAsString());
+            \Log::error('Erreur lors de la création de l\'évaluation: '.$e->getMessage());
+            \Log::error('Trace: '.$e->getTraceAsString());
 
             return redirect()->back()
-                ->with('error', 'Une erreur est survenue lors de la création de l\'évaluation: ' . $e->getMessage())
+                ->with('error', 'Une erreur est survenue lors de la création de l\'évaluation: '.$e->getMessage())
                 ->withInput();
         }
         \Log::info('Fin de la méthode store');
@@ -491,7 +497,6 @@ class ESBTPEvaluationController extends Controller
     /**
      * Affiche les détails d'une évaluation spécifique.
      *
-     * @param  \App\Models\ESBTPEvaluation  $evaluation
      * @return \Illuminate\Http\Response
      */
     public function show(ESBTPEvaluation $evaluation)
@@ -502,13 +507,13 @@ class ESBTPEvaluationController extends Controller
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         // Récupérer tous les étudiants avec inscriptions actives sur l'année courante
-        $etudiantsAnneeCourante = ESBTPEtudiant::whereHas('inscriptions', function($query) use ($evaluation, $anneeCourante) {
-                $query->where('classe_id', $evaluation->classe_id)
-                      ->where('status', 'active');
-                if ($anneeCourante) {
-                    $query->where('annee_universitaire_id', $anneeCourante->id);
-                }
-            })
+        $etudiantsAnneeCourante = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation, $anneeCourante) {
+            $query->where('classe_id', $evaluation->classe_id)
+                ->where('status', 'active');
+            if ($anneeCourante) {
+                $query->where('annee_universitaire_id', $anneeCourante->id);
+            }
+        })
             ->orderBy('nom')
             ->get();
 
@@ -526,7 +531,6 @@ class ESBTPEvaluationController extends Controller
     /**
      * Affiche le formulaire de modification d'une évaluation.
      *
-     * @param  \App\Models\ESBTPEvaluation  $evaluation
      * @return \Illuminate\Http\Response
      */
     public function edit(ESBTPEvaluation $evaluation)
@@ -551,8 +555,6 @@ class ESBTPEvaluationController extends Controller
     /**
      * Met à jour une évaluation spécifique.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\ESBTPEvaluation  $evaluation
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, ESBTPEvaluation $evaluation)
@@ -565,7 +567,7 @@ class ESBTPEvaluationController extends Controller
             'evaluation_id' => $evaluation->id,
             'url' => $request->fullUrl(),
             'method' => $request->method(),
-            'user_id' => auth()->id()
+            'user_id' => auth()->id(),
         ]);
 
         try {
@@ -578,19 +580,17 @@ class ESBTPEvaluationController extends Controller
                 'heure_fin' => 'required|date_format:H:i|after:heure_debut',
                 'classe_id' => 'required|exists:esbtp_classes,id',
                 'matiere_id' => 'required|exists:esbtp_matieres,id',
-                'coefficient' => 'required|numeric|min:0',
                 'bareme' => 'required|numeric|min:0',
                 'duree_minutes' => 'nullable|integer|min:0',
                 'periode' => 'required|in:1,2,semestre1,semestre2,Semestre 1,Semestre 2',
             ], [
-            'titre.required' => 'Le titre est obligatoire',
-            'type.required' => 'Le type d\'évaluation est obligatoire',
-            'date_evaluation.required' => 'La date est obligatoire',
-            'classe_id.required' => 'La classe est obligatoire',
-            'matiere_id.required' => 'La matière est obligatoire',
-            'coefficient.required' => 'Le coefficient est obligatoire',
-            'bareme.required' => 'Le barème est obligatoire',
-        ]);
+                'titre.required' => 'Le titre est obligatoire',
+                'type.required' => 'Le type d\'évaluation est obligatoire',
+                'date_evaluation.required' => 'La date est obligatoire',
+                'classe_id.required' => 'La classe est obligatoire',
+                'matiere_id.required' => 'La matière est obligatoire',
+                'bareme.required' => 'Le barème est obligatoire',
+            ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error('❌ ESBTPEvaluation UPDATE - Erreur de validation', [
                 'errors' => $e->errors(),
@@ -611,8 +611,8 @@ class ESBTPEvaluationController extends Controller
                     ->withInput();
             }
 
-            $startAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation . ' ' . $request->heure_debut);
-            $endAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation . ' ' . $request->heure_fin);
+            $startAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_debut);
+            $endAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_fin);
             if ($endAt->lessThanOrEqualTo($startAt)) {
                 $endAt = $endAt->addDay();
             }
@@ -622,7 +622,14 @@ class ESBTPEvaluationController extends Controller
             $evaluation->description = $request->description;
             $evaluation->type = $request->type;
             $evaluation->date_evaluation = $startAt;
-            $evaluation->coefficient = $request->coefficient;
+            $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $coefficient = $this->getCoefficientForCombination($request->classe_id, $request->matiere_id, $anneeUniversitaire?->id);
+            if ($coefficient === null) {
+                return redirect()->back()
+                    ->with('error', 'Le coefficient pour cette combinaison filière/niveau n\'est pas configuré. Veuillez le définir dans Paramètres > Coefficients.')
+                    ->withInput();
+            }
+            $evaluation->coefficient = $coefficient;
             $evaluation->bareme = $request->bareme;
             $evaluation->duree_minutes = $request->filled('duree_minutes')
                 ? (int) $request->duree_minutes
@@ -632,7 +639,7 @@ class ESBTPEvaluationController extends Controller
             }
 
             // Mettre à jour la classe et la matière uniquement s'il n'y a pas de notes
-            if (!$hasNotes) {
+            if (! $hasNotes) {
                 $evaluation->classe_id = $request->classe_id;
                 $evaluation->matiere_id = $request->matiere_id;
             }
@@ -649,7 +656,7 @@ class ESBTPEvaluationController extends Controller
                 ->with('success', 'L\'évaluation a été mise à jour avec succès');
         } catch (\Exception $e) {
             return redirect()->back()
-                ->with('error', 'Une erreur est survenue lors de la mise à jour de l\'évaluation: ' . $e->getMessage())
+                ->with('error', 'Une erreur est survenue lors de la mise à jour de l\'évaluation: '.$e->getMessage())
                 ->withInput();
         }
     }
@@ -657,13 +664,12 @@ class ESBTPEvaluationController extends Controller
     /**
      * Supprime une évaluation spécifique.
      *
-     * @param  \App\Models\ESBTPEvaluation  $evaluation
      * @return \Illuminate\Http\Response
      */
     public function destroy(Request $request, ESBTPEvaluation $evaluation)
     {
         try {
-            if (!$evaluation->isDeletable()) {
+            if (! $evaluation->isDeletable()) {
                 $message = 'Cette évaluation ne peut pas être supprimée dans son état actuel.';
 
                 if ($request->wantsJson()) {
@@ -693,18 +699,17 @@ class ESBTPEvaluationController extends Controller
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Erreur lors de la suppression: ' . $e->getMessage(),
+                    'message' => 'Erreur lors de la suppression: '.$e->getMessage(),
                 ], 500);
             }
 
-            return back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
+            return back()->with('error', 'Erreur lors de la suppression: '.$e->getMessage());
         }
     }
 
     /**
      * Affiche les examens de l'étudiant connecté.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
     public function etudiant(Request $request)
@@ -715,7 +720,7 @@ class ESBTPEvaluationController extends Controller
         // Récupérer l'étudiant associé à l'utilisateur
         $etudiant = $user->etudiant;
 
-        if (!$etudiant) {
+        if (! $etudiant) {
             return redirect()->route('dashboard')
                 ->with('error', 'Votre compte utilisateur n\'est pas associé à un étudiant.');
         }
@@ -723,7 +728,7 @@ class ESBTPEvaluationController extends Controller
         // Récupérer la classe de l'étudiant
         $inscription = $etudiant->inscriptions()->where('statut', 'active')->first();
 
-        if (!$inscription || !$inscription->classe) {
+        if (! $inscription || ! $inscription->classe) {
             return redirect()->route('dashboard')
                 ->with('error', 'Vous n\'êtes inscrit dans aucune classe pour le moment.');
         }
@@ -796,7 +801,7 @@ class ESBTPEvaluationController extends Controller
     {
         $student = Auth::user()->etudiant;
 
-        if (!$student) {
+        if (! $student) {
             return redirect()->route('dashboard')
                 ->with('error', 'Accès non autorisé.');
         }
@@ -804,7 +809,7 @@ class ESBTPEvaluationController extends Controller
         // 1. Récupérer l'année universitaire courante
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        if (!$anneeCourante) {
+        if (! $anneeCourante) {
             return view('etudiants.evaluations', [
                 'evaluations' => collect([]),
                 'anneeCourante' => null,
@@ -819,7 +824,7 @@ class ESBTPEvaluationController extends Controller
             ->with(['classe.filiere', 'classe.niveauEtude', 'anneeUniversitaire'])
             ->first();
 
-        if (!$inscription) {
+        if (! $inscription) {
             return view('etudiants.evaluations', [
                 'evaluations' => collect([]),
                 'anneeCourante' => $anneeCourante,
@@ -847,46 +852,46 @@ class ESBTPEvaluationController extends Controller
             'request_all' => $request->all(),
             'evaluation_id' => $evaluation->id,
             'url' => $request->fullUrl(),
-            'user_id' => auth()->id()
+            'user_id' => auth()->id(),
         ]);
 
         try {
             $validated = $request->validate([
-                'status' => 'required|in:' . implode(',', [
+                'status' => 'required|in:'.implode(',', [
                     ESBTPEvaluation::STATUS_DRAFT,
                     ESBTPEvaluation::STATUS_SCHEDULED,
                     ESBTPEvaluation::STATUS_IN_PROGRESS,
                     ESBTPEvaluation::STATUS_COMPLETED,
                     ESBTPEvaluation::STATUS_CANCELLED,
-                ])
+                ]),
             ]);
 
             $evaluation->update($validated);
 
             // Logique automatique de publication
-            if ($validated['status'] === 'scheduled' && !$evaluation->is_published) {
+            if ($validated['status'] === 'scheduled' && ! $evaluation->is_published) {
                 $evaluation->update(['is_published' => true]);
                 \Log::info('Évaluation automatiquement publiée lors de la planification', [
-                    'evaluation_id' => $evaluation->id
+                    'evaluation_id' => $evaluation->id,
                 ]);
             } elseif ($validated['status'] === 'cancelled') {
                 $evaluation->update(['is_published' => false]);
                 \Log::info('Évaluation automatiquement dépubliée lors de l\'annulation', [
-                    'evaluation_id' => $evaluation->id
+                    'evaluation_id' => $evaluation->id,
                 ]);
             }
 
             \Log::info('Statut mis à jour avec succès', [
                 'evaluation_id' => $evaluation->id,
                 'new_status' => $validated['status'],
-                'is_published' => $evaluation->fresh()->is_published
+                'is_published' => $evaluation->fresh()->is_published,
             ]);
 
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Statut mis à jour avec succès',
-                    'evaluation' => $evaluation
+                    'evaluation' => $evaluation,
                 ]);
             }
 
@@ -895,28 +900,28 @@ class ESBTPEvaluationController extends Controller
                 'scheduled' => 'Planifiée',
                 'in_progress' => 'En cours',
                 'completed' => 'Terminée',
-                'cancelled' => 'Annulée'
+                'cancelled' => 'Annulée',
             ];
-            
+
             $statusLabel = $statusLabels[$validated['status']] ?? $validated['status'];
             $message = "Statut de l'évaluation \"{$evaluation->titre}\" mis à jour : {$statusLabel}";
-            
+
             if ($validated['status'] === 'scheduled' && $evaluation->fresh()->is_published) {
                 $message .= ' (automatiquement publiée pour les étudiants)';
             }
-            
+
             return redirect()->back()->with('success', $message);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la mise à jour du statut', [
                 'evaluation_id' => $evaluation->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Erreur lors de la mise à jour du statut',
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ], 500);
             }
 
@@ -927,12 +932,12 @@ class ESBTPEvaluationController extends Controller
     public function togglePublished(Request $request, ESBTPEvaluation $evaluation)
     {
         try {
-            $isPublished = !$evaluation->is_published;
+            $isPublished = ! $evaluation->is_published;
 
             $evaluation->update([
                 'is_published' => $isPublished,
                 'notes_published' => $isPublished ? $evaluation->notes_published : false,
-                'updated_by' => Auth::id()
+                'updated_by' => Auth::id(),
             ]);
 
             if ($evaluation->status !== ESBTPEvaluation::STATUS_CANCELLED) {
@@ -967,7 +972,7 @@ class ESBTPEvaluationController extends Controller
 
     public function toggleNotesPublished(Request $request, ESBTPEvaluation $evaluation)
     {
-        if (!$evaluation->canPublishNotes() && !$evaluation->notes_published) {
+        if (! $evaluation->canPublishNotes() && ! $evaluation->notes_published) {
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
@@ -979,7 +984,7 @@ class ESBTPEvaluationController extends Controller
         }
 
         try {
-            if (!$evaluation->is_published && !$evaluation->notes_published) {
+            if (! $evaluation->is_published && ! $evaluation->notes_published) {
                 $evaluation->is_published = true;
                 $evaluation->updated_by = Auth::id();
                 if ($evaluation->status !== ESBTPEvaluation::STATUS_CANCELLED) {
@@ -988,8 +993,8 @@ class ESBTPEvaluationController extends Controller
             }
 
             $evaluation->update([
-                'notes_published' => !$evaluation->notes_published,
-                'updated_by' => Auth::id()
+                'notes_published' => ! $evaluation->notes_published,
+                'updated_by' => Auth::id(),
             ]);
 
             $message = $evaluation->notes_published
@@ -1021,7 +1026,6 @@ class ESBTPEvaluationController extends Controller
     /**
      * Génère un PDF de l'évaluation avec les notes des étudiants
      *
-     * @param  \App\Models\ESBTPEvaluation  $evaluation
      * @return \Illuminate\Http\Response
      */
     public function generatePdf(ESBTPEvaluation $evaluation)
@@ -1031,14 +1035,14 @@ class ESBTPEvaluationController extends Controller
 
             $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-            $etudiants = ESBTPEtudiant::whereHas('inscriptions', function($query) use ($evaluation, $anneeCourante) {
-                    $query->where('classe_id', $evaluation->classe_id)
-                          ->where('status', 'active');
-                    if ($anneeCourante) {
-                        $query->where('annee_universitaire_id', $anneeCourante->id);
-                    }
-                })
-                ->with(['notes' => function($query) use ($evaluation) {
+            $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation, $anneeCourante) {
+                $query->where('classe_id', $evaluation->classe_id)
+                    ->where('status', 'active');
+                if ($anneeCourante) {
+                    $query->where('annee_universitaire_id', $anneeCourante->id);
+                }
+            })
+                ->with(['notes' => function ($query) use ($evaluation) {
                     $query->where('evaluation_id', $evaluation->id);
                 }])
                 ->orderBy('nom')
@@ -1053,7 +1057,7 @@ class ESBTPEvaluationController extends Controller
                 'adresse' => \App\Models\Setting::get('school_address', ''),
                 'telephone' => \App\Models\Setting::get('school_phone', ''),
                 'email' => \App\Models\Setting::get('school_email', ''),
-                'logo' => \App\Models\Setting::get('school_logo', '')
+                'logo' => \App\Models\Setting::get('school_logo', ''),
             ];
 
             $isBlank = false;
@@ -1063,10 +1067,11 @@ class ESBTPEvaluationController extends Controller
             );
             $pdf->setPaper('A4', 'portrait');
 
-            $filename = 'evaluation_' . Str::slug($evaluation->titre) . '_' . $evaluation->date_evaluation->format('d-m-Y') . '.pdf';
+            $filename = 'evaluation_'.Str::slug($evaluation->titre).'_'.$evaluation->date_evaluation->format('d-m-Y').'.pdf';
+
             return $pdf->download($filename);
         } catch (\Exception $e) {
-            return back()->with('error', 'Erreur lors de la génération du PDF : ' . $e->getMessage());
+            return back()->with('error', 'Erreur lors de la génération du PDF : '.$e->getMessage());
         }
     }
 
@@ -1077,27 +1082,27 @@ class ESBTPEvaluationController extends Controller
     {
         $request->validate([
             'duree_heures' => 'required|integer|min:1|max:168', // Max 7 jours
-            'enseignant_externe_nom' => 'nullable|string|max:255'
+            'enseignant_externe_nom' => 'nullable|string|max:255',
         ]);
 
         try {
             $evaluation->update([
                 'token_saisie_externe' => \Str::random(64),
                 'token_expire_at' => now()->addHours($request->duree_heures),
-                'enseignant_externe_nom' => $request->enseignant_externe_nom
+                'enseignant_externe_nom' => $request->enseignant_externe_nom,
             ]);
 
             $externalLink = route('external-grading.show', $evaluation->token_saisie_externe);
-            
+
             return response()->json([
                 'success' => true,
                 'link' => $externalLink,
-                'expires_at' => $evaluation->token_expire_at->format('d/m/Y à H:i')
+                'expires_at' => $evaluation->token_expire_at->format('d/m/Y à H:i'),
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la génération du lien'
+                'message' => 'Erreur lors de la génération du lien',
             ], 500);
         }
     }
@@ -1110,17 +1115,17 @@ class ESBTPEvaluationController extends Controller
         try {
             $evaluation->update([
                 'token_saisie_externe' => null,
-                'token_expire_at' => null
+                'token_expire_at' => null,
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Lien révoqué avec succès'
+                'message' => 'Lien révoqué avec succès',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la révocation'
+                'message' => 'Erreur lors de la révocation',
             ], 500);
         }
     }
@@ -1144,7 +1149,7 @@ class ESBTPEvaluationController extends Controller
                     'enseignant_externe_nom' => $eval->enseignant_externe_nom,
                     'expires_at' => $eval->token_expire_at->format('d/m/Y H:i'),
                     'expires_in_hours' => round($eval->token_expire_at->diffInHours(now(), false), 1),
-                    'link' => route('external-grading.show', $eval->token_saisie_externe)
+                    'link' => route('external-grading.show', $eval->token_saisie_externe),
                 ];
             });
 
@@ -1155,23 +1160,22 @@ class ESBTPEvaluationController extends Controller
      * Charge les matières disponibles pour une classe via AJAX (combinaisons globales).
      * Pattern identique à attendances.create pour cohérence UX.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
     public function loadMatieres(Request $request)
     {
         \Log::info('📚 [AJAX] loadMatieres - Début', [
             'classe_id' => $request->input('classe_id'),
-            'user_id' => \Auth::id()
+            'user_id' => \Auth::id(),
         ]);
 
         try {
             $classeId = $request->input('classe_id');
 
-            if (!$classeId) {
+            if (! $classeId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'ID de classe manquant'
+                    'message' => 'ID de classe manquant',
                 ], 400);
             }
 
@@ -1194,15 +1198,15 @@ class ESBTPEvaluationController extends Controller
                 'classe_nom' => $classe->name,
                 'filiere_id' => $classe->filiere_id,
                 'niveau_id' => $classe->niveau_etude_id,
-                'nb_matieres' => $matieres->count()
+                'nb_matieres' => $matieres->count(),
             ]);
 
             // Générer les options HTML pour le select
             $options = '<option value="">-- Sélectionner une matière --</option>';
             foreach ($matieres as $matiere) {
-                $matiereNom = $matiere->name ?? 'Matière ' . $matiere->id;
-                $matiereCode = $matiere->code ? ' (' . $matiere->code . ')' : '';
-                $options .= '<option value="' . $matiere->id . '">' . $matiereNom . $matiereCode . '</option>';
+                $matiereNom = $matiere->name ?? 'Matière '.$matiere->id;
+                $matiereCode = $matiere->code ? ' ('.$matiere->code.')' : '';
+                $options .= '<option value="'.$matiere->id.'">'.$matiereNom.$matiereCode.'</option>';
             }
 
             return response()->json([
@@ -1213,19 +1217,197 @@ class ESBTPEvaluationController extends Controller
                     'id' => $classe->id,
                     'nom' => $classe->name,
                     'filiere' => $classe->filiere->name ?? 'N/A',
-                    'niveau' => $classe->niveau->name ?? 'N/A'
-                ]
+                    'niveau' => $classe->niveau->name ?? 'N/A',
+                ],
             ]);
         } catch (\Exception $e) {
             \Log::error('❌ [AJAX] loadMatieres - Erreur', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors du chargement des matières: ' . $e->getMessage()
+                'message' => 'Erreur lors du chargement des matières: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    public function coefficientsModal(Request $request)
+    {
+        $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (! $anneeUniversitaire) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucune année universitaire courante trouvée.',
+            ], 404);
+        }
+
+        $classes = ESBTPClasse::where('is_active', true)
+            ->with(['filiere', 'niveau'])
+            ->get();
+
+        $combos = $classes
+            ->filter(function ($classe) {
+                return $classe->filiere_id && $classe->niveau_etude_id;
+            })
+            ->unique(function ($classe) {
+                return $classe->filiere_id.'-'.$classe->niveau_etude_id;
+            })
+            ->values();
+
+        $cards = $combos->map(function ($classe) use ($anneeUniversitaire) {
+            $filiere = $classe->filiere;
+            $niveau = $classe->niveau;
+
+            $matieres = ESBTPMatiere::where('is_active', true)
+                ->whereHas('filieres', function ($query) use ($filiere) {
+                    $query->where('esbtp_filieres.id', $filiere->id);
+                })
+                ->whereHas('niveaux', function ($query) use ($niveau) {
+                    $query->where('esbtp_niveau_etudes.id', $niveau->id);
+                })
+                ->orderBy('name')
+                ->get();
+
+            $coefficients = ESBTPMatiereCoefficient::where('filiere_id', $filiere->id)
+                ->where('niveau_etude_id', $niveau->id)
+                ->where('annee_universitaire_id', $anneeUniversitaire->id)
+                ->get()
+                ->keyBy('matiere_id');
+
+            $configuredCount = 0;
+            $matieresData = $matieres->map(function ($matiere) use ($coefficients, &$configuredCount) {
+                $coefficient = $coefficients[$matiere->id]->coefficient ?? null;
+                if ($coefficient !== null) {
+                    $configuredCount++;
+                }
+
+                return [
+                    'id' => $matiere->id,
+                    'name' => $matiere->name,
+                    'code' => $matiere->code,
+                    'coefficient' => $coefficient,
+                ];
+            });
+
+            $totalCount = $matieres->count();
+            $status = $totalCount === 0
+                ? 'empty'
+                : ($configuredCount === 0
+                    ? 'missing'
+                    : ($configuredCount === $totalCount ? 'complete' : 'partial'));
+
+            return [
+                'filiere' => $filiere,
+                'niveau' => $niveau,
+                'matieres' => $matieresData,
+                'total' => $totalCount,
+                'configured' => $configuredCount,
+                'status' => $status,
+            ];
+        });
+
+        $html = view('esbtp.evaluations.partials.coefficients-modal', compact('cards', 'anneeUniversitaire'))->render();
+
+        return response()->json([
+            'success' => true,
+            'html' => $html,
+        ]);
+    }
+
+    public function updateCoefficients(Request $request)
+    {
+        $validated = $request->validate([
+            'filiere_id' => 'required|exists:esbtp_filieres,id',
+            'niveau_etude_id' => 'required|exists:esbtp_niveau_etudes,id',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'coefficients' => 'required|array',
+            'coefficients.*' => 'nullable|numeric|min:0.1',
+        ]);
+
+        $saved = 0;
+        foreach ($validated['coefficients'] as $matiereId => $value) {
+            if ($value === null || $value === '') {
+                ESBTPMatiereCoefficient::where('matiere_id', $matiereId)
+                    ->where('filiere_id', $validated['filiere_id'])
+                    ->where('niveau_etude_id', $validated['niveau_etude_id'])
+                    ->where('annee_universitaire_id', $validated['annee_universitaire_id'])
+                    ->delete();
+
+                continue;
+            }
+
+            ESBTPMatiereCoefficient::updateOrCreate([
+                'matiere_id' => $matiereId,
+                'filiere_id' => $validated['filiere_id'],
+                'niveau_etude_id' => $validated['niveau_etude_id'],
+                'annee_universitaire_id' => $validated['annee_universitaire_id'],
+            ], [
+                'coefficient' => $value,
+                'updated_by' => Auth::id(),
+                'created_by' => Auth::id(),
+            ]);
+            $saved++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Coefficients enregistrés.',
+            'saved' => $saved,
+        ]);
+    }
+
+    public function checkCoefficient(Request $request)
+    {
+        $validated = $request->validate([
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'matiere_id' => 'required|exists:esbtp_matieres,id',
+        ]);
+
+        $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (! $anneeUniversitaire) {
+            return response()->json([
+                'success' => false,
+                'missing' => true,
+                'message' => 'Aucune année universitaire courante trouvée.',
+            ], 404);
+        }
+
+        $coefficient = $this->getCoefficientForCombination(
+            $validated['classe_id'],
+            $validated['matiere_id'],
+            $anneeUniversitaire->id
+        );
+
+        if ($coefficient === null) {
+            return response()->json([
+                'success' => false,
+                'missing' => true,
+                'message' => 'Coefficient non configuré pour cette combinaison.',
+                'config_url' => route('esbtp.evaluations.index', ['open_coefficients' => 1]),
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'coefficient' => $coefficient,
+        ]);
+    }
+
+    private function getCoefficientForCombination($classeId, $matiereId, $anneeUniversitaireId)
+    {
+        $classe = ESBTPClasse::find($classeId);
+        if (! $classe || ! $classe->filiere_id || ! $classe->niveau_etude_id) {
+            return null;
+        }
+
+        $record = ESBTPMatiereCoefficient::where('matiere_id', $matiereId)
+            ->where('filiere_id', $classe->filiere_id)
+            ->where('niveau_etude_id', $classe->niveau_etude_id)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->first();
+
+        return $record?->coefficient;
     }
 }
