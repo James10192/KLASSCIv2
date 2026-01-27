@@ -179,19 +179,19 @@
 
     .tips-steps {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 1.25rem;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1.5rem;
     }
 
     .tips-step {
         background: #ffffff;
         border-radius: 18px;
-        padding: 1.1rem;
+        padding: 1.4rem;
         border: 1px solid rgba(148, 163, 184, 0.22);
         box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
         display: flex;
         flex-direction: column;
-        gap: 0.75rem;
+        gap: 0.9rem;
         position: relative;
         overflow: hidden;
     }
@@ -228,10 +228,42 @@
         border-radius: 14px;
         border: 1px solid rgba(148, 163, 184, 0.22);
         box-shadow: 0 12px 22px rgba(15, 23, 42, 0.12);
-        height: 170px;
+        height: 220px;
         object-fit: cover;
         object-position: top;
         z-index: 1;
+    }
+
+    @media (min-width: 1200px) {
+        .tips-steps {
+            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+        }
+
+        .tips-step img {
+            height: 260px;
+        }
+    }
+
+    .tips-step-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.5rem 0.9rem;
+        border-radius: 10px;
+        background: rgba(4, 83, 203, 0.1);
+        color: #1d4ed8;
+        font-weight: 600;
+        text-decoration: none;
+        border: 1px solid rgba(4, 83, 203, 0.2);
+        transition: all 0.2s ease;
+        z-index: 1;
+        width: fit-content;
+    }
+
+    .tips-step-action:hover {
+        background: rgba(4, 83, 203, 0.18);
+        transform: translateY(-1px);
+        color: #1d4ed8;
     }
 
     .tips-step p {
@@ -995,6 +1027,9 @@
                         </div>
                         <p class="text-muted mb-0">Ajoutez l’enseignant et renseignez sa spécialité pour les associations.</p>
                         <img src="{{ asset('assets/guides/timetable/step-1-teacher.png') }}" alt="Créer un enseignant">
+                        <a class="tips-step-action" href="{{ route('esbtp.personnel.unified') }}">
+                            <i class="fas fa-user-plus"></i>Créer un enseignant
+                        </a>
                     </div>
                     <div class="tips-step">
                         <div class="tips-step-title">
@@ -1002,6 +1037,9 @@
                         </div>
                         <p class="text-muted mb-0">Configurez les créneaux disponibles avant de planifier.</p>
                         <img src="{{ asset('assets/guides/timetable/step-2-availability.png') }}" alt="Disponibilités enseignant">
+                        <a class="tips-step-action" href="{{ route('esbtp.personnel.unified') }}">
+                            <i class="fas fa-calendar-check"></i>Gérer les disponibilités
+                        </a>
                     </div>
                     <div class="tips-step">
                         <div class="tips-step-title">
@@ -1009,6 +1047,9 @@
                         </div>
                         <p class="text-muted mb-0">Associez les enseignants aux filières/niveaux et aux volumes horaires.</p>
                         <img src="{{ asset('assets/guides/timetable/step-3-planning.png') }}" alt="Planning général">
+                        <a class="tips-step-action" href="{{ route('esbtp.planning-general.index') }}">
+                            <i class="fas fa-layer-group"></i>Configurer le planning
+                        </a>
                     </div>
                     <div class="tips-step">
                         <div class="tips-step-title">
@@ -1016,6 +1057,9 @@
                         </div>
                         <p class="text-muted mb-0">Lancez la génération rapide ou créez manuellement la semaine.</p>
                         <img src="{{ asset('assets/guides/timetable/step-4-generate.png') }}" alt="Génération emploi du temps">
+                        <a class="tips-step-action" href="{{ route('esbtp.emploi-temps.create') }}">
+                            <i class="fas fa-calendar-plus"></i>Créer l’emploi du temps
+                        </a>
                     </div>
                 </div>
                 <div class="tips-note">
