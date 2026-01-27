@@ -1249,7 +1249,10 @@ class ESBTPEvaluationController extends Controller
 
         $combos = $classes
             ->filter(function ($classe) {
-                return $classe->filiere_id && $classe->niveau_etude_id;
+                return $classe->filiere_id
+                    && $classe->niveau_etude_id
+                    && $classe->filiere
+                    && $classe->niveau;
             })
             ->unique(function ($classe) {
                 return $classe->filiere_id.'-'.$classe->niveau_etude_id;
@@ -1259,6 +1262,10 @@ class ESBTPEvaluationController extends Controller
         $cards = $combos->map(function ($classe) use ($anneeUniversitaire) {
             $filiere = $classe->filiere;
             $niveau = $classe->niveau;
+
+            if (! $filiere || ! $niveau) {
+                return null;
+            }
 
             $matieres = ESBTPMatiere::where('is_active', true)
                 ->whereHas('filieres', function ($query) use ($filiere) {
@@ -1306,7 +1313,7 @@ class ESBTPEvaluationController extends Controller
                 'configured' => $configuredCount,
                 'status' => $status,
             ];
-        });
+        })->filter()->values();
 
         $html = view('esbtp.evaluations.partials.coefficients-modal', compact('cards', 'anneeUniversitaire'))->render();
 
