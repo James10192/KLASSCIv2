@@ -972,28 +972,28 @@
                             <span>Étape 1</span> Créer l’enseignant
                         </div>
                         <p class="text-muted mb-0">Ajoutez l’enseignant et renseignez sa spécialité pour les associations.</p>
-                        <img src="{{ asset('assets/guides/timetable/step-1-teacher.svg') }}" alt="Créer un enseignant">
+                        <img src="{{ asset('assets/guides/timetable/step-1-teacher.png') }}" alt="Créer un enseignant">
                     </div>
                     <div class="tips-step">
                         <div class="tips-step-title">
                             <span>Étape 2</span> Définir la disponibilité
                         </div>
                         <p class="text-muted mb-0">Configurez les créneaux disponibles avant de planifier.</p>
-                        <img src="{{ asset('assets/guides/timetable/step-2-availability.svg') }}" alt="Disponibilités enseignant">
+                        <img src="{{ asset('assets/guides/timetable/step-2-availability.png') }}" alt="Disponibilités enseignant">
                     </div>
                     <div class="tips-step">
                         <div class="tips-step-title">
                             <span>Étape 3</span> Planning général & volumes
                         </div>
                         <p class="text-muted mb-0">Associez les enseignants aux filières/niveaux et aux volumes horaires.</p>
-                        <img src="{{ asset('assets/guides/timetable/step-3-planning.svg') }}" alt="Planning général">
+                        <img src="{{ asset('assets/guides/timetable/step-3-planning.png') }}" alt="Planning général">
                     </div>
                     <div class="tips-step">
                         <div class="tips-step-title">
                             <span>Étape 4</span> Générer l’emploi du temps
                         </div>
                         <p class="text-muted mb-0">Lancez la génération rapide ou créez manuellement la semaine.</p>
-                        <img src="{{ asset('assets/guides/timetable/step-4-generate.svg') }}" alt="Génération emploi du temps">
+                        <img src="{{ asset('assets/guides/timetable/step-4-generate.png') }}" alt="Génération emploi du temps">
                     </div>
                 </div>
                 <div class="tips-note">
