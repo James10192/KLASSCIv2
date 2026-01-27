@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use RuntimeException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -37,5 +38,26 @@ class Handler extends ExceptionHandler
         $this->reportable(function (Throwable $e) {
             //
         });
+    }
+
+    public function render($request, Throwable $e)
+    {
+        if ($e instanceof RuntimeException) {
+            $message = $e->getMessage();
+
+            if (str_starts_with($message, 'Coefficient manquant') || str_starts_with($message, 'Classe invalide pour le calcul du coefficient.')) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $message,
+                    ], 422);
+                }
+
+                return redirect()->route('esbtp.evaluations.index', ['open_coefficients' => 1])
+                    ->with('error', $message.' Configurez les coefficients avant de continuer.');
+            }
+        }
+
+        return parent::render($request, $e);
     }
 }
