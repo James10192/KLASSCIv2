@@ -7,6 +7,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPMatiere;
+use App\Models\ESBTPMatiereCoefficient;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
