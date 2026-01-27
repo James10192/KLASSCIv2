@@ -1027,7 +1027,7 @@
                         </div>
                         <p class="text-muted mb-0">Ajoutez l’enseignant et renseignez sa spécialité pour les associations.</p>
                         <img src="{{ asset('assets/guides/timetable/step-1-teacher.png') }}" alt="Créer un enseignant">
-                        <a class="tips-step-action" href="{{ route('esbtp.personnel.unified') }}">
+                        <a class="tips-step-action" href="{{ url('esbtp/personnel/unified') }}">
                             <i class="fas fa-user-plus"></i>Créer un enseignant
                         </a>
                     </div>
@@ -1037,7 +1037,7 @@
                         </div>
                         <p class="text-muted mb-0">Configurez les créneaux disponibles avant de planifier.</p>
                         <img src="{{ asset('assets/guides/timetable/step-2-availability.png') }}" alt="Disponibilités enseignant">
-                        <a class="tips-step-action" href="{{ route('esbtp.personnel.unified') }}">
+                        <a class="tips-step-action" href="{{ url('esbtp/personnel/unified') }}">
                             <i class="fas fa-calendar-check"></i>Gérer les disponibilités
                         </a>
                     </div>
