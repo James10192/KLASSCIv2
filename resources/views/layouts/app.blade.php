@@ -1599,6 +1599,13 @@
                             </a>
                         </div>
 
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.enseignants.index') }}" class="menu-link {{ Request::routeIs('esbtp.enseignants.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                                <div class="menu-text">Enseignants</div>
+                            </a>
+                        </div>
+
                         <!-- Attendance Dashboard -->
                         <div class="menu-item">
                             <a href="{{ route('coordinateur.attendance-dashboard') }}" class="menu-link {{ Request::routeIs('coordinateur.attendance-dashboard') ? 'active' : '' }}">
@@ -1891,6 +1898,10 @@
                                 <a href="{{ route('esbtp.matricule-config.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.matricule-config.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span><i class="fas fa-id-card me-2"></i>Matricule</span>
+                                </a>
+                                <a href="{{ route('esbtp.roles-permissions.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.roles-permissions.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span><i class="fas fa-user-shield me-2"></i>Rôles & Permissions</span>
                                 </a>
                             </div>
                         </div>
