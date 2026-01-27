@@ -1235,92 +1235,111 @@ class ESBTPEvaluationController extends Controller
 
     public function coefficientsModal(Request $request)
     {
-        $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        if (! $anneeUniversitaire) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Aucune année universitaire courante trouvée.',
-            ], 404);
-        }
-
-        $classes = ESBTPClasse::where('is_active', true)
-            ->with(['filiere', 'niveau'])
-            ->get();
-
-        $combos = $classes
-            ->filter(function ($classe) {
-                return $classe->filiere_id
-                    && $classe->niveau_etude_id
-                    && $classe->filiere
-                    && $classe->niveau;
-            })
-            ->unique(function ($classe) {
-                return $classe->filiere_id.'-'.$classe->niveau_etude_id;
-            })
-            ->values();
-
-        $cards = $combos->map(function ($classe) use ($anneeUniversitaire) {
-            $filiere = $classe->filiere;
-            $niveau = $classe->niveau;
-
-            if (! $filiere || ! $niveau) {
-                return null;
+        try {
+            if (! \Schema::hasTable('esbtp_matiere_coefficients')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'La table des coefficients est absente. Lancez la migration avant de configurer les coefficients.',
+                ]);
             }
 
-            $matieres = ESBTPMatiere::where('is_active', true)
-                ->whereHas('filieres', function ($query) use ($filiere) {
-                    $query->where('esbtp_filieres.id', $filiere->id);
-                })
-                ->whereHas('niveaux', function ($query) use ($niveau) {
-                    $query->where('esbtp_niveau_etudes.id', $niveau->id);
-                })
-                ->orderBy('name')
+            $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            if (! $anneeUniversitaire) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucune année universitaire courante trouvée.',
+                ], 404);
+            }
+
+            $classes = ESBTPClasse::where('is_active', true)
+                ->with(['filiere', 'niveau'])
                 ->get();
 
-            $coefficients = ESBTPMatiereCoefficient::where('filiere_id', $filiere->id)
-                ->where('niveau_etude_id', $niveau->id)
-                ->where('annee_universitaire_id', $anneeUniversitaire->id)
-                ->get()
-                ->keyBy('matiere_id');
+            $combos = $classes
+                ->filter(function ($classe) {
+                    return $classe->filiere_id
+                        && $classe->niveau_etude_id
+                        && $classe->filiere
+                        && $classe->niveau;
+                })
+                ->unique(function ($classe) {
+                    return $classe->filiere_id.'-'.$classe->niveau_etude_id;
+                })
+                ->values();
 
-            $configuredCount = 0;
-            $matieresData = $matieres->map(function ($matiere) use ($coefficients, &$configuredCount) {
-                $coefficient = $coefficients[$matiere->id]->coefficient ?? null;
-                if ($coefficient !== null) {
-                    $configuredCount++;
+            $cards = $combos->map(function ($classe) use ($anneeUniversitaire) {
+                $filiere = $classe->filiere;
+                $niveau = $classe->niveau;
+
+                if (! $filiere || ! $niveau) {
+                    return null;
                 }
 
+                $matieres = ESBTPMatiere::where('is_active', true)
+                    ->whereHas('filieres', function ($query) use ($filiere) {
+                        $query->where('esbtp_filieres.id', $filiere->id);
+                    })
+                    ->whereHas('niveaux', function ($query) use ($niveau) {
+                        $query->where('esbtp_niveau_etudes.id', $niveau->id);
+                    })
+                    ->orderBy('name')
+                    ->get();
+
+                $coefficients = ESBTPMatiereCoefficient::where('filiere_id', $filiere->id)
+                    ->where('niveau_etude_id', $niveau->id)
+                    ->where('annee_universitaire_id', $anneeUniversitaire->id)
+                    ->get()
+                    ->keyBy('matiere_id');
+
+                $configuredCount = 0;
+                $matieresData = $matieres->map(function ($matiere) use ($coefficients, &$configuredCount) {
+                    $coefficient = $coefficients[$matiere->id]->coefficient ?? null;
+                    if ($coefficient !== null) {
+                        $configuredCount++;
+                    }
+
+                    return [
+                        'id' => $matiere->id,
+                        'name' => $matiere->name,
+                        'code' => $matiere->code,
+                        'coefficient' => $coefficient,
+                    ];
+                });
+
+                $totalCount = $matieres->count();
+                $status = $totalCount === 0
+                    ? 'empty'
+                    : ($configuredCount === 0
+                        ? 'missing'
+                        : ($configuredCount === $totalCount ? 'complete' : 'partial'));
+
                 return [
-                    'id' => $matiere->id,
-                    'name' => $matiere->name,
-                    'code' => $matiere->code,
-                    'coefficient' => $coefficient,
+                    'filiere' => $filiere,
+                    'niveau' => $niveau,
+                    'matieres' => $matieresData,
+                    'total' => $totalCount,
+                    'configured' => $configuredCount,
+                    'status' => $status,
                 ];
-            });
+            })->filter()->values();
 
-            $totalCount = $matieres->count();
-            $status = $totalCount === 0
-                ? 'empty'
-                : ($configuredCount === 0
-                    ? 'missing'
-                    : ($configuredCount === $totalCount ? 'complete' : 'partial'));
+            $html = view('esbtp.evaluations.partials.coefficients-modal', compact('cards', 'anneeUniversitaire'))->render();
 
-            return [
-                'filiere' => $filiere,
-                'niveau' => $niveau,
-                'matieres' => $matieresData,
-                'total' => $totalCount,
-                'configured' => $configuredCount,
-                'status' => $status,
-            ];
-        })->filter()->values();
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+            ]);
+        } catch (\Throwable $throwable) {
+            \Log::error('Erreur chargement coefficients modal', [
+                'error' => $throwable->getMessage(),
+                'trace' => $throwable->getTraceAsString(),
+            ]);
 
-        $html = view('esbtp.evaluations.partials.coefficients-modal', compact('cards', 'anneeUniversitaire'))->render();
-
-        return response()->json([
-            'success' => true,
-            'html' => $html,
-        ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur serveur lors du chargement des coefficients.',
+            ], 500);
+        }
     }
 
     public function updateCoefficients(Request $request)

@@ -1424,8 +1424,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 coeffModalBody.innerHTML = data.html;
             })
-            .catch(() => {
-                coeffModalBody.innerHTML = '<div class="alert alert-danger">Erreur de chargement des coefficients.</div>';
+            .catch((error) => {
+                const message = error?.message || 'Erreur de chargement des coefficients.';
+                coeffModalBody.innerHTML = `<div class="alert alert-danger">${message}</div>`;
             });
 
         const modal = new bootstrap.Modal(coeffModalElement);
