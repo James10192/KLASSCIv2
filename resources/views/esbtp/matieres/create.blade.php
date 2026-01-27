@@ -4,10 +4,61 @@
 
 @section('styles')
 <link href="{{ asset('css/dashboard-moderne.css') }}" rel="stylesheet">
+<style>
+    .matiere-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .matiere-stat-card {
+        background: linear-gradient(145deg, #ffffff, #f8fafc);
+        border-radius: 14px;
+        padding: 1rem 1.2rem;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+    }
+
+    .matiere-stat-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(4, 83, 203, 0.12);
+        color: #1d4ed8;
+        font-size: 1.1rem;
+    }
+
+    .matiere-stat-value {
+        font-weight: 700;
+        font-size: 1.2rem;
+        color: #0f172a;
+    }
+
+    .matiere-stat-label {
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+
+    .matiere-guide-card {
+        background: rgba(4, 83, 203, 0.08);
+        border: 1px solid rgba(4, 83, 203, 0.2);
+        border-radius: 14px;
+        padding: 1rem 1.2rem;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+    }
+</style>
 @endsection
 
 @section('content')
-<div class="main-content">
+<div class="dashboard-acasi">
+    <div class="main-content" style="padding: 1.5rem; max-width: 100%; overflow-x: hidden;">
     <!-- Header Section -->
     <div class="dashboard-header">
         <div class="header-left">
@@ -75,6 +126,32 @@
             </div>
         </div>
     @endif
+
+    <div class="matiere-stats">
+        <div class="matiere-stat-card">
+            <div class="matiere-stat-icon"><i class="fas fa-graduation-cap"></i></div>
+            <div>
+                <div class="matiere-stat-value">{{ $filieres->count() }}</div>
+                <div class="matiere-stat-label">Filières actives</div>
+            </div>
+        </div>
+        <div class="matiere-stat-card">
+            <div class="matiere-stat-icon"><i class="fas fa-layer-group"></i></div>
+            <div>
+                <div class="matiere-stat-value">{{ $niveauxEtudes->count() }}</div>
+                <div class="matiere-stat-label">Niveaux d'études</div>
+            </div>
+        </div>
+        <div class="matiere-guide-card">
+            <div class="d-flex align-items-start gap-2">
+                <i class="fas fa-lightbulb text-primary"></i>
+                <div>
+                    <strong>Astuce</strong>
+                    <div class="text-muted small">Les volumes horaires se gèrent dans le Planning Général.</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Form Container -->
     <form action="{{ route('esbtp.matieres.store') }}" method="POST">
@@ -290,6 +367,7 @@
             </div>
         </div>
     </form>
+    </div>
 </div>
 
 @endsection
