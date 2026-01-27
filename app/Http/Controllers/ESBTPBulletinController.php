@@ -5532,7 +5532,11 @@ class ESBTPBulletinController extends Controller
                 'id' => $resultat->id,
                 'matiere' => $matiere,
                 'moyenne' => $resultat->moyenne,
-                'coefficient' => $resultat->coefficient,
+                'coefficient' => $this->getCoefficientForCombination(
+                    $resultat->matiere_id,
+                    $classeId,
+                    $anneeUniversitaireId
+                ),
                 'rang' => $resultat->rang,
                 'appreciation' => $resultat->appreciation,
             ];
@@ -5576,7 +5580,11 @@ class ESBTPBulletinController extends Controller
                     'id' => null,
                     'matiere' => $matiere, // Utiliser l'objet matière fraîchement récupéré
                     'moyenne' => $matiereData['moyenne'],
-                    'coefficient' => $matiereData['total_coefficients'],
+                    'coefficient' => $this->getCoefficientForCombination(
+                        $matiereId,
+                        $classeId,
+                        $anneeUniversitaireId
+                    ),
                     'rang' => null,
                     'appreciation' => null,
                 ];
@@ -5611,6 +5619,8 @@ class ESBTPBulletinController extends Controller
         $classeFiliereId = $classe->filiere_id;
         $classeNiveauId = $classe->niveau_etude_id;
 
+        $missingCoefficients = [];
+
         $toutesLesMatieres = \App\Models\ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
             ->where('is_active', true)
             ->orderBy('name')
@@ -5625,12 +5635,29 @@ class ESBTPBulletinController extends Controller
             })
             ->values();
 
+        foreach ($toutesLesMatieres as $matiere) {
+            try {
+                $this->getCoefficientForCombination($matiere->id, $classe->id, $anneeUniversitaire->id);
+            } catch (\RuntimeException $exception) {
+                $missingCoefficients[] = $matiere->name;
+            }
+        }
+
+        if (! empty($missingCoefficients)) {
+            return redirect()->route('esbtp.evaluations.index', ['open_coefficients' => 1])
+                ->with('error', 'Coefficients manquants pour: '.implode(', ', $missingCoefficients).'. Configurez-les avant de modifier les moyennes.');
+        }
+
         // Ajouter les matières de la classe qui n'ont pas encore de résultats
         foreach ($toutesLesMatieres as $matiere) {
             if (! isset($resultatsData[$matiere->id])) {
                 // Vérifier si cette matière a des moyennes calculées depuis les évaluations
                 $moyenneCalculee = isset($notesByMatiere[$matiere->id]) ? $notesByMatiere[$matiere->id]['moyenne'] : null;
-                $coefficientCalcule = isset($notesByMatiere[$matiere->id]) ? $notesByMatiere[$matiere->id]['total_coefficients'] : 1;
+                $coefficientCalcule = $this->getCoefficientForCombination(
+                    $matiere->id,
+                    $classe->id,
+                    $anneeUniversitaire->id
+                );
 
                 $resultatsData[$matiere->id] = [
                     'id' => null, // Nouveau résultat à créer
@@ -5717,7 +5744,7 @@ class ESBTPBulletinController extends Controller
                     'resultats' => 'array',
                     'resultats.*.matiere_id' => 'required|exists:esbtp_matieres,id',
                     'resultats.*.moyenne' => 'required|numeric|min:0|max:20',
-                    'resultats.*.coefficient' => 'required|numeric|min:0',
+                    'resultats.*.coefficient' => 'nullable|numeric|min:0',
                     'resultats.*.appreciation' => 'nullable|string|max:255',
                 ]);
                 \Log::info('✅ BULLETIN updateMoyennes - Validation résultats réussie');
@@ -5739,7 +5766,7 @@ class ESBTPBulletinController extends Controller
                     'nouvelles_matieres.*.matiere_existante_id' => 'required_if:nouvelles_matieres.*.matiere_type,existante|nullable|exists:esbtp_matieres,id',
                     'nouvelles_matieres.*.nom_nouvelle' => 'required_if:nouvelles_matieres.*.matiere_type,nouvelle|nullable|string|max:255',
                     'nouvelles_matieres.*.moyenne' => 'required|numeric|min:0|max:20',
-                    'nouvelles_matieres.*.coefficient' => 'required|numeric|min:0',
+                    'nouvelles_matieres.*.coefficient' => 'required_if:nouvelles_matieres.*.matiere_type,nouvelle|numeric|min:0',
                     'nouvelles_matieres.*.appreciation' => 'nullable|string|max:255',
                 ]);
                 \Log::info('✅ BULLETIN updateMoyennes - Validation nouvelles matières réussie');
@@ -5779,7 +5806,16 @@ class ESBTPBulletinController extends Controller
             foreach ($request->resultats as $resultatData) {
                 $matiereId = $resultatData['matiere_id'];
                 $moyenne = $resultatData['moyenne'];
-                $coefficient = $resultatData['coefficient'];
+                try {
+                    $coefficient = $this->getCoefficientForCombination(
+                        $matiereId,
+                        $classeId,
+                        $anneeUniversitaireId
+                    );
+                } catch (\RuntimeException $exception) {
+                    return redirect()->route('esbtp.evaluations.index', ['open_coefficients' => 1])
+                        ->with('error', $exception->getMessage().' Configurez les coefficients avant de modifier les moyennes.');
+                }
                 $appreciation = $resultatData['appreciation'] ?? null;
                 $resultatId = $resultatData['id'] ?? null;
 
@@ -5816,13 +5852,24 @@ class ESBTPBulletinController extends Controller
             foreach ($request->nouvelles_matieres as $nouvelleMatiereData) {
                 $matiereType = $nouvelleMatiereData['matiere_type'];
                 $moyenne = $nouvelleMatiereData['moyenne'];
-                $coefficient = $nouvelleMatiereData['coefficient'];
+                $coefficient = null;
                 $appreciation = $nouvelleMatiereData['appreciation'] ?? null;
 
                 if ($matiereType === 'existante') {
                     // Utiliser une matière existante
                     $matiereId = $nouvelleMatiereData['matiere_existante_id'];
                     $matiere = \App\Models\ESBTPMatiere::findOrFail($matiereId);
+
+                    try {
+                        $coefficient = $this->getCoefficientForCombination(
+                            $matiereId,
+                            $classeId,
+                            $anneeUniversitaireId
+                        );
+                    } catch (\RuntimeException $exception) {
+                        return redirect()->route('esbtp.evaluations.index', ['open_coefficients' => 1])
+                            ->with('error', $exception->getMessage().' Configurez les coefficients avant d\'ajouter cette matière.');
+                    }
 
                     // Associer la matière à la classe si ce n'est pas déjà fait
                     if (! $classe->matieres->contains($matiere->id)) {
@@ -5831,6 +5878,7 @@ class ESBTPBulletinController extends Controller
                 } elseif ($matiereType === 'nouvelle') {
                     // Créer une nouvelle matière
                     $nomMatiere = $nouvelleMatiereData['nom_nouvelle'];
+                    $coefficient = $nouvelleMatiereData['coefficient'];
                     $matiere = \App\Models\ESBTPMatiere::firstOrCreate(
                         ['name' => $nomMatiere],
                         [
@@ -5841,6 +5889,17 @@ class ESBTPBulletinController extends Controller
                             'is_active' => true,
                         ]
                     );
+
+                    ESBTPMatiereCoefficient::updateOrCreate([
+                        'matiere_id' => $matiere->id,
+                        'filiere_id' => $classe->filiere_id,
+                        'niveau_etude_id' => $classe->niveau_etude_id,
+                        'annee_universitaire_id' => $anneeUniversitaireId,
+                    ], [
+                        'coefficient' => $coefficient,
+                        'created_by' => auth()->id(),
+                        'updated_by' => auth()->id(),
+                    ]);
 
                     // Associer la matière à la classe
                     if (! $classe->matieres->contains($matiere->id)) {

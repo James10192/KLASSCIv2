@@ -13,7 +13,7 @@
         <div class="dashboard-header">
             <div class="header-left">
                 <h1><i class="fas fa-edit me-2"></i>Modification des moyennes</h1>
-                <p class="header-subtitle">Ajustez les moyennes et coefficients pour {{ $etudiant->nom }} {{ $etudiant->prenoms }}</p>
+                <p class="header-subtitle">Ajustez les moyennes pour {{ $etudiant->nom }} {{ $etudiant->prenoms }}</p>
             </div>
             <div class="header-actions">
                 @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur'))
@@ -125,7 +125,11 @@
                             <p><i class="fas fa-check-circle text-success me-2"></i>Vous pouvez modifier les moyennes calculées automatiquement.</p>
                         </div>
                         <div class="col-md-6">
-                            <p><i class="fas fa-check-circle text-success me-2"></i>Vous pouvez ajuster les coefficients des matières si nécessaire.</p>
+                            <p><i class="fas fa-check-circle text-success me-2"></i>Les coefficients sont gérés par filière, niveau et année.</p>
+                            <p class="mb-0">
+                                <i class="fas fa-sliders-h text-primary me-2"></i>
+                                <a href="{{ route('esbtp.evaluations.index', ['open_coefficients' => 1]) }}" class="text-decoration-none">Configurer les coefficients</a>
+                            </p>
                             <p><i class="fas fa-info-circle text-primary me-2"></i>Les moyennes doivent être comprises entre 0 et 20.</p>
                         </div>
                     </div>
@@ -140,7 +144,7 @@
                     <i class="fas fa-list"></i>
                     Moyennes par matière
                 </div>
-                <div class="main-card-subtitle">Modifiez les moyennes et coefficients pour chaque matière</div>
+                <div class="main-card-subtitle">Modifiez les moyennes pour chaque matière</div>
             </div>
 
             <div class="main-card-body">
@@ -217,7 +221,7 @@
                                             <input type="number" class="form-control text-center" name="resultats[{{ $matiereId }}][moyenne]" value="{{ old('resultats.' . $matiereId . '.moyenne', $existingMoyenne ? number_format($existingMoyenne, 2) : '') }}" min="0" max="20" step="0.01" placeholder="Saisir moyenne" required>
                                         </td>
                                         <td>
-                                            <input type="number" class="form-control text-center" name="resultats[{{ $matiereId }}][coefficient]" value="{{ old('resultats.' . $matiereId . '.coefficient', $resultat['coefficient'] ?? (isset($notesByMatiere[$matiereId]) ? $notesByMatiere[$matiereId]['total_coefficients'] : 1)) }}" min="0" step="0.5" required>
+                                            <input type="number" class="form-control text-center" value="{{ $resultat['coefficient'] ?? 1 }}" min="0" step="0.5" readonly disabled>
                                         </td>
                                         <td>
                                             <input type="text" class="form-control" name="resultats[{{ $matiereId }}][appreciation]" value="{{ old('resultats.' . $matiereId . '.appreciation', $resultat['appreciation'] ?? '') }}" placeholder="Appréciation optionnelle">
