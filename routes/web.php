@@ -1118,8 +1118,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::post('/matricule-config/change-etablissement', [ESBTPMatriculeConfigController::class, 'changeEtablissement'])->name('matricule-config.change-etablissement');
         Route::post('/matricule-config/get-configurations', [ESBTPMatriculeConfigController::class, 'getConfigurations'])->name('matricule-config.get-configurations');
 
-        Route::get('/roles-permissions', [ESBTPRolePermissionConfigController::class, 'index'])->name('roles-permissions.index');
-        Route::post('/roles-permissions', [ESBTPRolePermissionConfigController::class, 'update'])->name('roles-permissions.update');
+        Route::get('/roles-permissions', [\App\Http\Controllers\ESBTPRolePermissionConfigController::class, 'index'])->name('roles-permissions.index');
+        Route::post('/roles-permissions', [\App\Http\Controllers\ESBTPRolePermissionConfigController::class, 'update'])->name('roles-permissions.update');
 
     });
 
