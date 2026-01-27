@@ -15,7 +15,8 @@ class ESBTPRolePermissionConfigController extends Controller
 
     public function index(Request $request)
     {
-        $roles = Role::orderBy('name')->get();
+        $excludedRoles = ['admin', 'teacher', 'enseignant'];
+        $roles = Role::whereNotIn('name', $excludedRoles)->orderBy('name')->get();
         $permissions = Permission::orderBy('name')->get();
         $groupedPermissions = $permissions->groupBy(function ($permission) {
             $segments = preg_split('/[\.\s]/', $permission->name, 2);
@@ -27,11 +28,35 @@ class ESBTPRolePermissionConfigController extends Controller
         });
 
         $selectedRoleName = $request->input('role', $roles->first()?->name);
+        if ($selectedRoleName && ! $roles->contains('name', $selectedRoleName)) {
+            $selectedRoleName = $roles->first()?->name;
+        }
+
+        $roleGroups = collect([
+            'Administration' => ['superAdmin', 'secretaire', 'serviceTechnique'],
+            'Pedagogie' => ['coordinateur', 'directeurEtudes'],
+            'Usagers' => ['etudiant', 'parent'],
+        ]);
+
+        $groupedRoles = collect();
+        foreach ($roleGroups as $label => $roleNames) {
+            $groupedRoles[$label] = $roles->filter(function ($role) use ($roleNames) {
+                return in_array($role->name, $roleNames, true);
+            })->values();
+        }
+
+        $remainingRoles = $roles->reject(function ($role) use ($roleGroups) {
+            return $roleGroups->flatten()->contains($role->name);
+        })->values();
+        if ($remainingRoles->isNotEmpty()) {
+            $groupedRoles['Autres'] = $remainingRoles;
+        }
 
         return view('esbtp.roles-permissions.index', compact(
             'roles',
             'permissions',
             'groupedPermissions',
+            'groupedRoles',
             'rolePermissions',
             'selectedRoleName'
         ));

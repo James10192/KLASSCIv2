@@ -1,5 +1,9 @@
 @extends('layouts.app')
 
+@php
+    use Illuminate\Support\Str;
+@endphp
+
 @section('title', 'Gestion Roles & Permissions')
 
 @section('styles')
@@ -41,18 +45,33 @@
                         <label class="form-label-moderne">
                             <i class="fas fa-users-cog me-1"></i>Role cible
                         </label>
-                        <select class="form-select-moderne" id="roleSelect" name="role">
-                            @foreach($roles as $role)
-                                @php
-                                    $rolePerms = $rolePermissions[$role->name] ?? collect();
-                                @endphp
-                                <option value="{{ $role->name }}"
-                                    data-permissions='@json($rolePerms)'
-                                    {{ $selectedRoleName === $role->name ? 'selected' : '' }}>
-                                    {{ ucfirst($role->name) }}
-                                </option>
+                        <input type="hidden" id="roleSelect" name="role" value="{{ $selectedRoleName }}">
+                        <div class="role-accordion" id="roleAccordion">
+                            @foreach($groupedRoles as $groupLabel => $groupRoles)
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="heading-{{ Str::slug($groupLabel) }}">
+                                        <button class="accordion-button {{ $loop->first ? '' : 'collapsed' }}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ Str::slug($groupLabel) }}" aria-expanded="{{ $loop->first ? 'true' : 'false' }}" aria-controls="collapse-{{ Str::slug($groupLabel) }}">
+                                            <i class="fas fa-layer-group me-2"></i>{{ $groupLabel }}
+                                            <span class="group-count">{{ $groupRoles->count() }} roles</span>
+                                        </button>
+                                    </h2>
+                                    <div id="collapse-{{ Str::slug($groupLabel) }}" class="accordion-collapse collapse {{ $loop->first ? 'show' : '' }}" aria-labelledby="heading-{{ Str::slug($groupLabel) }}" data-bs-parent="#roleAccordion">
+                                        <div class="accordion-body">
+                                            <div class="role-grid">
+                                                @foreach($groupRoles as $role)
+                                                    @php
+                                                        $rolePerms = $rolePermissions[$role->name] ?? collect();
+                                                    @endphp
+                                                    <button type="button" class="role-card {{ $selectedRoleName === $role->name ? 'active' : '' }}" data-role="{{ $role->name }}" data-permissions='@json($rolePerms)'>
+                                                        <div class="role-name">{{ ucfirst($role->name) }}</div>
+                                                    </button>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             @endforeach
-                        </select>
+                        </div>
                     </div>
                     <div class="form-group-moderne">
                         <label class="form-label-moderne">
@@ -124,6 +143,58 @@
         display: flex;
         flex-direction: column;
         gap: 18px;
+    }
+
+    .role-accordion .accordion-item {
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        overflow: hidden;
+        background: #fff;
+        margin-bottom: 12px;
+    }
+
+    .role-accordion .accordion-button {
+        font-weight: 700;
+        color: #0f172a;
+        background: #f8fafc;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .role-accordion .accordion-button .group-count {
+        margin-left: auto;
+        font-size: 0.85rem;
+        color: #64748b;
+        font-weight: 600;
+    }
+
+    .role-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 10px;
+    }
+
+    .role-card {
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        padding: 12px 14px;
+        border-radius: 12px;
+        text-align: left;
+        font-weight: 700;
+        color: #0f172a;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .role-card.active {
+        border-color: #0453cb;
+        background: rgba(4, 83, 203, 0.08);
+        box-shadow: 0 6px 18px rgba(4, 83, 203, 0.12);
+    }
+
+    .role-card:hover {
+        border-color: #94a3b8;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
     }
 
     .permissions-group {
@@ -211,20 +282,30 @@
 
 <script>
     const roleSelect = document.getElementById('roleSelect');
+    const roleCards = document.querySelectorAll('.role-card');
     const selectAllBtn = document.getElementById('selectAllPerms');
     const clearAllBtn = document.getElementById('clearAllPerms');
     const groupSelectButtons = document.querySelectorAll('.group-select-all');
     const groupClearButtons = document.querySelectorAll('.group-clear-all');
 
     function syncPermissionsFromRole() {
-        const selectedOption = roleSelect.options[roleSelect.selectedIndex];
-        const allowed = JSON.parse(selectedOption.dataset.permissions || '[]');
+        const selectedCard = document.querySelector('.role-card.active');
+        const allowed = JSON.parse(selectedCard?.dataset.permissions || '[]');
         document.querySelectorAll('input[name="permissions[]"]').forEach((checkbox) => {
             checkbox.checked = allowed.includes(checkbox.value);
         });
     }
 
-    roleSelect?.addEventListener('change', syncPermissionsFromRole);
+    roleCards.forEach((card) => {
+        card.addEventListener('click', () => {
+            roleCards.forEach((item) => item.classList.remove('active'));
+            card.classList.add('active');
+            if (roleSelect) {
+                roleSelect.value = card.dataset.role;
+            }
+            syncPermissionsFromRole();
+        });
+    });
     selectAllBtn?.addEventListener('click', () => {
         document.querySelectorAll('input[name="permissions[]"]').forEach((checkbox) => {
             checkbox.checked = true;
