@@ -100,10 +100,9 @@
                                         <h3 class="main-card-title">
                                             <i class="fas fa-sliders-h"></i>Paramètres d'évaluation
                                         </h3>
-                                        <p class="main-card-subtitle">Coefficient et volume horaire</p>
+                                        <p class="main-card-subtitle">Coefficient de la matière</p>
                                     </div>
                                     <div class="main-card-body">
-                                        <!-- Coefficient -->
                                         <div class="mb-3">
                                             <label for="coefficient" class="form-label">Coefficient <span class="text-danger">*</span></label>
                                             <input type="number" class="form-control @error('coefficient') is-invalid @enderror" id="coefficient" name="coefficient" value="{{ old('coefficient', $matiere->coefficient) }}" min="1" step="0.5" required>
@@ -111,48 +110,9 @@
                                                 <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
                                         </div>
-
-                                        <!-- Volume horaire -->
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="heures_cm" class="form-label">Heures de cours magistraux</label>
-                                                <input type="number" class="form-control @error('heures_cm') is-invalid @enderror" id="heures_cm" name="heures_cm" value="{{ old('heures_cm', $matiere->heures_cm) }}" min="0" step="0.5">
-                                                @error('heures_cm')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label for="heures_td" class="form-label">Heures de travaux dirigés</label>
-                                                <input type="number" class="form-control @error('heures_td') is-invalid @enderror" id="heures_td" name="heures_td" value="{{ old('heures_td', $matiere->heures_td) }}" min="0" step="0.5">
-                                                @error('heures_td')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="heures_tp" class="form-label">Heures de travaux pratiques</label>
-                                                <input type="number" class="form-control @error('heures_tp') is-invalid @enderror" id="heures_tp" name="heures_tp" value="{{ old('heures_tp', $matiere->heures_tp) }}" min="0" step="0.5">
-                                                @error('heures_tp')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label for="heures_stage" class="form-label">Heures de stage</label>
-                                                <input type="number" class="form-control @error('heures_stage') is-invalid @enderror" id="heures_stage" name="heures_stage" value="{{ old('heures_stage', $matiere->heures_stage) }}" min="0" step="0.5">
-                                                @error('heures_stage')
-                                                    <div class="invalid-feedback">{{ $message }}</div>
-                                                @enderror
-                                            </div>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label for="heures_perso" class="form-label">Heures de travail personnel</label>
-                                            <input type="number" class="form-control @error('heures_perso') is-invalid @enderror" id="heures_perso" name="heures_perso" value="{{ old('heures_perso', $matiere->heures_perso) }}" min="0" step="0.5">
-                                            @error('heures_perso')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
+                                        <div class="alert alert-info mb-0">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Les volumes horaires se configurent dans le Planning Général.
                                         </div>
                                     </div>
                                 </div>
@@ -382,19 +342,7 @@
             width: '100%'
         });
 
-        // Calcul automatique du total des heures
-        function calculateTotalHours() {
-            const cm = parseFloat($('#heures_cm').val()) || 0;
-            const td = parseFloat($('#heures_td').val()) || 0;
-            const tp = parseFloat($('#heures_tp').val()) || 0;
-            const stage = parseFloat($('#heures_stage').val()) || 0;
-            const perso = parseFloat($('#heures_perso').val()) || 0;
-            const total = cm + td + tp + stage + perso;
-            $('#total_heures_default').val(total);
-        }
-
-        $('#heures_cm, #heures_td, #heures_tp, #heures_stage, #heures_perso').on('input', calculateTotalHours);
-        calculateTotalHours(); // Calcul initial
+        // Volume horaire géré dans le Planning Général
 
         // ===== GESTION DE L'APERÇU DES COMBINAISONS =====
         

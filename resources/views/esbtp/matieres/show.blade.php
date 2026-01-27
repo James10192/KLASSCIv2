@@ -58,19 +58,10 @@
                                                 <td>{{ $matiere->code }}</td>
                                             </tr>
                                             <tr>
-                                                <th>Volume horaire :</th>
+                                                <th>Volumes horaires :</th>
                                                 <td>
-                                                    @if(isset($planifications) && $planifications->count() > 0)
-                                                        @foreach($planifications as $planification)
-                                                            <div class="mb-2">
-                                                                <strong>{{ $planification->filiere->name ?? 'N/A' }} - {{ $planification->niveauEtude->name ?? 'N/A' }} :</strong>
-                                                                <span class="text-primary">{{ $planification->volume_horaire_total ?? 0 }}h</span>
-                                                                <small class="text-success d-block">(Planning général)</small>
-                                                            </div>
-                                                        @endforeach
-                                                    @else
-                                                        <span class="text-muted">Aucune configuration dans le planning général</span>
-                                                    @endif
+                                                    <span class="text-muted">Configurés dans le Planning Général</span>
+                                                    <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="text-primary ms-2">Voir</a>
                                                 </td>
                                             </tr>
                                             <tr>
@@ -335,45 +326,41 @@
                         </a>
                     </div>
 
-                    @if($enseignantsAssignes->count() > 0)
+                    @if(isset($enseignantsParPlanification) && $enseignantsParPlanification->count() > 0)
                         <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Enseignant</th>
-                                        <th>Filière</th>
-                                        <th>Niveau</th>
+                                        <th>Combinaison</th>
+                                        <th>Enseignants</th>
                                         <th>Volume horaire</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($enseignantsAssignes as $assignation)
+                                    @foreach($enseignantsParPlanification as $combo)
                                         <tr>
                                             <td>
                                                 <div>
-                                                    <strong>{{ $assignation['enseignant']->name }}</strong>
-                                                    <small class="d-block text-muted">{{ $assignation['enseignant']->email }}</small>
+                                                    <span class="badge bg-primary">{{ $combo['filiere']->name ?? 'N/A' }}</span>
+                                                    <span class="badge bg-secondary">{{ $combo['niveau']->name ?? 'N/A' }}</span>
                                                 </div>
                                             </td>
                                             <td>
-                                                <span class="badge bg-primary">{{ $assignation['filiere']->name }}</span>
+                                                @foreach($combo['enseignants'] as $enseignant)
+                                                    <div class="mb-1">
+                                                        <strong>{{ $enseignant->name }}</strong>
+                                                        <small class="d-block text-muted">{{ $enseignant->email }}</small>
+                                                    </div>
+                                                @endforeach
                                             </td>
                                             <td>
-                                                <span class="badge bg-secondary">{{ $assignation['niveau']->name }}</span>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-success">{{ $assignation['volume_horaire'] }}h</span>
+                                                <span class="badge bg-success">{{ $combo['volume_horaire'] }}h</span>
                                             </td>
                                             <td class="text-end">
-                                                <div class="btn-group">
-                                                    <a href="{{ route('esbtp.enseignants.show', ['enseignant' => $assignation['enseignant']->esbtpTeacher->id ?? 1]) }}" class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="btn btn-sm btn-outline-warning" title="Gérer dans le Planning Général">
-                                                        <i class="fas fa-cog"></i>
-                                                    </a>
-                                                </div>
+                                                <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="btn btn-sm btn-outline-warning" title="Gérer dans le Planning Général">
+                                                    <i class="fas fa-cog"></i>
+                                                </a>
                                             </td>
                                         </tr>
                                     @endforeach

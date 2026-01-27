@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ESBTPMatiere;
-use App\Models\ESBTPFiliere;
-use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPFiliere;
+use App\Models\ESBTPMatiere;
+use App\Models\ESBTPNiveauEtude;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
@@ -15,7 +15,6 @@ class ESBTPMatiereController extends Controller
     /**
      * Affiche la liste des matières.
      *
-     * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\Response
      */
     public function index(Request $request)
@@ -62,7 +61,7 @@ class ESBTPMatiereController extends Controller
 
         $navUrl = route('esbtp.matieres.index');
         if ($request->getQueryString()) {
-            $navUrl .= '?' . $request->getQueryString();
+            $navUrl .= '?'.$request->getQueryString();
         }
 
         return response()->json([
@@ -159,7 +158,7 @@ class ESBTPMatiereController extends Controller
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
-                $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search) . '%';
+                $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search).'%';
 
                 $q->where('name', 'like', $like)
                     ->orWhere('code', 'like', $like)
@@ -207,8 +206,8 @@ class ESBTPMatiereController extends Controller
         $preselectedNiveauId = $request->get('niveau_id');
 
         return view('esbtp.matieres.create', compact(
-            'filieres', 
-            'niveauxEtudes', 
+            'filieres',
+            'niveauxEtudes',
             'unitesEnseignement',
             'preselectedFiliereId',
             'preselectedNiveauId'
@@ -218,7 +217,6 @@ class ESBTPMatiereController extends Controller
     /**
      * Enregistre une nouvelle matière dans la base de données.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
     public function store(Request $request)
@@ -229,11 +227,6 @@ class ESBTPMatiereController extends Controller
             'code' => 'required|string|max:50|unique:esbtp_matieres,code',
             'description' => 'nullable|string',
             'coefficient' => 'required|numeric|min:0',
-            'heures_cm' => 'required|integer|min:0',
-            'heures_td' => 'required|integer|min:0',
-            'heures_tp' => 'required|integer|min:0',
-            'heures_stage' => 'required|integer|min:0',
-            'heures_perso' => 'required|integer|min:0',
             'niveau_etude_id' => 'nullable|exists:esbtp_niveau_etudes,id',
             'filiere_id' => 'nullable|exists:esbtp_filieres,id',
             'filieres' => 'nullable|array',
@@ -255,14 +248,14 @@ class ESBTPMatiereController extends Controller
         // Gérer les liaisons multiple ou simples
         $filiereIds = [];
         $niveauIds = [];
-        
+
         // Priorité à la multi-sélection si elle existe
         if ($request->has('filieres') && is_array($request->filieres)) {
             $filiereIds = $request->filieres;
         } elseif ($request->has('filiere_id') && $request->filiere_id) {
             $filiereIds = [$request->filiere_id];
         }
-        
+
         if ($request->has('niveaux') && is_array($request->niveaux)) {
             $niveauIds = $request->niveaux;
         } elseif ($request->has('niveau_etude_id') && $request->niveau_etude_id) {
@@ -270,12 +263,12 @@ class ESBTPMatiereController extends Controller
         }
 
         // Attacher les filières
-        if (!empty($filiereIds)) {
+        if (! empty($filiereIds)) {
             $matiere->filieres()->attach($filiereIds);
         }
 
         // Attacher les niveaux d'études
-        if (!empty($niveauIds)) {
+        if (! empty($niveauIds)) {
             $matiere->niveaux()->attach($niveauIds);
         }
 
@@ -287,7 +280,6 @@ class ESBTPMatiereController extends Controller
     /**
      * Affiche les détails d'une matière spécifique.
      *
-     * @param  \App\Models\ESBTPMatiere  $matiere
      * @return \Illuminate\Http\Response
      */
     public function show(ESBTPMatiere $matiere)
@@ -333,7 +325,7 @@ class ESBTPMatiereController extends Controller
                 'heures_tp' => $totalHeuresTP,
                 'heures_stage' => $totalHeuresStage,
                 'heures_perso' => $totalHeuresPerso,
-                'planifications_count' => $planifications->count()
+                'planifications_count' => $planifications->count(),
             ];
 
             foreach ($planifications as $planification) {
@@ -351,7 +343,7 @@ class ESBTPMatiereController extends Controller
                         'filiere' => $planification->filiere,
                         'niveau' => $planification->niveauEtude,
                         'planification_id' => $planification->id,
-                        'volume_horaire' => $planification->volume_horaire_total
+                        'volume_horaire' => $planification->volume_horaire_total,
                     ]);
                 }
 
@@ -362,7 +354,7 @@ class ESBTPMatiereController extends Controller
                         'filiere' => $planification->filiere,
                         'niveau' => $planification->niveauEtude,
                         'planification_id' => $planification->id,
-                        'volume_horaire' => $planification->volume_horaire_total
+                        'volume_horaire' => $planification->volume_horaire_total,
                     ]);
                 }
             }
@@ -372,9 +364,9 @@ class ESBTPMatiereController extends Controller
         $seances = collect();
         if ($anneeUniversitaireCourante) {
             $seances = \App\Models\ESBTPSeanceCours::where('matiere_id', $matiere->id)
-                ->whereHas('emploiTemps', function($query) use ($anneeUniversitaireCourante) {
+                ->whereHas('emploiTemps', function ($query) use ($anneeUniversitaireCourante) {
                     $query->where('annee_universitaire_id', $anneeUniversitaireCourante->id)
-                          ->where('is_current', true);
+                        ->where('is_current', true);
                 })
                 ->with(['emploiTemps.classe', 'teacher'])
                 ->orderBy('jour')
@@ -382,13 +374,26 @@ class ESBTPMatiereController extends Controller
                 ->get();
         }
 
-        return view('esbtp.matieres.show', compact('matiere', 'evaluations', 'enseignantsAssignes', 'anneeUniversitaireCourante', 'parametresPlanning', 'seances', 'planifications'));
+        $enseignantsParPlanification = $enseignantsAssignes
+            ->groupBy('planification_id')
+            ->map(function ($items) {
+                $first = $items->first();
+
+                return [
+                    'filiere' => $first['filiere'],
+                    'niveau' => $first['niveau'],
+                    'volume_horaire' => $first['volume_horaire'],
+                    'enseignants' => $items->pluck('enseignant')->unique('id')->values(),
+                ];
+            })
+            ->values();
+
+        return view('esbtp.matieres.show', compact('matiere', 'evaluations', 'enseignantsAssignes', 'enseignantsParPlanification', 'anneeUniversitaireCourante', 'parametresPlanning', 'seances', 'planifications'));
     }
 
     /**
      * Affiche le formulaire de modification d'une matière.
      *
-     * @param  \App\Models\ESBTPMatiere  $matiere
      * @return \Illuminate\Http\Response
      */
     public function edit(ESBTPMatiere $matiere)
@@ -405,8 +410,6 @@ class ESBTPMatiereController extends Controller
     /**
      * Met à jour la matière spécifiée dans la base de données.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\ESBTPMatiere  $matiere
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, ESBTPMatiere $matiere)
@@ -414,15 +417,10 @@ class ESBTPMatiereController extends Controller
         // Valider les données du formulaire
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:esbtp_matieres,code,' . $matiere->id,
+            'code' => 'required|string|max:50|unique:esbtp_matieres,code,'.$matiere->id,
             'nom' => 'required|string|max:255',
             'description' => 'nullable|string',
             'coefficient' => 'required|numeric|min:0',
-            'heures_cm' => 'required|integer|min:0',
-            'heures_td' => 'required|integer|min:0',
-            'heures_tp' => 'required|integer|min:0',
-            'heures_stage' => 'required|integer|min:0',
-            'heures_perso' => 'required|integer|min:0',
             'niveau_etude_id' => 'nullable|exists:esbtp_niveau_etudes,id',
             'filiere_id' => 'nullable|exists:esbtp_filieres,id',
             'type_formation' => 'nullable|in:generale,technologique_professionnelle',
@@ -458,7 +456,6 @@ class ESBTPMatiereController extends Controller
     /**
      * Supprime la matière spécifiée de la base de données.
      *
-     * @param  \App\Models\ESBTPMatiere  $matiere
      * @return \Illuminate\Http\Response
      */
     public function destroy(ESBTPMatiere $matiere)
@@ -490,7 +487,6 @@ class ESBTPMatiereController extends Controller
     /**
      * Associe des matières à une classe spécifique (méthode utilitaire)
      *
-     * @param  Request $request
      * @return \Illuminate\Http\Response
      */
     public function attachToClasse(Request $request)
@@ -520,7 +516,7 @@ class ESBTPMatiereController extends Controller
         $classe->matieres()->attach($matieresData);
 
         return redirect()->route('esbtp.classes.matieres', ['classe' => $classe->id])
-            ->with('success', count($matieresData) . ' matière(s) ajoutée(s) à la classe avec succès.');
+            ->with('success', count($matieresData).' matière(s) ajoutée(s) à la classe avec succès.');
     }
 
     /**
@@ -536,9 +532,9 @@ class ESBTPMatiereController extends Controller
             // Log whether the model exists and is accessible
             try {
                 $matieresCount = \App\Models\ESBTPMatiere::count();
-                \Log::info('Test de connexion à la table des matières réussi. Nombre total de matières (toutes): ' . $matieresCount);
+                \Log::info('Test de connexion à la table des matières réussi. Nombre total de matières (toutes): '.$matieresCount);
             } catch (\Exception $dbEx) {
-                \Log::error('Erreur lors de l\'accès à la table des matières: ' . $dbEx->getMessage());
+                \Log::error('Erreur lors de l\'accès à la table des matières: '.$dbEx->getMessage());
             }
 
             // Vérifier si la colonne is_active existe
@@ -554,25 +550,27 @@ class ESBTPMatiereController extends Controller
                 ->orderBy('name')
                 ->get();
 
-            \Log::info('Nombre de matières trouvées: ' . $matieres->count());
+            \Log::info('Nombre de matières trouvées: '.$matieres->count());
 
             if ($matieres->isEmpty()) {
                 \Log::warning('Aucune matière active trouvée');
+
                 return response()->json([]);
             }
 
             $formatted = $matieres->map(function ($matiere) {
                 return [
                     'id' => $matiere->id,
-                    'name' => $matiere->name ?? $matiere->nom ?? 'Matière ' . $matiere->id,
+                    'name' => $matiere->name ?? $matiere->nom ?? 'Matière '.$matiere->id,
                     'code' => $matiere->code ?? '',
-                    'coefficient' => $matiere->coefficient ?? 1
+                    'coefficient' => $matiere->coefficient ?? 1,
                 ];
             });
 
             return response()->json($formatted);
         } catch (\Exception $e) {
-            \Log::error('Erreur dans getMatieresJson: ' . $e->getMessage());
+            \Log::error('Erreur dans getMatieresJson: '.$e->getMessage());
+
             return response()->json(['error' => 'Une erreur est survenue lors de la récupération des matières'], 500);
         }
     }
@@ -589,9 +587,9 @@ class ESBTPMatiereController extends Controller
         $formattedMatieres = $matieres->map(function ($matiere) {
             return [
                 'id' => $matiere->id,
-                'name' => $matiere->name ?? $matiere->nom ?? 'Matière ' . $matiere->id,
+                'name' => $matiere->name ?? $matiere->nom ?? 'Matière '.$matiere->id,
                 'code' => $matiere->code ?? '',
-                'coefficient' => $matiere->coefficient ?? 1
+                'coefficient' => $matiere->coefficient ?? 1,
             ];
         });
 
@@ -601,7 +599,6 @@ class ESBTPMatiereController extends Controller
     /**
      * Supprime plusieurs matières en masse.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
     public function bulkDelete(Request $request)
@@ -609,7 +606,7 @@ class ESBTPMatiereController extends Controller
         // Valider les données
         $request->validate([
             'matieres' => 'required|array',
-            'matieres.*' => 'exists:esbtp_matieres,id'
+            'matieres.*' => 'exists:esbtp_matieres,id',
         ]);
 
         $count = 0;
@@ -634,7 +631,7 @@ class ESBTPMatiereController extends Controller
 
         if ($count > 0) {
             return redirect()->route('esbtp.matieres.index')
-                ->with('success', $count . ' matière(s) supprimée(s) avec succès.');
+                ->with('success', $count.' matière(s) supprimée(s) avec succès.');
         } else {
             return redirect()->route('esbtp.matieres.index')
                 ->with('error', 'Aucune matière n\'a pu être supprimée. Vérifiez qu\'elles ne sont pas utilisées ailleurs.');
@@ -665,7 +662,6 @@ class ESBTPMatiereController extends Controller
     /**
      * Attache les matières sélectionnées aux classes sélectionnées.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
     public function processAttachToClasses(Request $request)
@@ -693,8 +689,8 @@ class ESBTPMatiereController extends Controller
                         'total_heures' => $totalHeures,
                         'is_active' => true,
                         'created_at' => now(),
-                        'updated_at' => now()
-                    ]
+                        'updated_at' => now(),
+                    ],
                 ]);
             }
         }
@@ -705,28 +701,27 @@ class ESBTPMatiereController extends Controller
     /**
      * Récupère les liaisons existantes d'une matière (filières et niveaux).
      *
-     * @param  \App\Models\ESBTPMatiere  $matiere
      * @return \Illuminate\Http\JsonResponse
      */
     public function getLiaisons(ESBTPMatiere $matiere)
     {
         try {
             $matiere->load(['filieres', 'niveaux']);
-            
+
             $filieres = $matiere->filieres->pluck('id')->toArray();
             $niveaux = $matiere->niveaux->pluck('id')->toArray();
-            
+
             return response()->json([
                 'success' => true,
                 'filieres' => $filieres,
-                'niveaux' => $niveaux
+                'niveaux' => $niveaux,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de la récupération des liaisons: ' . $e->getMessage());
-            
+            \Log::error('Erreur lors de la récupération des liaisons: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des liaisons'
+                'message' => 'Erreur lors de la récupération des liaisons',
             ], 500);
         }
     }
@@ -734,8 +729,6 @@ class ESBTPMatiereController extends Controller
     /**
      * Met à jour les liaisons d'une matière avec les filières et niveaux sélectionnés.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\ESBTPMatiere  $matiere
      * @return \Illuminate\Http\JsonResponse
      */
     public function updateLiaisons(Request $request, ESBTPMatiere $matiere)
@@ -755,7 +748,7 @@ class ESBTPMatiereController extends Controller
             // Synchroniser les niveaux (les tableaux vides suppriment toutes les liaisons)
             $niveaux = $validated['niveaux'] ?? [];
             $matiere->niveaux()->sync($niveaux);
-            
+
             // Mettre à jour les champs directs pour compatibilité (uniquement si les colonnes existent encore)
             $legacyColumns = [
                 'filiere_id' => Schema::hasColumn('esbtp_matieres', 'filiere_id'),
@@ -787,7 +780,7 @@ class ESBTPMatiereController extends Controller
                 }
             }
 
-            if (!empty($legacyUpdates)) {
+            if (! empty($legacyUpdates)) {
                 $matiere->fill($legacyUpdates);
 
                 if ($matiere->isDirty()) {
@@ -796,27 +789,27 @@ class ESBTPMatiereController extends Controller
             }
 
             $totalCombinations = count($filieres) * count($niveaux);
-            
+
             $message = $totalCombinations > 0
                 ? "Liaisons mises à jour avec succès ! {$totalCombinations} combinaison(s) configurée(s)."
-                : "Liaisons mises à jour avec succès ! Toutes les liaisons ont été supprimées.";
+                : 'Liaisons mises à jour avec succès ! Toutes les liaisons ont été supprimées.';
 
             return response()->json([
                 'success' => true,
-                'message' => $message
+                'message' => $message,
             ]);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Données invalides: ' . implode(', ', $e->validator->errors()->all())
+                'message' => 'Données invalides: '.implode(', ', $e->validator->errors()->all()),
             ], 422);
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de la mise à jour des liaisons: ' . $e->getMessage());
-            
+            \Log::error('Erreur lors de la mise à jour des liaisons: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la sauvegarde des liaisons'
+                'message' => 'Erreur lors de la sauvegarde des liaisons',
             ], 500);
         }
     }
@@ -824,14 +817,13 @@ class ESBTPMatiereController extends Controller
     /**
      * Récupère les statistiques de liaisons pour une matière.
      *
-     * @param  \App\Models\ESBTPMatiere  $matiere
      * @return \Illuminate\Http\JsonResponse
      */
     public function getStatistiquesLiaisons(ESBTPMatiere $matiere)
     {
         try {
             $matiere->load(['filieres', 'niveaux', 'classes']);
-            
+
             $stats = [
                 'filieres_count' => $matiere->filieres->count(),
                 'niveaux_count' => $matiere->niveaux->count(),
@@ -840,17 +832,17 @@ class ESBTPMatiereController extends Controller
                 'filieres_names' => $matiere->filieres->pluck('name')->toArray(),
                 'niveaux_names' => $matiere->niveaux->pluck('name')->toArray(),
             ];
-            
+
             return response()->json([
                 'success' => true,
-                'stats' => $stats
+                'stats' => $stats,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de la récupération des statistiques: ' . $e->getMessage());
-            
+            \Log::error('Erreur lors de la récupération des statistiques: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des statistiques'
+                'message' => 'Erreur lors de la récupération des statistiques',
             ], 500);
         }
     }
@@ -858,7 +850,6 @@ class ESBTPMatiereController extends Controller
     /**
      * Récupère TOUTES les matières actives pour les assigner à une combinaison.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function getAvailableForCombination(Request $request)
@@ -866,43 +857,43 @@ class ESBTPMatiereController extends Controller
         try {
             $filiereId = $request->get('filiere_id');
             $niveauId = $request->get('niveau_id');
-            
-            if (!$filiereId || !$niveauId) {
+
+            if (! $filiereId || ! $niveauId) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Les IDs filière et niveau sont requis'
+                    'message' => 'Les IDs filière et niveau sont requis',
                 ], 400);
             }
-            
+
             // Récupérer TOUTES les matières actives avec leur statut de liaison
             $matieres = ESBTPMatiere::where('is_active', true)
                 ->select('id', 'name', 'code', 'description', 'coefficient', 'heures_cm', 'heures_td', 'heures_tp')
                 ->orderBy('name')
                 ->get()
-                ->map(function($matiere) use ($filiereId, $niveauId) {
+                ->map(function ($matiere) use ($filiereId, $niveauId) {
                     // Calculer le total des heures
                     $matiere->total_heures = $matiere->heures_cm + $matiere->heures_td + $matiere->heures_tp;
-                    
+
                     // Vérifier si la matière est déjà liée à cette combinaison
                     $isLinkedToFiliere = $matiere->filieres()->where('esbtp_filieres.id', $filiereId)->exists();
                     $isLinkedToNiveau = $matiere->niveaux()->where('esbtp_niveau_etudes.id', $niveauId)->exists();
-                    
+
                     $matiere->is_already_linked = $isLinkedToFiliere && $isLinkedToNiveau;
-                    
+
                     return $matiere;
                 });
-            
+
             return response()->json([
                 'success' => true,
-                'matieres' => $matieres
+                'matieres' => $matieres,
             ]);
-            
+
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de la récupération des matières: ' . $e->getMessage());
-            
+            \Log::error('Erreur lors de la récupération des matières: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des matières'
+                'message' => 'Erreur lors de la récupération des matières',
             ], 500);
         }
     }
@@ -910,7 +901,6 @@ class ESBTPMatiereController extends Controller
     /**
      * Ajoute des matières à une ou plusieurs combinaisons filière/niveau.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function addToCombination(Request $request)
@@ -928,38 +918,38 @@ class ESBTPMatiereController extends Controller
             $matiereIds = $request->matiere_ids;
             $filiereIds = $request->filiere_ids;
             $niveauIds = $request->niveau_ids;
-            
+
             $addedCount = 0;
-            
+
             foreach ($matiereIds as $matiereId) {
                 $matiere = ESBTPMatiere::find($matiereId);
-                
+
                 if ($matiere) {
                     // Ajouter les liaisons avec les filières
                     foreach ($filiereIds as $filiereId) {
                         $matiere->filieres()->syncWithoutDetaching([$filiereId]);
                     }
-                    
+
                     // Ajouter les liaisons avec les niveaux
                     foreach ($niveauIds as $niveauId) {
                         $matiere->niveaux()->syncWithoutDetaching([$niveauId]);
                     }
-                    
+
                     $addedCount++;
                 }
             }
-            
+
             return response()->json([
                 'success' => true,
-                'message' => "{$addedCount} matière(s) ajoutée(s) avec succès aux combinaisons sélectionnées."
+                'message' => "{$addedCount} matière(s) ajoutée(s) avec succès aux combinaisons sélectionnées.",
             ]);
-            
+
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de l\'ajout des matières: ' . $e->getMessage());
-            
+            \Log::error('Erreur lors de l\'ajout des matières: '.$e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de l\'ajout des matières'
+                'message' => 'Erreur lors de l\'ajout des matières',
             ], 500);
         }
     }
@@ -968,7 +958,6 @@ class ESBTPMatiereController extends Controller
      * API pour récupérer la liste des matières
      * Utilisée pour les dropdowns et sélections AJAX
      *
-     * @param \Illuminate\Http\Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function apiList(Request $request)
@@ -979,38 +968,38 @@ class ESBTPMatiereController extends Controller
             // Filtrer par terme de recherche si fourni
             if ($request->has('search') && $request->search) {
                 $search = $request->search;
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('code', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%");
+                        ->orWhere('code', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
                 });
             }
 
             // Filtrer par filière si fournie
             if ($request->has('filiere_id') && $request->filiere_id) {
-                $query->whereHas('filieres', function($q) use ($request) {
+                $query->whereHas('filieres', function ($q) use ($request) {
                     $q->where('esbtp_filieres.id', $request->filiere_id);
                 });
             }
 
             // Filtrer par niveau si fourni
             if ($request->has('niveau_id') && $request->niveau_id) {
-                $query->whereHas('niveaux', function($q) use ($request) {
+                $query->whereHas('niveaux', function ($q) use ($request) {
                     $q->where('esbtp_niveau_etudes.id', $request->niveau_id);
                 });
             }
 
             $matieres = $query->select('id', 'name', 'code', 'description', 'coefficient')
-                             ->orderBy('name')
-                             ->get();
+                ->orderBy('name')
+                ->get();
 
             return response()->json($matieres);
 
         } catch (\Exception $e) {
-            \Log::error('Erreur lors de la récupération des matières via API: ' . $e->getMessage());
+            \Log::error('Erreur lors de la récupération des matières via API: '.$e->getMessage());
 
             return response()->json([
-                'error' => 'Erreur lors du chargement des matières'
+                'error' => 'Erreur lors du chargement des matières',
             ], 500);
         }
     }
