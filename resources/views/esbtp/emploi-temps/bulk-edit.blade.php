@@ -41,7 +41,7 @@
     .bulk-modal-frame {
         width: 100%;
         border: none;
-        min-height: 75vh;
+        min-height: 100%;
     }
 
     .bulk-modal-body {
@@ -57,9 +57,26 @@
         color: #475569;
     }
 
+    .modal-xxl {
+        max-width: 90vw;
+    }
+
+    .bulk-modal-content {
+        height: 90vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .bulk-modal-body {
+        flex: 1;
+    }
+
     @media (max-width: 992px) {
-        .bulk-modal-frame {
-            min-height: 70vh;
+        .modal-xxl {
+            max-width: 96vw;
+        }
+        .bulk-modal-content {
+            height: 92vh;
         }
     }
 </style>
@@ -106,8 +123,8 @@
 </div>
 
 <div class="modal fade" id="seanceModal" tabindex="-1" aria-labelledby="seanceModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content">
+<div class="modal-dialog modal-xxl modal-dialog-centered">
+        <div class="modal-content bulk-modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="seanceModalLabel">
                     <i class="fas fa-plus-circle me-2"></i>Ajouter une séance
