@@ -75,6 +75,14 @@
         flex-direction: column;
     }
 
+    .accordion-toggle-icon {
+        transition: transform 0.2s ease;
+    }
+
+    .accordion-toggle[aria-expanded="true"] .accordion-toggle-icon {
+        transform: rotate(180deg);
+    }
+
     .bulk-modal-body {
         flex: 1;
     }
@@ -157,8 +165,8 @@
                                 <a href="{{ route('esbtp.emploi-temps.show', ['emploi_temp' => $emploiTempsItem->id]) }}" class="btn btn-sm btn-outline-primary" target="_blank">
                                     <i class="fas fa-external-link-alt me-1"></i>Ouvrir
                                 </a>
-                                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}" aria-expanded="true" aria-controls="{{ $collapseId }}">
-                                    <i class="fas fa-chevron-down"></i>
+                                <button class="btn btn-sm btn-outline-secondary accordion-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}" aria-expanded="true" aria-controls="{{ $collapseId }}">
+                                    <i class="fas fa-chevron-down accordion-toggle-icon"></i>
                                 </button>
                             </div>
                         </div>
