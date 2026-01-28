@@ -1281,6 +1281,29 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="quickGenerateConfirmModal" tabindex="-1" aria-labelledby="quickGenerateConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="quickGenerateConfirmModalLabel">
+                    <i class="fas fa-triangle-exclamation text-warning me-2"></i>Confirmer les séances ignorées
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">Certaines séances ne pourront pas être dupliquées pour cause d'indisponibilité ou de conflit d'emploi du temps.</p>
+                <div id="quickGenerateConflictList" class="d-grid gap-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="quickGenerateConfirmBtn">
+                    Continuer quand même
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 @endif
 
 @push('scripts')
@@ -1290,6 +1313,14 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!quickGenerateModal) {
         return;
     }
+
+    const quickGenerateForm = quickGenerateModal.querySelector('form');
+    const submitButton = quickGenerateForm ? quickGenerateForm.querySelector('button[type="submit"]') : null;
+    const confirmModalEl = document.getElementById('quickGenerateConfirmModal');
+    const confirmList = document.getElementById('quickGenerateConflictList');
+    const confirmBtn = document.getElementById('quickGenerateConfirmBtn');
+    const confirmModal = confirmModalEl ? new bootstrap.Modal(confirmModalEl) : null;
+    let quickGenerateConfirmed = false;
 
     const selectAllCheckbox = document.getElementById('quick-generate-select-all');
     const checkboxes = () => quickGenerateModal.querySelectorAll('input[name="classes[]"]');
@@ -1318,6 +1349,90 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     updateHeaderState();
+
+    if (quickGenerateForm) {
+        quickGenerateForm.addEventListener('submit', async (event) => {
+            if (quickGenerateConfirmed) {
+                return;
+            }
+
+            event.preventDefault();
+
+            const formData = new FormData(quickGenerateForm);
+            const actionUrl = "{{ route('esbtp.emploi-temps.quick-generate.preview') }}";
+            const token = quickGenerateForm.querySelector('input[name="_token"]')?.value || '';
+
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Analyse...';
+            }
+
+            try {
+                const response = await fetch(actionUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                });
+
+                const payload = await response.json();
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.message || 'Erreur lors de la prévisualisation.');
+                }
+
+                if (payload.total_conflicts > 0 && confirmModal && confirmList) {
+                    confirmList.innerHTML = payload.conflicts.map((group) => {
+                        const itemsHtml = (group.items || []).map((item) => {
+                            const badgeClass = item.reason === 'occupied' ? 'bg-danger' : 'bg-warning text-dark';
+                            const reasonLabel = item.reason === 'occupied' ? 'Déjà occupé' : 'Indisponible';
+                            return `
+                                <li class="d-flex flex-wrap align-items-center gap-2 py-1">
+                                    <span class="badge ${badgeClass}">${reasonLabel}</span>
+                                    <span class="fw-semibold">${item.matiere}</span>
+                                    <span class="text-muted">${item.enseignant}</span>
+                                    <span class="text-muted">${item.jour} ${item.heure_debut}–${item.heure_fin}</span>
+                                </li>
+                            `;
+                        }).join('');
+
+                        return `
+                            <div class="p-3 border rounded-3 bg-light">
+                                <div class="fw-semibold mb-2">${group.class_name}</div>
+                                <ul class="list-unstyled mb-0">
+                                    ${itemsHtml}
+                                </ul>
+                            </div>
+                        `;
+                    }).join('');
+
+                    confirmModal.show();
+                } else {
+                    quickGenerateConfirmed = true;
+                    quickGenerateForm.submit();
+                }
+            } catch (error) {
+                alert(error.message || 'Erreur lors de la prévisualisation.');
+            } finally {
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = '<i class="fas fa-bolt me-1"></i>Générer';
+                }
+            }
+        });
+    }
+
+    if (confirmBtn && quickGenerateForm) {
+        confirmBtn.addEventListener('click', () => {
+            quickGenerateConfirmed = true;
+            if (confirmModal) {
+                confirmModal.hide();
+            }
+            quickGenerateForm.submit();
+        });
+    }
 });
 </script>
 @endpush

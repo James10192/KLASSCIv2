@@ -1941,8 +1941,7 @@ class ESBTPEmploiTempsController extends Controller
         $createdCount = 0;
         $skippedCount = 0;
         $fallbackCount = 0;
-        $availabilityFallbackCount = 0;
-        $availabilityFallbackClasses = [];
+        $availabilitySkipCount = 0;
 
         DB::beginTransaction();
         try {
@@ -1965,14 +1964,10 @@ class ESBTPEmploiTempsController extends Controller
                     $fallbackCount++;
                 }
 
+                $availabilityConflicts = [];
                 if ($mode === 'duplicate' && $source) {
-                    $source->loadMissing(['seances.teacher.availabilities']);
-                    $availabilityIssues = $this->findAvailabilityConflicts($source->seances, $targetStart);
-                    if (! empty($availabilityIssues)) {
-                        $mode = 'empty';
-                        $availabilityFallbackCount++;
-                        $availabilityFallbackClasses[] = $classe->name;
-                    }
+                    $source->loadMissing(['seances.teacher.availabilities', 'seances.matiere']);
+                    $availabilityConflicts = $this->collectAvailabilityConflicts($source->seances, $targetStart);
                 }
 
                 $alreadyExists = ESBTPEmploiTemps::where('annee_universitaire_id', $anneeEnCours->id)
@@ -2009,7 +2004,13 @@ class ESBTPEmploiTempsController extends Controller
                 ]);
 
                 if ($mode === 'duplicate' && $source) {
+                    $conflictIds = collect($availabilityConflicts)->pluck('seance_id')->filter()->all();
+
                     foreach ($source->seances as $seance) {
+                        if (in_array($seance->id, $conflictIds, true)) {
+                            $availabilitySkipCount++;
+                            continue;
+                        }
                         $newSeance = $seance->replicate();
                         $newSeance->emploi_temps_id = $emploiTemps->id;
                         $newSeance->classe_id = $classe->id;
@@ -2050,14 +2051,88 @@ class ESBTPEmploiTempsController extends Controller
         if ($fallbackCount > 0) {
             $message .= " {$fallbackCount} classe(s) ont été créées en mode vide (aucun emploi du temps à dupliquer).";
         }
-        if ($availabilityFallbackCount > 0) {
-            $message .= " {$availabilityFallbackCount} classe(s) ont été créées en mode vide (enseignants indisponibles ou déjà occupés).";
+        if ($availabilitySkipCount > 0) {
+            $message .= " {$availabilitySkipCount} séance(s) ont été ignorée(s) (enseignants indisponibles ou déjà occupés).";
         }
 
         return redirect()->back()->with('success', $message);
     }
 
-    private function findAvailabilityConflicts($seances, Carbon $targetStart): array
+    public function quickGeneratePreview(Request $request, TimetableShortcutService $shortcutService)
+    {
+        $user = auth()->user();
+        if (! $user || (! $user->hasRole('superAdmin') && ! $user->hasRole('secretaire') && ! $user->can('create_timetable'))) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'classes' => 'required|array|min:1',
+            'classes.*' => 'integer',
+            'semestre' => 'required|string',
+            'modes' => 'array',
+            'modes.*' => 'in:empty,duplicate',
+        ]);
+
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (! $anneeEnCours) {
+            return response()->json([
+                'success' => false,
+                'message' => "Aucune année universitaire active n'est définie.",
+            ], 422);
+        }
+
+        $items = $shortcutService->getClassesNeedingTimetables($anneeEnCours);
+        if (empty($items)) {
+            return response()->json([
+                'success' => true,
+                'conflicts' => [],
+                'total_conflicts' => 0,
+            ]);
+        }
+
+        $itemsByClass = collect($items)->keyBy(function ($item) {
+            return $item['class']->id;
+        })->all();
+
+        $selectedClasses = array_map('intval', $validated['classes']);
+        $conflictsPayload = [];
+        $totalConflicts = 0;
+
+        foreach ($selectedClasses as $classeId) {
+            if (! isset($itemsByClass[$classeId])) {
+                continue;
+            }
+
+            $item = $itemsByClass[$classeId];
+            $classe = $item['class'];
+            $targetStart = $item['target_start'];
+            $source = $item['source'];
+
+            $mode = $validated['modes'][$classeId] ?? ($source ? 'duplicate' : 'empty');
+            if ($mode !== 'duplicate' || ! $source) {
+                continue;
+            }
+
+            $source->loadMissing(['seances.teacher.availabilities', 'seances.matiere']);
+            $conflicts = $this->collectAvailabilityConflicts($source->seances, $targetStart);
+            if (! empty($conflicts)) {
+                $conflictsPayload[] = [
+                    'class_id' => $classe->id,
+                    'class_name' => $classe->name,
+                    'items' => $conflicts,
+                ];
+                $totalConflicts += count($conflicts);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'conflicts' => $conflictsPayload,
+            'total_conflicts' => $totalConflicts,
+        ]);
+    }
+
+    private function collectAvailabilityConflicts($seances, Carbon $targetStart): array
     {
         $conflicts = [];
 
@@ -2068,7 +2143,17 @@ class ESBTPEmploiTempsController extends Controller
 
             $check = $this->checkTeacherAvailabilityForSeance($seance, $targetStart);
             if (! $check['ok']) {
-                $conflicts[] = $check['message'];
+                $jourLabel = $this->resolveSeanceDayLabel($seance->jour);
+                $conflicts[] = [
+                    'seance_id' => $seance->id,
+                    'matiere' => $seance->matiere->name ?? 'Matière',
+                    'enseignant' => $seance->teacher->name ?? $seance->teacher?->user?->name ?? 'Enseignant',
+                    'jour' => $jourLabel,
+                    'heure_debut' => $this->normalizeTime($seance->heure_debut),
+                    'heure_fin' => $this->normalizeTime($seance->heure_fin),
+                    'reason' => $check['reason'] ?? 'conflict',
+                    'message' => $check['message'] ?? 'Indisponible',
+                ];
             }
         }
 
@@ -2112,6 +2197,7 @@ class ESBTPEmploiTempsController extends Controller
                 if (! $available) {
                     return [
                         'ok' => false,
+                        'reason' => 'unavailable',
                         'message' => "{$teacher->name} indisponible",
                     ];
                 }
@@ -2128,6 +2214,7 @@ class ESBTPEmploiTempsController extends Controller
             if ($conflictExists) {
                 return [
                     'ok' => false,
+                    'reason' => 'occupied',
                     'message' => "{$teacher->name} occupé",
                 ];
             }
@@ -2172,6 +2259,40 @@ class ESBTPEmploiTempsController extends Controller
         }
 
         return null;
+    }
+
+    private function resolveSeanceDayLabel($jour): string
+    {
+        $labels = [
+            1 => 'Lundi',
+            2 => 'Mardi',
+            3 => 'Mercredi',
+            4 => 'Jeudi',
+            5 => 'Vendredi',
+            6 => 'Samedi',
+        ];
+
+        if (is_numeric($jour)) {
+            return $labels[(int) $jour] ?? 'Jour inconnu';
+        }
+
+        $normalized = strtolower(trim((string) $jour));
+        $map = [
+            'lundi' => 'Lundi',
+            'monday' => 'Lundi',
+            'mardi' => 'Mardi',
+            'tuesday' => 'Mardi',
+            'mercredi' => 'Mercredi',
+            'wednesday' => 'Mercredi',
+            'jeudi' => 'Jeudi',
+            'thursday' => 'Jeudi',
+            'vendredi' => 'Vendredi',
+            'friday' => 'Vendredi',
+            'samedi' => 'Samedi',
+            'saturday' => 'Samedi',
+        ];
+
+        return $map[$normalized] ?? 'Jour inconnu';
     }
 
     private function normalizeTime($value): ?string
