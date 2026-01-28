@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends(request()->boolean('embed') ? 'layouts.embedded' : 'layouts.app')
 
 @section('title', 'Ajouter une séance - KLASSCI')
 

@@ -60,10 +60,11 @@
     .bulk-modal-dialog {
         width: 90vw;
         max-width: 90vw;
+        height: 90vh;
     }
 
     .bulk-modal-content {
-        height: 90vh;
+        height: 100%;
         display: flex;
         flex-direction: column;
     }
@@ -76,6 +77,7 @@
         .bulk-modal-dialog {
             width: 96vw;
             max-width: 96vw;
+            height: 92vh;
         }
         .bulk-modal-content {
             height: 92vh;
