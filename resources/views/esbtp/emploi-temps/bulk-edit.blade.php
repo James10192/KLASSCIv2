@@ -124,10 +124,36 @@
             </div>
         @endif
 
-        <div class="bulk-edit-grid">
+        <div class="accordion" id="bulkEditAccordion">
             @forelse($emploiTempsData as $data)
-                <div id="emploi-temps-block-{{ $data['emploiTemps']->id }}">
-                    @include('esbtp.emploi-temps.partials.bulk-block', $data)
+                @php
+                    $emploiTempsItem = $data['emploiTemps'];
+                    $collapseId = 'collapse-emploi-temps-' . $emploiTempsItem->id;
+                    $headingId = 'heading-emploi-temps-' . $emploiTempsItem->id;
+                @endphp
+                <div class="accordion-item mb-3" id="emploi-temps-block-{{ $emploiTempsItem->id }}">
+                    <h2 class="accordion-header" id="{{ $headingId }}">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}" aria-expanded="true" aria-controls="{{ $collapseId }}">
+                            <div class="d-flex flex-wrap align-items-center gap-3">
+                                <div>
+                                    <div class="fw-semibold">{{ $emploiTempsItem->classe->name ?? 'Classe non définie' }}</div>
+                                    <div class="text-muted small">{{ $emploiTempsItem->titre ?? 'Emploi du temps' }}</div>
+                                </div>
+                                @if($emploiTempsItem->is_current)
+                                    <span class="badge bg-success">Actuel</span>
+                                @elseif($emploiTempsItem->is_active)
+                                    <span class="badge bg-info">Actif</span>
+                                @else
+                                    <span class="badge bg-secondary">Inactif</span>
+                                @endif
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="{{ $collapseId }}" class="accordion-collapse collapse show" aria-labelledby="{{ $headingId }}">
+                        <div class="accordion-body p-0">
+                            @include('esbtp.emploi-temps.partials.bulk-block', array_merge($data, ['showHeader' => false]))
+                        </div>
+                    </div>
                 </div>
             @empty
                 <div class="alert alert-warning">
