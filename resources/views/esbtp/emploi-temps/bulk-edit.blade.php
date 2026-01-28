@@ -58,9 +58,15 @@
     }
 
     .bulk-modal-dialog {
-        width: 90vw;
-        max-width: 90vw;
+        width: 90vw !important;
+        max-width: 90vw !important;
+        min-width: 90vw;
         height: 90vh;
+    }
+
+    #seanceModal .bulk-modal-dialog {
+        width: 90vw !important;
+        max-width: 90vw !important;
     }
 
     .bulk-modal-content {
@@ -75,9 +81,15 @@
 
     @media (max-width: 992px) {
         .bulk-modal-dialog {
-            width: 96vw;
-            max-width: 96vw;
+            width: 96vw !important;
+            max-width: 96vw !important;
+            min-width: 96vw;
             height: 92vh;
+        }
+
+        #seanceModal .bulk-modal-dialog {
+            width: 96vw !important;
+            max-width: 96vw !important;
         }
         .bulk-modal-content {
             height: 92vh;

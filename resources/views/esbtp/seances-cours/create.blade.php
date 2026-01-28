@@ -432,6 +432,7 @@
      data-default-colors='@json($defaultColors)'
      data-availability='@json($availabilityData ?? [])'
      data-teachers='@json($teachers->keyBy("id"))'
+     data-embed="{{ request()->boolean('embed') ? 1 : 0 }}"
      style="display: none;"></div>
 
 @endsection
@@ -442,8 +443,8 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/fr.js"></script>
 <script>
 const currentTeacherId = "{{ old('teacher_id') }}";
-const isEmbedded = {{ request()->boolean('embed') ? 'true' : 'false' }};
 const seanceDataElement = document.getElementById('seance-data');
+const isEmbedded = seanceDataElement ? seanceDataElement.dataset.embed === '1' : false;
 const seanceData = seanceDataElement
     ? {
         defaultColors: JSON.parse(seanceDataElement.dataset.defaultColors || '{}'),
@@ -467,11 +468,13 @@ document.addEventListener('DOMContentLoaded', function() {
         locale: "fr"
     });
 
-    // Initialize Flatpickr for date inputs
-    flatpickr("input[type=date]", {
-        locale: "fr",
-        minDate: "today"
-    });
+    // Initialize Flatpickr for date inputs (skip in embed mode)
+    if (!isEmbedded) {
+        flatpickr("input[type=date]", {
+            locale: "fr",
+            minDate: "today"
+        });
+    }
 
     // Handle recurring checkbox
     document.getElementById('is_recurring').addEventListener('change', function() {
