@@ -471,6 +471,75 @@ class TeacherAttendanceController extends Controller
                               ->orderBy('heure_debut', 'asc')
                               ->paginate(20);
 
+        $seancesForStats = (clone $seancesQuery)->get();
+        $teacherStats = [];
+        $today = \Carbon\Carbon::today();
+
+        foreach ($seancesForStats as $seance) {
+            if (! $seance->teacher_id) {
+                continue;
+            }
+
+            $teacherId = $seance->teacher_id;
+            $teacherName = $seance->teacher?->user?->name
+                ?? $seance->teacher?->name
+                ?? 'Enseignant';
+
+            if (! isset($teacherStats[$teacherId])) {
+                $teacherStats[$teacherId] = [
+                    'teacher_id' => $teacherId,
+                    'name' => $teacherName,
+                    'total' => 0,
+                    'present' => 0,
+                    'late' => 0,
+                    'absent' => 0,
+                    'not_signed' => 0,
+                ];
+            }
+
+            $attendance = $seance->teacherAttendances
+                ->first(function ($attendance) use ($today) {
+                    $attendanceDate = $attendance->date instanceof \Carbon\Carbon
+                        ? $attendance->date
+                        : \Carbon\Carbon::parse($attendance->date);
+                    return $attendanceDate->isSameDay($today);
+                });
+
+            if (! $attendance) {
+                $attendance = $seance->teacherAttendances
+                    ->first(function ($attendance) use ($seance) {
+                        $attendanceDate = $attendance->date instanceof \Carbon\Carbon
+                            ? $attendance->date
+                            : \Carbon\Carbon::parse($attendance->date);
+                        return $attendanceDate->isSameDay(\Carbon\Carbon::parse($seance->date_seance));
+                    });
+            }
+
+            if (! $attendance) {
+                $attendance = $seance->teacherAttendances->sortByDesc('created_at')->first();
+            }
+
+            $status = $attendance ? $attendance->status : 'not_signed';
+            $teacherStats[$teacherId]['total']++;
+
+            if (isset($teacherStats[$teacherId][$status])) {
+                $teacherStats[$teacherId][$status]++;
+            } else {
+                $teacherStats[$teacherId]['not_signed']++;
+            }
+        }
+
+        $teacherStats = collect($teacherStats)
+            ->map(function ($stats) {
+                $presentLike = $stats['present'] + $stats['late'];
+                $stats['taux'] = $stats['total'] > 0
+                    ? round(($presentLike / $stats['total']) * 100)
+                    : 0;
+                return $stats;
+            })
+            ->sortByDesc('taux')
+            ->values();
+
         return view('esbtp.teacher-attendance.report', compact(
             'seances',
             'teachers', 
@@ -482,7 +551,8 @@ class TeacherAttendanceController extends Controller
             'attendancesPresent', 
             'attendancesLate',
             'attendancesAbsent',
-            'attendancesToday'
+            'attendancesToday',
+            'teacherStats'
         ));
     }
 

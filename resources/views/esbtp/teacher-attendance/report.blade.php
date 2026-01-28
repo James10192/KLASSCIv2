@@ -112,6 +112,41 @@
             </div>
         </div>
 
+        @if(isset($teacherStats) && $teacherStats->count() > 0)
+            <div class="main-card mb-4">
+                <div class="main-card-header">
+                    <div class="main-card-title">
+                        <i class="fas fa-user-check"></i>
+                        Statistiques par enseignant
+                    </div>
+                    <div class="main-card-subtitle">Résumé individuel des émargements</div>
+                </div>
+                <div class="main-card-body">
+                    <div class="row g-3">
+                        @foreach($teacherStats as $stat)
+                            <div class="col-12 col-md-6 col-xl-4">
+                                <div class="card p-3 border-0 shadow-sm h-100" style="background: #ffffff;">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <div class="fw-semibold">{{ $stat['name'] }}</div>
+                                            <div class="text-muted small">{{ $stat['total'] }} séance(s)</div>
+                                        </div>
+                                        <span class="badge bg-primary">{{ $stat['taux'] }}%</span>
+                                    </div>
+                                    <div class="mt-3 d-flex flex-wrap gap-2">
+                                        <span class="badge bg-success"><i class="fas fa-check me-1"></i>{{ $stat['present'] }}</span>
+                                        <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>{{ $stat['late'] }}</span>
+                                        <span class="badge bg-danger"><i class="fas fa-user-times me-1"></i>{{ $stat['absent'] }}</span>
+                                        <span class="badge bg-secondary"><i class="fas fa-times me-1"></i>{{ $stat['not_signed'] }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <!-- Filters Section -->
         <div class="main-card mb-4">
             <div class="main-card-header">
