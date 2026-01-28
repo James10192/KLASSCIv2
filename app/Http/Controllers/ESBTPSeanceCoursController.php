@@ -435,6 +435,9 @@ class ESBTPSeanceCoursController extends Controller
 
             // Start transaction
             DB::beginTransaction();
+            $createdSessions = [];
+            $createdSeanceId = null;
+            $creationSucceeded = false;
 
             try {
                 // Check for scheduling conflicts (uniquement pour le jour principal, on peut améliorer pour tous les jours si besoin)
@@ -480,7 +483,6 @@ class ESBTPSeanceCoursController extends Controller
                     'data' => $data,
                 ]);
 
-                $createdSessions = [];
                 if ($isRecurring && ! empty($recurrenceDays) && is_array($recurrenceDays)) {
                     foreach ($recurrenceDays as $recurringDay) {
                         $dataForDay = $data;
@@ -565,8 +567,8 @@ class ESBTPSeanceCoursController extends Controller
 
                 DB::commit();
                 \Log::info('Création séances terminée', ['ids' => $createdSessions]);
-
                 $createdSeanceId = ! empty($createdSessions) ? end($createdSessions) : null;
+                $creationSucceeded = true;
 
                 $successMessage = 'Séance(s) ajoutée(s) avec succès.';
                 if ($request->type === 'homework') {
@@ -607,7 +609,22 @@ class ESBTPSeanceCoursController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur globale création séance', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
 
-            if (($request->expectsJson() || $request->boolean('embed'))) {
+            if ($creationSucceeded) {
+                if ($expectsJson) {
+                    return response()->json([
+                        'success' => true,
+                        'emploi_temps_id' => $request->emploi_temps_id,
+                        'seance_id' => $createdSeanceId,
+                        'message' => 'Séance ajoutée avec succès.',
+                    ]);
+                }
+
+                return redirect()
+                    ->route('esbtp.emploi-temps.show', $request->emploi_temps_id)
+                    ->with('success', 'Séance ajoutée avec succès.');
+            }
+
+            if ($expectsJson) {
                 return response()->json([
                     'message' => 'Une erreur est survenue lors de la création de la séance.',
                 ], 500);
