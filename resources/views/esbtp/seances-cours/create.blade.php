@@ -550,6 +550,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const sync = () => {
                 hiddenInput.value = `${hourSelect.value}:${minuteSelect.value}`;
+                if (typeof updateSelectedTimeInGrid === 'function') {
+                    updateSelectedTimeInGrid();
+                }
+                if (typeof updateHomeworkTimingInfo === 'function') {
+                    updateHomeworkTimingInfo();
+                }
             };
 
             hourSelect.addEventListener('change', sync);
