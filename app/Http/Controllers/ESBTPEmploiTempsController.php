@@ -13,6 +13,7 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPTeacher;
+use App\Models\ESBTPTeacherAvailability;
 use App\Models\User;
 use App\Services\ESBTPPDFService;
 use App\Services\TimetableShortcutService;
