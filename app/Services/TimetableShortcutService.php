@@ -100,8 +100,8 @@ class TimetableShortcutService
                     'class' => $classe,
                     'status' => 'expired',
                     'source' => $source,
-                    'target_start' => $nextWeekStart->copy(),
-                    'target_end' => $nextWeekStart->copy()->addDays(6),
+                    'target_start' => $currentWeekStart->copy(),
+                    'target_end' => $currentWeekStart->copy()->addDays(6),
                 ];
             }
         }

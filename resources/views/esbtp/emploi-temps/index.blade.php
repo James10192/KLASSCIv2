@@ -1192,7 +1192,7 @@
                                 <div>• {{ $timetableShortcut['missing'] }} classe(s) sans emploi du temps (semaine courante)</div>
                             @endif
                             @if($timetableShortcut['expired'] > 0)
-                                <div>• {{ $timetableShortcut['expired'] }} emploi(s) expiré(s) (semaine prochaine)</div>
+                                <div>• {{ $timetableShortcut['expired'] }} emploi(s) expiré(s) (semaine courante)</div>
                             @endif
                             @if($timetableShortcut['expiring_soon'] > 0)
                                 <div>• {{ $timetableShortcut['expiring_soon'] }} emploi(s) expirant sous 3 jours (semaine prochaine)</div>
@@ -1500,6 +1500,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <ul>
                     <li>Sans emploi du temps → semaine courante.</li>
                     <li>Expiré ou expiring sous 3 jours → semaine prochaine.</li>
+                    <li>Expiré sans emploi actif → semaine courante.</li>
                 </ul>
                 <small class="text-muted">Astuce : décoche les classes que tu veux gérer manuellement.</small>
             </div>
