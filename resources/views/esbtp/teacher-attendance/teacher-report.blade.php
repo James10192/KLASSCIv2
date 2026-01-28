@@ -10,9 +10,10 @@
         align-items: center;
         gap: 20px;
         padding: 20px 24px;
-        background: linear-gradient(135deg, #0f3f87 0%, #0453cb 100%);
+        background: #ffffff;
         border-radius: 16px;
-        color: #fff;
+        border: 1px solid #e5e7eb;
+        color: #0f172a;
         margin-bottom: 20px;
     }
 
@@ -20,7 +21,8 @@
         width: 72px;
         height: 72px;
         border-radius: 50%;
-        background: rgba(255,255,255,0.2);
+        background: rgba(4,83,203,0.12);
+        color: #0453cb;
         display: flex;
         align-items: center;
         justify-content: center;
