@@ -1060,6 +1060,10 @@ function finalizeAvailabilitySelection(day, startHour, endHour) {
     jourSelect.dispatchEvent(new Event('change'));
     heureDebut.dispatchEvent(new Event('change'));
     heureFin.dispatchEvent(new Event('change'));
+    if (typeof setEmbedTimeSelect === 'function') {
+        setEmbedTimeSelect('heure_debut', heureDebut.value);
+        setEmbedTimeSelect('heure_fin', heureFin.value);
+    }
     updateSelectedTimeInGrid();
 }
 
@@ -1086,6 +1090,17 @@ document.getElementById('sessionForm').addEventListener('submit', function(e) {
         return;
     }
 });
+
+function setEmbedTimeSelect(prefix, value) {
+    const hourSelect = document.getElementById(`${prefix}_h`);
+    const minuteSelect = document.getElementById(`${prefix}_m`);
+    if (!hourSelect || !minuteSelect || !value || !value.includes(':')) {
+        return;
+    }
+    const parts = value.split(':');
+    hourSelect.value = parts[0].padStart(2, '0');
+    minuteSelect.value = parts[1].padStart(2, '0');
+}
 
 document.getElementById('sessionForm').addEventListener('submit', async function(e) {
     if (!isEmbedded) {
