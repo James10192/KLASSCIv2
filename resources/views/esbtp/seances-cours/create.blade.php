@@ -1182,10 +1182,11 @@ document.getElementById('sessionForm').addEventListener('submit', async function
                 return;
             }
 
-        if (window.parent && payload.emploi_temps_id) {
+        if (window.parent) {
+            const emploiTempsId = payload.emploi_temps_id || formData.get('emploi_temps_id');
             window.parent.postMessage({
                 type: 'seance-created',
-                emploiTempsId: payload.emploi_temps_id,
+                emploiTempsId: emploiTempsId,
                 seanceId: payload.seance_id || null
             }, window.location.origin);
         }
