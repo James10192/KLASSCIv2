@@ -573,6 +573,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    if (isEmbedded) {
+        setTimeout(() => {
+            showTeacherAvailability();
+        }, 150);
+    }
+
     const errorFields = document.querySelectorAll('.form-error');
     if (errorFields.length > 0) {
         const courseFields = document.getElementById('courseFields');
