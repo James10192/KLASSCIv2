@@ -82,9 +82,13 @@
                 </div>
             </div>
         @endif
+        @if(request()->boolean('embed'))
+            <div class="alert alert-danger border-start border-danger border-4 mb-4" id="embedError" style="display: none;"></div>
+        @endif
         <form action="{{ route('esbtp.seances-cours.store') }}" method="POST" id="sessionForm">
             @csrf
             <input type="hidden" name="emploi_temps_id" value="{{ $emploiTemps->id }}">
+            <input type="hidden" name="embed" value="{{ request()->boolean('embed') ? 1 : 0 }}">
 
             <div class="form-sections">
                 <!-- Section 1: Type de séance -->
@@ -438,6 +442,7 @@
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/fr.js"></script>
 <script>
 const currentTeacherId = "{{ old('teacher_id') }}";
+const isEmbedded = {{ request()->boolean('embed') ? 'true' : 'false' }};
 const seanceDataElement = document.getElementById('seance-data');
 const seanceData = seanceDataElement
     ? {
@@ -949,6 +954,66 @@ document.getElementById('sessionForm').addEventListener('submit', function(e) {
     if (type === 'course' && !validateTeacherAvailability()) {
         e.preventDefault();
         return;
+    }
+});
+
+document.getElementById('sessionForm').addEventListener('submit', async function(e) {
+    if (!isEmbedded) {
+        return;
+    }
+    if (e.defaultPrevented) {
+        return;
+    }
+    e.preventDefault();
+
+    const form = e.target;
+    const formData = new FormData(form);
+    formData.set('embed', '1');
+
+    const errorBox = document.getElementById('embedError');
+    if (errorBox) {
+        errorBox.style.display = 'none';
+        errorBox.innerHTML = '';
+    }
+
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        });
+
+        const payload = await response.json();
+
+        if (!response.ok) {
+            const messages = payload.errors || payload.message || 'Une erreur est survenue.';
+            if (errorBox) {
+                const list = Array.isArray(messages)
+                    ? messages
+                    : (typeof messages === 'object' ? Object.values(messages).flat() : [messages]);
+                errorBox.innerHTML = `<strong>Erreur de validation</strong><ul class="mb-0 ps-3">${list.map((msg) => `<li>${msg}</li>`).join('')}</ul>`;
+                errorBox.style.display = 'block';
+            } else {
+                alert('Erreur : ' + (payload.message || 'Validation échouée'));
+            }
+            return;
+        }
+
+        if (window.parent && payload.emploi_temps_id) {
+            window.parent.postMessage({
+                type: 'seance-created',
+                emploiTempsId: payload.emploi_temps_id,
+                seanceId: payload.seance_id || null
+            }, window.location.origin);
+        }
+    } catch (error) {
+        if (errorBox) {
+            errorBox.textContent = 'Une erreur est survenue lors de l\'enregistrement.';
+            errorBox.style.display = 'block';
+        }
     }
 });
 

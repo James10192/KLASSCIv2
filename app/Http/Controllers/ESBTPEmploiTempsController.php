@@ -125,7 +125,8 @@ class ESBTPEmploiTempsController extends Controller
             $endDate = Carbon::parse($emploiTemps->date_fin);
 
             return $today->between($startDate, $endDate);
-        })->count();
+        });
+        $emploisTempsActifsCount = $emploisTempsActifs->count();
         $totalSeances = ESBTPSeanceCours::count();
 
         // Emplois du temps de l'année en cours (déjà filtrés)
@@ -138,7 +139,8 @@ class ESBTPEmploiTempsController extends Controller
 
         return view('esbtp.emploi-temps.index', compact(
             'emploisTemps', 'filieres', 'niveaux', 'classes', 'annees', 'anneeUniversitaireCourante',
-            'totalEmploisTemps', 'emploisTempsActifs', 'totalSeances', 'emploisTempsAnneeEnCours', 'timetableShortcut'
+            'totalEmploisTemps', 'emploisTempsActifsCount', 'totalSeances', 'emploisTempsAnneeEnCours', 'timetableShortcut',
+            'emploisTempsActifs'
         ));
     }
 
@@ -547,6 +549,60 @@ class ESBTPEmploiTempsController extends Controller
         return $data;
     }
 
+    private function buildEmploiTempsViewData(ESBTPEmploiTemps $emploiTemps): array
+    {
+        $emploiTemps->load([
+            'seances.matiere',
+            'seances.teacher',
+            'classe',
+            'classe.filiere',
+            'classe.niveau',
+            'annee',
+        ]);
+
+        $seances = $emploiTemps->seances;
+
+        $joursNoms = [
+            1 => 'Lundi',
+            2 => 'Mardi',
+            3 => 'Mercredi',
+            4 => 'Jeudi',
+            5 => 'Vendredi',
+            6 => 'Samedi',
+        ];
+
+        $timeSlots = $this->generateTimeSlots($seances);
+        $days = array_keys($joursNoms);
+
+        $matiereStats = [];
+        foreach ($emploiTemps->seances as $seance) {
+            $matiereName = $seance->matiere ? $seance->matiere->name : 'Non définie';
+            if (! isset($matiereStats[$matiereName])) {
+                $matiereStats[$matiereName] = 0;
+            }
+            $matiereStats[$matiereName]++;
+        }
+
+        $planificationData = [];
+        if ($emploiTemps->classe && $emploiTemps->annee) {
+            $planificationData = $this->getPlanificationDataForClasse(
+                $emploiTemps->classe,
+                $emploiTemps->annee,
+                $emploiTemps->semestre
+            );
+        }
+
+        return [
+            'emploiTemps' => $emploiTemps,
+            'seances' => $seances,
+            'joursNoms' => $joursNoms,
+            'timeSlots' => $timeSlots,
+            'days' => $days,
+            'matiereStats' => $matiereStats,
+            'planificationData' => $planificationData,
+        ];
+    }
+
     /**
      * Enregistre un nouvel emploi du temps.
      *
@@ -684,6 +740,47 @@ class ESBTPEmploiTempsController extends Controller
             'emploiTemps', 'seances', 'seancesParJour',
             'joursNoms', 'matiereStats', 'timeSlots', 'days', 'planificationData'
         ));
+    }
+
+    public function bulkEdit(Request $request)
+    {
+        $ids = $request->input('ids', []);
+        if (is_string($ids)) {
+            $ids = array_filter(explode(',', $ids));
+        }
+
+        $ids = collect($ids)
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->values()
+            ->all();
+
+        if (empty($ids)) {
+            return redirect()->route('esbtp.emploi-temps.index')
+                ->with('error', 'Sélectionnez au moins un emploi du temps actif.');
+        }
+
+        $emploisTemps = ESBTPEmploiTemps::whereIn('id', $ids)
+            ->orderBy('date_debut', 'desc')
+            ->get();
+
+        $emploiTempsData = $emploisTemps->map(function ($emploiTemps) {
+            return $this->buildEmploiTempsViewData($emploiTemps);
+        });
+
+        return view('esbtp.emploi-temps.bulk-edit', compact('emploisTemps', 'emploiTempsData'));
+    }
+
+    public function sections(ESBTPEmploiTemps $emploi_temp)
+    {
+        $data = $this->buildEmploiTempsViewData($emploi_temp);
+
+        $html = view('esbtp.emploi-temps.partials.bulk-block', $data)->render();
+
+        return response()->json([
+            'emploi_temps_id' => $emploi_temp->id,
+            'html' => $html,
+        ]);
     }
 
     /**

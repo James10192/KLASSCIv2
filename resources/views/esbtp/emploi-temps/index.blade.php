@@ -723,6 +723,11 @@
                     <button type="button" class="timetable-tips-btn" data-bs-toggle="modal" data-bs-target="#timetableTipsModal">
                         <i class="fas fa-lightbulb"></i>Tips
                     </button>
+                    @if(auth()->user()->can('edit_timetables'))
+                        <button type="button" class="btn-acasi info" data-bs-toggle="modal" data-bs-target="#bulkEditModal">
+                            <i class="fas fa-layer-group me-2"></i>Modifier rapidement
+                        </button>
+                    @endif
                     @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('create_timetable'))
                         <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn-acasi primary">
                             <i class="fas fa-plus-circle me-2"></i>Nouveau
@@ -762,7 +767,7 @@
                     <div class="emploi-stat-icon">
                         <i class="fas fa-check-circle"></i>
                     </div>
-                    <div class="emploi-stat-value">{{ $emploisTempsActifs }}</div>
+                    <div class="emploi-stat-value">{{ $emploisTempsActifsCount }}</div>
                     <div class="emploi-stat-label">Emplois du temps actifs</div>
                 </div>
             </div>
@@ -1070,6 +1075,63 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="bulkEditModal" tabindex="-1" aria-labelledby="bulkEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form method="GET" action="{{ route('esbtp.emploi-temps.bulk-edit') }}" id="bulk-edit-form">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="bulkEditModalLabel">
+                        <i class="fas fa-layer-group me-2"></i>Modifier rapidement les séances
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Sélectionnez les classes avec un emploi du temps actif à modifier.</p>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="bulk-edit-select-all">
+                            <label class="form-check-label" for="bulk-edit-select-all">Tout sélectionner</label>
+                        </div>
+                        <span class="badge bg-light text-dark">{{ $emploisTempsActifs->count() }} actif(s)</span>
+                    </div>
+
+                    @if($emploisTempsActifs->isEmpty())
+                        <div class="alert alert-warning mb-0">
+                            Aucun emploi du temps actif n'est disponible pour la modification rapide.
+                        </div>
+                    @else
+                        <div class="list-group">
+                            @foreach($emploisTempsActifs as $emploiTemps)
+                                <label class="list-group-item d-flex align-items-center gap-3">
+                                    <input class="form-check-input bulk-edit-checkbox" type="checkbox" name="ids[]" value="{{ $emploiTemps->id }}">
+                                    <div class="flex-grow-1">
+                                        <div class="fw-semibold">{{ $emploiTemps->classe->name ?? 'Classe non définie' }}</div>
+                                        <div class="small text-muted">
+                                            {{ $emploiTemps->titre ?? 'Emploi du temps' }}
+                                            @if($emploiTemps->date_debut && $emploiTemps->date_fin)
+                                                · {{ \Carbon\Carbon::parse($emploiTemps->date_debut)->format('d/m/Y') }} → {{ \Carbon\Carbon::parse($emploiTemps->date_fin)->format('d/m/Y') }}
+                                            @endif
+                                        </div>
+                                    </div>
+                                    @if($emploiTemps->is_current)
+                                        <span class="badge bg-success">Actuel</span>
+                                    @endif
+                                </label>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary" id="bulk-edit-submit" {{ $emploisTempsActifs->isEmpty() ? 'disabled' : '' }}>
+                        <i class="fas fa-arrow-right me-1"></i>Ouvrir les emplois du temps
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 <!-- Modal pour les instructions de changement d'année -->
@@ -1256,6 +1318,49 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     updateHeaderState();
+});
+</script>
+@endpush
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const bulkEditModal = document.getElementById('bulkEditModal');
+    if (!bulkEditModal) {
+        return;
+    }
+
+    const selectAll = document.getElementById('bulk-edit-select-all');
+    const submitButton = document.getElementById('bulk-edit-submit');
+    const checkboxes = () => bulkEditModal.querySelectorAll('.bulk-edit-checkbox');
+
+    const updateState = () => {
+        const boxes = Array.from(checkboxes());
+        const checkedCount = boxes.filter((box) => box.checked).length;
+        if (selectAll) {
+            selectAll.checked = checkedCount > 0 && checkedCount === boxes.length;
+            selectAll.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
+        }
+        if (submitButton) {
+            submitButton.disabled = checkedCount === 0;
+        }
+    };
+
+    if (selectAll) {
+        selectAll.addEventListener('change', () => {
+            checkboxes().forEach((checkbox) => {
+                checkbox.checked = selectAll.checked;
+            });
+            selectAll.indeterminate = false;
+            updateState();
+        });
+    }
+
+    checkboxes().forEach((checkbox) => {
+        checkbox.addEventListener('change', updateState);
+    });
+
+    updateState();
 });
 </script>
 @endpush

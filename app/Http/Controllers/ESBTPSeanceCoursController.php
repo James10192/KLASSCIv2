@@ -364,6 +364,8 @@ class ESBTPSeanceCoursController extends Controller
     public function store(Request $request)
     {
         try {
+            $expectsJson = $request->expectsJson() || $request->boolean('embed');
+
             // Get the emploi du temps and its associated classe_id and annee_universitaire_id
             $emploiTemps = ESBTPEmploiTemps::findOrFail($request->emploi_temps_id);
             if (! $emploiTemps->classe_id) {
@@ -418,6 +420,13 @@ class ESBTPSeanceCoursController extends Controller
 
             if ($validator->fails()) {
                 \Log::warning('Erreur validation création séance', $validator->errors()->toArray());
+
+                if ($expectsJson) {
+                    return response()->json([
+                        'message' => 'Validation échouée.',
+                        'errors' => $validator->errors(),
+                    ], 422);
+                }
 
                 return redirect()->back()
                     ->withErrors($validator)
@@ -562,12 +571,28 @@ class ESBTPSeanceCoursController extends Controller
                     $successMessage .= ' Les évaluations correspondantes ont été créées automatiquement.';
                 }
 
+                if ($expectsJson) {
+                    return response()->json([
+                        'success' => true,
+                        'emploi_temps_id' => $request->emploi_temps_id,
+                        'seance_id' => $seance->id,
+                        'message' => $successMessage,
+                    ]);
+                }
+
                 return redirect()
                     ->route('esbtp.emploi-temps.show', $request->emploi_temps_id)
                     ->with('success', $successMessage);
             } catch (ValidationException $e) {
                 DB::rollBack();
                 \Log::error('Erreur validation transaction création séance', $e->errors());
+
+                if ($expectsJson) {
+                    return response()->json([
+                        'message' => 'Validation échouée.',
+                        'errors' => $e->errors(),
+                    ], 422);
+                }
 
                 return redirect()->back()
                     ->withErrors($e->errors())
@@ -579,6 +604,12 @@ class ESBTPSeanceCoursController extends Controller
             }
         } catch (\Exception $e) {
             \Log::error('Erreur globale création séance', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+
+            if (($request->expectsJson() || $request->boolean('embed'))) {
+                return response()->json([
+                    'message' => 'Une erreur est survenue lors de la création de la séance.',
+                ], 500);
+            }
 
             return back()->with('error', 'Une erreur est survenue lors de la création de la séance : '.$e->getMessage());
         }

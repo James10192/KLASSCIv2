@@ -514,6 +514,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('emploi-temps.quick-generate')
                 ->middleware(['permission:create_timetable']);
 
+            Route::get('emploi-temps/bulk-edit', [ESBTPEmploiTempsController::class, 'bulkEdit'])
+                ->name('emploi-temps.bulk-edit')
+                ->middleware(['permission:edit_timetables']);
+
+            Route::get('emploi-temps/{emploi_temp}/sections', [ESBTPEmploiTempsController::class, 'sections'])
+                ->name('emploi-temps.sections')
+                ->middleware(['permission:view_timetables']);
+
             // Routes pour les emplois du temps ESBTP
             Route::resource('emploi-temps', ESBTPEmploiTempsController::class)
                 ->parameters(['emploi-temps' => 'emploi_temp'])
