@@ -151,9 +151,29 @@
 
                             <div class="form-group">
                                 <label for="heure_debut" class="form-label">Heure de début <span class="text-danger">*</span></label>
-                                <input type="time" class="form-input @error('heure_debut') error @enderror" 
-                                       id="heure_debut" name="heure_debut"
-                                       value="{{ old('heure_debut', $request->heure_debut) }}" required>
+                                @if(request()->boolean('embed'))
+                                    <div class="d-flex align-items-center gap-2">
+                                        <select id="heure_debut_h" class="form-input">
+                                            @for($h = 7; $h <= 18; $h++)
+                                                @php $hourValue = str_pad($h, 2, '0', STR_PAD_LEFT); @endphp
+                                                <option value="{{ $hourValue }}">{{ $hourValue }}</option>
+                                            @endfor
+                                        </select>
+                                        <span class="text-muted">:</span>
+                                        <select id="heure_debut_m" class="form-input">
+                                            @foreach(['00', '15', '30', '45'] as $minute)
+                                                <option value="{{ $minute }}">{{ $minute }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <input type="hidden" class="@error('heure_debut') error @enderror"
+                                           id="heure_debut" name="heure_debut"
+                                           value="{{ old('heure_debut', $request->heure_debut) }}" required>
+                                @else
+                                    <input type="time" class="form-input @error('heure_debut') error @enderror" 
+                                           id="heure_debut" name="heure_debut"
+                                           value="{{ old('heure_debut', $request->heure_debut) }}" required>
+                                @endif
                                 @error('heure_debut')
                                     <div class="form-error">{{ $message }}</div>
                                 @enderror
@@ -161,9 +181,29 @@
 
                             <div class="form-group">
                                 <label for="heure_fin" class="form-label">Heure de fin <span class="text-danger">*</span></label>
-                                <input type="time" class="form-input @error('heure_fin') error @enderror" 
-                                       id="heure_fin" name="heure_fin"
-                                       value="{{ old('heure_fin') }}" required>
+                                @if(request()->boolean('embed'))
+                                    <div class="d-flex align-items-center gap-2">
+                                        <select id="heure_fin_h" class="form-input">
+                                            @for($h = 7; $h <= 18; $h++)
+                                                @php $hourValue = str_pad($h, 2, '0', STR_PAD_LEFT); @endphp
+                                                <option value="{{ $hourValue }}">{{ $hourValue }}</option>
+                                            @endfor
+                                        </select>
+                                        <span class="text-muted">:</span>
+                                        <select id="heure_fin_m" class="form-input">
+                                            @foreach(['00', '15', '30', '45'] as $minute)
+                                                <option value="{{ $minute }}">{{ $minute }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <input type="hidden" class="@error('heure_fin') error @enderror"
+                                           id="heure_fin" name="heure_fin"
+                                           value="{{ old('heure_fin') }}" required>
+                                @else
+                                    <input type="time" class="form-input @error('heure_fin') error @enderror" 
+                                           id="heure_fin" name="heure_fin"
+                                           value="{{ old('heure_fin') }}" required>
+                                @endif
                                 @error('heure_fin')
                                     <div class="form-error">{{ $message }}</div>
                                 @enderror
@@ -476,6 +516,36 @@ document.addEventListener('DOMContentLoaded', function() {
             locale: "fr",
             minDate: "today"
         });
+    }
+
+    if (isEmbedded) {
+        const initTimeSelects = (prefix, initialValue) => {
+            const hourSelect = document.getElementById(`${prefix}_h`);
+            const minuteSelect = document.getElementById(`${prefix}_m`);
+            const hiddenInput = document.getElementById(prefix);
+
+            if (!hourSelect || !minuteSelect || !hiddenInput) {
+                return;
+            }
+
+            const value = initialValue || hiddenInput.value || '';
+            if (value.includes(':')) {
+                const [hour, minute] = value.split(':');
+                if (hour) hourSelect.value = hour.padStart(2, '0');
+                if (minute) minuteSelect.value = minute.padStart(2, '0');
+            }
+
+            const sync = () => {
+                hiddenInput.value = `${hourSelect.value}:${minuteSelect.value}`;
+            };
+
+            hourSelect.addEventListener('change', sync);
+            minuteSelect.addEventListener('change', sync);
+            sync();
+        };
+
+        initTimeSelects('heure_debut', "{{ old('heure_debut', $request->heure_debut) }}");
+        initTimeSelects('heure_fin', "{{ old('heure_fin') }}");
     }
 
     // Handle recurring checkbox
