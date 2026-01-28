@@ -498,6 +498,10 @@ const seanceData = seanceDataElement
     }
     : { defaultColors: {}, availability: {}, teachers: {} };
 
+const debugLog = typeof window !== 'undefined' && typeof window.debugLog === 'function'
+    ? window.debugLog
+    : () => {};
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize Select2
     $('.select2').select2({
