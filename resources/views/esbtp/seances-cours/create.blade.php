@@ -386,9 +386,14 @@
                                         <h6>Configuration requise</h6>
                                         <p class="mb-2">{{ $planificationData['message_configuration'] }}</p>
                                         @if($planificationData['lien_configuration'])
-                                            <a href="{{ $planificationData['lien_configuration'] }}" class="btn-acasi primary small">
+                                            <a href="{{ $planificationData['lien_configuration'] }}"
+                                               class="btn-acasi primary small"
+                                               @if(request()->boolean('embed')) target="_blank" rel="noopener noreferrer" @endif>
                                                 <i class="fas fa-cog"></i>Configurer maintenant
                                             </a>
+                                            @if(request()->boolean('embed'))
+                                                <div class="text-muted small mt-2">S'ouvre dans un nouvel onglet. Revenez ici après configuration.</div>
+                                            @endif
                                         @endif
                                     </div>
                                 </div>
@@ -519,6 +524,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (isEmbedded) {
+        if (!document.getElementById('sessionType').value) {
+            selectSessionType('course');
+        }
+
         const initTimeSelects = (prefix, initialValue) => {
             const hourSelect = document.getElementById(`${prefix}_h`);
             const minuteSelect = document.getElementById(`${prefix}_m`);
@@ -546,6 +555,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
         initTimeSelects('heure_debut', "{{ old('heure_debut', $request->heure_debut) }}");
         initTimeSelects('heure_fin', "{{ old('heure_fin') }}");
+    }
+
+    const teacherSelect = document.getElementById('teacher_id');
+    if (teacherSelect) {
+        teacherSelect.addEventListener('change', showTeacherAvailability);
+        if (window.jQuery && window.$) {
+            $('#teacher_id').on('change', showTeacherAvailability);
+        }
+    }
+
+    let matiereSelect = document.getElementById('matiere_id');
+    if (matiereSelect) {
+        matiereSelect.addEventListener('change', function () {
+            updateTeachersForSubject();
+            showTeacherAvailability();
+        });
+    }
+
+    const errorFields = document.querySelectorAll('.form-error');
+    if (errorFields.length > 0) {
+        const courseFields = document.getElementById('courseFields');
+        const hasCourseError = Array.from(errorFields).some((el) => {
+            const field = el.closest('.form-group');
+            const input = field ? field.querySelector('[name="matiere_id"], [name="teacher_id"]') : null;
+            return !!input;
+        });
+
+        if (hasCourseError && courseFields) {
+            courseFields.classList.add('error-highlight');
+            courseFields.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
     }
 
     // Handle recurring checkbox
@@ -579,7 +619,6 @@ document.addEventListener('DOMContentLoaded', function() {
     updateHomeworkTimingInfo();
 
     // Pré-remplir les enseignants si une matière est déjà sélectionnée
-    const matiereSelect = document.getElementById('matiere_id');
     if (matiereSelect && matiereSelect.value) {
         updateTeachersForSubject();
         if (currentTeacherId && document.getElementById('sessionType').value === 'course') {
@@ -1063,19 +1102,27 @@ document.getElementById('sessionForm').addEventListener('submit', async function
 
         const payload = await response.json();
 
-        if (!response.ok) {
-            const messages = payload.errors || payload.message || 'Une erreur est survenue.';
-            if (errorBox) {
+            if (!response.ok) {
+                const messages = payload.errors || payload.message || 'Une erreur est survenue.';
+                if (errorBox) {
                 const list = Array.isArray(messages)
                     ? messages
                     : (typeof messages === 'object' ? Object.values(messages).flat() : [messages]);
                 errorBox.innerHTML = `<strong>Erreur de validation</strong><ul class="mb-0 ps-3">${list.map((msg) => `<li>${msg}</li>`).join('')}</ul>`;
-                errorBox.style.display = 'block';
-            } else {
-                alert('Erreur : ' + (payload.message || 'Validation échouée'));
+                    errorBox.style.display = 'block';
+                } else {
+                    alert('Erreur : ' + (payload.message || 'Validation échouée'));
+                }
+
+                if (payload.errors && (payload.errors.matiere_id || payload.errors.teacher_id)) {
+                    const courseFields = document.getElementById('courseFields');
+                    if (courseFields) {
+                        courseFields.classList.add('error-highlight');
+                        courseFields.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+                return;
             }
-            return;
-        }
 
         if (window.parent && payload.emploi_temps_id) {
             window.parent.postMessage({
@@ -1336,6 +1383,11 @@ function showTeacherAvailability() {
 /* === SECTIONS AVEC ESPACEMENT === */
 .form-sections .main-card {
     margin-bottom: var(--space-xl);
+}
+
+.main-card.error-highlight {
+    border: 2px solid var(--danger);
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
 }
 
 /* Styles pour les types de séance */
