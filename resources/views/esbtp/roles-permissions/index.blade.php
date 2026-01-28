@@ -418,6 +418,25 @@
         document.querySelectorAll('input[name="permissions[]"]').forEach((checkbox) => {
             checkbox.checked = allowed.includes(checkbox.value);
         });
+
+        const groupsToOpen = new Set();
+        document.querySelectorAll('input[name="permissions[]"]:checked').forEach((checkbox) => {
+            const group = checkbox.dataset.group;
+            if (group) {
+                groupsToOpen.add(group);
+            }
+        });
+
+        document.querySelectorAll('.permissions-accordion .accordion-collapse').forEach((panel) => {
+            panel.classList.remove('show');
+        });
+
+        groupsToOpen.forEach((group) => {
+            const panel = document.getElementById(`perm-collapse-${CSS.escape(group)}`);
+            if (panel) {
+                panel.classList.add('show');
+            }
+        });
     }
 
     roleCards.forEach((card) => {
