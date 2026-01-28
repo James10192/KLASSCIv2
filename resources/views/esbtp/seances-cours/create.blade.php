@@ -459,14 +459,16 @@ document.addEventListener('DOMContentLoaded', function() {
         theme: 'bootstrap-5'
     });
 
-    // Initialize Flatpickr for time inputs
-    flatpickr("input[type=time]", {
-        enableTime: true,
-        noCalendar: true,
-        dateFormat: "H:i",
-        time_24hr: true,
-        locale: "fr"
-    });
+    // Initialize Flatpickr for time inputs (skip in embed mode)
+    if (!isEmbedded) {
+        flatpickr("input[type=time]", {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "H:i",
+            time_24hr: true,
+            locale: "fr"
+        });
+    }
 
     // Initialize Flatpickr for date inputs (skip in embed mode)
     if (!isEmbedded) {
