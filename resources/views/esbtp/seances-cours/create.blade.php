@@ -532,6 +532,32 @@ document.addEventListener('DOMContentLoaded', function() {
             selectSessionType('course');
         }
 
+        const ensureEndAfterStart = () => {
+            const startInput = document.getElementById('heure_debut');
+            const endInput = document.getElementById('heure_fin');
+            if (!startInput || !endInput) {
+                return;
+            }
+            const start = startInput.value || '';
+            const end = endInput.value || '';
+            if (!start.includes(':') || !end.includes(':')) {
+                return;
+            }
+            const [sh, sm] = start.split(':').map(Number);
+            const [eh, em] = end.split(':').map(Number);
+            if (Number.isNaN(sh) || Number.isNaN(sm) || Number.isNaN(eh) || Number.isNaN(em)) {
+                return;
+            }
+            const startMinutes = sh * 60 + sm;
+            const endMinutes = eh * 60 + em;
+            if (endMinutes < startMinutes) {
+                endInput.value = start;
+                if (typeof setEmbedTimeSelect === 'function') {
+                    setEmbedTimeSelect('heure_fin', start);
+                }
+            }
+        };
+
         const initTimeSelects = (prefix, initialValue) => {
             const hourSelect = document.getElementById(`${prefix}_h`);
             const minuteSelect = document.getElementById(`${prefix}_m`);
@@ -550,6 +576,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const sync = () => {
                 hiddenInput.value = `${hourSelect.value}:${minuteSelect.value}`;
+                ensureEndAfterStart();
                 if (typeof updateSelectedTimeInGrid === 'function') {
                     updateSelectedTimeInGrid();
                 }
