@@ -124,33 +124,43 @@
                 @php
                     $selectedPermissions = $rolePermissions[$selectedRoleName] ?? collect();
                 @endphp
-                <div class="permissions-group-list">
+                <div class="permissions-accordion" id="permissionsAccordion">
                     @foreach($groupedPermissions as $groupName => $groupItems)
-                        <div class="permissions-group" data-group="{{ $groupName }}">
-                            <div class="group-header">
-                                <div class="group-title">
-                                    <i class="fas fa-layer-group me-2"></i>
-                                    {{ ucfirst($groupName) }}
-                                    <span class="group-count">{{ $groupItems->count() }} permissions</span>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="perm-heading-{{ Str::slug($groupName) }}">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#perm-collapse-{{ Str::slug($groupName) }}" aria-expanded="false" aria-controls="perm-collapse-{{ Str::slug($groupName) }}">
+                                    <div class="group-title">
+                                        <span class="group-icon">
+                                            <i class="fas fa-layer-group"></i>
+                                        </span>
+                                        <div>
+                                            <div class="group-name">{{ Str::title(str_replace('_', ' ', $groupName)) }}</div>
+                                            <div class="group-desc">{{ $groupItems->count() }} permissions</div>
+                                        </div>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="perm-collapse-{{ Str::slug($groupName) }}" class="accordion-collapse collapse" aria-labelledby="perm-heading-{{ Str::slug($groupName) }}" data-bs-parent="#permissionsAccordion">
+                                <div class="accordion-body" data-group="{{ $groupName }}">
+                                    <div class="group-actions">
+                                        <button type="button" class="btn-acasi secondary group-select-all" data-group="{{ $groupName }}">
+                                            Tout cocher
+                                        </button>
+                                        <button type="button" class="btn-acasi secondary group-clear-all" data-group="{{ $groupName }}">
+                                            Tout retirer
+                                        </button>
+                                    </div>
+                                    <div class="permissions-grid">
+                                        @foreach($groupItems as $permission)
+                                            <label class="permission-card">
+                                                <input type="checkbox" name="permissions[]" value="{{ $permission->name }}"
+                                                    data-group="{{ $groupName }}"
+                                                    {{ $selectedPermissions->contains($permission->name) ? 'checked' : '' }}>
+                                                <span class="permission-label">{{ $permission->name }}</span>
+                                            </label>
+                                        @endforeach
+                                    </div>
                                 </div>
-                                <div class="group-actions">
-                                    <button type="button" class="btn-acasi secondary group-select-all" data-group="{{ $groupName }}">
-                                        Tout cocher
-                                    </button>
-                                    <button type="button" class="btn-acasi secondary group-clear-all" data-group="{{ $groupName }}">
-                                        Tout retirer
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="permissions-grid">
-                                @foreach($groupItems as $permission)
-                                    <label class="permission-card">
-                                        <input type="checkbox" name="permissions[]" value="{{ $permission->name }}"
-                                            data-group="{{ $groupName }}"
-                                            {{ $selectedPermissions->contains($permission->name) ? 'checked' : '' }}>
-                                        <span class="permission-label">{{ $permission->name }}</span>
-                                    </label>
-                                @endforeach
                             </div>
                         </div>
                     @endforeach
@@ -209,6 +219,10 @@
         background: #e2e8f0;
         border-radius: 999px;
         padding: 4px 10px;
+    }
+
+    .role-accordion .accordion-body {
+        padding: 16px 18px 18px;
     }
 
     .group-title {
@@ -279,10 +293,37 @@
         box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
     }
 
-    .permissions-group {
+    .permissions-accordion {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .permissions-accordion .accordion-item {
         border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        padding: 16px;
+        border-radius: 18px;
+        overflow: hidden;
+        background: #fff;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    }
+
+    .permissions-accordion .accordion-button {
+        font-weight: 700;
+        color: #0f172a;
+        background: linear-gradient(135deg, #f8fafc 0%, #ffffff 70%);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 18px;
+    }
+
+    .permissions-accordion .accordion-button:focus {
+        box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.15);
+    }
+
+    .permissions-accordion .accordion-body {
+        padding: 16px 18px 18px;
         background: #f8fafc;
     }
 
@@ -313,6 +354,7 @@
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
+        margin-bottom: 12px;
     }
 
     .permissions-grid {

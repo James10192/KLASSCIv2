@@ -27,9 +27,51 @@ class ESBTPRolePermissionConfigController extends Controller
             ->get();
         $permissions = Permission::orderBy('name')->get();
         $groupedPermissions = $permissions->groupBy(function ($permission) {
-            $segments = preg_split('/[\.\s]/', $permission->name, 2);
+            $name = strtolower($permission->name);
 
-            return $segments[0] ?? 'autres';
+            if (str_contains($name, '.')) {
+                $segments = explode('.', $name);
+                return $segments[0] ?: 'autres';
+            }
+
+            $actionPrefixes = [
+                'view',
+                'create',
+                'edit',
+                'delete',
+                'restore',
+                'force',
+                'export',
+                'import',
+                'manage',
+                'access',
+                'assign',
+                'approve',
+                'reject',
+                'validate',
+                'generate',
+                'send',
+                'receive',
+                'pay',
+                'print',
+                'sync',
+            ];
+
+            $tokens = preg_split('/[\s_]+/', $name);
+            if (!$tokens || count($tokens) === 0) {
+                return 'autres';
+            }
+
+            if (in_array($tokens[0], $actionPrefixes, true)) {
+                array_shift($tokens);
+                if (isset($tokens[0]) && $tokens[0] === 'own') {
+                    array_shift($tokens);
+                }
+            }
+
+            $groupKey = trim(implode('_', $tokens));
+
+            return $groupKey !== '' ? $groupKey : 'autres';
         })->sortKeys();
         $rolePermissions = $roles->mapWithKeys(function ($role) {
             return [$role->name => $role->permissions->pluck('name')->values()];
