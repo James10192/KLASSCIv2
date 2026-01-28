@@ -57,7 +57,8 @@
         color: #475569;
     }
 
-    .modal-xxl {
+    .bulk-modal-dialog {
+        width: 90vw;
         max-width: 90vw;
     }
 
@@ -72,7 +73,8 @@
     }
 
     @media (max-width: 992px) {
-        .modal-xxl {
+        .bulk-modal-dialog {
+            width: 96vw;
             max-width: 96vw;
         }
         .bulk-modal-content {
@@ -123,7 +125,7 @@
 </div>
 
 <div class="modal fade" id="seanceModal" tabindex="-1" aria-labelledby="seanceModalLabel" aria-hidden="true">
-<div class="modal-dialog modal-xxl modal-dialog-centered">
+<div class="modal-dialog modal-dialog-centered bulk-modal-dialog">
         <div class="modal-content bulk-modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="seanceModalLabel">
@@ -151,6 +153,22 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const modalInstance = new bootstrap.Modal(modalElement);
+
+    const refreshBlock = async (emploiTempsId) => {
+        const response = await fetch(`{{ url('/esbtp/emploi-temps') }}/${emploiTempsId}/sections`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        if (!response.ok) {
+            throw new Error('Erreur lors du rafraichissement');
+        }
+        const payload = await response.json();
+        const container = document.getElementById(`emploi-temps-block-${emploiTempsId}`);
+        if (container && payload.html) {
+            container.innerHTML = payload.html;
+        }
+    };
 
     const openModalWithUrl = (url) => {
         loading.style.display = 'flex';
@@ -198,23 +216,54 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         try {
-            const response = await fetch(`{{ url('/esbtp/emploi-temps') }}/${data.emploiTempsId}/sections`, {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
-            if (!response.ok) {
-                throw new Error('Erreur lors du rafraichissement');
-            }
-            const payload = await response.json();
-            const container = document.getElementById(`emploi-temps-block-${data.emploiTempsId}`);
-            if (container && payload.html) {
-                container.innerHTML = payload.html;
-            }
+            await refreshBlock(data.emploiTempsId);
         } catch (error) {
             console.error(error);
         } finally {
             modalInstance.hide();
+        }
+    });
+
+    document.addEventListener('submit', async function (event) {
+        const form = event.target.closest('form');
+        if (!form) {
+            return;
+        }
+
+        if (!form.action.includes('/seances-cours/') || !form.querySelector('input[name="_method"][value="DELETE"]')) {
+            return;
+        }
+
+        const block = form.closest('.bulk-emploi-temps-block');
+        const emploiTempsId = block ? block.dataset.emploiTempsId : null;
+        if (!emploiTempsId) {
+            return;
+        }
+
+        event.preventDefault();
+
+        if (!confirm('Êtes-vous sûr de vouloir supprimer cette séance ?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: new FormData(form)
+            });
+
+            const payload = await response.json();
+            if (!response.ok || !payload.success) {
+                throw new Error(payload.message || 'Suppression impossible.');
+            }
+
+            await refreshBlock(emploiTempsId);
+        } catch (error) {
+            alert(error.message || 'Erreur lors de la suppression.');
         }
     });
 });

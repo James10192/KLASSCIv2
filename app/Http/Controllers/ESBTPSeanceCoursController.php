@@ -1084,11 +1084,26 @@ class ESBTPSeanceCoursController extends Controller
             }
             $seancesCour->delete();
 
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'emploi_temps_id' => $emploiTempsId,
+                    'message' => 'Séance supprimée avec succès.',
+                ]);
+            }
+
             return redirect()
                 ->route('esbtp.emploi-temps.show', $emploiTempsId)
                 ->with('success', 'Séance supprimée avec succès.');
         } catch (\Exception $e) {
             Log::error('Error in SeanceCoursController@destroy: '.$e->getMessage());
+
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Une erreur est survenue lors de la suppression de la séance.',
+                ], 500);
+            }
 
             return back()->with('error', 'Une erreur est survenue lors de la suppression de la séance.');
         }
