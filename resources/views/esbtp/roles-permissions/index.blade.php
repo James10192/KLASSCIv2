@@ -2,9 +2,28 @@
 
 @php
     use Illuminate\Support\Str;
+    $roleLabels = [
+        'superAdmin' => 'Super Admin',
+        'secretaire' => 'Secrétaire',
+        'coordinateur' => 'Coordinateur',
+        'enseignant' => 'Enseignant',
+        'etudiant' => 'Étudiant',
+    ];
+    $roleDescriptions = [
+        'superAdmin' => 'Accès complet au système',
+        'secretaire' => 'Gestion administrative quotidienne',
+        'coordinateur' => 'Suivi pédagogique et encadrement',
+        'enseignant' => 'Cours, présence, évaluations',
+        'etudiant' => 'Accès aux services étudiant',
+    ];
+    $groupDescriptions = [
+        'Administration' => 'Pilotage et gestion globale',
+        'Pédagogie' => 'Suivi pédagogique et cours',
+        'Étudiants' => 'Accès étudiant',
+    ];
 @endphp
 
-@section('title', 'Gestion Roles & Permissions')
+@section('title', 'Gestion Rôles & Permissions')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
@@ -14,8 +33,8 @@
 <div class="main-content">
     <div class="dashboard-header">
         <div class="header-left">
-            <h1><i class="fas fa-user-shield me-2"></i>Roles & Permissions</h1>
-            <p class="header-subtitle">Administration des roles existants et de leurs permissions</p>
+            <h1><i class="fas fa-user-shield me-2"></i>Rôles & Permissions</h1>
+            <p class="header-subtitle">Administration des rôles existants et de leurs permissions</p>
         </div>
         <div class="header-actions">
             <span class="badge primary">ADMIN CONFIG</span>
@@ -43,7 +62,7 @@
                 <div class="form-grid-2 mb-lg">
                     <div class="form-group-moderne">
                         <label class="form-label-moderne">
-                            <i class="fas fa-users-cog me-1"></i>Role cible
+                            <i class="fas fa-users-cog me-1"></i>Rôle cible
                         </label>
                         <input type="hidden" id="roleSelect" name="role" value="{{ $selectedRoleName }}">
                         <div class="role-accordion" id="roleAccordion">
@@ -51,8 +70,16 @@
                                 <div class="accordion-item">
                                     <h2 class="accordion-header" id="heading-{{ Str::slug($groupLabel) }}">
                                         <button class="accordion-button {{ $loop->first ? '' : 'collapsed' }}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ Str::slug($groupLabel) }}" aria-expanded="{{ $loop->first ? 'true' : 'false' }}" aria-controls="collapse-{{ Str::slug($groupLabel) }}">
-                                            <i class="fas fa-layer-group me-2"></i>{{ $groupLabel }}
-                                            <span class="group-count">{{ $groupRoles->count() }} roles</span>
+                                            <div class="group-title">
+                                                <span class="group-icon">
+                                                    <i class="fas fa-layer-group"></i>
+                                                </span>
+                                                <div>
+                                                    <div class="group-name">{{ $groupLabel }}</div>
+                                                    <div class="group-desc">{{ $groupDescriptions[$groupLabel] ?? '' }}</div>
+                                                </div>
+                                            </div>
+                                            <span class="group-count">{{ $groupRoles->count() }} rôles</span>
                                         </button>
                                     </h2>
                                     <div id="collapse-{{ Str::slug($groupLabel) }}" class="accordion-collapse collapse {{ $loop->first ? 'show' : '' }}" aria-labelledby="heading-{{ Str::slug($groupLabel) }}" data-bs-parent="#roleAccordion">
@@ -63,7 +90,8 @@
                                                         $rolePerms = $rolePermissions[$role->name] ?? collect();
                                                     @endphp
                                                     <button type="button" class="role-card {{ $selectedRoleName === $role->name ? 'active' : '' }}" data-role="{{ $role->name }}" data-permissions='@json($rolePerms)'>
-                                                        <div class="role-name">{{ ucfirst($role->name) }}</div>
+                                                    <div class="role-name">{{ $roleLabels[$role->name] ?? Str::title(str_replace(['_', '-'], ' ', $role->name)) }}</div>
+                                                    <div class="role-desc">{{ $roleDescriptions[$role->name] ?? '' }}</div>
                                                     </button>
                                                 @endforeach
                                             </div>
@@ -90,7 +118,7 @@
 
                 <div class="alert alert-info mb-lg">
                     <i class="fas fa-info-circle me-2"></i>
-                    Les roles existent deja. Vous pouvez ajouter ou retirer des permissions puis enregistrer.
+                    Les rôles existent déjà. Vous pouvez ajouter ou retirer des permissions puis enregistrer.
                 </div>
 
                 @php
@@ -145,56 +173,110 @@
         gap: 18px;
     }
 
+    .role-accordion {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
     .role-accordion .accordion-item {
         border: 1px solid #e2e8f0;
-        border-radius: 14px;
+        border-radius: 18px;
         overflow: hidden;
         background: #fff;
-        margin-bottom: 12px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
     }
 
     .role-accordion .accordion-button {
         font-weight: 700;
         color: #0f172a;
-        background: #f8fafc;
+        background: linear-gradient(135deg, #f8fafc 0%, #ffffff 70%);
         display: flex;
-        gap: 8px;
         align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 18px;
+    }
+
+    .role-accordion .accordion-button:focus {
+        box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.15);
     }
 
     .role-accordion .accordion-button .group-count {
-        margin-left: auto;
+        font-size: 0.85rem;
+        color: #0f172a;
+        font-weight: 700;
+        background: #e2e8f0;
+        border-radius: 999px;
+        padding: 4px 10px;
+    }
+
+    .group-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .group-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(4, 83, 203, 0.12);
+        color: #0453cb;
+        font-size: 1rem;
+    }
+
+    .group-name {
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .group-desc {
         font-size: 0.85rem;
         color: #64748b;
-        font-weight: 600;
+        font-weight: 500;
     }
 
     .role-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 10px;
+        gap: 12px;
     }
 
     .role-card {
         border: 1px solid #e2e8f0;
-        background: #fff;
+        background: #f8fafc;
         padding: 12px 14px;
-        border-radius: 12px;
+        border-radius: 14px;
         text-align: left;
         font-weight: 700;
         color: #0f172a;
         transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     }
 
+    .role-name {
+        font-size: 0.98rem;
+    }
+
+    .role-desc {
+        font-size: 0.82rem;
+        color: #64748b;
+        font-weight: 500;
+        margin-top: 2px;
+    }
+
     .role-card.active {
         border-color: #0453cb;
-        background: rgba(4, 83, 203, 0.08);
-        box-shadow: 0 6px 18px rgba(4, 83, 203, 0.12);
+        background: linear-gradient(135deg, rgba(4, 83, 203, 0.12), rgba(94, 145, 222, 0.08));
+        box-shadow: 0 10px 24px rgba(4, 83, 203, 0.15);
     }
 
     .role-card:hover {
         border-color: #94a3b8;
-        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
     }
 
     .permissions-group {

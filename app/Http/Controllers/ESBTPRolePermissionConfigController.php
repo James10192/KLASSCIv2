@@ -15,8 +15,16 @@ class ESBTPRolePermissionConfigController extends Controller
 
     public function index(Request $request)
     {
-        $excludedRoles = ['admin', 'teacher', 'enseignant'];
-        $roles = Role::whereNotIn('name', $excludedRoles)->orderBy('name')->get();
+        $allowedRoles = [
+            'superAdmin',
+            'secretaire',
+            'coordinateur',
+            'etudiant',
+            'enseignant',
+        ];
+        $roles = Role::whereIn('name', $allowedRoles)
+            ->orderByRaw("FIELD(name, 'superAdmin', 'secretaire', 'coordinateur', 'enseignant', 'etudiant')")
+            ->get();
         $permissions = Permission::orderBy('name')->get();
         $groupedPermissions = $permissions->groupBy(function ($permission) {
             $segments = preg_split('/[\.\s]/', $permission->name, 2);
@@ -33,23 +41,20 @@ class ESBTPRolePermissionConfigController extends Controller
         }
 
         $roleGroups = collect([
-            'Administration' => ['superAdmin', 'secretaire', 'serviceTechnique'],
-            'Pedagogie' => ['coordinateur', 'directeurEtudes'],
-            'Usagers' => ['etudiant', 'parent'],
+            'Administration' => ['superAdmin', 'secretaire'],
+            'Pédagogie' => ['coordinateur', 'enseignant'],
+            'Étudiants' => ['etudiant'],
         ]);
 
         $groupedRoles = collect();
         foreach ($roleGroups as $label => $roleNames) {
-            $groupedRoles[$label] = $roles->filter(function ($role) use ($roleNames) {
+            $matchingRoles = $roles->filter(function ($role) use ($roleNames) {
                 return in_array($role->name, $roleNames, true);
             })->values();
-        }
 
-        $remainingRoles = $roles->reject(function ($role) use ($roleGroups) {
-            return $roleGroups->flatten()->contains($role->name);
-        })->values();
-        if ($remainingRoles->isNotEmpty()) {
-            $groupedRoles['Autres'] = $remainingRoles;
+            if ($matchingRoles->isNotEmpty()) {
+                $groupedRoles[$label] = $matchingRoles;
+            }
         }
 
         return view('esbtp.roles-permissions.index', compact(
