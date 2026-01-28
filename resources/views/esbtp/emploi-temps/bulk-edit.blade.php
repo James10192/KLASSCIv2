@@ -133,12 +133,20 @@
                 @endphp
                 <div class="accordion-item mb-3" id="emploi-temps-block-{{ $emploiTempsItem->id }}">
                     <h2 class="accordion-header" id="{{ $headingId }}">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}" aria-expanded="true" aria-controls="{{ $collapseId }}">
-                            <div class="d-flex flex-wrap align-items-center gap-3">
-                                <div>
-                                    <div class="fw-semibold">{{ $emploiTempsItem->classe->name ?? 'Classe non définie' }}</div>
-                                    <div class="text-muted small">{{ $emploiTempsItem->titre ?? 'Emploi du temps' }}</div>
+                        <div class="main-card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+                            <div>
+                                <div class="main-card-title">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    {{ $emploiTempsItem->titre ?? 'Emploi du temps' }}
                                 </div>
+                                <div class="text-muted small">
+                                    {{ $emploiTempsItem->classe->name ?? 'Classe non définie' }}
+                                    @if($emploiTempsItem->date_debut && $emploiTempsItem->date_fin)
+                                        · {{ \Carbon\Carbon::parse($emploiTempsItem->date_debut)->format('d/m/Y') }} → {{ \Carbon\Carbon::parse($emploiTempsItem->date_fin)->format('d/m/Y') }}
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
                                 @if($emploiTempsItem->is_current)
                                     <span class="badge bg-success">Actuel</span>
                                 @elseif($emploiTempsItem->is_active)
@@ -146,8 +154,14 @@
                                 @else
                                     <span class="badge bg-secondary">Inactif</span>
                                 @endif
+                                <a href="{{ route('esbtp.emploi-temps.show', ['emploi_temp' => $emploiTempsItem->id]) }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                                    <i class="fas fa-external-link-alt me-1"></i>Ouvrir
+                                </a>
+                                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}" aria-expanded="true" aria-controls="{{ $collapseId }}">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
                             </div>
-                        </button>
+                        </div>
                     </h2>
                     <div id="{{ $collapseId }}" class="accordion-collapse collapse show" aria-labelledby="{{ $headingId }}">
                         <div class="accordion-body p-0">
