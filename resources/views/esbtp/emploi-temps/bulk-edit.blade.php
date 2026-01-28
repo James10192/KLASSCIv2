@@ -165,6 +165,9 @@
                                 <a href="{{ route('esbtp.emploi-temps.show', ['emploi_temp' => $emploiTempsItem->id]) }}" class="btn btn-sm btn-outline-primary" target="_blank">
                                     <i class="fas fa-external-link-alt me-1"></i>Ouvrir
                                 </a>
+                                <a href="{{ route('esbtp.emploi-temps.export-pdf', ['emploi_temp' => $emploiTempsItem->id]) }}" class="btn btn-sm btn-outline-danger" target="_blank">
+                                    <i class="fas fa-file-pdf me-1"></i>PDF
+                                </a>
                                 <button class="btn btn-sm btn-outline-secondary accordion-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}" aria-expanded="true" aria-controls="{{ $collapseId }}">
                                     <i class="fas fa-chevron-down accordion-toggle-icon"></i>
                                 </button>
