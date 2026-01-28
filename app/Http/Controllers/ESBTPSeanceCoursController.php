@@ -566,6 +566,8 @@ class ESBTPSeanceCoursController extends Controller
                 DB::commit();
                 \Log::info('Création séances terminée', ['ids' => $createdSessions]);
 
+                $createdSeanceId = ! empty($createdSessions) ? end($createdSessions) : null;
+
                 $successMessage = 'Séance(s) ajoutée(s) avec succès.';
                 if ($request->type === 'homework') {
                     $successMessage .= ' Les évaluations correspondantes ont été créées automatiquement.';
@@ -575,7 +577,7 @@ class ESBTPSeanceCoursController extends Controller
                     return response()->json([
                         'success' => true,
                         'emploi_temps_id' => $request->emploi_temps_id,
-                        'seance_id' => $seance->id,
+                        'seance_id' => $createdSeanceId,
                         'message' => $successMessage,
                     ]);
                 }
