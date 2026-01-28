@@ -497,29 +497,7 @@ class TeacherAttendanceController extends Controller
                 ];
             }
 
-            $attendance = $seance->teacherAttendances
-                ->first(function ($attendance) use ($today) {
-                    $attendanceDate = $attendance->date instanceof \Carbon\Carbon
-                        ? $attendance->date
-                        : \Carbon\Carbon::parse($attendance->date);
-                    return $attendanceDate->isSameDay($today);
-                });
-
-            if (! $attendance) {
-                $attendance = $seance->teacherAttendances
-                    ->first(function ($attendance) use ($seance) {
-                        $attendanceDate = $attendance->date instanceof \Carbon\Carbon
-                            ? $attendance->date
-                            : \Carbon\Carbon::parse($attendance->date);
-                        return $attendanceDate->isSameDay(\Carbon\Carbon::parse($seance->date_seance));
-                    });
-            }
-
-            if (! $attendance) {
-                $attendance = $seance->teacherAttendances->sortByDesc('created_at')->first();
-            }
-
-            $status = $attendance ? $attendance->status : 'not_signed';
+            $status = $this->resolveAttendanceStatus($seance, $today);
             $teacherStats[$teacherId]['total']++;
 
             if (isset($teacherStats[$teacherId][$status])) {
@@ -554,6 +532,122 @@ class TeacherAttendanceController extends Controller
             'attendancesToday',
             'teacherStats'
         ));
+    }
+
+    public function teacherReport(Request $request, \App\Models\ESBTPTeacher $teacher)
+    {
+        $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (! $anneeEnCours) {
+            return redirect()->back()->with('error', 'Aucune année universitaire définie comme courante.');
+        }
+
+        $today = \Carbon\Carbon::today();
+
+        $seancesQuery = \App\Models\ESBTPSeanceCours::with([
+            'matiere:id,name',
+            'teacher:id,user_id',
+            'teacher.user:id,name,email',
+            'emploiTemps:id,classe_id,titre,annee_universitaire_id,is_active,date_debut,date_fin',
+            'emploiTemps.classe:id,name,filiere_id,niveau_etude_id',
+            'emploiTemps.classe.filiere:id,name',
+            'emploiTemps.classe.niveau:id,name',
+            'teacherAttendances'
+        ])
+            ->where('type', 'course')
+            ->where('teacher_id', $teacher->id)
+            ->whereHas('emploiTemps', function ($q) use ($anneeEnCours) {
+                $q->where('annee_universitaire_id', $anneeEnCours->id);
+            });
+
+        if ($request->filled('date')) {
+            $seancesQuery->whereDate('date_seance', $request->date);
+        }
+
+        $seances = $seancesQuery->orderBy('date_seance', 'desc')
+            ->orderBy('heure_debut', 'asc')
+            ->paginate(20);
+
+        $seancesAll = (clone $seancesQuery)->get();
+        $stats = [
+            'total' => 0,
+            'present' => 0,
+            'late' => 0,
+            'absent' => 0,
+            'not_signed' => 0,
+        ];
+
+        $monthly = [];
+        $monthLabels = [
+            1 => 'Jan', 2 => 'Fev', 3 => 'Mar', 4 => 'Avr', 5 => 'Mai', 6 => 'Juin',
+            7 => 'Juil', 8 => 'Aout', 9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dec'
+        ];
+
+        foreach ($seancesAll as $seance) {
+            $status = $this->resolveAttendanceStatus($seance, $today);
+            $stats['total']++;
+            if (isset($stats[$status])) {
+                $stats[$status]++;
+            } else {
+                $stats['not_signed']++;
+            }
+
+            $monthIndex = (int) \Carbon\Carbon::parse($seance->date_seance)->format('n');
+            if (! isset($monthly[$monthIndex])) {
+                $monthly[$monthIndex] = [
+                    'label' => $monthLabels[$monthIndex] ?? (string) $monthIndex,
+                    'present' => 0,
+                    'late' => 0,
+                    'absent' => 0,
+                    'not_signed' => 0,
+                ];
+            }
+            if (isset($monthly[$monthIndex][$status])) {
+                $monthly[$monthIndex][$status]++;
+            } else {
+                $monthly[$monthIndex]['not_signed']++;
+            }
+        }
+
+        ksort($monthly);
+        $monthlyStats = array_values($monthly);
+        $presentLike = $stats['present'] + $stats['late'];
+        $attendanceRate = $stats['total'] > 0 ? round(($presentLike / $stats['total']) * 100) : 0;
+
+        return view('esbtp.teacher-attendance.teacher-report', [
+            'teacher' => $teacher,
+            'anneeEnCours' => $anneeEnCours,
+            'seances' => $seances,
+            'stats' => $stats,
+            'attendanceRate' => $attendanceRate,
+            'monthlyStats' => $monthlyStats,
+        ]);
+    }
+
+    private function resolveAttendanceStatus($seance, \Carbon\Carbon $today): string
+    {
+        $attendance = $seance->teacherAttendances
+            ->first(function ($attendance) use ($today) {
+                $attendanceDate = $attendance->date instanceof \Carbon\Carbon
+                    ? $attendance->date
+                    : \Carbon\Carbon::parse($attendance->date);
+                return $attendanceDate->isSameDay($today);
+            });
+
+        if (! $attendance) {
+            $attendance = $seance->teacherAttendances
+                ->first(function ($attendance) use ($seance) {
+                    $attendanceDate = $attendance->date instanceof \Carbon\Carbon
+                        ? $attendance->date
+                        : \Carbon\Carbon::parse($attendance->date);
+                    return $attendanceDate->isSameDay(\Carbon\Carbon::parse($seance->date_seance));
+                });
+        }
+
+        if (! $attendance) {
+            $attendance = $seance->teacherAttendances->sortByDesc('created_at')->first();
+        }
+
+        return $attendance ? $attendance->status : 'not_signed';
     }
 
     /**

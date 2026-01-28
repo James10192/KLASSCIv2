@@ -1533,7 +1533,11 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth'])->group(function () 
     // Route rapport accessible aux enseignants et superadmins
     Route::get('teacher-attendance/report', [TeacherAttendanceController::class, 'report'])
         ->name('teacher-attendance.report')
-        ->middleware(['auth', 'role:enseignant|superAdmin']);
+        ->middleware(['auth', 'role:enseignant|superAdmin|coordinateur']);
+
+    Route::get('teacher-attendance/teacher/{teacher}', [TeacherAttendanceController::class, 'teacherReport'])
+        ->name('teacher-attendance.teacher-report')
+        ->middleware(['auth', 'role:enseignant|superAdmin|coordinateur']);
 
     // Routes AJAX pour update statut et refresh ligne (coordinateur/admin)
     Route::post('teacher-attendance/seance/{seance}/update-status', [ESBTPTeacherAttendanceController::class, 'updateStatus'])

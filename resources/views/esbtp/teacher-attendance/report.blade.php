@@ -124,10 +124,17 @@
                 <div class="main-card-body">
                     <div class="row g-3">
                         @foreach($teacherStats as $stat)
+                            @php
+                                $parts = preg_split('/\s+/', trim($stat['name']));
+                                $initials = strtoupper(collect($parts)->filter()->take(2)->map(fn($p) => mb_substr($p, 0, 1))->implode(''));
+                            @endphp
                             <div class="col-12 col-md-6 col-xl-4">
                                 <div class="card p-3 border-0 shadow-sm h-100" style="background: #ffffff;">
-                                    <div class="d-flex justify-content-between align-items-start">
-                                        <div>
+                                    <div class="d-flex gap-3 align-items-center">
+                                        <div style="width:52px; height:52px; border-radius:50%; background: rgba(4,83,203,0.1); color:#0453cb; display:flex; align-items:center; justify-content:center; font-weight:700;">
+                                            {{ $initials }}
+                                        </div>
+                                        <div class="flex-grow-1">
                                             <div class="fw-semibold">{{ $stat['name'] }}</div>
                                             <div class="text-muted small">{{ $stat['total'] }} séance(s)</div>
                                         </div>
@@ -138,6 +145,11 @@
                                         <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>{{ $stat['late'] }}</span>
                                         <span class="badge bg-danger"><i class="fas fa-user-times me-1"></i>{{ $stat['absent'] }}</span>
                                         <span class="badge bg-secondary"><i class="fas fa-times me-1"></i>{{ $stat['not_signed'] }}</span>
+                                    </div>
+                                    <div class="mt-3">
+                                        <a href="{{ route('esbtp.teacher-attendance.teacher-report', ['teacher' => $stat['teacher_id']]) }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-chart-line me-1"></i>Voir détail
+                                        </a>
                                     </div>
                                 </div>
                             </div>
