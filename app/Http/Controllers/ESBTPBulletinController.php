@@ -4552,6 +4552,68 @@ class ESBTPBulletinController extends Controller
     }
 
     /**
+     * Récupérer le coefficient d'une matière pour une classe (AJAX)
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getMatiereCoefficient(Request $request)
+    {
+        $request->validate([
+            'matiere_id' => 'required|exists:esbtp_matieres,id',
+            'classe_id' => 'required|exists:esbtp_classes,id',
+        ]);
+
+        try {
+            $classe = ESBTPClasse::findOrFail($request->classe_id);
+            $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+            if (!$anneeUniversitaire) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucune année universitaire active trouvée.',
+                    'coefficient' => 1,
+                    'is_configured' => false
+                ]);
+            }
+
+            try {
+                $coefficient = $this->getCoefficientForCombination(
+                    $request->matiere_id,
+                    $request->classe_id,
+                    $anneeUniversitaire->id
+                );
+
+                return response()->json([
+                    'success' => true,
+                    'coefficient' => $coefficient,
+                    'is_configured' => true,
+                    'message' => 'Coefficient trouvé dans la configuration'
+                ]);
+
+            } catch (\RuntimeException $e) {
+                // Coefficient non configuré
+                return response()->json([
+                    'success' => true,
+                    'coefficient' => 1,
+                    'is_configured' => false,
+                    'message' => 'Aucun coefficient configuré pour cette combinaison. Valeur par défaut: 1'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur récupération coefficient matière: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération du coefficient: ' . $e->getMessage(),
+                'coefficient' => 1,
+                'is_configured' => false
+            ], 500);
+        }
+    }
+
+    /**
      * Génère l'appréciation selon la moyenne
      */
     private function getAppreciation($moyenne)
@@ -5812,15 +5874,24 @@ class ESBTPBulletinController extends Controller
             foreach ($request->resultats as $resultatData) {
                 $matiereId = $resultatData['matiere_id'];
                 $moyenne = $resultatData['moyenne'];
-                try {
-                    $coefficient = $this->getCoefficientForCombination(
-                        $matiereId,
-                        $classeId,
-                        $anneeUniversitaireId
-                    );
-                } catch (\RuntimeException $exception) {
-                    return redirect()->route('esbtp.evaluations.index', ['open_coefficients' => 1])
-                        ->with('error', $exception->getMessage().' Configurez les coefficients avant de modifier les moyennes.');
+                // Récupérer le coefficient depuis le formulaire (priorité haute)
+                $coefficient = isset($resultatData['coefficient']) && $resultatData['coefficient'] > 0 
+                    ? floatval($resultatData['coefficient']) 
+                    : null;
+                
+                // Si pas de coefficient dans le formulaire, essayer de récupérer depuis la matière
+                if ($coefficient === null) {
+                    try {
+                        $coefficient = $this->getCoefficientForCombination(
+                            $matiereId,
+                            $classeId,
+                            $anneeUniversitaireId
+                        );
+                    } catch (\RuntimeException $exception) {
+                        // Fallback: utiliser 1 comme valeur par défaut au lieu de bloquer
+                        $coefficient = 1;
+                        \Log::warning("Coefficient manquant pour matière {$matiereId}, utilisation du défaut: 1");
+                    }
                 }
                 $appreciation = $resultatData['appreciation'] ?? null;
                 $resultatId = $resultatData['id'] ?? null;
@@ -5866,15 +5937,24 @@ class ESBTPBulletinController extends Controller
                     $matiereId = $nouvelleMatiereData['matiere_existante_id'];
                     $matiere = \App\Models\ESBTPMatiere::findOrFail($matiereId);
 
-                    try {
-                        $coefficient = $this->getCoefficientForCombination(
-                            $matiereId,
-                            $classeId,
-                            $anneeUniversitaireId
-                        );
-                    } catch (\RuntimeException $exception) {
-                        return redirect()->route('esbtp.evaluations.index', ['open_coefficients' => 1])
-                            ->with('error', $exception->getMessage().' Configurez les coefficients avant d\'ajouter cette matière.');
+                    // Récupérer le coefficient depuis le formulaire (priorité haute)
+                    $coefficient = isset($nouvelleMatiereData['coefficient']) && $nouvelleMatiereData['coefficient'] > 0 
+                        ? floatval($nouvelleMatiereData['coefficient']) 
+                        : null;
+                    
+                    // Si pas de coefficient dans le formulaire, essayer de récupérer depuis la matière
+                    if ($coefficient === null) {
+                        try {
+                            $coefficient = $this->getCoefficientForCombination(
+                                $matiereId,
+                                $classeId,
+                                $anneeUniversitaireId
+                            );
+                        } catch (\RuntimeException $exception) {
+                            // Fallback: utiliser 1 comme valeur par défaut au lieu de bloquer
+                            $coefficient = 1;
+                            \Log::warning("Coefficient manquant pour matière existante {$matiereId}, utilisation du défaut: 1");
+                        }
                     }
 
                     // Associer la matière à la classe si ce n'est pas déjà fait

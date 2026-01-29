@@ -638,6 +638,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('resultats.bulk-update-coefficients')
                 ->middleware(['permission:edit_bulletins']);
 
+            Route::get('resultats/get-matiere-coefficient', [ESBTPBulletinController::class, 'getMatiereCoefficient'])
+                ->name('resultats.get-matiere-coefficient')
+                ->middleware(['permission:edit_bulletins']);
+
             Route::post('resultats/bulk-update-matieres-config', [ESBTPBulletinController::class, 'bulkUpdateMatieresConfig'])
                 ->name('resultats.bulk-update-matieres-config')
                 ->middleware(['permission:edit_bulletins']);

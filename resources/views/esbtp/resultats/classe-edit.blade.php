@@ -746,7 +746,28 @@
                                             <div class="fw-bold" style="font-size: 0.9rem; color: #2d3748;">
                                                 ${matiere.name} ${badgeHtml}
                                             </div>
-                                            <small class="text-muted">Coeff: ${matiere.pivot.coefficient ?? 1}</small>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <small class="text-muted">Coeff:</small>
+                                                <input type="number" 
+                                                       class="form-control form-control-sm coeff-input" 
+                                                       style="width: 60px; font-size: 0.8rem;"
+                                                       min="0" 
+                                                       max="20" 
+                                                       step="0.5" 
+                                                       data-student-id="${student.id}"
+                                                       data-matiere-id="${matiere.id}"
+                                                       data-original-coefficient="${matiere.pivot.coefficient ?? 1}"
+                                                       value="${matiere.pivot.coefficient ?? 1}"
+                                                       onchange="handleCoefficientChange(this)">
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-outline-secondary sync-single-coeff"
+                                                        title="Synchroniser avec la configuration"
+                                                        data-student-id="${student.id}"
+                                                        data-matiere-id="${matiere.id}"
+                                                        onclick="syncSingleCoefficient(this)">
+                                                    <i class="fas fa-sync" style="font-size: 0.7rem;"></i>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1283,5 +1304,120 @@
             }
         });
     }
+
+    // === GESTION DES COEFFICIENTS INDIVIDUELS (MODE PAR ÉTUDIANT) ===
+    
+    // Stocker les coefficients modifiés
+    const modifiedCoefficients = {};
+    
+    // Fonction pour gérer le changement de coefficient
+    function handleCoefficientChange(input) {
+        const studentId = $(input).data('student-id');
+        const matiereId = $(input).data('matiere-id');
+        const newCoefficient = parseFloat($(input).val());
+        const originalCoefficient = parseFloat($(input).data('original-coefficient'));
+        
+        const key = `${studentId}_${matiereId}`;
+        
+        if (newCoefficient !== originalCoefficient) {
+            modifiedCoefficients[key] = newCoefficient;
+            $(input).addClass('is-warning').removeClass('is-normal');
+            $(input).next('.sync-single-coeff').addClass('btn-warning').removeClass('btn-outline-secondary');
+        } else {
+            delete modifiedCoefficients[key];
+            $(input).removeClass('is-warning').addClass('is-normal');
+            $(input).next('.sync-single-coeff').removeClass('btn-warning').addClass('btn-outline-secondary');
+        }
+    }
+    
+    // Fonction pour synchroniser un coefficient avec la configuration
+    function syncSingleCoefficient(button) {
+        const $button = $(button);
+        const studentId = $button.data('student-id');
+        const matiereId = $button.data('matiere-id');
+        const $input = $button.prev('.coeff-input');
+        
+        // Animation du bouton
+        $button.html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
+        
+        // Appel AJAX pour récupérer le coefficient configuré
+        $.ajax({
+            url: '{{ route("resultats.get-matiere-coefficient") }}',
+            method: 'GET',
+            data: {
+                matiere_id: matiereId,
+                classe_id: classeId
+            },
+            success: function(response) {
+                if (response.success) {
+                    $input.val(response.coefficient);
+                    $input.data('original-coefficient', response.coefficient);
+                    
+                    // Feedback visuel
+                    $button.html('<i class="fas fa-check text-success"></i>');
+                    setTimeout(() => {
+                        $button.html('<i class="fas fa-sync"></i>').prop('disabled', false);
+                        $button.removeClass('btn-warning').addClass('btn-outline-secondary');
+                    }, 1500);
+                    
+                    // Retirer des modifications
+                    const key = `${studentId}_${matiereId}`;
+                    delete modifiedCoefficients[key];
+                    $input.removeClass('is-warning').addClass('is-normal');
+                    
+                    showToast(`Coefficient synchronisé: ${response.coefficient}`, 'success');
+                } else {
+                    $button.html('<i class="fas fa-exclamation-triangle text-warning"></i>');
+                    setTimeout(() => {
+                        $button.html('<i class="fas fa-sync"></i>').prop('disabled', false);
+                    }, 1500);
+                    showToast('Erreur: ' + response.message, 'warning');
+                }
+            },
+            error: function(xhr) {
+                const message = xhr.responseJSON?.message || 'Erreur réseau';
+                $button.html('<i class="fas fa-times text-danger"></i>');
+                setTimeout(() => {
+                    $button.html('<i class="fas fa-sync"></i>').prop('disabled', false);
+                }, 1500);
+                showToast('Erreur: ' + message, 'error');
+            }
+        });
+    }
+    
+    // Modifier la fonction saveStudents() pour inclure les coefficients
+    const originalSaveStudents = saveStudents;
+    saveStudents = function() {
+        // Appeler la fonction originale
+        originalSaveStudents.apply(this, arguments);
+        
+        // Si des coefficients ont été modifiés, les sauvegarder
+        if (Object.keys(modifiedCoefficients).length > 0) {
+            $.ajax({
+                url: '{{ route("resultats.bulk-update-coefficients") }}',
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    classe_id: classeId,
+                    coefficients: Object.keys(modifiedCoefficients).reduce((acc, key) => {
+                        const [studentId, matiereId] = key.split('_');
+                        // Pour l'instant, on utilise le même coefficient pour tous les étudiants
+                        // À améliorer: gestion individuelle par étudiant si nécessaire
+                        acc[matiereId] = modifiedCoefficients[key];
+                        return acc;
+                    }, {})
+                },
+                success: function(response) {
+                    showToast(response.message, 'success');
+                    // Vider le cache des modifications
+                    Object.keys(modifiedCoefficients).forEach(key => delete modifiedCoefficients[key]);
+                },
+                error: function(xhr) {
+                    const message = xhr.responseJSON?.message || 'Erreur lors de la mise à jour des coefficients';
+                    showToast(message, 'error');
+                }
+            });
+        }
+    };
 </script>
 @endpush

@@ -221,7 +221,26 @@
                                             <input type="number" class="form-control text-center" name="resultats[{{ $matiereId }}][moyenne]" value="{{ old('resultats.' . $matiereId . '.moyenne', $existingMoyenne ? number_format($existingMoyenne, 2) : '') }}" min="0" max="20" step="0.01" placeholder="Saisir moyenne" required>
                                         </td>
                                         <td>
-                                            <input type="number" class="form-control text-center" value="{{ $resultat['coefficient'] ?? 1 }}" min="0" step="0.5" readonly disabled>
+                                            <div class="input-group">
+                                                <input type="number" 
+                                                       class="form-control text-center coefficient-input" 
+                                                       name="resultats[{{ $matiereId }}][coefficient]" 
+                                                       value="{{ old('resultats.' . $matiereId . '.coefficient', $resultat['coefficient'] ?? 1) }}" 
+                                                       min="0" 
+                                                       max="20" 
+                                                       step="0.5" 
+                                                       data-matiere-id="{{ $matiereId }}"
+                                                       placeholder="Coeff">
+                                                <button type="button" 
+                                                        class="btn btn-outline-secondary btn-sm sync-coefficient-btn" 
+                                                        title="Synchroniser avec le coefficient configuré"
+                                                        data-matiere-id="{{ $matiereId }}">
+                                                    <i class="fas fa-sync"></i>
+                                                </button>
+                                            </div>
+                                            <div id="coeff-info-{{ $matiereId }}" class="coeff-info mt-1" style="display: none; font-size: 0.75rem;">
+                                                <!-- Infos coefficient dynamiques -->
+                                            </div>
                                         </td>
                                         <td>
                                             <input type="text" class="form-control" name="resultats[{{ $matiereId }}][appreciation]" value="{{ old('resultats.' . $matiereId . '.appreciation', $resultat['appreciation'] ?? '') }}" placeholder="Appréciation optionnelle">
@@ -289,7 +308,9 @@
                             <button type="submit" class="btn-acasi primary">
                                 <i class="fas fa-save"></i>Enregistrer les modifications
                             </button>
-                            <a href="#" class="btn-acasi danger" onclick="window.open('{{ route('esbtp.bulletins.pdf-params', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $anneeUniversitaire->id]) }}', '_blank')">
+                            <a href="{{ route('esbtp.bulletins.pdf-params', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $anneeUniversitaire->id]) }}" 
+                               class="btn-acasi danger" 
+                               target="_blank">
                                 <i class="fas fa-file-pdf"></i>Générer le bulletin
                             </a>
                         </div>
@@ -311,7 +332,7 @@
     });
 
     // Compteur pour les matières supplémentaires
-    let matiereCounter = {{ count($resultatsData) + 1000 }}; // Commencer après les IDs existants
+    let matiereCounter = 1000; // Commencer après les IDs existants
     
     // Fonction pour ajouter une matière supplémentaire
     function ajouterMatiere() {
@@ -482,6 +503,159 @@
             form.submit();
         }
     }
+
+    // === GESTION DES COEFFICIENTS DE MATIÈRES ===
+    
+    // URL pour la récupération du coefficient
+    const getCoefficientUrl = '{{ route("resultats.get-matiere-coefficient") }}';
+    const classeId = '{{ $classe->id }}';
+    
+    // Fonction pour récupérer et afficher les informations du coefficient
+    function checkMatiereCoefficient(matiereId) {
+        const coeffInput = document.querySelector(`[data-matiere-id="${matiereId}"]`);
+        const coeffInfoDiv = document.getElementById(`coeff-info-${matiereId}`);
+        
+        if (!coeffInput || !coeffInfoDiv) return;
+        
+        // Afficher un indicateur de chargement
+        coeffInfoDiv.style.display = 'block';
+        coeffInfoDiv.innerHTML = `
+            <div style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-left: 3px solid #2196f3; padding: 6px 10px; border-radius: 4px;">
+                <i class="fas fa-spinner fa-spin me-1"></i>Vérification du coefficient...
+            </div>
+        `;
+        
+        fetch(`${getCoefficientUrl}?matiere_id=${matiereId}&classe_id=${classeId}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                coeffInfoDiv.style.display = 'block';
+                
+                if (data.is_configured) {
+                    // Coefficient trouvé dans la configuration
+                    coeffInfoDiv.innerHTML = `
+                        <div style="background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%); border-left: 3px solid #17a2b8; padding: 6px 10px; border-radius: 4px;">
+                            <i class="fas fa-info-circle text-info me-1"></i>
+                            Coefficient configuré: <strong>${data.coefficient}</strong>
+                        </div>
+                    `;
+                    
+                    // Suggérer le coefficient si l'input est vide ou à 1
+                    if (!coeffInput.value || parseFloat(coeffInput.value) === 1) {
+                        coeffInput.value = data.coefficient;
+                    }
+                } else {
+                    // Coefficient non configuré
+                    coeffInfoDiv.innerHTML = `
+                        <div style="background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%); border-left: 3px solid #ffc107; padding: 6px 10px; border-radius: 4px;">
+                            <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                            Aucun coefficient configuré. Valeur par défaut: <strong>${data.coefficient}</strong>
+                        </div>
+                    `;
+                }
+            } else {
+                // Erreur
+                coeffInfoDiv.style.display = 'block';
+                coeffInfoDiv.innerHTML = `
+                    <div style="background: linear-gradient(135deg, #f8d7da 0%, #f5c2c7 100%); border-left: 3px solid #dc3545; padding: 6px 10px; border-radius: 4px;">
+                        <i class="fas fa-times-circle text-danger me-1"></i>
+                        Erreur: ${data.message}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Erreur récupération coefficient:', error);
+            coeffInfoDiv.style.display = 'none';
+        });
+    }
+    
+    // Fonction pour synchroniser un coefficient avec la configuration
+    function syncCoefficient(matiereId) {
+        const coeffInput = document.querySelector(`[data-matiere-id="${matiereId}"]`);
+        const syncBtn = document.querySelector(`.sync-coefficient-btn[data-matiere-id="${matiereId}"]`);
+        
+        if (!coeffInput || !syncBtn) return;
+        
+        // Animation du bouton
+        syncBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        syncBtn.disabled = true;
+        
+        fetch(`${getCoefficientUrl}?matiere_id=${matiereId}&classe_id=${classeId}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                coeffInput.value = data.coefficient;
+                
+                // Feedback visuel
+                syncBtn.innerHTML = '<i class="fas fa-check text-success"></i>';
+                setTimeout(() => {
+                    syncBtn.innerHTML = '<i class="fas fa-sync"></i>';
+                    syncBtn.disabled = false;
+                }, 1500);
+                
+                // Mettre à jour les infos
+                checkMatiereCoefficient(matiereId);
+            } else {
+                syncBtn.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i>';
+                setTimeout(() => {
+                    syncBtn.innerHTML = '<i class="fas fa-sync"></i>';
+                    syncBtn.disabled = false;
+                }, 1500);
+                
+                alert('Erreur: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur synchronisation coefficient:', error);
+            syncBtn.innerHTML = '<i class="fas fa-times text-danger"></i>';
+            setTimeout(() => {
+                syncBtn.innerHTML = '<i class="fas fa-sync"></i>';
+                syncBtn.disabled = false;
+            }, 1500);
+        });
+    }
+    
+    // Initialiser les événements au chargement
+    document.addEventListener('DOMContentLoaded', function() {
+        // Vérifier tous les coefficients au chargement
+        document.querySelectorAll('.coefficient-input').forEach(input => {
+            const matiereId = input.getAttribute('data-matiere-id');
+            if (matiereId) {
+                checkMatiereCoefficient(matiereId);
+            }
+        });
+        
+        // Ajouter les événements sur les boutons de synchronisation
+        document.querySelectorAll('.sync-coefficient-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const matiereId = this.getAttribute('data-matiere-id');
+                syncCoefficient(matiereId);
+            });
+        });
+        
+        // Ajouter les événements onchange sur les inputs coefficient
+        document.querySelectorAll('.coefficient-input').forEach(input => {
+            input.addEventListener('change', function() {
+                const matiereId = this.getAttribute('data-matiere-id');
+                if (matiereId) {
+                    // Mettre à jour l'affichage quand l'utilisateur modifie
+                    checkMatiereCoefficient(matiereId);
+                }
+            });
+        });
+    });
 </script>
 @endpush
 @endsection
