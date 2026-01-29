@@ -439,9 +439,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('classes.matieres.data')
                 ->middleware(['permission:view_classes|view classes']);
 
-            // Route pour vérifier les places disponibles dans une classe
+// Route pour vérifier les places disponibles dans une classe
             Route::get('classes/{id}/available-places', [ESBTPEtudiantController::class, 'getAvailablePlaces'])
                 ->name('classes.available-places')
+                ->middleware(['permission:view_classes|view classes']);
+            
+            // Route pour récupérer les classes en surcapacité
+            Route::get('classes/overcapacity', [ESBTPClasseController::class, 'getOvercapacityClasses'])
+                ->name('classes.overcapacity')
                 ->middleware(['permission:view_classes|view classes']);
             // Routes pour les matières
             Route::name('matieres.')->prefix('matieres')->group(function () {

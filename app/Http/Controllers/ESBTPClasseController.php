@@ -1366,7 +1366,90 @@ class ESBTPClasseController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return redirect()->back()->with('error', 'Erreur lors de l\'export PDF: ' . $e->getMessage());
+return redirect()->back()->with('error', 'Erreur lors de l\'export PDF: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Récupérer les classes en surcapacité pour le modal d'avertissement
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getOvercapacityClasses()
+    {
+        try {
+            // Récupérer l'année universitaire courante
+            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            
+            if (!$anneeCourante) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucune année universitaire courante définie',
+                    'classes' => []
+                ]);
+            }
+
+            // Récupérer les classes en surcapacité (>= 100% d'occupation)
+            $classesOvercapacity = ESBTPClasse::with(['filiere', 'niveauEtude'])
+                ->select('esbtp_classes.*')
+                ->selectRaw('(
+                    SELECT COUNT(*) 
+                    FROM esbtp_inscriptions 
+                    WHERE esbtp_inscriptions.classe_id = esbtp_classes.id 
+                    AND esbtp_inscriptions.status = "active" 
+                    AND esbtp_inscriptions.annee_universitaire_id = ?
+                ) as inscriptions_actives', [$anneeCourante->id])
+                ->selectRaw('(
+                    CASE 
+                        WHEN places_totales > 0 THEN 
+                            ROUND((
+                                SELECT COUNT(*) 
+                                FROM esbtp_inscriptions 
+                                WHERE esbtp_inscriptions.classe_id = esbtp_classes.id 
+                                AND esbtp_inscriptions.status = "active" 
+                                AND esbtp_inscriptions.annee_universitaire_id = ?
+                            ) * 100.0 / places_totales, 1)
+                        ELSE 0 
+                    END
+                ) as taux_occupation', [$anneeCourante->id])
+                ->whereRaw('places_totales > 0')
+                ->havingRaw('inscriptions_actives >= places_totales')
+                ->orderBy('taux_occupation', 'desc')
+                ->get();
+
+            // Formater les données pour le modal
+            $classesFormatees = $classesOvercapacity->map(function($classe) {
+                return [
+                    'id' => $classe->id,
+                    'nom' => $classe->name,
+                    'filiere' => $classe->filiere->name ?? 'N/A',
+                    'niveau' => $classe->niveauEtude->name ?? 'N/A',
+                    'places_totales' => $classe->places_totales,
+                    'inscriptions_actives' => $classe->inscriptions_actives,
+                    'taux_occupation' => $classe->taux_occupation,
+                    'depassement' => $classe->inscriptions_actives - $classe->places_totales,
+                    'statut' => $classe->is_active ? 'Actif' : 'Inactif'
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => $classesFormatees->count() . ' classe(s) en surcapacité détectée(s)',
+                'classes' => $classesFormatees,
+                'total_classes' => $classesFormatees->count(),
+                'annee_universitaire' => $anneeCourante->name
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors de la récupération des classes en surcapacité: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des données: ' . $e->getMessage(),
+                'classes' => []
+            ], 500);
         }
     }
 }

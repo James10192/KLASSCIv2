@@ -105,7 +105,7 @@ class InscriptionWorkflowService
             ];
 
         } catch (\Exception $e) {
-            Log::error('Erreur lors de la validation de l\'inscription: ' . $e->getMessage());
+            \Log::error('Erreur lors de la validation de l\'inscription: ' . $e->getMessage());
             return [
                 'success' => false,
                 'message' => 'Erreur lors de la validation: ' . $e->getMessage()
@@ -149,22 +149,49 @@ class InscriptionWorkflowService
                 ->where('annee_universitaire_id', $anneeUniversitaireCourante->id)
                 ->count();
 
-            // Vérifier si la classe a une limite définie
+// Vérifier si la classe a une limite définie
             if ($classe->places_totales && $inscriptionsActives >= $classe->places_totales) {
-                // Chercher des classes alternatives
-                $alternatives = ESBTPClasse::where('filiere_id', $classe->filiere_id)
-                    ->where('niveau_etude_id', $classe->niveau_etude_id)
-                    ->where('annee_universitaire_id', $classe->annee_universitaire_id)
-                    ->where('id', '!=', $classeId)
-                    ->where('is_active', true)
-                    ->whereRaw('(places_totales IS NULL OR places_totales > (SELECT COUNT(*) FROM esbtp_inscriptions WHERE classe_id = esbtp_classes.id AND status = "active" AND annee_universitaire_id = ?))', [$anneeUniversitaireCourante->id])
-                    ->get();
+                // Vérifier si l'utilisateur peut contourner (superadmin ou secrétaire)
+                $user = auth()->user();
+                $canBypass = $user && ($user->role === 'superAdmin' || $user->role === 'secretaire');
+                
+                // Log du dépassement de capacité
+                \Log::warning('Classe en surcapacité détectée', [
+                    'classe_id' => $classeId,
+                    'classe_nom' => $classe->name,
+                    'places_totales' => $classe->places_totales,
+                    'inscriptions_actives' => $inscriptionsActives,
+                    'taux_occupation' => round(($inscriptionsActives / $classe->places_totales) * 100, 1) . '%',
+                    'user_id' => $user->id ?? null,
+                    'can_bypass' => $canBypass
+                ]);
 
-                return [
-                    'available' => false,
-                    'message' => 'Classe pleine (' . $inscriptionsActives . '/' . $classe->places_totales . ')',
-                    'alternatives' => $alternatives
-                ];
+                if ($canBypass) {
+                    // Superadmin/Secrétaire : Warning mais autorisation
+                    return [
+                        'available' => true,
+                        'warning' => true,
+                        'message' => '⚠️ Classe en surcapacité (' . $inscriptionsActives . '/' . $classe->places_totales . ' - ' . round(($inscriptionsActives / $classe->places_totales) * 100, 1) . '%). Autorisation spéciale accordée.',
+                        'places_restantes' => 0,
+                        'taux_occupation' => round(($inscriptionsActives / $classe->places_totales) * 100, 1),
+                        'alternatives' => []
+                    ];
+                } else {
+                    // Utilisateur normal : Bloquer avec alternatives
+                    $alternatives = ESBTPClasse::where('filiere_id', $classe->filiere_id)
+                        ->where('niveau_etude_id', $classe->niveau_etude_id)
+                        ->where('annee_universitaire_id', $classe->annee_universitaire_id)
+                        ->where('id', '!=', $classeId)
+                        ->where('is_active', true)
+                        ->whereRaw('(places_totales IS NULL OR places_totales > (SELECT COUNT(*) FROM esbtp_inscriptions WHERE classe_id = esbtp_classes.id AND status = "active" AND annee_universitaire_id = ?))', [$anneeUniversitaireCourante->id])
+                        ->get();
+
+                    return [
+                        'available' => false,
+                        'message' => 'Classe pleine (' . $inscriptionsActives . '/' . $classe->places_totales . ')',
+                        'alternatives' => $alternatives
+                    ];
+                }
             }
 
             return [
@@ -175,7 +202,7 @@ class InscriptionWorkflowService
             ];
 
         } catch (\Exception $e) {
-            Log::error('Erreur lors de la vérification de la disponibilité: ' . $e->getMessage());
+            \Log::error('Erreur lors de la vérification de la disponibilité: ' . $e->getMessage());
             return [
                 'available' => false,
                 'message' => 'Erreur lors de la vérification: ' . $e->getMessage(),
@@ -253,7 +280,7 @@ class InscriptionWorkflowService
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur lors de la conversion prospect → étudiant: ' . $e->getMessage());
+            \Log::error('Erreur lors de la conversion prospect → étudiant: ' . $e->getMessage());
             return [
                 'success' => false,
                 'message' => 'Erreur lors de la conversion: ' . $e->getMessage()
@@ -395,7 +422,7 @@ class InscriptionWorkflowService
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur lors de l\'association du paiement: ' . $e->getMessage());
+            \Log::error('Erreur lors de l\'association du paiement: ' . $e->getMessage());
             return [
                 'success' => false,
                 'message' => 'Erreur lors de l\'association du paiement: ' . $e->getMessage()
@@ -465,7 +492,7 @@ class InscriptionWorkflowService
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Erreur lors du changement de classe: ' . $e->getMessage());
+            \Log::error('Erreur lors du changement de classe: ' . $e->getMessage());
             return [
                 'success' => false,
                 'message' => 'Erreur lors du changement de classe: ' . $e->getMessage()
@@ -493,7 +520,7 @@ class InscriptionWorkflowService
             ];
 
         } catch (\Exception $e) {
-            Log::error('Erreur lors de la récupération de l\'historique: ' . $e->getMessage());
+            \Log::error('Erreur lors de la récupération de l\'historique: ' . $e->getMessage());
             return [
                 'success' => false,
                 'message' => 'Erreur lors de la récupération de l\'historique: ' . $e->getMessage()

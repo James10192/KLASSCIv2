@@ -42,7 +42,30 @@
                     </div>
                 </div>
             </div>
-        @endif
+@endif
+
+        <!-- Avertissement Classes en Surcapacité -->
+        <div id="overcapacity-warning" class="card-moderne" style="background: rgba(251, 146, 60, 0.1); border-left: 4px solid var(--warning); margin-bottom: var(--space-lg); display: none;">
+            <div style="padding: var(--space-md);">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="flex-grow-1">
+                        <div class="color-warning font-semibold mb-2">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <span id="overcapacity-title">Classes en surcapacité détectées</span>
+                        </div>
+                        <div id="overcapacity-message" class="text-muted small mb-3">
+                            Certaines classes ont dépassé leur capacité maximale autorisée.
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-warning" onclick="showOvercapacityModal()">
+                            <i class="fas fa-list me-1"></i>Voir les détails
+                        </button>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary ms-3" onclick="dismissOvercapacityWarning()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- Information année académique courante -->
         <div class="card-moderne mb-lg">
@@ -291,9 +314,175 @@
                     <i class="fas fa-save"></i> Mettre à jour la classe
                 </button>
             </div>
+</div>
+    </div>
+</div>
+
+{{-- Modal Classes en Surcapacité --}}
+<div class="modal fade" id="overcapacityModal" tabindex="-1" aria-labelledby="overcapacityModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning bg-opacity-10">
+                <h5 class="modal-title" id="overcapacityModalLabel">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    Classes en Surcapacité
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning mb-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Attention :</strong> Les classes ci-dessous ont dépassé leur capacité maximale autorisée.
+                </div>
+                
+                <div id="overcapacity-content">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-warning" role="status">
+                            <span class="visually-hidden">Chargement...</span>
+                        </div>
+                        <div class="mt-2 text-muted">Chargement des classes en surcapacité...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Fermer
+                </button>
+            </div>
         </div>
     </div>
 </div>
+
+@section('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadOvercapacityClasses();
+});
+
+// Charger les classes en surcapacité
+function loadOvercapacityClasses() {
+    fetch('{{ route("esbtp.classes.overcapacity") }}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.classes.length > 0) {
+                // Afficher l'avertissement dans la page
+                const warning = document.getElementById('overcapacity-warning');
+                warning.style.display = 'block';
+                
+                // Mettre à jour le titre et message
+                document.getElementById('overcapacity-title').textContent = 
+                    `${data.classes.length} classe(s) en surcapacité (${data.annee_universitaire})`;
+                document.getElementById('overcapacity-message').textContent = 
+                    data.message;
+                
+                // Charger les détails dans le modal
+                loadOvercapacityModalContent(data.classes);
+            }
+        })
+        .catch(error => {
+            console.error('Erreur lors du chargement des classes en surcapacité:', error);
+        });
+}
+
+// Charger le contenu du modal
+function loadOvercapacityModalContent(classes) {
+    const content = document.getElementById('overcapacity-content');
+    
+    if (classes.length === 0) {
+        content.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
+                <h5 class="text-success">Aucune classe en surcapacité</h5>
+                <p class="text-muted">Toutes les classes respectent leur capacité maximale.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-warning">
+                    <tr>
+                        <th>Classe</th>
+                        <th>Filière</th>
+                        <th>Niveau</th>
+                        <th>Capacité</th>
+                        <th>Inscrits</th>
+                        <th>Taux Occupation</th>
+                        <th>Dépassement</th>
+                        <th>Statut</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    classes.forEach(classe => {
+        const tauxClass = classe.taux_occupation >= 150 ? 'danger' : 
+                           classe.taux_occupation >= 120 ? 'warning' : 'warning';
+        
+        html += `
+            <tr>
+                <td>
+                    <strong>${classe.nom}</strong>
+                    <br><small class="text-muted">ID: ${classe.id}</small>
+                </td>
+                <td>${classe.filiere}</td>
+                <td>${classe.niveau}</td>
+                <td>
+                    <span class="badge bg-secondary">${classe.places_totales}</span>
+                </td>
+                <td>
+                    <span class="badge bg-info">${classe.inscriptions_actives}</span>
+                </td>
+                <td>
+                    <span class="badge bg-${tauxClass}">${classe.taux_occupation}%</span>
+                </td>
+                <td>
+                    <span class="badge bg-danger">+${classe.depassement}</span>
+                </td>
+                <td>
+                    <span class="badge bg-${classe.statut === 'Actif' ? 'success' : 'secondary'}">
+                        ${classe.statut}
+                    </span>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="alert alert-info mt-3">
+            <i class="fas fa-lightbulb me-2"></i>
+            <strong>Recommandation :</strong> 
+            <ul class="mb-0 mt-2">
+                <li>Envisagez d'augmenter la capacité des classes concernées</li>
+                <li>Créez des classes supplémentaires si nécessaire</li>
+                <li>Les superadmins et secrétaires peuvent contourner cette limite en cas de nécessité</li>
+            </ul>
+        </div>
+    `;
+    
+    content.innerHTML = html;
+}
+
+// Afficher le modal des classes en surcapacité
+function showOvercapacityModal() {
+    const modal = new bootstrap.Modal(document.getElementById('overcapacityModal'));
+    modal.show();
+}
+
+// Masquer l'avertissement
+function dismissOvercapacityWarning() {
+    const warning = document.getElementById('overcapacity-warning');
+    warning.style.display = 'none';
+}
+</script>
+@endsection
+
 @endsection
 
 @push('styles')
