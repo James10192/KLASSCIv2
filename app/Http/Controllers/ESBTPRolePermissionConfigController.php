@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class ESBTPRolePermissionConfigController extends Controller
 {
@@ -15,6 +16,9 @@ class ESBTPRolePermissionConfigController extends Controller
 
     public function index(Request $request)
     {
+        // Toujours vider le cache pour garantir des données fraîches
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+
         $allowedRoles = [
             'superAdmin',
             'secretaire',
@@ -22,7 +26,8 @@ class ESBTPRolePermissionConfigController extends Controller
             'etudiant',
             'enseignant',
         ];
-        $roles = Role::whereIn('name', $allowedRoles)
+        $roles = Role::with('permissions')
+            ->whereIn('name', $allowedRoles)
             ->orderByRaw("FIELD(name, 'superAdmin', 'secretaire', 'coordinateur', 'enseignant', 'etudiant')")
             ->get();
         $permissions = Permission::orderBy('name')->get();
@@ -121,6 +126,9 @@ class ESBTPRolePermissionConfigController extends Controller
         $permissionNames = $validated['permissions'] ?? [];
 
         $role->syncPermissions($permissionNames);
+
+        // Vider explicitement le cache des permissions Spatie
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         return redirect()
             ->route('esbtp.roles-permissions.index', ['role' => $role->name])
