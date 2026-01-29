@@ -1244,7 +1244,7 @@ Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth'])->group(func
 // Route for activating all timetables
 Route::post('esbtp/activate-all-timetables', [App\Http\Controllers\ESBTPEmploiTempsController::class, 'activateAll'])
     ->name('esbtp.emploi-temps.activate-all')
-    ->middleware(['auth', 'role:superAdmin']);
+    ->middleware(['auth', 'role:superAdmin|secretaire|coordinateur']);
 
 // Route for setting a timetable as current
 Route::post('esbtp/emploi-temps/{id}/set-current', [App\Http\Controllers\ESBTPEmploiTempsController::class, 'setCurrent'])
@@ -1313,7 +1313,7 @@ Route::prefix('secretaires')->name('secretaires.')->group(function () {
 });
 
 // Routes pour la gestion des enseignants
-Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])->group(function () {
+Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin|coordinateur'])->group(function () {
     Route::get('enseignants/duplicates', [ESBTPEnseignantController::class, 'duplicates'])->name('enseignants.duplicates');
     Route::get('enseignants/bulk-availability', [ESBTPEnseignantController::class, 'bulkAvailability'])->name('enseignants.bulk-availability');
     Route::get('enseignants/{enseignant}/availability-section', [ESBTPEnseignantController::class, 'availabilitySection'])->name('enseignants.availability-section');
@@ -1576,7 +1576,7 @@ Route::prefix('esbtp/admin/attendance')->name('esbtp.admin.attendance.')->middle
 });
 
 // Manual Attendance Routes
-Route::prefix('esbtp/admin/attendance/manual')->name('esbtp.admin.attendance.manual.')->middleware(['auth', 'role:superAdmin'])->group(function () {
+Route::prefix('esbtp/admin/attendance/manual')->name('esbtp.admin.attendance.manual.')->middleware(['auth', 'role:superAdmin|secretaire|coordinateur'])->group(function () {
     Route::get('/', [App\Http\Controllers\ESBTP\Admin\ESBTPManualAttendanceController::class, 'index'])
         ->name('index');
     Route::post('/store', [App\Http\Controllers\ESBTP\Admin\ESBTPManualAttendanceController::class, 'store'])
