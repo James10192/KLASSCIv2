@@ -220,6 +220,7 @@
                                         • Utilisez le bouton <i class="fas fa-sync-alt"></i> pour copier le coefficient de la matière
                                     </small>
                                 </div>
+                                <div id="coeff-matiere-info" style="display: none;"></div>
                                 @error('coefficient')
                                     <div class="form-error mt-1">{{ $message }}</div>
                                 @enderror
@@ -693,8 +694,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const classeId = classeSelect.value;
         const matiereId = matiereSelect.value;
+        const coeffInfoDiv = document.getElementById('coeff-matiere-info');
 
         if (!classeId || !matiereId) {
+            if (coeffInfoDiv) coeffInfoDiv.style.display = 'none';
             return;
         }
 
@@ -710,29 +713,45 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (coeffInput) {
                         coeffInput.value = data.coefficient;
                     }
-                    if (submitBtn) {
-                        submitBtn.disabled = false;
+                    if (coeffInfoDiv) {
+                        coeffInfoDiv.style.display = 'block';
+                        coeffInfoDiv.className = 'mt-2';
+                        coeffInfoDiv.innerHTML = `
+                            <div style="background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%); border-left: 3px solid #17a2b8; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem;">
+                                <i class="fas fa-info-circle text-info me-1"></i>
+                                Coefficient matière : <strong>${data.coefficient}</strong> (pré-rempli, vous pouvez le modifier)
+                            </div>
+                        `;
                     }
-                    return;
+                } else {
+                    // Coefficient matière non trouvé : laisser la valeur actuelle, ne PAS bloquer
+                    if (coeffInput && (!coeffInput.value || coeffInput.value <= 0)) {
+                        coeffInput.value = 1;
+                    }
+                    if (coeffInfoDiv) {
+                        coeffInfoDiv.style.display = 'block';
+                        coeffInfoDiv.className = 'mt-2';
+                        coeffInfoDiv.innerHTML = `
+                            <div style="background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%); border-left: 3px solid #ffc107; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem;">
+                                <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+                                Aucun coefficient matière configuré pour cette combinaison. Vous pouvez saisir le coefficient manuellement.
+                                ${data.config_url ? `<br><small><a href="${data.config_url}" class="text-primary">Configurer les coefficients matière</a></small>` : ''}
+                            </div>
+                        `;
+                    }
                 }
-
+                // Le bouton submit reste TOUJOURS actif
                 if (submitBtn) {
-                    submitBtn.disabled = true;
-                }
-
-                if (coeffMissingModal && coeffMissingBody) {
-                    coeffMissingBody.innerHTML = `
-                        <p>Le coefficient pour cette combinaison filière/niveau n'est pas défini.</p>
-                        <p class="text-muted">Veuillez configurer les coefficients avant de créer l'évaluation.</p>
-                        <a href="${data.config_url}" class="btn btn-primary">Configurer maintenant</a>
-                    `;
-                    const modal = new bootstrap.Modal(coeffMissingModal);
-                    modal.show();
+                    submitBtn.disabled = false;
                 }
             })
             .catch(() => {
+                // En cas d'erreur réseau, ne pas bloquer non plus
                 if (submitBtn) {
-                    submitBtn.disabled = true;
+                    submitBtn.disabled = false;
+                }
+                if (coeffInfoDiv) {
+                    coeffInfoDiv.style.display = 'none';
                 }
             });
     }

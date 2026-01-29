@@ -1335,18 +1335,7 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin|coo
 
 // Routes pour l'espace enseignant et coordinateur
 Route::middleware(['auth', 'role:enseignant|coordinateur'])->group(function () {
-    // Gestion des notes
-    Route::prefix('esbtp/notes')->name('esbtp.notes.')->group(function () {
-        Route::get('/', [ESBTPNoteController::class, 'index'])->name('index');
-        Route::get('/create', [ESBTPNoteController::class, 'create'])->name('create');
-        Route::post('/', [ESBTPNoteController::class, 'store'])->name('store');
-        Route::get('/{note}', [ESBTPNoteController::class, 'show'])->name('show');
-        Route::get('/{note}/edit', [ESBTPNoteController::class, 'edit'])->name('edit');
-        Route::put('/{note}', [ESBTPNoteController::class, 'update'])->name('update');
-        Route::delete('/{note}', [ESBTPNoteController::class, 'destroy'])->name('destroy');
-        Route::get('/evaluations/{evaluation}/saisie-rapide', [ESBTPNoteController::class, 'saisieRapide'])->name('saisie-rapide');
-        Route::post('/store-batch', [ESBTPNoteController::class, 'enregistrerSaisieRapide'])->name('store-batch');
-    });
+    // Notes routes already defined in main group (line 910-924) with role:superAdmin|secretaire|coordinateur|enseignant|teacher
 
     // Gestion des présences
     Route::prefix('attendance')->name('teacher.attendance.')->group(function () {
@@ -1826,7 +1815,7 @@ Route::middleware(['auth', 'throttle:security'])->prefix('esbtp/security')->name
 */
 
 // ... existing code ...
-Route::get('/comptabilite/paiements/{id}/recu', [ESBTPComptabiliteController::class, 'genererRecuPaiement'])->name('esbtp.comptabilite.paiements.recu');
+// Route supprimée: duplicate de esbtp.comptabilite.paiements.recu (définie ligne 1372)
 // ... existing code ...
 
 // Routes pour la gestion du personnel avec sliders
@@ -1865,8 +1854,7 @@ Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.'
             ->middleware('permission:view_notes');
         Route::get('/{note}', [\App\Http\Controllers\ESBTPNoteController::class, 'show'])->name('show')
             ->middleware('permission:view_notes');
-        Route::get('/evaluations/{evaluation}/saisie-rapide', [\App\Http\Controllers\ESBTPNoteController::class, 'saisieRapide'])->name('saisie-rapide')
-            ->middleware('permission:view_notes');
+        // saisie-rapide already defined in enseignant|coordinateur group (line 1347)
     });
 
     // Routes pour les annonces - REMOVED (déjà définies ligne 617 dans le groupe esbtp)

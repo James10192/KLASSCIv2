@@ -411,9 +411,8 @@ $evaluation = new ESBTPEvaluation;
                 // Si pas de coefficient dans le formulaire, essayer de récupérer depuis la matière
                 $coefficient = $this->getCoefficientForCombination($request->classe_id, $request->matiere_id, $anneeUniversitaire->id);
                 if ($coefficient === null) {
-                    return redirect()->back()
-                        ->with('error', 'Veuillez spécifier un coefficient pour cette évaluation. Le coefficient de la matière n\'est pas non plus configuré.')
-                        ->withInput();
+                    // Fallback: utiliser 1 comme valeur par défaut au lieu de bloquer
+                    $coefficient = 1;
                 }
             }
             $evaluation->coefficient = (float) $coefficient;
@@ -642,9 +641,8 @@ $evaluation->titre = $request->titre;
                 // Si pas de coefficient dans le formulaire, essayer de récupérer depuis la matière
                 $coefficient = $this->getCoefficientForCombination($request->classe_id, $request->matiere_id, $anneeUniversitaire?->id);
                 if ($coefficient === null) {
-                    return redirect()->back()
-                        ->with('error', 'Veuillez spécifier un coefficient pour cette évaluation. Le coefficient de la matière n\'est pas non plus configuré.')
-                        ->withInput();
+                    // Fallback: utiliser 1 comme valeur par défaut au lieu de bloquer
+                    $coefficient = 1;
                 }
             }
             $evaluation->coefficient = (float) $coefficient;
