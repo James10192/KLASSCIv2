@@ -405,16 +405,40 @@
 </style>
 
 <script>
+    console.log('🔍 [PERMISSIONS DEBUG] Script chargé');
+
     const roleSelect = document.getElementById('roleSelect');
     const roleCards = document.querySelectorAll('.role-card');
     const selectAllBtn = document.getElementById('selectAllPerms');
     const clearAllBtn = document.getElementById('clearAllPerms');
     const groupSelectButtons = document.querySelectorAll('.group-select-all');
     const groupClearButtons = document.querySelectorAll('.group-clear-all');
+    const form = document.getElementById('rolePermissionsForm');
+
+    // DEBUG: Log initial state
+    console.log('🔍 [PERMISSIONS DEBUG] État initial:', {
+        roleSelectValue: roleSelect?.value,
+        roleCardsCount: roleCards.length,
+        formAction: form?.action,
+        formMethod: form?.method
+    });
+
+    // DEBUG: Log permissions data from each role card
+    roleCards.forEach((card) => {
+        const perms = JSON.parse(card.dataset.permissions || '[]');
+        console.log(`🔍 [PERMISSIONS DEBUG] Rôle "${card.dataset.role}" - ${perms.length} permissions depuis data-attribute`);
+    });
 
     function syncPermissionsFromRole() {
         const selectedCard = document.querySelector('.role-card.active');
         const allowed = JSON.parse(selectedCard?.dataset.permissions || '[]');
+
+        console.log('🔍 [PERMISSIONS DEBUG] syncPermissionsFromRole() appelé:', {
+            selectedRole: selectedCard?.dataset.role,
+            permissionsCount: allowed.length,
+            permissions: allowed
+        });
+
         document.querySelectorAll('input[name="permissions[]"]').forEach((checkbox) => {
             checkbox.checked = allowed.includes(checkbox.value);
         });
@@ -437,24 +461,35 @@
                 panel.classList.add('show');
             }
         });
+
+        // DEBUG: Log checked checkboxes after sync
+        const checkedCount = document.querySelectorAll('input[name="permissions[]"]:checked').length;
+        console.log(`🔍 [PERMISSIONS DEBUG] Après sync: ${checkedCount} checkboxes cochées`);
     }
 
     roleCards.forEach((card) => {
         card.addEventListener('click', () => {
+            console.log(`🔍 [PERMISSIONS DEBUG] Clic sur rôle: ${card.dataset.role}`);
+
             roleCards.forEach((item) => item.classList.remove('active'));
             card.classList.add('active');
             if (roleSelect) {
                 roleSelect.value = card.dataset.role;
+                console.log(`🔍 [PERMISSIONS DEBUG] roleSelect.value mis à jour: ${roleSelect.value}`);
             }
             syncPermissionsFromRole();
         });
     });
+
     selectAllBtn?.addEventListener('click', () => {
+        console.log('🔍 [PERMISSIONS DEBUG] Clic "Tout cocher"');
         document.querySelectorAll('input[name="permissions[]"]').forEach((checkbox) => {
             checkbox.checked = true;
         });
     });
+
     clearAllBtn?.addEventListener('click', () => {
+        console.log('🔍 [PERMISSIONS DEBUG] Clic "Tout retirer"');
         document.querySelectorAll('input[name="permissions[]"]').forEach((checkbox) => {
             checkbox.checked = false;
         });
@@ -463,6 +498,7 @@
     groupSelectButtons.forEach((button) => {
         button.addEventListener('click', () => {
             const group = button.dataset.group;
+            console.log(`🔍 [PERMISSIONS DEBUG] Clic "Tout cocher" groupe: ${group}`);
             document.querySelectorAll(`input[name="permissions[]"][data-group="${group}"]`).forEach((checkbox) => {
                 checkbox.checked = true;
             });
@@ -472,9 +508,104 @@
     groupClearButtons.forEach((button) => {
         button.addEventListener('click', () => {
             const group = button.dataset.group;
+            console.log(`🔍 [PERMISSIONS DEBUG] Clic "Tout retirer" groupe: ${group}`);
             document.querySelectorAll(`input[name="permissions[]"][data-group="${group}"]`).forEach((checkbox) => {
                 checkbox.checked = false;
             });
+        });
+    });
+
+    // DEBUG: Intercepter la soumission du formulaire
+    form?.addEventListener('submit', function(e) {
+        e.preventDefault(); // Empêcher la soumission normale pour debug
+
+        const formData = new FormData(this);
+        const role = formData.get('role');
+        const permissions = formData.getAll('permissions[]');
+        const csrfToken = formData.get('_token');
+
+        console.log('🔧 [PERMISSIONS SUBMIT] Soumission du formulaire:', {
+            role: role,
+            permissionsCount: permissions.length,
+            permissions: permissions,
+            csrfToken: csrfToken ? 'présent' : 'MANQUANT!',
+            formAction: this.action,
+            formMethod: this.method
+        });
+
+        // Envoyer via fetch pour voir la réponse
+        console.log('🔧 [PERMISSIONS SUBMIT] Envoi via fetch...');
+
+        fetch(this.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json, text/html'
+            }
+        })
+        .then(response => {
+            console.log('🔧 [PERMISSIONS SUBMIT] Réponse reçue:', {
+                status: response.status,
+                statusText: response.statusText,
+                redirected: response.redirected,
+                url: response.url,
+                type: response.type
+            });
+
+            // Si c'est une redirection (302), on suit
+            if (response.redirected) {
+                console.log('🔧 [PERMISSIONS SUBMIT] Redirection vers:', response.url);
+                window.location.href = response.url;
+                return null;
+            }
+
+            // Essayer de parser comme JSON d'abord
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            }
+            return response.text();
+        })
+        .then(data => {
+            if (data === null) return; // Déjà redirigé
+
+            console.log('🔧 [PERMISSIONS SUBMIT] Contenu réponse:', data);
+
+            // Si pas d'erreur, soumettre le formulaire normalement
+            if (typeof data === 'string' && data.includes('success')) {
+                console.log('🔧 [PERMISSIONS SUBMIT] Succès détecté, rechargement...');
+                window.location.reload();
+            } else if (typeof data === 'object') {
+                console.log('🔧 [PERMISSIONS SUBMIT] Réponse JSON:', data);
+                // Recharger pour voir le résultat
+                window.location.href = this.action.replace('/update', '') + '?role=' + role;
+            } else {
+                // Soumettre normalement
+                console.log('🔧 [PERMISSIONS SUBMIT] Soumission normale du formulaire...');
+                this.removeEventListener('submit', arguments.callee);
+                this.submit();
+            }
+        })
+        .catch(error => {
+            console.error('🔧 [PERMISSIONS SUBMIT] Erreur:', error);
+            // En cas d'erreur, soumettre normalement
+            console.log('🔧 [PERMISSIONS SUBMIT] Erreur fetch, soumission normale...');
+            form.submit();
+        });
+    });
+
+    // DEBUG: Log au chargement complet de la page
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('🔍 [PERMISSIONS DEBUG] DOM chargé');
+
+        const selectedRole = document.querySelector('.role-card.active');
+        const checkedPerms = document.querySelectorAll('input[name="permissions[]"]:checked');
+
+        console.log('🔍 [PERMISSIONS DEBUG] État après chargement:', {
+            selectedRole: selectedRole?.dataset.role || 'aucun',
+            checkedPermissionsCount: checkedPerms.length,
+            checkedPermissions: Array.from(checkedPerms).map(c => c.value)
         });
     });
 </script>
