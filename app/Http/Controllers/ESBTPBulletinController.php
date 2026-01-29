@@ -5683,8 +5683,7 @@ class ESBTPBulletinController extends Controller
             $classeFiliereId = $classe->filiere_id;
             $classeNiveauId = $classe->niveau_etude_id;
 
-            $missingCoefficients = [];
-
+            // Plus de blocage pour coefficients manquants - utiliser fallback = 1
             $toutesLesMatieres = \App\Models\ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
                 ->where('is_active', true)
                 ->orderBy('name')
@@ -5699,29 +5698,22 @@ class ESBTPBulletinController extends Controller
                 })
                 ->values();
 
-            foreach ($toutesLesMatieres as $matiere) {
-                try {
-                    $this->getCoefficientForCombination($matiere->id, $classe->id, $anneeUniversitaire->id);
-                } catch (\RuntimeException $exception) {
-                    $missingCoefficients[] = $matiere->name;
-                }
-            }
-
-            if (! empty($missingCoefficients)) {
-                return redirect()->route('esbtp.evaluations.index', ['open_coefficients' => 1])
-                    ->with('error', 'Coefficients manquants pour: '.implode(', ', $missingCoefficients).'. Configurez-les avant de modifier les moyennes.');
-            }
-
             // Ajouter les matières de la classe qui n'ont pas encore de résultats
             foreach ($toutesLesMatieres as $matiere) {
                 if (! isset($resultatsData[$matiere->id])) {
                     // Vérifier si cette matière a des moyennes calculées depuis les évaluations
                     $moyenneCalculee = isset($notesByMatiere[$matiere->id]) ? $notesByMatiere[$matiere->id]['moyenne'] : null;
-                    $coefficientCalcule = $this->getCoefficientForCombination(
-                        $matiere->id,
-                        $classe->id,
-                        $anneeUniversitaire->id
-                    );
+                    
+                    // Récupérer le coefficient avec fallback = 1 si non configuré
+                    try {
+                        $coefficientCalcule = $this->getCoefficientForCombination(
+                            $matiere->id,
+                            $classe->id,
+                            $anneeUniversitaire->id
+                        );
+                    } catch (\RuntimeException $exception) {
+                        $coefficientCalcule = 1; // Fallback au lieu de bloquer
+                    }
 
                     $resultatsData[$matiere->id] = [
                         'id' => null, // Nouveau résultat à créer
