@@ -139,6 +139,15 @@ class ESBTPRolePermissionConfigController extends Controller
 
     public function update(Request $request)
     {
+        // DEBUG CRITIQUE: Log immédiat pour confirmer que la méthode est appelée
+        \Log::emergency('🚨🚨🚨 [PERMISSIONS] UPDATE METHOD CALLED - ' . now()->toDateTimeString());
+        file_put_contents(storage_path('logs/permissions-debug.log'),
+            '🚨 UPDATE CALLED: ' . now()->toDateTimeString() . "\n" .
+            'Role: ' . $request->input('role') . "\n" .
+            'Permissions count: ' . count($request->input('permissions', [])) . "\n\n",
+            FILE_APPEND
+        );
+
         // DEBUG: Log toutes les données reçues
         \Log::info('🔧 [PERMISSIONS UPDATE] Requête reçue', [
             'role' => $request->input('role'),
@@ -189,9 +198,17 @@ class ESBTPRolePermissionConfigController extends Controller
             'count' => count($permissionNames),
         ]);
 
-        $role->syncPermissions($permissionNames);
-
-        \Log::info('🔧 [PERMISSIONS UPDATE] syncPermissions exécuté');
+        try {
+            $role->syncPermissions($permissionNames);
+            \Log::info('🔧 [PERMISSIONS UPDATE] syncPermissions exécuté AVEC SUCCÈS');
+            file_put_contents(storage_path('logs/permissions-debug.log'),
+                '✅ syncPermissions SUCCESS for role ' . $role->name . "\n", FILE_APPEND);
+        } catch (\Exception $e) {
+            \Log::error('❌ [PERMISSIONS UPDATE] ERREUR syncPermissions: ' . $e->getMessage());
+            file_put_contents(storage_path('logs/permissions-debug.log'),
+                '❌ syncPermissions ERROR: ' . $e->getMessage() . "\n", FILE_APPEND);
+            throw $e;
+        }
 
         // DEBUG: Vérifier en DB APRÈS syncPermissions (query directe, pas de cache)
         $dbAfter = \DB::table('role_has_permissions')
