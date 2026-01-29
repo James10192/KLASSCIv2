@@ -61,13 +61,17 @@ class ESBTPEnseignantController extends Controller
         $departments = ESBTPDepartment::where('is_active', true)->get();
         $specializations = ESBTPTeacher::distinct()->pluck('specialization')->filter();
         
-        // Statistiques
+        // Statistiques - avec vérification colonne type_contrat (migration optionnelle)
         $stats = [
             'total' => ESBTPTeacher::count(),
             'active' => ESBTPTeacher::where('status', 'active')->count(),
             'inactive' => ESBTPTeacher::where('status', 'inactive')->count(),
-            'permanent' => ESBTPTeacher::where('type_contrat', 'permanent')->count(),
-            'temporary' => ESBTPTeacher::where('type_contrat', 'temporaire')->count(),
+            'permanent' => Schema::hasColumn('esbtp_teachers', 'type_contrat')
+                ? ESBTPTeacher::where('type_contrat', 'permanent')->count()
+                : 0,
+            'temporary' => Schema::hasColumn('esbtp_teachers', 'type_contrat')
+                ? ESBTPTeacher::where('type_contrat', 'temporaire')->count()
+                : 0,
         ];
         
         return view('esbtp.enseignants.index', compact('teachers', 'departments', 'specializations', 'stats'));

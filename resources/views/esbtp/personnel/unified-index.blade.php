@@ -618,12 +618,17 @@
                 <div class="slider-panel {{ $isCoordinateur ? 'active' : '' }}" id="enseignants-panel">
                     <div class="personnel-actions">
                         <div class="personnel-search">
-                            <input type="text" class="search-input" placeholder="Rechercher un enseignant..." 
+                            <input type="text" class="search-input" placeholder="Rechercher un enseignant..."
                                    id="search-enseignants">
                         </div>
-                        <a href="{{ route('esbtp.enseignants.create') }}" class="btn-acasi primary">
-                            <i class="fas fa-plus me-1"></i>Nouvel Enseignant
-                        </a>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button" class="btn-acasi warning" data-bs-toggle="modal" data-bs-target="#bulkAvailabilityModal">
+                                <i class="fas fa-calendar-check me-1"></i>Disponibilités groupées
+                            </button>
+                            <a href="{{ route('esbtp.enseignants.create') }}" class="btn-acasi primary">
+                                <i class="fas fa-plus me-1"></i>Nouvel Enseignant
+                            </a>
+                        </div>
                     </div>
 
                     <div class="personnel-filters">
@@ -846,6 +851,86 @@
 {{-- Modal pour afficher les credentials --}}
 @include('partials.credentials-modal')
 
+{{-- Modal pour sélection des enseignants pour modification groupée des disponibilités --}}
+<div class="modal fade" id="bulkAvailabilityModal" tabindex="-1" aria-labelledby="bulkAvailabilityModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white;">
+                <h5 class="modal-title" id="bulkAvailabilityModalLabel">
+                    <i class="fas fa-calendar-check me-2"></i>Modification groupée des disponibilités
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Sélectionnez les enseignants dont vous souhaitez modifier les disponibilités, puis cliquez sur "Modifier les disponibilités".
+                </p>
+
+                {{-- Barre de recherche et actions --}}
+                <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+                    <div class="flex-grow-1">
+                        <input type="text" id="bulk-availability-search" class="form-control" placeholder="Rechercher un enseignant...">
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="bulk-select-all-availability">
+                        <i class="fas fa-check-double me-1"></i>Tout sélectionner
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="bulk-deselect-all-availability">
+                        <i class="fas fa-times me-1"></i>Tout désélectionner
+                    </button>
+                </div>
+
+                {{-- Liste des enseignants --}}
+                <div class="list-group" id="bulk-availability-list" style="max-height: 400px; overflow-y: auto;">
+                    @if(isset($enseignants) && $enseignants->count() > 0)
+                        @foreach($enseignants as $teacher)
+                            <label class="list-group-item list-group-item-action d-flex align-items-center gap-3 bulk-availability-item"
+                                   data-name="{{ strtolower($teacher->user->name ?? '') }}"
+                                   data-email="{{ strtolower($teacher->user->email ?? '') }}">
+                                <input type="checkbox" class="form-check-input bulk-availability-checkbox" value="{{ $teacher->id }}" style="margin: 0;">
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold">
+                                        @if($teacher->title)
+                                            <span class="text-muted">{{ $teacher->title }}</span>
+                                        @endif
+                                        {{ $teacher->user->name ?? 'N/A' }}
+                                    </div>
+                                    <small class="text-muted">
+                                        {{ $teacher->user->email ?? '' }}
+                                        @if($teacher->specialization)
+                                            · {{ $teacher->specialization }}
+                                        @endif
+                                    </small>
+                                </div>
+                                <span class="badge {{ $teacher->status === 'active' ? 'bg-success' : 'bg-secondary' }}">
+                                    {{ $teacher->status === 'active' ? 'Actif' : 'Inactif' }}
+                                </span>
+                            </label>
+                        @endforeach
+                    @else
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-user-slash fa-2x mb-2"></i>
+                            <p>Aucun enseignant disponible</p>
+                        </div>
+                    @endif
+                </div>
+
+                <div class="mt-3 text-end">
+                    <span class="badge bg-primary" id="bulk-availability-count">0 enseignant(s) sélectionné(s)</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Annuler
+                </button>
+                <button type="button" class="btn btn-warning" id="bulk-availability-submit" disabled>
+                    <i class="fas fa-calendar-check me-1"></i>Modifier les disponibilités
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -999,5 +1084,87 @@ function toggleSecretaireStatus(secretaireId) {
         });
     }
 }
+
+// ============================================
+// Gestion du modal de modification groupée des disponibilités
+// ============================================
+(function() {
+    const searchInput = document.getElementById('bulk-availability-search');
+    const selectAllBtn = document.getElementById('bulk-select-all-availability');
+    const deselectAllBtn = document.getElementById('bulk-deselect-all-availability');
+    const submitBtn = document.getElementById('bulk-availability-submit');
+    const countBadge = document.getElementById('bulk-availability-count');
+    const checkboxes = document.querySelectorAll('.bulk-availability-checkbox');
+    const items = document.querySelectorAll('.bulk-availability-item');
+
+    // Fonction pour mettre à jour le compteur et l'état du bouton
+    function updateCount() {
+        const checked = document.querySelectorAll('.bulk-availability-checkbox:checked').length;
+        countBadge.textContent = checked + ' enseignant(s) sélectionné(s)';
+        submitBtn.disabled = checked === 0;
+    }
+
+    // Recherche
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            items.forEach(item => {
+                const name = item.dataset.name || '';
+                const email = item.dataset.email || '';
+                const matches = name.includes(query) || email.includes(query);
+                item.style.display = matches ? '' : 'none';
+            });
+        });
+    }
+
+    // Sélectionner tout (visible)
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function() {
+            items.forEach(item => {
+                if (item.style.display !== 'none') {
+                    const checkbox = item.querySelector('.bulk-availability-checkbox');
+                    if (checkbox) checkbox.checked = true;
+                }
+            });
+            updateCount();
+        });
+    }
+
+    // Désélectionner tout
+    if (deselectAllBtn) {
+        deselectAllBtn.addEventListener('click', function() {
+            checkboxes.forEach(cb => cb.checked = false);
+            updateCount();
+        });
+    }
+
+    // Événement sur chaque checkbox
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateCount);
+    });
+
+    // Soumission
+    if (submitBtn) {
+        submitBtn.addEventListener('click', function() {
+            const selectedIds = Array.from(document.querySelectorAll('.bulk-availability-checkbox:checked'))
+                .map(cb => cb.value);
+
+            if (selectedIds.length === 0) {
+                alert('Veuillez sélectionner au moins un enseignant.');
+                return;
+            }
+
+            // Construire l'URL avec les IDs sélectionnés
+            const params = selectedIds.map(id => 'ids[]=' + encodeURIComponent(id)).join('&');
+            const url = '{{ route("esbtp.enseignants.bulk-availability") }}?' + params;
+
+            // Rediriger vers la page de modification groupée
+            window.location.href = url;
+        });
+    }
+
+    // Initialiser le compteur
+    updateCount();
+})();
 </script>
 @endpush
