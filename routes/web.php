@@ -1310,6 +1310,8 @@ Route::prefix('secretaires')->name('secretaires.')->group(function () {
 // Routes pour la gestion des enseignants
 Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin'])->group(function () {
     Route::get('enseignants/duplicates', [ESBTPEnseignantController::class, 'duplicates'])->name('enseignants.duplicates');
+    Route::get('enseignants/bulk-availability', [ESBTPEnseignantController::class, 'bulkAvailability'])->name('enseignants.bulk-availability');
+    Route::get('enseignants/{enseignant}/availability-section', [ESBTPEnseignantController::class, 'availabilitySection'])->name('enseignants.availability-section');
     Route::resource('enseignants', ESBTPEnseignantController::class);
     Route::get('enseignants/{teacher}/matieres', [ESBTPEnseignantController::class, 'matieres'])->name('enseignants.matieres');
     Route::post('enseignants/{teacher}/assign-matieres', [ESBTPEnseignantController::class, 'assignMatieres'])->name('enseignants.assign-matieres');

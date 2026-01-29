@@ -787,6 +787,132 @@ class ESBTPEnseignantController extends Controller
     }
 
     /**
+     * Afficher la page de modification groupée des disponibilités
+     */
+    public function bulkAvailability(Request $request)
+    {
+        // Parser les IDs depuis la query string
+        $ids = $request->input('ids', []);
+        if (is_string($ids)) {
+            $ids = array_filter(explode(',', $ids));
+        }
+
+        // Normaliser et valider les IDs
+        $ids = collect($ids)
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->values()
+            ->all();
+
+        // Rediriger si pas d'IDs fournis
+        if (empty($ids)) {
+            return redirect()->route('esbtp.enseignants.index')
+                ->with('error', 'Sélectionnez au moins un enseignant.');
+        }
+
+        // Récupérer les enseignants sélectionnés
+        $enseignants = ESBTPTeacher::with(['user', 'department', 'availabilities'])
+            ->whereIn('id', $ids)
+            ->orderBy('id')
+            ->get();
+
+        // Construire les données de vue pour chaque enseignant
+        $enseignantsData = $enseignants->map(function ($enseignant) {
+            return $this->buildAvailabilityViewData($enseignant);
+        });
+
+        return view('esbtp.enseignants.bulk-availability', compact('enseignants', 'enseignantsData'));
+    }
+
+    /**
+     * Retourner le HTML d'un bloc de disponibilité pour un enseignant (AJAX)
+     */
+    public function availabilitySection(ESBTPTeacher $enseignant)
+    {
+        $enseignant->load(['user', 'department', 'availabilities']);
+        $data = $this->buildAvailabilityViewData($enseignant);
+
+        $html = view('esbtp.enseignants.partials.availability-block', $data)->render();
+
+        return response()->json([
+            'enseignant_id' => $enseignant->id,
+            'html' => $html,
+        ]);
+    }
+
+    /**
+     * Construire les données de disponibilité pour la vue
+     */
+    private function buildAvailabilityViewData(ESBTPTeacher $enseignant): array
+    {
+        $hours = range(8, 18); // 8h à 18h = 11 heures
+        $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        $joursNoms = [
+            'monday' => 'Lundi',
+            'tuesday' => 'Mardi',
+            'wednesday' => 'Mercredi',
+            'thursday' => 'Jeudi',
+            'friday' => 'Vendredi',
+            'saturday' => 'Samedi',
+            'sunday' => 'Dimanche'
+        ];
+
+        // Initialiser avec 'unavailable' par défaut
+        $availability = [];
+        foreach ($days as $day) {
+            $availability[$day] = array_fill(0, count($hours), 'unavailable');
+        }
+
+        // Remplir avec les vraies données
+        foreach ($enseignant->availabilities as $avail) {
+            $dayName = $days[$avail->day_of_week] ?? null;
+
+            // Parser l'heure de début et de fin
+            if ($avail->start_time instanceof \Carbon\Carbon) {
+                $startHour = $avail->start_time->hour;
+                $endHour = $avail->end_time->hour;
+            } elseif (is_string($avail->start_time)) {
+                $startHour = (int) substr($avail->start_time, 0, 2);
+                $endHour = (int) substr($avail->end_time, 0, 2);
+            } else {
+                $startHour = (int) substr((string) $avail->start_time, 0, 2);
+                $endHour = (int) substr((string) $avail->end_time, 0, 2);
+            }
+
+            // Remplir toutes les heures entre start_time et end_time
+            if ($dayName) {
+                for ($hour = $startHour; $hour < $endHour; $hour++) {
+                    $hourIndex = $hour - 8; // Index dans le tableau (8h = index 0)
+                    if ($hourIndex >= 0 && $hourIndex < count($hours)) {
+                        $availability[$dayName][$hourIndex] = $avail->availability_type;
+                    }
+                }
+            }
+        }
+
+        // Calculer les stats
+        $stats = [
+            'available' => 0,
+            'preferred' => 0,
+            'unavailable' => 0,
+        ];
+        foreach ($availability as $daySlots) {
+            foreach ($daySlots as $status) {
+                $stats[$status]++;
+            }
+        }
+
+        return [
+            'enseignant' => $enseignant,
+            'availability' => $availability,
+            'hours' => $hours,
+            'days' => $days,
+            'joursNoms' => $joursNoms,
+            'stats' => $stats,
+        ];
+    }
+
+    /**
      * Mettre à jour les disponibilités de l'enseignant via AJAX
      */
     public function updateAvailability(Request $request, ESBTPTeacher $enseignant)
