@@ -199,15 +199,30 @@
                                 </div>
                             </div>
 
-                            <div class="form-group">
-                                <label for="coefficient" class="form-label">Coefficient</label>
-                                <input type="number" class="form-input" 
-                                       id="coefficient" name="coefficient" value="{{ old('coefficient', '') }}" 
-                                       step="0.1" min="0.1" disabled>
-                                <div class="form-hint mt-2" style="background: #f1f5f9; border-left: 3px solid var(--primary); padding: 10px 12px; border-radius: 6px;">
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    Le coefficient est défini dans Paramètres > Coefficients.
+<div class="form-group">
+                                <label for="coefficient" class="form-label">Coefficient de l'évaluation <span class="text-danger">*</span></label>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <input type="number" class="form-input flex-grow-1 @error('coefficient') error @enderror" 
+                                           id="coefficient" name="coefficient" value="{{ old('coefficient', 1) }}" 
+                                           step="0.1" min="0.1" max="10" required>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" 
+                                            id="btn-use-matiere-coefficient" 
+                                            title="Utiliser le coefficient de la matière">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
                                 </div>
+                                <div class="form-hint mt-2" style="background: #f8f9fa; border-left: 3px solid var(--secondary); padding: 10px 12px; border-radius: 6px;">
+                                    <i class="fas fa-lightbulb me-1 text-warning"></i>
+                                    <strong>Logique :</strong> Le coefficient de l'évaluation peut être différent du coefficient de la matière.
+                                    <br><small class="text-muted">
+                                        • Ex: Matière coefficient 3, mais évaluation coefficient 1 (quiz)<br>
+                                        • Ex: Matière coefficient 2, mais évaluation coefficient 2 (examen final)<br>
+                                        • Utilisez le bouton <i class="fas fa-sync-alt"></i> pour copier le coefficient de la matière
+                                    </small>
+                                </div>
+                                @error('coefficient')
+                                    <div class="form-error mt-1">{{ $message }}</div>
+                                @enderror
                             </div>
 
                             <div class="form-group">
@@ -722,8 +737,60 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    if (classeSelect && matiereSelect) {
+if (classeSelect && matiereSelect) {
         matiereSelect.addEventListener('change', checkCombinationCoefficient);
+    }
+
+    // Gérer le bouton de synchronisation du coefficient de la matière
+    const btnUseMatiereCoefficient = document.getElementById('btn-use-matiere-coefficient');
+    const coefficientInput = document.getElementById('coefficient');
+
+    if (btnUseMatiereCoefficient && coefficientInput) {
+        btnUseMatiereCoefficient.addEventListener('click', function() {
+            const matiereSelect = document.getElementById('matiere_id');
+            const classeSelect = document.getElementById('classe_id');
+            
+            if (!matiereSelect.value || !classeSelect.value) {
+                alert('Veuillez d\'abord sélectionner une classe et une matière.');
+                return;
+            }
+
+            // Récupérer les matières avec coefficients
+            const matiere = matieresJson.find(m => m.id == matiereSelect.value);
+            
+            if (matiere && matiere.coefficient) {
+                coefficientInput.value = matiere.coefficient;
+                
+                // Feedback visuel temporaire
+                const originalText = btnUseMatiereCoefficient.innerHTML;
+                btnUseMatiereCoefficient.innerHTML = '<i class="fas fa-check text-success"></i>';
+                btnUseMatiereCoefficient.classList.add('btn-success');
+                btnUseMatiereCoefficient.classList.remove('btn-outline-secondary');
+                
+                setTimeout(() => {
+                    btnUseMatiereCoefficient.innerHTML = originalText;
+                    btnUseMatiereCoefficient.classList.remove('btn-success');
+                    btnUseMatiereCoefficient.classList.add('btn-outline-secondary');
+                }, 1500);
+                
+                // Mettre à jour l'info-bulle
+                btnUseMatiereCoefficient.title = `Coefficient ${matiere.coefficient} copié depuis la matière`;
+            } else {
+                alert('Cette matière n\'a pas de coefficient défini.');
+            }
+        });
+
+        // Mettre à jour le titre du bouton selon la matière sélectionnée
+        matiereSelect.addEventListener('change', function() {
+            const matiere = matieresJson.find(m => m.id == this.value);
+            if (matiere && matiere.coefficient) {
+                btnUseMatiereCoefficient.title = `Utiliser le coefficient de la matière (${matiere.coefficient})`;
+                btnUseMatiereCoefficient.disabled = false;
+            } else {
+                btnUseMatiereCoefficient.title = 'Aucun coefficient défini pour cette matière';
+                btnUseMatiereCoefficient.disabled = true;
+            }
+        });
     }
 });
 </script>

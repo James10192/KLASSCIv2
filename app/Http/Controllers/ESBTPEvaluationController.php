@@ -345,7 +345,8 @@ class ESBTPEvaluationController extends Controller
             'heure_fin' => 'required|date_format:H:i|after:heure_debut',
             'classe_id' => 'required|exists:esbtp_classes,id',
             'matiere_id' => 'required|exists:esbtp_matieres,id',
-            'bareme' => 'required|numeric|min:0',
+'bareme' => 'required|numeric|min:0',
+            'coefficient' => 'required|numeric|min:0.1|max:10',
             'duree_minutes' => 'nullable|integer|min:0',
             'is_published' => 'nullable|boolean',
             'periode' => 'required|in:1,2,semestre1,semestre2,Semestre 1,Semestre 2',
@@ -359,7 +360,11 @@ class ESBTPEvaluationController extends Controller
             'classe_id.exists' => 'La classe sélectionnée n\'existe pas',
             'matiere_id.required' => 'La matière est obligatoire',
             'matiere_id.exists' => 'La matière sélectionnée n\'existe pas',
-            'bareme.required' => 'Le barème est obligatoire',
+'bareme.required' => 'Le barème est obligatoire',
+            'coefficient.required' => 'Le coefficient de l\'évaluation est obligatoire',
+            'coefficient.numeric' => 'Le coefficient doit être un nombre',
+            'coefficient.min' => 'Le coefficient doit être supérieur à 0',
+            'coefficient.max' => 'Le coefficient ne peut pas dépasser 10',
         ]);
 
         if ($validator->fails()) {
@@ -394,18 +399,24 @@ class ESBTPEvaluationController extends Controller
             }
             $calculatedDuration = $endAt->diffInMinutes($startAt);
 
-            $evaluation = new ESBTPEvaluation;
+$evaluation = new ESBTPEvaluation;
             $evaluation->titre = $request->titre;
             $evaluation->description = $request->description;
             $evaluation->type = $request->type;
             $evaluation->date_evaluation = $startAt;
-            $coefficient = $this->getCoefficientForCombination($request->classe_id, $request->matiere_id, $anneeUniversitaire->id);
-            if ($coefficient === null) {
-                return redirect()->back()
-                    ->with('error', 'Le coefficient pour cette combinaison filière/niveau n\'est pas configuré. Veuillez le définir dans Paramètres > Coefficients.')
-                    ->withInput();
+            
+            // Récupérer le coefficient depuis le formulaire (priorité haute)
+            $coefficient = $request->input('coefficient');
+            if (empty($coefficient) || $coefficient <= 0) {
+                // Si pas de coefficient dans le formulaire, essayer de récupérer depuis la matière
+                $coefficient = $this->getCoefficientForCombination($request->classe_id, $request->matiere_id, $anneeUniversitaire->id);
+                if ($coefficient === null) {
+                    return redirect()->back()
+                        ->with('error', 'Veuillez spécifier un coefficient pour cette évaluation. Le coefficient de la matière n\'est pas non plus configuré.')
+                        ->withInput();
+                }
             }
-            $evaluation->coefficient = $coefficient;
+            $evaluation->coefficient = (float) $coefficient;
             $evaluation->bareme = $request->bareme;
             $evaluation->duree_minutes = $request->filled('duree_minutes')
                 ? (int) $request->duree_minutes
@@ -619,18 +630,24 @@ class ESBTPEvaluationController extends Controller
             }
             $calculatedDuration = $endAt->diffInMinutes($startAt);
 
-            $evaluation->titre = $request->titre;
+$evaluation->titre = $request->titre;
             $evaluation->description = $request->description;
             $evaluation->type = $request->type;
             $evaluation->date_evaluation = $startAt;
             $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-            $coefficient = $this->getCoefficientForCombination($request->classe_id, $request->matiere_id, $anneeUniversitaire?->id);
-            if ($coefficient === null) {
-                return redirect()->back()
-                    ->with('error', 'Le coefficient pour cette combinaison filière/niveau n\'est pas configuré. Veuillez le définir dans Paramètres > Coefficients.')
-                    ->withInput();
+            
+            // Récupérer le coefficient depuis le formulaire (priorité haute)
+            $coefficient = $request->input('coefficient');
+            if (empty($coefficient) || $coefficient <= 0) {
+                // Si pas de coefficient dans le formulaire, essayer de récupérer depuis la matière
+                $coefficient = $this->getCoefficientForCombination($request->classe_id, $request->matiere_id, $anneeUniversitaire?->id);
+                if ($coefficient === null) {
+                    return redirect()->back()
+                        ->with('error', 'Veuillez spécifier un coefficient pour cette évaluation. Le coefficient de la matière n\'est pas non plus configuré.')
+                        ->withInput();
+                }
             }
-            $evaluation->coefficient = $coefficient;
+            $evaluation->coefficient = (float) $coefficient;
             $evaluation->bareme = $request->bareme;
             $evaluation->duree_minutes = $request->filled('duree_minutes')
                 ? (int) $request->duree_minutes
