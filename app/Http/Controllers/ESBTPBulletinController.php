@@ -3115,12 +3115,21 @@ class ESBTPBulletinController extends Controller
             })
             ->values()
             ->map(function (ESBTPMatiere $matiere) use ($classe, $annee_universitaire_id) {
-                $matiere->pivot = (object) [
-                    'coefficient' => $this->getCoefficientForCombination(
+                // Récupérer le coefficient SANS lancer d'exception
+                try {
+                    $coefficient = $this->getCoefficientForCombination(
                         $matiere->id,
                         $classe->id,
                         $annee_universitaire_id
-                    ),
+                    );
+                } catch (\RuntimeException $exception) {
+                    // Fallback: utiliser 1 comme valeur par défaut au lieu de bloquer
+                    $coefficient = 1;
+                    \Log::info("Coefficient manquant pour matière {$matiere->id} dans editResultatsClasse, utilisation du défaut: 1");
+                }
+
+                $matiere->pivot = (object) [
+                    'coefficient' => $coefficient,
                 ];
 
                 return $matiere;
@@ -4577,29 +4586,38 @@ class ESBTPBulletinController extends Controller
                 ]);
             }
 
-            try {
-                $coefficient = $this->getCoefficientForCombination(
-                    $request->matiere_id,
-                    $request->classe_id,
-                    $anneeUniversitaire->id
-                );
+            // Récupérer le coefficient SANS lancer d'exception
+            $cacheKey = $request->matiere_id . '|' . $request->classe_id . '|' . $anneeUniversitaire->id;
 
-                return response()->json([
-                    'success' => true,
-                    'coefficient' => $coefficient,
-                    'is_configured' => true,
-                    'message' => 'Coefficient trouvé dans la configuration'
-                ]);
+            // Utiliser le cache si disponible
+            if (isset($this->coefficientCache[$cacheKey])) {
+                $coefficient = $this->coefficientCache[$cacheKey];
+                $isConfigured = true;
+            } else {
+                // Requête directe SANS exception
+                $coefficient = ESBTPMatiereCoefficient::where('matiere_id', $request->matiere_id)
+                    ->where('filiere_id', $classe->filiere_id)
+                    ->where('niveau_etude_id', $classe->niveau_etude_id)
+                    ->where('annee_universitaire_id', $anneeUniversitaire->id)
+                    ->value('coefficient');
 
-            } catch (\RuntimeException $e) {
-                // Coefficient non configuré
-                return response()->json([
-                    'success' => true,
-                    'coefficient' => 1,
-                    'is_configured' => false,
-                    'message' => 'Aucun coefficient configuré pour cette combinaison. Valeur par défaut: 1'
-                ]);
+                if ($coefficient !== null) {
+                    $this->coefficientCache[$cacheKey] = (float) $coefficient;
+                    $isConfigured = true;
+                } else {
+                    $coefficient = 1; // Fallback sans exception
+                    $isConfigured = false;
+                }
             }
+
+            return response()->json([
+                'success' => true,
+                'coefficient' => $coefficient,
+                'is_configured' => $isConfigured,
+                'message' => $isConfigured 
+                    ? 'Coefficient trouvé dans la configuration' 
+                    : 'Aucun coefficient configuré pour cette combinaison. Valeur par défaut: 1'
+            ]);
 
         } catch (\Exception $e) {
             \Log::error('Erreur récupération coefficient matière: ' . $e->getMessage());
