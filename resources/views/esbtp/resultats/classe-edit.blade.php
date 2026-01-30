@@ -874,7 +874,7 @@
 
         // Fetch existing absences for selected students
         $.ajax({
-            url: '{{ url("/esbtp-special/resultats/get-absences") }}',
+            url: '{{ route("esbtp.bulletins.edit-absences") }}',
             method: 'GET',
             data: {
                 classe_id: classeId,
@@ -1225,7 +1225,7 @@
         }
 
         $.ajax({
-            url: '{{ url("/esbtp-special/resultats/bulk-update-absences") }}',
+            url: '{{ route("esbtp.bulletins.save-absences") }}',
             method: 'POST',
             data: {
                 _token: '{{ csrf_token() }}',
