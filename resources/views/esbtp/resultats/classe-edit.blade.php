@@ -707,9 +707,9 @@
 
                     matieres.forEach((matiere, mIndex) => {
                         // Find existing resultat for this student and matiere
-                        const resultat = response.resultats.find(r =>
+                        const resultat = response.resultats && response.resultats.find ? response.resultats.find(r =>
                             r.etudiant_id == student.id && r.matiere_id == matiere.id
-                        );
+                        ) : null;
                         const moyenne = resultat ? resultat.moyenne : '';
 
                         // Pas de champ 'type' en BDD - détecter via existence résultat
@@ -887,7 +887,7 @@
                 tbody.empty();
 
                 selectedStudents.forEach(student => {
-                    const bulletin = response.bulletins.find(b => b.etudiant_id == student.id);
+                    const bulletin = response.bulletins && response.bulletins.find ? response.bulletins.find(b => b.etudiant_id == student.id) : null;
                     const justifiees = bulletin && bulletin.absences_justifiees !== null ? bulletin.absences_justifiees : '';
                     const nonJustifiees = bulletin && bulletin.absences_non_justifiees !== null ? bulletin.absences_non_justifiees : '';
 
