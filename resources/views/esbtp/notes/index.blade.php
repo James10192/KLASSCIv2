@@ -354,7 +354,7 @@ function loadEvaluationsAndNotes() {
 
     // Appel AJAX pour récupérer les évaluations et notes
     $.ajax({
-        url: '{{ route("esbtp.evaluations.by-class-matiere", ["classId" => ":classId", "matiereId" => ":matiereId"]) }}'
+        url: '{{ route("evaluations.by-class-matiere", ["classId" => ":classId", "matiereId" => ":matiereId"]) }}'
             .replace(':classId', currentClassId)
             .replace(':matiereId', currentMatiereId),
         method: 'GET',
@@ -386,7 +386,7 @@ function buildNotesGrid() {
     
     // Récupérer les étudiants de la classe
     $.ajax({
-        url: '{{ route("esbtp.classes.students", ["classe" => ":classId"]) }}'.replace(':classId', currentClassId),
+        url: '{{ route("classes.students", ["classe" => ":classId"]) }}'.replace(':classId', currentClassId),
         method: 'GET',
         dataType: 'json',
         success: function(students) {
