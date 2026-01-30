@@ -946,7 +946,7 @@ function showSuccessMessage(message) {
 </style>
 @endpush
 
-@section('scripts')
+@push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Initialiser la recherche de classes
@@ -972,4 +972,4 @@ function resetSearch() {
     $('.class-card').show();
 }
 </script>
-@endsection
+@endpush
