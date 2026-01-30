@@ -629,7 +629,7 @@
                 tbody.empty();
 
                 selectedStudents.forEach(student => {
-                    const resultat = response.resultats.find(r => r.etudiant_id == student.id);
+                    const resultat = response.resultats && response.resultats.find ? response.resultats.find(r => r.etudiant_id == student.id) : null;
                     const moyenne = resultat ? resultat.moyenne : '';
                     const moyenneCalculee = resultat ? resultat.moyenne_calculee : null;
                     const source = resultat ? resultat.source : 'manuelle';
