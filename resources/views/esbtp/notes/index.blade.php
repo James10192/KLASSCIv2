@@ -11,14 +11,12 @@
         <div class="dashboard-header">
             <div class="header-left">
                 <h1><i class="fas fa-graduation-cap me-2"></i>Gestion des Notes</h1>
-                <p class="header-subtitle">Liste et gestion des notes des étudiants</p>
+                <p class="header-subtitle">Saisie et gestion des notes par classe et matière</p>
             </div>
             <div class="header-actions">
-                @if((auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('teacher') || auth()->user()->hasRole('enseignant') || auth()->user()->can('create_grade')) && !auth()->user()->hasRole('coordinateur'))
-                <a href="{{ route('esbtp.notes.create') }}" class="btn-acasi primary me-2">
-                    <i class="fas fa-plus-circle"></i>Ajouter une note
-                </a>
-                @endif
+                <button type="button" class="btn-acasi primary me-2" data-bs-toggle="modal" data-bs-target="#classSelectionModal">
+                    <i class="fas fa-users"></i>Choisir une classe
+                </button>
                 <a href="{{ route('esbtp.notes.index') }}" class="btn-acasi secondary">
                     <i class="fas fa-sync"></i>Actualiser
                 </a>
@@ -73,361 +71,798 @@
             </div>
         </div>
 
-        <!-- Filtres -->
+        <!-- Section de recherche de classes -->
         <div class="main-card mb-4">
             <div class="main-card-header" style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(6, 182, 212, 0.05));">
                 <div class="main-card-title">
-                    <i class="fas fa-filter"></i>
-                    Filtres de recherche
+                    <i class="fas fa-search"></i>
+                    Recherche de classe
                 </div>
             </div>
             <div class="main-card-body">
-                <form action="{{ route('esbtp.notes.index') }}" method="GET">
-                    <div class="row g-3">
-                        <div class="col-md-5">
-                            <div class="form-group-moderne">
-                                <label class="form-label-moderne">
-                                    <i class="fas fa-users"></i>
-                                    Classe
-                                </label>
-                                <select class="form-select-moderne" id="classe_id" name="classe_id">
-                                    <option value="">Toutes les classes</option>
-                                    @foreach($classes as $classe)
-                                        <option value="{{ $classe->id }}" {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
-                                            {{ $classe->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-5">
-                            <div class="form-group-moderne">
-                                <label class="form-label-moderne">
-                                    <i class="fas fa-book"></i>
-                                    Matière
-                                </label>
-                                <select class="form-select-moderne" id="matiere_id" name="matiere_id">
-                                    <option value="">Toutes les matières</option>
-                                    @foreach($matieres as $matiere)
-                                        <option value="{{ $matiere->id }}" {{ request('matiere_id') == $matiere->id ? 'selected' : '' }}>
-                                            {{ $matiere->name ?? $matiere->nom ?? 'Matière sans nom' }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-2 d-flex align-items-end">
-                            <button type="submit" class="btn-acasi primary w-100">
-                                <i class="fas fa-search"></i>Filtrer
-                            </button>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-group-moderne">
+                            <label class="form-label-moderne">
+                                <i class="fas fa-users"></i>
+                                Rechercher une classe
+                            </label>
+                            <input type="text" class="form-input-moderne" id="classSearch" placeholder="Nom de la classe, filière, niveau...">
                         </div>
                     </div>
-                </form>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button type="button" class="btn-acasi secondary w-100" onclick="resetSearch()">
+                            <i class="fas fa-times"></i>Effacer la recherche
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Tableau des notes -->
+        <!-- Liste des classes -->
         <div class="main-card">
             <div class="main-card-header">
                 <div class="main-card-title">
-                    <i class="fas fa-list"></i>
-                    Liste des notes
+                    <i class="fas fa-users"></i>
+                    Classes disponibles
                 </div>
-                <div class="main-card-subtitle">{{ count($notes) }} notes trouvées</div>
+                <div class="main-card-subtitle">{{ count($classes) }} classes trouvées</div>
             </div>
-            <div class="main-card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle border-0 dataTable" id="notesTable">
-                        <thead class="bg-light">
-                                        <tr>
-                                            <th>Étudiant</th>
-                                            <th>Classe</th>
-                                            <th>Matière</th>
-                                            <th>Évaluation</th>
-                                            <th>Note</th>
-                                            <th>Date</th>
-                                            <th class="text-center">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse($notes as $note)
-                                            <tr>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="me-3">
-                                                            <i class="fas fa-user-graduate fs-4 color-primary"></i>
-                                                        </div>
-                                                        <div>
-                                                            <span class="fw-medium d-block">{{ $note->etudiant->nom }} {{ $note->etudiant->prenoms }}</span>
-                                                            <small class="text-muted">{{ $note->etudiant->matricule ?? 'N/A' }}</small>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>{{ $note->evaluation && $note->evaluation->classe ? $note->evaluation->classe->name : 'N/A' }}</td>
-                                                <td>{{ $note->evaluation && $note->evaluation->matiere ? $note->evaluation->matiere->name : 'N/A' }}</td>
-                                                <td>
-                                                    @php
-                                                        $typeIcons = [
-                                                            'examen' => '<i class="fas fa-file-alt color-primary me-1"></i>',
-                                                            'devoir' => '<i class="fas fa-pencil-alt color-success me-1"></i>',
-                                                            'tp' => '<i class="fas fa-flask color-warning me-1"></i>',
-                                                            'projet' => '<i class="fas fa-project-diagram color-accent me-1"></i>',
-                                                            'controle' => '<i class="fas fa-tasks color-neutral me-1"></i>',
-                                                            'rattrapage' => '<i class="fas fa-redo color-danger me-1"></i>',
-                                                        ];
-                                                        $type = $note->evaluation ? $note->evaluation->type : '';
-                                                        $icon = $typeIcons[$type] ?? '<i class="fas fa-question-circle color-neutral me-1"></i>';
-                                                    @endphp
-                                                    <div>
-                                                        <span class="d-block">{!! $icon !!} {{ $note->evaluation ? $note->evaluation->titre : 'N/A' }}</span>
-                                                        @if($note->evaluation)
-                                                            <small class="text-muted">{{ date('d/m/Y', strtotime($note->evaluation->date_evaluation)) }}</small>
-                                                        @endif
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    @if($note->is_absent)
-                                                        <span class="status-badge danger">
-                                                            <i class="fas fa-user-slash me-1"></i> Absent
-                                                        </span>
-                                                    @else
-                                                        <span class="status-badge success">
-                                                            {{ $note->note }}/{{ $note->evaluation->bareme }}
-                                                        </span>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    <i class="far fa-calendar-alt text-muted me-1"></i>
-                                                    {{ $note->created_at->format('d/m/Y') }}
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex justify-content-center gap-1">
-                                                        <a href="{{ route('esbtp.notes.show', $note->id) }}" class="btn-acasi secondary btn-sm" data-bs-toggle="tooltip" title="Voir les détails">
-                                                            <i class="fas fa-eye"></i>
-                                                        </a>
-                                                        @if((auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('teacher') || auth()->user()->hasRole('enseignant') || auth()->user()->can('edit_grades')) && !auth()->user()->hasRole('coordinateur'))
-                                                        <a href="{{ route('esbtp.notes.edit', $note->id) }}" class="btn-acasi warning btn-sm" data-bs-toggle="tooltip" title="Modifier">
-                                                            <i class="fas fa-edit"></i>
-                                                        </a>
-                                                        @endif
-                                                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->can('delete_grades'))
-                                                        <button type="button" class="btn-acasi danger btn-sm" onclick="confirmDelete('{{ $note->id }}')" data-bs-toggle="tooltip" title="Supprimer">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                        @endif
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="7" class="text-center py-4">
-                                                    <div class="my-4 text-muted">
-                                                        <i class="fas fa-info-circle fs-1 mb-3 d-block"></i>
-                                                        <p class="mb-0">Aucune note trouvée</p>
-                                                        @if((auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('teacher') || auth()->user()->hasRole('enseignant') || auth()->user()->can('create_grade')) && !auth()->user()->hasRole('coordinateur'))
-                                                        <p class="small">Utilisez le bouton "Ajouter une note" pour commencer</p>
-                                                        @endif
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
+            <div class="main-card-body">
+                <div class="row" id="classesContainer">
+                    @forelse($classes as $classe)
+                        <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-3 class-card" data-class-name="{{ strtolower($classe->name) }}" data-class-filiere="{{ strtolower($classe->filiere->name ?? '') }}" data-class-niveau="{{ strtolower($classe->niveau->name ?? '') }}">
+                            <div class="card border-0 shadow-sm h-100 hover-card" style="cursor: pointer;" onclick="selectClass({{ $classe->id }}, '{{ $classe->name }}')">
+                                <div class="card-header bg-primary text-white py-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">{{ $classe->name }}</h6>
+                                        <span class="badge bg-light text-primary">{{ $classe->capacity }}</span>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-2">
+                                        <small class="text-muted d-block">
+                                            <i class="fas fa-graduation-cap me-1"></i>
+                                            {{ $classe->filiere->name ?? 'Non spécifié' }}
+                                        </small>
+                                        <small class="text-muted d-block">
+                                            <i class="fas fa-layer-group me-1"></i>
+                                            {{ $classe->niveau->name ?? 'Non spécifié' }}
+                                        </small>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-user-graduate me-1"></i>
+                                                {{ $classe->etudiants_count ?? 0 }} étudiants
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <i class="fas fa-chevron-right text-primary"></i>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    @empty
+                        <div class="col-12 text-center py-4">
+                            <div class="my-4 text-muted">
+                                <i class="fas fa-info-circle fs-1 mb-3 d-block"></i>
+                                <p class="mb-0">Aucune classe trouvée</p>
+                                <p class="small">Contactez l'administrateur pour créer des classes</p>
+                            </div>
+                        </div>
+                    @endforelse
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal de confirmation de suppression -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+<!-- Modal Sélection Classe et Matière -->
+<div class="modal fade" id="classSelectionModal" tabindex="-1" aria-labelledby="classSelectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="deleteModalLabel">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Confirmation de suppression
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="classSelectionModalLabel">
+                    <i class="fas fa-graduation-cap me-2"></i>
+                    Gestion des Notes - <span id="selectedClassLabel">Sélectionnez une classe</span>
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>Êtes-vous sûr de vouloir supprimer cette note ? Cette action est irréversible.</p>
-                <p class="mb-0 small text-muted">
-                    <i class="fas fa-info-circle me-1"></i>
-                    La suppression peut affecter les calculs de moyennes et de bulletins.
-                </p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times"></i>Annuler
-                </button>
-                <button type="button" class="btn-acasi danger" id="confirmDeleteBtn">
-                    <i class="fas fa-trash"></i>Supprimer
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <div class="form-group">
+                            <label class="form-label fw-bold">Matière</label>
+                            <select class="form-select" id="matiereSelect">
+                                <option value="">-- Sélectionner une matière --</option>
+                                @foreach($matieres as $matiere)
+                                    <option value="{{ $matiere->id }}">{{ $matiere->name ?? $matiere->nom ?? 'Matière sans nom' }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="form-label fw-bold">&nbsp;</label>
+                            <button type="button" class="btn btn-primary w-100" onclick="createEvaluation()" id="createEvaluationBtn">
+                                <i class="fas fa-plus me-1"></i> Créer évaluation
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
-<!-- Formulaire de suppression caché -->
-<form id="delete-form" method="POST" style="display: none;">
-    @csrf
-    @method('DELETE')
-</form>
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="notesGrid">
+                        <thead class="bg-light">
+                            <tr>
+                                <th style="width: 200px; min-width: 200px;">Étudiants</th>
+                                <!-- Colonnes d'évaluations seront ajoutées dynamiquement ici -->
+                                <th style="min-width: 100px;">Moyenne</th>
+                                <th style="min-width: 100px;">Appréciation</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsRows">
+                            <!-- Rows étudiants seront ajoutées dynamiquement ici -->
+                            <tr>
+                                <td colspan="10" class="text-center text-muted py-5">
+                                    <i class="fas fa-info-circle fa-2x mb-3 d-block"></i>
+                                    Sélectionnez d'abord une classe et une matière pour afficher les notes
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot id="classAveragesRow" style="display: none;">
+                            <!-- Row moyennes classe sera ajoutée dynamiquement ici -->
+                        </tfoot>
+                    </table>
+                </div>
 
-@endsection
-
-<!-- Modal pour les instructions de changement d'année -->
-<div class="modal fade" id="yearChangeModal" tabindex="-1" role="dialog" aria-labelledby="yearChangeModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="yearChangeModalLabel">Comment changer l'année académique ?</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; font-weight: bold; color: #999; cursor: pointer;">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <p><strong>Pour consulter les données d'une autre année :</strong></p>
-                <ol style="padding-left: 20px; line-height: 1.6; margin: 15px 0;">
-                    <li><strong>Aller dans</strong> : Menu → Années Universitaires</li>
-                    <li><strong>Trouver l'année souhaitée</strong> (ex: 2023-2024)</li>
-                    <li><strong>Cliquer sur "Activer"</strong> pour la définir comme année courante</li>
-                    <li><strong>Revenir ici</strong> : Les notes affichées se mettront à jour automatiquement</li>
-                </ol>
-                <hr style="margin: 15px 0;">
-                <p style="color: #6b7280; font-size: 14px;">
-                    <i class="fas fa-info-circle"></i>
-                    <strong>Note :</strong> Seule une année peut être "courante" à la fois.
-                    Changer l'année courante affecte l'affichage des notes dans toute l'application.
-                </p>
-                <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-top: 15px;">
-                    <strong>Exemple :</strong><br>
-                    • Année courante = 2024-2025 → Voir les notes des évaluations de 2024-2025<br>
-                    • Année courante = 2023-2024 → Voir les notes des évaluations de 2023-2024
+                <div class="mt-4">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Instructions :</strong> Cliquez sur "Choisir une classe" dans la liste ci-dessus, puis sélectionnez une matière. 
+                        Les notes seront automatiquement enregistrées à chaque modification.
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#yearChangeModal').modal('hide');">Fermer</button>
-                <a href="{{ route('esbtp.annees-universitaires.index') }}" target="_blank" class="btn btn-primary">
-                    <i class="fas fa-external-link-alt"></i> Aller aux Années
-                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Fermer
+                </button>
+                <button type="button" class="btn btn-success" id="saveAllNotesBtn" style="display: none;">
+                    <i class="fas fa-save me-1"></i>Enregistrer toutes les notes
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-function showYearChangeInfo() {
-    $('#yearChangeModal').modal('show');
-}
-
-// Gérer la fermeture de la modal d'info année
-$(document).ready(function() {
-    // Gérer la fermeture avec le bouton X
-    $('#yearChangeModal .close[data-dismiss="modal"]').on('click', function() {
-        $('#yearChangeModal').modal('hide');
-    });
-
-    // Gérer la fermeture avec le bouton Fermer
-    $('#yearChangeModal button[data-dismiss="modal"]').on('click', function() {
-        $('#yearChangeModal').modal('hide');
-    });
-});
-</script>
-
-@push('styles')
-<style>
-    /* Styles spécifiques pour DataTables avec framework moderne */
-    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-        background: var(--primary) !important;
-        border-color: var(--primary) !important;
-        color: white !important;
-    }
-
-    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
-        background: rgba(30, 58, 138, 0.1) !important;
-        border-color: var(--primary) !important;
-        color: var(--primary) !important;
-    }
-
-    /* Style pour les hover du tableau */
-    .table-hover tbody tr:hover {
-        background-color: rgba(30, 58, 138, 0.05);
-    }
-
-    /* Animation pour les boutons d'action */
-    .btn-acasi.btn-sm {
-        transition: transform 0.2s;
-    }
-
-    .btn-acasi.btn-sm:hover {
-        transform: translateY(-2px);
-    }
-</style>
-@endpush
+<!-- Modal pour charger evaluations.create -->
+<div class="modal fade" id="evaluationCreateModal" tabindex="-1" aria-labelledby="evaluationCreateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="evaluationCreateModalLabel">
+                    <i class="fas fa-plus-circle me-2"></i>Créer une évaluation
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="evaluationCreateContent">
+                <!-- Contenu du modal evaluations.create sera chargé ici via AJAX -->
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Chargement...</span>
+                    </div>
+                    <p class="mt-3">Chargement du formulaire...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 @push('scripts')
 <script>
-    $(document).ready(function() {
-        // Initialisation des tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
-        });
+// Variables globales
+let currentClassId = null;
+let currentClassname = '';
+let currentMatiereId = null;
+let evaluationsData = {}; // Stocke les évaluations par matière
+let notesData = {}; // Stocke les notes existantes
 
-        // Initialisation de Select2
-        $('.form-select').select2({
-            theme: 'bootstrap-5',
-            width: '100%'
-        });
-
-        // Initialisation de DataTables avec configuration en français
-        $('#notesTable').DataTable({
-            language: {
-                url: "//cdn.datatables.net/plug-ins/1.10.24/i18n/French.json"
-            },
-            order: [[ 5, "desc" ]],
-            responsive: true,
-            pageLength: 25,
-            dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
-                 '<"row"<"col-sm-12"tr>>' +
-                 '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
-            buttons: [
-                'copy', 'excel', 'pdf'
-            ]
+// Initialisation
+$(document).ready(function() {
+    // Recherche de classes en temps réel
+    $('#classSearch').on('keyup', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        $('.class-card').each(function() {
+            const className = $(this).data('class-name');
+            const filiere = $(this).data('class-filiere');
+            const niveau = $(this).data('class-niveau');
+            
+            const matches = className.includes(searchTerm) || 
+                           filiere.includes(searchTerm) || 
+                           niveau.includes(searchTerm);
+            
+            $(this).toggle(matches);
         });
     });
 
-    // Gestion de la suppression
-    let noteIdToDelete;
+    // Gestion de la sélection de matière
+    $('#matiereSelect').on('change', function() {
+        currentMatiereId = $(this).val();
+        if (currentClassId && currentMatiereId) {
+            loadEvaluationsAndNotes();
+        }
+    });
 
-    function confirmDelete(noteId) {
-        noteIdToDelete = noteId;
-        $('#deleteModal').modal('show');
+    // Initialiser le modal
+    $('#classSelectionModal').on('shown.bs.modal', function() {
+        if (currentClassId) {
+            $('#selectedClassLabel').text(currentClassname);
+        }
+    });
+});
+
+// Fonction pour sélectionner une classe
+function selectClass(classId, className) {
+    currentClassId = classId;
+    currentClassname = className;
+    
+    // Mettre à jour l'UI
+    $('#selectedClassLabel').text(className);
+    
+    // Réinitialiser la sélection de matière
+    $('#matiereSelect').val('');
+    currentMatiereId = null;
+    
+    // Vider le tableau
+    $('#studentsRows').html(`
+        <tr>
+            <td colspan="10" class="text-center text-muted py-5">
+                <i class="fas fa-info-circle fa-2x mb-3 d-block"></i>
+                Sélectionnez une matière pour afficher les notes
+            </td>
+        </tr>
+    `);
+    
+    // Montrer le modal
+    $('#classSelectionModal').modal('show');
+}
+
+// Fonction pour réinitialiser la recherche
+function resetSearch() {
+    $('#classSearch').val('');
+    $('.class-card').show();
+}
+
+// Fonction pour charger les évaluations et notes
+function loadEvaluationsAndNotes() {
+    if (!currentClassId || !currentMatiereId) return;
+
+    // Afficher un indicateur de chargement
+    $('#studentsRows').html(`
+        <tr>
+            <td colspan="10" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+                <p class="mt-3">Chargement des données...</p>
+            </td>
+        </tr>
+    `);
+
+    // Appel AJAX pour récupérer les évaluations et notes
+    $.ajax({
+        url: '{{ route("esbtp.evaluations.by-class-matiere", ["classId" => ":classId", "matiereId" => ":matiereId"]) }}'
+            .replace(':classId', currentClassId)
+            .replace(':matiereId', currentMatiereId),
+        method: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            evaluationsData = response.evaluations || {};
+            notesData = response.notes || {};
+            
+            // Reconstruire le tableau
+            buildNotesGrid();
+        },
+        error: function(xhr) {
+            console.error('Erreur lors du chargement des données:', xhr);
+            $('#studentsRows').html(`
+                <tr>
+                    <td colspan="10" class="text-center text-danger py-5">
+                        <i class="fas fa-exclamation-circle fa-2x mb-3 d-block"></i>
+                        Erreur lors du chargement des données
+                    </td>
+                </tr>
+            `);
+        }
+    });
+}
+
+// Fonction pour construire la grille des notes
+function buildNotesGrid() {
+    const evaluations = Object.values(evaluationsData);
+    
+    // Récupérer les étudiants de la classe
+    $.ajax({
+        url: '{{ route("esbtp.classes.students", ["classe" => ":classId"]) }}'.replace(':classId', currentClassId),
+        method: 'GET',
+        dataType: 'json',
+        success: function(students) {
+            // Construire l'en-tête du tableau avec les évaluations
+            const thead = $('#notesGrid thead tr');
+            thead.empty();
+            thead.append('<th style="width: 200px; min-width: 200px;">Étudiants</th>');
+            
+            evaluations.forEach(evaluation => {
+                const header = `
+                    <th id="evalHeader${evaluation.id}" style="min-width: 150px;">
+                        <div class="text-center fw-bold">${evaluation.titre || 'Éval'}</div>
+                        <div class="text-center small">
+                            <div class="d-flex justify-content-center align-items-center gap-2">
+                                <input type="number" value="${evaluation.bareme || 20}" 
+                                       class="form-control form-control-sm bareme-input" 
+                                       style="width: 50px; display: inline;" 
+                                       data-eval-id="${evaluation.id}"
+                                       title="Barème">
+                                <span>/</span>
+                                <input type="number" value="${evaluation.coefficient || 1}" 
+                                       class="form-control form-control-sm coeff-input" 
+                                       style="width: 40px; display: inline;" 
+                                       data-eval-id="${evaluation.id}"
+                                       title="Coefficient">
+                            </div>
+                            <small class="text-muted">${evaluation.type || 'Devoir'}</small>
+                        </div>
+                    </th>
+                `;
+                thead.append(header);
+            });
+            
+            thead.append('<th style="min-width: 100px;">Moyenne</th>');
+            thead.append('<th style="min-width: 100px;">Appréciation</th>');
+            
+            // Construire les lignes des étudiants
+            const tbody = $('#studentsRows');
+            tbody.empty();
+            
+            students.forEach(student => {
+                const row = $(`
+                    <tr data-student-id="${student.id}">
+                        <td class="fw-medium">
+                            <div class="d-flex align-items-center">
+                                <div class="me-2">
+                                    <i class="fas fa-user-graduate text-primary"></i>
+                                </div>
+                                <div>
+                                    ${student.nom} ${student.prenoms}
+                                    <br>
+                                    <small class="text-muted">${student.matricule || ''}</small>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `);
+                
+                // Ajouter les colonnes d'évaluations
+                evaluations.forEach(evaluation => {
+                    const note = notesData[student.id]?.[evaluation.id] || '';
+                    const isAbsent = notesData[student.id]?.[evaluation.id + '_absent'] || false;
+                    
+                    const noteCell = `
+                        <td class="text-center">
+                            <div class="position-relative">
+                                <input type="number" 
+                                       class="form-control note-input" 
+                                       value="${note}"
+                                       data-student-id="${student.id}"
+                                       data-eval-id="${evaluation.id}"
+                                       step="0.25"
+                                       min="0"
+                                       max="${evaluation.bareme || 20}"
+                                       style="text-align: center;"
+                                       onchange="saveNote(${student.id}, ${evaluation.id}, this.value)">
+                                <div class="form-check form-check-inline position-absolute" style="top: 5px; right: 5px;">
+                                    <input class="form-check-input absence-checkbox" 
+                                           type="checkbox" 
+                                           id="absent-${student.id}-${evaluation.id}"
+                                           data-student-id="${student.id}"
+                                           data-eval-id="${evaluation.id}"
+                                           ${isAbsent ? 'checked' : ''}
+                                           onchange="toggleAbsence(${student.id}, ${evaluation.id}, this.checked)">
+                                    <label class="form-check-label small" for="absent-${student.id}-${evaluation.id}" title="Absent">
+                                        <i class="fas fa-user-slash"></i>
+                                    </label>
+                                </div>
+                            </div>
+                        </td>
+                    `;
+                    row.append(noteCell);
+                });
+                
+                // Colonnes moyenne et appréciation
+                row.append('<td class="text-center fw-bold average-cell">--</td>');
+                row.append('<td class="text-center"><span class="badge bg-secondary appreciation-badge">--</span></td>');
+                
+                tbody.append(row);
+            });
+            
+            // Construire la ligne des moyennes de classe
+            buildClassAveragesRow(evaluations);
+            
+            // Calculer les moyennes initiales
+            calculateAllAverages();
+            
+            // Afficher le bouton d'enregistrement
+            $('#saveAllNotesBtn').show();
+        },
+        error: function(xhr) {
+            console.error('Erreur lors du chargement des étudiants:', xhr);
+        }
+    });
+}
+
+// Fonction pour construire la ligne des moyennes de classe
+function buildClassAveragesRow(evaluations) {
+    const tfoot = $('#classAveragesRow');
+    tfoot.empty().show();
+    
+    const row = $('<tr class="bg-light fw-bold"></tr>');
+    row.append('<td class="text-end">Moyenne Classe</td>');
+    
+    evaluations.forEach(evaluation => {
+        row.append(`<td class="text-center class-avg-${evaluation.id}">--</td>`);
+    });
+    
+    row.append('<td class="text-center class-overall-avg">--</td>');
+    row.append('<td></td>');
+    
+    tfoot.append(row);
+}
+
+// Fonction pour créer une évaluation
+function createEvaluation() {
+    if (!currentClassId || !currentMatiereId) {
+        alert('Veuillez d\'abord sélectionner une classe et une matière.');
+        return;
     }
-
-    document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
-        var form = document.getElementById('delete-form');
-        form.action = "/esbtp/notes/" + noteIdToDelete;
-        form.submit();
+    
+    // Charger le modal evaluations.create via AJAX
+    $.ajax({
+        url: '{{ route("esbtp.evaluations.create") }}',
+        method: 'GET',
+        data: {
+            classe_id: currentClassId,
+            matiere_id: currentMatiereId
+        },
+        success: function(response) {
+            $('#evaluationCreateContent').html(response);
+            $('#evaluationCreateModal').modal('show');
+        },
+        error: function(xhr) {
+            console.error('Erreur lors du chargement du formulaire:', xhr);
+            alert('Erreur lors du chargement du formulaire de création d\'évaluation.');
+        }
     });
+}
 
-    // Animation des badges au survol
-    document.querySelectorAll('.badge').forEach(badge => {
-        badge.addEventListener('mouseenter', function() {
-            this.style.transform = 'scale(1.1)';
-            this.style.transition = 'transform 0.2s';
-        });
-        badge.addEventListener('mouseleave', function() {
-            this.style.transform = 'scale(1)';
-        });
+// Fonction pour sauvegarder une note
+function saveNote(studentId, evaluationId, noteValue) {
+    const isAbsent = $(`#absent-${studentId}-${evaluationId}`).is(':checked');
+    
+    $.ajax({
+        url: '{{ route("esbtp.notes.store") }}',
+        method: 'POST',
+        data: {
+            _token: '{{ csrf_token() }}',
+            etudiant_id: studentId,
+            evaluation_id: evaluationId,
+            note: isAbsent ? 0 : noteValue,
+            is_absent: isAbsent ? 'on' : ''
+        },
+        success: function(response) {
+            // Animation de succès
+            triggerRowHighlight(studentId);
+            
+            // Mettre à jour les données locales
+            if (!notesData[studentId]) notesData[studentId] = {};
+            notesData[studentId][evaluationId] = isAbsent ? 0 : noteValue;
+            notesData[studentId][evaluationId + '_absent'] = isAbsent;
+            
+            // Recalculer les moyennes
+            calculateStudentAverage(studentId);
+            calculateClassAverages();
+        },
+        error: function(xhr) {
+            console.error('Erreur lors de la sauvegarde:', xhr);
+            alert('Erreur lors de la sauvegarde de la note.');
+        }
     });
+}
+
+// Fonction pour basculer l'état d'absence
+function toggleAbsence(studentId, evaluationId, isAbsent) {
+    const input = $(`input[data-student-id="${studentId}"][data-eval-id="${evaluationId}"]`);
+    
+    if (isAbsent) {
+        input.val('0').prop('disabled', true);
+    } else {
+        input.val('').prop('disabled', false);
+    }
+    
+    // Sauvegarder automatiquement
+    saveNote(studentId, evaluationId, input.val());
+}
+
+// Fonction pour calculer toutes les moyennes
+function calculateAllAverages() {
+    $('tr[data-student-id]').each(function() {
+        const studentId = $(this).data('student-id');
+        calculateStudentAverage(studentId);
+    });
+    calculateClassAverages();
+}
+
+// Fonction pour calculer la moyenne d'un étudiant
+function calculateStudentAverage(studentId) {
+    const row = $(`tr[data-student-id="${studentId}"]`);
+    const noteInputs = row.find('.note-input');
+    
+    let totalPoints = 0;
+    let totalCoefficients = 0;
+    let hasNotes = false;
+    
+    noteInputs.each(function() {
+        const evalId = $(this).data('eval-id');
+        const noteValue = parseFloat($(this).val()) || 0;
+        const isAbsent = $(`#absent-${studentId}-${evalId}`).is(':checked');
+        const coeffInput = $(`.coeff-input[data-eval-id="${evalId}"]`);
+        const coefficient = parseFloat(coeffInput.val()) || 1;
+        const baremeInput = $(`.bareme-input[data-eval-id="${evalId}"]`);
+        const bareme = parseFloat(baremeInput.val()) || 20;
+        
+        if (!isAbsent && !isNaN(noteValue) && noteValue > 0) {
+            // Normaliser la note sur 20
+            const normalizedNote = (noteValue / bareme) * 20;
+            totalPoints += normalizedNote * coefficient;
+            totalCoefficients += coefficient;
+            hasNotes = true;
+        }
+    });
+    
+    const averageCell = row.find('.average-cell');
+    const appreciationBadge = row.find('.appreciation-badge');
+    
+    if (hasNotes && totalCoefficients > 0) {
+        const moyenne = totalPoints / totalCoefficients;
+        averageCell.text(moyenne.toFixed(2));
+        
+        // Déterminer l'appréciation
+        let appreciation = '';
+        let badgeClass = '';
+        
+        if (moyenne >= 16) {
+            appreciation = 'Excellent';
+            badgeClass = 'bg-success';
+        } else if (moyenne >= 14) {
+            appreciation = 'Très bien';
+            badgeClass = 'bg-info';
+        } else if (moyenne >= 12) {
+            appreciation = 'Bien';
+            badgeClass = 'bg-primary';
+        } else if (moyenne >= 10) {
+            appreciation = 'Passable';
+            badgeClass = 'bg-warning';
+        } else {
+            appreciation = 'Insuffisant';
+            badgeClass = 'bg-danger';
+        }
+        
+        appreciationBadge.text(appreciation).removeClass().addClass(`badge ${badgeClass}`);
+    } else {
+        averageCell.text('--');
+        appreciationBadge.text('--').removeClass().addClass('badge bg-secondary');
+    }
+}
+
+// Fonction pour calculer les moyennes de classe
+function calculateClassAverages() {
+    const evaluations = Object.values(evaluationsData);
+    
+    evaluations.forEach(evaluation => {
+        const evalId = evaluation.id;
+        const noteInputs = $(`input[data-eval-id="${evalId}"]`);
+        
+        let total = 0;
+        let count = 0;
+        
+        noteInputs.each(function() {
+            const studentId = $(this).data('student-id');
+            const isAbsent = $(`#absent-${studentId}-${evalId}`).is(':checked');
+            const noteValue = parseFloat($(this).val()) || 0;
+            const baremeInput = $(`.bareme-input[data-eval-id="${evalId}"]`);
+            const bareme = parseFloat(baremeInput.val()) || 20;
+            
+            if (!isAbsent && !isNaN(noteValue)) {
+                // Normaliser sur 20
+                const normalizedNote = (noteValue / bareme) * 20;
+                total += normalizedNote;
+                count++;
+            }
+        });
+        
+        const avgCell = $(`.class-avg-${evalId}`);
+        if (count > 0) {
+            avgCell.text((total / count).toFixed(2));
+        } else {
+            avgCell.text('--');
+        }
+    });
+    
+    // Calculer la moyenne générale de la classe
+    const students = $('tr[data-student-id]');
+    let classTotal = 0;
+    let classCount = 0;
+    
+    students.each(function() {
+        const avgText = $(this).find('.average-cell').text();
+        if (avgText !== '--') {
+            classTotal += parseFloat(avgText);
+            classCount++;
+        }
+    });
+    
+    const overallAvgCell = $('.class-overall-avg');
+    if (classCount > 0) {
+        overallAvgCell.text((classTotal / classCount).toFixed(2));
+    } else {
+        overallAvgCell.text('--');
+    }
+}
+
+// Fonction pour déclencher l'animation de surbrillance
+function triggerRowHighlight(studentId) {
+    const row = $(`tr[data-student-id="${studentId}"]`);
+    row.addClass('highlight-success');
+    
+    setTimeout(function() {
+        row.removeClass('highlight-success');
+    }, 2000);
+}
+
+// Fonction pour enregistrer toutes les notes
+$('#saveAllNotesBtn').on('click', function() {
+    const btn = $(this);
+    const originalText = btn.html();
+    
+    btn.html('<i class="fas fa-spinner fa-spin me-1"></i> Enregistrement...').prop('disabled', true);
+    
+    // Simuler l'enregistrement de toutes les notes
+    let savedCount = 0;
+    const totalNotes = $('.note-input').length;
+    
+    $('.note-input').each(function() {
+        const studentId = $(this).data('student-id');
+        const evaluationId = $(this).data('eval-id');
+        const noteValue = $(this).val();
+        
+        // Simuler l'enregistrement
+        setTimeout(() => {
+            savedCount++;
+            if (savedCount === totalNotes) {
+                btn.html('<i class="fas fa-check me-1"></i> Toutes les notes enregistrées').prop('disabled', false);
+                setTimeout(() => {
+                    btn.html(originalText);
+                }, 2000);
+            }
+        }, 100);
+    });
+});
+
+// Gestion de la soumission du formulaire d'évaluation
+$(document).on('submit', '#evaluationCreateForm', function(e) {
+    e.preventDefault();
+    
+    const form = $(this);
+    const formData = new FormData(this);
+    
+    $.ajax({
+        url: form.attr('action'),
+        method: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+            $('#evaluationCreateModal').modal('hide');
+            loadEvaluationsAndNotes(); // Recharger les données
+            showSuccessMessage('Évaluation créée avec succès !');
+        },
+        error: function(xhr) {
+            console.error('Erreur lors de la création:', xhr);
+            alert('Erreur lors de la création de l\'évaluation.');
+        }
+    });
+});
+
+// Fonction pour afficher un message de succès
+function showSuccessMessage(message) {
+    const alert = $(`
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `);
+    
+    $('.dashboard-header').after(alert);
+    
+    setTimeout(() => {
+        alert.alert('close');
+    }, 5000);
+}
 </script>
+@endpush
+
+@push('styles')
+<style>
+.hover-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.hover-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+}
+
+.highlight-success {
+    animation: highlightAnimation 2s ease-in-out;
+    background-color: rgba(40, 167, 69, 0.1) !important;
+}
+
+@keyframes highlightAnimation {
+    0% { background-color: rgba(40, 167, 69, 0.3); }
+    70% { background-color: rgba(40, 167, 69, 0.1); }
+    100% { background-color: transparent; }
+}
+
+.note-input {
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.note-input:focus {
+    border-color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+.bareme-input, .coeff-input {
+    font-size: 0.8rem;
+    padding: 0.1rem 0.2rem;
+}
+
+.absence-checkbox:checked + label {
+    color: #dc3545;
+}
+
+.class-card {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#notesGrid th {
+    vertical-align: middle;
+    position: relative;
+}
+
+#notesGrid th .text-center {
+    line-height: 1.2;
+}
+
+#notesGrid td {
+    vertical-align: middle;
+}
+</style>
 @endpush

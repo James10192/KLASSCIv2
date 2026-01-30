@@ -1871,6 +1871,12 @@ Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.'
         Route::delete('/{note}', [\App\Http\Controllers\ESBTPNoteController::class, 'destroy'])->name('destroy')
             ->middleware('permission:delete_grades');
         // saisie-rapide already defined in enseignant|coordinateur group (line 1347)
+        
+        // API routes for new notes system
+        Route::get('/api/evaluations/by-class-matiere/{classId}/{matiereId}', [\App\Http\Controllers\ESBTPEvaluationController::class, 'byClassMatiere'])
+            ->name('evaluations.by-class-matiere');
+        Route::get('/api/classes/{classe}/students', [\App\Http\Controllers\ESBTPClasseController::class, 'students'])
+            ->name('classes.students');
     });
 
     // Routes pour les annonces - REMOVED (déjà définies ligne 617 dans le groupe esbtp)

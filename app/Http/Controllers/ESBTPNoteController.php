@@ -34,42 +34,65 @@ class ESBTPNoteController extends Controller
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', 1)->first();
         $anneeAcademique = $anneeCourante ? $anneeCourante->name : 'Aucune année active';
 
-        // Initialize query with proper eager loading and year filtering
-        $query = ESBTPNote::whereHas('evaluation', function ($q) use ($anneeCourante) {
-            if ($anneeCourante) {
-                $q->where('annee_universitaire_id', $anneeCourante->id);
-            }
-        })
-            ->with([
-                'evaluation.matiere',
-                'evaluation.classe',
-                'etudiant',
-                'createdBy',
-            ]);
+        // Check if we're using the new modal system (via AJAX call)
+        $isAjax = $request->ajax() || $request->wantsJson();
 
-        // Apply filters
-        if ($request->filled('classe_id')) {
-            $query->whereHas('evaluation', function ($q) use ($request) {
-                $q->where('classe_id', $request->classe_id);
-            });
-        }
+        if ($isAjax) {
+            // For AJAX requests, use the old system
+            $query = ESBTPNote::whereHas('evaluation', function ($q) use ($anneeCourante) {
+                if ($anneeCourante) {
+                    $q->where('annee_universitaire_id', $anneeCourante->id);
+                }
+            })
+                ->with([
+                    'evaluation.matiere',
+                    'evaluation.classe',
+                    'etudiant',
+                    'createdBy',
+                ]);
 
-        if ($request->filled('matiere_id')) {
-            $query->whereHas('evaluation', function ($q) use ($request) {
-                $q->whereHas('matiere', function ($mq) use ($request) {
-                    $mq->where('id', $request->matiere_id);
+            // Apply filters
+            if ($request->filled('classe_id')) {
+                $query->whereHas('evaluation', function ($q) use ($request) {
+                    $q->where('classe_id', $request->classe_id);
                 });
-            });
+            }
+
+            if ($request->filled('matiere_id')) {
+                $query->whereHas('evaluation', function ($q) use ($request) {
+                    $q->whereHas('matiere', function ($mq) use ($request) {
+                        $mq->where('id', $request->matiere_id);
+                    });
+                });
+            }
+
+            // Get the paginated results
+            $notes = $query->latest()->paginate(50);
+
+            // Get filter options
+            $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
+            $matieres = ESBTPMatiere::orderBy('name')->get();
+
+            return view('esbtp.notes.index', compact('notes', 'classes', 'matieres', 'anneeAcademique'));
         }
 
-        // Get the paginated results
-        $notes = $query->latest()->paginate(50);
+        // For normal requests, load active classes with student counts
+        $classes = ESBTPClasse::where('is_active', true)
+            ->withCount(['inscriptions' => function ($query) use ($anneeCourante) {
+                $query->where('status', 'active');
+                if ($anneeCourante) {
+                    $query->where('annee_universitaire_id', $anneeCourante->id);
+                }
+            }])
+            ->with(['filiere', 'niveau', 'annee'])
+            ->orderBy('name')
+            ->get();
 
-        // Get filter options
-        $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
+        // Get filter options for dropdowns (if needed)
+        $allClasses = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
         $matieres = ESBTPMatiere::orderBy('name')->get();
 
-        return view('esbtp.notes.index', compact('notes', 'classes', 'matieres', 'anneeAcademique'));
+        return view('esbtp.notes.index', compact('classes', 'allClasses', 'matieres', 'anneeAcademique'));
     }
 
     /**

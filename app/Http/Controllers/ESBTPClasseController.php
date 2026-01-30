@@ -896,6 +896,87 @@ class ESBTPClasseController extends Controller
     }
 
     /**
+     * Get students for a class (API for new notes system)
+     * Used in the new notes grid for displaying student rows
+     *
+     * @param Request $request
+     * @param ESBTPClasse $classe
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function students(Request $request, ESBTPClasse $classe)
+    {
+        try {
+            \Log::info('👥 [API] students - Request received', [
+                'class_id' => $classe->id,
+                'class_name' => $classe->name,
+                'user_id' => auth()->id(),
+            ]);
+
+            // Get current academic year
+            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            if (!$anneeCourante) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucune année universitaire active.',
+                ], 400);
+            }
+
+            // Get active students for this class in current academic year
+            $etudiants = $classe->inscriptions()
+                ->with(['etudiant'])
+                ->where('status', 'active')
+                ->where('annee_universitaire_id', $anneeCourante->id)
+                ->get()
+                ->map(function ($inscription) {
+                    $etudiant = $inscription->etudiant;
+                    return [
+                        'id' => $etudiant->id,
+                        'nom' => $etudiant->nom,
+                        'prenoms' => $etudiant->prenoms,
+                        'matricule' => $etudiant->matricule,
+                        'nom_complet' => $etudiant->nom . ' ' . $etudiant->prenoms,
+                        'photo_url' => $etudiant->photo_url,
+                        'inscription_id' => $inscription->id,
+                    ];
+                })
+                ->sortBy('nom')
+                ->values();
+
+            \Log::info('✅ [API] students - Success', [
+                'class_id' => $classe->id,
+                'class_name' => $classe->name,
+                'student_count' => $etudiants->count(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'class' => [
+                    'id' => $classe->id,
+                    'name' => $classe->name,
+                    'code' => $classe->code,
+                    'filiere' => $classe->filiere->name ?? null,
+                    'niveau' => $classe->niveau->name ?? null,
+                ],
+                'students' => $etudiants,
+                'student_count' => $etudiants->count(),
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('❌ [API] students - Error', [
+                'class_id' => $classe->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des étudiants.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Récupère la configuration matricule pour le niveau d'études d'une classe
      *
      * @param  int  $id

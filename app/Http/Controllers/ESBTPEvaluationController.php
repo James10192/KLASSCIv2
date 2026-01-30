@@ -1452,4 +1452,117 @@ $evaluation->titre = $request->titre;
 
         return $record?->coefficient;
     }
+
+    /**
+     * Get evaluations for a specific class and subject (AJAX API)
+     * Used in the new notes system for grid display
+     *
+     * @param Request $request
+     * @param int $classId
+     * @param int $matiereId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function byClassMatiere(Request $request, $classId, $matiereId)
+    {
+        try {
+            \Log::info('📚 [API] byClassMatiere - Request received', [
+                'class_id' => $classId,
+                'matiere_id' => $matiereId,
+                'user_id' => auth()->id(),
+            ]);
+
+            // Validate class exists
+            $classe = ESBTPClasse::find($classId);
+            if (!$classe) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Classe non trouvée.',
+                ], 404);
+            }
+
+            // Validate subject exists
+            $matiere = ESBTPMatiere::find($matiereId);
+            if (!$matiere) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Matière non trouvée.',
+                ], 404);
+            }
+
+            // Get current academic year
+            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            if (!$anneeCourante) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucune année universitaire active.',
+                ], 400);
+            }
+
+            // Get evaluations for this class, subject, and academic year
+            $evaluations = ESBTPEvaluation::with(['notes.etudiant'])
+                ->where('classe_id', $classId)
+                ->where('matiere_id', $matiereId)
+                ->where('annee_universitaire_id', $anneeCourante->id)
+                ->whereIn('status', ['scheduled', 'in_progress', 'completed'])
+                ->orderBy('date_evaluation', 'desc')
+                ->get()
+                ->map(function ($evaluation) {
+                    return [
+                        'id' => $evaluation->id,
+                        'titre' => $evaluation->titre,
+                        'date_evaluation' => $evaluation->date_evaluation,
+                        'bareme' => $evaluation->bareme,
+                        'coefficient' => $evaluation->coefficient,
+                        'type' => $evaluation->type,
+                        'notes' => $evaluation->notes->map(function ($note) {
+                            return [
+                                'id' => $note->id,
+                                'etudiant_id' => $note->etudiant_id,
+                                'note' => $note->note,
+                                'observation' => $note->observation,
+                            ];
+                        })->keyBy('etudiant_id'),
+                    ];
+                });
+
+            \Log::info('✅ [API] byClassMatiere - Success', [
+                'class_id' => $classId,
+                'class_name' => $classe->name,
+                'matiere_id' => $matiereId,
+                'matiere_name' => $matiere->name,
+                'evaluation_count' => $evaluations->count(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'class' => [
+                    'id' => $classe->id,
+                    'name' => $classe->name,
+                    'filiere' => $classe->filiere->name ?? null,
+                    'niveau' => $classe->niveau->name ?? null,
+                ],
+                'matiere' => [
+                    'id' => $matiere->id,
+                    'name' => $matiere->name,
+                    'code' => $matiere->code,
+                ],
+                'evaluations' => $evaluations,
+                'evaluation_count' => $evaluations->count(),
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('❌ [API] byClassMatiere - Error', [
+                'class_id' => $classId,
+                'matiere_id' => $matiereId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la récupération des évaluations.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }
