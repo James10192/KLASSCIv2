@@ -1394,7 +1394,7 @@
         // Si des coefficients ont été modifiés, les sauvegarder
         if (Object.keys(modifiedCoefficients).length > 0) {
             $.ajax({
-                url: '{{ route("resultats.bulk-update-coefficients") }}',
+                url: '{{ url("/esbtp-special/resultats/bulk-update-coefficients") }}',
                 method: 'POST',
                 data: {
                     _token: '{{ csrf_token() }}',
