@@ -914,7 +914,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Routes API utilisées par les formulaires
 
             // Routes pour les notes
-            Route::resource('notes', ESBTPNoteController::class)
+            Route::resource('notes', \App\Http\Controllers\ESBTP\NoteController::class)
                 ->names([
                     'index' => 'esbtp.notes.index',
                     'create' => 'esbtp.notes.create',
