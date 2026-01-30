@@ -615,7 +615,7 @@
 
         // Fetch existing moyennes for selected students and matiere
         $.ajax({
-            url: '{{ route("esbtp.resultats.get-moyennes") }}',
+            url: '{{ url("/esbtp-special/resultats/get-moyennes") }}',
             method: 'GET',
             data: {
                 classe_id: classeId,
@@ -692,7 +692,7 @@
 
         // Fetch all existing moyennes for selected students and all matières
         $.ajax({
-            url: '{{ route("esbtp.resultats.get-moyennes") }}',
+            url: '{{ url("/esbtp-special/resultats/get-moyennes") }}',
             method: 'GET',
             data: {
                 classe_id: classeId,
@@ -874,7 +874,7 @@
 
         // Fetch existing absences for selected students
         $.ajax({
-            url: '{{ route("esbtp.resultats.get-absences") }}',
+            url: '{{ url("/esbtp-special/resultats/get-absences") }}',
             method: 'GET',
             data: {
                 classe_id: classeId,
@@ -1129,7 +1129,7 @@
         }
 
         $.ajax({
-            url: '{{ route("esbtp.resultats.bulk-update-moyennes") }}',
+            url: '{{ url("/esbtp-special/resultats/bulk-update-moyennes") }}',
             method: 'POST',
             data: {
                 _token: '{{ csrf_token() }}',
@@ -1176,7 +1176,7 @@
         }
 
         $.ajax({
-            url: '{{ route("esbtp.resultats.bulk-update-professeurs") }}',
+            url: '{{ url("/esbtp-special/resultats/bulk-update-professeurs") }}',
             method: 'POST',
             data: {
                 _token: '{{ csrf_token() }}',
@@ -1225,7 +1225,7 @@
         }
 
         $.ajax({
-            url: '{{ route("esbtp.resultats.bulk-update-absences") }}',
+            url: '{{ url("/esbtp-special/resultats/bulk-update-absences") }}',
             method: 'POST',
             data: {
                 _token: '{{ csrf_token() }}',
@@ -1279,7 +1279,7 @@
         }
 
         $.ajax({
-            url: '{{ route("esbtp.resultats.bulk-update-matieres-config") }}',
+            url: '{{ url("/esbtp-special/resultats/bulk-update-matieres-config") }}',
             method: 'POST',
             data: {
                 _token: '{{ csrf_token() }}',
