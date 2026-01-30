@@ -1,6 +1,12 @@
 @extends('layouts.app')
 
+@extends('layouts.app')
+
 @section('title', 'Gestion des Notes | KLASSCI')
+
+@push('styles')
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@endpush
 
 @section('page_title', 'Gestion des Notes')
 
@@ -99,61 +105,97 @@
             </div>
         </div>
 
-        <!-- Liste des classes -->
-        <div class="main-card">
-            <div class="main-card-header">
-                <div class="main-card-title">
-                    <i class="fas fa-users"></i>
-                    Classes disponibles
-                </div>
-                <div class="main-card-subtitle">{{ count($classes) }} classes trouvées</div>
+        <!-- Liste des classes en grid moderne -->
+        <div class="card-moderne" style="padding: var(--space-lg);">
+            <div class="section-title">
+                <i class="fas fa-list me-2"></i>Classes disponibles pour la saisie des notes
+                <span class="section-subtitle">{{ count($classes) }} classes trouvées</span>
             </div>
-            <div class="main-card-body">
-                <div class="row" id="classesContainer">
-                    @forelse($classes as $classe)
-                        <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-3 class-card" data-class-name="{{ strtolower($classe->name) }}" data-class-filiere="{{ strtolower($classe->filiere->name ?? '') }}" data-class-niveau="{{ strtolower($classe->niveau->name ?? '') }}">
-                            <div class="card border-0 shadow-sm h-100 hover-card" style="cursor: pointer;" onclick="selectClass({{ $classe->id }}, '{{ $classe->name }}')">
-                                <div class="card-header bg-primary text-white py-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-0">{{ $classe->name }}</h6>
-                                        <span class="badge bg-light text-primary">{{ $classe->capacity }}</span>
+
+            <div class="resultats-grid" id="classes-grid" style="margin-top: var(--space-lg);">
+                @forelse($classes as $classe)
+                    <div class="card-moderne resultat-card animate-slide-up" 
+                         data-classe-id="{{ $classe->id }}" 
+                         style="cursor: pointer; border-left: 4px solid {{ $classe->is_active ? 'var(--success)' : 'var(--neutral)' }};"
+                         onclick="selectClass({{ $classe->id }}, '{{ $classe->name }}')">
+                        <!-- En-tête classe -->
+                        <div style="display: flex; justify-content: between; align-items: start; margin-bottom: var(--space-md);">
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; margin-bottom: var(--space-sm);">
+                                    <div style="width: 40px; height: 40px; background: {{ $classe->is_active ? 'var(--success)' : 'var(--neutral)' }}; border-radius: var(--radius-circle); display: flex; align-items: center; justify-content: center; margin-right: var(--space-sm);">
+                                        <i class="fas fa-graduation-cap" style="color: white; font-size: 16px;"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-bold color-primary" style="font-size: var(--text-normal);">{{ $classe->name }}</div>
+                                        <div style="font-size: var(--text-small); color: var(--text-secondary);">Code: {{ $classe->code }}</div>
                                     </div>
                                 </div>
-                                <div class="card-body">
-                                    <div class="mb-2">
-                                        <small class="text-muted d-block">
-                                            <i class="fas fa-graduation-cap me-1"></i>
-                                            {{ $classe->filiere->name ?? 'Non spécifié' }}
-                                        </small>
-                                        <small class="text-muted d-block">
-                                            <i class="fas fa-layer-group me-1"></i>
-                                            {{ $classe->niveau->name ?? 'Non spécifié' }}
-                                        </small>
-                                    </div>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <span class="badge bg-success">
-                                                <i class="fas fa-user-graduate me-1"></i>
-                                                {{ $classe->etudiants_count ?? 0 }} étudiants
-                                            </span>
+
+                                <!-- Filière et niveau -->
+                                <div style="margin-bottom: var(--space-md);">
+                                    @if ($classe->filiere)
+                                        <div style="font-size: var(--text-small); color: var(--text-primary); margin-bottom: var(--space-xs);">
+                                            <i class="fas fa-layer-group me-1"></i><strong>{{ $classe->filiere->name }}</strong>
+                                            @if ($classe->filiere->parent)
+                                                <br><span style="color: var(--text-muted); margin-left: 16px;">Option de {{ $classe->filiere->parent->name }}</span>
+                                            @endif
                                         </div>
-                                        <div>
-                                            <i class="fas fa-chevron-right text-primary"></i>
+                                    @endif
+                                    @if ($classe->niveau)
+                                        <div style="font-size: var(--text-small); color: var(--text-secondary);">
+                                            <i class="fas fa-level-up-alt me-1"></i>{{ $classe->niveau->name }}
                                         </div>
-                                    </div>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <!-- Statut -->
+                            <div>
+                                <span class="badge {{ $classe->is_active ? 'success' : 'danger' }}">
+                                    {{ $classe->is_active ? 'Active' : 'Inactive' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Statistiques -->
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md); margin-bottom: var(--space-md); padding: var(--space-sm); background: rgba(248, 250, 252, 0.5); border-radius: var(--radius-small);">
+                            <div class="text-center">
+                                <div style="font-size: var(--text-small); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Capacité</div>
+                                <div class="font-bold color-primary">{{ $classe->places_totales ?? 0 }}</div>
+                            </div>
+                            <div class="text-center">
+                                <div style="font-size: var(--text-small); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Étudiants</div>
+                                <div class="font-bold color-accent">{{ $classe->inscriptions_count ?? 0 }}</div>
+                            </div>
+                            <div class="text-center">
+                                <div style="font-size: var(--text-small); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Disponibles</div>
+                                <div class="font-bold color-{{ (($classe->places_totales ?? 0) - ($classe->inscriptions_count ?? 0)) > 0 ? 'success' : 'danger' }}">
+                                    {{ ($classe->places_totales ?? 0) - ($classe->inscriptions_count ?? 0) }}
                                 </div>
                             </div>
                         </div>
-                    @empty
-                        <div class="col-12 text-center py-4">
-                            <div class="my-4 text-muted">
-                                <i class="fas fa-info-circle fs-1 mb-3 d-block"></i>
-                                <p class="mb-0">Aucune classe trouvée</p>
-                                <p class="small">Contactez l'administrateur pour créer des classes</p>
+
+                        <!-- Actions -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f3f4f6; padding-top: var(--space-md);">
+                            <div style="font-size: var(--text-small); color: var(--text-muted);">
+                                @if ($classe->annee)
+                                    <i class="fas fa-calendar me-1"></i>{{ $classe->annee->name }}
+                                @endif
+                            </div>
+                            <div style="display: flex; gap: var(--space-xs);">
+                                <button type="button" class="btn-acasi primary" onclick="event.stopPropagation(); selectClass({{ $classe->id }}, '{{ $classe->name }}')" title="Saisir les notes">
+                                    <i class="fas fa-edit"></i>
+                                </button>
                             </div>
                         </div>
-                    @endforelse
-                </div>
+                    </div>
+                @empty
+                    <div class="text-center" style="padding: var(--space-xl); color: var(--text-secondary); grid-column: 1 / -1;">
+                        <i class="fas fa-graduation-cap" style="font-size: 48px; margin-bottom: var(--space-lg); color: var(--neutral);"></i>
+                        <h5 style="color: var(--text-secondary); margin-bottom: var(--space-sm);">Aucune classe trouvée</h5>
+                        <p style="color: var(--text-muted);">Aucune classe active n'a été trouvée pour la saisie des notes.</p>
+                    </div>
+                @endforelse
             </div>
         </div>
     </div>
@@ -389,7 +431,14 @@ function buildNotesGrid() {
         url: '{{ route("esbtp.notes.classes.students", ["classe" => ":classId"]) }}'.replace(':classId', currentClassId),
         method: 'GET',
         dataType: 'json',
-        success: function(students) {
+        success: function(response) {
+            if (!response.success) {
+                console.error('Erreur API:', response.message);
+                return;
+            }
+            
+            const students = response.students || [];
+            
             // Construire l'en-tête du tableau avec les évaluations
             const thead = $('#notesGrid thead tr');
             thead.empty();
@@ -866,3 +915,31 @@ function showSuccessMessage(message) {
 }
 </style>
 @endpush
+
+@section('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialiser la recherche de classes
+    $('#classSearch').on('keyup', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        $('.class-card').each(function() {
+            const className = $(this).data('class-name') || '';
+            const filiereName = $(this).data('class-filiere') || '';
+            const niveauName = $(this).data('class-niveau') || '';
+            
+            const matches = className.includes(searchTerm) || 
+                           filiereName.includes(searchTerm) || 
+                           niveauName.includes(searchTerm);
+            
+            $(this).toggle(matches);
+        });
+    });
+});
+
+// Fonction pour réinitialiser la recherche
+function resetSearch() {
+    $('#classSearch').val('');
+    $('.class-card').show();
+}
+</script>
+@endsection
