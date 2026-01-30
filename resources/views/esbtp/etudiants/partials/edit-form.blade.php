@@ -53,12 +53,30 @@
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
-                                            <div class="col-md-4 mb-3">
-                                                <label for="matricule" class="form-label">Matricule</label>
-                                                <input type="text" class="form-control" id="matricule" name="matricule" value="{{ $etudiant->matricule }}" {{ auth()->user()->hasRole('superAdmin') ? '' : 'readonly' }}>
-                                                @if(!auth()->user()->hasRole('superAdmin'))
-                                                    <small class="form-text text-muted">Le matricule ne peut pas être modifié.</small>
-                                                @endif
+                                            <div class="col-md-4 mb-3" id="matriculeContainer">
+                                                <label for="matricule" class="form-label">
+                                                    Matricule
+                                                    <span id="matriculeMode" class="badge bg-info ms-1"></span>
+                                                </label>
+                                                <div class="input-group">
+                                                    <input type="text" class="form-control" id="matriculeInput" name="matricule" value="{{ old('matricule', $etudiant->matricule) }}" {{ auth()->user()->hasRole('superAdmin') ? '' : 'readonly' }}>
+                                                    @if(auth()->user()->hasRole('superAdmin'))
+                                                        <button type="button" class="btn btn-outline-primary" id="generateMatriculeBtn" style="display: none;">
+                                                            <i class="fas fa-magic"></i> Générer
+                                                        </button>
+                                                        <button type="button" class="btn btn-outline-secondary" id="checkMatriculeBtn" style="display: none;">
+                                                            <i class="fas fa-search"></i> Vérifier
+                                                        </button>
+                                                    @endif
+                                                </div>
+                                                <small class="form-text text-muted" id="matriculeHelp">
+                                                    @if(auth()->user()->hasRole('superAdmin'))
+                                                        Matricule unique de l'étudiant
+                                                    @else
+                                                        Le matricule ne peut pas être modifié.
+                                                    @endif
+                                                </small>
+                                                <div id="matriculeStatus" class="mt-1"></div>
                                             </div>
                                             <div class="col-md-4 mb-3">
                                                 <label for="nom" class="form-label">Nom</label>

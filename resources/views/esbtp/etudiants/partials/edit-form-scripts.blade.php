@@ -446,5 +446,324 @@
             }
         });
 
+        // ========================
+        // GESTION DES MATRICULES
+        // ========================
+
+        const matriculeInput = document.getElementById('matriculeInput');
+        const matriculeContainer = document.getElementById('matriculeContainer');
+        const generateBtn = document.getElementById('generateMatriculeBtn');
+        const checkBtn = document.getElementById('checkMatriculeBtn');
+        const matriculeStatus = document.getElementById('matriculeStatus');
+        const matriculeMode = document.getElementById('matriculeMode');
+        const matriculeHelp = document.getElementById('matriculeHelp');
+        const genreSelect = document.getElementById('sexe');
+        const classeSelect = document.getElementById('classe_id');
+
+        // Charger le mode de génération des matricules
+        let currentMatriculeMode = 'automatique'; // Par défaut
+        let niveauConfig = null;
+
+        fetch('/esbtp/matricule-config/mode-info', {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            currentMatriculeMode = data.mode || 'automatique';
+            updateMatriculeUI();
+        })
+        .catch(error => {
+            console.error('Erreur lors du chargement du mode matricule:', error);
+            updateMatriculeUI();
+        });
+
+        function updateMatriculeUI() {
+            if (!authUserIsSuperAdmin) {
+                // Pour les non superAdmin, toujours en mode lecture seule
+                if (matriculeContainer) {
+                    matriculeContainer.style.display = 'block';
+                }
+                matriculeInput.readOnly = true;
+                matriculeHelp.textContent = 'Le matricule ne peut pas être modifié';
+                return;
+            }
+
+            if (currentMatriculeMode === 'automatique') {
+                // MODE AUTO : Afficher avec bouton génération
+                if (matriculeContainer) {
+                    matriculeContainer.style.display = 'block';
+                }
+                matriculeMode.textContent = 'AUTO';
+                matriculeMode.className = 'badge bg-success ms-1';
+                matriculeHelp.textContent = 'Généré automatiquement selon genre et classe';
+                generateBtn.style.display = 'inline-flex';
+                checkBtn.style.display = 'none';
+                matriculeInput.readOnly = true;
+                matriculeInput.placeholder = 'Auto-généré';
+            } else {
+                // MODE MANUEL : Afficher avec vérification
+                if (matriculeContainer) {
+                    matriculeContainer.style.display = 'block';
+                }
+                matriculeMode.textContent = 'MANUEL';
+                matriculeMode.className = 'badge bg-warning ms-1';
+                matriculeHelp.textContent = 'Saisissez manuellement le matricule (vérification anti-doublon)';
+                generateBtn.style.display = 'none';
+                checkBtn.style.display = 'inline-flex';
+                matriculeInput.readOnly = false;
+                matriculeInput.placeholder = 'Ex: MESBTP25-0001';
+            }
+        }
+
+        // Vérification d'accès superAdmin
+        const authUserIsSuperAdmin = @json(auth()->user()->hasRole('superAdmin'));
+
+        if (authUserIsSuperAdmin && generateBtn) {
+            generateBtn.addEventListener('click', function() {
+                const genre = genreSelect ? genreSelect.value : null;
+
+                if (!genre) {
+                    showMatriculeStatus('Veuillez d\'abord sélectionner le genre/sexe', 'warning');
+                    return;
+                }
+
+                if (!niveauConfig) {
+                    showMatriculeStatus('Niveau d\'études non configuré. Contactez l\'équipe technique.', 'danger');
+                    return;
+                }
+
+                generateBtn.disabled = true;
+                generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Génération...';
+
+                fetch('/esbtp/matricule-config/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        niveau_etude_code: niveauConfig.code,
+                        genre: genre,
+                        annee: new Date().getFullYear()
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        matriculeInput.value = data.matricule;
+                        showMatriculeStatus('Matricule généré avec succès', 'success');
+                    } else {
+                        showMatriculeStatus(data.message || 'Erreur lors de la génération', 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    showMatriculeStatus('Erreur de connexion', 'danger');
+                })
+                .finally(() => {
+                    generateBtn.disabled = false;
+                    generateBtn.innerHTML = '<i class="fas fa-magic"></i> Générer';
+                });
+            });
+        }
+
+        if (authUserIsSuperAdmin && checkBtn) {
+            checkBtn.addEventListener('click', checkMatriculeManuel);
+
+            // Vérification en temps réel pour le mode manuel
+            if (currentMatriculeMode === 'manuel') {
+                let checkTimeout;
+                matriculeInput.addEventListener('input', function() {
+                    clearTimeout(checkTimeout);
+                    if (this.value.length >= 3) {
+                        checkTimeout = setTimeout(checkMatriculeManuel, 500);
+                    }
+                });
+            }
+        }
+
+        function checkMatriculeManuel() {
+            const matricule = matriculeInput.value.trim();
+
+            if (!matricule) {
+                showMatriculeStatus('', '');
+                return;
+            }
+
+            checkBtn.disabled = true;
+            checkBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            fetch('/esbtp/matricule-config/check', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ matricule: matricule })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    showMatriculeStatus('❌ Ce matricule existe déjà', 'danger');
+                } else {
+                    showMatriculeStatus('✅ Matricule disponible', 'success');
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showMatriculeStatus('Erreur de vérification', 'warning');
+            })
+            .finally(() => {
+                checkBtn.disabled = false;
+                checkBtn.innerHTML = '<i class="fas fa-search"></i> Vérifier';
+            });
+        }
+
+        function showMatriculeStatus(message, type) {
+            if (!matriculeStatus) return;
+            
+            if (!message) {
+                matriculeStatus.innerHTML = '';
+                return;
+            }
+
+            const alertClass = {
+                'success': 'alert-success',
+                'danger': 'alert-danger',
+                'warning': 'alert-warning',
+                'info': 'alert-info'
+            }[type] || 'alert-info';
+
+            matriculeStatus.innerHTML = `<small class="alert ${alertClass} p-1 m-0">${message}</small>`;
+        }
+
+        // Détecter le niveau d'études depuis la classe sélectionnée
+        // Pour les étudiants, on devrait déjà avoir une classe associée
+        // Mais pour la génération, on peut récupérer le niveau config de la classe
+        function loadNiveauConfigFromClasse() {
+            if (!classeSelect || !classeSelect.value) {
+                niveauConfig = null;
+                return;
+            }
+
+            const classeId = classeSelect.value;
+
+            fetch(`/esbtp/api/classes/${classeId}/niveau-config`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                niveauConfig = data.niveau_config;
+
+                if (!niveauConfig && currentMatriculeMode === 'automatique' && authUserIsSuperAdmin) {
+                    showMatriculeStatus('⚠️ Niveau non configuré pour génération automatique', 'warning');
+                    if (generateBtn) generateBtn.disabled = true;
+                } else {
+                    showMatriculeStatus('', '');
+                    if (generateBtn && authUserIsSuperAdmin) generateBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                niveauConfig = null;
+            });
+        }
+
+        // Charger la config du niveau au démarrage
+        loadNiveauConfigFromClasse();
+
+        // Écouter les changements de classe
+        if (classeSelect && authUserIsSuperAdmin) {
+            classeSelect.addEventListener('change', function() {
+                loadNiveauConfigFromClasse();
+            });
+        }
+
+        // Écouter les changements de genre pour le mode auto
+        if (genreSelect && authUserIsSuperAdmin) {
+            genreSelect.addEventListener('change', function() {
+                if (currentMatriculeMode === 'automatique' && !matriculeInput.value) {
+                    // Si champ matricule vide et mode auto, générer automatiquement
+                    if (niveauConfig && this.value) {
+                        generateMatriculeAuto();
+                    }
+                }
+            });
+        }
+
+        async function generateMatriculeAuto() {
+            const genre = genreSelect ? genreSelect.value : null;
+
+            if (!genre) {
+                console.log('Genre non renseigné pour la génération auto');
+                return null;
+            }
+
+            if (!niveauConfig) {
+                console.log('Niveau config non trouvé pour la génération auto');
+                return null;
+            }
+
+            try {
+                const response = await fetch('/esbtp/matricule-config/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        niveau_etude_code: niveauConfig.code,
+                        genre: genre,
+                        annee: new Date().getFullYear()
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.matricule) {
+                    console.log('Matricule généré avec succès:', data.matricule);
+                    matriculeInput.value = data.matricule;
+                    showMatriculeStatus('Matricule généré avec succès', 'success');
+                    return data.matricule;
+                } else {
+                    console.error('Erreur lors de la génération:', data.message || 'Erreur inconnue');
+                    showMatriculeStatus(data.message || 'Erreur lors de la génération', 'danger');
+                    return null;
+                }
+            } catch (error) {
+                console.error('Erreur réseau lors de la génération du matricule:', error);
+                showMatriculeStatus('Erreur de connexion', 'danger');
+                return null;
+            }
+        }
+
+        // Si mode auto et genre déjà sélectionné, générer le matricule au chargement
+        $(document).ready(function() {
+            if (currentMatriculeMode === 'automatique' && authUserIsSuperAdmin) {
+                if (genreSelect && genreSelect.value && !matriculeInput.value) {
+                    setTimeout(() => {
+                        loadNiveauConfigFromClasse();
+                        // Attendre un peu pour la récupération de la config du niveau
+                        setTimeout(() => {
+                            if (niveauConfig) {
+                                generateMatriculeAuto();
+                            }
+                        }, 500);
+                    }, 100);
+                }
+            }
+        });
+
     }); // FIN du $(document).ready()
 </script>

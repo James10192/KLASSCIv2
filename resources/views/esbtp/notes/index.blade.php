@@ -1,7 +1,5 @@
 @extends('layouts.app')
 
-@extends('layouts.app')
-
 @section('title', 'Gestion des Notes | KLASSCI')
 
 @push('styles')
@@ -114,15 +112,14 @@
 
             <div class="resultats-grid" id="classes-grid" style="margin-top: var(--space-lg);">
                 @forelse($classes as $classe)
-                    <div class="card-moderne resultat-card animate-slide-up" 
+                    <div class="card-moderne resultat-card animate-slide-up @if($classe->is_active) border-active @else border-inactive @endif" 
                          data-classe-id="{{ $classe->id }}" 
-                         style="cursor: pointer; border-left: 4px solid {{ $classe->is_active ? 'var(--success)' : 'var(--neutral)' }};"
                          onclick="selectClass({{ $classe->id }}, '{{ $classe->name }}')">
                         <!-- En-tête classe -->
                         <div style="display: flex; justify-content: between; align-items: start; margin-bottom: var(--space-md);">
                             <div style="flex: 1;">
                                 <div style="display: flex; align-items: center; margin-bottom: var(--space-sm);">
-                                    <div style="width: 40px; height: 40px; background: {{ $classe->is_active ? 'var(--success)' : 'var(--neutral)' }}; border-radius: var(--radius-circle); display: flex; align-items: center; justify-content: center; margin-right: var(--space-sm);">
+                                    <div class="classe-icon @if($classe->is_active) bg-success @else bg-inactive @endif">
                                         <i class="fas fa-graduation-cap" style="color: white; font-size: 16px;"></i>
                                     </div>
                                     <div>
@@ -583,7 +580,8 @@ function createEvaluation() {
         method: 'GET',
         data: {
             classe_id: currentClassId,
-            matiere_id: currentMatiereId
+            matiere_id: currentMatiereId,
+            embed: true
         },
         success: function(response) {
             $('#evaluationCreateContent').html(response);
@@ -854,6 +852,38 @@ function showSuccessMessage(message) {
 
 @push('styles')
 <style>
+.border-active {
+    border-left: 4px solid var(--success);
+    cursor: pointer;
+}
+
+.border-inactive {
+    border-left: 4px solid var(--neutral);
+    cursor: pointer;
+}
+
+.classe-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-circle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: var(--space-sm);
+}
+
+.bg-success {
+    background: var(--success);
+}
+
+.bg-inactive {
+    background: var(--neutral);
+}
+
+.classe-icon i {
+    color: white;
+    font-size: 16px;
+}
 .hover-card {
     transition: transform 0.2s, box-shadow 0.2s;
 }
