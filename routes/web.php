@@ -621,6 +621,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('resultats/get-absences', [ESBTPBulletinController::class, 'getAbsences'])
                 ->name('resultats.get-absences')
                 ->middleware(['permission:view_bulletins|view_own_bulletin']);
+            
+            // Force route cache refresh - 2025-01-30
 
             Route::post('resultats/bulk-update-moyennes', [ESBTPBulletinController::class, 'bulkUpdateMoyennes'])
                 ->name('resultats.bulk-update-moyennes')
