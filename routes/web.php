@@ -1858,8 +1858,18 @@ Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.'
     Route::prefix('notes')->name('notes.')->group(function () {
         Route::get('/', [\App\Http\Controllers\ESBTPNoteController::class, 'index'])->name('index')
             ->middleware('permission:view_notes');
+        Route::get('/create', [\App\Http\Controllers\ESBTPNoteController::class, 'create'])->name('create')
+            ->middleware('permission:create_grade');
+        Route::post('/', [\App\Http\Controllers\ESBTPNoteController::class, 'store'])->name('store')
+            ->middleware('permission:create_grade');
         Route::get('/{note}', [\App\Http\Controllers\ESBTPNoteController::class, 'show'])->name('show')
             ->middleware('permission:view_notes');
+        Route::get('/{note}/edit', [\App\Http\Controllers\ESBTPNoteController::class, 'edit'])->name('edit')
+            ->middleware('permission:edit_grades');
+        Route::put('/{note}', [\App\Http\Controllers\ESBTPNoteController::class, 'update'])->name('update')
+            ->middleware('permission:edit_grades');
+        Route::delete('/{note}', [\App\Http\Controllers\ESBTPNoteController::class, 'destroy'])->name('destroy')
+            ->middleware('permission:delete_grades');
         // saisie-rapide already defined in enseignant|coordinateur group (line 1347)
     });
 

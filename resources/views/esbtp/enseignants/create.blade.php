@@ -533,8 +533,8 @@
                             </div>
 
                             <div class="form-group-moderne">
-                                <label for="email" class="form-label-moderne">
-                                    Email <span class="text-danger">*</span>
+<label for="email" class="form-label-moderne">
+                                    Email
                                 </label>
                                 <input type="email" name="email" id="email" 
                                        class="form-input-moderne @error('email') is-invalid @enderror"
