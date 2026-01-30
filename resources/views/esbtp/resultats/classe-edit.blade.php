@@ -615,7 +615,7 @@
 
         // Fetch existing moyennes for selected students and matiere
         $.ajax({
-            url: '{{ url("/esbtp-special/resultats/get-moyennes") }}',
+            url: '{{ route("esbtp.resultats.get-moyennes") }}',
             method: 'GET',
             data: {
                 classe_id: classeId,
@@ -692,7 +692,7 @@
 
         // Fetch all existing moyennes for selected students and all matières
         $.ajax({
-            url: '{{ url("/esbtp-special/resultats/get-moyennes") }}',
+            url: '{{ route("esbtp.resultats.get-moyennes") }}',
             method: 'GET',
             data: {
                 classe_id: classeId,
