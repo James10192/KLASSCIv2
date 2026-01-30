@@ -1342,7 +1342,7 @@
         
         // Appel AJAX pour récupérer le coefficient configuré
         $.ajax({
-            url: '{{ route("resultats.get-matiere-coefficient") }}',
+            url: '{{ url("/esbtp-special/resultats/get-matiere-coefficient") }}',
             method: 'GET',
             data: {
                 matiere_id: matiereId,
