@@ -868,7 +868,7 @@ $(document).on('submit', '#evaluationCreateForm', function(e) {
                 return;
             }
 
-            $('#evaluationCreateModal').modal('hide');
+            closeEvaluationModal();
             loadEvaluationsAndNotes();
             showSuccessMessage('Évaluation créée avec succès !');
         },
@@ -900,6 +900,23 @@ function showEvaluationErrors(errors) {
     `;
 
     $('#evaluationCreateContent').prepend(alertHtml);
+}
+
+function closeEvaluationModal() {
+    const modalElement = document.getElementById('evaluationCreateModal');
+    if (!modalElement) {
+        return;
+    }
+
+    if (window.bootstrap && typeof window.bootstrap.Modal === 'function') {
+        const instance = window.bootstrap.Modal.getInstance(modalElement) || new window.bootstrap.Modal(modalElement);
+        instance.hide();
+    } else if (window.jQuery) {
+        $('#evaluationCreateModal').modal('hide');
+    }
+
+    document.body.classList.remove('modal-open');
+    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
 }
 
 // Fonction pour afficher un message de succès
@@ -1073,6 +1090,46 @@ function showSuccessMessage(message) {
     padding: 12px 10px;
 }
 
+.notes-grid-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 100%;
+}
+
+.notes-grid-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    background: #f8fafc;
+}
+
+
+.notes-grid-table th:first-child,
+.notes-grid-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    background: #ffffff;
+}
+
+.notes-grid-table th:last-child,
+.notes-grid-table td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 4;
+    background: #f8fafc;
+    min-width: 140px;
+}
+
+.notes-grid-table th:nth-last-child(2),
+.notes-grid-table td:nth-last-child(2) {
+    position: sticky;
+    right: 140px;
+    z-index: 4;
+    background: #f8fafc;
+    min-width: 110px;
+}
+
 .evaluation-header {
     background: #f8fafc;
     border-left: 3px solid rgba(59, 130, 246, 0.4);
@@ -1124,7 +1181,8 @@ function showSuccessMessage(message) {
 .notes-grid-wrapper {
     border-radius: 12px;
     border: 1px solid rgba(148, 163, 184, 0.35);
-    overflow: hidden;
+    max-height: 60vh;
+    overflow: auto;
 }
 
 .notes-modal-footer {
