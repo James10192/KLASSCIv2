@@ -271,8 +271,9 @@ class ESBTPEvaluationController extends Controller
      */
     public function create(Request $request)
     {
-        // Get the matiere_id from the request
+        // Get the matiere_id and classe_id from the request
         $matiere_id = $request->input('matiere_id');
+        $classe_id = $request->input('classe_id');
 
         // Suppression du bloc de redirection qui empêche la présélection de la matière
         // if ($matiere_id) {
@@ -310,7 +311,7 @@ class ESBTPEvaluationController extends Controller
             ];
         });
 
-        return view('esbtp.evaluations.create', compact('classes', 'matieres', 'matieresJson', 'matiere_id', 'types', 'enseignants', 'anneeUniversitaire'));
+        return view('esbtp.evaluations.create', compact('classes', 'matieres', 'matieresJson', 'matiere_id', 'classe_id', 'types', 'enseignants', 'anneeUniversitaire'));
     }
 
     /**

@@ -56,6 +56,12 @@
             @csrf
             @if(request()->boolean('embed'))
                 <input type="hidden" name="embed" value="1">
+                @if(!empty($classe_id))
+                    <input type="hidden" name="classe_id" value="{{ $classe_id }}">
+                @endif
+                @if(!empty($matiere_id))
+                    <input type="hidden" name="matiere_id" value="{{ $matiere_id }}">
+                @endif
             @endif
 
             <div class="form-sections">
@@ -163,10 +169,10 @@
                         <div class="form-grid">
                             <div class="form-group">
                                 <label for="classe_id" class="form-label">Classe <span class="text-danger">*</span></label>
-                                <select class="form-select @error('classe_id') error @enderror" id="classe_id" name="classe_id" required>
+                                <select class="form-select @error('classe_id') error @enderror" id="classe_id" name="classe_id" required @if(request()->boolean('embed') && !empty($classe_id)) disabled @endif>
                                     <option value="">-- Sélectionner une classe --</option>
                                     @foreach($classes as $classe)
-                                        <option value="{{ $classe->id }}" {{ old('classe_id') == $classe->id ? 'selected' : '' }}>
+                                        <option value="{{ $classe->id }}" {{ old('classe_id', $classe_id) == $classe->id ? 'selected' : '' }}>
                                             {{ $classe->name }} ({{ $classe->filiere->name ?? '' }} - {{ $classe->niveau->name ?? '' }})
                                         </option>
                                     @endforeach
@@ -178,7 +184,7 @@
 
                             <div class="form-group">
                                 <label for="matiere_id" class="form-label">Matière <span class="text-danger">*</span></label>
-                                <select id="matiere_id" name="matiere_id" class="form-select @error('matiere_id') error @enderror" required>
+                                <select id="matiere_id" name="matiere_id" class="form-select @error('matiere_id') error @enderror" required @if(request()->boolean('embed') && !empty($matiere_id)) disabled @endif>
                                     <option value="">-- Sélectionner une matière --</option>
                                     @foreach($matieres as $matiere)
                                         <option value="{{ $matiere->id }}" {{ (old('matiere_id', $matiere_id) == $matiere->id) ? 'selected' : '' }}>
