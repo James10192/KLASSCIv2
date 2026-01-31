@@ -761,7 +761,7 @@ function calculateClassAverages() {
     
     evaluations.forEach(evaluation => {
         const evalId = evaluation.id;
-        const noteInputs = $(`input[data-eval-id="${evalId}"]`);
+        const noteInputs = $(`.note-input[data-eval-id="${evalId}"]`);
         
         let total = 0;
         let count = 0;
