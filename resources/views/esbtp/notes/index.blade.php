@@ -18,9 +18,6 @@
                 <p class="header-subtitle">Saisie et gestion des notes par classe et matière</p>
             </div>
             <div class="header-actions">
-                <button type="button" class="btn-acasi primary me-2" data-bs-toggle="modal" data-bs-target="#classSelectionModal">
-                    <i class="fas fa-users"></i>Choisir une classe
-                </button>
                 <a href="{{ route('esbtp.notes.index') }}" class="btn-acasi secondary">
                     <i class="fas fa-sync"></i>Actualiser
                 </a>
@@ -112,9 +109,17 @@
 
             <div class="resultats-grid" id="classes-grid" style="margin-top: var(--space-lg);">
                 @forelse($classes as $classe)
-                    <div class="card-moderne resultat-card animate-slide-up @if($classe->is_active) border-active @else border-inactive @endif" 
-                         data-classe-id="{{ $classe->id }}" 
-                         onclick="selectClass({{ $classe->id }}, '{{ $classe->name }}')">
+                    @php
+                        $className = strtolower($classe->name ?: '');
+                        $classFiliere = strtolower(optional($classe->filiere)->name ?: '');
+                        $classNiveau = strtolower(optional($classe->niveau)->name ?: '');
+                    @endphp
+                    <div class="card-moderne resultat-card class-card animate-slide-up @if($classe->is_active) border-active @else border-inactive @endif" 
+                         data-classe-id="{{ $classe->id }}"
+                         data-class-name="{{ $className }}"
+                         data-class-filiere="{{ $classFiliere }}"
+                         data-class-niveau="{{ $classNiveau }}"
+                         data-class-label="{{ $classe->name }}">
                         <!-- En-tête classe -->
                         <div style="display: flex; justify-content: between; align-items: start; margin-bottom: var(--space-md);">
                             <div style="flex: 1;">
@@ -151,6 +156,9 @@
                                 <span class="badge {{ $classe->is_active ? 'success' : 'danger' }}">
                                     {{ $classe->is_active ? 'Active' : 'Inactive' }}
                                 </span>
+                                <span class="badge badge-notes ms-1">
+                                    <i class="fas fa-clipboard-check me-1"></i>Notes
+                                </span>
                             </div>
                         </div>
 
@@ -178,9 +186,12 @@
                                 @if ($classe->annee)
                                     <i class="fas fa-calendar me-1"></i>{{ $classe->annee->name }}
                                 @endif
+                                <div class="notes-hint">
+                                    <i class="fas fa-pen-alt me-1"></i>Saisir les notes
+                                </div>
                             </div>
                             <div style="display: flex; gap: var(--space-xs);">
-                                <button type="button" class="btn-acasi primary" onclick="event.stopPropagation(); selectClass({{ $classe->id }}, '{{ $classe->name }}')" title="Saisir les notes">
+                                <button type="button" class="btn-acasi primary class-select-btn" title="Saisir les notes">
                                     <i class="fas fa-edit"></i>
                                 </button>
                             </div>
@@ -199,9 +210,9 @@
 </div>
 
 <!-- Modal Sélection Classe et Matière -->
-<div class="modal fade" id="classSelectionModal" tabindex="-1" aria-labelledby="classSelectionModalLabel" aria-hidden="true">
+<div class="modal fade notes-management-modal" id="classSelectionModal" tabindex="-1" aria-labelledby="classSelectionModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
-        <div class="modal-content">
+        <div class="modal-content notes-modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="classSelectionModalLabel">
                     <i class="fas fa-graduation-cap me-2"></i>
@@ -210,6 +221,15 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <div class="notes-modal-intro">
+                    <div class="intro-icon">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <div>
+                        <div class="intro-title">Saisie intelligente des notes</div>
+                        <div class="intro-subtitle">Choisissez une matiere, creez des evaluations et saisissez les notes en temps reel.</div>
+                    </div>
+                </div>
                 <div class="row mb-4">
                     <div class="col-md-8">
                         <div class="form-group">
@@ -232,8 +252,8 @@
                     </div>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="table table-bordered" id="notesGrid">
+                <div class="table-responsive notes-grid-wrapper">
+                    <table class="table table-bordered table-hover notes-grid-table" id="notesGrid">
                         <thead class="bg-light">
                             <tr>
                                 <th style="width: 200px; min-width: 200px;">Étudiants</th>
@@ -265,7 +285,7 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer notes-modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times me-1"></i>Fermer
                 </button>
@@ -300,6 +320,8 @@
     </div>
 </div>
 
+@endsection
+
 @push('scripts')
 <script>
 // Variables globales
@@ -315,9 +337,9 @@ $(document).ready(function() {
     $('#classSearch').on('keyup', function() {
         const searchTerm = $(this).val().toLowerCase();
         $('.class-card').each(function() {
-            const className = $(this).data('class-name');
-            const filiere = $(this).data('class-filiere');
-            const niveau = $(this).data('class-niveau');
+            const className = ($(this).data('class-name') || '').toString();
+            const filiere = ($(this).data('class-filiere') || '').toString();
+            const niveau = ($(this).data('class-niveau') || '').toString();
             
             const matches = className.includes(searchTerm) || 
                            filiere.includes(searchTerm) || 
@@ -325,6 +347,25 @@ $(document).ready(function() {
             
             $(this).toggle(matches);
         });
+    });
+
+    // Sélection de classe depuis les cartes
+    $(document).on('click', '.class-card', function(e) {
+        if ($(e.target).closest('.class-select-btn').length) {
+            return;
+        }
+
+        const classId = $(this).attr('data-classe-id');
+        const classLabel = $(this).attr('data-class-label');
+        selectClass(classId, classLabel);
+    });
+
+    $(document).on('click', '.class-select-btn', function(e) {
+        e.stopPropagation();
+        const card = $(this).closest('.class-card');
+        const classId = card.attr('data-classe-id');
+        const classLabel = card.attr('data-class-label');
+        selectClass(classId, classLabel);
     });
 
     // Gestion de la sélection de matière
@@ -443,24 +484,25 @@ function buildNotesGrid() {
             
             evaluations.forEach(evaluation => {
                 const header = `
-                    <th id="evalHeader${evaluation.id}" style="min-width: 150px;">
-                        <div class="text-center fw-bold">${evaluation.titre || 'Éval'}</div>
-                        <div class="text-center small">
-                            <div class="d-flex justify-content-center align-items-center gap-2">
-                                <input type="number" value="${evaluation.bareme || 20}" 
-                                       class="form-control form-control-sm bareme-input" 
-                                       style="width: 50px; display: inline;" 
+                    <th id="evalHeader${evaluation.id}" class="evaluation-header" style="min-width: 180px;">
+                        <div class="evaluation-title">${evaluation.titre || 'Éval'}</div>
+                        <div class="evaluation-controls">
+                            <div class="evaluation-control">
+                                <span class="control-label">Barème</span>
+                                <input type="number" value="${evaluation.bareme || 20}"
+                                       class="form-control form-control-sm bareme-input"
                                        data-eval-id="${evaluation.id}"
                                        title="Barème">
-                                <span>/</span>
-                                <input type="number" value="${evaluation.coefficient || 1}" 
-                                       class="form-control form-control-sm coeff-input" 
-                                       style="width: 40px; display: inline;" 
+                            </div>
+                            <div class="evaluation-control">
+                                <span class="control-label">Coeff</span>
+                                <input type="number" value="${evaluation.coefficient || 1}"
+                                       class="form-control form-control-sm coeff-input"
                                        data-eval-id="${evaluation.id}"
                                        title="Coefficient">
                             </div>
-                            <small class="text-muted">${evaluation.type || 'Devoir'}</small>
                         </div>
+                        <div class="evaluation-type">${evaluation.type || 'Devoir'}</div>
                     </th>
                 `;
                 thead.append(header);
@@ -821,16 +863,44 @@ $(document).on('submit', '#evaluationCreateForm', function(e) {
         processData: false,
         contentType: false,
         success: function(response) {
+            if (response && response.success === false) {
+                showEvaluationErrors(response.errors || {});
+                return;
+            }
+
             $('#evaluationCreateModal').modal('hide');
-            loadEvaluationsAndNotes(); // Recharger les données
+            loadEvaluationsAndNotes();
             showSuccessMessage('Évaluation créée avec succès !');
         },
         error: function(xhr) {
+            if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+                showEvaluationErrors(xhr.responseJSON.errors);
+                return;
+            }
+
             console.error('Erreur lors de la création:', xhr);
             alert('Erreur lors de la création de l\'évaluation.');
         }
     });
 });
+
+function showEvaluationErrors(errors) {
+    $('#evaluationCreateContent .alert').remove();
+    const errorList = Object.values(errors || {}).flat().map(message => `<li>${message}</li>`).join('');
+    const alertHtml = `
+        <div class="alert alert-danger border-start border-danger border-4 mb-3">
+            <div class="d-flex">
+                <div class="me-3"><i class="fas fa-exclamation-circle fs-4"></i></div>
+                <div>
+                    <h6 class="alert-heading">Erreur de validation</h6>
+                    <ul class="mb-0 ps-3">${errorList || '<li>Veuillez verifier les champs.</li>'}</ul>
+                </div>
+            </div>
+        </div>
+    `;
+
+    $('#evaluationCreateContent').prepend(alertHtml);
+}
 
 // Fonction pour afficher un message de succès
 function showSuccessMessage(message) {
@@ -884,6 +954,21 @@ function showSuccessMessage(message) {
     color: white;
     font-size: 16px;
 }
+
+.badge-notes {
+    background: rgba(13, 110, 253, 0.12);
+    color: #0d6efd;
+    border: 1px solid rgba(13, 110, 253, 0.25);
+    font-weight: 600;
+}
+
+.notes-hint {
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+}
 .hover-card {
     transition: transform 0.2s, box-shadow 0.2s;
 }
@@ -915,7 +1000,7 @@ function showSuccessMessage(message) {
 
 .bareme-input, .coeff-input {
     font-size: 0.8rem;
-    padding: 0.1rem 0.2rem;
+    padding: 0.25rem 0.35rem;
 }
 
 .absence-checkbox:checked + label {
@@ -943,33 +1028,108 @@ function showSuccessMessage(message) {
 #notesGrid td {
     vertical-align: middle;
 }
+
+.notes-modal-content {
+    border-radius: 16px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.15);
+}
+
+.notes-modal-intro {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 12px 14px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(14, 116, 144, 0.05));
+    border-radius: 12px;
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    margin-bottom: 18px;
+}
+
+.notes-modal-intro .intro-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(59, 130, 246, 0.12);
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+}
+
+.notes-modal-intro .intro-title {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.notes-modal-intro .intro-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.notes-grid-table th,
+.notes-grid-table td {
+    padding: 12px 10px;
+}
+
+.evaluation-header {
+    background: #f8fafc;
+    border-left: 3px solid rgba(59, 130, 246, 0.4);
+}
+
+.evaluation-title {
+    font-weight: 700;
+    color: var(--text-primary);
+    text-align: center;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+}
+
+.evaluation-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(70px, 1fr));
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.evaluation-control {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.evaluation-control .control-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: var(--text-muted);
+}
+
+.evaluation-control input {
+    min-width: 62px;
+}
+
+.evaluation-type {
+    font-size: 0.75rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.note-input {
+    min-width: 70px;
+}
+
+.notes-grid-wrapper {
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    overflow: hidden;
+}
+
+.notes-modal-footer {
+    background: #f8fafc;
+}
 </style>
 @endpush
 
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialiser la recherche de classes
-    $('#classSearch').on('keyup', function() {
-        const searchTerm = $(this).val().toLowerCase();
-        $('.class-card').each(function() {
-            const className = $(this).data('class-name') || '';
-            const filiereName = $(this).data('class-filiere') || '';
-            const niveauName = $(this).data('class-niveau') || '';
-            
-            const matches = className.includes(searchTerm) || 
-                           filiereName.includes(searchTerm) || 
-                           niveauName.includes(searchTerm);
-            
-            $(this).toggle(matches);
-        });
-    });
-});
-
-// Fonction pour réinitialiser la recherche
-function resetSearch() {
-    $('#classSearch').val('');
-    $('.class-card').show();
-}
-</script>
-@endpush

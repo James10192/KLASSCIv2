@@ -52,8 +52,11 @@
             </div>
         @endif
 
-        <form action="{{ route('esbtp.evaluations.store') }}" method="POST">
+        <form action="{{ route('esbtp.evaluations.store') }}" method="POST" id="evaluationCreateForm">
             @csrf
+            @if(request()->boolean('embed'))
+                <input type="hidden" name="embed" value="1">
+            @endif
 
             <div class="form-sections">
                 <!-- Section 1: Informations générales -->

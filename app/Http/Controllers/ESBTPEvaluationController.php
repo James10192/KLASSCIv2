@@ -320,6 +320,8 @@ class ESBTPEvaluationController extends Controller
      */
     public function store(Request $request)
     {
+        $isEmbedRequest = $request->boolean('embed') || $request->ajax() || $request->wantsJson();
+
         \Log::info('🔍 ESBTPEvaluation STORE - Début de la méthode store');
         \Log::info('🔍 ESBTPEvaluation STORE - Données reçues:', [
             'request_all' => $request->all(),
@@ -374,6 +376,13 @@ class ESBTPEvaluationController extends Controller
                 'periode_type' => gettype($request->periode),
                 'request_all' => $request->all(),
             ]);
+
+            if ($isEmbedRequest) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
 
             return redirect()->back()
                 ->withErrors($validator)
@@ -483,6 +492,7 @@ $evaluation = new ESBTPEvaluation;
             \Log::info('Évaluation créée avec succès. ID: '.$evaluation->id);
 
             $successMessage = 'L\'évaluation a été créée avec succès';
+            $successMessagePlain = 'L\'évaluation a été créée avec succès';
 
             // Si un lien externe a été généré, l'ajouter au message
             if ($evaluation->token_saisie_externe) {
@@ -492,11 +502,32 @@ $evaluation = new ESBTPEvaluation;
                 $successMessage .= '<small class="text-muted">Copiez ce lien et envoyez-le à l\'enseignant externe. Le lien expire le '.$evaluation->token_expire_at->format('d/m/Y à H:i').'</small>';
             }
 
+            if ($isEmbedRequest) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $successMessagePlain,
+                    'evaluation' => [
+                        'id' => $evaluation->id,
+                        'titre' => $evaluation->titre,
+                        'bareme' => $evaluation->bareme,
+                        'coefficient' => $evaluation->coefficient,
+                        'type' => $evaluation->type,
+                    ],
+                ]);
+            }
+
             return redirect()->route('esbtp.evaluations.index')
                 ->with('success', $successMessage);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la création de l\'évaluation: '.$e->getMessage());
             \Log::error('Trace: '.$e->getTraceAsString());
+
+            if ($isEmbedRequest) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Une erreur est survenue lors de la création de l\'évaluation.',
+                ], 500);
+            }
 
             return redirect()->back()
                 ->with('error', 'Une erreur est survenue lors de la création de l\'évaluation: '.$e->getMessage())
