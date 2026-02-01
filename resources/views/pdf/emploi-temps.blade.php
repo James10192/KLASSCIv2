@@ -61,7 +61,8 @@
             font-size: 7px;
             opacity: 0.95;
         }
-        .header-logo img {
+        .header-logo img,
+        .header-right img {
             max-height: 12px;
             max-width: 40px;
             filter: brightness(0) invert(1);
@@ -214,11 +215,11 @@
                     <p>{{ $etablissement['type'] ?? 'Enseignement Supérieur Technique' }}</p>
                 </div>
             </div>
-            <div class="header-right">
-                @if($logoBase64)
-                    <img src="{{ $logoBase64 }}" alt="Logo établissement">
-                @endif
-            </div>
+                <div class="header-right">
+                    @if($logoBase64)
+                        <img src="{{ $logoBase64 }}" alt="Logo établissement" class="header-logo">
+                    @endif
+                </div>
         </div>
     </div>
 
