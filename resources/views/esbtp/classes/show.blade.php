@@ -426,14 +426,21 @@
                         Heures planifiées vs réalisées et enseignants présents sur l'emploi du temps (année courante)
                     </div>
                 </div>
-                <button class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#classePlanningMatiereCollapse"
-                        aria-expanded="true"
-                        aria-controls="classePlanningMatiereCollapse">
-                    <i class="fas fa-chevron-up"></i>
-                </button>
+                <div class="d-flex align-items-center gap-2">
+                    <form method="GET" action="{{ route('esbtp.classes.show', ['classe' => $classe->id]) }}" class="d-flex gap-2">
+                        <button type="submit" name="periode" value="semestre1" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'semestre1' ? 'active' : '' }}">S1</button>
+                        <button type="submit" name="periode" value="semestre2" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'semestre2' ? 'active' : '' }}">S2</button>
+                        <button type="submit" name="periode" value="annee" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'annee' ? 'active' : '' }}">Année</button>
+                    </form>
+                    <button class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#classePlanningMatiereCollapse"
+                            aria-expanded="true"
+                            aria-controls="classePlanningMatiereCollapse">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                </div>
             </div>
             <div id="classePlanningMatiereCollapse" class="collapse show">
                 <div class="main-card-body">

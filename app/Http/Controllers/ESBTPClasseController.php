@@ -307,7 +307,8 @@ class ESBTPClasseController extends Controller
                 return $matiere;
             });
 
-        $planningMatiere = $this->buildPlanningMatierePourClasse($classe, $anneeCourante);
+        $periode = $request->input('periode', 'annee');
+        $planningMatiere = $this->buildPlanningMatierePourClasse($classe, $anneeCourante, $periode);
         
         // Charger les étudiants et inscriptions FILTRÉS par année courante
         if ($anneeCourante) {
@@ -337,14 +338,14 @@ class ESBTPClasseController extends Controller
         // Different view rendering based on user role
         if ($user->hasRole('etudiant')) {
             // For students - read-only view
-            return view('esbtp.classes.student_show', compact('classe', 'anneeCourante', 'anneeAcademique', 'combinationMatieres', 'planningMatiere'));
+            return view('esbtp.classes.student_show', compact('classe', 'anneeCourante', 'anneeAcademique', 'combinationMatieres', 'planningMatiere', 'periode'));
         } else {
             // For admin and secretary - full functionality view
-            return view('esbtp.classes.show', compact('classe', 'anneeCourante', 'anneeAcademique', 'combinationMatieres', 'planningMatiere'));
+            return view('esbtp.classes.show', compact('classe', 'anneeCourante', 'anneeAcademique', 'combinationMatieres', 'planningMatiere', 'periode'));
         }
     }
 
-    private function buildPlanningMatierePourClasse(ESBTPClasse $classe, ?ESBTPAnneeUniversitaire $anneeCourante)
+    private function buildPlanningMatierePourClasse(ESBTPClasse $classe, ?ESBTPAnneeUniversitaire $anneeCourante, string $periode)
     {
         if (!$anneeCourante) {
             return [
@@ -358,14 +359,20 @@ class ESBTPClasseController extends Controller
             ];
         }
 
-        $planifications = ESBTPPlanificationAcademique::with(['matiere'])
+        $planificationsQuery = ESBTPPlanificationAcademique::with(['matiere'])
             ->where('annee_universitaire_id', $anneeCourante->id)
             ->where('filiere_id', $classe->filiere_id)
             ->where('niveau_etude_id', $classe->niveau_etude_id)
             ->select('matiere_id', DB::raw('SUM(volume_horaire_total) as heures_planifiees'))
-            ->groupBy('matiere_id')
-            ->get()
-            ->keyBy('matiere_id');
+            ->groupBy('matiere_id');
+
+        if ($periode === 'semestre1') {
+            $planificationsQuery->where('semestre', 1);
+        } elseif ($periode === 'semestre2') {
+            $planificationsQuery->where('semestre', 2);
+        }
+
+        $planifications = $planificationsQuery->get()->keyBy('matiere_id');
 
         $seancesQuery = ESBTPSeanceCours::query()
             ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
@@ -405,6 +412,12 @@ class ESBTPClasseController extends Controller
                 DB::raw('SUM(TIME_TO_SEC(TIMEDIFF(esbtp_seance_cours.heure_fin, esbtp_seance_cours.heure_debut))/3600) as total_heures')
             )
             ->groupBy('esbtp_seance_cours.matiere_id', 'esbtp_seance_cours.teacher_id');
+
+        if ($periode === 'semestre1') {
+            $seancesQuery->whereIn('esbtp_emploi_temps.semestre', ['1', 1, 'S1', 'Semestre 1', 'semestre1', 'SEMESTRE 1', 'Semestre1', 's1']);
+        } elseif ($periode === 'semestre2') {
+            $seancesQuery->whereIn('esbtp_emploi_temps.semestre', ['2', 2, 'S2', 'Semestre 2', 'semestre2', 'SEMESTRE 2', 'Semestre2', 's2']);
+        }
 
         $seancesRealisees = $seancesQuery->get();
 

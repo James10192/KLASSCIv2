@@ -469,30 +469,39 @@ class ESBTPPlanningGeneralController extends Controller
                 if ($volume && $volume > 0) {
                     \Log::info("📚 Traitement Matière ID: {$matiereId}, Volume: {$volume}h");
 
-                    $planification = ESBTPPlanificationAcademique::updateOrCreate(
-                        [
-                            'annee_universitaire_id' => $request->annee_id,
-                            'filiere_id' => $request->filiere_id,
-                            'niveau_etude_id' => $request->niveau_id,
-                            'matiere_id' => $matiereId,
-                            'semestre' => $request->semestre
-                        ],
-                        [
-                            'volume_horaire_total' => $volume,
-                            'volume_horaire_cm' => 0,
-                            'volume_horaire_td' => 0,
-                            'volume_horaire_tp' => 0,
-                            'coefficient' => 1,
-                            'credits_ects' => 0,
-                            'statut' => ESBTPPlanificationAcademique::STATUT_PLANIFIE,
-                            'updated_by' => Auth::id(),
-                            'created_by' => Auth::id()
-                        ]
-                    );
+                    $planification = ESBTPPlanificationAcademique::withTrashed()->firstOrNew([
+                        'annee_universitaire_id' => $request->annee_id,
+                        'filiere_id' => $request->filiere_id,
+                        'niveau_etude_id' => $request->niveau_id,
+                        'matiere_id' => $matiereId,
+                        'semestre' => $request->semestre
+                    ]);
+
+                    $wasTrashed = $planification->trashed();
+                    if ($wasTrashed) {
+                        $planification->restore();
+                    }
+
+                    $planification->fill([
+                        'volume_horaire_total' => $volume,
+                        'volume_horaire_cm' => 0,
+                        'volume_horaire_td' => 0,
+                        'volume_horaire_tp' => 0,
+                        'coefficient' => 1,
+                        'credits_ects' => 0,
+                        'statut' => ESBTPPlanificationAcademique::STATUT_PLANIFIE,
+                        'updated_by' => Auth::id(),
+                        'created_by' => $planification->exists ? $planification->created_by : Auth::id()
+                    ]);
+
+                    $planification->save();
 
                     if ($planification->wasRecentlyCreated) {
                         \Log::info("  ➕ Planification créée (ID: {$planification->id})");
                         $savedCount++;
+                    } elseif ($wasTrashed) {
+                        \Log::info("  ♻️ Planification restaurée (ID: {$planification->id})");
+                        $updatedCount++;
                     } else {
                         \Log::info("  🔄 Planification mise à jour (ID: {$planification->id})");
                         $updatedCount++;
