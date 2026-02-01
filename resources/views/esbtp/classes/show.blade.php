@@ -142,14 +142,15 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('classe-periode-form');
+    const container = document.getElementById('classe-periode-form');
     const content = document.getElementById('classe-planning-content');
-    if (!form || !content) {
+    if (!container || !content) {
         return;
     }
 
     const fetchPlanning = (periode) => {
-        const url = new URL(form.action);
+        const baseUrl = container.dataset.url;
+        const url = new URL(baseUrl);
         url.searchParams.set('periode', periode);
         return fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(response => response.text())
@@ -167,19 +168,16 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     };
 
-    form.addEventListener('click', (event) => {
-        const button = event.target.closest('button[name="periode"]');
+    container.addEventListener('click', (event) => {
+        const button = event.target.closest('.periode-btn');
         if (!button) {
             return;
         }
         event.preventDefault();
-        form.querySelectorAll('button[name="periode"]').forEach(btn => btn.classList.remove('active'));
+        event.stopPropagation();
+        container.querySelectorAll('.periode-btn').forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
-        fetchPlanning(button.value);
-    });
-
-    form.addEventListener('submit', (event) => {
-        event.preventDefault();
+        fetchPlanning(button.dataset.periode);
     });
 });
 </script>
@@ -473,11 +471,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <form method="GET" action="{{ route('esbtp.classes.show', ['classe' => $classe->id]) }}" class="d-flex gap-2" id="classe-periode-form">
-                        <button type="button" name="periode" value="semestre1" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'semestre1' ? 'active' : '' }}">S1</button>
-                        <button type="button" name="periode" value="semestre2" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'semestre2' ? 'active' : '' }}">S2</button>
-                        <button type="button" name="periode" value="annee" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'annee' ? 'active' : '' }}">Année</button>
-                    </form>
+                    <div class="d-flex gap-2" id="classe-periode-form" data-url="{{ route('esbtp.classes.show', ['classe' => $classe->id]) }}">
+                        <button type="button" class="btn btn-sm btn-outline-primary periode-btn {{ ($periode ?? 'annee') === 'semestre1' ? 'active' : '' }}" data-periode="semestre1">S1</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary periode-btn {{ ($periode ?? 'annee') === 'semestre2' ? 'active' : '' }}" data-periode="semestre2">S2</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary periode-btn {{ ($periode ?? 'annee') === 'annee' ? 'active' : '' }}" data-periode="annee">Année</button>
+                    </div>
                     <button class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
                             type="button"
                             data-bs-toggle="collapse"
