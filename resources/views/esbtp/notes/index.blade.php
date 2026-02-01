@@ -382,6 +382,14 @@ $(document).ready(function() {
             $('#selectedClassLabel').text(currentClassname);
         }
     });
+
+    $('#evaluationCreateModal').on('shown.bs.modal', function() {
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        const lastBackdrop = backdrops[backdrops.length - 1];
+        if (lastBackdrop) {
+            lastBackdrop.classList.add('evaluation-backdrop');
+        }
+    });
 });
 
 // Fonction pour sélectionner une classe
@@ -508,8 +516,8 @@ function buildNotesGrid() {
                 thead.append(header);
             });
             
-            thead.append('<th style="min-width: 100px;">Moyenne</th>');
-            thead.append('<th style="min-width: 100px;">Appréciation</th>');
+            thead.append('<th class="notes-average-col" style="min-width: 110px;">Moyenne</th>');
+            thead.append('<th class="notes-appreciation-col" style="min-width: 140px;">Appréciation</th>');
             
             // Construire les lignes des étudiants
             const tbody = $('#studentsRows');
@@ -919,18 +927,24 @@ function closeEvaluationModal() {
     modalElement.style.display = 'none';
     modalElement.setAttribute('aria-hidden', 'true');
 
-    const openModals = Array.from(document.querySelectorAll('.modal.show'))
-        .filter(modal => modal.id !== 'evaluationCreateModal');
+    setTimeout(() => {
+        const openModals = Array.from(document.querySelectorAll('.modal.show'))
+            .filter(modal => modal.id !== 'evaluationCreateModal');
 
-    const backdrops = Array.from(document.querySelectorAll('.modal-backdrop'));
-    const lastBackdrop = backdrops[backdrops.length - 1];
+        const evalBackdrop = document.querySelector('.modal-backdrop.evaluation-backdrop');
+        if (evalBackdrop) {
+            evalBackdrop.remove();
+        }
 
-    if (openModals.length === 0) {
-        document.body.classList.remove('modal-open');
-        backdrops.forEach(backdrop => backdrop.remove());
-    } else if (lastBackdrop) {
-        lastBackdrop.remove();
-    }
+        if (openModals.length > 0) {
+            document.body.classList.add('modal-open');
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+        }
+    }, 50);
 }
 
 // Fonction pour afficher un message de succès
