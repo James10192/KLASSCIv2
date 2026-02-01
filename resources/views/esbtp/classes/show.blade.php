@@ -177,6 +177,10 @@ document.addEventListener('DOMContentLoaded', () => {
         button.classList.add('active');
         fetchPlanning(button.value);
     });
+
+    form.addEventListener('submit', (event) => {
+        event.preventDefault();
+    });
 });
 </script>
 @endpush
@@ -470,9 +474,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <form method="GET" action="{{ route('esbtp.classes.show', ['classe' => $classe->id]) }}" class="d-flex gap-2" id="classe-periode-form">
-                        <button type="submit" name="periode" value="semestre1" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'semestre1' ? 'active' : '' }}">S1</button>
-                        <button type="submit" name="periode" value="semestre2" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'semestre2' ? 'active' : '' }}">S2</button>
-                        <button type="submit" name="periode" value="annee" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'annee' ? 'active' : '' }}">Année</button>
+                        <button type="button" name="periode" value="semestre1" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'semestre1' ? 'active' : '' }}">S1</button>
+                        <button type="button" name="periode" value="semestre2" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'semestre2' ? 'active' : '' }}">S2</button>
+                        <button type="button" name="periode" value="annee" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'annee' ? 'active' : '' }}">Année</button>
                     </form>
                     <button class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
                             type="button"
