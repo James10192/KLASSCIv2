@@ -1117,6 +1117,7 @@ function showSuccessMessage(message) {
 .notes-grid-table th,
 .notes-grid-table td {
     padding: 12px 10px;
+    border: 1px solid #e2e8f0;
 }
 
 .notes-grid-table {
