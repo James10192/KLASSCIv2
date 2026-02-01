@@ -6,6 +6,20 @@
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 @include('pdf.partials.theme')
 <style>
+    .preview-toolbar h4,
+    .preview-toolbar h4 i {
+        color: #1e293b !important;
+    }
+
+    .preview-toolbar small,
+    .preview-toolbar .text-muted {
+        color: #64748b !important;
+    }
+
+    .preview-toolbar {
+        background: var(--surface) !important;
+        border-color: var(--border) !important;
+    }
     .preview-container {
         max-width: 900px;
         margin: 0 auto;
