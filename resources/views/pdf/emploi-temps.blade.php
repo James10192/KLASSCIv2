@@ -62,8 +62,8 @@
             opacity: 0.95;
         }
         .header-logo img {
-            max-height: 16px;
-            max-width: 50px;
+            max-height: 12px;
+            max-width: 40px;
             filter: brightness(0) invert(1);
         }
 
