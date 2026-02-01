@@ -4,6 +4,7 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@include('pdf.partials.theme')
 <style>
     .kpi-card {
         background: white;

@@ -70,6 +70,57 @@
         color: var(--pdf-secondary) !important;
     }
 
+    /* Override common hard-coded colors (inline styles) */
+    [style*="background: #007bff"],
+    [style*="background:#007bff"],
+    [style*="background-color: #007bff"],
+    [style*="background-color:#007bff"],
+    [style*="background: #0453cb"],
+    [style*="background:#0453cb"],
+    [style*="background-color: #0453cb"],
+    [style*="background-color:#0453cb"] {
+        background: var(--pdf-primary) !important;
+        color: var(--pdf-header-text) !important;
+    }
+
+    [style*="color: #007bff"],
+    [style*="color:#007bff"],
+    [style*="color: #0453cb"],
+    [style*="color:#0453cb"] {
+        color: var(--pdf-primary) !important;
+    }
+
+    [style*="border: 1px solid #007bff"],
+    [style*="border:1px solid #007bff"],
+    [style*="border: 2px solid #007bff"],
+    [style*="border:2px solid #007bff"],
+    [style*="border: 1px solid #0453cb"],
+    [style*="border:1px solid #0453cb"],
+    [style*="border: 2px solid #0453cb"],
+    [style*="border:2px solid #0453cb"] {
+        border-color: var(--pdf-primary) !important;
+    }
+
+    [style*="color: #6b7280"],
+    [style*="color:#6b7280"],
+    [style*="color: #64748b"],
+    [style*="color:#64748b"],
+    [style*="color: #374151"],
+    [style*="color:#374151"] {
+        color: var(--pdf-secondary) !important;
+    }
+
+    [style*="background: #f3f4f6"],
+    [style*="background:#f3f4f6"],
+    [style*="background-color: #f3f4f6"],
+    [style*="background-color:#f3f4f6"],
+    [style*="background: #f8f9fa"],
+    [style*="background:#f8f9fa"],
+    [style*="background-color: #f8f9fa"],
+    [style*="background-color:#f8f9fa"] {
+        background: #ffffff !important;
+    }
+
     .border-accent {
         border-color: var(--pdf-primary) !important;
     }
