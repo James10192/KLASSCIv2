@@ -214,6 +214,31 @@
             clear: both;
         }
 
+        /* Fix overflow in PDF layout */
+        .container {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .certificat-document {
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .student-details {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .detail-label {
+            width: 35%;
+        }
+
+        .detail-value {
+            width: 65%;
+            word-break: break-word;
+        }
+
         .certificat-document {
             --primary: {{ $pdfHeaderText }};
             --text-secondary: {{ $pdfText }};
