@@ -382,7 +382,7 @@
                 <img src="{{ $settings['logo_base64'] }}" alt="Logo École" class="certificat-logo">
             @endif
             
-            <div class="certificat-school-name">{{ $settings['name'] ?? 'École Spéciale du Bâtiment et des Travaux Publics' }}</div>
+            <div class="certificat-school-name">{{ $settings['name'] ?? '' }}</div>
             
             @if($settings['address'] ?? null)
                 <div class="certificat-address">{{ $settings['address'] }}</div>
@@ -407,7 +407,7 @@
         <!-- Contenu principal -->
         <div class="certificat-content">
             <p>
-                Je soussigné(e), {{ $settings['director_title'] ?? 'Le Directeur' }} de {{ $settings['name'] ?? 'l\'École Spéciale du Bâtiment et des Travaux Publics' }}, certifie que :
+                Je soussigné(e), {{ $settings['director_title'] ?? '' }} de {{ $settings['name'] ?? '' }}, certifie que :
             </p>
 
             <p>
