@@ -122,6 +122,28 @@
     .signature-name {
         color: {{ $pdfHeaderText }} !important;
     }
+
+    /* Final overrides to match PDF theme */
+    .certificat-document,
+    .certificat-header,
+    .certificat-school-name,
+    .certificat-address,
+    .certificat-title,
+    .certificat-highlight,
+    .signature-title,
+    .signature-name,
+    .detail-label {
+        color: {{ $pdfHeaderText }} !important;
+    }
+
+    .certificat-title {
+        background-color: {{ $pdfHeaderBg }} !important;
+        border-color: {{ $pdfHeaderText }} !important;
+    }
+
+    .certificat-divider {
+        background-color: {{ $pdfHeaderText }} !important;
+    }
     
     /* Styles pour l'attestation - similaires au certificat */
     .certificat-document {

@@ -222,6 +222,32 @@
             background: transparent !important;
             border-color: {{ $pdfHeaderText }} !important;
         }
+
+        /* Final overrides for PDF rendering */
+        .container,
+        .certificat-document {
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .certificat-header,
+        .certificat-school-name,
+        .certificat-address,
+        .certificat-title,
+        .certificat-highlight,
+        .signature-title,
+        .signature-name {
+            color: {{ $pdfHeaderText }} !important;
+        }
+
+        .certificat-title {
+            background-color: {{ $pdfHeaderBg }} !important;
+            border-color: {{ $pdfHeaderText }} !important;
+        }
+
+        .certificat-divider {
+            background-color: {{ $pdfHeaderText }} !important;
+        }
     </style>
 </head>
 <body>

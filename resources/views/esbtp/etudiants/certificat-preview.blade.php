@@ -320,6 +320,27 @@
         color: {{ $pdfText }} !important;
         background: transparent !important;
     }
+
+    /* Final overrides to match PDF theme */
+    .certificat-document,
+    .certificat-header,
+    .certificat-school-name,
+    .certificat-address,
+    .certificat-title,
+    .certificat-highlight,
+    .signature-title,
+    .signature-name {
+        color: {{ $pdfHeaderText }} !important;
+    }
+
+    .certificat-title {
+        background-color: {{ $pdfHeaderBg }} !important;
+        border-color: {{ $pdfHeaderText }} !important;
+    }
+
+    .certificat-divider {
+        background-color: {{ $pdfHeaderText }} !important;
+    }
 </style>
 @endsection
 
