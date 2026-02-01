@@ -34,7 +34,7 @@
             background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
             color: #ffffff;
             border-radius: 10px;
-            padding: 4px 6px;
+            padding: 3px 5px;
             margin-bottom: 3px;
         }
         .header-top {
@@ -62,8 +62,8 @@
             opacity: 0.95;
         }
         .header-logo img {
-            max-height: 22px;
-            max-width: 70px;
+            max-height: 16px;
+            max-width: 50px;
             filter: brightness(0) invert(1);
         }
 
@@ -73,7 +73,7 @@
             background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
             color: white;
             border-radius: 12px;
-            padding: 6px 8px;
+            padding: 4px 6px;
             margin-bottom: 3px;
         }
         .school-card h2 {
@@ -269,7 +269,7 @@
                     $swatch = $sessionTypeSwatches[$type] ?? ($sessionTypeColors[$type] ?? $sessionTypeColors['default']);
                 @endphp
                 <li class="legend-item">
-                    <span class="legend-color" style="background: #0453cb;"></span>
+                    <span class="legend-color" style="background: {{ $swatch['bg'] ?? '#0453cb' }};"></span>
                     {{ $label }}
                 </li>
             @endforeach
