@@ -450,6 +450,14 @@ class ESBTPPlanningGeneralController extends Controller
         \Log::info('📊 Volumes à sauvegarder:', $request->volumes);
         \Log::info('👨‍🏫 Professeurs à assigner:', $request->teachers ?? []);
 
+        $volumes = $request->input('volumes', []);
+        if (empty($volumes) && empty($request->teachers ?? [])) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Aucune modification à enregistrer.'
+            ]);
+        }
+
         DB::beginTransaction();
 
         try {
@@ -457,7 +465,7 @@ class ESBTPPlanningGeneralController extends Controller
             $updatedCount = 0;
             $teachersAssignedCount = 0;
             
-            foreach ($request->volumes as $matiereId => $volume) {
+            foreach ($volumes as $matiereId => $volume) {
                 if ($volume && $volume > 0) {
                     \Log::info("📚 Traitement Matière ID: {$matiereId}, Volume: {$volume}h");
 
@@ -1513,15 +1521,9 @@ class ESBTPPlanningGeneralController extends Controller
         }
 
         if ($periode === 'semestre1') {
-            $seancesQuery->where(function ($query) {
-                $query->where('esbtp_emploi_temps.semestre', 1)
-                    ->orWhereNull('esbtp_emploi_temps.semestre');
-            });
+            $seancesQuery->whereIn('esbtp_emploi_temps.semestre', ['1', 1, 'S1', 'Semestre 1', 'semestre1', 'SEMESTRE 1', 'Semestre1', 's1']);
         } elseif ($periode === 'semestre2') {
-            $seancesQuery->where(function ($query) {
-                $query->where('esbtp_emploi_temps.semestre', 2)
-                    ->orWhereNull('esbtp_emploi_temps.semestre');
-            });
+            $seancesQuery->whereIn('esbtp_emploi_temps.semestre', ['2', 2, 'S2', 'Semestre 2', 'semestre2', 'SEMESTRE 2', 'Semestre2', 's2']);
         }
 
         $seancesRealisees = $seancesQuery->get();

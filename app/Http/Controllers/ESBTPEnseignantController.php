@@ -422,15 +422,9 @@ class ESBTPEnseignantController extends Controller
             ->groupBy('esbtp_seance_cours.matiere_id', 'esbtp_seance_cours.classe_id');
 
         if ($periode === 'semestre1') {
-            $seancesQuery->where(function ($query) {
-                $query->where('esbtp_emploi_temps.semestre', 1)
-                    ->orWhereNull('esbtp_emploi_temps.semestre');
-            });
+            $seancesQuery->whereIn('esbtp_emploi_temps.semestre', ['1', 1, 'S1', 'Semestre 1', 'semestre1', 'SEMESTRE 1', 'Semestre1', 's1']);
         } elseif ($periode === 'semestre2') {
-            $seancesQuery->where(function ($query) {
-                $query->where('esbtp_emploi_temps.semestre', 2)
-                    ->orWhereNull('esbtp_emploi_temps.semestre');
-            });
+            $seancesQuery->whereIn('esbtp_emploi_temps.semestre', ['2', 2, 'S2', 'Semestre 2', 'semestre2', 'SEMESTRE 2', 'Semestre2', 's2']);
         }
 
         $seancesRealisees = $seancesQuery->get();

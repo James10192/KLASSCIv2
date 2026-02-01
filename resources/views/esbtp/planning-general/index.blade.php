@@ -2703,7 +2703,14 @@ $(function() {
         // Collecter tous les volumes
         $('.volume-input').each(function() {
             const matiereId = $(this).attr('name').match(/volumes\[(\d+)\]/)[1];
-            const volume = parseInt($(this).val()) || 0;
+            const rawValue = $(this).val();
+            if (rawValue === '' || rawValue === null) {
+                return;
+            }
+            const volume = parseInt(rawValue, 10);
+            if (Number.isNaN(volume)) {
+                return;
+            }
             formData.volumes[matiereId] = volume;
 
             if (volume > 0) {
@@ -2712,6 +2719,15 @@ $(function() {
         });
 
         debugLog('📚 Total volumes:', Object.keys(formData.volumes).length + ' matières');
+
+        if (Object.keys(formData.volumes).length === 0 && Object.keys(formData.teachers).length === 0) {
+            showAlert('info', 'Aucune modification détectée.');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('volumeConfigModal'));
+            if (modal) {
+                modal.hide();
+            }
+            return;
+        }
 
         // Collecter toutes les assignations de professeurs (checkboxes)
         const $teacherContainers = $('.teacher-table-container');
