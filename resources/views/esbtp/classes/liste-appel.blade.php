@@ -4,6 +4,56 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@include('pdf.partials.theme')
+<style>
+    .dashboard-header,
+    .dashboard-header h1,
+    .dashboard-header .header-subtitle,
+    .kpi-title,
+    .kpi-trend,
+    .kpi-value,
+    .main-card-title,
+    .main-card-subtitle,
+    .main-card-header,
+    .main-card-header .main-card-title i {
+        color: #1e293b !important;
+        background: transparent !important;
+    }
+
+    .kpi-value {
+        color: #0453cb !important;
+    }
+
+    .main-card-header {
+        background: #ffffff !important;
+    }
+
+    .dashboard-header .header-actions .btn-acasi.primary,
+    .dashboard-header .header-actions .btn-acasi.danger {
+        background: #0453cb !important;
+        color: #ffffff !important;
+    }
+
+    #attendance-table thead,
+    #attendance-table thead th {
+        background: var(--pdf-header-bg) !important;
+        color: var(--pdf-header-text) !important;
+    }
+
+    #attendance-table tbody tr:nth-child(even) {
+        background-color: rgba(0, 0, 0, 0.02) !important;
+    }
+
+    .badge,
+    .avatar-placeholder {
+        background: #0453cb !important;
+        color: #ffffff !important;
+    }
+
+    .form-check-input {
+        accent-color: #0453cb !important;
+    }
+</style>
 @endsection
 
 @section('content')
