@@ -2,6 +2,13 @@
 <html lang="fr">
 <head>
     @include('pdf.partials.theme')
+    @php
+        $pdfSettings = \App\Helpers\SettingsHelper::getPdfSettings();
+        $pdfHeaderBg = $pdfSettings['header_bg_color'] ?? '#0453cb';
+        $pdfHeaderText = $pdfSettings['header_text_color'] ?? '#ffffff';
+        $pdfText = $pdfSettings['text_color'] ?? '#1f2937';
+        $pdfSecondary = $pdfSettings['secondary_color'] ?? '#5e91de';
+    @endphp
     <meta charset="UTF-8">
     <title>Emploi du temps - {{ $emploiTemps->classe->name ?? 'Classe' }}</title>
     <style>
@@ -26,9 +33,9 @@
         .header {
             background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
             color: #ffffff;
-            border-radius: 12px;
-            padding: 6px 8px;
-            margin-bottom: 4px;
+            border-radius: 10px;
+            padding: 4px 6px;
+            margin-bottom: 3px;
         }
         .header-top {
             display: table;
@@ -55,8 +62,8 @@
             opacity: 0.95;
         }
         .header-logo img {
-            max-height: 30px;
-            max-width: 100px;
+            max-height: 22px;
+            max-width: 70px;
             filter: brightness(0) invert(1);
         }
 
@@ -262,7 +269,7 @@
                     $swatch = $sessionTypeSwatches[$type] ?? ($sessionTypeColors[$type] ?? $sessionTypeColors['default']);
                 @endphp
                 <li class="legend-item">
-                    <span class="legend-color" style="background: {{ $swatch['bg'] ?? '#0453cb' }};"></span>
+                    <span class="legend-color" style="background: #0453cb;"></span>
                     {{ $label }}
                 </li>
             @endforeach
