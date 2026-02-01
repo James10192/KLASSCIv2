@@ -488,7 +488,7 @@ function buildNotesGrid() {
             // Construire l'en-tête du tableau avec les évaluations
             const thead = $('#notesGrid thead tr');
             thead.empty();
-            thead.append('<th style="width: 200px; min-width: 200px;">Étudiants</th>');
+            thead.append('<th class="notes-student-col" style="width: 200px; min-width: 200px; position: sticky; left: 0; top: 0; z-index: 7; background: #ffffff;">Étudiants</th>');
             
             evaluations.forEach(evaluation => {
                 const header = `
@@ -526,7 +526,7 @@ function buildNotesGrid() {
             students.forEach(student => {
                 const row = $(`
                     <tr data-student-id="${student.id}">
-                        <td class="fw-medium">
+                        <td class="fw-medium notes-student-col">
                             <div class="d-flex align-items-center">
                                 <div class="me-2">
                                     <i class="fas fa-user-graduate text-primary"></i>
@@ -605,7 +605,7 @@ function buildClassAveragesRow(evaluations) {
     tfoot.empty().show();
     
     const row = $('<tr class="bg-light fw-bold"></tr>');
-    row.append('<td class="text-end">Moyenne Classe</td>');
+    row.append('<td class="text-end notes-student-col">Moyenne Classe</td>');
     
     evaluations.forEach(evaluation => {
         row.append(`<td class="text-center class-avg-${evaluation.id}">--</td>`);
@@ -1146,6 +1146,14 @@ function showSuccessMessage(message) {
     z-index: 7;
 }
 
+#notesGrid tbody td.notes-student-col,
+#notesGrid tfoot td.notes-student-col {
+    position: sticky;
+    left: 0;
+    z-index: 6;
+    background: #ffffff;
+}
+
 .notes-grid-table tfoot td {
     position: sticky;
     bottom: 0;
@@ -1241,7 +1249,9 @@ function showSuccessMessage(message) {
     border-radius: 12px;
     border: 1px solid rgba(148, 163, 184, 0.35);
     max-height: 60vh;
-    overflow: auto;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
 }
 
 .notes-modal-footer {
