@@ -63,8 +63,8 @@
         }
         .header-logo img,
         .header-right img {
-            max-height: 12px;
-            max-width: 40px;
+            max-height: 18px;
+            max-width: 60px;
             filter: brightness(0) invert(1);
         }
 
