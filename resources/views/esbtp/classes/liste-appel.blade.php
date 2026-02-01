@@ -4,6 +4,41 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@include('pdf.partials.theme')
+<style>
+    .dashboard-header .header-subtitle,
+    .kpi-trend,
+    .kpi-title,
+    .main-card-subtitle {
+        color: var(--pdf-secondary) !important;
+    }
+
+    .kpi-value,
+    .main-card-title i,
+    .card-title,
+    .fw-bold {
+        color: var(--pdf-primary) !important;
+    }
+
+    .main-card-header,
+    #attendance-table thead,
+    #attendance-table thead th,
+    .dashboard-header .header-left h1 i {
+        background: var(--pdf-header-bg) !important;
+        color: var(--pdf-header-text) !important;
+    }
+
+    .badge,
+    .avatar-placeholder,
+    .student-number {
+        background: var(--pdf-primary) !important;
+        color: var(--pdf-header-text) !important;
+    }
+
+    .form-check-input {
+        accent-color: var(--pdf-primary) !important;
+    }
+</style>
 @endsection
 
 @section('content')

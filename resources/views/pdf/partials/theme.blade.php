@@ -41,15 +41,33 @@
         color: #ffffff;
     }
 
-    table thead th {
-        background: var(--pdf-header-bg);
-        color: var(--pdf-header-text);
+    table thead th,
+    .attendance-table th,
+    .table-header th,
+    .header-table th {
+        background: var(--pdf-header-bg) !important;
+        color: var(--pdf-header-text) !important;
     }
 
     .table-header,
-    .section-header {
-        background: var(--pdf-header-bg);
-        color: var(--pdf-header-text);
+    .section-header,
+    .header-section,
+    .document-title-section {
+        background: var(--pdf-header-bg) !important;
+        color: var(--pdf-header-text) !important;
+    }
+
+    .student-number,
+    .kpi-value,
+    .header-badge {
+        background: var(--pdf-primary) !important;
+        color: var(--pdf-header-text) !important;
+    }
+
+    .kpi-title,
+    .small-muted,
+    .meta-text {
+        color: var(--pdf-secondary) !important;
     }
 
     .border-accent {
