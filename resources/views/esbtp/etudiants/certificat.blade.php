@@ -168,6 +168,23 @@
         }
 
         .certificat-document {
+            --primary: {{ $pdfHeaderText }};
+            --text-secondary: {{ $pdfText }};
+            --text: {{ $pdfText }};
+        }
+
+        .certificat-content table {
+            width: 100%;
+            table-layout: fixed;
+        }
+
+        .certificat-content table th,
+        .certificat-content table td {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .certificat-document {
             color: {{ $pdfText }};
         }
 

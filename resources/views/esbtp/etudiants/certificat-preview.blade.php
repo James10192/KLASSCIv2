@@ -123,16 +123,17 @@
         font-family: Arial, sans-serif;
         font-size: 14px;
         line-height: 1.6;
-        color: #333;
+        color: {{ $pdfText }} !important;
         padding: 30px;
         max-width: 750px;
         margin: 0 auto;
+        box-sizing: border-box;
     }
     
     .certificat-header {
         text-align: center;
         margin-bottom: 30px;
-        border-bottom: 3px solid var(--primary);
+        border-bottom: 3px solid {{ $pdfHeaderText }};
         padding-bottom: 20px;
     }
     
@@ -146,24 +147,18 @@
         font-weight: bold;
         margin-bottom: 8px;
         text-transform: uppercase;
-        color: var(--primary);
+        color: {{ $pdfHeaderText }} !important;
     }
     
     .certificat-address {
         font-size: 12px;
-        color: var(--text-secondary);
+        color: {{ $pdfHeaderText }} !important;
         margin-bottom: 5px;
     }
     
     .certificat-divider {
         height: 6px;
-        background: repeating-linear-gradient(
-            45deg,
-            var(--primary),
-            var(--primary) 8px,
-            #fff 8px,
-            #fff 16px
-        );
+        background: {{ $pdfHeaderText }};
         margin: 20px 0;
     }
     
@@ -171,29 +166,19 @@
         font-size: 28px;
         font-weight: bold;
         text-align: center;
-        border: 3px double var(--primary);
+        border: 3px double {{ $pdfHeaderText }};
         border-radius: 10px;
         padding: 15px;
         margin: 30px auto;
         max-width: 90%;
-        box-shadow: var(--shadow-card);
-        background: linear-gradient(135deg, #ffffff, #f8fafc);
+        background: {{ $pdfHeaderBg }};
         position: relative;
         text-transform: uppercase;
-        color: var(--primary);
+        color: {{ $pdfHeaderText }};
     }
     
     .certificat-title::before {
-        content: '';
-        position: absolute;
-        top: -5px;
-        left: -5px;
-        right: -5px;
-        bottom: -5px;
-        border: 1px solid var(--primary);
-        border-radius: 15px;
-        z-index: -1;
-        opacity: 0.3;
+        border: 1px solid {{ $pdfHeaderText }};
     }
     
     .certificat-content {
@@ -209,7 +194,7 @@
     
     .certificat-highlight {
         font-weight: bold;
-        color: var(--primary);
+        color: {{ $pdfHeaderText }};
         text-decoration: underline;
     }
     
@@ -224,13 +209,13 @@
         flex: 1;
         text-align: left;
         font-style: italic;
-        color: var(--text-secondary);
+        color: {{ $pdfText }};
     }
     
     .certificat-signature {
         flex: 1;
         text-align: right;
-        border-top: 2px solid var(--primary);
+        border-top: 2px solid {{ $pdfHeaderText }};
         padding-top: 15px;
         min-height: 80px;
     }
@@ -238,11 +223,11 @@
     .signature-title {
         font-weight: bold;
         margin-bottom: 10px;
-        color: var(--primary);
+        color: {{ $pdfHeaderText }};
     }
     
     .signature-name {
-        color: var(--text-secondary);
+        color: {{ $pdfHeaderText }};
         font-style: italic;
     }
     
@@ -251,9 +236,20 @@
         text-align: center;
         font-size: 11px;
         font-style: italic;
-        color: var(--text-secondary);
-        border-top: 1px solid #ddd;
+        color: {{ $pdfText }};
+        border-top: 1px solid {{ $pdfHeaderText }};
         padding-top: 15px;
+    }
+
+    .certificat-content table {
+        width: 100%;
+        table-layout: fixed;
+    }
+
+    .certificat-content table th,
+    .certificat-content table td {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
     
     @media print {
@@ -269,6 +265,60 @@
         .certificat-document {
             padding: 0;
         }
+    }
+
+    /* Overrides PDF theme for document area */
+    .certificat-document {
+        color: {{ $pdfText }} !important;
+        --primary: {{ $pdfHeaderText }};
+        --text-secondary: {{ $pdfText }};
+        --text: {{ $pdfText }};
+    }
+
+    .certificat-header,
+    .certificat-school-name,
+    .certificat-address {
+        color: {{ $pdfHeaderText }} !important;
+    }
+
+    .certificat-divider {
+        background-color: {{ $pdfHeaderText }} !important;
+    }
+
+    .certificat-title {
+        background-color: {{ $pdfHeaderBg }} !important;
+        color: {{ $pdfHeaderText }} !important;
+        border-color: {{ $pdfHeaderText }} !important;
+    }
+
+    .certificat-highlight,
+    .signature-title,
+    .certificat-signature,
+    .signature-name {
+        color: {{ $pdfHeaderText }} !important;
+        border-color: {{ $pdfHeaderText }} !important;
+    }
+
+    .certificat-content table {
+        width: 100% !important;
+        table-layout: fixed;
+    }
+
+    .certificat-content table th,
+    .certificat-content table td {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        border-color: {{ $pdfHeaderText }} !important;
+    }
+
+    .certificat-content table thead th {
+        background-color: {{ $pdfHeaderBg }} !important;
+        color: {{ $pdfHeaderText }} !important;
+    }
+
+    .certificat-content table tbody td {
+        color: {{ $pdfText }} !important;
+        background: transparent !important;
     }
 </style>
 @endsection

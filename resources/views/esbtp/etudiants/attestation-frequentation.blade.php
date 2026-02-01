@@ -215,6 +215,12 @@
         }
 
         .certificat-document {
+            --primary: {{ $pdfHeaderText }};
+            --text-secondary: {{ $pdfText }};
+            --text: {{ $pdfText }};
+        }
+
+        .certificat-document {
             color: {{ $pdfText }};
         }
 
