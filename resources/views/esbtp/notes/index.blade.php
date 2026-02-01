@@ -516,8 +516,8 @@ function buildNotesGrid() {
                 thead.append(header);
             });
             
-            thead.append('<th class="notes-average-col" style="min-width: 110px;">Moyenne</th>');
-            thead.append('<th class="notes-appreciation-col" style="min-width: 140px;">Appréciation</th>');
+            thead.append('<th class="notes-average-col" style="min-width: 110px; position: sticky; right: 140px; top: 0; z-index: 6; background: #f8fafc;">Moyenne</th>');
+            thead.append('<th class="notes-appreciation-col" style="min-width: 140px; position: sticky; right: 0; top: 0; z-index: 7; background: #f8fafc;">Appréciation</th>');
             
             // Construire les lignes des étudiants
             const tbody = $('#studentsRows');
@@ -877,6 +877,7 @@ $(document).on('submit', '#evaluationCreateForm', function(e) {
             }
 
             closeEvaluationModal();
+            setTimeout(closeEvaluationModal, 150);
             loadEvaluationsAndNotes();
             showSuccessMessage('Évaluation créée avec succès !');
         },
@@ -1131,10 +1132,18 @@ function showSuccessMessage(message) {
     background: #f8fafc;
 }
 
-.notes-grid-table thead .notes-average-col,
-.notes-grid-table thead .notes-appreciation-col {
+#notesGrid thead th.notes-average-col {
+    position: sticky !important;
     top: 0;
+    right: 140px;
     z-index: 6;
+}
+
+#notesGrid thead th.notes-appreciation-col {
+    position: sticky !important;
+    top: 0;
+    right: 0;
+    z-index: 7;
 }
 
 .notes-grid-table tfoot td {
