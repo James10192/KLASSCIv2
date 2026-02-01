@@ -258,8 +258,8 @@
                             <tr>
                                 <th style="width: 200px; min-width: 200px;">Étudiants</th>
                                 <!-- Colonnes d'évaluations seront ajoutées dynamiquement ici -->
-                                <th style="min-width: 100px;">Moyenne</th>
-                                <th style="min-width: 100px;">Appréciation</th>
+                                <th class="notes-average-col" style="min-width: 110px;">Moyenne</th>
+                                <th class="notes-appreciation-col" style="min-width: 140px;">Appréciation</th>
                             </tr>
                         </thead>
                         <tbody id="studentsRows">
@@ -570,8 +570,8 @@ function buildNotesGrid() {
                 });
                 
                 // Colonnes moyenne et appréciation
-                row.append('<td class="text-center fw-bold average-cell">--</td>');
-                row.append('<td class="text-center"><span class="badge bg-secondary appreciation-badge">--</span></td>');
+                row.append('<td class="text-center fw-bold average-cell notes-average-col">--</td>');
+                row.append('<td class="text-center notes-appreciation-col"><span class="badge bg-secondary appreciation-badge">--</span></td>');
                 
                 tbody.append(row);
             });
@@ -603,8 +603,8 @@ function buildClassAveragesRow(evaluations) {
         row.append(`<td class="text-center class-avg-${evaluation.id}">--</td>`);
     });
     
-    row.append('<td class="text-center class-overall-avg">--</td>');
-    row.append('<td></td>');
+    row.append('<td class="text-center class-overall-avg notes-average-col">--</td>');
+    row.append('<td class="notes-appreciation-col"></td>');
     
     tfoot.append(row);
 }
@@ -1129,21 +1129,7 @@ function showSuccessMessage(message) {
     background: #f8fafc;
 }
 
-.notes-grid-table th:last-child,
-.notes-grid-table td:last-child {
-    position: sticky;
-    right: 0;
-    z-index: 4;
-    background: #f8fafc;
-    min-width: 140px;
-}
-
-.notes-grid-table tfoot td:last-child {
-    z-index: 6;
-}
-
-.notes-grid-table th:nth-last-child(2),
-.notes-grid-table td:nth-last-child(2) {
+.notes-average-col {
     position: sticky;
     right: 140px;
     z-index: 4;
@@ -1151,7 +1137,16 @@ function showSuccessMessage(message) {
     min-width: 110px;
 }
 
-.notes-grid-table tfoot td:nth-last-child(2) {
+.notes-appreciation-col {
+    position: sticky;
+    right: 0;
+    z-index: 5;
+    background: #f8fafc;
+    min-width: 140px;
+}
+
+.notes-grid-table tfoot .notes-average-col,
+.notes-grid-table tfoot .notes-appreciation-col {
     z-index: 6;
 }
 
