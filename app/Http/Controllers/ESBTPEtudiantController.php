@@ -1344,7 +1344,7 @@ class ESBTPEtudiantController extends Controller
         }
 
         // Récupérer les paramètres de l'école
-        $settings = \App\Helpers\SettingsHelper::getSchoolInfo();
+        $settings = $this->getCertificateDisplaySettings();
 
         return view('esbtp.etudiants.certificat-preview', [
             'etudiant' => $etudiant,
@@ -1381,7 +1381,7 @@ class ESBTPEtudiantController extends Controller
             }
 
             // Récupérer les paramètres de l'école
-            $settings = \App\Helpers\SettingsHelper::getSchoolInfo();
+            $settings = $this->getCertificateDisplaySettings();
 
             $html = view('esbtp.etudiants.certificat', [
                 'etudiant' => $etudiant,
@@ -1443,6 +1443,20 @@ class ESBTPEtudiantController extends Controller
         if ($settings['show_logo'] && $settings['school_logo']) {
             $settings['logo_base64'] = $this->prepareLogoBase64($settings['school_logo']);
         }
+
+        return $settings;
+    }
+
+    private function getCertificateDisplaySettings()
+    {
+        $settings = \App\Helpers\SettingsHelper::getSchoolInfo();
+
+        $showLogo = \App\Helpers\SettingsHelper::get('certificat_show_logo', '1') === '1';
+        $logoPath = \App\Helpers\SettingsHelper::get('school_logo');
+        $logoBase64 = ($showLogo && $logoPath) ? $this->prepareLogoBase64($logoPath) : null;
+
+        $settings['show_logo'] = $showLogo;
+        $settings['logo_base64'] = $logoBase64;
 
         return $settings;
     }
@@ -1903,7 +1917,8 @@ class ESBTPEtudiantController extends Controller
 
         return view('esbtp.etudiants.attestation-frequentation-preview', [
             'etudiant' => $etudiant,
-            'inscription' => $inscription
+            'inscription' => $inscription,
+            'settings' => $this->getCertificateDisplaySettings(),
         ]);
     }
 
@@ -1935,7 +1950,7 @@ class ESBTPEtudiantController extends Controller
             }
 
             // Récupérer les paramètres de l'école
-            $settings = \App\Helpers\SettingsHelper::getSchoolInfo();
+            $settings = $this->getCertificateDisplaySettings();
 
             $html = view('esbtp.etudiants.attestation-frequentation', [
                 'etudiant' => $etudiant,

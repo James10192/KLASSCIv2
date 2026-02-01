@@ -412,60 +412,29 @@
             <!-- Contenu du certificat -->
             <div class="preview-content">
                 <div class="certificat-document" style="position: relative;">
-                    @php
-                        use App\Helpers\SettingsHelper;
-                        $schoolName = SettingsHelper::get('school_name', 'École Spéciale du Bâtiment et des Travaux Publics');
-                        $schoolAddress = SettingsHelper::get('school_address', 'BP 2541 Yamoussoukro');
-                        $schoolPhone = SettingsHelper::get('school_phone', '30 64 39 93');
-                        $schoolEmail = SettingsHelper::get('school_email', 'esbtp@aviso.ci');
-                        $schoolCity = SettingsHelper::get('school_city', 'Yamoussoukro');
-                        $directorName = SettingsHelper::get('director_name', '');
-                        $directorTitle = SettingsHelper::get('director_title', 'Le Directeur');
-                        $showLogo = SettingsHelper::get('certificat_show_logo', '1') === '1';
-                        $logoPath = SettingsHelper::get('school_logo');
-                        
-                        $logoBase64 = null;
-                        if ($showLogo && $logoPath) {
-                            $paths = [
-                                storage_path('app/public/' . $logoPath),
-                                public_path($logoPath),
-                                public_path('images/LOGO-KLASSCI-PNG.png'),
-                            ];
-                            
-                            foreach ($paths as $path) {
-                                if (file_exists($path)) {
-                                    $imageData = file_get_contents($path);
-                                    $extension = pathinfo($path, PATHINFO_EXTENSION);
-                                    $logoBase64 = 'data:image/' . $extension . ';base64,' . base64_encode($imageData);
-                                    break;
-                                }
-                            }
-                        }
-                    @endphp
-
-                    @if($logoBase64)
+                    @if(!empty($settings['logo_base64']))
                         <div class="document-watermark">
-                            <img src="{{ $logoBase64 }}" alt="Filigrane logo">
+                            <img src="{{ $settings['logo_base64'] }}" alt="Filigrane logo">
                         </div>
                     @endif
 
                     <div class="document-content">
                     <!-- En-tête -->
                     <div class="certificat-header">
-                        @if($showLogo && $logoBase64)
-                            <img src="{{ $logoBase64 }}" alt="Logo École" class="certificat-logo">
+                        @if(!empty($settings['show_logo']) && !empty($settings['logo_base64']))
+                            <img src="{{ $settings['logo_base64'] }}" alt="Logo École" class="certificat-logo">
                         @endif
                         
-                        <div class="certificat-school-name">{{ $schoolName }}</div>
+                        <div class="certificat-school-name">{{ $settings['name'] ?? '' }}</div>
                         
-                        @if($schoolAddress)
-                            <div class="certificat-address">{{ $schoolAddress }}</div>
+                        @if(!empty($settings['address']))
+                            <div class="certificat-address">{{ $settings['address'] }}</div>
                         @endif
-                        @if($schoolPhone || $schoolEmail)
+                        @if(!empty($settings['phone']) || !empty($settings['email']))
                             <div class="certificat-address">
-                                @if($schoolPhone)Tél: {{ $schoolPhone }}@endif
-                                @if($schoolPhone && $schoolEmail) - @endif
-                                @if($schoolEmail)Email: {{ $schoolEmail }}@endif
+                                @if(!empty($settings['phone']))Tél: {{ $settings['phone'] }}@endif
+                                @if(!empty($settings['phone']) && !empty($settings['email'])) - @endif
+                                @if(!empty($settings['email']))Email: {{ $settings['email'] }}@endif
                             </div>
                         @endif
                     </div>
@@ -481,7 +450,7 @@
                     <!-- Contenu principal -->
                     <div class="certificat-content">
                         <p>
-                            Je soussigné(e), {{ $directorTitle }} de {{ $schoolName }}, certifie que :
+                            Je soussigné(e), {{ $settings['director_title'] ?? '' }} de {{ $settings['name'] ?? '' }}, certifie que :
                         </p>
 
                         <p>
@@ -569,13 +538,13 @@
                     <!-- Footer avec signature -->
                     <div class="certificat-footer">
                         <div class="certificat-date">
-                            <p>Fait à {{ $schoolCity }}, le 13/09/2025</p>
+                            <p>Fait à {{ $settings['city'] ?? '' }}, le {{ now()->format('d/m/Y') }}</p>
                         </div>
 
                         <div class="certificat-signature">
-                            <div class="signature-title">{{ $directorTitle }}</div>
-                            @if($directorName)
-                                <div class="signature-name">{{ $directorName }}</div>
+                            <div class="signature-title">{{ $settings['director_title'] ?? '' }}</div>
+                            @if(!empty($settings['director_name']))
+                                <div class="signature-name">{{ $settings['director_name'] }}</div>
                             @endif
                         </div>
                     </div>
