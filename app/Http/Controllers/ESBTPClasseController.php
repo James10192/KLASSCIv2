@@ -275,7 +275,7 @@ class ESBTPClasseController extends Controller
      * @param  \App\Models\ESBTPClasse  $classe
      * @return \Illuminate\Http\Response
      */
-    public function show(ESBTPClasse $classe)
+    public function show(Request $request, ESBTPClasse $classe)
     {
         $user = Auth::user();
         
