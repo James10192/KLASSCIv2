@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    @include('pdf.partials.theme')
     <meta charset="utf-8">
     <title>Bulletin de Notes</title>
     <style>

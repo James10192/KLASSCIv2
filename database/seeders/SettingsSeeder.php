@@ -225,6 +225,78 @@ class SettingsSeeder extends Seeder
                 'sort_order' => 7
             ],
             [
+                'key' => 'pdf_primary_color',
+                'value' => '#0453cb',
+                'type' => 'string',
+                'group' => 'pdf',
+                'category' => 'pdf',
+                'description' => 'Couleur principale des PDF',
+                'is_required' => false,
+                'default_value' => '#0453cb',
+                'validation_rules' => ['nullable', 'string', 'max:20'],
+                'sort_order' => 8
+            ],
+            [
+                'key' => 'pdf_secondary_color',
+                'value' => '#64748b',
+                'type' => 'string',
+                'group' => 'pdf',
+                'category' => 'pdf',
+                'description' => 'Couleur secondaire des PDF',
+                'is_required' => false,
+                'default_value' => '#64748b',
+                'validation_rules' => ['nullable', 'string', 'max:20'],
+                'sort_order' => 9
+            ],
+            [
+                'key' => 'pdf_accent_color',
+                'value' => '#f59e0b',
+                'type' => 'string',
+                'group' => 'pdf',
+                'category' => 'pdf',
+                'description' => 'Couleur d\'accent des PDF',
+                'is_required' => false,
+                'default_value' => '#f59e0b',
+                'validation_rules' => ['nullable', 'string', 'max:20'],
+                'sort_order' => 10
+            ],
+            [
+                'key' => 'pdf_text_color',
+                'value' => '#1f2937',
+                'type' => 'string',
+                'group' => 'pdf',
+                'category' => 'pdf',
+                'description' => 'Couleur du texte des PDF',
+                'is_required' => false,
+                'default_value' => '#1f2937',
+                'validation_rules' => ['nullable', 'string', 'max:20'],
+                'sort_order' => 11
+            ],
+            [
+                'key' => 'pdf_header_bg_color',
+                'value' => '#0453cb',
+                'type' => 'string',
+                'group' => 'pdf',
+                'category' => 'pdf',
+                'description' => 'Couleur de fond des en-têtes PDF',
+                'is_required' => false,
+                'default_value' => '#0453cb',
+                'validation_rules' => ['nullable', 'string', 'max:20'],
+                'sort_order' => 12
+            ],
+            [
+                'key' => 'pdf_header_text_color',
+                'value' => '#ffffff',
+                'type' => 'string',
+                'group' => 'pdf',
+                'category' => 'pdf',
+                'description' => 'Couleur du texte des en-têtes PDF',
+                'is_required' => false,
+                'default_value' => '#ffffff',
+                'validation_rules' => ['nullable', 'string', 'max:20'],
+                'sort_order' => 13
+            ],
+            [
                 'key' => 'pdf_header_height',
                 'value' => 30,
                 'type' => 'integer',

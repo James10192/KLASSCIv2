@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+    @include('pdf.partials.theme')
     <meta charset="UTF-8">
     <title>Emploi du temps - {{ $emploiTemps->classe->name ?? 'Classe' }}</title>
     <style>

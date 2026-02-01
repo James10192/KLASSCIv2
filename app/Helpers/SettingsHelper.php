@@ -132,6 +132,12 @@ class SettingsHelper
             'margin_bottom' => (int) self::get('pdf_margin_bottom', '20'),
             'margin_left' => (int) self::get('pdf_margin_left', '15'),
             'margin_right' => (int) self::get('pdf_margin_right', '15'),
+            'primary_color' => self::get('pdf_primary_color', '#0453cb'),
+            'secondary_color' => self::get('pdf_secondary_color', '#64748b'),
+            'accent_color' => self::get('pdf_accent_color', '#f59e0b'),
+            'text_color' => self::get('pdf_text_color', '#1f2937'),
+            'header_bg_color' => self::get('pdf_header_bg_color', '#0453cb'),
+            'header_text_color' => self::get('pdf_header_text_color', '#ffffff'),
         ];
     }
 

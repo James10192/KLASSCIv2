@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+    @include('pdf.partials.theme')
     <meta charset="UTF-8">
     <title>Export classes - {{ $settings['nom'] ?? 'Établissement' }}</title>
     <style>

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+    @include('pdf.partials.theme')
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Certificat de Scolarité - {{ $etudiant->matricule }}</title>
     <style>

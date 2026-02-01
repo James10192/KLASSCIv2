@@ -295,6 +295,11 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" id="bulletin-tab" data-bs-toggle="tab" data-bs-target="#bulletin" type="button" role="tab">
+                    <i class="fas fa-clipboard-list"></i> Configuration Bulletin
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" id="notifications-tab" data-bs-toggle="tab" data-bs-target="#notifications" type="button" role="tab">
                     <i class="fas fa-bell"></i> Notifications et Rappels
                 </button>
@@ -501,7 +506,90 @@
                 </div>
             </div>
 
-            <!-- Section 3: En-tête du Bulletin -->
+            <!-- Section: Couleurs PDF -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon pdf">
+                        <i class="fas fa-palette"></i>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Couleurs des PDFs</h3>
+                        <p class="section-description">Palette appliquée à tous les documents PDF</p>
+                    </div>
+                </div>
+
+                <div class="settings-grid-3">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-fill-drip text-primary"></i>
+                            Couleur principale
+                        </label>
+                        <input type="color" class="form-control form-control-modern"
+                               name="setting_pdf_primary_color"
+                               value="{{ \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb') }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-fill-drip text-secondary"></i>
+                            Couleur secondaire
+                        </label>
+                        <input type="color" class="form-control form-control-modern"
+                               name="setting_pdf_secondary_color"
+                               value="{{ \App\Helpers\SettingsHelper::get('pdf_secondary_color', '#64748b') }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-highlighter text-warning"></i>
+                            Couleur d'accent
+                        </label>
+                        <input type="color" class="form-control form-control-modern"
+                               name="setting_pdf_accent_color"
+                               value="{{ \App\Helpers\SettingsHelper::get('pdf_accent_color', '#f59e0b') }}">
+                    </div>
+                </div>
+
+                <div class="settings-grid-3">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-font text-muted"></i>
+                            Couleur du texte
+                        </label>
+                        <input type="color" class="form-control form-control-modern"
+                               name="setting_pdf_text_color"
+                               value="{{ \App\Helpers\SettingsHelper::get('pdf_text_color', '#1f2937') }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-square text-primary"></i>
+                            Fond des en-têtes
+                        </label>
+                        <input type="color" class="form-control form-control-modern"
+                               name="setting_pdf_header_bg_color"
+                               value="{{ \App\Helpers\SettingsHelper::get('pdf_header_bg_color', '#0453cb') }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-font text-light"></i>
+                            Texte des en-têtes
+                        </label>
+                        <input type="color" class="form-control form-control-modern"
+                               name="setting_pdf_header_text_color"
+                               value="{{ \App\Helpers\SettingsHelper::get('pdf_header_text_color', '#ffffff') }}">
+                    </div>
+                </div>
+            </div>
+
+                </div>
+                <!-- End Tab 2: Configuration PDF -->
+
+                <!-- Tab 3: Configuration Bulletin -->
+                <div class="tab-pane fade" id="bulletin" role="tabpanel">
+
+            <!-- Section: En-tête du Bulletin -->
             <div class="settings-section">
                 <div class="section-header">
                     <div class="section-icon bulletin">
@@ -595,7 +683,7 @@
                 </div>
             </div>
 
-            <!-- Section 4: Affichage du Contenu -->
+            <!-- Section: Affichage du Contenu -->
             <div class="settings-section">
                 <div class="section-header">
                     <div class="section-icon display">
@@ -717,7 +805,7 @@
                 </div>
             </div>
 
-            <!-- Section 5: Statistiques de classe -->
+            <!-- Section: Statistiques de classe -->
             <div class="settings-section">
                 <div class="section-header">
                     <div class="section-icon stats">
@@ -767,7 +855,7 @@
                 </div>
             </div>
 
-            <!-- Section 6: Mentions et Seuils -->
+            <!-- Section: Mentions et Seuils -->
             <div class="settings-section">
                 <div class="section-header">
                     <div class="section-icon mentions">
@@ -856,9 +944,9 @@
             </div>
 
                 </div>
-                <!-- End Tab 2: Configuration PDF -->
+                <!-- End Tab 3: Configuration Bulletin -->
 
-                <!-- Tab 3: Notifications et Rappels -->
+                <!-- Tab 4: Notifications et Rappels -->
                 <div class="tab-pane fade" id="notifications" role="tabpanel">
 
                     <!-- Section: Rappels Inscriptions -->

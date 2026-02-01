@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    @include('pdf.partials.theme')
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Reçu de Paiement - {{ $paiement->numero_recu }}</title>
     <style>

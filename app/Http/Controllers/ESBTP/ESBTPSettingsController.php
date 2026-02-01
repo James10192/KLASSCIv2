@@ -43,6 +43,32 @@ class ESBTPSettingsController extends Controller
         try {
             DB::beginTransaction();
 
+            $pdfColorDefaults = [
+                'pdf_primary_color' => '#0453cb',
+                'pdf_secondary_color' => '#64748b',
+                'pdf_accent_color' => '#f59e0b',
+                'pdf_text_color' => '#1f2937',
+                'pdf_header_bg_color' => '#0453cb',
+                'pdf_header_text_color' => '#ffffff'
+            ];
+
+            foreach ($pdfColorDefaults as $key => $defaultValue) {
+                Setting::firstOrCreate(
+                    ['key' => $key],
+                    [
+                        'value' => $defaultValue,
+                        'type' => 'string',
+                        'group' => 'pdf',
+                        'category' => 'pdf',
+                        'description' => 'Couleur PDF',
+                        'is_required' => false,
+                        'default_value' => $defaultValue,
+                        'validation_rules' => ['nullable', 'string', 'max:20'],
+                        'sort_order' => 50
+                    ]
+                );
+            }
+
             // Créer une sauvegarde automatique avant la mise à jour
             $backup = SettingsBackup::create([
                 'backup_name' => 'Auto Backup - ' . now()->format('Y-m-d H:i:s'),
