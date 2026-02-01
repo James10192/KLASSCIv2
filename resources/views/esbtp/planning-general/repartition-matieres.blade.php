@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Répartition des Matières - KLASSCI')
+@section('title', 'Charge Pédagogique par Classe - KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
@@ -283,8 +283,121 @@
         background: var(--danger);
         color: white;
     }
+
+    .class-card {
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        border: 1px solid var(--border);
+        margin-bottom: var(--space-lg);
+        box-shadow: var(--shadow-card);
+        overflow: hidden;
+    }
+
+    .class-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-lg);
+        padding: var(--space-md) var(--space-lg);
+        border-bottom: 1px solid var(--border);
+        background: #f8fafc;
+    }
+
+    .class-card-body {
+        padding: var(--space-lg);
+    }
+
+    .class-title a {
+        color: var(--primary);
+        font-weight: 700;
+    }
+
+    .class-meta {
+        margin-top: var(--space-xs);
+    }
+
+    .class-kpis {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+        flex-wrap: wrap;
+    }
+
+    .class-kpi {
+        text-align: center;
+        min-width: 90px;
+    }
+
+    .class-kpi .value {
+        font-weight: 700;
+        color: var(--primary);
+    }
+
+    .class-kpi .label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .teacher-list {
+        margin-top: var(--space-md);
+    }
+
+    .teacher-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-bottom: var(--space-xs);
+    }
+
+    .teacher-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-xs);
+    }
+
+    .teacher-chip {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: var(--space-xs) var(--space-sm);
+        border-radius: var(--radius-small);
+        border: 1px solid var(--border);
+        background: #f8f9fb;
+        text-decoration: none;
+        color: var(--text-primary);
+        transition: all 0.2s ease;
+    }
+
+    .teacher-chip:hover {
+        box-shadow: var(--shadow-hover);
+        transform: translateY(-1px);
+    }
+
+    .teacher-name {
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .teacher-hours {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .teacher-empty {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
     
     @media (max-width: 768px) {
+        .class-card-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .class-kpis {
+            width: 100%;
+            justify-content: space-between;
+        }
+
         .chart-container {
             height: 350px;
             padding: var(--space-md);
@@ -322,8 +435,8 @@
     <div class="main-content">
         <!-- Header et navigation du planning -->
         <x-planning-header 
-            title="Répartition des Matières" 
-            subtitle="Analyse de la distribution des heures d'enseignement par matière"
+            title="Charge pédagogique par classe" 
+            subtitle="Suivi des heures planifiées et réalisées par matière, avec les enseignants affectés"
             active-tab="repartition"
             :annee-selectionnee="$anneeSelectionnee"
             :annees="$annees"
@@ -346,7 +459,7 @@
                 </div>
                 <div class="col-md-3">
                     <label for="classe_id" class="form-label">Classe</label>
-                    <select name="classe_id" id="classe_id" class="form-select" onchange="filterByClasse(this.value)">
+                    <select name="classe_id" id="classe_id" class="form-select" onchange="this.form.submit()">
                         <option value="">Toutes les classes</option>
                         @foreach($classes as $classe)
                             <option value="{{ $classe->id }}" 
@@ -384,31 +497,31 @@
         <div class="summary-stats">
             <div class="summary-card primary">
                 <div class="icon">
-                    <i class="fas fa-book"></i>
+                    <i class="fas fa-school"></i>
                 </div>
-                <div class="stat-value">{{ $repartition->count() }}</div>
-                <div class="stat-label">Matières enseignées</div>
-            </div>
-            <div class="summary-card success">
-                <div class="icon">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-value">{{ number_format($repartition->sum('total_heures'), 1) }}h</div>
-                <div class="stat-label">Total heures</div>
+                <div class="stat-value">{{ $statsRepartition['classes'] ?? 0 }}</div>
+                <div class="stat-label">Classes couvertes</div>
             </div>
             <div class="summary-card info">
                 <div class="icon">
-                    <i class="fas fa-calendar-alt"></i>
+                    <i class="fas fa-book"></i>
                 </div>
-                <div class="stat-value">{{ number_format($repartition->sum('nb_seances')) }}</div>
-                <div class="stat-label">Séances programmées</div>
+                <div class="stat-value">{{ $statsRepartition['matieres'] ?? 0 }}</div>
+                <div class="stat-label">Matières suivies</div>
+            </div>
+            <div class="summary-card success">
+                <div class="icon">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <div class="stat-value">{{ number_format($statsRepartition['heures_planifiees'] ?? 0, 1) }}h</div>
+                <div class="stat-label">Heures planifiées</div>
             </div>
             <div class="summary-card warning">
                 <div class="icon">
                     <i class="fas fa-chart-line"></i>
                 </div>
-                <div class="stat-value">{{ number_format($repartition->avg('total_heures'), 1) }}h</div>
-                <div class="stat-label">Moyenne par matière</div>
+                <div class="stat-value">{{ $statsRepartition['taux_realisation'] ?? 0 }}%</div>
+                <div class="stat-label">Taux de réalisation</div>
             </div>
         </div>
 
@@ -416,7 +529,7 @@
             <!-- Graphique en secteurs -->
             <div class="col-md-6">
                 <div class="chart-container">
-                    <h5 class="mb-3"><i class="fas fa-chart-pie me-2"></i>Répartition par Heures</h5>
+                    <h5 class="mb-3"><i class="fas fa-chart-pie me-2"></i>Répartition des heures réalisées</h5>
                     <canvas id="pieChart"></canvas>
                 </div>
             </div>
@@ -424,16 +537,16 @@
             <!-- Graphique en barres -->
             <div class="col-md-6">
                 <div class="chart-container">
-                    <h5 class="mb-3"><i class="fas fa-chart-bar me-2"></i>Comparaison des Matières</h5>
+                    <h5 class="mb-3"><i class="fas fa-chart-bar me-2"></i>Planifié vs Réalisé par classe</h5>
                     <canvas id="barChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Liste détaillée des matières -->
+        <!-- Détail par classe et matière -->
         <div class="card-moderne">
             <div class="card-header">
-                <h5><i class="fas fa-list me-2"></i>Détail par Matière</h5>
+                <h5><i class="fas fa-layer-group me-2"></i>Détail par classe et matière</h5>
                 <p class="text-muted mb-0">
                     @if(request('classe_id'))
                         @php
@@ -441,7 +554,7 @@
                             $filiereHeader = $classeHeader?->filiere?->name ?? 'N/A';
                             $niveauHeader = $classeHeader?->niveau?->name ?? 'N/A';
                         @endphp
-                        Classe : {{ $classeHeader?->name ?? 'N/A' }} 
+                        Classe : {{ $classeHeader?->name ?? 'N/A' }}
                         <span class="badge bg-info ms-2">{{ $filiereHeader }} - {{ $niveauHeader }}</span>
                     @else
                         Toutes les classes
@@ -450,155 +563,185 @@
                         - Année : {{ $annees->find(request('annee_id'))->name ?? 'N/A' }}
                     @endif
                 </p>
-                @if(request('classe_id'))
-                    <small class="text-info">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Les configurations s'appliqueront spécifiquement à la combinaison {{ $filiereHeader }} - {{ $niveauHeader }}
-                    </small>
-                @else
-                    <small class="text-success">
-                        <i class="fas fa-list-ul me-1"></i>
-                        Affichage détaillé : chaque configuration par combinaison filière/niveau
-                    </small>
-                @endif
             </div>
             <div class="card-body">
                 @if($repartition->count() > 0)
-                    @foreach($repartition as $index => $item)
-                    <div class="matiere-card" 
-                         data-matiere-id="{{ $item['matiere']->id }}"
-                         data-filiere-id="{{ $item['filiere_id'] ?? '' }}" 
-                         data-niveau-id="{{ $item['niveau_id'] ?? '' }}"
-                         data-matiere-name="{{ $item['matiere']->name }}"
-                         data-filiere-name="{{ $item['filiere']->name ?? '' }}"
-                         data-niveau-name="{{ $item['niveau']->name ?? '' }}">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
-                            <div>
-                                <h6 class="matiere-nom">
-                                    {{ $item['matiere']->name ?? 'Matière inconnue' }}
-                                    <br><small class="badge bg-secondary">{{ $item['filiere']->name ?? 'N/A' }} - {{ $item['niveau']->name ?? 'N/A' }}</small>
-                                </h6>
-                                <small class="text-muted">
-                                    {{ $item['matiere']->code ?? 'N/A' }}
-                                </small>
-                            </div>
-                            <div class="objectif-badge {{ $item['est_configure'] ? ($item['pourcentage_realise'] >= 80 ? 'atteint' : ($item['pourcentage_realise'] >= 50 ? 'proche' : 'loin')) : 'loin' }}">
-                                @if($item['est_configure'])
-                                    {{ $item['pourcentage_realise'] }}%
-                                @else
-                                    Non configuré
-                                @endif
-                            </div>
-                        </div>
-                        
-                        <div class="matiere-stats">
-                            <div class="stat-item">
-                                <div class="stat-value">{{ number_format($item['total_heures'], 1) }}h</div>
-                                <div class="stat-label">Heures réalisées</div>
-                            </div>
-                            @if($item['est_configure'])
-                            <div class="stat-item">
-                                <div class="stat-value">{{ number_format($item['heures_planifiees'], 1) }}h</div>
-                                <div class="stat-label">Heures planifiées</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-value">{{ number_format($item['heures_restantes'], 1) }}h</div>
-                                <div class="stat-label">Heures restantes</div>
-                            </div>
-                            @else
-                            <div class="stat-item">
-                                <div class="stat-value">{{ $item['nb_seances'] }}</div>
-                                <div class="stat-label">Séances</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-value">{{ number_format($item['total_heures'] / max($item['nb_seances'], 1), 1) }}h</div>
-                                <div class="stat-label">Moy. par séance</div>
-                            </div>
-                            @endif
-                        </div>
-                        
-                        @if($item['est_configure'])
-                        <!-- Barres de progression pour les volumes horaires -->
-                        <div class="progress-bars-container">
-                            <div class="volume-legend">
-                                <span>Réalisé vs Planifié ({{ ucfirst($item['periode']) }})</span>
-                                <span class="fw-bold">{{ $item['pourcentage_realise'] }}% complété</span>
-                            </div>
-                            
-                            <!-- Barre des heures réalisées -->
-                            <div class="progress-bar-volume realise">
-                                <div class="progress-fill-volume realise" style="width: {{ min($item['pourcentage_realise'], 100) }}%"></div>
-                            </div>
-                            
-                            <div class="d-flex justify-content-between mt-1">
-                                <small class="text-success">✓ {{ number_format($item['total_heures'], 1) }}h réalisées</small>
-                                @if($item['heures_restantes'] > 0)
-                                <small class="text-warning">⏱ {{ number_format($item['heures_restantes'], 1) }}h restantes</small>
-                                @else
-                                <small class="text-success">✅ Objectif atteint</small>
-                                @endif
-                            </div>
-                        </div>
-                        @else
-                        <!-- Message de non configuration -->
-                        <div class="non-configure-card">
-                            <div class="icon">
-                                <i class="fas fa-exclamation-triangle"></i>
-                            </div>
-                            <div class="fw-bold mb-1">Planning non configuré</div>
-                            @if($item['matiere'])
-                                @php
-                                    // Pour vue spécifique par classe
-                                    if (request('classe_id')) {
-                                        $classeSelectionnee = $classes->find(request('classe_id'));
-                                        $filiereId = $classeSelectionnee?->filiere_id ?? null;
-                                        $niveauId = $classeSelectionnee?->niveau_id ?? null;
-                                        $filiereName = $classeSelectionnee?->filiere?->name ?? 'Non spécifiée';
-                                        $niveauName = $classeSelectionnee?->niveau?->name ?? 'Non spécifié';
-                                    } else {
-                                        // Pour vue détaillée : utiliser les données de la combinaison spécifique
-                                        $filiereId = $item['filiere_id'] ?? null;
-                                        $niveauId = $item['niveau_id'] ?? null;
-                                        $filiereName = $item['filiere']->name ?? 'Non spécifiée';
-                                        $niveauName = $item['niveau']->name ?? 'Non spécifié';
-                                    }
-                                    
-                                    $contexteTexte = ($filiereId && $niveauId) ? 
-                                        "pour " . $filiereName . " - " . $niveauName :
-                                        "pour les filières/niveaux de cette année";
-                                @endphp
-                                <div class="text-muted mb-2">
-                                    Aucune planification horaire n'a été définie pour cette matière {{ $contexteTexte }}.
+                    @foreach($repartition as $classeData)
+                        @php
+                            $classe = $classeData['classe'];
+                            $collapseId = 'classe-repartition-' . $classe->id;
+                            $filiereName = $classe->filiere->name ?? 'N/A';
+                            $niveauName = $classe->niveau->name ?? 'N/A';
+                        @endphp
+                        <div class="class-card">
+                            <div class="class-card-header">
+                                <div>
+                                    <h6 class="class-title">
+                                        <a href="{{ route('esbtp.classes.show', ['classe' => $classe->id]) }}" class="text-decoration-none">
+                                            {{ $classe->name }}
+                                        </a>
+                                    </h6>
+                                    <div class="class-meta">
+                                        <span class="badge bg-info">{{ $filiereName }} - {{ $niveauName }}</span>
+                                    </div>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-warning configure-btn" 
-                                        data-bs-toggle="modal" 
-                                        data-bs-target="#configureModal"
-                                        data-matiere-id="{{ $item['matiere']->id }}"
-                                        data-matiere-name="{{ $item['matiere']->name }}"
-                                        data-matiere-code="{{ $item['matiere']->code }}"
-                                        data-filiere-id="{{ $filiereId }}"
-                                        data-niveau-id="{{ $niveauId }}"
-                                        data-filiere-name="{{ $filiereName }}"
-                                        data-niveau-name="{{ $niveauName }}"
-                                        title="Configurer {{ $contexteTexte }}">
-                                    <i class="fas fa-cog me-1"></i>Configurer {{ $classeSelectionnee ? $filiereName . ' - ' . $niveauName : 'le planning' }}
-                                </button>
-                            @else
-                                <span class="text-muted">
-                                    <i class="fas fa-exclamation-triangle me-1"></i>Matière non définie
-                                </span>
-                            @endif
+                            <div class="class-kpis">
+                                    <div class="class-kpi">
+                                        <span class="value">{{ number_format($classeData['stats']['heures_planifiees_total'], 1) }}h</span>
+                                        <span class="label">Planifiées</span>
+                                    </div>
+                                    <div class="class-kpi">
+                                        <span class="value">{{ number_format($classeData['stats']['heures_realisees_total'], 1) }}h</span>
+                                        <span class="label">Réalisées</span>
+                                    </div>
+                                    <div class="class-kpi">
+                                        <span class="value">{{ $classeData['stats']['taux_realisation'] }}%</span>
+                                        <span class="label">Réalisation</span>
+                                </div>
+                            </div>
+                            <a href="{{ route('esbtp.classes.show', ['classe' => $classe->id]) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye me-1"></i>Voir la classe
+                            </a>
+                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}" aria-expanded="true" aria-controls="{{ $collapseId }}">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                            </div>
+                            <div id="{{ $collapseId }}" class="collapse show">
+                                <div class="class-card-body">
+                                    @if($classeData['matieres']->isNotEmpty())
+                                        @foreach($classeData['matieres'] as $item)
+                                            <div class="matiere-card"
+                                                 data-matiere-id="{{ $item['matiere']->id ?? '' }}"
+                                                 data-filiere-id="{{ $classe->filiere_id ?? '' }}"
+                                                 data-niveau-id="{{ $classe->niveau_etude_id ?? '' }}"
+                                                 data-matiere-name="{{ $item['matiere']->name ?? '' }}"
+                                                 data-filiere-name="{{ $filiereName }}"
+                                                 data-niveau-name="{{ $niveauName }}"
+                                                 data-classe-id="{{ $classe->id }}"
+                                                 data-classe-name="{{ $classe->name }}">
+                                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                                    <div>
+                                                        <h6 class="matiere-nom">{{ $item['matiere']->name ?? 'Matière inconnue' }}</h6>
+                                                        <small class="text-muted">{{ $item['matiere']->code ?? 'N/A' }}</small>
+                                                    </div>
+                                                    <div class="objectif-badge {{ $item['est_configure'] ? ($item['pourcentage_realise'] >= 80 ? 'atteint' : ($item['pourcentage_realise'] >= 50 ? 'proche' : 'loin')) : 'loin' }}">
+                                                        @if($item['est_configure'])
+                                                            {{ $item['pourcentage_realise'] }}%
+                                                        @else
+                                                            Non configuré
+                                                        @endif
+                                                    </div>
+                                                </div>
+
+                                                <div class="matiere-stats">
+                                                    <div class="stat-item">
+                                                        <div class="stat-value">{{ number_format($item['heures_realisees'], 1) }}h</div>
+                                                        <div class="stat-label">Heures réalisées</div>
+                                                    </div>
+                                                    @if($item['est_configure'])
+                                                        <div class="stat-item">
+                                                            <div class="stat-value">{{ number_format($item['heures_planifiees'], 1) }}h</div>
+                                                            <div class="stat-label">Heures planifiées</div>
+                                                        </div>
+                                                        <div class="stat-item">
+                                                            <div class="stat-value">{{ number_format($item['heures_restantes'], 1) }}h</div>
+                                                            <div class="stat-label">Heures restantes</div>
+                                                        </div>
+                                                    @else
+                                                        <div class="stat-item">
+                                                            <div class="stat-value">{{ $item['nb_seances'] }}</div>
+                                                            <div class="stat-label">Séances</div>
+                                                        </div>
+                                                        <div class="stat-item">
+                                                            <div class="stat-value">{{ number_format($item['heures_realisees'] / max($item['nb_seances'], 1), 1) }}h</div>
+                                                            <div class="stat-label">Moy. par séance</div>
+                                                        </div>
+                                                    @endif
+                                                </div>
+
+                                                @if($item['est_configure'])
+                                                    <div class="progress-bars-container">
+                                                        <div class="volume-legend">
+                                                            <span>Réalisé vs Planifié ({{ ucfirst($item['periode']) }})</span>
+                                                            <span class="fw-bold">{{ $item['pourcentage_realise'] }}% complété</span>
+                                                        </div>
+                                                        <div class="progress-bar-volume realise">
+                                                            <div class="progress-fill-volume realise" style="width: {{ min($item['pourcentage_realise'], 100) }}%"></div>
+                                                        </div>
+                                                        <div class="d-flex justify-content-between mt-1">
+                                                            <small class="text-success">✓ {{ number_format($item['heures_realisees'], 1) }}h réalisées</small>
+                                                            @if($item['heures_restantes'] > 0)
+                                                                <small class="text-warning">⏱ {{ number_format($item['heures_restantes'], 1) }}h restantes</small>
+                                                            @else
+                                                                <small class="text-success">✅ Objectif atteint</small>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                @else
+                                                    <div class="non-configure-card">
+                                                        <div class="icon">
+                                                            <i class="fas fa-exclamation-triangle"></i>
+                                                        </div>
+                                                        <div class="fw-bold mb-1">Planning non configuré</div>
+                                                        @if($item['matiere'])
+                                                            <div class="text-muted mb-2">
+                                                                Aucune planification horaire n'a été définie pour {{ $filiereName }} - {{ $niveauName }}.
+                                                            </div>
+                                                            <button type="button" class="btn btn-sm btn-warning configure-btn"
+                                                                    data-bs-toggle="modal"
+                                                                    data-bs-target="#configureModal"
+                                                                    data-matiere-id="{{ $item['matiere']->id }}"
+                                                                    data-matiere-name="{{ $item['matiere']->name }}"
+                                                                    data-matiere-code="{{ $item['matiere']->code }}"
+                                                                    data-filiere-id="{{ $classe->filiere_id }}"
+                                                                    data-niveau-id="{{ $classe->niveau_etude_id }}"
+                                                                    data-filiere-name="{{ $filiereName }}"
+                                                                    data-niveau-name="{{ $niveauName }}"
+                                                                    data-classe-id="{{ $classe->id }}"
+                                                                    data-classe-name="{{ $classe->name }}">
+                                                                <i class="fas fa-cog me-1"></i>Configurer pour la classe
+                                                            </button>
+                                                        @else
+                                                            <span class="text-muted">
+                                                                <i class="fas fa-exclamation-triangle me-1"></i>Matière non définie
+                                                            </span>
+                                                        @endif
+                                                    </div>
+                                                @endif
+
+                                                <div class="teacher-list">
+                                                    @if($item['enseignants']->isNotEmpty())
+                                                        <div class="teacher-label">Enseignants</div>
+                                                        <div class="teacher-chips">
+                                                            @foreach($item['enseignants'] as $enseignant)
+                                                                <a href="{{ route('esbtp.enseignants.show', ['enseignant' => $enseignant['id']]) }}" class="teacher-chip">
+                                                                    <span class="teacher-name">{{ $enseignant['name'] }}</span>
+                                                                    <span class="teacher-hours">{{ number_format($enseignant['heures_realisees'], 1) }}h • {{ $enseignant['nb_seances'] }} séances</span>
+                                                                </a>
+                                                            @endforeach
+                                                        </div>
+                                                    @else
+                                                        <div class="teacher-empty">Aucun enseignant trouvé sur l'emploi du temps.</div>
+                                                    @endif
+                                                </div>
+
+                                                <div class="progress-bar-matiere" style="margin-top: {{ $item['est_configure'] ? 'var(--space-md)' : 'var(--space-sm)' }}">
+                                                    <div class="progress-fill-matiere" style="width: {{ min($item['pourcentage'], 100) }}%"></div>
+                                                </div>
+                                                <div class="text-center mt-1">
+                                                    <small class="text-muted">{{ $item['pourcentage'] }}% du total des heures réalisées de la classe</small>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    @else
+                                        <div class="text-center py-4">
+                                            <i class="fas fa-calendar-times fa-2x text-muted mb-2"></i>
+                                            <p class="text-muted mb-0">Aucune matière planifiée ou réalisée pour cette classe.</p>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
                         </div>
-                        @endif
-                        
-                        <!-- Barre de progression relative (pourcentage dans le total) -->
-                        <div class="progress-bar-matiere" style="margin-top: {{ $item['est_configure'] ? 'var(--space-md)' : 'var(--space-sm)' }}">
-                            <div class="progress-fill-matiere" style="width: {{ min($item['pourcentage'], 100) }}%"></div>
-                        </div>
-                        <div class="text-center mt-1">
-                            <small class="text-muted">{{ $item['pourcentage'] }}% du total des heures</small>
-                        </div>
-                    </div>
                     @endforeach
                 @else
                     <div class="text-center py-5">
@@ -627,7 +770,7 @@
                     @csrf
                     <input type="hidden" id="matiere_id" name="matiere_id">
                     <input type="hidden" name="annee_id" value="{{ $anneeSelectionnee?->id }}">
-                    <input type="hidden" name="classe_id" value="{{ request('classe_id') }}">
+                    <input type="hidden" id="classe_id_modal" name="classe_id" value="">
                     <input type="hidden" id="filiere_id" name="filiere_id">
                     <input type="hidden" id="niveau_id" name="niveau_id">
                     
@@ -637,18 +780,7 @@
                             <i class="fas fa-info-circle me-2"></i>
                             <div>
                                 <strong>Configuration pour :</strong>
-                                <span id="modal-context">
-                                    Année {{ $anneeSelectionnee?->name }}
-                                    @if(request('classe_id'))
-                                        @php
-                                            $classeModal = $classes->find(request('classe_id'));
-                                        @endphp
-                                        - {{ $classeModal?->filiere?->name ?? 'N/A' }} - {{ $classeModal?->niveau?->name ?? 'N/A' }}
-                                        <small class="text-muted">(Classe : {{ $classeModal?->name ?? 'N/A' }})</small>
-                                    @else
-                                        - Toutes les filières/niveaux
-                                    @endif
-                                </span>
+                                <span id="modal-context">Année {{ $anneeSelectionnee?->name }}</span>
                             </div>
                         </div>
                     </div>
@@ -740,212 +872,123 @@
 
 @push('scripts')
 <script>
-// ===== FILTRAGE CLIENT-SIDE (fonction globale) =====
-function filterByClasse(classeId) {
-    const cards = document.querySelectorAll('.matiere-card');
-    debugLog('Filtrage par classe:', classeId);
-    debugLog('Nombre de cartes:', cards.length);
-    
-    if (!classeId) {
-        // Afficher toutes les cartes
-        cards.forEach(card => {
-            card.style.display = 'block';
-        });
-        debugLog('Affichage de toutes les cartes');
-        if (typeof updateChartsWithVisibleData === 'function') {
-            updateChartsWithVisibleData();
-        }
-        return;
-    }
-    
-    // Récupérer les infos de la classe sélectionnée
-    const classeSelect = document.querySelector('select[name="classe_id"]');
-    const selectedOption = classeSelect ? classeSelect.querySelector(`option[value="${classeId}"]`) : null;
-    if (!selectedOption) {
-        debugError('Option sélectionnée introuvable');
-        return;
-    }
-    
-    const targetFiliereId = selectedOption.dataset.filiereId;
-    const targetNiveauId = selectedOption.dataset.niveauId;
-    
-    debugLog('Filière cible:', targetFiliereId, 'Niveau cible:', targetNiveauId);
-    
-    let visibleCount = 0;
-    
-    // Filtrer les cartes
-    cards.forEach(card => {
-        const cardFiliereId = card.dataset.filiereId;
-        const cardNiveauId = card.dataset.niveauId;
-        
-        debugLog('Carte:', card.dataset.matiereName, 'Filière:', cardFiliereId, 'Niveau:', cardNiveauId);
-        
-        if (cardFiliereId === targetFiliereId && cardNiveauId === targetNiveauId) {
-            card.style.display = 'block';
-            visibleCount++;
-        } else {
-            card.style.display = 'none';
-        }
-    });
-    
-    debugLog('Cartes visibles après filtrage:', visibleCount);
-    if (typeof updateChartsWithVisibleData === 'function') {
-        updateChartsWithVisibleData();
-    }
-}
+const debugLog = () => {};
+const debugWarn = () => {};
+const debugError = () => {};
 
 $(document).ready(function() {
-    // Données pour les graphiques
-    const repartitionDataRaw = @json($repartition->toArray());
-    debugLog('Données graphiques brutes:', repartitionDataRaw);
-    
-    // Convertir l'objet en array
-    const repartitionData = Object.values(repartitionDataRaw);
-    debugLog('Données graphiques (array):', repartitionData);
-    debugLog('Nombre d\'éléments:', repartitionData.length);
-    
-    const totalHeures = repartitionData.reduce((sum, item) => {
-        // Utiliser les heures planifiées si disponibles, sinon les heures réalisées
-        const heures = item.est_configure ? parseFloat(item.heures_planifiees) : parseFloat(item.total_heures);
-        return sum + heures;
-    }, 0);
-    debugLog('Total heures:', totalHeures);
-    
-    // Les pourcentages sont déjà calculés côté serveur, pas besoin de les recalculer
-    
+    const chartData = @json($chartData);
+    const chartLabels = chartData.labels || [];
+    const heuresPlanifiees = chartData.planifiees || [];
+    const heuresRealisees = chartData.realisees || [];
+    const totalHeures = heuresRealisees.reduce((sum, value) => sum + parseFloat(value || 0), 0);
+
     // Couleurs pour les graphiques
     const colors = [
         '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
         '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#84CC16'
     ];
-    
-    if (repartitionData.length > 0) {
-        debugLog('Création des graphiques...');
-        
-        // Vérifier les éléments du DOM
+
+    if (chartLabels.length > 0) {
         const pieElement = document.getElementById('pieChart');
         const barElement = document.getElementById('barChart');
-        debugLog('PieChart element:', pieElement);
-        debugLog('BarChart element:', barElement);
-        
+
         if (pieElement) {
-            // Graphique en secteurs
             const pieCtx = pieElement.getContext('2d');
-            const pieLabels = repartitionData.map(item => {
-                if (item.matiere && item.matiere.name) {
-                    return item.matiere.name; // Utiliser seulement le nom de la matière
-                }
-                return 'N/A';
-            });
-            debugLog('Labels pie:', pieLabels);
-            
             new Chart(pieCtx, {
-                type: 'pie',
+                type: 'doughnut',
                 data: {
-                    labels: pieLabels,
+                    labels: chartLabels,
                     datasets: [{
-                        data: repartitionData.map(item => {
-                            // Utiliser les heures planifiées si disponibles, sinon les heures réalisées
-                            return item.est_configure ? parseFloat(item.heures_planifiees) : parseFloat(item.total_heures);
-                        }),
-                        backgroundColor: colors.slice(0, repartitionData.length),
+                        data: heuresRealisees,
+                        backgroundColor: colors.slice(0, chartLabels.length),
                         borderWidth: 2,
                         borderColor: '#fff'
                     }]
                 },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: window.innerWidth < 768 ? 'bottom' : 'right',
-                        labels: {
-                            usePointStyle: true,
-                            padding: window.innerWidth < 768 ? 10 : 15,
-                            font: {
-                                size: window.innerWidth < 768 ? 10 : 11
-                            },
-                            boxWidth: window.innerWidth < 768 ? 10 : 12
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const label = context.label || '';
-                                const value = context.parsed;
-                                const percentage = totalHeures > 0 ? ((value / totalHeures) * 100).toFixed(1) : 0;
-                                return `${label}: ${value}h (${percentage}%)`;
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: window.innerWidth < 768 ? 'bottom' : 'right',
+                            labels: {
+                                usePointStyle: true,
+                                padding: window.innerWidth < 768 ? 10 : 15,
+                                font: {
+                                    size: window.innerWidth < 768 ? 10 : 11
+                                },
+                                boxWidth: window.innerWidth < 768 ? 10 : 12
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    const percentage = totalHeures > 0 ? ((value / totalHeures) * 100).toFixed(1) : 0;
+                                    return `${label}: ${value}h (${percentage}%)`;
+                                }
                             }
                         }
                     }
                 }
-            }
-        });
-        } else {
-            debugError('Élément pieChart introuvable dans le DOM');
-        }
-        
-        if (barElement) {
-            // Graphique en barres
-            const barCtx = barElement.getContext('2d');
-            const barLabels = repartitionData.map(item => {
-                if (item.matiere && item.matiere.name) {
-                    return item.matiere.name; // Utiliser seulement le nom de la matière
-                }
-                return 'N/A';
             });
-            debugLog('Labels bar:', barLabels);
-            
+        }
+
+        if (barElement) {
+            const barCtx = barElement.getContext('2d');
             new Chart(barCtx, {
                 type: 'bar',
                 data: {
-                    labels: barLabels,
-                    datasets: [{
-                        label: 'Heures planifiées',
-                        data: repartitionData.map(item => {
-                            // Utiliser les heures planifiées si disponibles, sinon les heures réalisées
-                            return item.est_configure ? parseFloat(item.heures_planifiees) : parseFloat(item.total_heures);
-                        }),
-                        backgroundColor: colors.slice(0, repartitionData.length),
-                        borderWidth: 1,
-                        borderColor: '#fff'
-                    }]
+                    labels: chartLabels,
+                    datasets: [
+                        {
+                            label: 'Heures planifiées',
+                            data: heuresPlanifiees,
+                            backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                            borderColor: '#3B82F6',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Heures réalisées',
+                            data: heuresRealisees,
+                            backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                            borderColor: '#10B981',
+                            borderWidth: 1
+                        }
+                    ]
                 },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return value + 'h';
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + 'h';
+                                }
                             }
                         }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
                     },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const value = context.parsed.y;
-                                const percentage = totalHeures > 0 ? ((value / totalHeures) * 100).toFixed(1) : 0;
-                                return `${value}h (${percentage}%)`;
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    const percentage = totalHeures > 0 ? ((value / totalHeures) * 100).toFixed(1) : 0;
+                                    return `${context.dataset.label}: ${value}h (${percentage}%)`;
+                                }
                             }
                         }
                     }
                 }
-            }
-        });
-        } else {
-            debugError('Élément barChart introuvable dans le DOM');
+            });
         }
-    } else {
-        debugWarn('Aucune donnée disponible pour les graphiques');
-        debugLog('RepartitionData:', repartitionData);
     }
     
     // Animation des barres de progression
@@ -987,6 +1030,8 @@ $(document).ready(function() {
         const niveauId = button.getAttribute('data-niveau-id');
         const filiereName = button.getAttribute('data-filiere-name');
         const niveauName = button.getAttribute('data-niveau-name');
+        const classeId = button.getAttribute('data-classe-id');
+        const classeName = button.getAttribute('data-classe-name');
         
         // Mettre à jour le titre du modal
         document.getElementById('configureModalLabel').innerHTML = '<i class="fas fa-cog me-2"></i>Configuration du planning - ' + matiereName;
@@ -995,15 +1040,16 @@ $(document).ready(function() {
         document.getElementById('matiere_id').value = matiereId;
         document.getElementById('filiere_id').value = filiereId || '';
         document.getElementById('niveau_id').value = niveauId || '';
+        document.getElementById('classe_id_modal').value = classeId || '';
         
         // Mettre à jour le contexte affiché
         const contextElement = document.getElementById('modal-context');
         if (contextElement) {
             let contextHTML = 'Année {{ $anneeSelectionnee?->name }}';
-            if (filiereId && niveauId) {
+            if (classeName) {
+                contextHTML += ` - <strong>${classeName}</strong> <small class="text-muted">(${filiereName} - ${niveauName})</small>`;
+            } else if (filiereId && niveauId) {
                 contextHTML += ` - <strong>${filiereName} - ${niveauName}</strong>`;
-                const classeInfo = button.closest('.matiere-card')?.querySelector('.matiere-nom')?.textContent || 'N/A';
-                contextHTML += ` <small class="text-muted">(Configuration spécifique)</small>`;
             } else {
                 contextHTML += ' - <em>Toutes les filières/niveaux</em>';
             }
@@ -1178,27 +1224,6 @@ $(document).ready(function() {
         debugError('Modal element NOT FOUND');
     }
 
-    
-    // Appliquer le filtre initial si une classe est sélectionnée
-    const currentClasseId = new URLSearchParams(window.location.search).get('classe_id');
-    if (currentClasseId) {
-        filterByClasse(currentClasseId);
-    }
-    
-    // Fonction globale pour mettre à jour les graphiques avec les données visibles
-    window.updateChartsWithVisibleData = function() {
-        const visibleCards = document.querySelectorAll('.matiere-card[style*="block"], .matiere-card:not([style*="none"])');
-        const filteredData = Array.from(visibleCards).map(card => {
-            const matiereId = card.dataset.matiereId;
-            const originalItem = repartitionData.find(item => item.matiere && item.matiere.id == matiereId);
-            return originalItem;
-        }).filter(item => item);
-        
-        debugLog('Données filtrées pour graphiques:', filteredData);
-        
-        // TODO: Recréer les graphiques avec filteredData
-        // Pour l'instant, on garde les graphiques existants
-    }
 });
 </script>
 @endpush

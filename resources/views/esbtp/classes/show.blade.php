@@ -4,6 +4,139 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+    .planning-card {
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        border: 1px solid var(--border);
+        padding: var(--space-lg);
+        margin-bottom: var(--space-sm);
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--shadow-card);
+    }
+
+    .planning-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: var(--primary);
+    }
+
+    .planning-title {
+        font-weight: 600;
+        color: var(--primary);
+        margin-bottom: var(--space-xs);
+    }
+
+    .planning-stats {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: var(--space-lg);
+        flex-wrap: wrap;
+    }
+
+    .planning-stat {
+        text-align: center;
+        min-width: 120px;
+    }
+
+    .planning-value {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--primary);
+    }
+
+    .planning-label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    .planning-progress {
+        height: 6px;
+        background: var(--border);
+        border-radius: var(--radius-full);
+        overflow: hidden;
+        margin-top: var(--space-sm);
+    }
+
+    .planning-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    }
+
+    .planning-teachers {
+        margin-top: var(--space-md);
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-xs);
+    }
+
+    .teacher-chip {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: var(--space-xs) var(--space-sm);
+        border-radius: var(--radius-small);
+        border: 1px solid var(--border);
+        background: #f8f9fb;
+        text-decoration: none;
+        color: var(--text-primary);
+        transition: all 0.2s ease;
+    }
+
+    .teacher-chip:hover {
+        box-shadow: var(--shadow-hover);
+        transform: translateY(-1px);
+    }
+
+    .teacher-name {
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .teacher-hours {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .planning-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: var(--space-md);
+        margin-bottom: var(--space-lg);
+    }
+
+    .planning-summary-card {
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        padding: var(--space-md);
+        border: 1px solid var(--border);
+        text-align: center;
+    }
+
+    .planning-summary-card .value {
+        font-weight: 700;
+        font-size: 1.3rem;
+        color: var(--primary);
+    }
+
+    .planning-summary-card .label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    @media (max-width: 768px) {
+        .planning-stats {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>
 @endsection
 
 @section('content')
@@ -278,6 +411,122 @@
                     </div>
                 @endif
             </div>
+            </div>
+        </div>
+
+        <!-- Suivi des heures par matière (emploi du temps) -->
+        <div class="main-card mb-4">
+            <div class="main-card-header d-flex align-items-start justify-content-between">
+                <div>
+                    <div class="main-card-title">
+                        <i class="fas fa-chart-line"></i>
+                        Suivi des heures par matière
+                    </div>
+                    <div class="main-card-subtitle">
+                        Heures planifiées vs réalisées et enseignants présents sur l'emploi du temps (année courante)
+                    </div>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#classePlanningMatiereCollapse"
+                        aria-expanded="true"
+                        aria-controls="classePlanningMatiereCollapse">
+                    <i class="fas fa-chevron-up"></i>
+                </button>
+            </div>
+            <div id="classePlanningMatiereCollapse" class="collapse show">
+                <div class="main-card-body">
+                    <div class="planning-summary">
+                        <div class="planning-summary-card">
+                            <div class="value">{{ number_format($planningMatiere['stats']['heures_planifiees'] ?? 0, 1) }}h</div>
+                            <div class="label">Heures planifiées</div>
+                        </div>
+                        <div class="planning-summary-card">
+                            <div class="value">{{ number_format($planningMatiere['stats']['heures_realisees'] ?? 0, 1) }}h</div>
+                            <div class="label">Heures réalisées</div>
+                        </div>
+                        <div class="planning-summary-card">
+                            <div class="value">{{ $planningMatiere['stats']['nb_seances'] ?? 0 }}</div>
+                            <div class="label">Séances comptabilisées</div>
+                        </div>
+                        <div class="planning-summary-card">
+                            <div class="value">{{ $planningMatiere['stats']['taux_realisation'] ?? 0 }}%</div>
+                            <div class="label">Taux de réalisation</div>
+                        </div>
+                    </div>
+
+                    <div class="planning-teachers">
+                        @if(!empty($planningMatiere['enseignants']) && $planningMatiere['enseignants']->isNotEmpty())
+                            @foreach($planningMatiere['enseignants'] as $enseignant)
+                                <a href="{{ route('esbtp.enseignants.show', ['enseignant' => $enseignant['id']]) }}" class="teacher-chip">
+                                    <span class="teacher-name">{{ $enseignant['name'] }}</span>
+                                    <span class="teacher-hours">{{ number_format($enseignant['heures_realisees'], 1) }}h • {{ $enseignant['nb_seances'] }} séances</span>
+                                </a>
+                            @endforeach
+                        @else
+                            <span class="text-muted">Aucun enseignant trouvé sur l'emploi du temps.</span>
+                        @endif
+                    </div>
+
+                    @if(!empty($planningMatiere['matieres']) && $planningMatiere['matieres']->isNotEmpty())
+                        @foreach($planningMatiere['matieres'] as $item)
+                            <div class="planning-card">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <div class="planning-title">{{ $item['matiere']->name ?? 'Matière inconnue' }}</div>
+                                        <small class="text-muted">{{ $item['matiere']->code ?? 'N/A' }}</small>
+                                    </div>
+                                    <span class="badge {{ $item['est_configure'] ? 'bg-success' : 'bg-warning' }}">
+                                        {{ $item['est_configure'] ? ($item['pourcentage_realise'] . '%') : 'Non configuré' }}
+                                    </span>
+                                </div>
+                                <div class="planning-stats">
+                                    <div class="planning-stat">
+                                        <div class="planning-value">{{ number_format($item['heures_realisees'], 1) }}h</div>
+                                        <div class="planning-label">Réalisées</div>
+                                    </div>
+                                    <div class="planning-stat">
+                                        <div class="planning-value">{{ number_format($item['heures_planifiees'], 1) }}h</div>
+                                        <div class="planning-label">Planifiées</div>
+                                    </div>
+                                    <div class="planning-stat">
+                                        <div class="planning-value">{{ number_format($item['heures_restantes'], 1) }}h</div>
+                                        <div class="planning-label">Restantes</div>
+                                    </div>
+                                    <div class="planning-stat">
+                                        <div class="planning-value">{{ $item['nb_seances'] }}</div>
+                                        <div class="planning-label">Séances</div>
+                                    </div>
+                                </div>
+                                <div class="planning-progress">
+                                    <div class="planning-progress-fill" style="width: {{ min($item['pourcentage_realise'], 100) }}%"></div>
+                                </div>
+                                <div class="text-center mt-1">
+                                    <small class="text-muted">{{ $item['pourcentage'] ?? 0 }}% des heures réalisées de la classe</small>
+                                </div>
+
+                                <div class="planning-teachers">
+                                    @if($item['enseignants']->isNotEmpty())
+                                        @foreach($item['enseignants'] as $enseignant)
+                                            <a href="{{ route('esbtp.enseignants.show', ['enseignant' => $enseignant['id']]) }}" class="teacher-chip">
+                                                <span class="teacher-name">{{ $enseignant['name'] }}</span>
+                                                <span class="teacher-hours">{{ number_format($enseignant['heures_realisees'], 1) }}h • {{ $enseignant['nb_seances'] }} séances</span>
+                                            </a>
+                                        @endforeach
+                                    @else
+                                        <span class="text-muted">Aucun enseignant trouvé sur l'emploi du temps.</span>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    @else
+                        <div class="text-center py-4">
+                            <i class="fas fa-calendar-times fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">Aucune donnée d'emploi du temps trouvée pour cette classe.</p>
+                        </div>
+                    @endif
+                </div>
             </div>
         </div>
 

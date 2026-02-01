@@ -217,6 +217,156 @@
         margin-top: var(--space-xs);
         line-height: 1.3;
     }
+
+    .teaching-overview {
+        background: var(--surface);
+        border-radius: var(--radius-large);
+        padding: var(--space-lg);
+        border: 1px solid var(--border);
+        margin-bottom: var(--space-xl);
+    }
+
+    .teaching-overview-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-lg);
+        margin-bottom: var(--space-lg);
+    }
+
+    .teaching-overview-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+    }
+
+    .teaching-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: var(--space-md);
+        margin-bottom: var(--space-lg);
+    }
+
+    .teaching-summary-card {
+        background: var(--background);
+        border-radius: var(--radius-medium);
+        padding: var(--space-md);
+        text-align: center;
+        border: 1px solid var(--border);
+    }
+
+    .teaching-summary-card .value {
+        font-weight: 700;
+        font-size: 1.3rem;
+        color: var(--primary);
+    }
+
+    .teaching-summary-card .label {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    .class-teaching-card {
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        border: 1px solid var(--border);
+        padding: var(--space-md);
+        margin-bottom: var(--space-md);
+    }
+
+    .class-teaching-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-md);
+        margin-bottom: var(--space-md);
+    }
+
+    .class-teaching-title a {
+        color: var(--primary);
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .class-teaching-meta {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
+    .class-teaching-stats {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+        flex-wrap: wrap;
+    }
+
+    .class-teaching-stat {
+        text-align: center;
+        min-width: 110px;
+    }
+
+    .class-teaching-stat .value {
+        font-weight: 700;
+        color: var(--primary);
+    }
+
+    .class-teaching-stat .label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .class-teaching-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .matiere-teaching-card {
+        background: var(--background);
+        border-radius: var(--radius-medium);
+        padding: var(--space-md);
+        border: 1px solid var(--border);
+        margin-bottom: var(--space-sm);
+    }
+
+    .matiere-teaching-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: var(--space-sm);
+    }
+
+    .matiere-teaching-title {
+        font-weight: 600;
+        color: var(--primary);
+    }
+
+    .matiere-teaching-stats {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+        flex-wrap: wrap;
+    }
+
+    .matiere-teaching-stats .value {
+        font-weight: 700;
+        color: var(--primary);
+    }
+
+    .matiere-progress {
+        height: 6px;
+        background: var(--border);
+        border-radius: var(--radius-full);
+        overflow: hidden;
+        margin-top: var(--space-xs);
+    }
+
+    .matiere-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    }
     
     .sidebar-actions {
         position: sticky;
@@ -675,6 +825,123 @@
                         </span>
                         <div class="stat-label">Statut</div>
                     </div>
+                </div>
+
+                <div class="teaching-overview">
+                    <div class="teaching-overview-header">
+                        <div class="teaching-overview-title">
+                            <i class="fas fa-chalkboard"></i>
+                            Charge pédagogique par classe
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="text-muted">{{ $anneeCourante?->name ?? 'Année en cours' }}</span>
+                            <form method="GET" action="{{ route('esbtp.enseignants.show', ['enseignant' => $teacher->id]) }}" class="d-flex gap-2">
+                                <button type="submit" name="periode" value="semestre1" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'semestre1' ? 'active' : '' }}">S1</button>
+                                <button type="submit" name="periode" value="semestre2" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'semestre2' ? 'active' : '' }}">S2</button>
+                                <button type="submit" name="periode" value="annee" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'annee' ? 'active' : '' }}">Année</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="teaching-summary">
+                        <div class="teaching-summary-card">
+                            <div class="value">{{ $teachingPlanning['stats']['classes'] ?? 0 }}</div>
+                            <div class="label">Classes enseignées</div>
+                        </div>
+                        <div class="teaching-summary-card">
+                            <div class="value">{{ number_format($teachingPlanning['stats']['heures_planifiees'] ?? 0, 1) }}h</div>
+                            <div class="label">Heures planifiées</div>
+                        </div>
+                        <div class="teaching-summary-card">
+                            <div class="value">{{ number_format($teachingPlanning['stats']['heures_realisees'] ?? 0, 1) }}h</div>
+                            <div class="label">Heures réalisées</div>
+                        </div>
+                        <div class="teaching-summary-card">
+                            <div class="value">{{ $teachingPlanning['stats']['taux_realisation'] ?? 0 }}%</div>
+                            <div class="label">Taux de réalisation</div>
+                        </div>
+                    </div>
+
+                    @if(!empty($teachingPlanning['classes']) && $teachingPlanning['classes']->isNotEmpty())
+                        @foreach($teachingPlanning['classes'] as $classeData)
+                            @php
+                                $classe = $classeData['classe'];
+                                $collapseId = 'teacher-class-' . $classe->id;
+                            @endphp
+                            <div class="class-teaching-card">
+                                <div class="class-teaching-header">
+                                    <div>
+                                        <div class="class-teaching-title">
+                                            <a href="{{ route('esbtp.classes.show', ['classe' => $classe->id]) }}">
+                                                {{ $classe->name }}
+                                            </a>
+                                        </div>
+                                        <div class="class-teaching-meta">
+                                            {{ $classe->filiere->name ?? 'N/A' }} · {{ $classe->niveau->name ?? 'N/A' }}
+                                        </div>
+                                    </div>
+                                    <div class="class-teaching-stats">
+                                        <div class="class-teaching-stat">
+                                            <div class="value">{{ number_format($classeData['stats']['heures_planifiees'], 1) }}h</div>
+                                            <div class="label">Planifiées</div>
+                                        </div>
+                                        <div class="class-teaching-stat">
+                                            <div class="value">{{ number_format($classeData['stats']['heures_realisees'], 1) }}h</div>
+                                            <div class="label">Réalisées</div>
+                                        </div>
+                                        <div class="class-teaching-stat">
+                                            <div class="value">{{ $classeData['stats']['taux_realisation'] }}%</div>
+                                            <div class="label">Réalisation</div>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}" aria-expanded="true" aria-controls="{{ $collapseId }}">
+                                        <i class="fas fa-chevron-up"></i>
+                                    </button>
+                                </div>
+                                <div id="{{ $collapseId }}" class="collapse show">
+                                    @if($classeData['matieres']->isNotEmpty())
+                                        @foreach($classeData['matieres'] as $matiere)
+                                            <div class="matiere-teaching-card">
+                                                <div class="matiere-teaching-header">
+                                                    <div class="matiere-teaching-title">{{ $matiere['matiere']->name ?? 'Matière inconnue' }}</div>
+                                                    <span class="badge {{ $matiere['est_configure'] ? 'bg-success' : 'bg-warning' }}">
+                                                        {{ $matiere['est_configure'] ? ($matiere['pourcentage_realise'] . '%') : 'Non configuré' }}
+                                                    </span>
+                                                </div>
+                                                <div class="matiere-teaching-stats">
+                                                    <div>
+                                                        <div class="value">{{ number_format($matiere['heures_realisees'], 1) }}h</div>
+                                                        <div class="class-teaching-label">Réalisées</div>
+                                                    </div>
+                                                    <div>
+                                                        <div class="value">{{ number_format($matiere['heures_planifiees'], 1) }}h</div>
+                                                        <div class="class-teaching-label">Planifiées</div>
+                                                    </div>
+                                                    <div>
+                                                        <div class="value">{{ number_format($matiere['heures_restantes'], 1) }}h</div>
+                                                        <div class="class-teaching-label">Restantes</div>
+                                                    </div>
+                                                    <div>
+                                                        <div class="value">{{ $matiere['nb_seances'] }}</div>
+                                                        <div class="class-teaching-label">Séances</div>
+                                                    </div>
+                                                </div>
+                                                <div class="matiere-progress">
+                                                    <div class="matiere-progress-fill" style="width: {{ min($matiere['pourcentage_realise'], 100) }}%"></div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    @else
+                                        <div class="text-center py-3 text-muted">Aucune matière trouvée pour cette classe.</div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    @else
+                        <div class="text-center py-4 text-muted">
+                            Aucun cours trouvé pour cet enseignant sur l'année en cours.
+                        </div>
+                    @endif
                 </div>
                 
                 <div class="info-grid">

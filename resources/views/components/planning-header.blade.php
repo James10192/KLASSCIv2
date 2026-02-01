@@ -92,7 +92,7 @@
         <li class="nav-item">
             <a class="nav-link {{ $activeTab === 'repartition' ? 'active' : '' }}" 
                href="{{ route('esbtp.planning-general.repartition-matieres', ['annee_id' => $anneeSelectionnee?->id]) }}">
-                <i class="fas fa-chart-pie me-2"></i>Répartition Matières
+                <i class="fas fa-layer-group me-2"></i>Charge par classe
             </a>
         </li>
         <li class="nav-item">

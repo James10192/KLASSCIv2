@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPDailyCode;
 use App\Models\ESBTPTeacherAttendance;
+use App\Models\ESBTPTeacher;
 use App\Services\PlanningConfigurationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -785,7 +786,9 @@ class ESBTPPlanningGeneralController extends Controller
         
         // Toujours afficher toutes les combinaisons détaillées
         // Le filtrage par classe se fera côté client en JavaScript
-        $repartition = $this->calculerRepartitionMatieresDetaillees($anneeIdPourCalcul, $periode);
+        $repartition = $this->calculerRepartitionMatieresParClasse($anneeIdPourCalcul, $periode, $classeId);
+        $statsRepartition = $this->calculerStatsRepartitionParClasse($repartition);
+        $chartData = $this->buildChartDataParClasse($repartition);
         
         // Debug: vérifier les données
         \Log::info('Repartition data:', [
@@ -801,7 +804,8 @@ class ESBTPPlanningGeneralController extends Controller
         $objectifsComparaison = $this->comparerAvecObjectifs($repartition, $classeId, $anneeIdPourCalcul);
 
         return view('esbtp.planning-general.repartition-matieres', compact(
-            'annees', 'anneeSelectionnee', 'classes', 'repartition', 'objectifsComparaison', 'anneeId', 'classeId'
+            'annees', 'anneeSelectionnee', 'classes', 'repartition', 'objectifsComparaison', 'anneeId', 'classeId',
+            'statsRepartition', 'chartData'
         ));
     }
 
@@ -1420,35 +1424,43 @@ class ESBTPPlanningGeneralController extends Controller
     }
 
     /**
-     * Calcule la répartition détaillée par combinaison filière/niveau (pour vue globale)
+     * Calcule la répartition des matières par classe
      */
-    private function calculerRepartitionMatieresDetaillees($anneeId, $periode = 'annee')
+    private function calculerRepartitionMatieresParClasse($anneeId, $periode = 'annee', $classeId = null)
     {
-        // Récupérer toutes les planifications avec leurs filières/niveaux
-        $planificationsQuery = ESBTPPlanificationAcademique::with(['matiere', 'filiere', 'niveauEtude'])
-            ->select('matiere_id', 'filiere_id', 'niveau_etude_id', 
-                    DB::raw('SUM(volume_horaire_total) as heures_planifiees'))
+        $classesQuery = ESBTPClasse::with(['filiere', 'niveau'])->orderBy('name');
+        if ($classeId) {
+            $classesQuery->where('id', $classeId);
+        }
+        $classes = $classesQuery->get();
+
+        if ($classes->isEmpty()) {
+            return collect();
+        }
+
+        $classIds = $classes->pluck('id')->values();
+
+        $planificationsQuery = ESBTPPlanificationAcademique::with(['matiere'])
+            ->select('matiere_id', 'filiere_id', 'niveau_etude_id', DB::raw('SUM(volume_horaire_total) as heures_planifiees'))
             ->groupBy('matiere_id', 'filiere_id', 'niveau_etude_id');
-            
+
         if ($anneeId) {
             $planificationsQuery->where('annee_universitaire_id', $anneeId);
         }
-        
-        // Filtrer par semestre si spécifié
+
         if ($periode === 'semestre1') {
             $planificationsQuery->where('semestre', 1);
         } elseif ($periode === 'semestre2') {
             $planificationsQuery->where('semestre', 2);
         }
-        
+
         $planifications = $planificationsQuery->get();
-        
-        // Récupérer les heures réalisées par combinaison matière/filière/niveau
-        // IMPORTANT: Exclure les séances où l'enseignant est marqué ABSENT
-        $seancesQuery = ESBTPSeanceCours::with(['matiere', 'classe.filiere', 'classe.niveau'])
+        $planificationsByCombo = $planifications->groupBy(function ($planification) {
+            return $planification->filiere_id . '_' . $planification->niveau_etude_id;
+        });
+
+        $seancesQuery = ESBTPSeanceCours::query()
             ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
-            ->join('esbtp_classes', 'esbtp_emploi_temps.classe_id', '=', 'esbtp_classes.id')
-            // Left join avec sous-requête pour obtenir l'attendance la plus récente par séance
             ->leftJoin(DB::raw('(
                 SELECT ta1.course_id, ta1.status
                 FROM esbtp_teacher_attendances ta1
@@ -1472,57 +1484,165 @@ class ESBTPPlanningGeneralController extends Controller
                      ) = ta2.max_priority
                 WHERE ta1.type = "start"
             ) as latest_attendance'), 'latest_attendance.course_id', '=', 'esbtp_seance_cours.id')
-            // EXCLURE les séances où l'enseignant est ABSENT
-            // Si pas d'attendance (null) OU attendance avec statut != 'absent', alors compter la séance
-            ->where(function($query) {
+            ->where(function ($query) {
                 $query->whereNull('latest_attendance.status')
                       ->orWhere('latest_attendance.status', '!=', 'absent');
             })
-            ->select('esbtp_seance_cours.matiere_id', 'esbtp_classes.filiere_id', 'esbtp_classes.niveau_etude_id',
-                    DB::raw('COUNT(DISTINCT esbtp_seance_cours.id) as nb_seances'),
-                    DB::raw('SUM(TIME_TO_SEC(TIMEDIFF(esbtp_seance_cours.heure_fin, esbtp_seance_cours.heure_debut))/3600) as total_heures'))
-            ->groupBy('esbtp_seance_cours.matiere_id', 'esbtp_classes.filiere_id', 'esbtp_classes.niveau_etude_id');
+            ->whereIn('esbtp_seance_cours.classe_id', $classIds)
+            ->select(
+                'esbtp_seance_cours.matiere_id',
+                'esbtp_seance_cours.classe_id',
+                'esbtp_seance_cours.teacher_id',
+                DB::raw('COUNT(DISTINCT esbtp_seance_cours.id) as nb_seances'),
+                DB::raw('SUM(TIME_TO_SEC(TIMEDIFF(esbtp_seance_cours.heure_fin, esbtp_seance_cours.heure_debut))/3600) as total_heures')
+            )
+            ->groupBy('esbtp_seance_cours.matiere_id', 'esbtp_seance_cours.classe_id', 'esbtp_seance_cours.teacher_id');
 
         if ($anneeId) {
             $seancesQuery->where('esbtp_emploi_temps.annee_universitaire_id', $anneeId);
         }
-        
-        $seancesRealisees = $seancesQuery->get()->keyBy(function($item) {
-            return $item->matiere_id . '_' . $item->filiere_id . '_' . $item->niveau_etude_id;
-        });
-        
-        // Calculer le total pour les pourcentages
-        $totalHeuresGlobal = $seancesRealisees->sum('total_heures');
-        
-        // Construire le résultat détaillé
-        return $planifications->map(function($planification) use ($seancesRealisees, $totalHeuresGlobal, $periode) {
-            $key = $planification->matiere_id . '_' . $planification->filiere_id . '_' . $planification->niveau_etude_id;
-            $seanceRealisee = $seancesRealisees->get($key);
-            
-            $totalHeures = $seanceRealisee ? $seanceRealisee->total_heures : 0;
-            $nbSeances = $seanceRealisee ? $seanceRealisee->nb_seances : 0;
-            $heuresPlanifiees = $planification->heures_planifiees;
-            $heuresRestantes = max(0, $heuresPlanifiees - $totalHeures);
-            
+
+        if ($periode === 'semestre1') {
+            $seancesQuery->where('esbtp_emploi_temps.semestre', 1);
+        } elseif ($periode === 'semestre2') {
+            $seancesQuery->where('esbtp_emploi_temps.semestre', 2);
+        }
+
+        $seancesRealisees = $seancesQuery->get();
+
+        $teacherIds = $seancesRealisees->pluck('teacher_id')->filter()->unique();
+        $teachers = ESBTPTeacher::with('user')
+            ->whereIn('id', $teacherIds)
+            ->get()
+            ->keyBy('id');
+
+        $matiereIds = $planifications->pluck('matiere_id')
+            ->merge($seancesRealisees->pluck('matiere_id'))
+            ->filter()
+            ->unique();
+        $matieres = ESBTPMatiere::whereIn('id', $matiereIds)->get()->keyBy('id');
+
+        return $classes->map(function ($classe) use ($planificationsByCombo, $seancesRealisees, $teachers, $matieres, $periode) {
+            $comboKey = $classe->filiere_id . '_' . $classe->niveau_etude_id;
+            $planificationsCombo = $planificationsByCombo->get($comboKey, collect())->keyBy('matiere_id');
+            $seancesClasse = $seancesRealisees->where('classe_id', $classe->id);
+
+            $matiereIdsClasse = $planificationsCombo->keys()
+                ->merge($seancesClasse->pluck('matiere_id'))
+                ->filter()
+                ->unique();
+
+            $matieresData = $matiereIdsClasse->map(function ($matiereId) use ($planificationsCombo, $seancesClasse, $teachers, $matieres, $periode) {
+                $planification = $planificationsCombo->get($matiereId);
+                $heuresPlanifiees = $planification ? (float) $planification->heures_planifiees : 0;
+
+                $seancesMatiere = $seancesClasse->where('matiere_id', $matiereId);
+                $totalHeures = (float) $seancesMatiere->sum('total_heures');
+                $nbSeances = (int) $seancesMatiere->sum('nb_seances');
+
+                $enseignants = $seancesMatiere->groupBy('teacher_id')->map(function ($items, $teacherId) use ($teachers) {
+                    $teacher = $teachers->get($teacherId);
+                    if (!$teacher) {
+                        return null;
+                    }
+
+                    $teacherName = trim((string) ($teacher->title ? $teacher->title . ' ' : '') . ($teacher->name ?? ''));
+
+                    return [
+                        'id' => $teacher->id,
+                        'name' => $teacherName ?: 'Enseignant',
+                        'heures_realisees' => round((float) $items->sum('total_heures'), 2),
+                        'nb_seances' => (int) $items->sum('nb_seances')
+                    ];
+                })->filter()->values();
+
+                $heuresRestantes = max(0, $heuresPlanifiees - $totalHeures);
+
+                return [
+                    'matiere' => $matieres->get($matiereId),
+                    'nb_seances' => $nbSeances,
+                    'heures_realisees' => round($totalHeures, 2),
+                    'heures_planifiees' => round($heuresPlanifiees, 2),
+                    'heures_restantes' => round($heuresRestantes, 2),
+                    'pourcentage_realise' => $heuresPlanifiees > 0 ? round(($totalHeures / $heuresPlanifiees) * 100, 1) : 0,
+                    'est_configure' => $heuresPlanifiees > 0,
+                    'periode' => $periode,
+                    'enseignants' => $enseignants
+                ];
+            })->filter()->sortBy(function ($item) {
+                return $item['matiere']->name ?? '';
+            })->values();
+
+            $totalPlanifiees = $matieresData->sum('heures_planifiees');
+            $totalRealisees = $matieresData->sum('heures_realisees');
+            $totalSeances = $matieresData->sum('nb_seances');
+            $taux = $totalPlanifiees > 0 ? round(($totalRealisees / $totalPlanifiees) * 100, 1) : 0;
+
+            $matieresData = $matieresData->map(function ($item) use ($totalRealisees) {
+                $item['pourcentage'] = $totalRealisees > 0 ? round(($item['heures_realisees'] / $totalRealisees) * 100, 1) : 0;
+                return $item;
+            })->values();
+
             return [
-                'matiere' => $planification->matiere,
-                'filiere' => $planification->filiere,
-                'niveau' => $planification->niveauEtude,
-                'filiere_id' => $planification->filiere_id,
-                'niveau_id' => $planification->niveau_etude_id,
-                'nb_seances' => $nbSeances,
-                'total_heures' => round($totalHeures, 2),
-                'heures_planifiees' => round($heuresPlanifiees, 2),
-                'heures_restantes' => round($heuresRestantes, 2),
-                'pourcentage_realise' => $heuresPlanifiees > 0 ? round(($totalHeures / $heuresPlanifiees) * 100, 1) : 0,
-                'pourcentage' => $totalHeuresGlobal > 0 ? round(($totalHeures / $totalHeuresGlobal) * 100, 1) : 0,
-                'est_configure' => $heuresPlanifiees > 0,
-                'periode' => $periode,
-                'combinaison_unique' => $planification->matiere->name . ' - ' . 
-                                      $planification->filiere->name . ' - ' . 
-                                      $planification->niveauEtude->name
+                'classe' => $classe,
+                'matieres' => $matieresData,
+                'stats' => [
+                    'matieres_count' => $matieresData->count(),
+                    'heures_planifiees_total' => round($totalPlanifiees, 2),
+                    'heures_realisees_total' => round($totalRealisees, 2),
+                    'nb_seances_total' => (int) $totalSeances,
+                    'taux_realisation' => $taux
+                ]
             ];
-        })->sortBy('combinaison_unique');
+        });
+    }
+
+    private function calculerStatsRepartitionParClasse($repartition)
+    {
+        $totalClasses = $repartition->count();
+        $totalMatieres = $repartition->sum(function ($item) {
+            return $item['stats']['matieres_count'] ?? 0;
+        });
+        $totalHeuresPlanifiees = $repartition->sum(function ($item) {
+            return $item['stats']['heures_planifiees_total'] ?? 0;
+        });
+        $totalHeuresRealisees = $repartition->sum(function ($item) {
+            return $item['stats']['heures_realisees_total'] ?? 0;
+        });
+        $totalSeances = $repartition->sum(function ($item) {
+            return $item['stats']['nb_seances_total'] ?? 0;
+        });
+        $tauxGlobal = $totalHeuresPlanifiees > 0 ? round(($totalHeuresRealisees / $totalHeuresPlanifiees) * 100, 1) : 0;
+
+        return [
+            'classes' => $totalClasses,
+            'matieres' => $totalMatieres,
+            'heures_planifiees' => round($totalHeuresPlanifiees, 1),
+            'heures_realisees' => round($totalHeuresRealisees, 1),
+            'seances' => (int) $totalSeances,
+            'taux_realisation' => $tauxGlobal
+        ];
+    }
+
+    private function buildChartDataParClasse($repartition)
+    {
+        $labels = $repartition->map(function ($item) {
+            return $item['classe']->name ?? 'Classe';
+        })->values();
+
+        $planifiees = $repartition->map(function ($item) {
+            return (float) ($item['stats']['heures_planifiees_total'] ?? 0);
+        })->values();
+
+        $realisees = $repartition->map(function ($item) {
+            return (float) ($item['stats']['heures_realisees_total'] ?? 0);
+        })->values();
+
+        return [
+            'labels' => $labels,
+            'planifiees' => $planifiees,
+            'realisees' => $realisees
+        ];
     }
 
     
