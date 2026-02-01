@@ -2,6 +2,12 @@
 <html lang="fr">
 <head>
     @include('pdf.partials.theme')
+    @php
+        $pdfSettings = \App\Helpers\SettingsHelper::getPdfSettings();
+        $pdfHeaderBg = $pdfSettings['header_bg_color'] ?? '#0453cb';
+        $pdfHeaderText = $pdfSettings['header_text_color'] ?? '#ffffff';
+        $pdfText = $pdfSettings['text_color'] ?? '#1f2937';
+    @endphp
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Certificat de Scolarité - {{ $etudiant->matricule }}</title>
     <style>
@@ -159,6 +165,45 @@
             border-top: 1px solid #e2e8f0;
             padding-top: 10px;
             clear: both;
+        }
+
+        .certificat-document {
+            color: {{ $pdfText }};
+        }
+
+        .certificat-header,
+        .certificat-school-name,
+        .certificat-address {
+            color: {{ $pdfHeaderText }} !important;
+        }
+
+        .certificat-divider {
+            background-color: {{ $pdfHeaderText }} !important;
+        }
+
+        .certificat-title {
+            background-color: {{ $pdfHeaderBg }} !important;
+            color: {{ $pdfHeaderText }} !important;
+            border-color: {{ $pdfHeaderText }} !important;
+        }
+
+        .certificat-highlight,
+        .signature-title,
+        .certificat-signature {
+            color: {{ $pdfHeaderText }} !important;
+            border-color: {{ $pdfHeaderText }} !important;
+        }
+
+        .certificat-content table thead th {
+            background-color: {{ $pdfHeaderBg }} !important;
+            color: {{ $pdfHeaderText }} !important;
+            border-color: {{ $pdfHeaderText }} !important;
+        }
+
+        .certificat-content table td {
+            color: {{ $pdfText }} !important;
+            background: transparent !important;
+            border-color: {{ $pdfHeaderText }} !important;
         }
     </style>
 </head>
