@@ -1381,31 +1381,28 @@ class ESBTPEtudiantController extends Controller
             }
 
             // Récupérer les paramètres de l'école
-            $settings = \App\Helpers\SettingsHelper::getSchoolInfo();
+            $settings = $this->getCertificatSettings();
 
-            // Générer le PDF
-            $pdf = Pdf::loadView('esbtp.etudiants.certificat', [
+            $html = view('esbtp.etudiants.certificat', [
                 'etudiant' => $etudiant,
                 'inscriptions' => $inscriptions,
                 'settings' => $settings
-            ]);
+            ])->render();
 
-            // Configuration du PDF
-            $pdf->setPaper('A4', 'portrait');
-            $pdf->setOptions([
-                'isHtml5ParserEnabled' => true,
-                'isRemoteEnabled' => true,
-                'defaultFont' => 'DejaVu Sans',
-                'margin-top' => 10,
-                'margin-right' => 10,
-                'margin-bottom' => 15,
-                'margin-left' => 10,
+            $pdfService = app(\App\Services\ESBTPPDFService::class);
+            $pdf = $pdfService->genererDocumentPdfFromHtml($html, [
+                'format' => 'A4',
+                'landscape' => false,
+                'margin' => ['top' => '10mm', 'right' => '10mm', 'bottom' => '15mm', 'left' => '10mm'],
             ]);
 
             // Nom du fichier
             $filename = 'certificat_scolarite_' . strtolower($etudiant->nom) . '_' . strtolower($etudiant->prenom) . '_' . date('Y-m-d') . '.pdf';
 
-            return $pdf->download($filename);
+            return response($pdf, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+            ]);
             
         } catch (\Exception $e) {
             \Log::error('Erreur génération certificat scolarité: ' . $e->getMessage(), [
@@ -1938,31 +1935,28 @@ class ESBTPEtudiantController extends Controller
             }
 
             // Récupérer les paramètres de l'école
-            $settings = \App\Helpers\SettingsHelper::getSchoolInfo();
+            $settings = $this->getCertificatSettings();
 
-            // Générer le PDF
-            $pdf = Pdf::loadView('esbtp.etudiants.attestation-frequentation', [
+            $html = view('esbtp.etudiants.attestation-frequentation', [
                 'etudiant' => $etudiant,
                 'inscription' => $inscription,
                 'settings' => $settings
-            ]);
+            ])->render();
 
-            // Configuration du PDF
-            $pdf->setPaper('A4', 'portrait');
-            $pdf->setOptions([
-                'isHtml5ParserEnabled' => true,
-                'isRemoteEnabled' => true,
-                'defaultFont' => 'DejaVu Sans',
-                'margin-top' => 10,
-                'margin-right' => 10,
-                'margin-bottom' => 15,
-                'margin-left' => 10,
+            $pdfService = app(\App\Services\ESBTPPDFService::class);
+            $pdf = $pdfService->genererDocumentPdfFromHtml($html, [
+                'format' => 'A4',
+                'landscape' => false,
+                'margin' => ['top' => '10mm', 'right' => '10mm', 'bottom' => '15mm', 'left' => '10mm'],
             ]);
 
             // Nom du fichier
             $filename = 'attestation_frequentation_' . strtolower($etudiant->nom) . '_' . strtolower($etudiant->prenom) . '_' . date('Y-m-d') . '.pdf';
 
-            return $pdf->download($filename);
+            return response($pdf, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+            ]);
             
         } catch (\Exception $e) {
             \Log::error('Erreur génération attestation fréquentation: ' . $e->getMessage(), [

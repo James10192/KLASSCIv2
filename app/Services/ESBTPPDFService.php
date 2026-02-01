@@ -456,6 +456,55 @@ class ESBTPPDFService
         }
     }
 
+    public function genererDocumentPdfFromHtml(string $html, array $options = []): string
+    {
+        $options = array_merge([
+            'format' => 'A4',
+            'landscape' => false,
+            'margin' => ['top' => '10mm', 'right' => '10mm', 'bottom' => '10mm', 'left' => '10mm'],
+        ], $options);
+
+        if (config('services.browserless.enabled', false)) {
+            $apiKey = config('services.browserless.api_key');
+            $endpoint = config('services.browserless.endpoint', 'https://chrome.browserless.io');
+            $client = new \GuzzleHttp\Client(['timeout' => 60]);
+
+            $response = $client->post("{$endpoint}/pdf?token={$apiKey}", [
+                'json' => [
+                    'html' => $html,
+                    'options' => [
+                        'format' => $options['format'],
+                        'landscape' => $options['landscape'],
+                        'margin' => $options['margin'],
+                        'printBackground' => true,
+                    ],
+                    'gotoOptions' => [
+                        'waitUntil' => 'networkidle0',
+                    ],
+                ],
+            ]);
+
+            $pdf = $response->getBody()->getContents();
+            if (! $pdf) {
+                throw new \Exception('Browserless.io returned empty PDF');
+            }
+
+            return $pdf;
+        }
+
+        return \Spatie\Browsershot\Browsershot::html($html)
+            ->format($options['format'])
+            ->landscape($options['landscape'])
+            ->margins(
+                $options['margin']['top'],
+                $options['margin']['right'],
+                $options['margin']['bottom'],
+                $options['margin']['left']
+            )
+            ->waitUntilNetworkIdle()
+            ->pdf();
+    }
+
     private function prepareLogoBase64($logoPath): ?string
     {
         if (empty($logoPath)) {
