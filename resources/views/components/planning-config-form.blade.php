@@ -255,6 +255,25 @@
 document.addEventListener('DOMContentLoaded', function() {
     const formId = '{{ $formId }}';
     const form = document.getElementById(formId);
+
+    const volumeInput = document.getElementById('volume_horaire');
+    const volumeTotal = document.getElementById('volume_horaire_total');
+    const syncRequiredFields = (mode) => {
+        if (volumeInput) {
+            if (mode === 'rapide') {
+                volumeInput.setAttribute('required', 'required');
+            } else {
+                volumeInput.removeAttribute('required');
+            }
+        }
+        if (volumeTotal) {
+            if (mode === 'avance') {
+                volumeTotal.setAttribute('required', 'required');
+            } else {
+                volumeTotal.removeAttribute('required');
+            }
+        }
+    };
     
     // Toggle entre modes
     @if($showModeToggle && $isModal)
@@ -275,12 +294,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 sectionAvance.classList.remove('d-none');
                 form.action = '{{ route("esbtp.planning-general.configure-avance") }}';
             }
+            syncRequiredFields(mode);
         });
     });
+
+    const activeMode = document.querySelector('input[name="config-mode"]:checked')?.dataset.mode || 'rapide';
+    syncRequiredFields(activeMode);
     @endif
     
     // Calcul automatique pour mode rapide
-    const volumeInput = document.getElementById('volume_horaire');
     if (volumeInput) {
         volumeInput.addEventListener('input', function() {
             const volume = parseFloat(this.value) || 0;
@@ -313,7 +335,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Validation volumes en mode avancé
-    const volumeTotal = document.getElementById('volume_horaire_total');
     const volumeCM = document.getElementById('volume_horaire_cm');
     const volumeTD = document.getElementById('volume_horaire_td');
     const volumeTP = document.getElementById('volume_horaire_tp');

@@ -232,7 +232,9 @@ class ESBTPPlanningGeneralController extends Controller
         // Récupérer les planifications existantes pour cette combinaison
         $planificationsExistantes = ESBTPPlanificationAcademique::where('filiere_id', $filiereId)
             ->where('niveau_etude_id', $niveauId)
-            ->where('semestre', $semestre);
+            ->where(function ($query) use ($semestre) {
+                $query->where('semestre', $semestre)->orWhereNull('semestre');
+            });
             
         if ($anneeId) {
             $planificationsExistantes->where('annee_universitaire_id', $anneeId);
@@ -437,7 +439,7 @@ class ESBTPPlanningGeneralController extends Controller
             'niveau_id' => 'required|exists:esbtp_niveau_etudes,id',
             'annee_id' => 'required|exists:esbtp_annee_universitaires,id',
             'semestre' => 'required|integer|in:1,2',
-            'volumes' => 'required|array',
+            'volumes' => 'nullable|array',
             'volumes.*' => 'nullable|integer|min:0|max:200',
             'teachers' => 'nullable|array',
             'teachers.*' => 'nullable|array',
@@ -1026,9 +1028,13 @@ class ESBTPPlanningGeneralController extends Controller
         
         // Filtrer par semestre si spécifié
         if ($periode === 'semestre1') {
-            $planificationsQuery->where('semestre', 1);
+            $planificationsQuery->where(function ($query) {
+                $query->where('semestre', 1)->orWhereNull('semestre');
+            });
         } elseif ($periode === 'semestre2') {
-            $planificationsQuery->where('semestre', 2);
+            $planificationsQuery->where(function ($query) {
+                $query->where('semestre', 2)->orWhereNull('semestre');
+            });
         }
         
         $planifications = $planificationsQuery->get()->keyBy('matiere_id');
@@ -1449,9 +1455,13 @@ class ESBTPPlanningGeneralController extends Controller
         }
 
         if ($periode === 'semestre1') {
-            $planificationsQuery->where('semestre', 1);
+            $planificationsQuery->where(function ($query) {
+                $query->where('semestre', 1)->orWhereNull('semestre');
+            });
         } elseif ($periode === 'semestre2') {
-            $planificationsQuery->where('semestre', 2);
+            $planificationsQuery->where(function ($query) {
+                $query->where('semestre', 2)->orWhereNull('semestre');
+            });
         }
 
         $planifications = $planificationsQuery->get();
@@ -1503,9 +1513,15 @@ class ESBTPPlanningGeneralController extends Controller
         }
 
         if ($periode === 'semestre1') {
-            $seancesQuery->where('esbtp_emploi_temps.semestre', 1);
+            $seancesQuery->where(function ($query) {
+                $query->where('esbtp_emploi_temps.semestre', 1)
+                    ->orWhereNull('esbtp_emploi_temps.semestre');
+            });
         } elseif ($periode === 'semestre2') {
-            $seancesQuery->where('esbtp_emploi_temps.semestre', 2);
+            $seancesQuery->where(function ($query) {
+                $query->where('esbtp_emploi_temps.semestre', 2)
+                    ->orWhereNull('esbtp_emploi_temps.semestre');
+            });
         }
 
         $seancesRealisees = $seancesQuery->get();
