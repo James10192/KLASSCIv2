@@ -52,6 +52,26 @@
         background: white;
         min-height: 800px;
     }
+
+    .preview-content .document-watermark {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        opacity: 0.08;
+        width: 60%;
+        z-index: 0;
+        text-align: center;
+    }
+
+    .preview-content .document-watermark img {
+        max-width: 100%;
+    }
+
+    .preview-content .document-content {
+        position: relative;
+        z-index: 1;
+    }
     
     /* Styles pour l'attestation - similaires au certificat */
     .certificat-document {
@@ -289,7 +309,7 @@
 
             <!-- Contenu de l'attestation -->
             <div class="preview-content">
-                <div class="certificat-document">
+                <div class="certificat-document" style="position: relative;">
                     @php
                         use App\Helpers\SettingsHelper;
                         $schoolName = SettingsHelper::get('school_name', 'École Spéciale du Bâtiment et des Travaux Publics');
@@ -321,6 +341,13 @@
                         }
                     @endphp
 
+                    @if($logoBase64)
+                        <div class="document-watermark">
+                            <img src="{{ $logoBase64 }}" alt="Filigrane logo">
+                        </div>
+                    @endif
+
+                    <div class="document-content">
                     <!-- En-tête -->
                     <div class="certificat-header">
                         @if($showLogo && $logoBase64)

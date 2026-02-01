@@ -20,6 +20,27 @@
             max-width: 750px;
             margin: 0 auto;
             padding: 20px;
+            position: relative;
+        }
+
+        .document-watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.08;
+            width: 60%;
+            z-index: 0;
+            text-align: center;
+        }
+
+        .document-watermark img {
+            max-width: 100%;
+        }
+
+        .document-content {
+            position: relative;
+            z-index: 1;
         }
         
         /* En-tête moderne */
@@ -143,6 +164,34 @@
 </head>
 <body>
     <div class="container">
+        @php
+            $logoPath = \App\Helpers\SettingsHelper::get('school_logo');
+            $logoBase64 = null;
+            if ($logoPath) {
+                $paths = [
+                    storage_path('app/public/' . $logoPath),
+                    public_path($logoPath),
+                    public_path('images/LOGO-KLASSCI-PNG.png'),
+                ];
+
+                foreach ($paths as $path) {
+                    if (file_exists($path)) {
+                        $imageData = file_get_contents($path);
+                        $extension = pathinfo($path, PATHINFO_EXTENSION);
+                        $logoBase64 = 'data:image/' . $extension . ';base64,' . base64_encode($imageData);
+                        break;
+                    }
+                }
+            }
+        @endphp
+
+        @if($logoBase64)
+            <div class="document-watermark">
+                <img src="{{ $logoBase64 }}" alt="Filigrane logo">
+            </div>
+        @endif
+
+        <div class="document-content">
         <!-- En-tête -->
         <div class="certificat-header">
             @if(isset($settings['show_logo']) && $settings['show_logo'] && isset($settings['logo_base64']))
@@ -279,6 +328,7 @@
         <!-- Note de bas de page -->
         <div class="certificat-note">
             Ce certificat est un document officiel. Toute falsification constitue un délit passible de poursuites judiciaires.
+        </div>
         </div>
     </div>
 </body>
