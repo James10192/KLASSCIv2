@@ -6,30 +6,30 @@
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 @include('pdf.partials.theme')
 <style>
-    .dashboard-header,
-    .dashboard-header h1,
-    .dashboard-header .header-subtitle,
-    .kpi-title,
-    .kpi-trend,
-    .kpi-value,
-    .main-card-title,
-    .main-card-subtitle,
-    .main-card-header,
-    .main-card-header .main-card-title i {
+    .preview-keep-klassci,
+    .preview-keep-klassci h1,
+    .preview-keep-klassci .header-subtitle,
+    .preview-keep-klassci .kpi-title,
+    .preview-keep-klassci .kpi-trend,
+    .preview-keep-klassci .kpi-value,
+    .preview-keep-klassci .main-card-title,
+    .preview-keep-klassci .main-card-subtitle,
+    .preview-keep-klassci .main-card-header,
+    .preview-keep-klassci .main-card-header .main-card-title i {
         color: #1e293b !important;
         background: transparent !important;
     }
 
-    .kpi-value {
+    .preview-keep-klassci .kpi-value {
         color: #0453cb !important;
     }
 
-    .main-card-header {
+    .preview-keep-klassci .main-card-header {
         background: #ffffff !important;
     }
 
-    .dashboard-header .header-actions .btn-acasi.primary,
-    .dashboard-header .header-actions .btn-acasi.danger {
+    .preview-keep-klassci .header-actions .btn-acasi.primary,
+    .preview-keep-klassci .header-actions .btn-acasi.danger {
         background: #0453cb !important;
         color: #ffffff !important;
     }
@@ -44,13 +44,13 @@
         background-color: rgba(0, 0, 0, 0.02) !important;
     }
 
-    .badge,
-    .avatar-placeholder {
+    .preview-keep-klassci .badge,
+    .preview-keep-klassci .avatar-placeholder {
         background: #0453cb !important;
         color: #ffffff !important;
     }
 
-    .form-check-input {
+    .preview-keep-klassci .form-check-input {
         accent-color: #0453cb !important;
     }
 </style>
@@ -60,7 +60,7 @@
 <div class="dashboard-acasi">
     <div class="main-content">
         <!-- Header Section -->
-        <div class="dashboard-header">
+        <div class="dashboard-header preview-keep-klassci">
             <div class="header-left">
                 <h1><i class="fas fa-clipboard-list me-2"></i>Liste d'Appel</h1>
                 <p class="header-subtitle">{{ $classe->name }} - {{ $anneeCourante->name ?? 'Année courante' }}</p>
@@ -79,7 +79,7 @@
         </div>
 
         <!-- Statistiques KPI -->
-        <div class="kpi-grid">
+        <div class="kpi-grid preview-keep-klassci">
             <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
                 <div class="kpi-title" style="color: #000; font-weight: 600;">Total Étudiants</div>
                 <div class="kpi-value" style="color: #007bff; font-size: 2.5rem; font-weight: bold;">{{ $etudiants->count() }}</div>
