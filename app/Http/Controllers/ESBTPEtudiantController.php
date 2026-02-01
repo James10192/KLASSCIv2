@@ -1381,7 +1381,7 @@ class ESBTPEtudiantController extends Controller
             }
 
             // Récupérer les paramètres de l'école
-            $settings = $this->getCertificatSettings();
+            $settings = \App\Helpers\SettingsHelper::getSchoolInfo();
 
             $html = view('esbtp.etudiants.certificat', [
                 'etudiant' => $etudiant,
@@ -1935,7 +1935,7 @@ class ESBTPEtudiantController extends Controller
             }
 
             // Récupérer les paramètres de l'école
-            $settings = $this->getCertificatSettings();
+            $settings = \App\Helpers\SettingsHelper::getSchoolInfo();
 
             $html = view('esbtp.etudiants.attestation-frequentation', [
                 'etudiant' => $etudiant,
