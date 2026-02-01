@@ -763,6 +763,46 @@
 </style>
 @endsection
 
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const overviewContainer = document.getElementById('teaching-overview-content');
+    if (!overviewContainer) {
+        return;
+    }
+
+    const fetchTeachingOverview = (periode) => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('periode', periode);
+
+        return fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const nextOverview = doc.querySelector('#teaching-overview-content');
+                if (nextOverview) {
+                    overviewContainer.innerHTML = nextOverview.innerHTML;
+                }
+                window.history.replaceState({}, '', url.toString());
+            })
+            .catch(() => {
+                window.location.href = url.toString();
+            });
+    };
+
+    overviewContainer.addEventListener('click', (event) => {
+        const button = event.target.closest('button[name="periode"]');
+        if (!button) {
+            return;
+        }
+        event.preventDefault();
+        fetchTeachingOverview(button.value);
+    });
+});
+</script>
+@endpush
+
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
@@ -827,7 +867,7 @@
                     </div>
                 </div>
 
-                <div class="teaching-overview">
+                <div id="teaching-overview-content" class="teaching-overview">
                     <div class="teaching-overview-header">
                         <div class="teaching-overview-title">
                             <i class="fas fa-chalkboard"></i>

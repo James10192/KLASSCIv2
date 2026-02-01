@@ -53,14 +53,18 @@
         box-shadow: var(--shadow-card);
         position: relative;
         height: 450px;
-        overflow: hidden; /* Empêcher les scrollbars */
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
     }
     
     .chart-container canvas {
-        max-height: 100%;
+        max-height: 320px;
         max-width: 100%;
         width: 100% !important;
-        height: auto !important;
+        height: 320px !important;
     }
     
     .matiere-card {
@@ -284,6 +288,20 @@
         color: white;
     }
 
+    .overage-badge {
+        background: rgba(220, 38, 38, 0.1);
+        color: #b91c1c;
+        border: 1px solid rgba(220, 38, 38, 0.3);
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .progress-fill-volume.overage {
+        background: linear-gradient(90deg, #ef4444, #f97316);
+    }
+
     .class-card {
         background: var(--surface);
         border-radius: var(--radius-medium);
@@ -448,7 +466,7 @@
             <form method="GET" class="row align-items-end">
                 <div class="col-md-3">
                     <label for="annee_id" class="form-label">Année Universitaire</label>
-                    <select name="annee_id" id="annee_id" class="form-select" onchange="this.form.submit()">
+                    <select name="annee_id" id="annee_id" class="form-select">
                         <option value="all" {{ request('annee_id') == 'all' ? 'selected' : '' }}>Toutes les années</option>
                         @foreach($annees as $annee)
                             <option value="{{ $annee->id }}" {{ request('annee_id') == $annee->id ? 'selected' : '' }}>
@@ -459,7 +477,7 @@
                 </div>
                 <div class="col-md-3">
                     <label for="classe_id" class="form-label">Classe</label>
-                    <select name="classe_id" id="classe_id" class="form-select" onchange="this.form.submit()">
+                    <select name="classe_id" id="classe_id" class="form-select">
                         <option value="">Toutes les classes</option>
                         @foreach($classes as $classe)
                             <option value="{{ $classe->id }}" 
@@ -493,6 +511,7 @@
             </form>
         </div>
 
+        <div id="repartition-content">
         <!-- Statistiques résumées -->
         <div class="summary-stats">
             <div class="summary-card primary">
@@ -520,8 +539,19 @@
                 <div class="icon">
                     <i class="fas fa-chart-line"></i>
                 </div>
-                <div class="stat-value">{{ $statsRepartition['taux_realisation'] ?? 0 }}%</div>
+                @php
+                    $tauxRealisation = $statsRepartition['taux_realisation'] ?? 0;
+                    $heuresPlanifiees = $statsRepartition['heures_planifiees'] ?? 0;
+                    $heuresRealisees = $statsRepartition['heures_realisees'] ?? 0;
+                    $depassement = max(0, $heuresRealisees - $heuresPlanifiees);
+                @endphp
+                <div class="stat-value">{{ $tauxRealisation }}%</div>
                 <div class="stat-label">Taux de réalisation</div>
+                @if($tauxRealisation > 100)
+                    <div class="mt-2">
+                        <span class="overage-badge">Dépassement +{{ number_format($depassement, 1) }}h</span>
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -542,6 +572,7 @@
                 </div>
             </div>
         </div>
+        <script type="application/json" id="repartition-chart-data">@json($chartData)</script>
 
         <!-- Détail par classe et matière -->
         <div class="card-moderne">
@@ -585,7 +616,7 @@
                                         <span class="badge bg-info">{{ $filiereName }} - {{ $niveauName }}</span>
                                     </div>
                                 </div>
-                            <div class="class-kpis">
+                                <div class="class-kpis">
                                     <div class="class-kpi">
                                         <span class="value">{{ number_format($classeData['stats']['heures_planifiees_total'], 1) }}h</span>
                                         <span class="label">Planifiées</span>
@@ -597,8 +628,17 @@
                                     <div class="class-kpi">
                                         <span class="value">{{ $classeData['stats']['taux_realisation'] }}%</span>
                                         <span class="label">Réalisation</span>
+                                    </div>
+                                    @if($classeData['stats']['taux_realisation'] > 100)
+                                        @php
+                                            $depassementClasse = max(0, $classeData['stats']['heures_realisees_total'] - $classeData['stats']['heures_planifiees_total']);
+                                        @endphp
+                                        <div class="class-kpi">
+                                            <span class="overage-badge">+{{ number_format($depassementClasse, 1) }}h</span>
+                                            <span class="label">Dépassement</span>
+                                        </div>
+                                    @endif
                                 </div>
-                            </div>
                             <a href="{{ route('esbtp.classes.show', ['classe' => $classe->id]) }}" class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-eye me-1"></i>Voir la classe
                             </a>
@@ -666,7 +706,7 @@
                                                             <span class="fw-bold">{{ $item['pourcentage_realise'] }}% complété</span>
                                                         </div>
                                                         <div class="progress-bar-volume realise">
-                                                            <div class="progress-fill-volume realise" style="width: {{ min($item['pourcentage_realise'], 100) }}%"></div>
+                                                            <div class="progress-fill-volume realise {{ $item['pourcentage_realise'] > 100 ? 'overage' : '' }}" style="width: {{ min($item['pourcentage_realise'], 100) }}%"></div>
                                                         </div>
                                                         <div class="d-flex justify-content-between mt-1">
                                                             <small class="text-success">✓ {{ number_format($item['heures_realisees'], 1) }}h réalisées</small>
@@ -751,6 +791,7 @@
                     </div>
                 @endif
             </div>
+        </div>
         </div>
     </div>
 </div>
@@ -877,25 +918,49 @@ const debugWarn = () => {};
 const debugError = () => {};
 
 $(document).ready(function() {
-    const chartData = @json($chartData);
-    const chartLabels = chartData.labels || [];
-    const heuresPlanifiees = chartData.planifiees || [];
-    const heuresRealisees = chartData.realisees || [];
-    const totalHeures = heuresRealisees.reduce((sum, value) => sum + parseFloat(value || 0), 0);
-
-    // Couleurs pour les graphiques
     const colors = [
         '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
         '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#84CC16'
     ];
 
-    if (chartLabels.length > 0) {
+    window.repartitionCharts = window.repartitionCharts || { pie: null, bar: null };
+
+    const readChartData = () => {
+        const raw = document.getElementById('repartition-chart-data');
+        if (!raw) {
+            return { labels: [], planifiees: [], realisees: [] };
+        }
+        try {
+            return JSON.parse(raw.textContent || '{}');
+        } catch (e) {
+            return { labels: [], planifiees: [], realisees: [] };
+        }
+    };
+
+    const renderCharts = () => {
+        const chartData = readChartData();
+        const chartLabels = chartData.labels || [];
+        const heuresPlanifiees = chartData.planifiees || [];
+        const heuresRealisees = chartData.realisees || [];
+        const totalHeures = heuresRealisees.reduce((sum, value) => sum + parseFloat(value || 0), 0);
+
+        if (window.repartitionCharts.pie) {
+            window.repartitionCharts.pie.destroy();
+        }
+        if (window.repartitionCharts.bar) {
+            window.repartitionCharts.bar.destroy();
+        }
+
+        if (chartLabels.length === 0) {
+            return;
+        }
+
         const pieElement = document.getElementById('pieChart');
         const barElement = document.getElementById('barChart');
 
         if (pieElement) {
             const pieCtx = pieElement.getContext('2d');
-            new Chart(pieCtx, {
+            window.repartitionCharts.pie = new Chart(pieCtx, {
                 type: 'doughnut',
                 data: {
                     labels: chartLabels,
@@ -938,7 +1003,7 @@ $(document).ready(function() {
 
         if (barElement) {
             const barCtx = barElement.getContext('2d');
-            new Chart(barCtx, {
+            window.repartitionCharts.bar = new Chart(barCtx, {
                 type: 'bar',
                 data: {
                     labels: chartLabels,
@@ -989,7 +1054,58 @@ $(document).ready(function() {
                 }
             });
         }
+    };
+
+    const fetchRepartitionContent = (params) => {
+        const url = `${window.location.pathname}?${params.toString()}`;
+        return fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const nextContent = doc.querySelector('#repartition-content');
+                const currentContent = document.querySelector('#repartition-content');
+                if (nextContent && currentContent) {
+                    currentContent.innerHTML = nextContent.innerHTML;
+                    renderCharts();
+                }
+                window.history.replaceState({}, '', url);
+            })
+            .catch(() => {
+                window.location.href = url;
+            });
+    };
+
+    const filterForm = document.querySelector('.filters-section form');
+    if (filterForm) {
+        filterForm.addEventListener('click', (event) => {
+            const button = event.target.closest('button[name="periode"]');
+            if (!button) {
+                return;
+            }
+            event.preventDefault();
+            filterForm.querySelectorAll('button[name="periode"]').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            button.classList.add('active');
+            const formData = new FormData(filterForm);
+            formData.set('periode', button.value);
+            const params = new URLSearchParams(formData);
+            fetchRepartitionContent(params);
+        });
+
+        filterForm.addEventListener('change', (event) => {
+            if (!event.target.matches('#annee_id, #classe_id')) {
+                return;
+            }
+            const params = new URLSearchParams(new FormData(filterForm));
+            const currentParams = new URLSearchParams(window.location.search);
+            params.set('periode', currentParams.get('periode') || 'annee');
+            fetchRepartitionContent(params);
+        });
     }
+
+    renderCharts();
     
     // Animation des barres de progression
     setTimeout(() => {

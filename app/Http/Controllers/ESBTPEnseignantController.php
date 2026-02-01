@@ -469,8 +469,7 @@ class ESBTPEnseignantController extends Controller
             $planificationsCombo = $planificationsByCombo->get($comboKey, collect())->keyBy('matiere_id');
             $seancesClasse = $seancesRealisees->where('classe_id', $classe->id);
 
-            $matiereIdsClasse = $planificationsCombo->keys()
-                ->merge($seancesClasse->pluck('matiere_id'))
+            $matiereIdsClasse = $seancesClasse->pluck('matiere_id')
                 ->filter()
                 ->unique();
 
