@@ -919,8 +919,18 @@ function closeEvaluationModal() {
     modalElement.style.display = 'none';
     modalElement.setAttribute('aria-hidden', 'true');
 
-    document.body.classList.remove('modal-open');
-    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+    const openModals = Array.from(document.querySelectorAll('.modal.show'))
+        .filter(modal => modal.id !== 'evaluationCreateModal');
+
+    const backdrops = Array.from(document.querySelectorAll('.modal-backdrop'));
+    const lastBackdrop = backdrops[backdrops.length - 1];
+
+    if (openModals.length === 0) {
+        document.body.classList.remove('modal-open');
+        backdrops.forEach(backdrop => backdrop.remove());
+    } else if (lastBackdrop) {
+        lastBackdrop.remove();
+    }
 }
 
 // Fonction pour afficher un message de succès
@@ -1105,6 +1115,12 @@ function showSuccessMessage(message) {
     top: 0;
     z-index: 4;
     background: #f8fafc;
+}
+
+.notes-grid-table thead .notes-average-col,
+.notes-grid-table thead .notes-appreciation-col {
+    top: 0;
+    z-index: 6;
 }
 
 .notes-grid-table tfoot td {
