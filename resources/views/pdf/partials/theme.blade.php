@@ -121,6 +121,11 @@
         background: #ffffff !important;
     }
 
+    /* Keep alternating row stripes if defined */
+    table tbody tr:nth-child(even) {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+
     .border-accent {
         border-color: var(--pdf-primary) !important;
     }
