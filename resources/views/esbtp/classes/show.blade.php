@@ -139,6 +139,48 @@
 </style>
 @endsection
 
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('classe-periode-form');
+    const content = document.getElementById('classe-planning-content');
+    if (!form || !content) {
+        return;
+    }
+
+    const fetchPlanning = (periode) => {
+        const url = new URL(form.action);
+        url.searchParams.set('periode', periode);
+        return fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const nextContent = doc.querySelector('#classe-planning-content');
+                if (nextContent) {
+                    content.innerHTML = nextContent.innerHTML;
+                }
+                window.history.replaceState({}, '', url.toString());
+            })
+            .catch(() => {
+                window.location.href = url.toString();
+            });
+    };
+
+    form.addEventListener('click', (event) => {
+        const button = event.target.closest('button[name="periode"]');
+        if (!button) {
+            return;
+        }
+        event.preventDefault();
+        form.querySelectorAll('button[name="periode"]').forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        fetchPlanning(button.value);
+    });
+});
+</script>
+@endpush
+
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
@@ -427,7 +469,7 @@
                     </div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <form method="GET" action="{{ route('esbtp.classes.show', ['classe' => $classe->id]) }}" class="d-flex gap-2">
+                    <form method="GET" action="{{ route('esbtp.classes.show', ['classe' => $classe->id]) }}" class="d-flex gap-2" id="classe-periode-form">
                         <button type="submit" name="periode" value="semestre1" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'semestre1' ? 'active' : '' }}">S1</button>
                         <button type="submit" name="periode" value="semestre2" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'semestre2' ? 'active' : '' }}">S2</button>
                         <button type="submit" name="periode" value="annee" class="btn btn-sm btn-outline-primary {{ ($periode ?? 'annee') === 'annee' ? 'active' : '' }}">Année</button>
@@ -443,7 +485,7 @@
                 </div>
             </div>
             <div id="classePlanningMatiereCollapse" class="collapse show">
-                <div class="main-card-body">
+                <div class="main-card-body" id="classe-planning-content">
                     <div class="planning-summary">
                         <div class="planning-summary-card">
                             <div class="value">{{ number_format($planningMatiere['stats']['heures_planifiees'] ?? 0, 1) }}h</div>
