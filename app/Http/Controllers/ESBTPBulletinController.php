@@ -7329,6 +7329,7 @@ class ESBTPBulletinController extends Controller
             // Sauvegarder les paramètres d'établissement avec préfixe
             foreach ($establishmentSettings as $key => $value) {
                 SettingsHelper::setOrCreate("establishment.{$key}", $value ?? '', 'establishment');
+                SettingsHelper::setOrCreate($key, $value ?? '', 'establishment');
             }
 
             return redirect()->back()->with('success', 'Configuration sauvegardée avec succès.');

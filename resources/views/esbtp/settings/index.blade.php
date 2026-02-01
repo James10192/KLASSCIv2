@@ -411,6 +411,34 @@
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-user-tie text-primary"></i>
+                            Nom du directeur
+                        </label>
+                        <input type="text" class="form-control form-control-modern @error('setting_director_name') is-invalid @enderror"
+                               name="setting_director_name"
+                               value="{{ old('setting_director_name', \App\Helpers\SettingsHelper::get('director_name', '')) }}"
+                               placeholder="Ex: N'GUESSAN Marcel">
+                        @error('setting_director_name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-briefcase text-primary"></i>
+                            Titre du directeur
+                        </label>
+                        <input type="text" class="form-control form-control-modern @error('setting_director_title') is-invalid @enderror"
+                               name="setting_director_title"
+                               value="{{ old('setting_director_title', \App\Helpers\SettingsHelper::get('director_title', 'Directeur Général')) }}"
+                               placeholder="Ex: Directeur Général">
+                        @error('setting_director_title')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
                 </div>
             </div>
 
