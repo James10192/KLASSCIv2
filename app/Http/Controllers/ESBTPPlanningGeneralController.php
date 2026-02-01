@@ -466,7 +466,13 @@ class ESBTPPlanningGeneralController extends Controller
             $teachersAssignedCount = 0;
             
             foreach ($volumes as $matiereId => $volume) {
-                if ($volume && $volume > 0) {
+                if ($volume === null || $volume === '') {
+                    continue;
+                }
+
+                $volumeValue = (int) $volume;
+
+                if ($volumeValue > 0) {
                     \Log::info("📚 Traitement Matière ID: {$matiereId}, Volume: {$volume}h");
 
                     $planification = ESBTPPlanificationAcademique::withTrashed()->firstOrNew([
@@ -483,7 +489,7 @@ class ESBTPPlanningGeneralController extends Controller
                     }
 
                     $planification->fill([
-                        'volume_horaire_total' => $volume,
+                        'volume_horaire_total' => $volumeValue,
                         'volume_horaire_cm' => 0,
                         'volume_horaire_td' => 0,
                         'volume_horaire_tp' => 0,
@@ -572,12 +578,13 @@ class ESBTPPlanningGeneralController extends Controller
                         ]);
                         \Log::info("  🚫 Enseignant principal retiré");
                     }
-                } else {
-                    // Supprimer si volume = 0
+                } elseif ($volumeValue === 0) {
+                    // Supprimer uniquement si l'utilisateur a explicitement mis 0
                     $planificationsToDelete = ESBTPPlanificationAcademique::where('annee_universitaire_id', $request->annee_id)
                         ->where('filiere_id', $request->filiere_id)
                         ->where('niveau_etude_id', $request->niveau_id)
                         ->where('matiere_id', $matiereId)
+                        ->where('semestre', $request->semestre)
                         ->get();
                     
                     // Supprimer les assignations de professeurs associées
@@ -592,6 +599,7 @@ class ESBTPPlanningGeneralController extends Controller
                         ->where('filiere_id', $request->filiere_id)
                         ->where('niveau_etude_id', $request->niveau_id)
                         ->where('matiere_id', $matiereId)
+                        ->where('semestre', $request->semestre)
                         ->delete();
                 }
             }
