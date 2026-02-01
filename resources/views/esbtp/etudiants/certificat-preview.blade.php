@@ -355,7 +355,6 @@
     }
 
     /* Final overrides to match PDF theme */
-    .certificat-document,
     .certificat-header,
     .certificat-school-name,
     .certificat-address,
@@ -373,6 +372,10 @@
 
     .certificat-divider {
         background-color: {{ $pdfHeaderText }} !important;
+    }
+
+    .certificat-content {
+        color: {{ $pdfText }} !important;
     }
 </style>
 @endsection
