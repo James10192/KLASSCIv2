@@ -184,6 +184,102 @@
             overflow-wrap: break-word;
         }
 
+        /* Modern administrative look (overrides) */
+        body {
+            font-family: "Helvetica", "Arial", sans-serif;
+            line-height: 1.55;
+        }
+
+        .container {
+            max-width: 780px;
+            padding: 28px 30px;
+        }
+
+        .certificat-header {
+            background: {{ $pdfHeaderBg }};
+            color: {{ $pdfHeaderText }};
+            border-radius: 12px;
+            padding: 18px 20px;
+            border-bottom: none;
+        }
+
+        .certificat-school-name,
+        .certificat-address {
+            color: {{ $pdfHeaderText }};
+        }
+
+        .certificat-logo {
+            max-width: 70px;
+            margin-bottom: 8px;
+        }
+
+        .certificat-divider {
+            height: 2px;
+            background: {{ $pdfHeaderText }};
+            margin: 18px 0;
+        }
+
+        .certificat-title {
+            background: {{ $pdfHeaderBg }};
+            color: {{ $pdfHeaderText }};
+            border-color: {{ $pdfHeaderText }};
+            border-radius: 12px;
+            letter-spacing: 0.5px;
+            box-shadow: none;
+            padding: 12px 16px;
+            font-size: 22px;
+        }
+
+        .certificat-content {
+            font-size: 12px;
+            color: {{ $pdfText }};
+        }
+
+        .certificat-highlight {
+            color: {{ $pdfHeaderText }};
+        }
+
+        .certificat-content table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: collapse;
+            margin-top: 12px;
+        }
+
+        .certificat-content table th {
+            background: {{ $pdfHeaderBg }};
+            color: {{ $pdfHeaderText }};
+            border: 1px solid {{ $pdfHeaderText }};
+            padding: 8px 6px;
+            font-size: 11px;
+        }
+
+        .certificat-content table td {
+            border: 1px solid {{ $pdfHeaderText }};
+            padding: 8px 6px;
+            text-align: center;
+            font-size: 11px;
+        }
+
+        .certificat-footer {
+            margin-top: 36px;
+        }
+
+        .certificat-signature {
+            border-top: 2px solid {{ $pdfHeaderText }};
+            color: {{ $pdfHeaderText }};
+        }
+
+        .signature-title,
+        .signature-name {
+            color: {{ $pdfHeaderText }};
+        }
+
+        .certificat-note {
+            color: {{ $pdfText }};
+            border-top: 1px solid {{ $pdfHeaderText }};
+        }
+
         .certificat-document {
             color: {{ $pdfText }};
         }

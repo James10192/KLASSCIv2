@@ -123,6 +123,34 @@
         color: {{ $pdfHeaderText }} !important;
     }
 
+    /* Modern administrative look (preview) */
+    .certificat-header {
+        background: {{ $pdfHeaderBg }};
+        color: {{ $pdfHeaderText }};
+        border-radius: 12px;
+        padding: 18px 20px;
+        border-bottom: none;
+    }
+
+    .certificat-school-name,
+    .certificat-address {
+        color: {{ $pdfHeaderText }} !important;
+    }
+
+    .certificat-title {
+        background: {{ $pdfHeaderBg }} !important;
+        color: {{ $pdfHeaderText }} !important;
+        border-color: {{ $pdfHeaderText }} !important;
+        border-radius: 12px;
+        font-size: 22px;
+        letter-spacing: 0.5px;
+    }
+
+    .certificat-divider {
+        height: 2px;
+        background: {{ $pdfHeaderText }};
+    }
+
     /* Final overrides to match PDF theme */
     .certificat-document,
     .certificat-header,
