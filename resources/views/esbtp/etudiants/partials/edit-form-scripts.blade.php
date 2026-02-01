@@ -459,6 +459,8 @@
         const matriculeHelp = document.getElementById('matriculeHelp');
         const genreSelect = document.getElementById('sexe');
         const classeSelect = document.getElementById('classe_id');
+        const initialGenre = genreSelect ? genreSelect.value : null;
+        const initialClasse = classeSelect ? classeSelect.value : null;
 
         // Charger le mode de génération des matricules
         let currentMatriculeMode = 'automatique'; // Par défaut
@@ -646,9 +648,12 @@
         // Détecter le niveau d'études depuis la classe sélectionnée
         // Pour les étudiants, on devrait déjà avoir une classe associée
         // Mais pour la génération, on peut récupérer le niveau config de la classe
-        function loadNiveauConfigFromClasse() {
+        function loadNiveauConfigFromClasse(onLoaded) {
             if (!classeSelect || !classeSelect.value) {
                 niveauConfig = null;
+                if (typeof onLoaded === 'function') {
+                    onLoaded(null);
+                }
                 return;
             }
 
@@ -672,32 +677,66 @@
                     showMatriculeStatus('', '');
                     if (generateBtn && authUserIsSuperAdmin) generateBtn.disabled = false;
                 }
+
+                if (typeof onLoaded === 'function') {
+                    onLoaded(niveauConfig);
+                }
             })
             .catch(error => {
                 console.error('Erreur:', error);
                 niveauConfig = null;
+                if (typeof onLoaded === 'function') {
+                    onLoaded(null);
+                }
             });
         }
 
         // Charger la config du niveau au démarrage
         loadNiveauConfigFromClasse();
 
+        function maybeAutoRegenerateMatricule(force) {
+            if (!authUserIsSuperAdmin) {
+                return;
+            }
+
+            if (currentMatriculeMode !== 'automatique') {
+                return;
+            }
+
+            const genre = genreSelect ? genreSelect.value : null;
+            if (!genre || !niveauConfig) {
+                return;
+            }
+
+            if (force) {
+                generateMatriculeAuto();
+                return;
+            }
+
+            if (!matriculeInput.value) {
+                generateMatriculeAuto();
+            }
+        }
+
         // Écouter les changements de classe
         if (classeSelect && authUserIsSuperAdmin) {
             classeSelect.addEventListener('change', function() {
-                loadNiveauConfigFromClasse();
+                loadNiveauConfigFromClasse(() => {
+                    const genreChanged = genreSelect && genreSelect.value !== initialGenre;
+                    const classeChanged = classeSelect.value !== initialClasse;
+                    if (genreChanged || classeChanged) {
+                        maybeAutoRegenerateMatricule(true);
+                    }
+                });
             });
         }
 
         // Écouter les changements de genre pour le mode auto
         if (genreSelect && authUserIsSuperAdmin) {
             genreSelect.addEventListener('change', function() {
-                if (currentMatriculeMode === 'automatique' && !matriculeInput.value) {
-                    // Si champ matricule vide et mode auto, générer automatiquement
-                    if (niveauConfig && this.value) {
-                        generateMatriculeAuto();
-                    }
-                }
+                loadNiveauConfigFromClasse(() => {
+                    maybeAutoRegenerateMatricule(true);
+                });
             });
         }
 
