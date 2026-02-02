@@ -729,7 +729,7 @@
                                 <table class="stats-table">
                                     <thead>
                                         <tr>
-                                            <th colspan="2">STATISTIQUES</th>
+                                            <th colspan="2">STATISTIQUES - {{ $periode == 'semestre2' ? 'SEMESTRE 2' : 'SEMESTRE 1' }}</th>
                                         </tr>
                                     </thead>
                                     <tbody>

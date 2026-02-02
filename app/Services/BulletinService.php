@@ -332,7 +332,7 @@ class BulletinService
             ->whereIn('periode', array_unique($periodeOptions))
             ->first();
 
-        if (! $bulletin || $bulletin->moyenne_generale === null) {
+        if (! $bulletin || $bulletin->moyenne_generale === null || $bulletin->moyenne_generale <= 0) {
             return null;
         }
 

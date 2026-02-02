@@ -55,7 +55,7 @@
                         </div>
                     </div>
                     <div class="semester-note">
-                        Pondération: S1 {{ $semesterWeights['semester1'] }}% • S2 {{ $semesterWeights['semester2'] }}%
+                        Coefficients: S1 {{ $semesterWeights['semester1'] }} • S2 {{ $semesterWeights['semester2'] }}
                     </div>
                 </div>
             </div>

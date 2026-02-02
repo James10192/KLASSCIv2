@@ -5166,10 +5166,15 @@ class ESBTPBulletinController extends Controller
             $moyennesClasse = [];
             foreach ($etudiantsClasse as $etud) {
                 $bulletinClasse = $bulletinsClasse->get($etud->id);
-                if ($bulletinClasse && $bulletinClasse->moyenne_generale !== null) {
-                    $moyenneEtud = $bulletinClasse->moyenne_generale + ($bulletinClasse->note_assiduite ?? 0);
+                $noteAssiduiteEtud = $bulletinClasse ? ($bulletinClasse->note_assiduite ?? 0) : 0;
+
+                if ($bulletinClasse && $bulletinClasse->moyenne_generale !== null && $bulletinClasse->moyenne_generale > 0) {
+                    $moyenneEtud = $bulletinClasse->moyenne_generale + $noteAssiduiteEtud;
                 } else {
                     $moyenneEtud = $this->calculerMoyenneEtudiant($etud->id, $classe_id, $periode, $annee_universitaire_id);
+                    if ($moyenneEtud > 0) {
+                        $moyenneEtud += $noteAssiduiteEtud;
+                    }
                 }
 
                 if ($moyenneEtud <= 0) {
@@ -7958,7 +7963,7 @@ class ESBTPBulletinController extends Controller
             ->whereIn('periode', array_unique($periodeOptions))
             ->first();
 
-        if (! $bulletin || $bulletin->moyenne_generale === null) {
+        if (! $bulletin || $bulletin->moyenne_generale === null || $bulletin->moyenne_generale <= 0) {
             return null;
         }
 

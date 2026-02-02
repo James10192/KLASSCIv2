@@ -813,11 +813,11 @@
                     @if(($settings['bulletin_show_statistics'] ?? '1') == '1')
                     <td class="results-right">
                 <table class="stats-table">
-                    <thead>
-                        <tr class="section-header">
-                            <td colspan="2">STATISTIQUES</td>
-                        </tr>
-                    </thead>
+                            <thead>
+                                <tr class="section-header">
+                                    <td colspan="2">STATISTIQUES - {{ $periode == 'semestre2' ? 'SEMESTRE 2' : 'SEMESTRE 1' }}</td>
+                                </tr>
+                            </thead>
                     <tbody>
                         @if(($settings['bulletin_show_highest_average'] ?? '1') == '1')
                         <tr>
