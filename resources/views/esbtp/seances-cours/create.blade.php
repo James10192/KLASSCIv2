@@ -666,7 +666,7 @@
                         <div class="col-lg-4">
                             <div class="form-group">
                                 <label class="form-label">Date d'embauche <span class="text-danger">*</span></label>
-                                <input type="text" name="date_embauche" id="teacher_hire_date" class="form-input-moderne" placeholder="JJ-MM-AAAA" required>
+                                <input type="text" name="date_embauche" id="teacher_hire_date" class="form-control" placeholder="JJ-MM-AAAA" autocomplete="off" inputmode="numeric" required>
                             </div>
                         </div>
                         <div class="col-lg-4">
@@ -769,7 +769,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize Flatpickr for date inputs (skip in embed mode)
     if (!isEmbedded) {
-        flatpickr("input[type=date]", {
+        flatpickr("input[type=date]:not(#teacher_hire_date)", {
             locale: "fr",
             minDate: "today"
         });
@@ -782,7 +782,8 @@ document.addEventListener('DOMContentLoaded', function() {
             dateFormat: "Y-m-d",
             altInput: true,
             altFormat: "d-m-Y",
-            allowInput: true
+            allowInput: false,
+            disableMobile: true
         });
     }
 
