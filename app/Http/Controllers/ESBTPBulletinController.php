@@ -5488,10 +5488,21 @@ class ESBTPBulletinController extends Controller
      */
     private function calculerMoyenneEtudiant($etudiant_id, $classe_id, $periode, $annee_universitaire_id)
     {
+        $periodesCompatibles = [$periode];
+        if ($periode === 'semestre1') {
+            $periodesCompatibles[] = '1';
+        } elseif ($periode === 'semestre2') {
+            $periodesCompatibles[] = '2';
+        } elseif ($periode === '1') {
+            $periodesCompatibles[] = 'semestre1';
+        } elseif ($periode === '2') {
+            $periodesCompatibles[] = 'semestre2';
+        }
+
         // Récupérer les résultats de l'étudiant pour les paramètres spécifiés
         $resultats = \App\Models\ESBTPResultat::where('etudiant_id', $etudiant_id)
             ->where('classe_id', $classe_id)
-            ->where('periode', $periode)
+            ->whereIn('periode', array_unique($periodesCompatibles))
             ->where('annee_universitaire_id', $annee_universitaire_id)
             ->get();
 

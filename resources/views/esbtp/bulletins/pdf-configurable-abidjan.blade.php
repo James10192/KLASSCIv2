@@ -141,11 +141,11 @@
             height: 96px;
             border-radius: 50%;
             border: 2px solid #0f5132;
-            display: block;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             margin: 0 auto;
             background: #eef2f7;
-            text-align: center;
-            line-height: 96px;
             font-size: 28px;
             color: #475569;
             font-weight: bold;
@@ -286,6 +286,10 @@
             align-items: center;
             justify-content: flex-end;
             min-width: 28px;
+        }
+        .mention-row input[type="checkbox"] {
+            margin: 0;
+            vertical-align: middle;
         }
         .mention-value input {
             width: 14px;
