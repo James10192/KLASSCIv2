@@ -927,6 +927,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware(['permission:view_grades|create_grade|edit_grades|delete_grades']);
             Route::get('evaluations/{evaluation}/saisie-rapide', [ESBTPNoteController::class, 'saisieRapide'])->name('notes.saisie-rapide');
             Route::get('evaluations/{evaluation}/saisie-rapide/pdf', [ESBTPNoteController::class, 'saisieRapidePDF'])->name('notes.saisie-rapide.pdf');
+            Route::get('classes/{classe}/notes/saisie-rapide/pdf', [ESBTPNoteController::class, 'saisieRapideBlankPDF'])->name('notes.saisie-rapide-blank.pdf');
             Route::post('notes/store-batch', [ESBTPNoteController::class, 'enregistrerSaisieRapide'])->name('notes.store-batch');
         });
 

@@ -4,7 +4,7 @@
     @include('pdf.partials.theme')
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Feuille de saisie des notes - {{ $evaluation->titre }}</title>
+    <title>Feuille de saisie des notes{{ ($isBlank ?? false) ? '' : ' - ' . ($evaluation->titre ?? '') }}</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -408,11 +408,11 @@
                     <div class="evaluation-info-row">
                         <div class="evaluation-info-cell">
                             <strong>Évaluation:</strong><br>
-                            <span class="info-badge">{{ $evaluation->titre }}</span>
+                            <span class="info-badge">{{ ($isBlank ?? false) ? '________' : ($evaluation->titre ?: 'N/A') }}</span>
                         </div>
                         <div class="evaluation-info-cell">
                             <strong>Matière:</strong><br>
-                            <span class="info-badge">{{ $evaluation->matiere->name ?? 'N/A' }}</span>
+                            <span class="info-badge">{{ ($isBlank ?? false) ? '________' : ($evaluation->matiere->name ?? 'N/A') }}</span>
                         </div>
                         <div class="evaluation-info-cell">
                             <strong>Date:</strong><br>
@@ -442,12 +442,12 @@
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-title">Type</div>
-                    <div class="kpi-value" style="font-size: 8.5px; line-height: 1.1;">{{ ucfirst($evaluation->type) }}</div>
-                    <div class="kpi-desc">{{ $evaluation->coefficient }}pts</div>
+                    <div class="kpi-value" style="font-size: 8.5px; line-height: 1.1;">{{ ($isBlank ?? false) ? '____' : ucfirst($evaluation->type ?? '') }}</div>
+                    <div class="kpi-desc">{{ ($isBlank ?? false) ? '____' : ($evaluation->coefficient ?? '') }}{{ ($isBlank ?? false) ? '' : 'pts' }}</div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-title">Barème</div>
-                    <div class="kpi-value" style="font-size: 8.5px; line-height: 1.1;">/ {{ $evaluation->bareme }}</div>
+                    <div class="kpi-value" style="font-size: 8.5px; line-height: 1.1;">/ {{ ($isBlank ?? false) ? '____' : ($evaluation->bareme ?? '') }}</div>
                     <div class="kpi-desc">Points</div>
                 </div>
             </div>
@@ -530,15 +530,15 @@
                         <div class="summary-title">Informations évaluation</div>
                         <div class="info-field">
                             <div class="info-label">Date évaluation :</div>
-                            <div class="info-value">{{ $evaluation->date_evaluation ? $evaluation->date_evaluation->format('d/m/Y') : 'Non renseignée' }}</div>
+                            <div class="info-value">{{ ($isBlank ?? false) ? '________' : ($evaluation->date_evaluation ? $evaluation->date_evaluation->format('d/m/Y') : 'Non renseignée') }}</div>
                         </div>
                         <div class="info-field">
                             <div class="info-label">Coefficient :</div>
-                            <div class="info-value">{{ $evaluation->coefficient }}</div>
+                            <div class="info-value">{{ ($isBlank ?? false) ? '____' : ($evaluation->coefficient ?? '') }}</div>
                         </div>
                         <div class="info-field">
                             <div class="info-label">Durée :</div>
-                            <div class="info-value">{{ $evaluation->duree_minutes ? $evaluation->duree_minutes . ' min' : 'Non renseignée' }}</div>
+                            <div class="info-value">{{ ($isBlank ?? false) ? '____' : ($evaluation->duree_minutes ? $evaluation->duree_minutes . ' min' : 'Non renseignée') }}</div>
                         </div>
                         <div class="info-field">
                             <div class="info-label">Année :</div>

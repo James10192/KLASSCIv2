@@ -597,6 +597,57 @@ class ESBTPNoteController extends Controller
     }
 
     /**
+     * Génère un PDF de saisie rapide vierge pour une classe.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function saisieRapideBlankPDF(ESBTPClasse $classe)
+    {
+        $classe->load(['filiere']);
+
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($classe, $anneeCourante) {
+            $query->where('classe_id', $classe->id)
+                ->where('status', 'active');
+            if ($anneeCourante) {
+                $query->where('annee_universitaire_id', $anneeCourante->id);
+            }
+        })
+            ->orderBy('nom')
+            ->get();
+
+        $etablissement = [
+            'nom' => \App\Models\Setting::get('school_name', 'KLASSCI'),
+            'adresse' => \App\Models\Setting::get('school_address', ''),
+            'telephone' => \App\Models\Setting::get('school_phone', ''),
+            'email' => \App\Models\Setting::get('school_email', ''),
+            'logo' => \App\Models\Setting::get('school_logo', ''),
+        ];
+
+        $evaluation = (object) [
+            'titre' => '',
+            'matiere' => (object) ['name' => ''],
+            'classe' => $classe,
+            'type' => '',
+            'coefficient' => '',
+            'bareme' => '',
+            'date_evaluation' => null,
+            'duree_minutes' => null,
+        ];
+
+        $notesByEtudiant = collect();
+        $isBlank = true;
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('esbtp.notes.saisie-rapide-pdf', compact('evaluation', 'etudiants', 'anneeCourante', 'etablissement', 'notesByEtudiant', 'isBlank'));
+        $pdf->setPaper('A4', 'portrait');
+
+        $filename = 'saisie-notes-'.\Illuminate\Support\Str::slug($classe->name ?? 'classe').'-'.date('Y-m-d').'.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    /**
      * Enregistre les notes saisies en masse pour une évaluation.
      *
      * @return \Illuminate\Http\Response

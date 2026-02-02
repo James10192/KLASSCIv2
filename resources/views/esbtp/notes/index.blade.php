@@ -340,9 +340,11 @@
                     <div class="col-md-4">
                         <div class="form-group">
                             <label class="form-label fw-bold">&nbsp;</label>
-                            <button type="button" class="btn btn-primary w-100" onclick="createEvaluation()" id="createEvaluationBtn">
-                                <i class="fas fa-plus me-1"></i> Créer évaluation
-                            </button>
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-primary w-100" onclick="createEvaluation()" id="createEvaluationBtn">
+                                        <i class="fas fa-plus me-1"></i> Créer évaluation
+                                    </button>
+                                </div>
                         </div>
                     </div>
                 </div>
@@ -381,6 +383,9 @@
                 </div>
             </div>
             <div class="modal-footer notes-modal-footer">
+                <a href="#" class="btn btn-outline-primary disabled" id="exportBlankPdfBtn" target="_blank" rel="noopener" aria-disabled="true" tabindex="-1">
+                    <i class="fas fa-file-pdf me-1"></i>Exporter feuille vierge (PDF)
+                </a>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times me-1"></i>Fermer
                 </button>
@@ -427,6 +432,7 @@ let currentPeriodeFilter = 'all';
 let evaluationsData = {}; // Stocke les évaluations par matière
 let notesData = {}; // Stocke les notes existantes
 let currentEvaluations = [];
+const blankPdfUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf", ["classe" => ":classId"]) }}';
 
 // Initialisation
 $(document).ready(function() {
@@ -435,6 +441,7 @@ $(document).ready(function() {
     const classesCountSpan = document.getElementById('classes-count');
     const resetFiltersBtn = document.getElementById('reset-filters-btn');
     const filterInputs = filtersForm ? filtersForm.querySelectorAll('select, input[name="search"]') : [];
+    const exportBlankPdfBtn = document.getElementById('exportBlankPdfBtn');
 
     function fetchClasses() {
         if (!filtersForm || !classesGrid) return;
@@ -540,7 +547,12 @@ $(document).ready(function() {
             lastBackdrop.classList.add('evaluation-backdrop');
         }
     });
+
+    $(document).on('click', '#exportBlankPdfBtn.disabled', function(event) {
+        event.preventDefault();
+    });
 });
+
 
 // Fonction pour sélectionner une classe
 function selectClass(classId, className) {
@@ -549,6 +561,7 @@ function selectClass(classId, className) {
     
     // Mettre à jour l'UI
     $('#selectedClassLabel').text(className);
+    updateBlankPdfLink();
     
     // Réinitialiser la sélection de matière
     $('#matiereSelect').val('');
@@ -566,6 +579,27 @@ function selectClass(classId, className) {
     
     // Montrer le modal
     $('#classSelectionModal').modal('show');
+}
+
+function updateBlankPdfLink() {
+    const btn = document.getElementById('exportBlankPdfBtn');
+    if (!btn) {
+        return;
+    }
+
+    if (!currentClassId) {
+        btn.setAttribute('href', '#');
+        btn.classList.add('disabled');
+        btn.setAttribute('aria-disabled', 'true');
+        btn.setAttribute('tabindex', '-1');
+        return;
+    }
+
+    const url = blankPdfUrlTemplate.replace(':classId', currentClassId);
+    btn.setAttribute('href', url);
+    btn.classList.remove('disabled');
+    btn.removeAttribute('aria-disabled');
+    btn.setAttribute('tabindex', '0');
 }
 
 // Fonction pour charger les évaluations et notes
