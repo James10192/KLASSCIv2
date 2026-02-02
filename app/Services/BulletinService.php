@@ -12,6 +12,7 @@ use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 class BulletinService
 {
@@ -170,6 +171,15 @@ class BulletinService
                 }
             }
         }
+
+        $periodeNormalized = $this->normalizePeriode($periode);
+        $this->persistResultats(
+            $resultatsParMatiere,
+            $etudiantId,
+            $classeId,
+            $anneeUniversitaireId,
+            $periodeNormalized
+        );
 
         // Séparer par type d'enseignement
         $resultatsGeneraux = collect($resultatsParMatiere)->filter(function ($resultat) {
@@ -351,6 +361,50 @@ class BulletinService
         }
 
         return (($semester1 * $weights['semester1']) + ($semester2 * $weights['semester2'])) / $total;
+    }
+
+    private function normalizePeriode(string $periode): string
+    {
+        if ($periode === '1') {
+            return 'semestre1';
+        }
+        if ($periode === '2') {
+            return 'semestre2';
+        }
+
+        return $periode ?: 'semestre1';
+    }
+
+    private function persistResultats(array $resultatsParMatiere, int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): void
+    {
+        $userId = Auth::id();
+
+        foreach ($resultatsParMatiere as $resultat) {
+            if (! isset($resultat->matiere_id)) {
+                continue;
+            }
+
+            if ($resultat->moyenne === null) {
+                continue;
+            }
+
+            ESBTPResultat::updateOrCreate(
+                [
+                    'etudiant_id' => $etudiantId,
+                    'classe_id' => $classeId,
+                    'matiere_id' => $resultat->matiere_id,
+                    'periode' => $periode,
+                    'annee_universitaire_id' => $anneeUniversitaireId,
+                ],
+                [
+                    'moyenne' => $resultat->moyenne,
+                    'coefficient' => $resultat->coefficient ?? 1,
+                    'appreciation' => $resultat->appreciation ?? $this->getAppreciation($resultat->moyenne),
+                    'updated_by' => $userId,
+                    'created_by' => $userId,
+                ]
+            );
+        }
     }
 
     /**
