@@ -195,6 +195,7 @@
             color: #ffffff;
             font-weight: bold;
             text-align: center;
+            padding: 8px 10px;
         }
         .subject-row:nth-child(even) {
             background-color: #f8fafc;
@@ -224,11 +225,38 @@
             width: 50%;
             padding-left: 6px;
         }
+        .results-card,
+        .stats-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            background: #ffffff;
+            padding: 8px;
+        }
         .results-table, .stats-table {
             width: 100%;
             font-size: 10px;
+            border-collapse: separate;
+            border-spacing: 0;
+            border: 1px solid #e5e7eb;
             border-radius: 10px;
             overflow: hidden;
+            background: #ffffff;
+        }
+        .results-table th,
+        .results-table td,
+        .stats-table th,
+        .stats-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .results-table tr:last-child td,
+        .stats-table tr:last-child td {
+            border-bottom: none;
+        }
+        .results-table th,
+        .stats-table th {
+            background: #f3f4f6;
+            text-align: left;
         }
         .mention-box {
             width: 100%;
@@ -238,13 +266,30 @@
             font-size: 9px;
             background: #ffffff;
         }
-        .mention-table {
-            width: 100%;
-            border-collapse: collapse;
+        .mention-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 6px 10px;
+            border-bottom: 1px solid #e5e7eb;
         }
-        .mention-table td {
-            border: none;
-            padding: 2px 6px;
+        .mention-row:last-child {
+            border-bottom: none;
+        }
+        .mention-label {
+            font-weight: 600;
+            color: #111827;
+        }
+        .mention-value {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            min-width: 28px;
+        }
+        .mention-value input {
+            width: 14px;
+            height: 14px;
         }
         .decision-container {
             margin: 16px 0;
@@ -308,6 +353,9 @@
                     @endif
                 </div>
             @endif
+            @php
+                $anneeAffichee = $bulletin && $bulletin->anneeUniversitaire ? $bulletin->anneeUniversitaire : $anneeUniversitaire;
+            @endphp
             <div class="header">
                 <table class="header-table">
                     <tr>
@@ -338,7 +386,7 @@
                             @if(($settings['bulletin_show_edition_date'] ?? '1') == '1')
                                 <div class="bulletin-period">Edition du: {{ $date_edition }}</div>
                             @endif
-                            <div class="academic-year">Annee Scolaire: {{ $anneeUniversitaire->annee_debut }}-{{ $anneeUniversitaire->annee_fin }}</div>
+                            <div class="academic-year">Annee Scolaire: {{ $anneeAffichee->annee_debut }}-{{ $anneeAffichee->annee_fin }}</div>
                         </td>
                     </tr>
                 </table>
@@ -524,10 +572,11 @@
                 <table class="results-container-table">
                     <tr>
                         <td class="results-left">
+                            <div class="results-card">
                             <table class="results-table">
                                 <thead>
-                                    <tr class="section-header">
-                                        <td colspan="2">RESULTATS</td>
+                                    <tr>
+                                        <th colspan="2">RESULTATS</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -567,73 +616,66 @@
                                     @endif
                                 </tbody>
                             </table>
+                            </div>
 
                             @if(($settings['bulletin_show_mentions'] ?? '1') == '1')
                                 <div style="margin-top: 12px;">
                                     @if(($settings['bulletin_show_felicitation'] ?? '1') == '1')
                                         <div class="mention-box">
-                                            <table class="mention-table"><tr>
-                                                <td class="mention-label">Felicitation</td>
-                                                <td class="mention-value">
-                                                @php
-                                                    $felicitationThreshold = floatval($settings['bulletin_felicitation_threshold'] ?? 16);
-                                                    $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $felicitationThreshold) : false;
-                                                @endphp
-                                                <input type="checkbox" {{ $isChecked ? 'checked' : '' }}>
-                                            </td>
-                                            </tr></table>
+                                            @php
+                                                $felicitationThreshold = floatval($settings['bulletin_felicitation_threshold'] ?? 16);
+                                                $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $felicitationThreshold) : false;
+                                            @endphp
+                                            <div class="mention-row">
+                                                <span class="mention-label">Felicitation</span>
+                                                <span class="mention-value"><input type="checkbox" {{ $isChecked ? 'checked' : '' }}></span>
+                                            </div>
                                         </div>
                                     @endif
                                     @if(($settings['bulletin_show_encouragement'] ?? '1') == '1')
                                         <div class="mention-box">
-                                            <table class="mention-table"><tr>
-                                                <td class="mention-label">Encouragement</td>
-                                                <td class="mention-value">
-                                                @php
-                                                    $encouragementThreshold = floatval($settings['bulletin_encouragement_threshold'] ?? 14);
-                                                    $felicitationThreshold = floatval($settings['bulletin_felicitation_threshold'] ?? 16);
-                                                    $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $encouragementThreshold && $moyenneGlobale < $felicitationThreshold) : false;
-                                                @endphp
-                                                <input type="checkbox" {{ $isChecked ? 'checked' : '' }}>
-                                            </td>
-                                            </tr></table>
+                                            @php
+                                                $encouragementThreshold = floatval($settings['bulletin_encouragement_threshold'] ?? 14);
+                                                $felicitationThreshold = floatval($settings['bulletin_felicitation_threshold'] ?? 16);
+                                                $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $encouragementThreshold && $moyenneGlobale < $felicitationThreshold) : false;
+                                            @endphp
+                                            <div class="mention-row">
+                                                <span class="mention-label">Encouragement</span>
+                                                <span class="mention-value"><input type="checkbox" {{ $isChecked ? 'checked' : '' }}></span>
+                                            </div>
                                         </div>
                                     @endif
                                     @if(($settings['bulletin_show_honor_roll'] ?? '1') == '1')
                                         <div class="mention-box">
-                                            <table class="mention-table"><tr>
-                                                <td class="mention-label">Tableau d'honneur</td>
-                                                <td class="mention-value">
-                                                @php
-                                                    $honorRollThreshold = floatval($settings['bulletin_honor_roll_threshold'] ?? 12);
-                                                    $encouragementThreshold = floatval($settings['bulletin_encouragement_threshold'] ?? 14);
-                                                    $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $honorRollThreshold && $moyenneGlobale < $encouragementThreshold) : false;
-                                                @endphp
-                                                <input type="checkbox" {{ $isChecked ? 'checked' : '' }}>
-                                            </td>
-                                            </tr></table>
+                                            @php
+                                                $honorRollThreshold = floatval($settings['bulletin_honor_roll_threshold'] ?? 12);
+                                                $encouragementThreshold = floatval($settings['bulletin_encouragement_threshold'] ?? 14);
+                                                $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $honorRollThreshold && $moyenneGlobale < $encouragementThreshold) : false;
+                                            @endphp
+                                            <div class="mention-row">
+                                                <span class="mention-label">Tableau d'honneur</span>
+                                                <span class="mention-value"><input type="checkbox" {{ $isChecked ? 'checked' : '' }}></span>
+                                            </div>
                                         </div>
                                     @endif
                                     @if(($settings['bulletin_show_work_warning'] ?? '1') == '1')
                                         <div class="mention-box">
-                                            <table class="mention-table"><tr>
-                                                <td class="mention-label">Avertissement (Travail)</td>
-                                                <td class="mention-value">
-                                                @php
-                                                    $workWarningThreshold = floatval($settings['bulletin_work_warning_threshold'] ?? 8);
-                                                    $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $workWarningThreshold && $moyenneGlobale < 10) : false;
-                                                @endphp
-                                                <input type="checkbox" {{ $isChecked ? 'checked' : '' }}>
-                                            </td>
-                                            </tr></table>
+                                            @php
+                                                $workWarningThreshold = floatval($settings['bulletin_work_warning_threshold'] ?? 8);
+                                                $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $workWarningThreshold && $moyenneGlobale < 10) : false;
+                                            @endphp
+                                            <div class="mention-row">
+                                                <span class="mention-label">Avertissement (Travail)</span>
+                                                <span class="mention-value"><input type="checkbox" {{ $isChecked ? 'checked' : '' }}></span>
+                                            </div>
                                         </div>
                                     @endif
                                     @if(($settings['bulletin_show_conduct_blame'] ?? '1') == '1')
                                         <div class="mention-box">
-                                            <table class="mention-table"><tr>
-                                                <td class="mention-label">Blame (Conduite)</td>
-                                                <td class="mention-value"><input type="checkbox"></td>
-                                            </tr></table>
+                                            <div class="mention-row">
+                                                <span class="mention-label">Blame (Conduite)</span>
+                                                <span class="mention-value"><input type="checkbox"></span>
+                                            </div>
                                         </div>
                                     @endif
                                 </div>
@@ -641,10 +683,11 @@
                         </td>
                         @if(($settings['bulletin_show_statistics'] ?? '1') == '1')
                             <td class="results-right">
+                                <div class="stats-card">
                                 <table class="stats-table">
                                     <thead>
-                                        <tr class="section-header">
-                                            <td colspan="2">STATISTIQUES</td>
+                                        <tr>
+                                            <th colspan="2">STATISTIQUES</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -668,6 +711,7 @@
                                         @endif
                                     </tbody>
                                 </table>
+                                </div>
                             </td>
                         @endif
                     </tr>

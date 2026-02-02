@@ -228,6 +228,9 @@
                     <div>{{ \App\Helpers\SettingsHelper::get('bulletin_union_text', 'Union - Travail - Progres') }}</div>
                 </div>
 
+                @php
+                    $anneeAffichee = $bulletin && $bulletin->anneeUniversitaire ? $bulletin->anneeUniversitaire : $anneeUniversitaire;
+                @endphp
                 <div class="header-card">
                     <table class="header-table">
                         <tr>
@@ -243,7 +246,7 @@
                                 </div>
                                 <div class="bulletin-title">BULLETIN DE NOTES</div>
                                 <div class="bulletin-period">Edition du {{ date('d/m/Y') }}</div>
-                                <div class="academic-year">ANNEE UNIVERSITAIRE {{ $anneeUniversitaire->annee_debut }}-{{ $anneeUniversitaire->annee_fin }}</div>
+                                <div class="academic-year">ANNEE UNIVERSITAIRE {{ $anneeAffichee->annee_debut }}-{{ $anneeAffichee->annee_fin }}</div>
                             </td>
                         </tr>
                     </table>
