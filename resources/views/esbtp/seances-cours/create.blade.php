@@ -100,18 +100,38 @@
         border: 1px solid #e2e8f0;
         cursor: pointer;
         transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #0f172a;
+        box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
     }
     .teacher-availability-panel .teacher-availability-grid .availability-cell.available {
         background: #dcfce7;
         border-color: #86efac;
+        color: #166534;
+    }
+    .teacher-availability-panel .teacher-availability-grid .availability-cell.available::after {
+        content: 'D';
     }
     .teacher-availability-panel .teacher-availability-grid .availability-cell.preferred {
         background: #dbeafe;
         border-color: #60a5fa;
+        color: #1e3a8a;
+    }
+    .teacher-availability-panel .teacher-availability-grid .availability-cell.preferred::after {
+        content: 'P';
     }
     .teacher-availability-panel .teacher-availability-grid .availability-cell.unavailable {
         background: #fee2e2;
         border-color: #fecaca;
+        color: #991b1b;
+    }
+    .teacher-availability-panel .teacher-availability-grid .availability-cell.unavailable::after {
+        content: 'I';
     }
     .teacher-availability-panel .teacher-availability-legend {
         display: flex;
@@ -690,7 +710,7 @@
                         <div class="col-lg-4">
                             <div class="form-group">
                                 <label class="form-label">Date d'embauche <span class="text-danger">*</span></label>
-                                <input type="date" name="date_embauche" id="teacher_hire_date" class="form-control" required>
+                                <input type="text" name="date_embauche" id="teacher_hire_date" class="form-control js-date-input" placeholder="AAAA-MM-JJ" autocomplete="off" inputmode="numeric" required>
                             </div>
                         </div>
                         <div class="col-lg-4">
@@ -784,6 +804,15 @@ document.addEventListener('DOMContentLoaded', function() {
         flatpickr("input[type=date]", {
             locale: "fr",
             minDate: "today"
+        });
+    }
+
+    const teacherHireDate = document.getElementById('teacher_hire_date');
+    if (teacherHireDate && typeof flatpickr === 'function') {
+        flatpickr(teacherHireDate, {
+            locale: "fr",
+            dateFormat: "Y-m-d",
+            allowInput: true
         });
     }
 
@@ -1803,7 +1832,13 @@ function handleTeacherCreateSubmit(event) {
                 updateTeachersForSubject();
                 const teacherSelect = document.getElementById('teacher_id');
                 if (teacherSelect) {
-                    teacherSelect.value = teacher.id.toString();
+                    const teacherValue = teacher.id.toString();
+                    if (window.jQuery && window.$) {
+                        $('#teacher_id').val(teacherValue).trigger('change.select2');
+                    } else {
+                        teacherSelect.value = teacherValue;
+                        teacherSelect.dispatchEvent(new Event('change'));
+                    }
                     showTeacherAvailability();
                 }
             }
