@@ -230,7 +230,7 @@ class BulletinService
             $anneeUniversitaireId,
             'semestre1',
             $periode,
-            $moyenneGlobale
+            $moyenneAvecAssiduite
         );
         $moyenneSemestre2 = $this->getSemesterAverageFromBulletins(
             $etudiantId,
@@ -238,7 +238,7 @@ class BulletinService
             $anneeUniversitaireId,
             'semestre2',
             $periode,
-            $moyenneGlobale
+            $moyenneAvecAssiduite
         );
         $moyenneAnnuelle = $this->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
 
@@ -315,17 +315,28 @@ class BulletinService
             return $currentAverage;
         }
 
+        $periodeOptions = [$periode];
+        if ($periode === 'semestre1') {
+            $periodeOptions[] = '1';
+        } elseif ($periode === 'semestre2') {
+            $periodeOptions[] = '2';
+        } elseif ($periode === '1') {
+            $periodeOptions[] = 'semestre1';
+        } elseif ($periode === '2') {
+            $periodeOptions[] = 'semestre2';
+        }
+
         $bulletin = ESBTPBulletin::where('etudiant_id', $etudiantId)
             ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->where('periode', $periode)
+            ->whereIn('periode', array_unique($periodeOptions))
             ->first();
 
         if (! $bulletin || $bulletin->moyenne_generale === null) {
             return null;
         }
 
-        return floatval($bulletin->moyenne_generale);
+        return floatval($bulletin->moyenne_generale + ($bulletin->note_assiduite ?? 0));
     }
 
     private function calculateAnnualAverage(?float $semester1, ?float $semester2, array $weights): ?float

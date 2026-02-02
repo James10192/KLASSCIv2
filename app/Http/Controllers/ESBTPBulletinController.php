@@ -901,13 +901,14 @@ class ESBTPBulletinController extends Controller
 
             $semesterWeights = $this->getSemesterWeights();
             $periodeCourante = $bulletin->periode;
+            $moyenneAvecAssiduite = $moyenneGenerale + ($noteAssiduite ?? 0);
             $moyenneSemestre1 = $this->getBulletinAverageForPeriode(
                 $bulletin->etudiant_id,
                 $bulletin->classe_id,
                 $bulletin->annee_universitaire_id,
                 'semestre1',
                 $periodeCourante,
-                $moyenneGlobale
+                $moyenneAvecAssiduite
             );
             $moyenneSemestre2 = $this->getBulletinAverageForPeriode(
                 $bulletin->etudiant_id,
@@ -915,7 +916,7 @@ class ESBTPBulletinController extends Controller
                 $bulletin->annee_universitaire_id,
                 'semestre2',
                 $periodeCourante,
-                $moyenneGlobale
+                $moyenneAvecAssiduite
             );
             $moyenneAnnuelle = $this->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
 
@@ -5136,12 +5137,63 @@ class ESBTPBulletinController extends Controller
             $sommeMoyennes = 0;
             $effectifClasse = count($etudiantsClasse);
 
-            // Calculer les statistiques si des étudiants sont inscrits
-            if ($effectifClasse > 0) {
+            $formatRangAvecSuffix = function ($rang) {
+                if ($rang == 1) {
+                    return '1er';
+                }
+
+                return $rang.'ème';
+            };
+
+            $periodeOptions = [$periode];
+            if ($periode === 'semestre1') {
+                $periodeOptions[] = '1';
+            } elseif ($periode === 'semestre2') {
+                $periodeOptions[] = '2';
+            } elseif ($periode === '1') {
+                $periodeOptions[] = 'semestre1';
+            } elseif ($periode === '2') {
+                $periodeOptions[] = 'semestre2';
+            }
+
+            $periodeOptions = array_unique($periodeOptions);
+            $bulletinsClasse = ESBTPBulletin::where('classe_id', $classe_id)
+                ->where('annee_universitaire_id', $annee_universitaire_id)
+                ->whereIn('periode', $periodeOptions)
+                ->get();
+
+            $moyennesClasse = [];
+            foreach ($bulletinsClasse as $bulletinClasse) {
+                if ($bulletinClasse->moyenne_generale === null) {
+                    continue;
+                }
+                $moyenneEtud = $bulletinClasse->moyenne_generale + ($bulletinClasse->note_assiduite ?? 0);
+                if ($moyenneEtud <= 0) {
+                    continue;
+                }
+                $moyennesClasse[$bulletinClasse->etudiant_id] = $moyenneEtud;
+            }
+
+            if (! empty($moyennesClasse)) {
+                $plusForteMoyenne = max($moyennesClasse);
+                $plusFaibleMoyenne = min($moyennesClasse);
+                $moyenneClasse = array_sum($moyennesClasse) / count($moyennesClasse);
+
+                arsort($moyennesClasse);
+                $rang = 'N/A';
+                $position = 1;
+
+                foreach ($moyennesClasse as $id => $moyenne) {
+                    if ($id == $etudiant_id) {
+                        $rang = $formatRangAvecSuffix($position);
+                        break;
+                    }
+                    $position++;
+                }
+            } elseif ($effectifClasse > 0) {
                 foreach ($etudiantsClasse as $etud) {
                     $moyenneEtud = $this->calculerMoyenneEtudiant($etud->id, $classe_id, $periode, $annee_universitaire_id);
 
-                    // Ignorer les moyennes nulles ou négatives pour les statistiques
                     if ($moyenneEtud > 0) {
                         if ($moyenneEtud > $plusForteMoyenne) {
                             $plusForteMoyenne = $moyenneEtud;
@@ -5155,9 +5207,7 @@ class ESBTPBulletinController extends Controller
                     }
                 }
 
-                // Créer un tableau avec les moyennes des étudiants
                 $moyennesClasse = [];
-
                 foreach ($etudiantsClasse as $etud) {
                     $moyenne = $this->calculerMoyenneEtudiant($etud->id, $classe_id, $periode, $annee_universitaire_id);
                     if ($moyenne > 0) {
@@ -5165,30 +5215,18 @@ class ESBTPBulletinController extends Controller
                     }
                 }
 
-                // Trier les moyennes dans l'ordre décroissant
                 arsort($moyennesClasse);
-
-                function formatRangAvecSuffix($rang)
-                {
-                    if ($rang == 1) {
-                        return '1er';
-                    }
-
-                    return $rang.'ème';
-                }
-                // Déterminer le rang de l'étudiant courant
                 $rang = 'N/A';
                 $position = 1;
 
                 foreach ($moyennesClasse as $id => $moyenne) {
                     if ($id == $etudiant_id) {
-                        $rang = formatRangAvecSuffix($position);
+                        $rang = $formatRangAvecSuffix($position);
                         break;
                     }
                     $position++;
                 }
 
-                // S'assurer que nous avons au moins un étudiant avec une moyenne valide
                 if ($sommeMoyennes > 0) {
                     $moyenneClasse = $sommeMoyennes / $effectifClasse;
                 } else {
@@ -5311,7 +5349,7 @@ class ESBTPBulletinController extends Controller
                 $anneeUniversitaire->id,
                 'semestre1',
                 $periode,
-                $moyenneGenerale
+                $moyenneGenerale + $noteAssiduite
             );
             $moyenneSemestre2 = $this->getBulletinAverageForPeriode(
                 $etudiant->id,
@@ -5319,7 +5357,7 @@ class ESBTPBulletinController extends Controller
                 $anneeUniversitaire->id,
                 'semestre2',
                 $periode,
-                $moyenneGenerale
+                $moyenneGenerale + $noteAssiduite
             );
             $moyenneAnnuelle = $this->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
 
@@ -7898,17 +7936,28 @@ class ESBTPBulletinController extends Controller
             return $currentAverage;
         }
 
+        $periodeOptions = [$periode];
+        if ($periode === 'semestre1') {
+            $periodeOptions[] = '1';
+        } elseif ($periode === 'semestre2') {
+            $periodeOptions[] = '2';
+        } elseif ($periode === '1') {
+            $periodeOptions[] = 'semestre1';
+        } elseif ($periode === '2') {
+            $periodeOptions[] = 'semestre2';
+        }
+
         $bulletin = \App\Models\ESBTPBulletin::where('etudiant_id', $etudiantId)
             ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->where('periode', $periode)
+            ->whereIn('periode', array_unique($periodeOptions))
             ->first();
 
         if (! $bulletin || $bulletin->moyenne_generale === null) {
             return null;
         }
 
-        return floatval($bulletin->moyenne_generale);
+        return floatval($bulletin->moyenne_generale + ($bulletin->note_assiduite ?? 0));
     }
 
     private function getBulletinTemplateView(): string
