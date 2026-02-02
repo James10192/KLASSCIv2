@@ -4,6 +4,143 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+    .class-card-header {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-sm);
+        margin-bottom: var(--space-sm);
+    }
+    .class-header-text {
+        flex: 1;
+        min-width: 0;
+    }
+    .class-title {
+        font-weight: 700;
+        color: var(--text-primary);
+        font-size: var(--text-normal);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        word-break: break-word;
+    }
+    .class-code {
+        font-size: var(--text-small);
+        color: var(--text-secondary);
+        margin-top: 2px;
+    }
+    .class-badges {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        align-items: flex-end;
+    }
+    .class-meta {
+        margin-bottom: var(--space-md);
+    }
+    .meta-line {
+        font-size: var(--text-small);
+        color: var(--text-primary);
+        margin-bottom: var(--space-xs);
+    }
+    .meta-sub {
+        display: block;
+        color: var(--text-muted);
+        margin-left: 16px;
+    }
+    .notes-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--space-sm);
+        padding: var(--space-sm);
+        background: rgba(248, 250, 252, 0.8);
+        border-radius: var(--radius-small);
+        margin-bottom: var(--space-md);
+    }
+    .notes-kpi-item {
+        text-align: center;
+    }
+    .notes-kpi-label {
+        font-size: var(--text-small);
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .notes-kpi-value {
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+    .notes-averages {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-xs);
+        margin-bottom: var(--space-md);
+    }
+    .avg-chip {
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: var(--text-small);
+        background: rgba(59, 130, 246, 0.12);
+        color: #1e3a8a;
+        border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+    .avg-chip.highlight {
+        background: rgba(16, 185, 129, 0.12);
+        color: #065f46;
+        border-color: rgba(16, 185, 129, 0.3);
+    }
+    .class-card-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px solid #f3f4f6;
+        padding-top: var(--space-md);
+    }
+    .notes-hint {
+        font-size: var(--text-small);
+        color: var(--text-muted);
+    }
+    .notes-action-text {
+        margin-top: 4px;
+    }
+    .period-row th {
+        background: #eef2f7;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+    }
+    .period-cell.semester-1 {
+        background: rgba(59, 130, 246, 0.1);
+        color: #1e3a8a;
+    }
+    .period-cell.semester-2 {
+        background: rgba(245, 158, 11, 0.12);
+        color: #92400e;
+    }
+    .period-cell.summary {
+        background: rgba(16, 185, 129, 0.12);
+        color: #065f46;
+    }
+    .evaluation-period {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2px 6px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 700;
+        margin-top: 4px;
+    }
+    .evaluation-period.semester-1 {
+        background: rgba(59, 130, 246, 0.15);
+        color: #1e3a8a;
+    }
+    .evaluation-period.semester-2 {
+        background: rgba(245, 158, 11, 0.2);
+        color: #92400e;
+    }
+</style>
 @endpush
 
 @section('page_title', 'Gestion des Notes')
@@ -72,31 +209,70 @@
             </div>
         </div>
 
-        <!-- Section de recherche de classes -->
-        <div class="main-card mb-4">
-            <div class="main-card-header" style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(6, 182, 212, 0.05));">
-                <div class="main-card-title">
-                    <i class="fas fa-search"></i>
-                    Recherche de classe
+        <!-- Filtres avancés -->
+        <div class="card-moderne mb-lg">
+            <div class="p-lg">
+                <div class="section-title mb-md">
+                    <i class="fas fa-filter me-2"></i>Filtres de recherche
                 </div>
-            </div>
-            <div class="main-card-body">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="form-group-moderne">
-                            <label class="form-label-moderne">
-                                <i class="fas fa-users"></i>
-                                Rechercher une classe
-                            </label>
-                            <input type="text" class="form-input-moderne" id="classSearch" placeholder="Nom de la classe, filière, niveau...">
+                <form method="GET" action="{{ route('esbtp.notes.index') }}" id="filtersForm">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md); margin-bottom: var(--space-md);">
+                        <div>
+                            <label for="search" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Recherche</label>
+                            <input type="text" name="search" id="search" value="{{ request('search') }}" placeholder="Nom ou code de classe..." class="form-control" style="width: 100%;">
+                        </div>
+                        <div>
+                            <label for="filiere_id" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Filière</label>
+                            <select name="filiere_id" id="filiere_id" class="form-control" style="width: 100%;">
+                                <option value="">Toutes les filières</option>
+                                @foreach($filieres as $filiere)
+                                    <option value="{{ $filiere->id }}" {{ request('filiere_id') == $filiere->id ? 'selected' : '' }}>
+                                        {{ $filiere->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label for="niveau_id" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Niveau</label>
+                            <select name="niveau_id" id="niveau_id" class="form-control" style="width: 100%;">
+                                <option value="">Tous les niveaux</option>
+                                @foreach($niveaux as $niveau)
+                                    <option value="{{ $niveau->id }}" {{ request('niveau_id') == $niveau->id ? 'selected' : '' }}>
+                                        {{ $niveau->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label for="statut" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Statut</label>
+                            <select name="statut" id="statut" class="form-control" style="width: 100%;">
+                                <option value="">Tous les statuts</option>
+                                <option value="active" {{ request('statut') == 'active' ? 'selected' : '' }}>Actives</option>
+                                <option value="inactive" {{ request('statut') == 'inactive' ? 'selected' : '' }}>Inactives</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="capacite" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Capacité</label>
+                            <select name="capacite" id="capacite" class="form-control" style="width: 100%;">
+                                <option value="">Toutes</option>
+                                <option value="disponible" {{ request('capacite') == 'disponible' ? 'selected' : '' }}>Disponibles</option>
+                                <option value="pleine" {{ request('capacite') == 'pleine' ? 'selected' : '' }}>Pleines</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="col-md-6 d-flex align-items-end">
-                        <button type="button" class="btn-acasi secondary w-100" onclick="resetSearch()">
-                            <i class="fas fa-times"></i>Effacer la recherche
+
+                    <div style="display: flex; gap: var(--space-md); align-items: center; flex-wrap: wrap;">
+                        <button type="submit" class="btn-acasi primary">
+                            <i class="fas fa-search me-1"></i>Filtrer
                         </button>
+                        <button type="button" id="reset-filters-btn" class="btn-acasi secondary">
+                            <i class="fas fa-times me-1"></i>Réinitialiser
+                        </button>
+                        <div style="margin-left: auto; font-size: var(--text-small); color: var(--text-muted);">
+                            <i class="fas fa-list me-1"></i><span id="classes-count">{{ count($classes) }}</span> classe(s) trouvée(s)
+                        </div>
                     </div>
-                </div>
+                </form>
             </div>
         </div>
 
@@ -106,104 +282,10 @@
                 <i class="fas fa-list me-2"></i>Classes disponibles pour la saisie des notes
                 <span class="section-subtitle">{{ count($classes) }} classes trouvées</span>
             </div>
-
-            <div class="resultats-grid" id="classes-grid" style="margin-top: var(--space-lg);">
-                @forelse($classes as $classe)
-                    @php
-                        $className = strtolower($classe->name ?: '');
-                        $classFiliere = strtolower(optional($classe->filiere)->name ?: '');
-                        $classNiveau = strtolower(optional($classe->niveau)->name ?: '');
-                    @endphp
-                    <div class="card-moderne resultat-card class-card animate-slide-up @if($classe->is_active) border-active @else border-inactive @endif" 
-                         data-classe-id="{{ $classe->id }}"
-                         data-class-name="{{ $className }}"
-                         data-class-filiere="{{ $classFiliere }}"
-                         data-class-niveau="{{ $classNiveau }}"
-                         data-class-label="{{ $classe->name }}">
-                        <!-- En-tête classe -->
-                        <div style="display: flex; justify-content: between; align-items: start; margin-bottom: var(--space-md);">
-                            <div style="flex: 1;">
-                                <div style="display: flex; align-items: center; margin-bottom: var(--space-sm);">
-                                    <div class="classe-icon @if($classe->is_active) bg-success @else bg-inactive @endif">
-                                        <i class="fas fa-graduation-cap" style="color: white; font-size: 16px;"></i>
-                                    </div>
-                                    <div>
-                                        <div class="font-bold color-primary" style="font-size: var(--text-normal);">{{ $classe->name }}</div>
-                                        <div style="font-size: var(--text-small); color: var(--text-secondary);">Code: {{ $classe->code }}</div>
-                                    </div>
-                                </div>
-
-                                <!-- Filière et niveau -->
-                                <div style="margin-bottom: var(--space-md);">
-                                    @if ($classe->filiere)
-                                        <div style="font-size: var(--text-small); color: var(--text-primary); margin-bottom: var(--space-xs);">
-                                            <i class="fas fa-layer-group me-1"></i><strong>{{ $classe->filiere->name }}</strong>
-                                            @if ($classe->filiere->parent)
-                                                <br><span style="color: var(--text-muted); margin-left: 16px;">Option de {{ $classe->filiere->parent->name }}</span>
-                                            @endif
-                                        </div>
-                                    @endif
-                                    @if ($classe->niveau)
-                                        <div style="font-size: var(--text-small); color: var(--text-secondary);">
-                                            <i class="fas fa-level-up-alt me-1"></i>{{ $classe->niveau->name }}
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-
-                            <!-- Statut -->
-                            <div>
-                                <span class="badge {{ $classe->is_active ? 'success' : 'danger' }}">
-                                    {{ $classe->is_active ? 'Active' : 'Inactive' }}
-                                </span>
-                                <span class="badge badge-notes ms-1">
-                                    <i class="fas fa-clipboard-check me-1"></i>Notes
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- Statistiques -->
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md); margin-bottom: var(--space-md); padding: var(--space-sm); background: rgba(248, 250, 252, 0.5); border-radius: var(--radius-small);">
-                            <div class="text-center">
-                                <div style="font-size: var(--text-small); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Capacité</div>
-                                <div class="font-bold color-primary">{{ $classe->places_totales ?? 0 }}</div>
-                            </div>
-                            <div class="text-center">
-                                <div style="font-size: var(--text-small); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Étudiants</div>
-                                <div class="font-bold color-accent">{{ $classe->inscriptions_count ?? 0 }}</div>
-                            </div>
-                            <div class="text-center">
-                                <div style="font-size: var(--text-small); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Disponibles</div>
-                                <div class="font-bold color-{{ (($classe->places_totales ?? 0) - ($classe->inscriptions_count ?? 0)) > 0 ? 'success' : 'danger' }}">
-                                    {{ ($classe->places_totales ?? 0) - ($classe->inscriptions_count ?? 0) }}
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Actions -->
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f3f4f6; padding-top: var(--space-md);">
-                            <div style="font-size: var(--text-small); color: var(--text-muted);">
-                                @if ($classe->annee)
-                                    <i class="fas fa-calendar me-1"></i>{{ $classe->annee->name }}
-                                @endif
-                                <div class="notes-hint">
-                                    <i class="fas fa-pen-alt me-1"></i>Saisir les notes
-                                </div>
-                            </div>
-                            <div style="display: flex; gap: var(--space-xs);">
-                                <button type="button" class="btn-acasi primary class-select-btn" title="Saisir les notes">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                @empty
-                    <div class="text-center" style="padding: var(--space-xl); color: var(--text-secondary); grid-column: 1 / -1;">
-                        <i class="fas fa-graduation-cap" style="font-size: 48px; margin-bottom: var(--space-lg); color: var(--neutral);"></i>
-                        <h5 style="color: var(--text-secondary); margin-bottom: var(--space-sm);">Aucune classe trouvée</h5>
-                        <p style="color: var(--text-muted);">Aucune classe active n'a été trouvée pour la saisie des notes.</p>
-                    </div>
-                @endforelse
+            <div id="classes-results" style="margin-top: var(--space-lg);">
+                <div class="resultats-grid" id="classes-grid">
+                    @include('esbtp.notes.partials.classes-items', ['classes' => $classes, 'classStatsById' => $classStatsById])
+                </div>
             </div>
         </div>
     </div>
@@ -231,7 +313,7 @@
                     </div>
                 </div>
                 <div class="row mb-4">
-                    <div class="col-md-8">
+                    <div class="col-md-5">
                         <div class="form-group">
                             <label class="form-label fw-bold">Matière</label>
                             <select class="form-select" id="matiereSelect">
@@ -239,6 +321,16 @@
                                 @foreach($matieres as $matiere)
                                     <option value="{{ $matiere->id }}">{{ $matiere->name ?? $matiere->nom ?? 'Matière sans nom' }}</option>
                                 @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label class="form-label fw-bold">Période</label>
+                            <select class="form-select" id="periodeFilter">
+                                <option value="all">Toutes</option>
+                                <option value="semestre1">Semestre 1</option>
+                                <option value="semestre2">Semestre 2</option>
                             </select>
                         </div>
                     </div>
@@ -328,26 +420,74 @@
 let currentClassId = null;
 let currentClassname = '';
 let currentMatiereId = null;
+let currentPeriodeFilter = 'all';
 let evaluationsData = {}; // Stocke les évaluations par matière
 let notesData = {}; // Stocke les notes existantes
+let currentEvaluations = [];
 
 // Initialisation
 $(document).ready(function() {
-    // Recherche de classes en temps réel
-    $('#classSearch').on('keyup', function() {
-        const searchTerm = $(this).val().toLowerCase();
-        $('.class-card').each(function() {
-            const className = ($(this).data('class-name') || '').toString();
-            const filiere = ($(this).data('class-filiere') || '').toString();
-            const niveau = ($(this).data('class-niveau') || '').toString();
-            
-            const matches = className.includes(searchTerm) || 
-                           filiere.includes(searchTerm) || 
-                           niveau.includes(searchTerm);
-            
-            $(this).toggle(matches);
+    const filtersForm = document.getElementById('filtersForm');
+    const classesGrid = document.getElementById('classes-grid');
+    const classesCountSpan = document.getElementById('classes-count');
+    const resetFiltersBtn = document.getElementById('reset-filters-btn');
+    const filterInputs = filtersForm ? filtersForm.querySelectorAll('select, input[name="search"]') : [];
+
+    function fetchClasses() {
+        if (!filtersForm || !classesGrid) return;
+
+        const formData = new FormData(filtersForm);
+        formData.set('classes_ajax', '1');
+        const params = new URLSearchParams(formData);
+
+        fetch(`${filtersForm.action}?${params.toString()}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    throw new Error('Erreur lors du chargement des classes.');
+                }
+                classesGrid.innerHTML = data.html;
+                if (classesCountSpan && typeof data.total !== 'undefined') {
+                    classesCountSpan.textContent = data.total;
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                alert('Impossible de charger les classes.');
+            });
+    }
+
+    if (filtersForm) {
+        filtersForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            fetchClasses();
         });
+    }
+
+    filterInputs.forEach((input) => {
+        input.addEventListener('change', fetchClasses);
+        if (input.getAttribute('name') === 'search') {
+            input.addEventListener('input', function() {
+                clearTimeout(window.notesSearchDebounce);
+                window.notesSearchDebounce = setTimeout(fetchClasses, 300);
+            });
+        }
     });
+
+    if (resetFiltersBtn) {
+        resetFiltersBtn.addEventListener('click', function(event) {
+            event.preventDefault();
+            if (!filtersForm) return;
+            filtersForm.reset();
+            fetchClasses();
+        });
+    }
 
     // Sélection de classe depuis les cartes
     $(document).on('click', '.class-card', function(e) {
@@ -373,6 +513,13 @@ $(document).ready(function() {
         currentMatiereId = $(this).val();
         if (currentClassId && currentMatiereId) {
             loadEvaluationsAndNotes();
+        }
+    });
+
+    $('#periodeFilter').on('change', function() {
+        currentPeriodeFilter = $(this).val();
+        if (currentClassId && currentMatiereId) {
+            buildNotesGrid();
         }
     });
 
@@ -416,12 +563,6 @@ function selectClass(classId, className) {
     
     // Montrer le modal
     $('#classSelectionModal').modal('show');
-}
-
-// Fonction pour réinitialiser la recherche
-function resetSearch() {
-    $('#classSearch').val('');
-    $('.class-card').show();
 }
 
 // Fonction pour charger les évaluations et notes
@@ -468,9 +609,41 @@ function loadEvaluationsAndNotes() {
     });
 }
 
+function normalizePeriode(periode) {
+    if (!periode) {
+        return 'semestre1';
+    }
+    if (periode === '1' || periode === 1 || periode === 'semestre1') {
+        return 'semestre1';
+    }
+    if (periode === '2' || periode === 2 || periode === 'semestre2') {
+        return 'semestre2';
+    }
+    return periode;
+}
+
 // Fonction pour construire la grille des notes
 function buildNotesGrid() {
     const evaluations = Object.values(evaluationsData);
+    const filteredEvaluations = currentPeriodeFilter === 'all'
+        ? evaluations
+        : evaluations.filter(evaluation => normalizePeriode(evaluation.periode) === currentPeriodeFilter);
+
+    const sortedEvaluations = [...filteredEvaluations].sort((a, b) => {
+        const periodA = normalizePeriode(a.periode) === 'semestre2' ? 2 : 1;
+        const periodB = normalizePeriode(b.periode) === 'semestre2' ? 2 : 1;
+        if (periodA !== periodB) {
+            return periodA - periodB;
+        }
+        const dateA = a.date_evaluation ? new Date(a.date_evaluation) : null;
+        const dateB = b.date_evaluation ? new Date(b.date_evaluation) : null;
+        if (dateA && dateB) {
+            return dateA - dateB;
+        }
+        return 0;
+    });
+
+    currentEvaluations = sortedEvaluations;
     
     // Récupérer les étudiants de la classe
     $.ajax({
@@ -486,11 +659,31 @@ function buildNotesGrid() {
             const students = response.students || [];
             
             // Construire l'en-tête du tableau avec les évaluations
-            const thead = $('#notesGrid thead tr');
+            const thead = $('#notesGrid thead');
             thead.empty();
-            thead.append('<th class="notes-student-col" style="width: 200px; min-width: 200px; position: sticky; left: 0; top: 0; z-index: 7; background: #ffffff;">Étudiants</th>');
-            
-            evaluations.forEach(evaluation => {
+
+            const periodCounts = {
+                semestre1: sortedEvaluations.filter(evaluation => normalizePeriode(evaluation.periode) === 'semestre1').length,
+                semestre2: sortedEvaluations.filter(evaluation => normalizePeriode(evaluation.periode) === 'semestre2').length,
+            };
+
+            const periodRow = $('<tr class="period-row"></tr>');
+            periodRow.append('<th class="notes-student-col" style="width: 200px; min-width: 200px; position: sticky; left: 0; top: 0; z-index: 8; background: #ffffff;">Étudiants</th>');
+            if (periodCounts.semestre1 > 0) {
+                periodRow.append(`<th colspan="${periodCounts.semestre1}" class="period-cell semester-1 text-center">Semestre 1</th>`);
+            }
+            if (periodCounts.semestre2 > 0) {
+                periodRow.append(`<th colspan="${periodCounts.semestre2}" class="period-cell semester-2 text-center">Semestre 2</th>`);
+            }
+            periodRow.append('<th colspan="2" class="period-cell summary text-center">Synthèse</th>');
+            thead.append(periodRow);
+
+            const evalRow = $('<tr></tr>');
+            evalRow.append('<th class="notes-student-col" style="width: 200px; min-width: 200px; position: sticky; left: 0; top: 0; z-index: 7; background: #ffffff;">Étudiants</th>');
+
+            sortedEvaluations.forEach(evaluation => {
+                const periodKey = normalizePeriode(evaluation.periode);
+                const periodLabel = periodKey === 'semestre2' ? 'S2' : 'S1';
                 const header = `
                     <th id="evalHeader${evaluation.id}" class="evaluation-header" style="min-width: 180px;">
                         <div class="evaluation-title">${evaluation.titre || 'Éval'}</div>
@@ -511,13 +704,16 @@ function buildNotesGrid() {
                             </div>
                         </div>
                         <div class="evaluation-type">${evaluation.type || 'Devoir'}</div>
+                        <div class="evaluation-period ${periodKey}">${periodLabel}</div>
                     </th>
                 `;
-                thead.append(header);
+                evalRow.append(header);
             });
-            
-            thead.append('<th class="notes-average-col" style="min-width: 110px; position: sticky; right: 140px; top: 0; z-index: 6; background: #f8fafc;">Moyenne</th>');
-            thead.append('<th class="notes-appreciation-col" style="min-width: 140px; position: sticky; right: 0; top: 0; z-index: 7; background: #f8fafc;">Appréciation</th>');
+
+            evalRow.append('<th class="notes-average-col" style="min-width: 110px; position: sticky; right: 140px; top: 0; z-index: 6; background: #f8fafc;">Moyenne</th>');
+            evalRow.append('<th class="notes-appreciation-col" style="min-width: 140px; position: sticky; right: 0; top: 0; z-index: 7; background: #f8fafc;">Appréciation</th>');
+
+            thead.append(evalRow);
             
             // Construire les lignes des étudiants
             const tbody = $('#studentsRows');
@@ -542,7 +738,7 @@ function buildNotesGrid() {
                 `);
                 
                 // Ajouter les colonnes d'évaluations
-                evaluations.forEach(evaluation => {
+                sortedEvaluations.forEach(evaluation => {
                     const note = notesData[student.id]?.[evaluation.id] || '';
                     const isAbsent = notesData[student.id]?.[evaluation.id + '_absent'] || false;
                     
@@ -585,7 +781,7 @@ function buildNotesGrid() {
             });
             
             // Construire la ligne des moyennes de classe
-            buildClassAveragesRow(evaluations);
+            buildClassAveragesRow(sortedEvaluations);
             
             // Calculer les moyennes initiales
             calculateAllAverages();
@@ -765,7 +961,7 @@ function calculateStudentAverage(studentId) {
 
 // Fonction pour calculer les moyennes de classe
 function calculateClassAverages() {
-    const evaluations = Object.values(evaluationsData);
+    const evaluations = currentEvaluations.length ? currentEvaluations : Object.values(evaluationsData);
     
     evaluations.forEach(evaluation => {
         const evalId = evaluation.id;

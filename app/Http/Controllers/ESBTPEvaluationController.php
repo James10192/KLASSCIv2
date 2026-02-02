@@ -1546,6 +1546,7 @@ $evaluation->titre = $request->titre;
                         'bareme' => $evaluation->bareme,
                         'coefficient' => $evaluation->coefficient,
                         'type' => $evaluation->type,
+                        'periode' => $evaluation->periode,
                         'notes' => $evaluation->notes->map(function ($note) {
                             return [
                                 'id' => $note->id,

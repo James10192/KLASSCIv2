@@ -6,7 +6,9 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
+use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
+use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPNote;
 use App\Services\NotificationService;
 use Carbon\Carbon;
@@ -34,8 +36,142 @@ class ESBTPNoteController extends Controller
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', 1)->first();
         $anneeAcademique = $anneeCourante ? $anneeCourante->name : 'Aucune année active';
 
+        $semesterWeights = [
+            'semester1' => floatval(\App\Helpers\SettingsHelper::get('bulletin_semester1_weight', '50')),
+            'semester2' => floatval(\App\Helpers\SettingsHelper::get('bulletin_semester2_weight', '50')),
+        ];
+        if (($semesterWeights['semester1'] + $semesterWeights['semester2']) <= 0) {
+            $semesterWeights = ['semester1' => 50, 'semester2' => 50];
+        }
+
         // Check if we're using the new modal system (via AJAX call)
         $isAjax = $request->ajax() || $request->wantsJson();
+
+        $classesQuery = ESBTPClasse::query()
+            ->withCount(['inscriptions' => function ($query) use ($anneeCourante) {
+                $query->where('status', 'active');
+                if ($anneeCourante) {
+                    $query->where('annee_universitaire_id', $anneeCourante->id);
+                }
+            }])
+            ->with(['filiere', 'niveau', 'annee']);
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->input('search'));
+            $classesQuery->where(function ($query) use ($search) {
+                $query->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('code', 'like', '%'.$search.'%')
+                    ->orWhereHas('filiere', function ($subQuery) use ($search) {
+                        $subQuery->where('name', 'like', '%'.$search.'%');
+                    })
+                    ->orWhereHas('niveau', function ($subQuery) use ($search) {
+                        $subQuery->where('name', 'like', '%'.$search.'%');
+                    });
+            });
+        }
+
+        if ($request->filled('filiere_id')) {
+            $classesQuery->where('filiere_id', $request->input('filiere_id'));
+        }
+
+        if ($request->filled('niveau_id')) {
+            $classesQuery->where('niveau_etude_id', $request->input('niveau_id'));
+        }
+
+        if ($request->filled('statut')) {
+            $statut = $request->input('statut');
+            if ($statut === 'active') {
+                $classesQuery->where('is_active', true);
+            } elseif ($statut === 'inactive') {
+                $classesQuery->where('is_active', false);
+            }
+        }
+
+        $classesQuery->orderBy('name');
+
+        $classes = $classesQuery->get();
+
+        if ($request->filled('capacite')) {
+            $capacityFilter = $request->input('capacite');
+            $classes = $classes->filter(function ($classe) use ($capacityFilter) {
+                $placesDisponibles = ($classe->places_totales ?? 0) - ($classe->inscriptions_count ?? 0);
+                if ($capacityFilter === 'disponible') {
+                    return $placesDisponibles > 0;
+                }
+                if ($capacityFilter === 'pleine') {
+                    return $placesDisponibles <= 0;
+                }
+                return true;
+            })->values();
+        }
+
+        $classeIds = $classes->pluck('id');
+        $matieresTotals = $classeIds->isEmpty() ? collect() : DB::table('esbtp_classe_matiere')
+            ->select('classe_id', DB::raw('count(*) as total'))
+            ->whereIn('classe_id', $classeIds)
+            ->where('is_active', 1)
+            ->groupBy('classe_id')
+            ->pluck('total', 'classe_id');
+
+        $matieresConfigured = ($anneeCourante && $classeIds->isNotEmpty())
+            ? DB::table('esbtp_evaluations')
+                ->select('classe_id', DB::raw('count(distinct matiere_id) as total'))
+                ->where('annee_universitaire_id', $anneeCourante->id)
+                ->whereIn('classe_id', $classeIds)
+                ->groupBy('classe_id')
+                ->pluck('total', 'classe_id')
+            : collect();
+
+        $bulletinAverages = ($anneeCourante && $classeIds->isNotEmpty())
+            ? DB::table('esbtp_bulletins')
+                ->select('classe_id', 'periode', DB::raw('avg(moyenne_generale) as moyenne'))
+                ->where('annee_universitaire_id', $anneeCourante->id)
+                ->whereIn('classe_id', $classeIds)
+                ->groupBy('classe_id', 'periode')
+                ->get()
+            : collect();
+
+        $avgByClass = [];
+        foreach ($bulletinAverages as $row) {
+            $periodKey = $row->periode === '2' ? 'semestre2' : ($row->periode === '1' ? 'semestre1' : $row->periode);
+            $avgByClass[$row->classe_id][$periodKey] = floatval($row->moyenne);
+        }
+
+        $classStatsById = [];
+        foreach ($classes as $classe) {
+            $totalMatieres = (int) ($matieresTotals[$classe->id] ?? 0);
+            $configuredMatieres = (int) ($matieresConfigured[$classe->id] ?? 0);
+            $completion = $totalMatieres > 0 ? round(($configuredMatieres / $totalMatieres) * 100) : 0;
+            $moyenneS1 = $avgByClass[$classe->id]['semestre1'] ?? null;
+            $moyenneS2 = $avgByClass[$classe->id]['semestre2'] ?? null;
+            $annual = null;
+            if ($moyenneS1 !== null && $moyenneS2 !== null) {
+                $totalWeight = $semesterWeights['semester1'] + $semesterWeights['semester2'];
+                $annual = $totalWeight > 0
+                    ? (($moyenneS1 * $semesterWeights['semester1']) + ($moyenneS2 * $semesterWeights['semester2'])) / $totalWeight
+                    : null;
+            }
+
+            $classStatsById[$classe->id] = [
+                'matieres_total' => $totalMatieres,
+                'matieres_configured' => $configuredMatieres,
+                'completion' => $completion,
+                'moyenne_s1' => $moyenneS1,
+                'moyenne_s2' => $moyenneS2,
+                'moyenne_annuelle' => $annual,
+            ];
+        }
+
+        if ($request->ajax() && $request->boolean('classes_ajax')) {
+            return response()->json([
+                'success' => true,
+                'html' => view('esbtp.notes.partials.classes-items', [
+                    'classes' => $classes,
+                    'classStatsById' => $classStatsById,
+                ])->render(),
+                'total' => $classes->count(),
+            ]);
+        }
 
         if ($isAjax) {
             // For AJAX requests, use the old system
@@ -76,23 +212,23 @@ class ESBTPNoteController extends Controller
             return view('esbtp.notes.index', compact('notes', 'classes', 'matieres', 'anneeAcademique'));
         }
 
-        // For normal requests, load active classes with student counts
-        $classes = ESBTPClasse::where('is_active', true)
-            ->withCount(['inscriptions' => function ($query) use ($anneeCourante) {
-                $query->where('status', 'active');
-                if ($anneeCourante) {
-                    $query->where('annee_universitaire_id', $anneeCourante->id);
-                }
-            }])
-            ->with(['filiere', 'niveau', 'annee'])
-            ->orderBy('name')
-            ->get();
-
         // Get filter options for dropdowns (if needed)
         $allClasses = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
         $matieres = ESBTPMatiere::orderBy('name')->get();
 
-        return view('esbtp.notes.index', compact('classes', 'allClasses', 'matieres', 'anneeAcademique'));
+        $filieres = ESBTPFiliere::orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
+
+        return view('esbtp.notes.index', compact(
+            'classes',
+            'allClasses',
+            'matieres',
+            'anneeAcademique',
+            'filieres',
+            'niveaux',
+            'classStatsById',
+            'semesterWeights'
+        ));
     }
 
     /**
