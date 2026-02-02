@@ -891,35 +891,35 @@
                     </div>
                     <div>
                         <h3 class="section-title">Pondération des semestres</h3>
-                        <p class="section-description">Coefficients utilisés pour calculer la moyenne annuelle</p>
+                        <p class="section-description">Coefficients utilisés pour calculer la moyenne générale annuelle (M.G.A)</p>
                     </div>
                 </div>
 
                 <div class="settings-grid-2">
                     <div class="form-group">
                         <label class="form-label-modern">
-                            <i class="fas fa-percent text-primary"></i>
-                            Coefficient Semestre 1 (%)
+                            <i class="fas fa-scale-balanced text-primary"></i>
+                            Coefficient Semestre 1
                         </label>
                         <input type="number" class="form-control form-control-modern threshold-input"
                                name="setting_bulletin_semester1_weight"
-                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_semester1_weight', '50') }}"
-                               min="0" max="100" step="1">
+                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_semester1_weight', '1') }}"
+                               min="0" step="0.1">
                     </div>
                     <div class="form-group">
                         <label class="form-label-modern">
-                            <i class="fas fa-percent text-success"></i>
-                            Coefficient Semestre 2 (%)
+                            <i class="fas fa-scale-balanced text-success"></i>
+                            Coefficient Semestre 2
                         </label>
                         <input type="number" class="form-control form-control-modern threshold-input"
                                name="setting_bulletin_semester2_weight"
-                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_semester2_weight', '50') }}"
-                               min="0" max="100" step="1">
+                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_semester2_weight', '1') }}"
+                               min="0" step="0.1">
                     </div>
                 </div>
                 <small class="text-muted">
                     <i class="fas fa-info-circle"></i>
-                    La somme des coefficients est normalisee automatiquement pour le calcul annuel.
+                    Exemple: S1 = 1, S2 = 2 ⟶ (S1*1 + S2*2) / 3. La somme est normalisee automatiquement.
                 </small>
             </div>
 

@@ -70,8 +70,8 @@ class ESBTPSettingsController extends Controller
             }
 
             $bulletinSemesterDefaults = [
-                'bulletin_semester1_weight' => '50',
-                'bulletin_semester2_weight' => '50',
+                'bulletin_semester1_weight' => '1',
+                'bulletin_semester2_weight' => '1',
             ];
 
             foreach ($bulletinSemesterDefaults as $key => $defaultValue) {
@@ -85,7 +85,7 @@ class ESBTPSettingsController extends Controller
                         'description' => 'Ponderation des semestres',
                         'is_required' => false,
                         'default_value' => $defaultValue,
-                        'validation_rules' => ['nullable', 'integer', 'min:0', 'max:100'],
+                        'validation_rules' => ['nullable', 'numeric', 'min:0'],
                         'sort_order' => 120
                     ]
                 );
