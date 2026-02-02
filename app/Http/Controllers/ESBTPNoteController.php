@@ -106,12 +106,35 @@ class ESBTPNoteController extends Controller
         }
 
         $classeIds = $classes->pluck('id');
-        $matieresTotals = $classeIds->isEmpty() ? collect() : DB::table('esbtp_classe_matiere')
-            ->select('classe_id', DB::raw('count(*) as total'))
-            ->whereIn('classe_id', $classeIds)
-            ->where('is_active', 1)
-            ->groupBy('classe_id')
-            ->pluck('total', 'classe_id');
+        $filiereIds = $classes->pluck('filiere_id')->filter()->unique();
+        $niveauIds = $classes->pluck('niveau_etude_id')->filter()->unique();
+
+        $matieresTotals = collect();
+        if ($filiereIds->isNotEmpty() && $niveauIds->isNotEmpty()) {
+            $matiereCounts = DB::table('esbtp_matiere_filiere as mf')
+                ->join('esbtp_matiere_niveau as mn', 'mn.matiere_id', '=', 'mf.matiere_id')
+                ->join('esbtp_matieres as m', 'm.id', '=', 'mf.matiere_id')
+                ->whereIn('mf.filiere_id', $filiereIds)
+                ->whereIn('mn.niveau_etude_id', $niveauIds)
+                ->where('m.is_active', 1)
+                ->select('mf.filiere_id', 'mn.niveau_etude_id', DB::raw('count(distinct mf.matiere_id) as total'))
+                ->groupBy('mf.filiere_id', 'mn.niveau_etude_id')
+                ->get();
+
+            $matiereCountMap = [];
+            foreach ($matiereCounts as $row) {
+                $matiereCountMap[$row->filiere_id.'|'.$row->niveau_etude_id] = (int) $row->total;
+            }
+
+            foreach ($classes as $classe) {
+                if (! $classe->filiere_id || ! $classe->niveau_etude_id) {
+                    $matieresTotals[$classe->id] = 0;
+                    continue;
+                }
+                $key = $classe->filiere_id.'|'.$classe->niveau_etude_id;
+                $matieresTotals[$classe->id] = $matiereCountMap[$key] ?? 0;
+            }
+        }
 
         $matieresConfigured = ($anneeCourante && $classeIds->isNotEmpty())
             ? DB::table('esbtp_evaluations')
