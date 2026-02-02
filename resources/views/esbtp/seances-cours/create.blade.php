@@ -78,14 +78,14 @@
         border: 1px solid #e2e8f0;
         background: #fff;
     }
-    .teacher-availability-grid {
+    .teacher-availability-panel .teacher-availability-grid {
         display: grid;
         grid-template-columns: 80px repeat(6, 1fr);
         gap: 6px;
         margin-top: 16px;
     }
-    .teacher-availability-grid .grid-header,
-    .teacher-availability-grid .grid-time {
+    .teacher-availability-panel .teacher-availability-grid .grid-header,
+    .teacher-availability-panel .teacher-availability-grid .grid-time {
         font-size: 0.75rem;
         font-weight: 600;
         text-align: center;
@@ -94,26 +94,26 @@
         background: #f1f5f9;
         color: #475569;
     }
-    .teacher-availability-grid .availability-cell {
+    .teacher-availability-panel .teacher-availability-grid .availability-cell {
         height: 32px;
         border-radius: 8px;
         border: 1px solid #e2e8f0;
         cursor: pointer;
         transition: all 0.2s ease;
     }
-    .teacher-availability-grid .availability-cell.available {
+    .teacher-availability-panel .teacher-availability-grid .availability-cell.available {
         background: #dcfce7;
         border-color: #86efac;
     }
-    .teacher-availability-grid .availability-cell.preferred {
+    .teacher-availability-panel .teacher-availability-grid .availability-cell.preferred {
         background: #dbeafe;
         border-color: #60a5fa;
     }
-    .teacher-availability-grid .availability-cell.unavailable {
+    .teacher-availability-panel .teacher-availability-grid .availability-cell.unavailable {
         background: #fee2e2;
         border-color: #fecaca;
     }
-    .teacher-availability-legend {
+    .teacher-availability-panel .teacher-availability-legend {
         display: flex;
         flex-wrap: wrap;
         gap: 12px;
@@ -121,20 +121,20 @@
         font-size: 0.8rem;
         color: #475569;
     }
-    .teacher-availability-legend .legend-dot {
+    .teacher-availability-panel .teacher-availability-legend .legend-dot {
         width: 10px;
         height: 10px;
         border-radius: 50%;
         display: inline-block;
         margin-right: 6px;
     }
-    .teacher-availability-legend .legend-dot.available {
+    .teacher-availability-panel .teacher-availability-legend .legend-dot.available {
         background: #22c55e;
     }
-    .teacher-availability-legend .legend-dot.preferred {
+    .teacher-availability-panel .teacher-availability-legend .legend-dot.preferred {
         background: #3b82f6;
     }
-    .teacher-availability-legend .legend-dot.unavailable {
+    .teacher-availability-panel .teacher-availability-legend .legend-dot.unavailable {
         background: #ef4444;
     }
 </style>
@@ -261,7 +261,7 @@
                                            id="heure_debut" name="heure_debut"
                                            value="{{ old('heure_debut', $request->heure_debut) }}" required>
                                 @else
-                                    <input type="time" class="form-input @error('heure_debut') error @enderror" 
+                                    <input type="time" class="form-input @error('heure_debut') error @enderror"
                                            id="heure_debut" name="heure_debut"
                                            value="{{ old('heure_debut', $request->heure_debut) }}" required>
                                 @endif
@@ -291,7 +291,7 @@
                                            id="heure_fin" name="heure_fin"
                                            value="{{ old('heure_fin') }}" required>
                                 @else
-                                    <input type="time" class="form-input @error('heure_fin') error @enderror" 
+                                    <input type="time" class="form-input @error('heure_fin') error @enderror"
                                            id="heure_fin" name="heure_fin"
                                            value="{{ old('heure_fin') }}" required>
                                 @endif
@@ -380,13 +380,13 @@
                                     <select name="matiere_id" id="matiere_id" class="form-select @error('matiere_id') error @enderror" onchange="updateTeachersForSubject()" required>
                                         <option value="">Sélectionner une matière</option>
                                         @foreach($matieres as $matiere)
-                                            <option value="{{ $matiere['matiere']->id }}" 
+                                            <option value="{{ $matiere['matiere']->id }}"
                                                     data-heures-restantes="{{ $matiere['heures_restantes'] }}"
                                                     data-volume-total="{{ $matiere['volume_horaire_total'] }}"
                                                     data-enseignants="{{ ($matiere['enseignants_selectables'] ?? collect())->pluck('id')->toJson() }}"
                                                     data-planification-id="{{ $matiere['planification_id'] ?? '' }}"
                                                     {{ old('matiere_id') == $matiere['matiere']->id ? 'selected' : '' }}>
-                                                {{ $matiere['matiere']->name }} 
+                                                {{ $matiere['matiere']->name }}
                                                 ({{ $matiere['heures_restantes'] }}h restantes / {{ $matiere['volume_horaire_total'] }}h)
                                             </option>
                                         @endforeach
@@ -430,7 +430,7 @@
 
                                 <div class="form-group">
                                     <label for="salle" class="form-label">Salle</label>
-                                    <input type="text" class="form-input @error('salle') error @enderror" 
+                                    <input type="text" class="form-input @error('salle') error @enderror"
                                            id="salle" name="salle" value="{{ old('salle') }}"
                                            placeholder="Ex: Salle A101">
                                     @error('salle')
@@ -445,7 +445,7 @@
                                     <i class="fas fa-calendar-check"></i>
                                     <span>Disponibilité de <span id="selected-teacher-name">l'enseignant</span></span>
                                 </div>
-                                
+
                                 <!-- Légende des couleurs -->
                                 <div class="availability-legend mb-3">
                                     <h6 class="legend-title"><i class="fas fa-palette me-2"></i>Légende :</h6>
@@ -476,7 +476,7 @@
                                         Cliquez puis glissez sur la grille pour définir un créneau.
                                     </div>
                                 </div>
-                                
+
                                 <div class="availability-grid-container">
                                     <div id="availability-inline-error" class="availability-inline-error" style="display: none;"></div>
                                     <div id="availability-grid" class="teacher-availability-grid"></div>
@@ -521,7 +521,7 @@
                         <div class="form-grid">
                             <div class="form-group">
                                 <label for="homework_description" class="form-label">Description du devoir</label>
-                                <textarea class="form-input @error('homework_description') error @enderror" 
+                                <textarea class="form-input @error('homework_description') error @enderror"
                                           id="homework_description" name="homework_description" rows="4"
                                           placeholder="Décrivez le devoir à donner...">{{ old('homework_description') }}</textarea>
                                 @error('homework_description')
@@ -531,7 +531,7 @@
 
                             <div class="form-group">
                                 <label for="homework_due_date" class="form-label">Date de remise</label>
-                                <input type="date" class="form-input @error('homework_due_date') error @enderror" 
+                                <input type="date" class="form-input @error('homework_due_date') error @enderror"
                                        id="homework_due_date" name="homework_due_date"
                                        value="{{ old('homework_due_date') }}">
                                 @error('homework_due_date')
@@ -1035,7 +1035,7 @@ function updateSelectedTimeInGrid() {
     const jourSelect = document.getElementById('jour');
     const heureDebut = document.getElementById('heure_debut');
     const heureFin = document.getElementById('heure_fin');
-    
+
     // Nettoyer les anciennes sélections
     document.querySelectorAll('.availability-cell.selected-time').forEach(cell => {
         cell.classList.remove('selected-time');
@@ -1044,7 +1044,7 @@ function updateSelectedTimeInGrid() {
         cell.classList.remove('selecting');
     });
     clearAvailabilityErrors();
-    
+
     // Si tous les champs sont remplis, surligner les créneaux
     if (jourSelect.value && heureDebut.value && heureFin.value) {
         const selectedDay = parseInt(jourSelect.value);
@@ -1490,35 +1490,35 @@ function validateTeacherAvailability() {
     if (currentType !== 'course') {
         return true;
     }
-    
+
     if (!teacherSelect.value || !jourSelect.value || !heureDebut.value || !heureFin.value) {
         return true; // Pas assez d'infos pour valider
     }
-    
+
     const teacherId = teacherSelect.value;
     const selectedDay = parseInt(jourSelect.value);
     const startHour = parseInt(heureDebut.value.split(':')[0]);
     const endHour = parseInt(heureFin.value.split(':')[0]);
-    
+
     const availabilityData = seanceData.availability;
-    
+
     clearAvailabilityErrors();
 
     if (!availabilityData[teacherId]) {
         showFormError('Aucune disponibilité configurée pour cet enseignant.\n\nVeuillez configurer ses disponibilités avant de programmer cette séance.');
         return false;
     }
-    
+
     // Mapping jour numérique vers clé jour
     const dayMapping = {
         1: 'monday',
-        2: 'tuesday', 
+        2: 'tuesday',
         3: 'wednesday',
         4: 'thursday',
         5: 'friday',
         6: 'saturday'
     };
-    
+
     const dayKey = dayMapping[selectedDay];
     if (!dayKey || !availabilityData[teacherId][dayKey]) {
         const errorMessage = 'L\'enseignant n\'est pas disponible ce jour-là.\n\nVeuillez choisir un autre jour ou un autre enseignant.';
@@ -1527,7 +1527,7 @@ function validateTeacherAvailability() {
         setAvailabilityErrorMessage(errorMessage);
         return false;
     }
-    
+
     // Vérifier chaque heure du créneau
     const teacherDayAvailability = availabilityData[teacherId][dayKey];
     for (let hour = startHour; hour < endHour; hour++) {
@@ -1535,7 +1535,7 @@ function validateTeacherAvailability() {
         if (hourIndex >= 0 && hourIndex < teacherDayAvailability.length) {
             const status = teacherDayAvailability[hourIndex];
             const jourNoms = {1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi'};
-            
+
             if (status === 'unavailable') {
                 const errorMessage = `L'enseignant n'est pas disponible ${jourNoms[selectedDay]} à ${hour}:00.\n\nVeuillez ajuster les horaires ou choisir un autre enseignant.`;
                 markAvailabilityError(selectedDay, hour, errorMessage);
@@ -1551,7 +1551,7 @@ function validateTeacherAvailability() {
             }
         }
     }
-    
+
     return true; // Tout est OK
 }
 
@@ -1568,22 +1568,22 @@ function updateTeachersForSubject() {
     const teacherEmptyState = document.getElementById('teacherEmptyState');
     const currentType = document.getElementById('sessionType').value;
     const requiresTeacher = currentType === 'course';
-    
+
     // Reset teacher select
     teacherSelect.innerHTML = requiresTeacher
         ? '<option value="">Sélectionner un enseignant</option>'
         : '<option value="">Aucun enseignant requis pour un devoir</option>';
-    
+
     if (matiereSelect.value) {
         const selectedOption = matiereSelect.options[matiereSelect.selectedIndex];
         const enseignantsIds = JSON.parse(selectedOption.dataset.enseignants || '[]');
         const heuresRestantes = selectedOption.dataset.heuresRestantes;
         const volumeTotal = selectedOption.dataset.volumeTotal;
-        
+
         // Afficher les informations sur la matière
         heuresRestantesText.textContent = `${heuresRestantes}h restantes sur ${volumeTotal}h`;
         matiereInfo.style.display = 'block';
-        
+
         if (!requiresTeacher) {
             if (teacherInfo) {
                 teacherInfo.style.display = 'none';
@@ -1596,16 +1596,16 @@ function updateTeachersForSubject() {
             }
             return;
         }
-        
+
         // Ajouter les enseignants assignés à cette matière
         const allTeachers = seanceData.teachers;
         enseignantsIds.forEach(rawId => {
             const teacherId = rawId?.toString();
             if (teacherId && allTeachers[teacherId]) {
                 const teacher = allTeachers[teacherId];
-                const teacherName = teacher?.user?.name 
-                    ?? teacher?.name 
-                    ?? teacher?.matricule 
+                const teacherName = teacher?.user?.name
+                    ?? teacher?.name
+                    ?? teacher?.matricule
                     ?? `Enseignant ${teacherId}`;
                 const option = new Option(teacherName, teacherId);
                 if (currentTeacherId && teacherId === currentTeacherId) {
@@ -1614,7 +1614,7 @@ function updateTeachersForSubject() {
                 teacherSelect.add(option);
             }
         });
-        
+
         if (enseignantsIds.length === 0) {
             teacherSelect.innerHTML = '<option value="">Aucun enseignant assigné à cette matière</option>';
         }
@@ -1635,7 +1635,7 @@ function updateTeachersForSubject() {
             teacherEmptyState.style.display = 'none';
         }
     }
-    
+
     // Reset teacher availability
     document.getElementById('teacher-availability').style.display = 'none';
 }
@@ -1863,29 +1863,29 @@ function showTeacherAvailability() {
     const teacherInfo = document.getElementById('teacher-info');
     const teacherAssignmentText = document.getElementById('teacher-assignment-text');
     const currentType = document.getElementById('sessionType').value;
-    
+
     if (currentType !== 'course') {
         teacherAvailability.style.display = 'none';
         teacherInfo.style.display = 'none';
         return;
     }
-    
+
     if (teacherSelect.value) {
         const teacherId = teacherSelect.value;
         const teacherName = teacherSelect.options[teacherSelect.selectedIndex].text;
         const availabilityData = seanceData.availability;
-        
+
         selectedTeacherName.textContent = teacherName;
         teacherAssignmentText.textContent = `Enseignant assigné: ${teacherName}`;
         teacherInfo.style.display = 'block';
-        
+
         debugLog('🔍 Availability data for teacher', teacherId, ':', availabilityData[teacherId]);
-        
+
         if (availabilityData[teacherId]) {
             // Construire la grille de disponibilité
             const rawAvailability = availabilityData[teacherId];
             let gridHtml = '';
-            
+
             // Header avec les jours
             gridHtml += '<div class="availability-header-row">';
             gridHtml += '<div class="time-header">Heure</div>';
@@ -1894,15 +1894,15 @@ function showTeacherAvailability() {
                 gridHtml += `<div class="day-header">${dayHeaders[i]}</div>`;
             }
             gridHtml += '</div>';
-            
+
             // Créer les lignes pour chaque heure (8h-18h)
             for (let hour = 8; hour < 18; hour++) {
                 gridHtml += '<div class="availability-time-row">';
                 gridHtml += `<div class="time-label">${hour}:00</div>`;
-                
+
                 // Clés des jours dans l'ordre: monday, tuesday, wednesday, thursday, friday, saturday
                 const dayKeys = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                
+
                 dayKeys.forEach((dayKey, dayIndex) => {
                     let cellClass = 'unavailable';
                     let cellTitle = 'Non disponible';
@@ -1933,11 +1933,11 @@ function showTeacherAvailability() {
                 });
                 gridHtml += '</div>';
             }
-            
+
             availabilityGrid.innerHTML = gridHtml;
             teacherAvailability.style.display = 'block';
             bindAvailabilityGridHandlers();
-            
+
             // Mettre à jour les créneaux sélectionnés après construction de la grille
             setTimeout(updateSelectedTimeInGrid, 100);
         } else {
@@ -2720,29 +2720,29 @@ function showTeacherAvailability() {
         flex-direction: column;
         gap: 0.75rem;
     }
-    
+
     .session-type-card {
         flex-direction: row;
         justify-content: flex-start;
         text-align: left;
         padding: 1rem;
     }
-    
+
     .session-type-icon {
         margin-right: 1rem;
         margin-bottom: 0;
         font-size: 1.5rem;
     }
-    
+
     .context-stats {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .availability-header-row,
     .availability-time-row {
         grid-template-columns: 50px repeat(7, 1fr);
     }
-    
+
     .time-label,
     .availability-cell {
         padding: 4px;
@@ -2754,17 +2754,17 @@ function showTeacherAvailability() {
     .session-types-container {
         gap: 0.5rem;
     }
-    
+
     .session-type-card {
         padding: 0.75rem;
         min-width: auto;
     }
-    
+
     .session-type-icon {
         font-size: 1.25rem;
         margin-right: 0.75rem;
     }
-    
+
     .session-type-label {
         font-size: 0.875rem;
     }
