@@ -556,6 +556,10 @@ class BulletinService
             ->with('matiere')
             ->get();
 
+        if ($resultats->isEmpty()) {
+            return $this->calculerMoyenneDepuisNotes($etudiantId, $classe, $anneeUniversitaireId, $periodeOptions);
+        }
+
         foreach ($resultats as $resultat) {
             if ($resultat->matiere) {
                 try {
@@ -576,6 +580,80 @@ class BulletinService
         }
 
         return $this->calculerMoyennePonderee(collect($resultatsParMatiere));
+    }
+
+    private function calculerMoyenneDepuisNotes(int $etudiantId, ESBTPClasse $classe, int $anneeUniversitaireId, array $periodeOptions): float
+    {
+        $notes = ESBTPNote::where('etudiant_id', $etudiantId)
+            ->with(['evaluation', 'evaluation.matiere'])
+            ->byClasse($classe->id)
+            ->byAnneeUniversitaire($anneeUniversitaireId)
+            ->where(function ($query) use ($periodeOptions) {
+                $query->whereIn('semestre', $periodeOptions)
+                    ->orWhereHas('evaluation', function ($subQuery) use ($periodeOptions) {
+                        $subQuery->whereIn('periode', $periodeOptions);
+                    });
+            })
+            ->get();
+
+        if ($notes->isEmpty()) {
+            return 0;
+        }
+
+        $notesByMatiere = [];
+
+        foreach ($notes as $note) {
+            if (! $note->evaluation || ! $note->evaluation->matiere) {
+                continue;
+            }
+
+            $matiereId = $note->matiere_id ?: $note->evaluation->matiere->id;
+            if (! $matiereId) {
+                continue;
+            }
+
+            if (! isset($notesByMatiere[$matiereId])) {
+                $notesByMatiere[$matiereId] = [
+                    'total_points' => 0,
+                    'total_coefficients' => 0,
+                ];
+            }
+
+            if ($note->is_absent) {
+                $noteValue = 0;
+            } else {
+                $noteValue = is_numeric($note->note) ? floatval($note->note) : (is_numeric($note->valeur) ? floatval($note->valeur) : 0);
+            }
+
+            $bareme = $note->evaluation->bareme > 0 ? floatval($note->evaluation->bareme) : 20;
+            $normalized = $bareme > 0 ? ($noteValue / $bareme) * 20 : 0;
+            $evalCoeff = $note->evaluation->coefficient ? floatval($note->evaluation->coefficient) : 1;
+
+            $notesByMatiere[$matiereId]['total_points'] += $normalized * $evalCoeff;
+            $notesByMatiere[$matiereId]['total_coefficients'] += $evalCoeff;
+        }
+
+        $totalPoints = 0;
+        $totalCoefficients = 0;
+
+        foreach ($notesByMatiere as $matiereId => $matiereData) {
+            if ($matiereData['total_coefficients'] <= 0) {
+                continue;
+            }
+
+            $moyenneMatiere = $matiereData['total_points'] / $matiereData['total_coefficients'];
+
+            try {
+                $coefficient = $this->getCoefficientForCombination($matiereId, $classe, $anneeUniversitaireId);
+            } catch (\RuntimeException $e) {
+                $coefficient = 1;
+            }
+
+            $totalPoints += $moyenneMatiere * $coefficient;
+            $totalCoefficients += $coefficient;
+        }
+
+        return $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : 0;
     }
 
     /**
