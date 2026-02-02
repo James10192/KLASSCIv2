@@ -219,6 +219,9 @@ class SettingsHelper
             'pdf_margin_left' => ['value' => '15', 'group' => 'pdf'],
             'pdf_margin_right' => ['value' => '15', 'group' => 'pdf'],
 
+            // Bulletin
+            'bulletin_style' => ['value' => 'yakro', 'group' => 'bulletin'],
+
             // Interface
             'theme_primary_color' => ['value' => '#007bff', 'group' => 'interface'],
             'theme_secondary_color' => ['value' => '#6c757d', 'group' => 'interface'],

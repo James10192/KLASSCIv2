@@ -556,6 +556,8 @@ class BulletinService
             'bulletin_show_signature' => \App\Helpers\SettingsHelper::get('bulletin_show_signature', '1'),
             'bulletin_show_director_signature' => \App\Helpers\SettingsHelper::get('bulletin_show_director_signature', '1'),
             'bulletin_include_attendance_in_stats' => \App\Helpers\SettingsHelper::get('bulletin_include_attendance_in_stats', '1'),
+            'director_title' => \App\Helpers\SettingsHelper::get('director_title', 'Directeur'),
+            'director_name' => \App\Helpers\SettingsHelper::get('director_name', ''),
         ];
     }
 

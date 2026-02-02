@@ -4,222 +4,204 @@
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 @include('pdf.partials.theme')
 <style>
-    /* Styles du bulletin basés sur Layout pdf/Bulletin */
     body {
         font-family: Arial, sans-serif;
-        background-color: #f8f9fa;
-        color: #000;
+        background-color: #f8fafc;
+        color: #111827;
         font-size: 12px;
     }
-
     .bulletin-container {
-        background-color: white;
-        box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-        padding: 20px 30px;
-        border-radius: 0;
+        background-color: #ffffff;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+        padding: 20px 24px;
+        border-radius: 16px;
         max-width: 1000px;
         margin: 0 auto;
-        border: 2px solid #000;
+        border: 1px solid #e5e7eb;
     }
-
-    /* En-tête */
-    .bulletin-header {
-        margin-bottom: 15px;
-    }
-
-    .republic-title {
-        font-weight: bold;
-        font-size: 14px;
-    }
-
-    .motto {
-        font-style: italic;
-        font-size: 12px;
-    }
-
-    .ministry-title {
-        font-size: 12px;
-    }
-
-    .bulletin-title {
-        font-weight: bold;
-        font-size: 14px;
-        text-transform: uppercase;
-    }
-
-    .edition-date, .cycle-info, .diploma-info, .diploma-code {
-        font-size: 12px;
-    }
-
-    .academic-year {
-        font-size: 12px;
-        font-weight: bold;
-        margin-top: 20px;
-    }
-
-    /* Logo ESBTP */
-    .esbtp-logo {
-        max-width: 150px;
-        margin: 0 auto;
+    .action-buttons {
+        margin-bottom: 20px;
         text-align: center;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 120px;
     }
-
-    .esbtp-logo img {
-        max-width: 100%;
-        height: auto;
-        display: block;
-        margin: 0 auto;
+    .action-buttons .btn {
+        margin: 0 10px;
+    }
+    .top-entete {
+        text-align: center;
+        font-size: 11px;
+        color: #1f2937;
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 6px;
+        margin-bottom: 12px;
+    }
+    .header-card {
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 14px;
+    }
+    .header-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+    .header-table td {
         border: none;
-        box-shadow: none;
-        object-fit: contain;
-    }
-
-    /* Informations de l'école */
-    .school-info {
-        margin-top: 10px;
-    }
-
-    .school-name {
-        font-size: 14px;
-        color: #0A6B31;
-        font-weight: bold;
-    }
-
-    .school-contact {
-        font-size: 10px;
-        color: #333;
-    }
-
-    /* Tableaux d'informations de l'étudiant */
-    .student-table {
-        font-size: 12px;
-        margin-bottom: 10px;
-        border: 1px solid #000;
-    }
-
-    .student-table td {
-        padding: 4px 8px;
-        border: 1px solid #000;
-    }
-
-    .student-info-container {
-        border: 2px solid #000;
-    }
-
-    /* Tableaux des notes */
-    .table {
-        font-size: 12px;
-        border: 1px solid #000;
-        margin-bottom: 10px;
-    }
-
-    .table th, .table td {
-        padding: 4px 8px;
-        border: 1px solid #000;
+        padding: 6px;
         vertical-align: middle;
     }
-
+    .header-logo {
+        width: 33%;
+    }
+    .header-info {
+        width: 67%;
+        text-align: right;
+    }
+    .header-logo img {
+        width: 90px;
+        height: 90px;
+        object-fit: contain;
+        border-radius: 10px;
+    }
+    .school-name {
+        font-weight: bold;
+        font-size: 14px;
+        color: #0f5132;
+        text-transform: uppercase;
+    }
+    .school-contact {
+        font-size: 10px;
+        color: #4b5563;
+    }
+    .bulletin-title {
+        font-weight: bold;
+        font-size: 12px;
+        text-transform: uppercase;
+        margin-top: 6px;
+    }
+    .bulletin-period {
+        font-size: 10px;
+        color: #1f2937;
+        margin-top: 2px;
+    }
+    .academic-year {
+        font-size: 10px;
+        font-weight: bold;
+        color: #1f2937;
+        margin-top: 6px;
+    }
+    .student-info-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 10px;
+        margin-bottom: 12px;
+        background: #ffffff;
+    }
+    .student-info-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+    .student-info-table td {
+        border: none;
+        padding: 6px;
+        vertical-align: top;
+    }
+    .student-photo {
+        width: 110px;
+        height: 110px;
+        border-radius: 50%;
+        border: 2px solid #0f5132;
+        object-fit: cover;
+        display: block;
+        margin: 0 auto;
+    }
+    .student-avatar {
+        width: 110px;
+        height: 110px;
+        border-radius: 50%;
+        border: 2px solid #0f5132;
+        background: #eef2f7;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 28px;
+        color: #475569;
+        margin: 0 auto;
+    }
+    .student-matricule {
+        text-align: center;
+        font-weight: bold;
+        font-size: 10px;
+        margin-top: 6px;
+    }
+    .table {
+        font-size: 12px;
+        border: 1px solid #d1d5db;
+        margin-bottom: 10px;
+    }
+    .table th, .table td {
+        padding: 4px 8px;
+        border: 1px solid #d1d5db;
+        vertical-align: middle;
+    }
     .table-header th {
-        background-color: #f2f2f2;
+        background-color: #f3f4f6;
         font-weight: bold;
     }
-
     .section-header {
-        background-color: #000;
+        background-color: #0f5132;
         color: white;
         font-weight: bold;
         text-align: center;
     }
-
     .total-row {
-        background-color: #f2f2f2;
+        background-color: #f3f4f6;
         font-weight: bold;
-        border-bottom: 2px solid #000;
+        border-bottom: 2px solid #d1d5db;
     }
-
-    /* Résultats */
     .result-value {
-        background-color: #f2f2f2;
+        background-color: #f3f4f6;
         font-weight: bold;
         text-align: center;
     }
-
     .result-cadre {
-        border: 1px solid #000;
+        border: 1px solid #d1d5db;
         padding: 0 20px;
+        border-radius: 10px;
+        background: #ffffff;
     }
-
-    /* Décision et signature */
     .decision-section {
         margin-top: 30px;
-        border-top: 1px solid #000;
+        border-top: 1px solid #d1d5db;
         padding-top: 20px;
     }
-
     .decision-title, .signature-title {
         font-weight: bold;
         font-size: 12px;
-        margin-bottom: 30px;
+        margin-bottom: 20px;
     }
-
     .decision-result {
         font-weight: bold;
         font-size: 16px;
         margin-top: 20px;
         font-style: italic;
     }
-
     .signature-box {
         height: 60px;
-        width: 150px;
+        width: 180px;
         margin: 0 auto;
-        border-bottom: 1px solid #000;
+        border-bottom: 1px solid #111827;
     }
-
-    /* Pied de page */
     .bulletin-footer {
         margin-top: 30px;
         font-size: 10px;
         text-align: center;
-        border-top: 1px solid #000;
+        border-top: 1px solid #e5e7eb;
         padding-top: 5px;
-    }
-
-    /* Boutons d'action */
-    .action-buttons {
-        margin-bottom: 20px;
-        text-align: center;
-    }
-
-    .action-buttons .btn {
-        margin: 0 10px;
-    }
-
-    /* Impression */
-    @media print {
-        .action-buttons {
-            display: none;
-        }
-        
-        .bulletin-container {
-            box-shadow: none;
-            padding: 0;
-            max-width: 100%;
-            border: 1px solid #000;
-        }
-        
-        body {
-            width: 27.7cm;
-            height: 29.7cm;
-            margin: 0cm;
-            padding: 0;
-            background: white;
-            color: black;
-        }
+        color: #6b7280;
     }
 </style>
 @endpush
@@ -228,111 +210,108 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-md-12">
-            <!-- Boutons d'action -->
             <div class="action-buttons">
                 <a href="javascript:history.back()" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> Retour
                 </a>
                 <button type="button" class="btn btn-success" onclick="downloadPDF()">
-                    <i class="fas fa-download"></i> Télécharger le PDF
+                    <i class="fas fa-download"></i> Telecharger le PDF
                 </button>
                 <button type="button" class="btn btn-info" onclick="window.print()">
                     <i class="fas fa-print"></i> Imprimer
                 </button>
             </div>
 
-            <!-- Prévisualisation du bulletin -->
             <div class="bulletin-container" id="bulletin-preview">
-                <!-- En-tête officiel -->
-                <header class="bulletin-header">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="republic-title">RÉPUBLIQUE DE CÔTE D'IVOIRE</div>
-                            <div class="motto">Union - Travail - Progrès</div>
-                            <div class="ministry-title">MINISTÈRE DE L'ENSEIGNEMENT SUPÉRIEUR ET DE LA RECHERCHE SCIENTIFIQUE</div>
-                        </div>
-                        <div class="col-md-6 text-center">
-                            <div class="esbtp-logo">
-                                @if($logoBase64)
-                                    <img src="data:image/png;base64,{{ $logoBase64 }}" alt="Logo ESBTP">
-                                @endif
-                            </div>
-                            <div class="school-info">
-                                <div class="school-name">ÉCOLE SPÉCIALE DU BÂTIMENT ET DES TRAVAUX PUBLICS</div>
-                                <div class="school-contact">Yamoussoukro - Tél: 27 30 64 95 15 - Email: esbtp@esbtp.ci</div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 text-end">
-                            <div class="bulletin-title">BULLETIN DE NOTES</div>
-                            <div class="edition-date">Édition du {{ date('d/m/Y') }}</div>
-                            <div class="cycle-info">Cycle: {{ $classe->niveau->nom ?? 'Non défini' }}</div>
-                            <div class="diploma-info">Diplôme: {{ $classe->filiere->nom ?? 'Non défini' }}</div>
-                            <div class="diploma-code">Code: {{ $classe->code ?? 'Non défini' }}</div>
-                        </div>
-                    </div>
-                    <div class="academic-year text-center">
-                        ANNÉE UNIVERSITAIRE {{ $anneeUniversitaire->annee_debut }}-{{ $anneeUniversitaire->annee_fin }}
-                    </div>
-                </header>
+                <div class="top-entete">
+                    <div><strong>{{ \App\Helpers\SettingsHelper::get('bulletin_ministry_text', "Ministere de l'Enseignement Superieur") }}</strong></div>
+                    <div>{{ \App\Helpers\SettingsHelper::get('bulletin_union_text', 'Union - Travail - Progres') }}</div>
+                </div>
 
-                <!-- Informations de l'étudiant -->
-                <div class="student-info-container mb-3">
-                    <table class="table student-table">
+                <div class="header-card">
+                    <table class="header-table">
                         <tr>
-                            <td class="fw-bold" style="width: 15%;">Nom et Prénoms:</td>
-                            <td style="width: 35%;">{{ $etudiant->nom }} {{ $etudiant->prenom }}</td>
-                            <td class="fw-bold" style="width: 15%;">Date de naissance:</td>
-                            <td style="width: 35%;">{{ $etudiant->date_naissance ? $etudiant->date_naissance->format('d/m/Y') : 'Non définie' }}</td>
-                        </tr>
-                        <tr>
-                            <td class="fw-bold">Lieu de naissance:</td>
-                            <td>{{ $etudiant->lieu_naissance ?? 'Non défini' }}</td>
-                            <td class="fw-bold">N° Matricule:</td>
-                            <td>{{ $etudiant->matricule }}</td>
-                        </tr>
-                        <tr>
-                            <td class="fw-bold">Département:</td>
-                            <td>{{ $classe->filiere->nom ?? 'Non défini' }}</td>
-                            <td class="fw-bold">Niveau:</td>
-                            <td>{{ $classe->niveau->nom ?? 'Non défini' }}</td>
+                            <td class="header-logo">
+                                @if($logoBase64)
+                                    <img src="data:image/png;base64,{{ $logoBase64 }}" alt="Logo">
+                                @endif
+                            </td>
+                            <td class="header-info">
+                                <div class="school-name">{{ $config['school_name'] ?? 'E.S.B.T.P' }}</div>
+                                <div class="school-contact">
+                                    {{ $config['school_address'] ?? '' }} • Tel: {{ $config['school_phone'] ?? '' }} • {{ $config['school_email'] ?? '' }}
+                                </div>
+                                <div class="bulletin-title">BULLETIN DE NOTES</div>
+                                <div class="bulletin-period">Edition du {{ date('d/m/Y') }}</div>
+                                <div class="academic-year">ANNEE UNIVERSITAIRE {{ $anneeUniversitaire->annee_debut }}-{{ $anneeUniversitaire->annee_fin }}</div>
+                            </td>
                         </tr>
                     </table>
                 </div>
 
-                <!-- Tableau des notes -->
+                @php
+                    $prenom = $etudiant->prenoms ?? $etudiant->prenom ?? '';
+                    $initials = strtoupper(substr($etudiant->nom ?? 'E', 0, 1) . substr($prenom ?: 'T', 0, 1));
+                    $photoUrl = $etudiant->photo_url;
+                @endphp
+                <div class="student-info-card">
+                    <table class="student-info-table">
+                        <tr>
+                            <td style="width: 140px; text-align: center;">
+                                @if($photoUrl)
+                                    <img src="{{ $photoUrl }}" class="student-photo" alt="Photo">
+                                @else
+                                    <div class="student-avatar">{{ $initials }}</div>
+                                @endif
+                                <div class="student-matricule">{{ $etudiant->matricule }}</div>
+                            </td>
+                            <td>
+                                <div><strong>Nom et Prenoms:</strong> {{ $etudiant->nom }} {{ $etudiant->prenom }}</div>
+                                <div><strong>Date de naissance:</strong> {{ $etudiant->date_naissance ? $etudiant->date_naissance->format('d/m/Y') : 'Non definie' }}</div>
+                                <div><strong>Lieu de naissance:</strong> {{ $etudiant->lieu_naissance ?? 'Non defini' }}</div>
+                            </td>
+                            <td>
+                                <div><strong>N° Matricule:</strong> {{ $etudiant->matricule }}</div>
+                                <div><strong>Departement:</strong> {{ $classe->filiere->nom ?? 'Non defini' }}</div>
+                                <div><strong>Niveau:</strong> {{ $classe->niveau->nom ?? 'Non defini' }}</div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
                 <table class="table">
                     <thead class="table-header">
                         <tr>
-                            <th style="width: 20%;">UNITÉS D'ENSEIGNEMENT</th>
-                            <th style="width: 15%;">ÉVALUATIONS</th>
+                            <th style="width: 20%;">UNITES D'ENSEIGNEMENT</th>
+                            <th style="width: 15%;">EVALUATIONS</th>
                             <th style="width: 10%;">COEFF</th>
                             <th style="width: 10%;">NOTE/20</th>
                             <th style="width: 10%;">MOYENNE/20</th>
-                            <th style="width: 10%;">CRÉDITS</th>
-                            <th style="width: 10%;">CRÉDITS ACQUIS</th>
+                            <th style="width: 10%;">CREDITS</th>
+                            <th style="width: 10%;">CREDITS ACQUIS</th>
                             <th style="width: 15%;">OBSERVATIONS</th>
                         </tr>
                     </thead>
                     <tbody>
                         @php $totalCredits = 0; $totalCreditsAcquis = 0; $totalMoyenneGenerale = 0; $totalCoeff = 0; @endphp
-                        
+
                         @foreach($matieresByFiliere as $filiere => $matieres)
                             <tr class="section-header">
                                 <td colspan="8">{{ $filiere }}</td>
                             </tr>
-                            
+
                             @foreach($matieres as $matiere)
                                 @php
                                     $moyenneMatiere = $moyennesMatiere[$matiere->id] ?? 0;
                                     $credits = $matiere->credits ?? 0;
                                     $creditsAcquis = $moyenneMatiere >= 10 ? $credits : 0;
-                                    
+
                                     $totalCredits += $credits;
                                     $totalCreditsAcquis += $creditsAcquis;
                                     $totalMoyenneGenerale += $moyenneMatiere * $credits;
                                     $totalCoeff += $credits;
                                 @endphp
-                                
+
                                 @if(isset($evaluationsParMatiere[$matiere->id]) && count($evaluationsParMatiere[$matiere->id]) > 0)
                                     @foreach($evaluationsParMatiere[$matiere->id] as $index => $evaluation)
                                         <tr>
@@ -348,7 +327,7 @@
                                                 <td rowspan="{{ count($evaluationsParMatiere[$matiere->id]) }}" class="text-center">{{ $creditsAcquis }}</td>
                                                 <td rowspan="{{ count($evaluationsParMatiere[$matiere->id]) }}" class="text-center">
                                                     @if($moyenneMatiere >= 16)
-                                                        Très Bien
+                                                        Tres Bien
                                                     @elseif($moyenneMatiere >= 14)
                                                         Bien
                                                     @elseif($moyenneMatiere >= 12)
@@ -373,7 +352,7 @@
                                         <td class="text-center">{{ $creditsAcquis }}</td>
                                         <td class="text-center">
                                             @if($moyenneMatiere >= 16)
-                                                Très Bien
+                                                Tres Bien
                                             @elseif($moyenneMatiere >= 14)
                                                 Bien
                                             @elseif($moyenneMatiere >= 12)
@@ -388,8 +367,7 @@
                                 @endif
                             @endforeach
                         @endforeach
-                        
-                        <!-- Ligne de total -->
+
                         <tr class="total-row">
                             <td colspan="5" class="text-center"><strong>TOTAL</strong></td>
                             <td class="text-center"><strong>{{ $totalCredits }}</strong></td>
@@ -402,17 +380,16 @@
                     </tbody>
                 </table>
 
-                <!-- Résumé des résultats -->
                 <div class="row mt-4">
                     <div class="col-md-6">
                         <div class="result-cadre">
                             <table class="table">
                                 <tr>
-                                    <td class="fw-bold">Moyenne générale:</td>
+                                    <td class="fw-bold">Moyenne generale:</td>
                                     <td class="result-value">{{ number_format($moyenneGenerale, 2) }}/20</td>
                                 </tr>
                                 <tr>
-                                    <td class="fw-bold">Crédits acquis:</td>
+                                    <td class="fw-bold">Credits acquis:</td>
                                     <td class="result-value">{{ $totalCreditsAcquis }}/{{ $totalCredits }}</td>
                                 </tr>
                                 <tr>
@@ -423,7 +400,7 @@
                                     <td class="fw-bold">Mention:</td>
                                     <td class="result-value">
                                         @if($moyenneGenerale >= 16)
-                                            Très Bien
+                                            Tres Bien
                                         @elseif($moyenneGenerale >= 14)
                                             Bien
                                         @elseif($moyenneGenerale >= 12)
@@ -439,17 +416,17 @@
                         </div>
                     </div>
                     <div class="col-md-6">
+                        @php
+                            $directorTitle = \App\Helpers\SettingsHelper::get('director_title', 'Directeur');
+                            $directorName = \App\Helpers\SettingsHelper::get('director_name', '');
+                        @endphp
                         <div class="decision-section">
-                            <div class="decision-title">DÉCISION DU JURY:</div>
+                            <div class="decision-title">DECISION DU JURY:</div>
                             <div class="decision-result">
-                                {{ $moyenneGenerale >= 10 ? 'ADMIS(E)' : 'AJOURNÉ(E)' }}
+                                {{ $moyenneGenerale >= 10 ? 'ADMIS(E)' : 'AJOURNE(E)' }}
                             </div>
                             <div class="mt-4">
-                                @php
-                                    $directorTitle = \App\Helpers\SettingsHelper::get('director_title', 'Directeur');
-                                    $directorName = \App\Helpers\SettingsHelper::get('director_name', '');
-                                @endphp
-                                <div class="signature-title">Fait à Yamoussoukro, le {{ date('d/m/Y') }}</div>
+                                <div class="signature-title">Fait a {{ $config['school_city'] ?? 'Abidjan' }}, le {{ date('d/m/Y') }}</div>
                                 <div class="text-center">
                                     <div>{{ $directorTitle }}</div>
                                     <div class="signature-box"></div>
@@ -462,28 +439,26 @@
                     </div>
                 </div>
 
-                <!-- Observations -->
                 <div class="mt-4">
                     <div class="fw-bold">OBSERVATIONS:</div>
-                    <div style="min-height: 60px; border: 1px solid #000; padding: 10px;">
+                    <div style="min-height: 60px; border: 1px solid #d1d5db; padding: 10px; border-radius: 10px; background: #f9fafb;">
                         @if($moyenneGenerale >= 16)
-                            Excellent travail. L'étudiant a fait preuve d'excellence tout au long du semestre.
+                            Excellent travail. L'etudiant a fait preuve d'excellence tout au long du semestre.
                         @elseif($moyenneGenerale >= 14)
-                            Très bon travail. L'étudiant a fait preuve de sérieux et de régularité.
+                            Tres bon travail. L'etudiant a fait preuve de serieux et de regularite.
                         @elseif($moyenneGenerale >= 12)
-                            Bon travail. L'étudiant doit maintenir ses efforts.
+                            Bon travail. L'etudiant doit maintenir ses efforts.
                         @elseif($moyenneGenerale >= 10)
-                            Travail satisfaisant. L'étudiant doit redoubler d'efforts.
+                            Travail satisfaisant. L'etudiant doit redoubler d'efforts.
                         @else
-                            Travail insuffisant. L'étudiant doit considérablement améliorer ses résultats.
+                            Travail insuffisant. L'etudiant doit considerablement ameliorer ses resultats.
                         @endif
                     </div>
                 </div>
 
-                <!-- Pied de page -->
                 <footer class="bulletin-footer">
-                    <div>ESBTP Yamoussoukro - École Spéciale du Bâtiment et des Travaux Publics</div>
-                    <div>BP 1313 Yamoussoukro - Tél: 27 30 64 95 15 - www.esbtp.ci</div>
+                    <div>{{ $config['school_name'] ?? 'E.S.B.T.P' }} - {{ $config['school_city'] ?? 'Abidjan' }}, {{ $config['school_country'] ?? "Cote d'Ivoire" }}</div>
+                    <div>{{ $config['school_address'] ?? '' }} - Tel: {{ $config['school_phone'] ?? '' }}</div>
                 </footer>
             </div>
         </div>
@@ -492,7 +467,6 @@
 
 <script>
 function downloadPDF() {
-    // Redirection vers la route de téléchargement PDF
     @if(isset($etudiant) && isset($classe) && isset($anneeUniversitaire))
         window.open("{{ route('esbtp.bulletins.pdf-params', [
             'bulletin' => $etudiant->id,
@@ -501,7 +475,7 @@ function downloadPDF() {
             'annee_universitaire_id' => $anneeUniversitaire->id
         ]) }}", '_blank');
     @else
-        alert('Erreur: Impossible de générer le PDF. Données manquantes.');
+        alert('Erreur: Impossible de generer le PDF. Donnees manquantes.');
     @endif
 }
 </script>

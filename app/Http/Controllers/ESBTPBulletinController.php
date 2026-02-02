@@ -930,7 +930,7 @@ class ESBTPBulletinController extends Controller
 
             try {
                 Log::info('Chargement de la vue PDF avec le template configurable pour le bulletin #'.$bulletin->id);
-                $pdf = PDF::loadView('esbtp.bulletins.pdf-configurable', $data);
+                $pdf = PDF::loadView($this->getBulletinTemplateView(), $data);
 
                 // Configuration PDF avec format A4 et options optimisées
                 $paperFormat = \App\Helpers\SettingsHelper::get('bulletin_paper_format', 'A4');
@@ -2430,7 +2430,7 @@ class ESBTPBulletinController extends Controller
             $donnees['logoBase64'] = $logoBase64;
 
             // Utiliser exactement le même template que la preview admin
-            return view('esbtp.bulletins.pdf-configurable', $donnees);
+            return view($this->getBulletinTemplateView(), $donnees);
 
         } catch (\Exception $e) {
             // Gestion des erreurs de configuration
@@ -4126,7 +4126,7 @@ class ESBTPBulletinController extends Controller
             // Statistiques de la classe
             $totalEtudiants = ESBTPEtudiant::where('classe_id', $classe->id)->count();
 
-            return view('esbtp.bulletins.preview', compact(
+            return view($this->getBulletinPreviewView(), compact(
                 'etudiant',
                 'classe',
                 'anneeUniversitaire',
@@ -4186,7 +4186,7 @@ class ESBTPBulletinController extends Controller
             $logoBase64 = $this->prepareLogoBase64($donnees['settings']['school_logo'] ?? null);
             $donnees['logoBase64'] = $logoBase64;
 
-            return view('esbtp.bulletins.pdf-configurable', $donnees);
+            return view($this->getBulletinTemplateView(), $donnees);
 
         } catch (\Exception $e) {
             if (str_contains($e->getMessage(), 'Configuration bulletin manquante')) {
@@ -4461,7 +4461,7 @@ class ESBTPBulletinController extends Controller
             // Préparer les données pour la vue (utiliser le template pdf-configurable)
             $settings = $this->getPDFConfig();
 
-            return view('esbtp.bulletins.pdf-configurable', [
+            return view($this->getBulletinTemplateView(), [
                 'etudiant' => $etudiant,
                 'classe' => $classe,
                 'anneeUniversitaire' => $anneeUniversitaire,
@@ -4743,7 +4743,7 @@ class ESBTPBulletinController extends Controller
             $donnees['isPdfExport'] = true;
 
             // Générer le PDF avec le template unifié
-            $pdf = PDF::loadView('esbtp.bulletins.pdf-configurable', $donnees);
+            $pdf = PDF::loadView($this->getBulletinTemplateView(), $donnees);
             $pdf->setPaper('a4', 'portrait');
             $pdf->setOptions([
                 'dpi' => 150,
@@ -5333,7 +5333,7 @@ class ESBTPBulletinController extends Controller
             ]);
 
             // Générer le PDF avec le template configurable contenant les vraies infos ESBTP
-            $pdf = PDF::loadView('esbtp.bulletins.pdf-configurable', $data);
+            $pdf = PDF::loadView($this->getBulletinTemplateView(), $data);
             $pdf->setPaper('a4', 'portrait');
             $pdf->setOptions(['dpi' => 150, 'defaultFont' => 'sans-serif']);
 
@@ -7682,5 +7682,23 @@ class ESBTPBulletinController extends Controller
         }
 
         return $result;
+    }
+
+    private function getBulletinTemplateView(): string
+    {
+        $style = \App\Helpers\SettingsHelper::get('bulletin_style', 'yakro');
+
+        return $style === 'abidjan'
+            ? 'esbtp.bulletins.pdf-configurable-abidjan'
+            : 'esbtp.bulletins.pdf-configurable';
+    }
+
+    private function getBulletinPreviewView(): string
+    {
+        $style = \App\Helpers\SettingsHelper::get('bulletin_style', 'yakro');
+
+        return $style === 'abidjan'
+            ? 'esbtp.bulletins.preview-abidjan'
+            : 'esbtp.bulletins.preview';
     }
 }

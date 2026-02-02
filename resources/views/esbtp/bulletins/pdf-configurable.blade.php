@@ -842,11 +842,18 @@
         @endif
 
         @if(($settings['bulletin_show_signature'] ?? '1') == '1' || ($settings['bulletin_show_director_signature'] ?? '1') == '1')
+        @php
+            $directorTitle = $settings['director_title'] ?? \App\Helpers\SettingsHelper::get('director_title', 'Directeur');
+            $directorName = $settings['director_name'] ?? \App\Helpers\SettingsHelper::get('director_name', '');
+        @endphp
         <div class="signature-container">
             @if(($settings['bulletin_show_director_signature'] ?? '1') == '1')
             <div class="signature-box">
-                <div>Signature de la Directrice des Études</div>
+                <div>{{ $directorTitle }}</div>
                 <div class="signature-line"></div>
+                @if($directorName)
+                    <div style="margin-top: 6px; font-weight: bold;">{{ $directorName }}</div>
+                @endif
             </div>
             @endif
         </div>

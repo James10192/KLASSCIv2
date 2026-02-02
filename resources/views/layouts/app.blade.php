@@ -1903,6 +1903,10 @@
                                     <span class="menu-dot"></span>
                                     <span><i class="fas fa-user-shield me-2"></i>Rôles & Permissions</span>
                                 </a>
+                                <a href="{{ route('esbtp.bulletin-style.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.bulletin-style.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span><i class="fas fa-file-alt me-2"></i>Style Bulletin</span>
+                                </a>
                             </div>
                         </div>
                     @endif

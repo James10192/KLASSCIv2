@@ -1144,6 +1144,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::get('/roles-permissions', [\App\Http\Controllers\ESBTPRolePermissionConfigController::class, 'index'])->name('roles-permissions.index');
         Route::post('/roles-permissions', [\App\Http\Controllers\ESBTPRolePermissionConfigController::class, 'update'])->name('roles-permissions.update');
 
+        Route::get('/bulletin-style', [\App\Http\Controllers\ESBTP\ServiceTechniqueBulletinStyleController::class, 'index'])
+            ->name('bulletin-style.index');
+        Route::post('/bulletin-style', [\App\Http\Controllers\ESBTP\ServiceTechniqueBulletinStyleController::class, 'update'])
+            ->name('bulletin-style.update');
+
     });
 
     // Endpoints matricule utilisés par les inscriptions (superAdmin, secrétaire, coordinateur)
