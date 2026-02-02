@@ -71,91 +71,47 @@
         font-weight: 600;
         color: #1e293b;
     }
+
+    .form-input-moderne,
+    .form-select-moderne,
+    .form-textarea-moderne {
+        width: 100%;
+        padding: var(--space-sm);
+        border: 2px solid var(--border);
+        border-radius: var(--radius-medium);
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        background: var(--surface);
+        color: var(--text-primary);
+    }
+
+    .form-input-moderne:focus,
+    .form-select-moderne:focus,
+    .form-textarea-moderne:focus {
+        border-color: var(--primary);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+    }
+
     .teacher-availability-panel {
         margin-top: 24px;
-        padding: 16px;
+        padding: 1.5rem;
+        background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
         border-radius: 16px;
         border: 1px solid #e2e8f0;
-        background: #fff;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
     }
+
     .teacher-availability-panel .teacher-availability-grid {
-        display: grid;
-        grid-template-columns: 80px repeat(6, 1fr);
-        gap: 6px;
-        margin-top: 16px;
-    }
-    .teacher-availability-panel .teacher-availability-grid .grid-header,
-    .teacher-availability-panel .teacher-availability-grid .grid-time {
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-align: center;
-        padding: 6px;
-        border-radius: 8px;
-        background: #f1f5f9;
-        color: #475569;
-    }
-    .teacher-availability-panel .teacher-availability-grid .availability-cell {
-        height: 32px;
-        border-radius: 8px;
+        background: #fff;
+        border-radius: 12px;
+        padding: 0.75rem;
         border: 1px solid #e2e8f0;
+        box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12);
+    }
+
+    .teacher-availability-panel .availability-cell.unavailable {
         cursor: pointer;
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: #0f172a;
-        box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
-    }
-    .teacher-availability-panel .teacher-availability-grid .availability-cell.available {
-        background: #dcfce7;
-        border-color: #86efac;
-        color: #166534;
-    }
-    .teacher-availability-panel .teacher-availability-grid .availability-cell.available::after {
-        content: 'D';
-    }
-    .teacher-availability-panel .teacher-availability-grid .availability-cell.preferred {
-        background: #dbeafe;
-        border-color: #60a5fa;
-        color: #1e3a8a;
-    }
-    .teacher-availability-panel .teacher-availability-grid .availability-cell.preferred::after {
-        content: 'P';
-    }
-    .teacher-availability-panel .teacher-availability-grid .availability-cell.unavailable {
-        background: #fee2e2;
-        border-color: #fecaca;
-        color: #991b1b;
-    }
-    .teacher-availability-panel .teacher-availability-grid .availability-cell.unavailable::after {
-        content: 'I';
-    }
-    .teacher-availability-panel .teacher-availability-legend {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin-top: 12px;
-        font-size: 0.8rem;
-        color: #475569;
-    }
-    .teacher-availability-panel .teacher-availability-legend .legend-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        display: inline-block;
-        margin-right: 6px;
-    }
-    .teacher-availability-panel .teacher-availability-legend .legend-dot.available {
-        background: #22c55e;
-    }
-    .teacher-availability-panel .teacher-availability-legend .legend-dot.preferred {
-        background: #3b82f6;
-    }
-    .teacher-availability-panel .teacher-availability-legend .legend-dot.unavailable {
-        background: #ef4444;
     }
 </style>
 @endsection
@@ -710,7 +666,7 @@
                         <div class="col-lg-4">
                             <div class="form-group">
                                 <label class="form-label">Date d'embauche <span class="text-danger">*</span></label>
-                                <input type="text" name="date_embauche" id="teacher_hire_date" class="form-control js-date-input" placeholder="AAAA-MM-JJ" autocomplete="off" inputmode="numeric" required>
+                                <input type="text" name="date_embauche" id="teacher_hire_date" class="form-input-moderne" placeholder="JJ-MM-AAAA" required>
                             </div>
                         </div>
                         <div class="col-lg-4">
@@ -733,10 +689,22 @@
                             </div>
                         </div>
                         <div class="teacher-availability-grid" id="teacherAvailabilityGrid"></div>
-                        <div class="teacher-availability-legend">
-                            <span><span class="legend-dot available"></span>Disponible</span>
-                            <span><span class="legend-dot preferred"></span>Préféré</span>
-                            <span><span class="legend-dot unavailable"></span>Indisponible</span>
+                        <div class="availability-legend">
+                            <h6 class="legend-title"><i class="fas fa-palette me-2"></i>Légende :</h6>
+                            <div class="legend-items">
+                                <div class="legend-item">
+                                    <div class="legend-color preferred"><i class="fas fa-star"></i></div>
+                                    <span>Préféré</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color available"><i class="fas fa-check"></i></div>
+                                    <span>Disponible</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color unavailable"><i class="fas fa-ban"></i></div>
+                                    <span>Indisponible</span>
+                                </div>
+                            </div>
                         </div>
                         <div id="teacherAvailabilityInputs"></div>
                     </div>
@@ -807,14 +775,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    const teacherHireDate = document.getElementById('teacher_hire_date');
-    if (teacherHireDate && typeof flatpickr === 'function') {
-        flatpickr(teacherHireDate, {
+    const teacherHireDateInput = document.getElementById('teacher_hire_date');
+    if (teacherHireDateInput) {
+        flatpickr(teacherHireDateInput, {
             locale: "fr",
             dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "d-m-Y",
             allowInput: true
         });
     }
+
+
 
     if (isEmbedded) {
         if (!document.getElementById('sessionType').value) {
@@ -1719,28 +1691,33 @@ function initTeacherAvailabilityGrid() {
     }
 
     const days = [
-        { key: 1, label: 'Lun' },
-        { key: 2, label: 'Mar' },
-        { key: 3, label: 'Mer' },
-        { key: 4, label: 'Jeu' },
-        { key: 5, label: 'Ven' },
-        { key: 6, label: 'Sam' }
+        { key: 0, label: 'Lun' },
+        { key: 1, label: 'Mar' },
+        { key: 2, label: 'Mer' },
+        { key: 3, label: 'Jeu' },
+        { key: 4, label: 'Ven' },
+        { key: 5, label: 'Sam' }
     ];
     const hours = Array.from({ length: 10 }, (_, i) => 8 + i);
 
-    let html = '<div class="grid-header">Heure</div>';
+    let html = '';
+    html += '<div class="availability-header-row">';
+    html += '<div class="time-header">Heure</div>';
     days.forEach(day => {
-        html += `<div class="grid-header">${day.label}</div>`;
+        html += `<div class="day-header">${day.label}</div>`;
     });
+    html += '</div>';
 
     hours.forEach(hour => {
-        html += `<div class="grid-time">${hour}:00</div>`;
+        html += '<div class="availability-time-row">';
+        html += `<div class="time-label">${hour}:00</div>`;
         days.forEach(day => {
             const inputName = `availability[${day.key}_${hour}]`;
             const inputId = `availability_${day.key}_${hour}`;
             inputsContainer.insertAdjacentHTML('beforeend', `<input type="hidden" id="${inputId}" name="${inputName}" value="available">`);
-            html += `<div class="availability-cell available" data-day="${day.key}" data-hour="${hour}" data-input="${inputId}"></div>`;
+            html += `<div class="availability-cell available" data-day="${day.key}" data-hour="${hour}" data-input="${inputId}" title="Disponible"></div>`;
         });
+        html += '</div>';
     });
 
     grid.innerHTML = html;
