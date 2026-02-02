@@ -124,9 +124,10 @@ class ESBTPNoteController extends Controller
 
         $bulletinAverages = ($anneeCourante && $classeIds->isNotEmpty())
             ? DB::table('esbtp_bulletins')
-                ->select('classe_id', 'periode', DB::raw('avg(moyenne_generale) as moyenne'))
+                ->select('classe_id', 'periode', DB::raw('avg(moyenne_generale) as moyenne'), DB::raw('count(*) as total'))
                 ->where('annee_universitaire_id', $anneeCourante->id)
                 ->whereIn('classe_id', $classeIds)
+                ->whereNotNull('moyenne_generale')
                 ->groupBy('classe_id', 'periode')
                 ->get()
             : collect();
@@ -134,16 +135,20 @@ class ESBTPNoteController extends Controller
         $avgByClass = [];
         foreach ($bulletinAverages as $row) {
             $periodKey = $row->periode === '2' ? 'semestre2' : ($row->periode === '1' ? 'semestre1' : $row->periode);
-            $avgByClass[$row->classe_id][$periodKey] = floatval($row->moyenne);
+            $avgByClass[$row->classe_id][$periodKey] = [
+                'moyenne' => $row->total > 0 ? floatval($row->moyenne) : null,
+                'total' => (int) $row->total,
+            ];
         }
 
         $classStatsById = [];
         foreach ($classes as $classe) {
             $totalMatieres = (int) ($matieresTotals[$classe->id] ?? 0);
-            $configuredMatieres = (int) ($matieresConfigured[$classe->id] ?? 0);
+            $configuredMatieresRaw = (int) ($matieresConfigured[$classe->id] ?? 0);
+            $configuredMatieres = $totalMatieres > 0 ? min($configuredMatieresRaw, $totalMatieres) : 0;
             $completion = $totalMatieres > 0 ? round(($configuredMatieres / $totalMatieres) * 100) : 0;
-            $moyenneS1 = $avgByClass[$classe->id]['semestre1'] ?? null;
-            $moyenneS2 = $avgByClass[$classe->id]['semestre2'] ?? null;
+            $moyenneS1 = $avgByClass[$classe->id]['semestre1']['moyenne'] ?? null;
+            $moyenneS2 = $avgByClass[$classe->id]['semestre2']['moyenne'] ?? null;
             $annual = null;
             if ($moyenneS1 !== null && $moyenneS2 !== null) {
                 $totalWeight = $semesterWeights['semester1'] + $semesterWeights['semester2'];
@@ -155,6 +160,7 @@ class ESBTPNoteController extends Controller
             $classStatsById[$classe->id] = [
                 'matieres_total' => $totalMatieres,
                 'matieres_configured' => $configuredMatieres,
+                'matieres_configured_raw' => $configuredMatieresRaw,
                 'completion' => $completion,
                 'moyenne_s1' => $moyenneS1,
                 'moyenne_s2' => $moyenneS2,

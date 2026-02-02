@@ -354,6 +354,7 @@
                 </div>
             @endif
             @php
+                $bulletin = $bulletin ?? null;
                 $anneeAffichee = $bulletin && $bulletin->anneeUniversitaire ? $bulletin->anneeUniversitaire : $anneeUniversitaire;
             @endphp
             <div class="header">

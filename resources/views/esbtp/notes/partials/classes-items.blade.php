@@ -54,12 +54,17 @@
 
         <div class="notes-kpi-grid">
             <div class="notes-kpi-item">
-                <div class="notes-kpi-label">Matières</div>
+                <div class="notes-kpi-label">Matières liées</div>
                 <div class="notes-kpi-value">{{ $stats['matieres_total'] }}</div>
             </div>
             <div class="notes-kpi-item">
-                <div class="notes-kpi-label">Moyennes configurées</div>
-                <div class="notes-kpi-value">{{ $stats['matieres_configured'] }}</div>
+                <div class="notes-kpi-label">Matières évaluées</div>
+                <div class="notes-kpi-value">
+                    {{ $stats['matieres_configured'] }}
+                    @if($stats['matieres_total'] === 0 && ($stats['matieres_configured_raw'] ?? 0) > 0)
+                        <span class="badge bg-warning text-dark" style="font-size: 0.65rem; margin-left: 4px;">non liées</span>
+                    @endif
+                </div>
             </div>
             <div class="notes-kpi-item">
                 <div class="notes-kpi-label">Complétude</div>
@@ -71,6 +76,23 @@
             <span class="avg-chip">S1: {{ $stats['moyenne_s1'] !== null ? number_format($stats['moyenne_s1'], 2) : '--' }}</span>
             <span class="avg-chip">S2: {{ $stats['moyenne_s2'] !== null ? number_format($stats['moyenne_s2'], 2) : '--' }}</span>
             <span class="avg-chip highlight">Annuel: {{ $stats['moyenne_annuelle'] !== null ? number_format($stats['moyenne_annuelle'], 2) : '--' }}</span>
+        </div>
+
+        <div class="notes-kpi-grid">
+            <div class="notes-kpi-item">
+                <div class="notes-kpi-label">Effectif</div>
+                <div class="notes-kpi-value">{{ $classe->inscriptions_count ?? 0 }}</div>
+            </div>
+            <div class="notes-kpi-item">
+                <div class="notes-kpi-label">Capacité</div>
+                <div class="notes-kpi-value">{{ $classe->places_totales ?? 0 }}</div>
+            </div>
+            <div class="notes-kpi-item">
+                <div class="notes-kpi-label">Places dispo</div>
+                <div class="notes-kpi-value">
+                    {{ ($classe->places_totales ?? 0) - ($classe->inscriptions_count ?? 0) }}
+                </div>
+            </div>
         </div>
 
         <div class="class-card-footer">

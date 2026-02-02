@@ -58,6 +58,9 @@
         border-radius: var(--radius-small);
         margin-bottom: var(--space-md);
     }
+    .notes-kpi-grid + .notes-kpi-grid {
+        margin-top: var(--space-sm);
+    }
     .notes-kpi-item {
         text-align: center;
     }
