@@ -16,7 +16,7 @@
         box-shadow: var(--shadow-card);
         container-type: inline-size;
     }
-    
+
     .planning-nav .nav-tabs {
         border: none;
         background: rgba(var(--primary-rgb), 0.05);
@@ -26,11 +26,11 @@
         scrollbar-width: none;
         -ms-overflow-style: none;
     }
-    
+
     .planning-nav .nav-tabs::-webkit-scrollbar {
         display: none;
     }
-    
+
     .planning-nav .nav-link {
         border: none;
         color: var(--text-secondary);
@@ -43,14 +43,14 @@
         min-width: 120px;
         text-align: center;
     }
-    
+
     .planning-nav .nav-link.active {
         background: var(--primary);
         color: white;
         box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.3);
         transform: translateY(-2px);
     }
-    
+
     /* Stats améliorées avec micro-interactions */
     .stats-planning {
         display: grid;
@@ -58,7 +58,7 @@
         gap: var(--space-lg);
         margin-bottom: var(--space-xl);
     }
-    
+
     .stat-planning {
         text-align: center;
         position: relative;
@@ -66,12 +66,12 @@
         transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
     }
-    
+
     .stat-planning:hover {
         transform: translateY(-8px) scale(1.02);
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
     }
-    
+
     .stat-planning::before {
         content: '';
         position: absolute;
@@ -84,16 +84,16 @@
         transform-origin: left;
         transition: transform 0.6s ease;
     }
-    
+
     .stat-planning:hover::before {
         transform: scaleX(1);
     }
-    
+
     .stat-planning.primary::before { background: linear-gradient(90deg, var(--primary), #60a5fa); }
     .stat-planning.success::before { background: linear-gradient(90deg, var(--success), #34d399); }
     .stat-planning.warning::before { background: linear-gradient(90deg, var(--warning), #fbbf24); }
     .stat-planning.info::before { background: linear-gradient(90deg, var(--info), #38bdf8); }
-    
+
     .stat-icon-planning {
         width: 64px;
         height: 64px;
@@ -108,17 +108,17 @@
         border: 1px solid rgba(255, 255, 255, 0.3);
         transition: all 0.3s ease;
     }
-    
+
     .stat-planning:hover .stat-icon-planning {
         transform: scale(1.1);
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
     }
-    
+
     .stat-planning.primary .stat-icon-planning { color: var(--primary); }
     .stat-planning.success .stat-icon-planning { color: var(--success); }
     .stat-planning.warning .stat-icon-planning { color: var(--warning); }
     .stat-planning.info .stat-icon-planning { color: var(--info); }
-    
+
     /* Amélioration des valeurs statistiques */
     .stat-value {
         font-size: 2.5rem;
@@ -128,11 +128,11 @@
         margin-bottom: var(--space-sm);
         transition: all 0.3s ease;
     }
-    
+
     .stat-planning:hover .stat-value {
         transform: scale(1.05);
     }
-    
+
     .stat-label {
         font-size: var(--text-base);
         font-weight: 600;
@@ -140,7 +140,7 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
-    
+
     /* Trend indicators */
     .stat-trend {
         font-size: var(--text-sm);
@@ -150,17 +150,17 @@
         margin-top: var(--space-sm);
         display: inline-block;
     }
-    
+
     .stat-trend.positive {
         background: rgba(16, 185, 129, 0.1);
         color: var(--success);
     }
-    
+
     .stat-trend.neutral {
         background: rgba(99, 102, 241, 0.1);
         color: var(--primary);
     }
-    
+
     /* Quick Actions améliorées */
     .quick-actions {
         display: grid;
@@ -168,7 +168,7 @@
         gap: var(--space-xl);
         margin-top: var(--space-xl);
     }
-    
+
     .action-card {
         position: relative;
         transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -178,14 +178,14 @@
         color: inherit;
         border-radius: var(--radius-large);
     }
-    
+
     .action-card:hover {
         transform: translateY(-12px) scale(1.02);
         box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
         text-decoration: none;
         color: inherit;
     }
-    
+
     .action-card::after {
         content: '';
         position: absolute;
@@ -197,11 +197,11 @@
         transform: translate(50%, -50%);
         transition: all 0.4s ease;
     }
-    
+
     .action-card:hover::after {
         transform: translate(30%, -30%) scale(1.5);
     }
-    
+
     /* Sélecteurs améliorés */
     .filter-card {
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
@@ -213,7 +213,7 @@
         position: relative;
         overflow: hidden;
     }
-    
+
     .filter-card::before {
         content: '';
         position: absolute;
@@ -223,7 +223,7 @@
         height: 4px;
         background: linear-gradient(90deg, var(--primary), var(--secondary));
     }
-    
+
     .form-select-modern {
         border: 2px solid var(--border);
         border-radius: var(--radius-medium);
@@ -232,13 +232,13 @@
         transition: all 0.3s ease;
         background: var(--background);
     }
-    
+
     .form-select-modern:focus {
         border-color: var(--primary);
         box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
         transform: translateY(-2px);
     }
-    
+
     /* Context card pour sélection active */
     .context-active {
         background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.1), rgba(var(--secondary-rgb), 0.05));
@@ -249,7 +249,7 @@
         position: relative;
         overflow: hidden;
     }
-    
+
     .context-active::before {
         content: '';
         position: absolute;
@@ -260,14 +260,14 @@
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), transparent);
         pointer-events: none;
     }
-    
+
     .context-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: var(--space-lg);
         margin-top: var(--space-lg);
     }
-    
+
     .context-item {
         background: rgba(255, 255, 255, 0.8);
         padding: var(--space-md);
@@ -275,14 +275,14 @@
         border-left: 4px solid var(--primary);
         text-align: center;
     }
-    
+
     .context-value {
         font-size: var(--text-xl);
         font-weight: 700;
         color: var(--text-primary);
         display: block;
     }
-    
+
     .context-label {
         font-size: var(--text-sm);
         color: var(--text-secondary);
@@ -290,44 +290,44 @@
         letter-spacing: 0.5px;
         margin-top: var(--space-xs);
     }
-    
+
     /* Responsive amélioré */
     @container (max-width: 768px) {
         .stats-planning {
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: var(--space-md);
         }
-        
+
         .stat-icon-planning {
             width: 48px;
             height: 48px;
             font-size: 20px;
         }
-        
+
         .stat-value {
             font-size: 2rem;
         }
-        
+
         .quick-actions {
             grid-template-columns: 1fr;
             gap: var(--space-lg);
         }
-        
+
         .context-grid {
             grid-template-columns: repeat(2, 1fr);
         }
     }
-    
+
     @container (max-width: 480px) {
         .stats-planning {
             grid-template-columns: repeat(2, 1fr);
         }
-        
+
         .context-grid {
             grid-template-columns: 1fr;
         }
     }
-    
+
     /* Accessibilité et réduction de mouvement */
     @media (prefers-reduced-motion: reduce) {
         .stat-planning,
@@ -336,13 +336,13 @@
         .stat-value {
             transition: none;
         }
-        
+
         .stat-planning:hover,
         .action-card:hover {
             transform: none;
         }
     }
-    
+
     /* Indicateurs de statut */
     .status-indicator {
         position: absolute;
@@ -353,29 +353,29 @@
         border-radius: 50%;
         animation: pulse 2s infinite;
     }
-    
+
     .status-indicator.active { background: var(--success); }
     .status-indicator.pending { background: var(--warning); }
     .status-indicator.inactive { background: var(--danger); }
-    
+
     @keyframes pulse {
         0% { opacity: 1; }
         50% { opacity: 0.5; }
         100% { opacity: 1; }
     }
-    
+
     @media (prefers-reduced-motion: reduce) {
         .status-indicator {
             animation: none;
         }
     }
-    
+
     /* Action Cards Styles */
     .action-card {
         transform: translateY(-4px);
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
     }
-    
+
     .action-card::before {
         content: '';
         position: absolute;
@@ -387,11 +387,11 @@
         opacity: 0;
         transition: opacity 0.3s ease;
     }
-    
+
     .action-card:hover::before {
         opacity: 1;
     }
-    
+
     .action-icon {
         width: 40px;
         height: 40px;
@@ -403,14 +403,14 @@
         font-size: 18px;
         margin-bottom: var(--space-md);
     }
-    
+
     .action-icon.calendar { background: linear-gradient(135deg, #5e91de, #0453cb); }
     .action-icon.chart { background: linear-gradient(135deg, #06b6d4, #67e8f9); }
     .action-icon.users { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
     .action-icon.settings { background: linear-gradient(135deg, #ef4444, #f87171); }
 
     /* ================================
-       INTERFACE MODERNE DE FILTRAGE 
+       INTERFACE MODERNE DE FILTRAGE
     ================================ */
     .modern-filter-container {
         background: var(--surface);
@@ -905,7 +905,7 @@
     /* ================================
        STYLES POUR LES CARTES DE CONFIGURATION MODERNES
     ================================ */
-    
+
     /* Grid des combinaisons */
     .combinaisons-grid {
         display: grid;
@@ -913,7 +913,7 @@
         gap: 2rem;
         margin-top: 2rem;
     }
-    
+
     /* Carte de combinaison moderne */
     .combinaison-card {
         background: white;
@@ -926,12 +926,12 @@
         display: flex;
         flex-direction: column;
     }
-    
+
     .combinaison-card:hover {
         transform: translateY(-12px);
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.1);
     }
-    
+
     /* Header section avec logo et statut */
     .card-header-section {
         display: flex;
@@ -939,14 +939,14 @@
         align-items: flex-start;
         padding: 1.5rem 1.5rem 1rem 1.5rem;
     }
-    
+
     .card-logo-info {
         display: flex;
         align-items: center;
         gap: 1rem;
         flex: 1;
     }
-    
+
     .school-logo {
         width: 48px;
         height: 48px;
@@ -960,12 +960,12 @@
         flex-shrink: 0;
         box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.25);
     }
-    
+
     .filiere-niveau-info {
         flex: 1;
         min-width: 0;
     }
-    
+
     .filiere-name {
         font-size: 1rem;
         font-weight: 700;
@@ -973,13 +973,13 @@
         line-height: 1.2;
         margin-bottom: 0.25rem;
     }
-    
+
     .niveau-name {
         font-size: 0.875rem;
         color: var(--text-secondary);
         font-weight: 500;
     }
-    
+
     /* Badge de statut moderne */
     .status-badge {
         padding: 0.5rem;
@@ -992,34 +992,34 @@
         height: 32px;
         flex-shrink: 0;
     }
-    
+
     .status-badge.configured {
         background: rgba(16, 185, 129, 0.1);
         color: #059669;
     }
-    
+
     .status-badge.partial {
         background: rgba(245, 158, 11, 0.1);
         color: #d97706;
     }
-    
+
     .status-badge.not-configured {
         background: rgba(156, 163, 175, 0.1);
         color: #6b7280;
     }
-    
+
     /* Section du corps avec statistiques */
     .card-body-section {
         flex: 1;
         padding: 0 1.5rem 1rem 1.5rem;
     }
-    
+
     .stats-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 1rem;
     }
-    
+
     .stat-item {
         text-align: center;
         padding: 1rem;
@@ -1027,7 +1027,7 @@
         border-radius: 12px;
         border: 1px solid rgba(var(--primary-rgb), 0.08);
     }
-    
+
     .stat-number {
         font-size: 1.5rem;
         font-weight: 800;
@@ -1059,7 +1059,7 @@
         background: rgba(var(--primary-rgb), 0.12);
         color: var(--primary);
     }
-    
+
     .stat-description {
         font-size: 0.75rem;
         color: var(--text-secondary);
@@ -1068,13 +1068,13 @@
         letter-spacing: 0.5px;
         line-height: 1.2;
     }
-    
+
     /* Section footer avec bouton */
     .card-footer-section {
         padding: 1rem 1.5rem 1.5rem 1.5rem;
         margin-top: auto;
     }
-    
+
     .btn-configure-modern {
         width: 100%;
         background: var(--primary);
@@ -1091,24 +1091,24 @@
         justify-content: center;
         gap: 0.5rem;
     }
-    
+
     .btn-configure-modern:hover {
         background: var(--secondary);
         transform: translateY(-2px);
         box-shadow: 0 8px 20px rgba(var(--primary-rgb), 0.3);
     }
-    
+
     .btn-configure-modern:active {
         transform: translateY(0);
     }
-    
+
     /* Légende moderne */
     .legend-item {
         display: flex;
         align-items: center;
         gap: 0.5rem;
     }
-    
+
     .legend-badge {
         padding: 0.25rem;
         border-radius: 6px;
@@ -1119,26 +1119,26 @@
         min-width: 20px;
         height: 20px;
     }
-    
+
     .legend-badge.configured {
         background: rgba(16, 185, 129, 0.1);
         color: #059669;
     }
-    
+
     .legend-badge.partial {
         background: rgba(245, 158, 11, 0.1);
         color: #d97706;
     }
-    
+
     .legend-badge.not-configured {
         background: rgba(156, 163, 175, 0.1);
         color: #6b7280;
     }
-    
+
     /* ================================
        STYLES POUR LE MODAL DE CONFIGURATION
     ================================ */
-    
+
     .config-matiere-card {
         display: grid;
         grid-template-columns: 1fr auto;
@@ -1151,19 +1151,19 @@
         background: var(--surface);
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     }
-    
+
     .config-matiere-card:hover {
         border-color: var(--primary);
         box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.15);
         transform: translateY(-1px);
     }
-    
+
     .config-matiere-card.configured {
         border-color: var(--success);
         background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(16, 185, 129, 0.02));
         box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
     }
-    
+
     .config-matiere-card.configured::before {
         content: '✓';
         position: absolute;
@@ -1180,17 +1180,17 @@
         font-size: 12px;
         font-weight: bold;
     }
-    
+
     .config-matiere-card {
         position: relative;
     }
-    
+
     .matiere-details {
         display: flex;
         flex-direction: column;
         gap: var(--space-sm);
     }
-    
+
     .matiere-name {
         font-weight: 700;
         font-size: 1.1rem;
@@ -1198,14 +1198,14 @@
         margin: 0;
         line-height: 1.2;
     }
-    
+
     .matiere-description {
         font-size: var(--text-sm);
         color: var(--text-secondary);
         line-height: 1.4;
         margin: 0;
     }
-    
+
     .matiere-config {
         display: flex;
         flex-direction: column;
@@ -1216,13 +1216,13 @@
         border: 1px solid rgba(var(--primary-rgb), 0.1);
         border-radius: var(--radius-medium);
     }
-    
+
     .config-section {
         display: flex;
         flex-direction: column;
         gap: var(--space-xs);
     }
-    
+
     .config-label {
         font-size: 0.8rem;
         font-weight: 600;
@@ -1232,28 +1232,28 @@
         align-items: center;
         gap: var(--space-xs);
     }
-    
+
     .config-label i {
         color: var(--primary);
     }
-    
+
     .volume-config {
         display: flex;
         align-items: center;
         gap: var(--space-sm);
     }
-    
+
     .teacher-config .form-select {
         font-size: 0.85rem;
         border-radius: var(--radius-small);
         min-height: 38px;
     }
-    
+
     .volume-config-section {
         padding-bottom: var(--space-sm);
         border-bottom: 1px solid rgba(var(--border-rgb), 0.3);
     }
-    
+
     .teacher-config-section {
         padding-top: var(--space-sm);
     }
@@ -1390,13 +1390,13 @@
         width: 80px;
         text-align: center;
     }
-    
+
     .volume-unit {
         font-size: var(--text-sm);
         color: var(--text-secondary);
         font-weight: 500;
     }
-    
+
     /* Responsive pour les cartes modernes */
     @media (max-width: 992px) {
         .combinaisons-grid {
@@ -1404,78 +1404,78 @@
             gap: 1.5rem;
         }
     }
-    
+
     @media (max-width: 768px) {
         .combinaisons-grid {
             grid-template-columns: 1fr;
             gap: 1rem;
             margin-top: 1.5rem;
         }
-        
+
         .combinaison-card {
             min-height: 200px;
         }
-        
+
         .card-header-section {
             padding: 1.25rem 1.25rem 0.75rem 1.25rem;
         }
-        
+
         .card-body-section {
             padding: 0 1.25rem 0.75rem 1.25rem;
         }
-        
+
         .card-footer-section {
             padding: 0.75rem 1.25rem 1.25rem 1.25rem;
         }
-        
+
         .school-logo {
             width: 40px;
             height: 40px;
             font-size: 18px;
         }
-        
+
         .filiere-name {
             font-size: 0.9rem;
         }
-        
+
         .niveau-name {
             font-size: 0.8rem;
         }
-        
+
         .stat-number {
             font-size: 1.25rem;
         }
-        
+
         .stat-description {
             font-size: 0.7rem;
         }
     }
-    
+
     @media (max-width: 480px) {
         .combinaison-card {
             min-height: 180px;
         }
-        
+
         .stats-grid {
             grid-template-columns: 1fr;
             gap: 0.75rem;
         }
-        
+
         .stat-item {
             padding: 0.75rem;
         }
-        
+
         .card-logo-info {
             gap: 0.75rem;
         }
     }
-        
+
         .config-matiere-card {
             flex-direction: column;
             align-items: stretch;
             text-align: center;
         }
-        
+
         .matiere-config {
             justify-content: center;
         }
@@ -1487,8 +1487,8 @@
 <div class="dashboard-acasi">
     <div class="main-content">
         <!-- Header et navigation du planning -->
-        <x-planning-header 
-            title="Planning Général" 
+        <x-planning-header
+            title="Planning Général"
             subtitle="Vue d'ensemble du planning académique et organisation des cours"
             active-tab="overview"
             :annee-selectionnee="$anneeSelectionnee"
@@ -1512,7 +1512,7 @@
                         <div class="stat-label">Séances programmées</div>
                     </div>
                 </div>
-                
+
                 <div class="card-moderne stat-planning success">
                     <div class="p-lg">
                         <div class="stat-icon-planning">
@@ -1522,7 +1522,7 @@
                         <div class="stat-label">Heures de cours</div>
                     </div>
                 </div>
-                
+
                 <div class="card-moderne stat-planning warning">
                     <div class="p-lg">
                         <div class="stat-icon-planning">
@@ -1532,7 +1532,7 @@
                         <div class="stat-label">Classes actives</div>
                     </div>
                 </div>
-                
+
                 <div class="card-moderne stat-planning info">
                     <div class="p-lg">
                         <div class="stat-icon-planning">
@@ -1551,12 +1551,12 @@
                         <i class="fas fa-info-circle me-2"></i>
                         Informations Année {{ $anneeSelectionnee->name }}
                     </div>
-                    
+
                     <div class="row">
                         <div class="col-md-6">
                             <div class="info-item">
                                 <strong>Période :</strong>
-                                {{ \Carbon\Carbon::parse($anneeSelectionnee->start_date)->format('d/m/Y') }} - 
+                                {{ \Carbon\Carbon::parse($anneeSelectionnee->start_date)->format('d/m/Y') }} -
                                 {{ \Carbon\Carbon::parse($anneeSelectionnee->end_date)->format('d/m/Y') }}
                             </div>
                             <div class="info-item mt-2">
@@ -1589,7 +1589,7 @@
                     <p class="text-muted mb-0">Configurer les volumes horaires des matières par combinaison filière/niveau</p>
                 </div>
                 <div class="card-body">
-                    
+
                     <!-- Filtres et légende -->
                     <div class="mb-4">
                         <form method="GET" action="{{ route('esbtp.planning-general.index') }}" id="filters-form">
@@ -1669,11 +1669,11 @@
                     <!-- Cards des combinaisons filière/niveau -->
                     <div class="combinaisons-grid">
                         @foreach($combinaisons as $combinaison)
-                            <div class="combinaison-card {{ $combinaison['status_class'] }}" 
-                                 data-filiere-id="{{ $combinaison['filiere']->id }}" 
+                            <div class="combinaison-card {{ $combinaison['status_class'] }}"
+                                 data-filiere-id="{{ $combinaison['filiere']->id }}"
                                  data-niveau-id="{{ $combinaison['niveau']->id }}"
                                  data-combinaison-name="{{ $combinaison['name'] }}">
-                                
+
                                 <!-- Header avec logo école et badge statut -->
                                 <div class="card-header-section">
                                     <div class="card-logo-info">
@@ -1689,7 +1689,7 @@
                                         <i class="fas {{ $combinaison['status_icon'] }}"></i>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Corps de la carte avec statistiques -->
                                 <div class="card-body-section">
                                     <div class="stats-grid">
@@ -1721,13 +1721,13 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Footer avec bouton de configuration -->
                                 <div class="card-footer-section">
                                     @if($combinaison['total_matieres'] == 0)
                                         <!-- Bouton pour ajouter des matières à une combinaison vide -->
-                                        <button class="btn-configure-modern add-subjects-btn" 
-                                                data-bs-toggle="modal" 
+                                        <button class="btn-configure-modern add-subjects-btn"
+                                                data-bs-toggle="modal"
                                                 data-bs-target="#addMatieresModal"
                                                 data-empty-combo="true"
                                                 data-filiere-id="{{ $combinaison['filiere']->id }}"
@@ -1741,8 +1741,8 @@
                                         <!-- Combinaison avec matières : petit bouton + et grand bouton configurer -->
                                         <div class="d-flex gap-2 w-100">
                                             <!-- Petit bouton pour ajouter encore des matières -->
-                                            <button class="btn btn-success btn-sm add-subjects-btn" 
-                                                    data-bs-toggle="modal" 
+                                            <button class="btn btn-success btn-sm add-subjects-btn"
+                                                    data-bs-toggle="modal"
                                                     data-bs-target="#addMatieresModal"
                                                     data-empty-combo="true"
                                                     data-filiere-id="{{ $combinaison['filiere']->id }}"
@@ -1753,7 +1753,7 @@
                                                     style="min-width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                                                 <i class="fas fa-plus"></i>
                                             </button>
-                                            
+
                                             <!-- Grand bouton principal pour configurer les volumes -->
                                             <button class="btn-configure-modern flex-grow-1" data-bs-toggle="modal" data-bs-target="#volumeConfigModal">
                                                 <i class="fas fa-cog me-2"></i>Configurer les volumes
@@ -1775,7 +1775,7 @@
                         <i class="fas fa-bolt me-2"></i>
                         Actions Rapides
                     </div>
-                    
+
                     <div class="quick-actions">
                         <a href="{{ route('esbtp.planning-general.annuel', ['annee_id' => $anneeSelectionnee->id]) }}" class="action-card card-moderne text-decoration-none">
                             <div class="p-lg">
@@ -1786,7 +1786,7 @@
                                 <p class="text-muted mb-0">Visualisez le calendrier complet de l'année académique</p>
                             </div>
                         </a>
-                        
+
                         <a href="{{ route('esbtp.planning-general.repartition-matieres', ['annee_id' => $anneeSelectionnee->id]) }}" class="action-card card-moderne text-decoration-none">
                             <div class="p-lg">
                                 <div class="action-icon chart">
@@ -1796,7 +1796,7 @@
                                 <p class="text-muted mb-0">Analysez la distribution des heures par matière</p>
                             </div>
                         </a>
-                        
+
                         <a href="{{ route('esbtp.emploi-temps.index') }}" class="action-card card-moderne text-decoration-none">
                             <div class="p-lg">
                                 <div class="action-icon users">
@@ -1816,7 +1816,7 @@
                                 <p class="text-muted mb-0">Visualisez l'impact des émargements sur la progression</p>
                             </div>
                         </a>
-                        
+
                         @canany(['manage-planning', 'view-all-timetables'])
                         <a href="{{ route('esbtp.planning-general.coordinateur', ['annee_id' => $anneeSelectionnee->id]) }}" class="action-card card-moderne text-decoration-none">
                             <div class="p-lg">
@@ -1851,7 +1851,7 @@
                     <h6 class="mb-1">Combinaison sélectionnée</h6>
                     <p class="text-muted mb-0" id="config-combination-name">-</p>
                 </div>
-                
+
                 <form id="volume-config-form">
                     <input type="hidden" id="config-filiere-id" name="filiere_id">
                     <input type="hidden" id="config-niveau-id" name="niveau_id">
@@ -1868,12 +1868,12 @@
                             <small class="text-muted">Par défaut, la configuration s'applique au semestre 1.</small>
                         </div>
                     </div>
-                    
+
                     <div class="config-loading text-center py-4" id="config-loading" style="display: none;">
                         <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
                         <p>Chargement des matières...</p>
                     </div>
-                    
+
                     <div id="matieres-container">
                         <!-- Les matières seront chargées ici via AJAX -->
                     </div>
@@ -1906,25 +1906,25 @@
                 <!-- Navigation tabs -->
                 <ul class="nav nav-tabs mb-4" id="availabilityTabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" 
+                        <button class="nav-link active" id="overview-tab" data-bs-toggle="tab"
                                 data-bs-target="#overview" type="button" role="tab">
                             <i class="fas fa-chart-pie me-1"></i>Aperçu
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="calendar-tab" data-bs-toggle="tab" 
+                        <button class="nav-link" id="calendar-tab" data-bs-toggle="tab"
                                 data-bs-target="#calendar" type="button" role="tab">
                             <i class="fas fa-calendar-alt me-1"></i>Calendrier
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="conflicts-tab" data-bs-toggle="tab" 
+                        <button class="nav-link" id="conflicts-tab" data-bs-toggle="tab"
                                 data-bs-target="#conflicts" type="button" role="tab">
                             <i class="fas fa-exclamation-triangle me-1"></i>Conflits
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="preferences-tab" data-bs-toggle="tab" 
+                        <button class="nav-link" id="preferences-tab" data-bs-toggle="tab"
                                 data-bs-target="#preferences" type="button" role="tab">
                             <i class="fas fa-cog me-1"></i>Préférences
                         </button>
@@ -2019,7 +2019,7 @@
                                     </button>
                                 </div>
                             </div>
-                            
+
                             <!-- Vue calendrier hebdomadaire -->
                             <div class="weekly-calendar" id="weekly-calendar">
                                 <!-- Generated by JavaScript -->
@@ -2039,11 +2039,11 @@
                                     <i class="fas fa-sync-alt me-1"></i>Actualiser
                                 </button>
                             </div>
-                            
+
                             <div id="conflicts-list">
                                 <!-- Populated by JavaScript -->
                             </div>
-                            
+
                             <!-- Solutions suggérées -->
                             <div class="mt-4">
                                 <h6><i class="fas fa-lightbulb text-warning me-2"></i>Solutions suggérées</h6>
@@ -2060,16 +2060,16 @@
                             <div class="row">
                                 <div class="col-md-6">
                                     <h6><i class="fas fa-clock me-2"></i>Contraintes horaires</h6>
-                                    
+
                                     <div class="mb-3">
                                         <label class="form-label">Charge horaire maximale par semaine</label>
                                         <div class="input-group">
-                                            <input type="number" class="form-control" id="max-hours-per-week" 
+                                            <input type="number" class="form-control" id="max-hours-per-week"
                                                    min="1" max="40" value="20">
                                             <span class="input-group-text">heures</span>
                                         </div>
                                     </div>
-                                    
+
                                     <div class="mb-3">
                                         <label class="form-label">Heures de début préférées</label>
                                         <select class="form-select" id="preferred-start-times" multiple>
@@ -2084,18 +2084,18 @@
                                         </select>
                                     </div>
                                 </div>
-                                
+
                                 <div class="col-md-6">
                                     <h6><i class="fas fa-calendar-times me-2"></i>Indisponibilités</h6>
-                                    
+
                                     <!-- Jours indisponibles -->
                                     <div class="mb-3">
                                         <label class="form-label">Jours non disponibles</label>
                                         <div class="days-selector">
                                             @foreach(['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'] as $day)
                                                 <div class="form-check form-check-inline">
-                                                    <input class="form-check-input" type="checkbox" 
-                                                           id="unavailable-{{ strtolower($day) }}" 
+                                                    <input class="form-check-input" type="checkbox"
+                                                           id="unavailable-{{ strtolower($day) }}"
                                                            value="{{ strtolower($day) }}">
                                                     <label class="form-check-label" for="unavailable-{{ strtolower($day) }}">
                                                         {{ $day }}
@@ -2104,7 +2104,7 @@
                                             @endforeach
                                         </div>
                                     </div>
-                                    
+
                                     <!-- Créneaux spécifiques indisponibles -->
                                     <div class="mb-3">
                                         <label class="form-label">Créneaux spécifiques indisponibles</label>
@@ -2152,7 +2152,7 @@
                 <form id="configureLiaisonsForm">
                     @csrf
                     <input type="hidden" id="modal-matiere-id" name="matiere_id">
-                    
+
                     <div class="row">
                         <!-- Filières disponibles -->
                         <div class="col-md-6">
@@ -2168,7 +2168,7 @@
                                         <div id="filieres-list" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-light); border-radius: 8px; padding: 1rem; background: var(--bg-light);">
                                             @foreach(\App\Models\ESBTPFiliere::where('is_active', true)->get() as $filiere)
                                             <div class="form-check mb-3 p-2" style="border-radius: 6px; transition: all 0.2s ease;">
-                                                <input class="form-check-input filiere-checkbox" type="checkbox" 
+                                                <input class="form-check-input filiere-checkbox" type="checkbox"
                                                        value="{{ $filiere->id }}" id="filiere-{{ $filiere->id }}" name="filieres[]"
                                                        style="margin-top: 0.35rem;">
                                                 <label class="form-check-label" for="filiere-{{ $filiere->id }}" style="cursor: pointer; width: 100%;">
@@ -2203,7 +2203,7 @@
                                         <div id="niveaux-list" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-light); border-radius: 8px; padding: 1rem; background: var(--bg-light);">
                                             @foreach(\App\Models\ESBTPNiveauEtude::where('is_active', true)->get() as $niveau)
                                             <div class="form-check mb-3 p-2" style="border-radius: 6px; transition: all 0.2s ease;">
-                                                <input class="form-check-input niveau-checkbox" type="checkbox" 
+                                                <input class="form-check-input niveau-checkbox" type="checkbox"
                                                        value="{{ $niveau->id }}" id="niveau-{{ $niveau->id }}" name="niveaux[]"
                                                        style="margin-top: 0.35rem;">
                                                 <label class="form-check-label" for="niveau-{{ $niveau->id }}" style="cursor: pointer; width: 100%;">
@@ -2249,7 +2249,7 @@
                                     <div id="matieres-list" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-light); border-radius: 8px; padding: 1rem; background: var(--bg-light);">
                                         <!-- Les matières seront chargées ici dynamiquement -->
                                     </div>
-                                    
+
                                     <!-- Actions de sélection rapide -->
                                     <div class="mt-3 d-flex justify-content-between align-items-center">
                                         <div class="text-muted">
@@ -2312,6 +2312,103 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de création rapide d'enseignant (configuration volumes horaires) -->
+<div class="modal fade" id="teacherCreateModal" tabindex="-1" aria-labelledby="teacherCreateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="teacherCreateModalLabel">
+                    <i class="fas fa-user-plus me-2"></i>Créer un enseignant
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="teacherCreateFormPlanning" action="{{ route('esbtp.enseignants.quick-create') }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="alert alert-danger" id="teacherCreateErrorsPlanning" style="display: none;"></div>
+
+                    <div class="alert alert-info small mb-3">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Cet enseignant sera créé sans rattachement au planning général.
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="text-muted small">
+                            Matière en cours de configuration :
+                            <strong id="teacher_create_matiere_label">-</strong>
+                        </div>
+                    </div>
+
+                    @php
+                        $teacherDepartments = \App\Models\ESBTPDepartment::where('is_active', true)->orderBy('name')->get();
+                    @endphp
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nom complet <span class="text-danger">*</span></label>
+                            <input type="text" name="name" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Téléphone</label>
+                            <input type="text" name="phone" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Spécialisation <span class="text-danger">*</span></label>
+                            <input type="text" name="specialization" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Département <span class="text-danger">*</span></label>
+                            <select name="department_id" class="form-select" required>
+                                <option value="">Sélectionner</option>
+                                @foreach($teacherDepartments as $department)
+                                    <option value="{{ $department->id }}">{{ $department->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Type de contrat <span class="text-danger">*</span></label>
+                            <select name="type_contrat" class="form-select" required>
+                                <option value="">Sélectionner</option>
+                                <option value="permanent">Permanent</option>
+                                <option value="temporaire">Temporaire</option>
+                                <option value="vacataire">Vacataire</option>
+                                <option value="consultant">Consultant</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Statut d'emploi <span class="text-danger">*</span></label>
+                            <select name="statut_emploi" class="form-select" required>
+                                <option value="">Sélectionner</option>
+                                <option value="temps_plein">Temps Plein</option>
+                                <option value="temps_partiel">Temps Partiel</option>
+                                <option value="vacations">Vacations</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Date d'embauche <span class="text-danger">*</span></label>
+                            <input type="date" name="date_embauche" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Charge horaire max/semaine</label>
+                            <input type="number" name="charge_horaire_max_semaine" class="form-control" min="1" max="60" value="40">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary" id="teacherCreateSubmitPlanning">
+                        <i class="fas fa-save me-1"></i>Créer l'enseignant
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -2324,7 +2421,7 @@ $(function() {
         threshold: 0.1,
         rootMargin: '0px 0px -50px 0px'
     };
-    
+
     const observer = new IntersectionObserver(function(entries) {
         entries.forEach((entry, index) => {
             if (entry.isIntersecting) {
@@ -2335,7 +2432,7 @@ $(function() {
             }
         });
     }, observerOptions);
-    
+
     // Observer toutes les cartes
     $('.card-moderne').each(function() {
         $(this).css({
@@ -2349,24 +2446,24 @@ $(function() {
     // ================================
     // CONFIGURATION DES VOLUMES HORAIRES
     // ================================
-    
+
     // Variables globales pour le modal
     let currentFiliereId = null;
     let currentNiveauId = null;
     let currentCombinaisonName = '';
-    
+
     // Ouverture du modal de configuration
     $(document).on('click', '.btn-configure-modern', function() {
         const $card = $(this).closest('.combinaison-card');
         currentFiliereId = $card.data('filiere-id');
         currentNiveauId = $card.data('niveau-id');
         currentCombinaisonName = $card.data('combinaison-name');
-        
+
         // Mettre à jour le titre du modal
         $('#config-combination-name').text(currentCombinaisonName);
         $('#config-filiere-id').val(currentFiliereId);
         $('#config-niveau-id').val(currentNiveauId);
-        
+
         // Charger les matières pour cette combinaison
         loadMatieresForConfiguration();
     });
@@ -2376,20 +2473,106 @@ $(function() {
             loadMatieresForConfiguration();
         }
     });
-    
+
+    // ================================
+    // CRÉATION RAPIDE D'ENSEIGNANT (AJAX)
+    // ================================
+    $(document).on('click', '.create-teacher-btn', function() {
+        const $card = $(this).closest('.config-matiere-card');
+        const matiereName = $card.find('.matiere-name').text().trim();
+        $('#teacher_create_matiere_label').text(matiereName || '-');
+        $('#teacherCreateErrorsPlanning').hide().html('');
+        const form = document.getElementById('teacherCreateFormPlanning');
+        if (form) {
+            form.reset();
+        }
+    });
+
+    $(document).on('submit', '#teacherCreateFormPlanning', function(event) {
+        event.preventDefault();
+        const form = event.target;
+        const submitBtn = document.getElementById('teacherCreateSubmitPlanning');
+        const errorBox = document.getElementById('teacherCreateErrorsPlanning');
+        if (!form || !submitBtn) {
+            return;
+        }
+
+        if (errorBox) {
+            errorBox.style.display = 'none';
+            errorBox.innerHTML = '';
+        }
+
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Création...';
+
+        const formData = new FormData(form);
+
+        fetch(form.getAttribute('action'), {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            body: formData
+        })
+            .then(async response => {
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || !payload.success) {
+                    throw payload;
+                }
+                return payload;
+            })
+            .then(() => {
+                showAlert('success', "Enseignant créé avec succès.");
+                if (currentFiliereId && currentNiveauId && $('#config-annee-id').val()) {
+                    loadMatieresForConfiguration();
+                }
+                const modalElement = document.getElementById('teacherCreateModal');
+                if (modalElement) {
+                    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                }
+                form.reset();
+            })
+            .catch(error => {
+                if (!errorBox) {
+                    showAlert('error', "Impossible de créer l'enseignant.");
+                    return;
+                }
+                const messages = [];
+                if (error && error.errors) {
+                    Object.values(error.errors).forEach(list => {
+                        list.forEach(item => messages.push(`<li>${item}</li>`));
+                    });
+                }
+                if (messages.length === 0) {
+                    messages.push("<li>Impossible de créer l'enseignant. Vérifiez les champs.</li>");
+                }
+                errorBox.innerHTML = `<ul class="mb-0">${messages.join('')}</ul>`;
+                errorBox.style.display = 'block';
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            });
+    });
+
     // Fonction pour charger les matières via AJAX
     function loadMatieresForConfiguration() {
         const anneeId = $('#config-annee-id').val();
-        
+
         if (!currentFiliereId || !currentNiveauId || !anneeId) {
             showAlert('error', 'Données manquantes pour charger les matières');
             return;
         }
-        
+
         // Afficher le loading
         $('#config-loading').show();
         $('#matieres-container').hide();
-        
+
         $.ajax({
             url: '{{ route("esbtp.planning-general.get-matieres-configuration") }}',
             method: 'GET',
@@ -2401,7 +2584,7 @@ $(function() {
             },
             success: function(response) {
                 $('#config-loading').hide();
-                
+
                 if (response.success) {
                     $('#matieres-container').html(response.html).show();
 
@@ -2675,7 +2858,7 @@ $(function() {
             }
         });
     }
-    
+
     // Sauvegarde de la configuration
     $('#save-volume-config').on('click', function() {
         const $btn = $(this);
@@ -2769,10 +2952,10 @@ $(function() {
         }
 
         debugLog('✅ Validation OK, envoi de la requête AJAX...');
-        
+
         // Afficher loading sur le bouton
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Sauvegarde...');
-        
+
         $.ajax({
             url: '{{ route("esbtp.planning-general.save-volume-configuration") }}',
             method: 'POST',
@@ -2828,7 +3011,7 @@ $(function() {
             }
         });
     });
-    
+
     // Reset du modal à la fermeture
     $('#volumeConfigModal').on('hidden.bs.modal', function() {
         $('#matieres-container').empty();
@@ -2837,12 +3020,12 @@ $(function() {
         currentNiveauId = null;
         currentCombinaisonName = '';
     });
-    
+
     // Fonction utilitaire pour afficher les alertes
     function showAlert(type, message) {
         const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
         const iconClass = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle';
-        
+
         const $alert = $(`
             <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
                 <i class="fas ${iconClass} me-2"></i>
@@ -2850,10 +3033,10 @@ $(function() {
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         `);
-        
+
         // Insérer l'alerte au début du contenu principal
         $('.main-content').prepend($alert);
-        
+
         // Auto-hide après 5 secondes
         setTimeout(() => {
             $alert.alert('close');
@@ -2864,30 +3047,30 @@ $(function() {
     // ================================
     // MODAL DE DISPONIBILITÉ ENSEIGNANT
     // ================================
-    
+
     let currentTeacherId = null;
     let currentWeekStart = new Date();
-    
+
     // Ouverture du modal
     $('#teacherAvailabilityModal').on('show.bs.modal', function(e) {
         const $trigger = $(e.relatedTarget);
         currentTeacherId = $trigger.data('teacher-id');
         const teacherName = $trigger.data('teacher-name');
         const planificationId = $trigger.data('planification-id');
-        
+
         // Mise à jour des noms d'enseignant dans le modal
         $('#modal-teacher-name, #calendar-teacher-name').text(teacherName);
-        
+
         // Charger les données de l'enseignant
         loadTeacherData(currentTeacherId);
-        
+
         // Initialiser la vue calendrier
         initializeWeeklyCalendar();
-        
+
         // Reset sur le premier tab
         $('#overview-tab').trigger('click');
     });
-    
+
     // Fonction pour charger les données de l'enseignant
     function loadTeacherData(teacherId) {
         // Simulation des données - à remplacer par un appel AJAX réel
@@ -2915,17 +3098,17 @@ $(function() {
                 }
             ]
         };
-        
+
         // Mise à jour des KPIs
         $('#total-hours').text(mockData.totalHours + 'h');
         $('#available-slots').text(mockData.availableSlots);
         $('#conflicts-count').text(mockData.conflictsCount);
         $('#load-percentage').text(mockData.loadPercentage + '%');
-        
+
         // Mise à jour du tableau des matières
         const $tbody = $('#assigned-subjects-table tbody');
         $tbody.empty();
-        
+
         mockData.subjects.forEach(subject => {
             const $row = $(`
                 <tr>
@@ -2934,9 +3117,9 @@ $(function() {
                     <td>${subject.hours}</td>
                     <td>
                         <div class="progress" style="height: 20px;">
-                            <div class="progress-bar" role="progressbar" 
-                                 style="width: ${subject.progress}%" 
-                                 aria-valuenow="${subject.progress}" 
+                            <div class="progress-bar" role="progressbar"
+                                 style="width: ${subject.progress}%"
+                                 aria-valuenow="${subject.progress}"
                                  aria-valuemin="0" aria-valuemax="100">
                                 ${subject.progress}%
                             </div>
@@ -2952,16 +3135,16 @@ $(function() {
             $tbody.append($row);
         });
     }
-    
+
     // Initialisation du calendrier hebdomadaire
     function initializeWeeklyCalendar() {
         generateWeeklyCalendar();
     }
-    
+
     // Génération du calendrier
     function generateWeeklyCalendar() {
         const $calendar = $('#weekly-calendar');
-        
+
         // Header avec les jours
         const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
         let headerHtml = '<div class="calendar-header-row">';
@@ -2970,52 +3153,52 @@ $(function() {
             headerHtml += `<div class="calendar-day-cell">${day}</div>`;
         });
         headerHtml += '</div>';
-        
+
         // Slots horaires (8h-18h) - cohérence avec les pages enseignants
         let slotsHtml = '';
         for (let hour = 8; hour <= 18; hour++) {
             slotsHtml += '<div class="calendar-time-slot">';
             slotsHtml += `<div class="time-label">${hour.toString().padStart(2, '0')}:00</div>`;
-            
+
             for (let day = 0; day < 6; day++) {
                 slotsHtml += `<div class="calendar-cell" data-hour="${hour}" data-day="${day}">`;
-                
+
                 // Exemple de cours (à remplacer par des données réelles)
                 if (hour === 9 && day === 0) {
                     slotsHtml += '<div class="course-block">Mathématiques<br>L1-Info</div>';
                 } else if (hour === 14 && day === 2) {
                     slotsHtml += '<div class="course-block conflict">Algorithmes<br>L2-Info<br><small>CONFLIT!</small></div>';
                 }
-                
+
                 slotsHtml += '</div>';
             }
             slotsHtml += '</div>';
         }
-        
+
         $calendar.html(headerHtml + slotsHtml);
     }
-    
+
     // Navigation semaine précédente/suivante
     $('#prev-week').on('click', function() {
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
         generateWeeklyCalendar();
     });
-    
+
     $('#next-week').on('click', function() {
         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
         generateWeeklyCalendar();
     });
-    
+
     $('#today-btn').on('click', function() {
         currentWeekStart = new Date();
         generateWeeklyCalendar();
     });
-    
+
     // Gestion des conflits
     $('#refresh-conflicts').on('click', function() {
         loadConflicts();
     });
-    
+
     function loadConflicts() {
         const mockConflicts = [
             {
@@ -3030,10 +3213,10 @@ $(function() {
                 ]
             }
         ];
-        
+
         const $conflictsList = $('#conflicts-list');
         $conflictsList.empty();
-        
+
         if (mockConflicts.length === 0) {
             $conflictsList.html(`
                 <div class="text-center text-success py-4">
@@ -3044,7 +3227,7 @@ $(function() {
             `);
             return;
         }
-        
+
         mockConflicts.forEach(conflict => {
             const $conflict = $(`
                 <div class="conflict-item">
@@ -3062,11 +3245,11 @@ $(function() {
             `);
             $conflictsList.append($conflict);
         });
-        
+
         // Suggestions
         const $solutions = $('#suggested-solutions');
         $solutions.empty();
-        
+
         mockConflicts[0].suggestions.forEach(suggestion => {
             const $suggestion = $(`
                 <div class="suggestion-card">
@@ -3077,7 +3260,7 @@ $(function() {
             $solutions.append($suggestion);
         });
     }
-    
+
     // Sauvegarde des préférences
     $('#save-preferences').on('click', function() {
         const preferences = {
@@ -3087,10 +3270,10 @@ $(function() {
                 return $(this).val();
             }).get()
         };
-        
+
         // Simulation de sauvegarde
         $(this).html('<i class="fas fa-spinner fa-spin me-1"></i>Sauvegarde...');
-        
+
         setTimeout(() => {
             $(this).html('<i class="fas fa-check me-1"></i>Sauvegardé!');
             setTimeout(() => {
@@ -3098,7 +3281,7 @@ $(function() {
             }, 2000);
         }, 1000);
     });
-    
+
     // Ajout de créneaux d'indisponibilité
     $('#add-unavailability').on('click', function() {
         const $container = $('#specific-unavailabilities');
@@ -3131,14 +3314,14 @@ $(function() {
         `);
         $container.append($newSlot);
     });
-    
+
     // Suppression de créneaux d'indisponibilité
     $(document).on('click', '.remove-unavailability', function() {
         $(this).closest('.unavailability-slot').remove();
     });
-    
+
     // ===== GESTION DU MODAL D'AJOUT DE MATIÈRES =====
-    
+
     // Ouvrir le modal et charger les données
     $('#addMatieresModal').on('show.bs.modal', function (event) {
         debugLog('Modal addMatieresModal ouvert !');
@@ -3149,15 +3332,15 @@ $(function() {
         const niveauId = button.getAttribute('data-niveau-id');
         const filiereName = button.getAttribute('data-filiere-name');
         const niveauName = button.getAttribute('data-niveau-name');
-        
+
         debugLog('Params:', {isEmptyCombo, filiereId, niveauId, filiereName, niveauName});
-        
+
         if (isEmptyCombo === 'true') {
             // Mode ajout à combinaison vide
             $('#modal-matiere-name').text(`Combinaison ${filiereName} + ${niveauName}`);
             $('#modal-matiere-id').val('empty-combo');
             // Ce modal a déjà le bon titre, pas besoin de le changer
-            
+
             // Pré-sélectionner et DÉSACTIVER la filière et le niveau (combinaison fixe)
             $('.filiere-checkbox, .niveau-checkbox').prop('checked', false).prop('disabled', true);
             if (filiereId) {
@@ -3166,19 +3349,19 @@ $(function() {
             if (niveauId) {
                 $(`#niveau-${niveauId}`).prop('checked', true);
             }
-            
+
             // Changer les textes et sous-titres
             $('#filiere-subtitle').text('Filière sélectionnée (fixe)');
             $('#niveau-subtitle').text('Niveau sélectionné (fixe)');
             $('#addMatieresModalLabel').html('<i class="fas fa-plus me-2"></i>Ajouter matières à la combinaison');
             $('#save-liaisons-btn').html('<i class="fas fa-plus me-1"></i>Ajouter les matières sélectionnées');
-            
+
             // Afficher toutes les matières disponibles
             loadAvailableMatieres(filiereId, niveauId);
-            
+
             // Masquer l'aperçu des combinaisons (pas nécessaire en mode fixe)
             $('#combinations-preview').parent().parent().hide();
-            
+
             // Stocker les IDs pour les boutons d'action
             window.currentFiliereId = filiereId;
             window.currentNiveauId = niveauId;
@@ -3191,10 +3374,10 @@ $(function() {
     function loadAvailableMatieres(filiereId, niveauId) {
         const matieresListDiv = $('#matieres-list');
         const matieresContainer = $('#matieres-selection-container');
-        
+
         // Afficher le conteneur
         matieresContainer.show();
-        
+
         // Afficher un loader pendant le chargement
         matieresListDiv.html(`
             <div class="d-flex justify-content-center align-items-center py-4">
@@ -3204,7 +3387,7 @@ $(function() {
                 <span>Chargement des matières disponibles...</span>
             </div>
         `);
-        
+
         fetch(`/esbtp/matieres/available-for-combination?filiere_id=${filiereId}&niveau_id=${niveauId}`)
             .then(response => response.json())
             .then(data => {
@@ -3214,10 +3397,10 @@ $(function() {
                         const isLinked = matiere.is_already_linked;
                         const cardClass = isLinked ? 'border-success bg-light-success' : '';
                         const statusBadge = isLinked ? '<span class="badge bg-success ms-2"><i class="fas fa-check"></i> Déjà assignée</span>' : '';
-                        
+
                         matieresHtml += `
                             <div class="form-check mb-3 p-2 ${cardClass}" style="border-radius: 6px; transition: all 0.2s ease; border: 1px solid ${isLinked ? '#198754' : 'var(--border-light)'};">
-                                <input class="form-check-input matiere-checkbox" type="checkbox" 
+                                <input class="form-check-input matiere-checkbox" type="checkbox"
                                        value="${matiere.id}" id="matiere-${matiere.id}" name="selected_matieres[]"
                                        style="margin-top: 0.35rem;" ${isLinked ? 'checked' : ''}>
                                 <label class="form-check-label" for="matiere-${matiere.id}" style="cursor: pointer; width: 100%;">
@@ -3228,7 +3411,7 @@ $(function() {
                                             ${statusBadge}
                                         </div>
                                         <div class="text-muted small">
-                                            ${matiere.coefficient ? `Coeff: ${matiere.coefficient}` : ''} 
+                                            ${matiere.coefficient ? `Coeff: ${matiere.coefficient}` : ''}
                                             ${matiere.total_heures ? `• ${matiere.total_heures}h` : ''}
                                         </div>
                                     </div>
@@ -3262,7 +3445,7 @@ $(function() {
     function updateCombinationsPreview() {
         const selectedFilieres = [];
         const selectedNiveaux = [];
-        
+
         $('.filiere-checkbox:checked').each(function() {
             const label = $(this).next('label').find('span.font-semibold').text();
             selectedFilieres.push({
@@ -3270,7 +3453,7 @@ $(function() {
                 name: label
             });
         });
-        
+
         $('.niveau-checkbox:checked').each(function() {
             const label = $(this).next('label').find('span.font-semibold').text();
             selectedNiveaux.push({
@@ -3278,9 +3461,9 @@ $(function() {
                 name: label
             });
         });
-        
+
         const previewDiv = $('#combinations-preview');
-        
+
         if (selectedFilieres.length === 0 || selectedNiveaux.length === 0) {
             previewDiv.html(`
                 <div class="d-flex align-items-center" style="color: #0369a1;">
@@ -3295,7 +3478,7 @@ $(function() {
             });
             return;
         }
-        
+
         let combinationsHtml = `
             <div class="d-flex align-items-center mb-3">
                 <i class="fas fa-check-circle me-2" style="color: #059669;"></i>
@@ -3303,7 +3486,7 @@ $(function() {
             </div>
             <div class="d-flex flex-wrap gap-2">
         `;
-        
+
         selectedFilieres.forEach(filiere => {
             selectedNiveaux.forEach(niveau => {
                 combinationsHtml += `
@@ -3313,9 +3496,9 @@ $(function() {
                 `;
             });
         });
-        
+
         combinationsHtml += '</div>';
-        
+
         previewDiv.html(combinationsHtml).css({
             'background': '#f0f9f0',
             'border': '1px solid #059669',
@@ -3332,7 +3515,7 @@ $(function() {
         const matiereId = $('#modal-matiere-id').val();
         const saveBtn = $(this);
         const originalText = saveBtn.html();
-        
+
         if (matiereId === 'empty-combo') {
             // Mode ajout de matières à combinaison vide
             const selectedMatieres = $('.matiere-checkbox:checked').map(function() {
@@ -3344,20 +3527,20 @@ $(function() {
             const selectedNiveaux = $('.niveau-checkbox:checked').map(function() {
                 return $(this).val();
             }).get();
-            
+
             if (selectedMatieres.length === 0) {
                 alert('Veuillez sélectionner au moins une matière.');
                 return;
             }
-            
+
             if (selectedFilieres.length === 0 || selectedNiveaux.length === 0) {
                 alert('Veuillez sélectionner au moins une filière et un niveau.');
                 return;
             }
-            
+
             // Désactiver le bouton pendant la sauvegarde
             saveBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Ajout en cours...');
-            
+
             fetch('/esbtp/matieres/add-to-combination', {
                 method: 'POST',
                 headers: {
@@ -3375,7 +3558,7 @@ $(function() {
                 if (data.success) {
                     // Fermer le modal
                     $('#addMatieresModal').modal('hide');
-                    
+
                     // Afficher message de succès et recharger la page
                     showAlert('success', data.message);
                     setTimeout(() => {
