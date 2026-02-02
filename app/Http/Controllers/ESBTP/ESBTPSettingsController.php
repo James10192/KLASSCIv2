@@ -69,6 +69,28 @@ class ESBTPSettingsController extends Controller
                 );
             }
 
+            $bulletinSemesterDefaults = [
+                'bulletin_semester1_weight' => '50',
+                'bulletin_semester2_weight' => '50',
+            ];
+
+            foreach ($bulletinSemesterDefaults as $key => $defaultValue) {
+                Setting::firstOrCreate(
+                    ['key' => $key],
+                    [
+                        'value' => $defaultValue,
+                        'type' => 'integer',
+                        'group' => 'bulletin',
+                        'category' => 'bulletin',
+                        'description' => 'Ponderation des semestres',
+                        'is_required' => false,
+                        'default_value' => $defaultValue,
+                        'validation_rules' => ['nullable', 'integer', 'min:0', 'max:100'],
+                        'sort_order' => 120
+                    ]
+                );
+            }
+
             // Créer une sauvegarde automatique avant la mise à jour
             $backup = SettingsBackup::create([
                 'backup_name' => 'Auto Backup - ' . now()->format('Y-m-d H:i:s'),

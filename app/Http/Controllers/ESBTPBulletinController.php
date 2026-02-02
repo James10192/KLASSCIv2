@@ -899,6 +899,26 @@ class ESBTPBulletinController extends Controller
                 'bulletin_show_print_button' => \App\Helpers\SettingsHelper::get('bulletin_show_print_button', '1'),
             ];*/
 
+            $semesterWeights = $this->getSemesterWeights();
+            $periodeCourante = $bulletin->periode;
+            $moyenneSemestre1 = $this->getBulletinAverageForPeriode(
+                $bulletin->etudiant_id,
+                $bulletin->classe_id,
+                $bulletin->annee_universitaire_id,
+                'semestre1',
+                $periodeCourante,
+                $moyenneGlobale
+            );
+            $moyenneSemestre2 = $this->getBulletinAverageForPeriode(
+                $bulletin->etudiant_id,
+                $bulletin->classe_id,
+                $bulletin->annee_universitaire_id,
+                'semestre2',
+                $periodeCourante,
+                $moyenneGlobale
+            );
+            $moyenneAnnuelle = $this->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+
             $data = [
                 'bulletin' => $bulletin,
                 'etudiant' => $bulletin->etudiant, // Ajout explicite pour le template
@@ -907,6 +927,10 @@ class ESBTPBulletinController extends Controller
                 'moyenneGenerale' => $moyenneGenerale,
                 'moyenneTechnique' => $moyenneTechnique,
                 'moyenneGlobale' => $moyenneGlobale, // Moyenne globale calculée
+                'moyenneSemestre1' => $moyenneSemestre1,
+                'moyenneSemestre2' => $moyenneSemestre2,
+                'moyenneAnnuelle' => $moyenneAnnuelle,
+                'semesterWeights' => $semesterWeights,
                 'absencesJustifiees' => $bulletin->absences_justifiees,
                 'absencesNonJustifiees' => $bulletin->absences_non_justifiees,
                 'absences_justifiees' => $bulletin->absences_justifiees,
@@ -3007,6 +3031,11 @@ class ESBTPBulletinController extends Controller
             'non_numeric_notes' => $nonNumericNotes,
         ]);
 
+        $semesterWeights = $this->getSemesterWeights();
+        $moyenneSemestre1 = $this->calculateStudentAverageForPeriode($id, $classe_id, $annee_universitaire_id, 'semestre1');
+        $moyenneSemestre2 = $this->calculateStudentAverageForPeriode($id, $classe_id, $annee_universitaire_id, 'semestre2');
+        $moyenneAnnuelle = $this->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+
         return view('esbtp.resultats.etudiant', compact(
             'etudiant',
             'classe',
@@ -3020,7 +3049,11 @@ class ESBTPBulletinController extends Controller
             'annee_id',
             'classes',
             'anneesUniversitaires',
-            'periodes'
+            'periodes',
+            'moyenneSemestre1',
+            'moyenneSemestre2',
+            'moyenneAnnuelle',
+            'semesterWeights'
         ));
     }
 
@@ -5271,6 +5304,25 @@ class ESBTPBulletinController extends Controller
             ];*/
 
             // Préparation des données pour la vue
+            $semesterWeights = $this->getSemesterWeights();
+            $moyenneSemestre1 = $this->getBulletinAverageForPeriode(
+                $etudiant->id,
+                $classe->id,
+                $anneeUniversitaire->id,
+                'semestre1',
+                $periode,
+                $moyenneGenerale
+            );
+            $moyenneSemestre2 = $this->getBulletinAverageForPeriode(
+                $etudiant->id,
+                $classe->id,
+                $anneeUniversitaire->id,
+                'semestre2',
+                $periode,
+                $moyenneGenerale
+            );
+            $moyenneAnnuelle = $this->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+
             $data = [
                 'bulletin' => $bulletin,
                 'etudiant' => $etudiant,
@@ -5292,7 +5344,10 @@ class ESBTPBulletinController extends Controller
                 'absencesJustifiees' => $absencesJustifiees,
                 'absencesNonJustifiees' => $absencesNonJustifiees,
                 'noteAssiduite' => $noteAssiduite, // Utiliser la valeur calculée au lieu d'une chaîne vide
-                'moyenneSemestre1' => number_format($moyenneGenerale, 2), // À implémenter si nécessaire
+                'moyenneSemestre1' => $moyenneSemestre1,
+                'moyenneSemestre2' => $moyenneSemestre2,
+                'moyenneAnnuelle' => $moyenneAnnuelle,
+                'semesterWeights' => $semesterWeights,
                 'plusForteMoyenne' => $bulletin->plus_forte_moyenne ?? number_format($plusForteMoyenne, 2),
                 'plusFaibleMoyenne' => $bulletin->plus_faible_moyenne ?? number_format($plusFaibleMoyenne, 2),
                 'moyenneClasse' => $bulletin->moyenne_classe ?? number_format($moyenneClasse, 2),
@@ -7682,6 +7737,167 @@ class ESBTPBulletinController extends Controller
         }
 
         return $result;
+    }
+
+    private function getSemesterWeights(): array
+    {
+        $semester1 = floatval(\App\Helpers\SettingsHelper::get('bulletin_semester1_weight', '50'));
+        $semester2 = floatval(\App\Helpers\SettingsHelper::get('bulletin_semester2_weight', '50'));
+
+        if ($semester1 < 0) {
+            $semester1 = 0;
+        }
+        if ($semester2 < 0) {
+            $semester2 = 0;
+        }
+
+        if (($semester1 + $semester2) <= 0) {
+            $semester1 = 50;
+            $semester2 = 50;
+        }
+
+        return [
+            'semester1' => $semester1,
+            'semester2' => $semester2,
+        ];
+    }
+
+    private function calculateAnnualAverage(?float $semester1, ?float $semester2, array $weights): ?float
+    {
+        if ($semester1 === null || $semester2 === null) {
+            return null;
+        }
+
+        $total = $weights['semester1'] + $weights['semester2'];
+        if ($total <= 0) {
+            return null;
+        }
+
+        return (($semester1 * $weights['semester1']) + ($semester2 * $weights['semester2'])) / $total;
+    }
+
+    private function calculateStudentAverageForPeriode(int $etudiantId, ?int $classeId, ?int $anneeUniversitaireId, string $periode): ?float
+    {
+        $semestre = $periode === 'semestre2' ? '2' : '1';
+
+        $notesQuery = \App\Models\ESBTPNote::where('etudiant_id', $etudiantId)
+            ->with(['evaluation', 'evaluation.matiere']);
+
+        $notesQuery->where(function ($q) use ($semestre, $periode) {
+            $q->where('semestre', $semestre)
+                ->orWhereHas('evaluation', function ($query) use ($semestre, $periode) {
+                    $query->where('periode', $periode)
+                        ->orWhere('periode', $semestre);
+                });
+        });
+
+        $notes = $notesQuery->get();
+
+        $notesByMatiere = [];
+
+        foreach ($notes as $note) {
+            if (! $note->evaluation || ! $note->evaluation->matiere) {
+                continue;
+            }
+
+            $matiereId = $note->matiere_id ?: $note->evaluation->matiere->id;
+            if (! $matiereId) {
+                continue;
+            }
+
+            if (! isset($notesByMatiere[$matiereId])) {
+                $notesByMatiere[$matiereId] = [
+                    'total_points' => 0,
+                    'total_coefficients' => 0,
+                    'moyenne' => 0,
+                ];
+            }
+
+            if ($note->evaluation->bareme > 0) {
+                $noteValue = is_numeric($note->note) ? floatval($note->note) : (is_numeric($note->valeur) ? floatval($note->valeur) : 0);
+                $bareme = $note->evaluation->bareme > 0 ? floatval($note->evaluation->bareme) : 20;
+                $normalized = ($noteValue / $bareme) * 20;
+                $coefficient = $note->evaluation->coefficient ? floatval($note->evaluation->coefficient) : 1;
+
+                $notesByMatiere[$matiereId]['total_points'] += $normalized * $coefficient;
+                $notesByMatiere[$matiereId]['total_coefficients'] += $coefficient;
+            }
+        }
+
+        foreach ($notesByMatiere as $matiereId => &$matiereData) {
+            if ($matiereData['total_coefficients'] > 0) {
+                $matiereData['moyenne'] = $matiereData['total_points'] / $matiereData['total_coefficients'];
+            }
+        }
+
+        $resultats = \App\Models\ESBTPResultat::where('etudiant_id', $etudiantId)
+            ->when($classeId, function ($query) use ($classeId) {
+                return $query->where('classe_id', $classeId);
+            })
+            ->when($anneeUniversitaireId, function ($query) use ($anneeUniversitaireId) {
+                return $query->where('annee_universitaire_id', $anneeUniversitaireId);
+            })
+            ->where('periode', $periode)
+            ->with('matiere')
+            ->get();
+
+        foreach ($resultats as $resultat) {
+            if (! $resultat->matiere) {
+                continue;
+            }
+
+            $matiereId = $resultat->matiere_id;
+            if (! isset($notesByMatiere[$matiereId])) {
+                $notesByMatiere[$matiereId] = [
+                    'total_points' => 0,
+                    'total_coefficients' => 0,
+                    'moyenne' => 0,
+                ];
+            }
+
+            $notesByMatiere[$matiereId]['moyenne'] = $resultat->moyenne;
+        }
+
+        $moyenneGenerale = 0;
+        $countMatieresFinales = 0;
+
+        foreach ($notesByMatiere as $matiereData) {
+            if ($matiereData['moyenne'] > 0) {
+                $moyenneGenerale += $matiereData['moyenne'];
+                $countMatieresFinales++;
+            }
+        }
+
+        if ($countMatieresFinales === 0) {
+            return null;
+        }
+
+        return $moyenneGenerale / $countMatieresFinales;
+    }
+
+    private function getBulletinAverageForPeriode(
+        int $etudiantId,
+        int $classeId,
+        int $anneeUniversitaireId,
+        string $periode,
+        string $currentPeriode,
+        float $currentAverage
+    ): ?float {
+        if ($periode === $currentPeriode) {
+            return $currentAverage;
+        }
+
+        $bulletin = \App\Models\ESBTPBulletin::where('etudiant_id', $etudiantId)
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->where('periode', $periode)
+            ->first();
+
+        if (! $bulletin || $bulletin->moyenne_generale === null) {
+            return null;
+        }
+
+        return floatval($bulletin->moyenne_generale);
     }
 
     private function getBulletinTemplateView(): string

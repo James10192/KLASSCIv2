@@ -223,6 +223,25 @@ class BulletinService
         // Préparer la configuration PDF
         $settings = $this->getPDFConfig();
 
+        $semesterWeights = $this->getSemesterWeights();
+        $moyenneSemestre1 = $this->getSemesterAverageFromBulletins(
+            $etudiantId,
+            $classeId,
+            $anneeUniversitaireId,
+            'semestre1',
+            $periode,
+            $moyenneGlobale
+        );
+        $moyenneSemestre2 = $this->getSemesterAverageFromBulletins(
+            $etudiantId,
+            $classeId,
+            $anneeUniversitaireId,
+            'semestre2',
+            $periode,
+            $moyenneGlobale
+        );
+        $moyenneAnnuelle = $this->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+
         // Préparer la photo de l'étudiant en base64 pour le PDF
         $photoEtudiantBase64 = $this->preparePhotoEtudiantBase64($etudiant);
 
@@ -254,7 +273,73 @@ class BulletinService
             'date_edition' => date('d/m/Y'),
             'settings' => $settings,
             'photoEtudiantBase64' => $photoEtudiantBase64,
+            'moyenneSemestre1' => $moyenneSemestre1,
+            'moyenneSemestre2' => $moyenneSemestre2,
+            'moyenneAnnuelle' => $moyenneAnnuelle,
+            'semesterWeights' => $semesterWeights,
         ];
+    }
+
+    private function getSemesterWeights(): array
+    {
+        $semester1 = floatval(SettingsHelper::get('bulletin_semester1_weight', '50'));
+        $semester2 = floatval(SettingsHelper::get('bulletin_semester2_weight', '50'));
+
+        if ($semester1 < 0) {
+            $semester1 = 0;
+        }
+        if ($semester2 < 0) {
+            $semester2 = 0;
+        }
+
+        if (($semester1 + $semester2) <= 0) {
+            $semester1 = 50;
+            $semester2 = 50;
+        }
+
+        return [
+            'semester1' => $semester1,
+            'semester2' => $semester2,
+        ];
+    }
+
+    private function getSemesterAverageFromBulletins(
+        int $etudiantId,
+        int $classeId,
+        int $anneeUniversitaireId,
+        string $periode,
+        string $currentPeriode,
+        float $currentAverage
+    ): ?float {
+        if ($periode === $currentPeriode) {
+            return $currentAverage;
+        }
+
+        $bulletin = ESBTPBulletin::where('etudiant_id', $etudiantId)
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->where('periode', $periode)
+            ->first();
+
+        if (! $bulletin || $bulletin->moyenne_generale === null) {
+            return null;
+        }
+
+        return floatval($bulletin->moyenne_generale);
+    }
+
+    private function calculateAnnualAverage(?float $semester1, ?float $semester2, array $weights): ?float
+    {
+        if ($semester1 === null || $semester2 === null) {
+            return null;
+        }
+
+        $total = $weights['semester1'] + $weights['semester2'];
+        if ($total <= 0) {
+            return null;
+        }
+
+        return (($semester1 * $weights['semester1']) + ($semester2 * $weights['semester2'])) / $total;
     }
 
     /**

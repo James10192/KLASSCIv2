@@ -883,6 +883,46 @@
                 </div>
             </div>
 
+            <!-- Section: Pondération des semestres -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon stats">
+                        <i class="fas fa-balance-scale"></i>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Pondération des semestres</h3>
+                        <p class="section-description">Coefficients utilisés pour calculer la moyenne annuelle</p>
+                    </div>
+                </div>
+
+                <div class="settings-grid-2">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-percent text-primary"></i>
+                            Coefficient Semestre 1 (%)
+                        </label>
+                        <input type="number" class="form-control form-control-modern threshold-input"
+                               name="setting_bulletin_semester1_weight"
+                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_semester1_weight', '50') }}"
+                               min="0" max="100" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-percent text-success"></i>
+                            Coefficient Semestre 2 (%)
+                        </label>
+                        <input type="number" class="form-control form-control-modern threshold-input"
+                               name="setting_bulletin_semester2_weight"
+                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_semester2_weight', '50') }}"
+                               min="0" max="100" step="1">
+                    </div>
+                </div>
+                <small class="text-muted">
+                    <i class="fas fa-info-circle"></i>
+                    La somme des coefficients est normalisee automatiquement pour le calcul annuel.
+                </small>
+            </div>
+
             <!-- Section: Mentions et Seuils -->
             <div class="settings-section">
                 <div class="section-header">

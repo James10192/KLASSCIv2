@@ -605,6 +605,24 @@
                                                 <div style="border: 1px solid #111827; padding: 4px; width: 60px; display: inline-block;">{{ number_format($moyenneAvecAssiduite, 2) }}</div>
                                             </td>
                                         </tr>
+                                        <tr>
+                                            <td>Moyenne Semestre 1</td>
+                                            <td class="center">
+                                                <div style="border: 1px solid #111827; padding: 4px; width: 60px; display: inline-block;">{{ $moyenneSemestre1 !== null ? number_format($moyenneSemestre1, 2) : '-' }}</div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Moyenne Semestre 2</td>
+                                            <td class="center">
+                                                <div style="border: 1px solid #111827; padding: 4px; width: 60px; display: inline-block;">{{ $moyenneSemestre2 !== null ? number_format($moyenneSemestre2, 2) : '-' }}</div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Moyenne Annuelle</td>
+                                            <td class="center">
+                                                <div style="border: 1px solid #111827; padding: 4px; width: 60px; display: inline-block;">{{ $periode == 'semestre2' && $moyenneAnnuelle !== null ? number_format($moyenneAnnuelle, 2) : '-' }}</div>
+                                            </td>
+                                        </tr>
                                     @endif
                                     @if(($settings['bulletin_show_student_rank'] ?? '1') == '1')
                                         <tr>

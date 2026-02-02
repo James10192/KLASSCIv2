@@ -221,6 +221,8 @@ class SettingsHelper
 
             // Bulletin
             'bulletin_style' => ['value' => 'yakro', 'group' => 'bulletin'],
+            'bulletin_semester1_weight' => ['value' => '50', 'group' => 'bulletin'],
+            'bulletin_semester2_weight' => ['value' => '50', 'group' => 'bulletin'],
 
             // Interface
             'theme_primary_color' => ['value' => '#007bff', 'group' => 'interface'],

@@ -31,6 +31,33 @@
                     <div class="progress-bar {{ $moyenneGenerale >= 10 ? 'success' : 'danger' }}" 
                          style="width: {{ min($moyenneGenerale * 5, 100) }}%"></div>
                 </div>
+                <div class="semester-summary">
+                    <div class="semester-item">
+                        <div class="semester-label">Semestre 1</div>
+                        <div class="semester-value">
+                            {{ $moyenneSemestre1 !== null ? number_format($moyenneSemestre1, 2) . '/20' : '—' }}
+                        </div>
+                    </div>
+                    <div class="semester-item">
+                        <div class="semester-label">Semestre 2</div>
+                        <div class="semester-value">
+                            {{ $moyenneSemestre2 !== null ? number_format($moyenneSemestre2, 2) . '/20' : '—' }}
+                        </div>
+                    </div>
+                    <div class="semester-item highlight">
+                        <div class="semester-label">Moyenne annuelle</div>
+                        <div class="semester-value">
+                            @if($periode === 'semestre2' && $moyenneAnnuelle !== null)
+                                {{ number_format($moyenneAnnuelle, 2) }}/20
+                            @else
+                                —
+                            @endif
+                        </div>
+                    </div>
+                    <div class="semester-note">
+                        Pondération: S1 {{ $semesterWeights['semester1'] }}% • S2 {{ $semesterWeights['semester2'] }}%
+                    </div>
+                </div>
             </div>
             
             <div class="stats-grid">
@@ -118,6 +145,45 @@
 
 .progress-bar.danger {
     background-color: var(--danger);
+}
+
+.semester-summary {
+    margin-top: 1rem;
+    border-top: 1px dashed var(--border-color);
+    padding-top: 0.75rem;
+    display: grid;
+    gap: 0.5rem;
+}
+
+.semester-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.6rem;
+    border-radius: 8px;
+    background: var(--background-secondary);
+    border: 1px solid var(--border-color);
+    font-size: 0.85rem;
+}
+
+.semester-item.highlight {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+.semester-label {
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.semester-value {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.semester-note {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
 }
 
 .stats-grid {
