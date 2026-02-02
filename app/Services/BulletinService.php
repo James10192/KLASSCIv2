@@ -484,10 +484,9 @@ class BulletinService
                 // Calculer la moyenne globale de cet étudiant
                 $moyenneEtudiant = $this->calculerMoyenneGlobaleEtudiant($etudiant->id, $classeId, $anneeUniversitaireId, $periode);
 
-                // Ajouter la note d'assiduité seulement si l'affichage est activé
+                // Ajouter la note d'assiduité seulement si l'affichage est activé et si la moyenne est valide
                 $afficherNoteAssiduite = SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
-                if ($afficherNoteAssiduite) {
-                    // Récupérer l'année universitaire pour les dates
+                if ($afficherNoteAssiduite && $moyenneEtudiant > 0) {
                     $anneeUniv = \App\Models\ESBTPAnneeUniversitaire::find($anneeUniversitaireId);
                     $absencesEtudiant = $this->absenceService->calculerDetailAbsences(
                         $etudiant->id,
@@ -499,15 +498,13 @@ class BulletinService
                     $moyenneEtudiant += $noteAssiduite;
                 }
 
-                // Inclure l'étudiant dans les statistiques seulement s'il a une moyenne > 0 OU une note d'assiduité
-                if ($moyenneEtudiant <= 0 && ! $afficherNoteAssiduite) {
-                    continue; // Ignorer seulement si pas de moyenne ET pas de note d'assiduité
+                if ($moyenneEtudiant <= 0) {
+                    continue;
                 }
 
                 $moyennes[] = $moyenneEtudiant;
 
             } catch (\Exception $e) {
-                // Ignorer les étudiants sans configuration
                 continue;
             }
         }
@@ -537,18 +534,16 @@ class BulletinService
             throw new \RuntimeException('Classe introuvable pour le calcul de la moyenne.');
         }
 
-        // Récupérer le bulletin pour la configuration
-        $bulletin = ESBTPBulletin::where('etudiant_id', $etudiantId)
-            ->where('classe_id', $classeId)
-            ->where('periode', $periode)
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->first();
-
-        if (! $bulletin || ! $bulletin->config_matieres) {
-            return 0;
+        $periodeOptions = [$periode];
+        if ($periode === 'semestre1') {
+            $periodeOptions[] = '1';
+        } elseif ($periode === 'semestre2') {
+            $periodeOptions[] = '2';
+        } elseif ($periode === '1') {
+            $periodeOptions[] = 'semestre1';
+        } elseif ($periode === '2') {
+            $periodeOptions[] = 'semestre2';
         }
-
-        $configMatieres = json_decode($bulletin->config_matieres, true);
 
         // Logique simplifiée pour éviter la récursion
         $resultatsParMatiere = [];
@@ -557,15 +552,21 @@ class BulletinService
         $resultats = ESBTPResultat::where('etudiant_id', $etudiantId)
             ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->where('periode', $periode)
+            ->whereIn('periode', array_unique($periodeOptions))
             ->with('matiere')
             ->get();
 
         foreach ($resultats as $resultat) {
             if ($resultat->matiere) {
+                try {
+                    $coefficient = $this->getCoefficientForCombination($resultat->matiere_id, $classe, $anneeUniversitaireId);
+                } catch (\RuntimeException $e) {
+                    $coefficient = 1;
+                }
+
                 $resultatsParMatiere[] = (object) [
                     'moyenne' => $resultat->moyenne,
-                    'coefficient' => $this->getCoefficientForCombination($resultat->matiere_id, $classe, $anneeUniversitaireId),
+                    'coefficient' => $coefficient,
                 ];
             }
         }
