@@ -299,6 +299,147 @@ class ESBTPEnseignantController extends Controller
         }
     }
 
+    public function quickStore(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|string|email|max:255|unique:users,email',
+            'phone' => 'nullable|string|max:20',
+            'titre_academique' => 'nullable|string|max:10',
+            'grade_academique' => 'nullable|string|max:50',
+            'specialization' => 'required|string|max:255',
+            'department_id' => 'required|exists:esbtp_departments,id',
+            'type_contrat' => 'required|in:permanent,temporaire,vacataire,consultant',
+            'statut_emploi' => 'required|in:temps_plein,temps_partiel,vacations',
+            'date_embauche' => 'required|date',
+            'charge_horaire_max_semaine' => 'nullable|integer|min:1|max:60',
+            'planification_id' => 'nullable|exists:esbtp_planifications_academiques,id'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $user = $this->userService->createUserWithAutoCredentials([
+                'name' => $request->name,
+                'email' => $request->email ?: null,
+                'phone' => $request->phone,
+            ], 'enseignant');
+
+            $user->assignRole('enseignant');
+
+            $teacher = ESBTPTeacher::create([
+                'user_id' => $user->id,
+                'matricule' => $this->generateMatricule(),
+                'title' => $request->titre_academique,
+                'specialization' => $request->specialization,
+                'department_id' => $request->department_id,
+                'grade' => $request->grade_academique,
+                'status' => 'active',
+                'teaching_hours_due' => $request->charge_horaire_max_semaine ?? 40,
+                'created_by' => auth()->id(),
+            ]);
+
+            if (Schema::hasTable('esbtp_enseignant_profiles')) {
+                DB::table('esbtp_enseignant_profiles')->insert([
+                    'user_id' => $user->id,
+                    'matricule_enseignant' => $teacher->matricule,
+                    'titre_academique' => $request->titre_academique,
+                    'grade_academique' => $request->grade_academique,
+                    'diplome_principal' => null,
+                    'universite_diplome' => null,
+                    'annee_diplome' => null,
+                    'annees_experience_enseignement' => 0,
+                    'annees_experience_professionnelle' => 0,
+                    'charge_horaire_max_semaine' => $request->charge_horaire_max_semaine ?? 40,
+                    'type_contrat' => $request->type_contrat,
+                    'statut_emploi' => $request->statut_emploi,
+                    'date_embauche' => $request->date_embauche,
+                    'fin_contrat' => null,
+                    'taux_horaire' => null,
+                    'accepte_enseignement_distance' => false,
+                    'accepte_cours_weekend' => false,
+                    'accepte_cours_soir' => false,
+                    'motivation' => null,
+                    'objectifs_pedagogiques' => null,
+                    'statut' => 'actif',
+                    'created_by' => auth()->id(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            if ($request->has('availability')) {
+                foreach ($request->availability as $key => $status) {
+                    if ($status !== 'unavailable') {
+                        [$dayIndex, $hour] = explode('_', $key);
+                        $dayIndex = (int) $dayIndex;
+                        $hour = (int) $hour;
+                        $startTime = sprintf('%02d:00', $hour);
+                        $endTime = sprintf('%02d:00', $hour + 1);
+
+                        ESBTPTeacherAvailability::create([
+                            'teacher_id' => $teacher->id,
+                            'day_of_week' => $dayIndex,
+                            'start_time' => $startTime,
+                            'end_time' => $endTime,
+                            'availability_type' => $status
+                        ]);
+                    }
+                }
+            }
+
+            if ($request->filled('planification_id')) {
+                $planification = ESBTPPlanificationAcademique::find($request->planification_id);
+                if ($planification) {
+                    $exists = DB::table('esbtp_planification_teachers')
+                        ->where('planification_id', $planification->id)
+                        ->where('teacher_id', $teacher->id)
+                        ->exists();
+
+                    if (! $exists) {
+                        DB::table('esbtp_planification_teachers')->insert([
+                            'planification_id' => $planification->id,
+                            'teacher_id' => $teacher->id,
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                    }
+
+                    if (! $planification->enseignant_principal_id && $teacher->user_id) {
+                        $planification->update([
+                            'enseignant_principal_id' => $teacher->user_id
+                        ]);
+                    }
+                }
+            }
+
+            $teacher->loadMissing(['user', 'availabilities']);
+            $availabilityData = $this->prepareAvailabilityData($teacher);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'teacher' => $teacher,
+                'availability' => $availabilityData
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Erreur création enseignant rapide: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la création de l\'enseignant.'
+            ], 500);
+        }
+    }
+
     /**
      * Check for duplicate teachers based on name and specialization.
      */

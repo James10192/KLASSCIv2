@@ -46,6 +46,97 @@
         background-color: var(--bs-primary);
         color: white;
     }
+    .teacher-modal-context {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        padding: 12px;
+        border-radius: 12px;
+        background: #f8fafc;
+        margin-bottom: 16px;
+    }
+    .teacher-modal-context .context-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .teacher-modal-context .context-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #64748b;
+        font-weight: 600;
+    }
+    .teacher-modal-context .context-value {
+        font-weight: 600;
+        color: #1e293b;
+    }
+    .teacher-availability-panel {
+        margin-top: 24px;
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+    }
+    .teacher-availability-grid {
+        display: grid;
+        grid-template-columns: 80px repeat(6, 1fr);
+        gap: 6px;
+        margin-top: 16px;
+    }
+    .teacher-availability-grid .grid-header,
+    .teacher-availability-grid .grid-time {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-align: center;
+        padding: 6px;
+        border-radius: 8px;
+        background: #f1f5f9;
+        color: #475569;
+    }
+    .teacher-availability-grid .availability-cell {
+        height: 32px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .teacher-availability-grid .availability-cell.available {
+        background: #dcfce7;
+        border-color: #86efac;
+    }
+    .teacher-availability-grid .availability-cell.preferred {
+        background: #dbeafe;
+        border-color: #60a5fa;
+    }
+    .teacher-availability-grid .availability-cell.unavailable {
+        background: #fee2e2;
+        border-color: #fecaca;
+    }
+    .teacher-availability-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 12px;
+        font-size: 0.8rem;
+        color: #475569;
+    }
+    .teacher-availability-legend .legend-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+    }
+    .teacher-availability-legend .legend-dot.available {
+        background: #22c55e;
+    }
+    .teacher-availability-legend .legend-dot.preferred {
+        background: #3b82f6;
+    }
+    .teacher-availability-legend .legend-dot.unavailable {
+        background: #ef4444;
+    }
 </style>
 @endsection
 
@@ -293,6 +384,7 @@
                                                     data-heures-restantes="{{ $matiere['heures_restantes'] }}"
                                                     data-volume-total="{{ $matiere['volume_horaire_total'] }}"
                                                     data-enseignants="{{ ($matiere['enseignants_selectables'] ?? collect())->pluck('id')->toJson() }}"
+                                                    data-planification-id="{{ $matiere['planification_id'] ?? '' }}"
                                                     {{ old('matiere_id') == $matiere['matiere']->id ? 'selected' : '' }}>
                                                 {{ $matiere['matiere']->name }} 
                                                 ({{ $matiere['heures_restantes'] }}h restantes / {{ $matiere['volume_horaire_total'] }}h)
@@ -313,6 +405,20 @@
                                     <select name="teacher_id" id="teacher_id" class="form-select @error('teacher_id') error @enderror" onchange="showTeacherAvailability()" required>
                                         <option value="">Sélectionner d'abord une matière</option>
                                     </select>
+                                    <div class="teacher-create-actions" id="teacherCreateActions" style="display: none;">
+                                        <div class="alert alert-info mt-2 mb-0" id="teacherEmptyState" style="display: none;">
+                                            <div class="d-flex align-items-start gap-2">
+                                                <i class="fas fa-info-circle mt-1"></i>
+                                                <div>
+                                                    <strong>Ajouter un nouvel enseignant à cette matière</strong>
+                                                    <div class="small text-muted">Le professeur sera automatiquement lié au planning général.</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="openTeacherModalBtn">
+                                            <i class="fas fa-user-plus me-1"></i>Créer un enseignant
+                                        </button>
+                                    </div>
                                     <div id="teacher-info" class="form-info" style="display: none;">
                                         <i class="fas fa-check-circle"></i>
                                         <span id="teacher-assignment-text"></span>
@@ -473,6 +579,159 @@
     </div>
 </div>
 
+<div class="modal fade" id="teacherCreateModal" tabindex="-1" aria-labelledby="teacherCreateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="teacherCreateModalLabel">
+                    <i class="fas fa-user-plus me-2"></i>Créer un enseignant
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="teacherCreateForm" action="{{ route('esbtp.enseignants.quick-create') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <input type="hidden" name="planification_id" id="teacher_planification_id" value="">
+                <input type="hidden" name="matiere_id" id="teacher_matiere_id" value="">
+                <input type="hidden" name="emploi_temps_id" id="teacher_emploi_temps_id" value="{{ $emploiTemps->id }}">
+                <div class="modal-body">
+                    <div class="alert alert-danger" id="teacherCreateErrors" style="display: none;"></div>
+
+                    <div class="teacher-modal-context">
+                        <div class="context-item">
+                            <span class="context-label">Classe</span>
+                            <span class="context-value">{{ $emploiTemps->classe->name }}</span>
+                        </div>
+                        <div class="context-item">
+                            <span class="context-label">Matière</span>
+                            <span class="context-value" id="teacher_modal_matiere">--</span>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <div class="form-group">
+                                <label class="form-label">Nom complet <span class="text-danger">*</span></label>
+                                <input type="text" name="name" id="teacher_name" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="form-group">
+                                <label class="form-label">Email</label>
+                                <input type="email" name="email" id="teacher_email" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="form-group">
+                                <label class="form-label">Téléphone</label>
+                                <input type="text" name="phone" id="teacher_phone" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="form-group">
+                                <label class="form-label">Titre académique</label>
+                                <select name="titre_academique" id="teacher_titre" class="form-select">
+                                    <option value="">Sélectionner</option>
+                                    @foreach($titres_academiques as $key => $value)
+                                        <option value="{{ $key }}">{{ $value }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="form-group">
+                                <label class="form-label">Grade académique</label>
+                                <select name="grade_academique" id="teacher_grade" class="form-select">
+                                    <option value="">Sélectionner</option>
+                                    @foreach($grades_academiques as $key => $value)
+                                        <option value="{{ $key }}">{{ $value }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="form-group">
+                                <label class="form-label">Spécialisation <span class="text-danger">*</span></label>
+                                <input type="text" name="specialization" id="teacher_specialization" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="form-group">
+                                <label class="form-label">Département <span class="text-danger">*</span></label>
+                                <select name="department_id" id="teacher_department" class="form-select" required>
+                                    <option value="">Sélectionner</option>
+                                    @foreach($departments as $department)
+                                        <option value="{{ $department->id }}">{{ $department->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="form-group">
+                                <label class="form-label">Type de contrat <span class="text-danger">*</span></label>
+                                <select name="type_contrat" id="teacher_contract" class="form-select" required>
+                                    <option value="">Sélectionner</option>
+                                    @foreach($types_contrat as $key => $value)
+                                        <option value="{{ $key }}">{{ $value }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="form-group">
+                                <label class="form-label">Statut d'emploi <span class="text-danger">*</span></label>
+                                <select name="statut_emploi" id="teacher_status" class="form-select" required>
+                                    <option value="">Sélectionner</option>
+                                    @foreach($statuts_emploi as $key => $value)
+                                        <option value="{{ $key }}">{{ $value }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="form-group">
+                                <label class="form-label">Date d'embauche <span class="text-danger">*</span></label>
+                                <input type="date" name="date_embauche" id="teacher_hire_date" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="form-group">
+                                <label class="form-label">Charge horaire max/semaine</label>
+                                <input type="number" name="charge_horaire_max_semaine" id="teacher_weekly_hours" class="form-control" min="1" max="60" value="40">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="teacher-availability-panel">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div>
+                                <h6 class="mb-1"><i class="fas fa-calendar-check me-2"></i>Disponibilité de l'enseignant</h6>
+                                <div class="text-muted small">Cliquez sur les cases pour définir les créneaux.</div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="availabilityAllAvailable">Tout disponible</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="availabilityAllUnavailable">Tout indisponible</button>
+                            </div>
+                        </div>
+                        <div class="teacher-availability-grid" id="teacherAvailabilityGrid"></div>
+                        <div class="teacher-availability-legend">
+                            <span><span class="legend-dot available"></span>Disponible</span>
+                            <span><span class="legend-dot preferred"></span>Préféré</span>
+                            <span><span class="legend-dot unavailable"></span>Indisponible</span>
+                        </div>
+                        <div id="teacherAvailabilityInputs"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary" id="teacherCreateSubmit">
+                        <i class="fas fa-save me-1"></i>Créer et assigner
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div id="seance-data"
      data-default-colors='@json($defaultColors)'
      data-availability='@json($availabilityData ?? [])'
@@ -490,6 +749,7 @@
 const currentTeacherId = "{{ old('teacher_id') }}";
 const seanceDataElement = document.getElementById('seance-data');
 const isEmbedded = seanceDataElement ? seanceDataElement.dataset.embed === '1' : false;
+const teacherQuickCreateUrl = "{{ route('esbtp.enseignants.quick-create') }}";
 const seanceData = seanceDataElement
     ? {
         defaultColors: JSON.parse(seanceDataElement.dataset.defaultColors || '{}'),
@@ -607,6 +867,7 @@ document.addEventListener('DOMContentLoaded', function() {
         matiereSelect.addEventListener('change', function () {
             updateTeachersForSubject();
             showTeacherAvailability();
+            syncTeacherModalContext();
         });
     }
 
@@ -669,6 +930,26 @@ document.addEventListener('DOMContentLoaded', function() {
             teacherSelect.value = currentTeacherId;
             showTeacherAvailability();
         }
+    }
+
+    initTeacherAvailabilityGrid();
+    const openTeacherModalBtn = document.getElementById('openTeacherModalBtn');
+    if (openTeacherModalBtn) {
+        openTeacherModalBtn.addEventListener('click', openTeacherCreateModal);
+    }
+
+    const teacherCreateForm = document.getElementById('teacherCreateForm');
+    if (teacherCreateForm) {
+        teacherCreateForm.addEventListener('submit', handleTeacherCreateSubmit);
+    }
+
+    const availabilityAllAvailableBtn = document.getElementById('availabilityAllAvailable');
+    if (availabilityAllAvailableBtn) {
+        availabilityAllAvailableBtn.addEventListener('click', () => setAllTeacherAvailability('available'));
+    }
+    const availabilityAllUnavailableBtn = document.getElementById('availabilityAllUnavailable');
+    if (availabilityAllUnavailableBtn) {
+        availabilityAllUnavailableBtn.addEventListener('click', () => setAllTeacherAvailability('unavailable'));
     }
 });
 
@@ -1283,6 +1564,8 @@ function updateTeachersForSubject() {
     const heuresRestantesText = document.getElementById('heures-restantes-text');
     const teacherInfo = document.getElementById('teacher-info');
     const teacherAvailability = document.getElementById('teacher-availability');
+    const teacherCreateActions = document.getElementById('teacherCreateActions');
+    const teacherEmptyState = document.getElementById('teacherEmptyState');
     const currentType = document.getElementById('sessionType').value;
     const requiresTeacher = currentType === 'course';
     
@@ -1308,6 +1591,9 @@ function updateTeachersForSubject() {
             if (teacherAvailability) {
                 teacherAvailability.style.display = 'none';
             }
+            if (teacherCreateActions) {
+                teacherCreateActions.style.display = 'none';
+            }
             return;
         }
         
@@ -1332,13 +1618,240 @@ function updateTeachersForSubject() {
         if (enseignantsIds.length === 0) {
             teacherSelect.innerHTML = '<option value="">Aucun enseignant assigné à cette matière</option>';
         }
+
+        if (teacherCreateActions) {
+            teacherCreateActions.style.display = 'block';
+        }
+        if (teacherEmptyState) {
+            teacherEmptyState.style.display = enseignantsIds.length === 0 ? 'block' : 'none';
+        }
     } else {
         matiereInfo.style.display = 'none';
         teacherSelect.innerHTML = '<option value="">Sélectionner d\'abord une matière</option>';
+        if (teacherCreateActions) {
+            teacherCreateActions.style.display = 'none';
+        }
+        if (teacherEmptyState) {
+            teacherEmptyState.style.display = 'none';
+        }
     }
     
     // Reset teacher availability
     document.getElementById('teacher-availability').style.display = 'none';
+}
+
+function syncTeacherModalContext() {
+    const matiereSelect = document.getElementById('matiere_id');
+    const matiereLabel = document.getElementById('teacher_modal_matiere');
+    const planificationInput = document.getElementById('teacher_planification_id');
+    const matiereInput = document.getElementById('teacher_matiere_id');
+    if (!matiereSelect || !matiereLabel || !planificationInput || !matiereInput) {
+        return;
+    }
+
+    if (!matiereSelect.value) {
+        matiereLabel.textContent = '--';
+        planificationInput.value = '';
+        matiereInput.value = '';
+        return;
+    }
+
+    const selectedOption = matiereSelect.options[matiereSelect.selectedIndex];
+    matiereLabel.textContent = selectedOption.textContent?.trim() || '--';
+    planificationInput.value = selectedOption.dataset.planificationId || '';
+    matiereInput.value = matiereSelect.value;
+}
+
+function openTeacherCreateModal() {
+    const matiereSelect = document.getElementById('matiere_id');
+    if (!matiereSelect || !matiereSelect.value) {
+        alert('Sélectionnez une matière avant de créer un enseignant.');
+        return;
+    }
+    const selectedOption = matiereSelect.options[matiereSelect.selectedIndex];
+    if (!selectedOption.dataset.planificationId) {
+        alert('Cette matière n\'est pas encore configurée dans le planning général.');
+        return;
+    }
+    syncTeacherModalContext();
+    const modalElement = document.getElementById('teacherCreateModal');
+    if (!modalElement) {
+        return;
+    }
+    const modalInstance = new bootstrap.Modal(modalElement);
+    modalInstance.show();
+}
+
+function initTeacherAvailabilityGrid() {
+    const grid = document.getElementById('teacherAvailabilityGrid');
+    const inputsContainer = document.getElementById('teacherAvailabilityInputs');
+    if (!grid || !inputsContainer || grid.dataset.ready === 'true') {
+        return;
+    }
+
+    const days = [
+        { key: 1, label: 'Lun' },
+        { key: 2, label: 'Mar' },
+        { key: 3, label: 'Mer' },
+        { key: 4, label: 'Jeu' },
+        { key: 5, label: 'Ven' },
+        { key: 6, label: 'Sam' }
+    ];
+    const hours = Array.from({ length: 10 }, (_, i) => 8 + i);
+
+    let html = '<div class="grid-header">Heure</div>';
+    days.forEach(day => {
+        html += `<div class="grid-header">${day.label}</div>`;
+    });
+
+    hours.forEach(hour => {
+        html += `<div class="grid-time">${hour}:00</div>`;
+        days.forEach(day => {
+            const inputName = `availability[${day.key}_${hour}]`;
+            const inputId = `availability_${day.key}_${hour}`;
+            inputsContainer.insertAdjacentHTML('beforeend', `<input type="hidden" id="${inputId}" name="${inputName}" value="available">`);
+            html += `<div class="availability-cell available" data-day="${day.key}" data-hour="${hour}" data-input="${inputId}"></div>`;
+        });
+    });
+
+    grid.innerHTML = html;
+    grid.dataset.ready = 'true';
+
+    grid.addEventListener('click', (event) => {
+        const cell = event.target.closest('.availability-cell');
+        if (!cell) {
+            return;
+        }
+        toggleAvailabilityCell(cell);
+    });
+}
+
+function toggleAvailabilityCell(cell) {
+    const cycle = ['available', 'preferred', 'unavailable'];
+    const current = cycle.find(status => cell.classList.contains(status)) || 'available';
+    const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
+    cell.classList.remove('available', 'preferred', 'unavailable');
+    cell.classList.add(next);
+    const inputId = cell.dataset.input;
+    const input = inputId ? document.getElementById(inputId) : null;
+    if (input) {
+        input.value = next;
+    }
+}
+
+function setAllTeacherAvailability(status) {
+    const grid = document.getElementById('teacherAvailabilityGrid');
+    if (!grid) {
+        return;
+    }
+    grid.querySelectorAll('.availability-cell').forEach(cell => {
+        cell.classList.remove('available', 'preferred', 'unavailable');
+        cell.classList.add(status);
+        const inputId = cell.dataset.input;
+        const input = inputId ? document.getElementById(inputId) : null;
+        if (input) {
+            input.value = status;
+        }
+    });
+}
+
+function handleTeacherCreateSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const submitBtn = document.getElementById('teacherCreateSubmit');
+    const errorBox = document.getElementById('teacherCreateErrors');
+    if (!form || !submitBtn) {
+        return;
+    }
+
+    if (errorBox) {
+        errorBox.style.display = 'none';
+        errorBox.innerHTML = '';
+    }
+
+    submitBtn.disabled = true;
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Création...';
+
+    const formData = new FormData(form);
+
+    fetch(teacherQuickCreateUrl, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
+        body: formData
+    })
+        .then(async response => {
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
+                throw payload;
+            }
+            return response.json();
+        })
+        .then(payload => {
+            if (!payload || !payload.success) {
+                throw payload;
+            }
+            const teacher = payload.teacher;
+            const availability = payload.availability || {};
+            if (teacher && teacher.id) {
+                seanceData.teachers[teacher.id] = teacher;
+                seanceData.availability[teacher.id] = availability;
+                attachTeacherToCurrentMatiere(teacher.id);
+                updateTeachersForSubject();
+                const teacherSelect = document.getElementById('teacher_id');
+                if (teacherSelect) {
+                    teacherSelect.value = teacher.id.toString();
+                    showTeacherAvailability();
+                }
+            }
+            form.reset();
+            setAllTeacherAvailability('available');
+            const modalElement = document.getElementById('teacherCreateModal');
+            if (modalElement) {
+                const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+            }
+        })
+        .catch(error => {
+            if (!errorBox) {
+                alert('Impossible de créer l\'enseignant.');
+                return;
+            }
+            const messages = [];
+            if (error && error.errors) {
+                Object.values(error.errors).forEach(list => {
+                    list.forEach(item => messages.push(`<li>${item}</li>`));
+                });
+            }
+            if (messages.length === 0) {
+                messages.push('<li>Impossible de créer l\'enseignant. Vérifiez les champs.</li>');
+            }
+            errorBox.innerHTML = `<ul class="mb-0">${messages.join('')}</ul>`;
+            errorBox.style.display = 'block';
+        })
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        });
+}
+
+function attachTeacherToCurrentMatiere(teacherId) {
+    const matiereSelect = document.getElementById('matiere_id');
+    if (!matiereSelect || !matiereSelect.value) {
+        return;
+    }
+    const selectedOption = matiereSelect.options[matiereSelect.selectedIndex];
+    const enseignantsIds = JSON.parse(selectedOption.dataset.enseignants || '[]');
+    const normalizedId = teacherId.toString();
+    if (!enseignantsIds.map(String).includes(normalizedId)) {
+        enseignantsIds.push(teacherId);
+        selectedOption.dataset.enseignants = JSON.stringify(enseignantsIds);
+    }
 }
 
 // Fonction pour afficher la disponibilité de l'enseignant sélectionné
