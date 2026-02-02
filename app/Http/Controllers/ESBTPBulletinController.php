@@ -5160,18 +5160,23 @@ class ESBTPBulletinController extends Controller
             $bulletinsClasse = ESBTPBulletin::where('classe_id', $classe_id)
                 ->where('annee_universitaire_id', $annee_universitaire_id)
                 ->whereIn('periode', $periodeOptions)
-                ->get();
+                ->get()
+                ->keyBy('etudiant_id');
 
             $moyennesClasse = [];
-            foreach ($bulletinsClasse as $bulletinClasse) {
-                if ($bulletinClasse->moyenne_generale === null) {
-                    continue;
+            foreach ($etudiantsClasse as $etud) {
+                $bulletinClasse = $bulletinsClasse->get($etud->id);
+                if ($bulletinClasse && $bulletinClasse->moyenne_generale !== null) {
+                    $moyenneEtud = $bulletinClasse->moyenne_generale + ($bulletinClasse->note_assiduite ?? 0);
+                } else {
+                    $moyenneEtud = $this->calculerMoyenneEtudiant($etud->id, $classe_id, $periode, $annee_universitaire_id);
                 }
-                $moyenneEtud = $bulletinClasse->moyenne_generale + ($bulletinClasse->note_assiduite ?? 0);
+
                 if ($moyenneEtud <= 0) {
                     continue;
                 }
-                $moyennesClasse[$bulletinClasse->etudiant_id] = $moyenneEtud;
+
+                $moyennesClasse[$etud->id] = $moyenneEtud;
             }
 
             if (! empty($moyennesClasse)) {

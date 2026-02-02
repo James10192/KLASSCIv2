@@ -141,14 +141,18 @@
             height: 96px;
             border-radius: 50%;
             border: 2px solid #0f5132;
-            display: block;
+            display: table;
             margin: 0 auto;
             background: #eef2f7;
+        }
+        .student-info-table td:first-child .avatar-fallback span {
+            display: table-cell;
+            vertical-align: middle;
             text-align: center;
-            line-height: 96px;
             font-size: 28px;
             color: #475569;
             font-weight: bold;
+            line-height: 1;
         }
         .student-info-table td:first-child .matricule-text {
             margin-top: 8px;
@@ -359,6 +363,16 @@
             @php
                 $bulletin = $bulletin ?? null;
                 $anneeAffichee = $bulletin && $bulletin->anneeUniversitaire ? $bulletin->anneeUniversitaire : $anneeUniversitaire;
+                $anneeLabel = $anneeAffichee->name ?? null;
+                if (! $anneeLabel && $anneeAffichee && $anneeAffichee->start_date && $anneeAffichee->end_date) {
+                    $anneeLabel = $anneeAffichee->start_date->format('Y').'-'.$anneeAffichee->end_date->format('Y');
+                }
+                if (! $anneeLabel && isset($anneeAffichee->annee_debut, $anneeAffichee->annee_fin)) {
+                    $anneeLabel = $anneeAffichee->annee_debut.'-'.$anneeAffichee->annee_fin;
+                }
+                if (! $anneeLabel) {
+                    $anneeLabel = $anneeAffichee ? ('Annee '.$anneeAffichee->id) : '';
+                }
             @endphp
             <div class="header">
                 <table class="header-table">
@@ -390,7 +404,7 @@
                             @if(($settings['bulletin_show_edition_date'] ?? '1') == '1')
                                 <div class="bulletin-period">Edition du: {{ $date_edition }}</div>
                             @endif
-                            <div class="academic-year">Annee Scolaire: {{ $anneeAffichee->annee_debut }}-{{ $anneeAffichee->annee_fin }}</div>
+                            <div class="academic-year">Annee Scolaire: {{ $anneeLabel }}</div>
                         </td>
                     </tr>
                 </table>
@@ -409,7 +423,7 @@
                             @if(isset($photoEtudiantBase64) && $photoEtudiantBase64)
                                 <img src="{{ $photoEtudiantBase64 }}" alt="Photo">
                             @else
-                                <div class="avatar-fallback">{{ $initials }}</div>
+                                <div class="avatar-fallback"><span>{{ $initials }}</span></div>
                             @endif
                             @if(($settings['bulletin_show_matricule'] ?? '1') == '1')
                                 <div class="matricule-text">{{ $etudiant->matricule }}</div>
@@ -609,24 +623,20 @@
                                                 <div style="border: 1px solid #111827; padding: 4px; width: 60px; display: inline-block;">{{ number_format($moyenneAvecAssiduite, 2) }}</div>
                                             </td>
                                         </tr>
-                                        <tr>
-                                            <td>Moyenne Semestre 1</td>
-                                            <td class="center">
-                                                <div style="border: 1px solid #111827; padding: 4px; width: 60px; display: inline-block;">{{ $moyenneSemestre1 !== null ? number_format($moyenneSemestre1, 2) : '-' }}</div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>Moyenne Semestre 2</td>
-                                            <td class="center">
-                                                <div style="border: 1px solid #111827; padding: 4px; width: 60px; display: inline-block;">{{ $moyenneSemestre2 !== null ? number_format($moyenneSemestre2, 2) : '-' }}</div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>Moyenne Annuelle</td>
-                                            <td class="center">
-                                                <div style="border: 1px solid #111827; padding: 4px; width: 60px; display: inline-block;">{{ $periode == 'semestre2' && $moyenneAnnuelle !== null ? number_format($moyenneAnnuelle, 2) : '-' }}</div>
-                                            </td>
-                                        </tr>
+                                        @if($periode == 'semestre2')
+                                            <tr>
+                                                <td>Moyenne Semestre 1</td>
+                                                <td class="center">
+                                                    <div style="border: 1px solid #111827; padding: 4px; width: 60px; display: inline-block;">{{ $moyenneSemestre1 !== null ? number_format($moyenneSemestre1, 2) : '-' }}</div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>Moyenne Annuelle</td>
+                                                <td class="center">
+                                                    <div style="border: 1px solid #111827; padding: 4px; width: 60px; display: inline-block;">{{ $moyenneAnnuelle !== null ? number_format($moyenneAnnuelle, 2) : '-' }}</div>
+                                                </td>
+                                            </tr>
+                                        @endif
                                     @endif
                                     @if(($settings['bulletin_show_student_rank'] ?? '1') == '1')
                                         <tr>
