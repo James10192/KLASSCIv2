@@ -4,12 +4,18 @@
     $hasPayment = (bool) ($validatedPayment || $pendingPayment);
     $paymentStatus = $validatedPayment ? 'validé' : ($pendingPayment ? 'en_attente' : 'aucun');
     $paymentAmount = $validatedPayment ? $validatedPayment->montant : ($pendingPayment ? $pendingPayment->montant : null);
+
+    $hasProbleme = session('inscriptions_problemes') && isset(session('inscriptions_problemes')[$inscription->id]);
+    $problemeInfo = $hasProbleme ? session('inscriptions_problemes')[$inscription->id] : null;
+    $problemeClass = $hasProbleme ? ($problemeInfo['type'] === 'error' ? 'table-danger' : 'table-warning') : '';
 @endphp
-<tr data-inscription-id="{{ $inscription->id }}"
+<tr class="{{ $problemeClass }}" data-inscription-id="{{ $inscription->id }}"
     data-has-payment="{{ $hasPayment ? 1 : 0 }}"
     data-payment-status="{{ $paymentStatus }}"
     data-student-label="{{ ($inscription->etudiant->nom ?? '') . ' ' . ($inscription->etudiant->prenoms ?? '') }}"
-    data-matricule="{{ $inscription->etudiant->matricule ?? '' }}">
+    data-matricule="{{ $inscription->etudiant->matricule ?? '' }}"
+    data-classe-id="{{ $inscription->classe->id ?? '' }}"
+    data-classe-label="{{ optional($inscription->classe)->nom ?? optional($inscription->classe)->name ?? '' }}">
     @if(auth()->user()->hasRole('superAdmin'))
     <td>
         @if($inscription->workflow_step !== 'etudiant_cree')
@@ -64,6 +70,47 @@
         @endif
     </td>
     <td>
+        @if($hasProbleme)
+            <div class="mb-2 d-flex flex-column gap-2">
+                <span class="badge {{ $problemeInfo['type'] === 'error' ? 'bg-danger' : 'bg-warning text-dark' }} d-inline-flex align-items-start"
+                      style="font-size: 0.75rem; white-space: normal; word-wrap: break-word; text-align: left; line-height: 1.3;">
+                    <i class="fas {{ $problemeInfo['type'] === 'error' ? 'fa-exclamation-circle' : 'fa-exclamation-triangle' }} me-1 mt-1" style="flex-shrink: 0;"></i>
+                    <span style="word-break: break-word;">{{ $problemeInfo['message'] }}</span>
+                </span>
+
+                @php
+                    $raison = $problemeInfo['message'];
+                    $isPaiementNonValide = str_contains($raison, 'paiement') && str_contains($raison, 'validé');
+                    $isClassePleine = str_contains($raison, 'Classe pleine') || str_contains($raison, 'classe pleine');
+                    $isSansPaiement = str_contains($raison, 'Aucun paiement') || str_contains($raison, 'sans paiement');
+                @endphp
+
+                @if($isPaiementNonValide)
+                    <button type="button" class="btn btn-sm btn-outline-warning"
+                            onclick="ouvrirModalValiderPaiement({{ $inscription->id }})">
+                        <i class="fas fa-check-circle me-1"></i>Valider paiement
+                    </button>
+                @elseif($isClassePleine)
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary"
+                                onclick="ouvrirModalChangerClasse({{ $inscription->id }})">
+                            <i class="fas fa-exchange-alt me-1"></i>Changer classe
+                        </button>
+                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    onclick="handleInscriptionValidation({{ $inscription->id }}, {{ $hasPayment ? 'true' : 'false' }}, true)">
+                                <i class="fas fa-bolt me-1"></i>Forcer validation
+                            </button>
+                        @endif
+                    </div>
+                @elseif($isSansPaiement)
+                    <button type="button" class="btn btn-sm btn-outline-primary"
+                            onclick="openPaymentModal({{ $inscription->id }}, { autoValidate: true })">
+                        <i class="fas fa-wallet me-1"></i>Créer paiement
+                    </button>
+                @endif
+            </div>
+        @endif
         <div class="inscription-actions-wrapper" data-inscription-actions="{{ $inscription->id }}">
             <div class="inscription-actions-buttons">
                 <a href="{{ route('esbtp.inscriptions.show', $inscription->id) }}"
@@ -81,7 +128,13 @@
                     </button>
                 @endif
 
-                @if(!$hasPayment)
+                @if($pendingPayment)
+                    <button class="action-btn action-payment"
+                            onclick="ouvrirModalValiderPaiement({{ $inscription->id }})"
+                            title="Valider le paiement">
+                        <i class="fas fa-check-circle"></i>
+                    </button>
+                @elseif(!$hasPayment)
                     <button class="action-btn action-payment"
                             onclick="openPaymentModal({{ $inscription->id }})"
                             title="Associer un paiement">

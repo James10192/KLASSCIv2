@@ -185,6 +185,94 @@
         font-size: 14px;
         color: #374151;
     }
+
+    /* Styles pour les modaux KLASSCI */
+    .klassci-payment-modal .modal-content {
+        border: 2px solid rgba(99, 102, 241, 0.25);
+        border-radius: 16px;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3), 0 8px 16px rgba(99, 102, 241, 0.15);
+        overflow: hidden;
+    }
+
+    .klassci-payment-modal .modal-header {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        color: #ffffff;
+        border-bottom: none;
+        padding: 20px 24px;
+        border-radius: 14px 14px 0 0;
+    }
+
+    .klassci-payment-modal .modal-header .modal-title {
+        font-weight: 600;
+        font-size: 1.125rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .klassci-payment-modal .modal-header .modal-title i {
+        font-size: 1.25rem;
+    }
+
+    .klassci-payment-modal .btn-close {
+        filter: invert(1) brightness(2);
+        opacity: 0.9;
+        transition: opacity 0.2s;
+    }
+
+    .klassci-payment-modal .btn-close:hover {
+        opacity: 1;
+    }
+
+    .klassci-payment-modal .modal-body {
+        background: #ffffff;
+        padding: 24px;
+    }
+
+    .klassci-payment-modal .modal-footer {
+        background: #f8fafc;
+        border-top: 1px solid rgba(99, 102, 241, 0.15);
+        padding: 16px 24px;
+    }
+
+    .klassci-payment-modal .modal-footer .btn {
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 10px 20px;
+    }
+
+    .klassci-payment-modal .modal-footer .btn-primary {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        border: none;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .klassci-payment-modal .modal-footer .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+    }
+
+    .klassci-payment-modal .form-control:focus,
+    .klassci-payment-modal .form-select:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.15);
+    }
+
+    .klassci-payment-modal .alert {
+        border-radius: 10px;
+        border: none;
+    }
+
+    .klassci-payment-modal .form-label.fw-bold {
+        color: #334155;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .klassci-payment-modal .form-control[readonly] {
+        background: #f8fafc;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+    }
 </style>
 @endsection
 
@@ -436,7 +524,7 @@
 
 <div class="modal fade" id="bulkValidationModal" tabindex="-1" aria-labelledby="bulkValidationModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
+        <div class="modal-content klassci-payment-modal">
             <div class="modal-header">
                 <h5 class="modal-title" id="bulkValidationModalLabel">
                     <i class="fas fa-check-double me-2"></i>Validation groupée des inscriptions
@@ -475,7 +563,7 @@
 </div>
 
 <!-- Modal pour associer un paiement -->
-<div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+<div class="modal fade klassci-payment-modal" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -574,8 +662,110 @@
     </div>
 </div>
 
+<!-- Modal: Valider Paiement -->
+<div class="modal fade klassci-payment-modal" id="modalValiderPaiement" tabindex="-1" aria-labelledby="modalValiderPaiementLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalValiderPaiementLabel">
+                    <i class="fas fa-check-circle me-2"></i>Valider le paiement
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formValiderPaiement" method="POST">
+                    @csrf
+                    <input type="hidden" name="inscription_id" id="valider_inscription_id">
+                    <input type="hidden" name="paiement_id" id="valider_paiement_id">
+
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span id="validerPaiementInfo">Paiement à valider...</span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Montant</label>
+                        <input type="text" class="form-control" id="valider_montant" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Mode de paiement</label>
+                        <input type="text" class="form-control" id="valider_mode" readonly>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Référence</label>
+                        <input type="text" class="form-control" id="valider_reference" readonly>
+                    </div>
+
+                    <div class="d-flex gap-3">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-2"></i>Annuler
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-check me-2"></i>Valider le paiement
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Changer la Classe -->
+<div class="modal fade klassci-payment-modal" id="modalChangerClasse" tabindex="-1" aria-labelledby="modalChangerClasseLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalChangerClasseLabel">
+                    <i class="fas fa-exchange-alt me-2"></i>Changer la classe
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formChangerClasse" method="POST">
+                    @csrf
+                    <input type="hidden" name="inscription_id" id="changer_inscription_id">
+
+                    <div class="alert alert-warning mb-4">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        La classe actuelle est pleine. Veuillez sélectionner une nouvelle classe.
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Classe actuelle</label>
+                            <input type="text" class="form-control" id="changer_ancienne_classe" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Nouvelle classe <span class="text-danger">*</span></label>
+                            <select class="form-select" name="nouvelle_classe_id" id="changer_nouvelle_classe" required>
+                                <option value="">Sélectionnez une classe</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="classeDispoInfo" class="alert alert-success" style="display: none;">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <span id="classeDispoText">Places disponibles: ...</span>
+                    </div>
+
+                    <div class="d-flex gap-3">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-2"></i>Annuler
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-exchange-alt me-2"></i>Changer la classe
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal pour validation définitive -->
-<div class="modal fade" id="validationModal" tabindex="-1" aria-labelledby="validationModalLabel" aria-hidden="true">
+<div class="modal fade klassci-payment-modal" id="validationModal" tabindex="-1" aria-labelledby="validationModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -608,7 +798,7 @@
 </div>
 
 <!-- Modal pour annulation -->
-<div class="modal fade" id="cancelInscriptionModal" tabindex="-1" aria-labelledby="cancelInscriptionModalLabel" aria-hidden="true">
+<div class="modal fade klassci-payment-modal" id="cancelInscriptionModal" tabindex="-1" aria-labelledby="cancelInscriptionModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -642,14 +832,14 @@
 </div>
 
 <!-- Modal pour les instructions de changement d'année -->
-<div class="modal fade" id="yearChangeModal" tabindex="-1" aria-labelledby="yearChangeModalLabel" aria-hidden="true">
+<div class="modal fade klassci-payment-modal" id="yearChangeModal" tabindex="-1" aria-labelledby="yearChangeModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="yearChangeModalLabel">Comment changer l'année académique ?</h5>
-                <button type="button" class="close btn-close" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; font-weight: bold; color: #999; cursor: pointer;">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <h5 class="modal-title" id="yearChangeModalLabel">
+                    <i class="fas fa-calendar-alt me-2"></i>Comment changer l'année académique ?
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <p><strong>Pour consulter les inscriptions d'une autre année :</strong></p>
@@ -672,9 +862,9 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#yearChangeModal').modal('hide');">Fermer</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
                 <a href="{{ route('esbtp.annees-universitaires.index') }}" target="_blank" class="btn btn-primary">
-                    <i class="fas fa-external-link-alt"></i> Aller aux Années
+                    <i class="fas fa-external-link-alt me-2"></i>Aller aux Années
                 </a>
             </div>
         </div>
@@ -686,6 +876,19 @@
 @push('scripts')
 <script>
     const ADMIN_REFRESH_CONTEXT = 'administration';
+
+    // Fonction de debug pour les erreurs
+    function debugError(error) {
+        if (console && console.error) {
+            console.error('Erreur détectée:', error);
+            if (error.response) {
+                console.error('Response:', error.response);
+            }
+            if (error.stack) {
+                console.error('Stack:', error.stack);
+            }
+        }
+    }
 
     function showYearChangeInfo() {
         if (typeof bootstrap !== 'undefined') {
@@ -854,8 +1057,97 @@
         modal.show();
     };
 
-    function handleInscriptionValidation(inscriptionId, hasPayment) {
-        if (!hasPayment) {
+    function ouvrirModalValiderPaiement(inscriptionId) {
+        fetch(`/esbtp/inscriptions/${inscriptionId}/paiement-en-attente`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.paiement) {
+                    document.getElementById('valider_inscription_id').value = inscriptionId;
+                    document.getElementById('valider_paiement_id').value = data.paiement.id;
+                    document.getElementById('valider_montant').value = new Intl.NumberFormat('fr-FR').format(data.paiement.montant) + ' FCFA';
+                    document.getElementById('valider_mode').value = data.paiement.mode_paiement || 'N/A';
+                    document.getElementById('valider_reference').value = data.paiement.reference_paiement || 'N/A';
+                    document.getElementById('validerPaiementInfo').textContent = `Paiement de ${data.paiement.etudiant.nom} ${data.paiement.etudiant.prenoms}`;
+                    document.getElementById('formValiderPaiement').action = `/esbtp/paiements/${data.paiement.id}/valider-rapide`;
+
+                    const modal = new bootstrap.Modal(document.getElementById('modalValiderPaiement'));
+                    modal.show();
+                } else {
+                    alert('Impossible de récupérer les informations du paiement: ' + (data.message || ''));
+                }
+            })
+            .catch(error => {
+                debugError(error);
+                alert('Erreur lors du chargement des données');
+            });
+    }
+
+    function ouvrirModalChangerClasse(inscriptionId) {
+        fetch(`/esbtp/inscriptions/${inscriptionId}/classes-alternatives`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('changer_inscription_id').value = inscriptionId;
+                    document.getElementById('changer_ancienne_classe').value = data.classeActuelle.name;
+
+                    const select = document.getElementById('changer_nouvelle_classe');
+                    select.innerHTML = '<option value="">Sélectionnez une classe</option>';
+
+                    data.classesAlternatives.forEach(classe => {
+                        const option = document.createElement('option');
+                        option.value = classe.id;
+
+                        if (classe.is_available) {
+                            option.textContent = `${classe.name} (${classe.places_disponibles}/${classe.places_totales} places disponibles)`;
+                        } else {
+                            option.textContent = `${classe.name} (COMPLET - ${classe.places_disponibles}/${classe.places_totales})`;
+                            option.style.color = '#dc3545';
+                            option.style.fontWeight = 'bold';
+                        }
+
+                        option.dataset.placesDisponibles = classe.places_disponibles;
+                        option.dataset.isAvailable = classe.is_available;
+                        select.appendChild(option);
+                    });
+
+                    select.addEventListener('change', function() {
+                        const selectedOption = this.options[this.selectedIndex];
+                        if (selectedOption.value) {
+                            const isAvailable = selectedOption.dataset.isAvailable === 'true';
+                            const placesDisponibles = selectedOption.dataset.placesDisponibles;
+
+                            document.getElementById('classeDispoInfo').style.display = 'block';
+
+                            if (isAvailable) {
+                                document.getElementById('classeDispoText').textContent =
+                                    `✓ Places disponibles: ${placesDisponibles}`;
+                                document.getElementById('classeDispoText').style.color = '#28a745';
+                            } else {
+                                document.getElementById('classeDispoText').textContent =
+                                    `⚠ Classe complète (${placesDisponibles} places disponibles)`;
+                                document.getElementById('classeDispoText').style.color = '#dc3545';
+                            }
+                        } else {
+                            document.getElementById('classeDispoInfo').style.display = 'none';
+                        }
+                    });
+
+                    document.getElementById('formChangerClasse').action = `/esbtp/inscriptions/${inscriptionId}/changer-classe-rapide`;
+
+                    const modal = new bootstrap.Modal(document.getElementById('modalChangerClasse'));
+                    modal.show();
+                } else {
+                    alert(data.message || 'Impossible de récupérer les classes alternatives');
+                }
+            })
+            .catch(error => {
+                debugError(error);
+                alert('Erreur lors du chargement des données');
+            });
+    }
+
+    function handleInscriptionValidation(inscriptionId, hasPayment, forceValidation = false) {
+        if (!hasPayment && !forceValidation) {
             openPaymentModal(inscriptionId, { autoValidate: true });
             return;
         }
@@ -863,6 +1155,9 @@
         const formData = new FormData();
         formData.append('_token', '{{ csrf_token() }}');
         formData.append('inscription_ids[]', inscriptionId);
+        if (forceValidation) {
+            formData.append('force', '1');
+        }
 
         setInscriptionRowLoadingState(inscriptionId, true);
 
@@ -1014,6 +1309,7 @@
 
         const noPaymentItems = [];
         const pendingPaymentItems = [];
+        const classePleineItems = [];
         let ready = 0;
 
         rows.forEach(row => {
@@ -1022,8 +1318,16 @@
             const label = row.dataset.studentLabel || 'Étudiant';
             const matricule = row.dataset.matricule ? `(${row.dataset.matricule})` : '';
             const display = `${label} ${matricule}`.trim();
+            const hasClassePleineProbleme = row.querySelector('.badge')?.textContent?.includes('Classe pleine') || false;
 
-            if (!hasPayment || paymentStatus === 'aucun') {
+            if (hasClassePleineProbleme) {
+                classePleineItems.push({
+                    id: row.dataset.inscriptionId,
+                    label: display,
+                    action: 'classe_pleine',
+                    classeLabel: row.dataset.classeLabel || 'N/A'
+                });
+            } else if (!hasPayment || paymentStatus === 'aucun') {
                 noPaymentItems.push({
                     id: row.dataset.inscriptionId,
                     label: display,
@@ -1083,12 +1387,52 @@
                     li.appendChild(viewButton);
                 }
 
+                if (item.action === 'classe_pleine') {
+                    const changeButton = document.createElement('button');
+                    changeButton.type = 'button';
+                    changeButton.className = 'btn btn-sm btn-outline-primary bulk-action-button';
+                    changeButton.innerHTML = '<i class="fas fa-exchange-alt me-1"></i>Changer classe';
+                    changeButton.dataset.inscriptionId = item.id;
+                    changeButton.dataset.action = 'change-class';
+                    li.appendChild(changeButton);
+
+                    const forceButton = document.createElement('button');
+                    forceButton.type = 'button';
+                    forceButton.className = 'btn btn-sm btn-outline-danger bulk-action-button';
+                    forceButton.innerHTML = '<i class="fas fa-bolt me-1"></i>Forcer';
+                    forceButton.dataset.inscriptionId = item.id;
+                    forceButton.dataset.action = 'force-validate';
+                    li.appendChild(forceButton);
+                }
+
                 element.appendChild(li);
             });
         };
 
         renderList(noPaymentList, noPaymentItems);
         renderList(pendingPaymentList, pendingPaymentItems);
+
+        // Ajouter une section pour les classes pleines si nécessaire
+        let classePleineSection = document.getElementById('bulk-classe-pleine-section');
+        if (!classePleineSection && classePleineItems.length > 0) {
+            classePleineSection = document.createElement('div');
+            classePleineSection.id = 'bulk-classe-pleine-section';
+            classePleineSection.className = 'mb-3';
+            classePleineSection.innerHTML = `
+                <div class="alert alert-warning">
+                    <strong><i class="fas fa-exclamation-triangle me-1"></i>Classes pleines</strong>
+                    <div>Les inscriptions suivantes ont une classe pleine :</div>
+                </div>
+                <ul id="bulk-classe-pleine-list" class="list-group"></ul>
+            `;
+            pendingPaymentSection.parentNode.insertBefore(classePleineSection, pendingPaymentSection.nextSibling);
+        }
+
+        if (classePleineSection) {
+            const classePleineList = document.getElementById('bulk-classe-pleine-list');
+            renderList(classePleineList, classePleineItems);
+            classePleineSection.classList.toggle('d-none', classePleineItems.length === 0);
+        }
 
         noPaymentSection.classList.toggle('d-none', noPaymentItems.length === 0);
         pendingPaymentSection.classList.toggle('d-none', pendingPaymentItems.length === 0);
@@ -1102,6 +1446,20 @@
                     ouvrirModalValiderPaiement(inscriptionId);
                 } else if (this.dataset.action === 'show') {
                     window.open(`/esbtp/inscriptions/${inscriptionId}`, '_blank');
+                } else if (this.dataset.action === 'change-class') {
+                    // Fermer le modal de validation groupée
+                    const bulkModal = bootstrap.Modal.getInstance(document.getElementById('bulkValidationModal'));
+                    if (bulkModal) bulkModal.hide();
+                    // Ouvrir le modal de changement de classe
+                    ouvrirModalChangerClasse(inscriptionId);
+                } else if (this.dataset.action === 'force-validate') {
+                    // Fermer le modal de validation groupée
+                    const bulkModal = bootstrap.Modal.getInstance(document.getElementById('bulkValidationModal'));
+                    if (bulkModal) bulkModal.hide();
+                    // Forcer la validation
+                    if (confirm('Êtes-vous sûr de vouloir forcer la validation malgré la classe pleine ?')) {
+                        handleInscriptionValidation(inscriptionId, true);
+                    }
                 }
             });
         });
@@ -1336,6 +1694,89 @@
                     debugError(error);
                     highlightInscriptionRow(inscriptionId, 'reject');
                     alert('Erreur lors de la création du paiement');
+                })
+                .finally(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                });
+            });
+        }
+
+        const validerPaiementForm = document.getElementById('formValiderPaiement');
+        if (validerPaiementForm) {
+            validerPaiementForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Validation en cours...';
+
+                const formData = new FormData(this);
+                const actionUrl = this.action;
+                const inscriptionId = document.getElementById('valider_inscription_id').value;
+
+                fetch(actionUrl, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('modalValiderPaiement')).hide();
+                        refreshInscriptionLigne(inscriptionId, 'validate');
+                    } else {
+                        alert(data.message || 'Erreur lors de la validation');
+                    }
+                })
+                .catch(error => {
+                    debugError(error);
+                    alert('Erreur lors de la validation du paiement');
+                })
+                .finally(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                });
+            });
+        }
+
+        const changerClasseForm = document.getElementById('formChangerClasse');
+        if (changerClasseForm) {
+            changerClasseForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Changement en cours...';
+
+                const formData = new FormData(this);
+                const actionUrl = this.action;
+                const inscriptionId = document.getElementById('changer_inscription_id').value;
+
+                fetch(actionUrl, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        bootstrap.Modal.getInstance(document.getElementById('modalChangerClasse')).hide();
+                        // Rafraîchir la ligne en AJAX au lieu de recharger toute la page
+                        refreshInscriptionLigne(inscriptionId, 'change-class');
+                    } else {
+                        alert(data.message || 'Erreur lors du changement de classe');
+                    }
+                })
+                .catch(error => {
+                    debugError(error);
+                    alert('Erreur lors du changement de classe');
                 })
                 .finally(() => {
                     submitBtn.disabled = false;
