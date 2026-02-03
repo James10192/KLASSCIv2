@@ -473,7 +473,7 @@
         console.log('filiereIdFromInscription:', filiereIdFromInscription);
         console.log('Variables PHP brutes - $niveauEtudeCode:', '@php echo json_encode($niveauEtudeCode ?? "UNDEFINED"); @endphp');
         console.log('Variables PHP brutes - $filiereIdForMatricule:', '@php echo json_encode($filiereIdForMatricule ?? "UNDEFINED"); @endphp');
-        console.log('Variables PHP brutes - $inscriptionRecente:', '@php echo $inscriptionRecente ? "ID=" . $inscriptionRecente->id : "NULL"; @endphp');
+        console.log('Variables PHP brutes - $inscriptionRecente:', '@php echo isset($inscriptionRecente) && $inscriptionRecente ? "ID=" . $inscriptionRecente->id : "NON DEFINI"; @endphp');
         console.log('============================');
 
         // Initialiser niveauConfig directement si on a les infos
