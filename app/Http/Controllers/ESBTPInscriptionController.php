@@ -3556,8 +3556,11 @@ class ESBTPInscriptionController extends Controller
                         continue;
                     }
 
-                    // Skip si déjà validée
-                    if ($inscription->status === "active") {
+                    // Skip si déjà validée (status = active ET workflow_step = etudiant_cree)
+                    if (
+                        $inscription->status === "active" &&
+                        $inscription->workflow_step === "etudiant_cree"
+                    ) {
                         $stats["inscriptions_deja_validees"]++;
 
                         continue;
