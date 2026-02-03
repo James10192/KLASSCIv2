@@ -495,6 +495,18 @@ class ESBTPEtudiantController extends Controller
             elseif ($inscriptionRecente->niveau) {
                 $niveauEtudeCode = $inscriptionRecente->niveau->code;
             }
+            // FALLBACK: Extraire depuis le nom de la classe (ex: "BTS 1A Génie Civil" → "1A")
+            elseif ($inscriptionRecente->classe && $inscriptionRecente->classe->name) {
+                $classeName = $inscriptionRecente->classe->name;
+                // Patterns communs: "BTS 1A ...", "BTS 2A ...", "Licence 1 ...", "L1 ...", "M1 ..."
+                if (preg_match('/\b(1A|2A|L1|L2|L3|L3Pro|M1|M2|5A)\b/i', $classeName, $matches)) {
+                    $niveauEtudeCode = strtoupper($matches[1]);
+                    \Log::debug('Niveau code extrait du nom de classe', [
+                        'classe_name' => $classeName,
+                        'extracted_code' => $niveauEtudeCode
+                    ]);
+                }
+            }
 
             // Filière depuis l'inscription
             $filiereIdForMatricule = $inscriptionRecente->filiere_id;
@@ -508,6 +520,7 @@ class ESBTPEtudiantController extends Controller
             'inscription_id' => $inscriptionRecente?->id,
             'inscription_status' => $inscriptionRecente?->status,
             'classe_id' => $inscriptionRecente?->classe_id,
+            'classe_name' => $inscriptionRecente?->classe?->name,
             'classe_niveau_id' => $inscriptionRecente?->classe?->niveau_etude_id,
             'classe_niveau_code' => $inscriptionRecente?->classe?->niveau?->code,
             'inscription_niveau_id' => $inscriptionRecente?->niveau_id,
