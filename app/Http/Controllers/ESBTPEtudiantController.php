@@ -455,16 +455,26 @@ class ESBTPEtudiantController extends Controller
         $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
 
         // Récupérer l'inscription la plus récente pour la génération du matricule
-        // Priorité : inscription de l'année courante active > inscription la plus récente
+        // Priorité : inscription de l'année courante active > inscription la plus récente (any status)
         $inscriptionRecente = $etudiant->inscriptions()
             ->with(['niveau', 'filiere', 'classe.niveau'])
             ->whereHas('anneeUniversitaire', function($query) {
                 $query->where('is_current', true);
             })
-            ->where('status', 'active')
+            ->whereRaw('LOWER(status) = ?', ['active'])
             ->first();
 
-        // Si pas d'inscription active cette année, prendre la plus récente
+        // Si pas d'inscription active cette année, prendre n'importe quelle inscription de l'année courante
+        if (!$inscriptionRecente) {
+            $inscriptionRecente = $etudiant->inscriptions()
+                ->with(['niveau', 'filiere', 'classe.niveau'])
+                ->whereHas('anneeUniversitaire', function($query) {
+                    $query->where('is_current', true);
+                })
+                ->first();
+        }
+
+        // Si toujours rien, prendre la plus récente toutes années confondues
         if (!$inscriptionRecente) {
             $inscriptionRecente = $etudiant->inscriptions()
                 ->with(['niveau', 'filiere', 'classe.niveau'])
@@ -489,6 +499,22 @@ class ESBTPEtudiantController extends Controller
             // Filière depuis l'inscription
             $filiereIdForMatricule = $inscriptionRecente->filiere_id;
         }
+
+        // Debug détaillé pour diagnostic
+        \Log::debug('Matricule generation - inscription lookup', [
+            'etudiant_id' => $etudiant->id,
+            'etudiant_matricule' => $etudiant->matricule,
+            'inscription_found' => $inscriptionRecente ? true : false,
+            'inscription_id' => $inscriptionRecente?->id,
+            'inscription_status' => $inscriptionRecente?->status,
+            'classe_id' => $inscriptionRecente?->classe_id,
+            'classe_niveau_id' => $inscriptionRecente?->classe?->niveau_etude_id,
+            'classe_niveau_code' => $inscriptionRecente?->classe?->niveau?->code,
+            'inscription_niveau_id' => $inscriptionRecente?->niveau_id,
+            'inscription_niveau_code' => $inscriptionRecente?->niveau?->code,
+            'final_niveau_code' => $niveauEtudeCode,
+            'filiere_id' => $filiereIdForMatricule,
+        ]);
 
         // Logging pour debug
         \Log::info('Étudiant chargé pour édition', [
