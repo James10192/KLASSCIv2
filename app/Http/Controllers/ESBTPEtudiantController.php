@@ -454,6 +454,42 @@ class ESBTPEtudiantController extends Controller
         $classes = ESBTPClasse::where('is_active', true)->get();
         $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
 
+        // Récupérer l'inscription la plus récente pour la génération du matricule
+        // Priorité : inscription de l'année courante active > inscription la plus récente
+        $inscriptionRecente = $etudiant->inscriptions()
+            ->with(['niveau', 'filiere', 'classe.niveau'])
+            ->whereHas('anneeUniversitaire', function($query) {
+                $query->where('is_current', true);
+            })
+            ->where('status', 'active')
+            ->first();
+
+        // Si pas d'inscription active cette année, prendre la plus récente
+        if (!$inscriptionRecente) {
+            $inscriptionRecente = $etudiant->inscriptions()
+                ->with(['niveau', 'filiere', 'classe.niveau'])
+                ->orderByDesc('created_at')
+                ->first();
+        }
+
+        // Extraire les infos pour la génération du matricule
+        $niveauEtudeCode = null;
+        $filiereIdForMatricule = null;
+
+        if ($inscriptionRecente) {
+            // Essayer d'abord depuis la classe (plus fiable)
+            if ($inscriptionRecente->classe && $inscriptionRecente->classe->niveau) {
+                $niveauEtudeCode = $inscriptionRecente->classe->niveau->code;
+            }
+            // Sinon depuis l'inscription directement
+            elseif ($inscriptionRecente->niveau) {
+                $niveauEtudeCode = $inscriptionRecente->niveau->code;
+            }
+
+            // Filière depuis l'inscription
+            $filiereIdForMatricule = $inscriptionRecente->filiere_id;
+        }
+
         // Logging pour debug
         \Log::info('Étudiant chargé pour édition', [
             'id' => $etudiant->id,
@@ -463,6 +499,9 @@ class ESBTPEtudiantController extends Controller
             'sexeArray' => $etudiant['sexe'] ?? null,
             'genre' => $etudiant->genre,
             'all_attributes' => $etudiant->getAttributes(),
+            'inscription_recente_id' => $inscriptionRecente?->id,
+            'niveau_etude_code' => $niveauEtudeCode,
+            'filiere_id_matricule' => $filiereIdForMatricule,
         ]);
 
         return view('esbtp.etudiants.edit', compact(
@@ -470,7 +509,10 @@ class ESBTPEtudiantController extends Controller
             'filieres',
             'niveaux',
             'classes',
-            'annees'
+            'annees',
+            'niveauEtudeCode',
+            'filiereIdForMatricule',
+            'inscriptionRecente'
         ));
     }
 
