@@ -655,9 +655,18 @@
         // Vérifier si le niveau est configuré pour la génération automatique
         // (niveauConfig est déjà initialisé depuis les données Blade de l'inscription récente)
         function checkNiveauConfigStatus() {
+            // Si l'étudiant a déjà un matricule, pas besoin de warning
+            const hasExistingMatricule = matriculeInput && matriculeInput.value && matriculeInput.value.trim() !== '';
+
             if (!niveauConfig && currentMatriculeMode === 'automatique' && authUserIsSuperAdmin) {
-                showMatriculeStatus('⚠️ Aucune inscription trouvée - génération automatique impossible', 'warning');
-                if (generateBtn) generateBtn.disabled = true;
+                if (hasExistingMatricule) {
+                    // L'étudiant a déjà un matricule, on peut le régénérer manuellement si besoin
+                    showMatriculeStatus('ℹ️ Matricule existant. Cliquez sur "Générer" pour en créer un nouveau.', 'info');
+                } else {
+                    // Pas de matricule et pas d'inscription trouvée
+                    showMatriculeStatus('⚠️ Aucune inscription trouvée - génération automatique impossible', 'warning');
+                }
+                if (generateBtn) generateBtn.disabled = !hasExistingMatricule; // Permettre si matricule existe
             } else if (niveauConfig) {
                 showMatriculeStatus('', '');
                 if (generateBtn && authUserIsSuperAdmin) generateBtn.disabled = false;
