@@ -467,8 +467,18 @@
         const niveauEtudeCodeFromInscription = @json($niveauEtudeCode ?? null);
         const filiereIdFromInscription = @json($filiereIdForMatricule ?? null);
 
+        // DEBUG CONSOLE - À SUPPRIMER APRÈS DIAGNOSTIC
+        console.log('=== DEBUG MATRICULE EDIT ===');
+        console.log('niveauEtudeCodeFromInscription:', niveauEtudeCodeFromInscription);
+        console.log('filiereIdFromInscription:', filiereIdFromInscription);
+        console.log('Variables PHP brutes - $niveauEtudeCode:', '@php echo json_encode($niveauEtudeCode ?? "UNDEFINED"); @endphp');
+        console.log('Variables PHP brutes - $filiereIdForMatricule:', '@php echo json_encode($filiereIdForMatricule ?? "UNDEFINED"); @endphp');
+        console.log('Variables PHP brutes - $inscriptionRecente:', '@php echo $inscriptionRecente ? "ID=" . $inscriptionRecente->id : "NULL"; @endphp');
+        console.log('============================');
+
         // Initialiser niveauConfig directement si on a les infos
         let niveauConfig = niveauEtudeCodeFromInscription ? { code: niveauEtudeCodeFromInscription } : null;
+        console.log('niveauConfig initialisé:', niveauConfig);
 
         fetch('/esbtp/matricule-config/mode-info', {
             method: 'GET',
