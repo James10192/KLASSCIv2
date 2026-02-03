@@ -458,13 +458,17 @@
         const matriculeMode = document.getElementById('matriculeMode');
         const matriculeHelp = document.getElementById('matriculeHelp');
         const genreSelect = document.getElementById('sexe');
-        const classeSelect = document.getElementById('classe_id');
         const initialGenre = genreSelect ? genreSelect.value : null;
-        const initialClasse = classeSelect ? classeSelect.value : null;
 
         // Charger le mode de génération des matricules
         let currentMatriculeMode = 'automatique'; // Par défaut
-        let niveauConfig = null;
+
+        // Récupérer les infos de niveau/filière depuis l'inscription la plus récente (passées par le controller)
+        const niveauEtudeCodeFromInscription = @json($niveauEtudeCode ?? null);
+        const filiereIdFromInscription = @json($filiereIdForMatricule ?? null);
+
+        // Initialiser niveauConfig directement si on a les infos
+        let niveauConfig = niveauEtudeCodeFromInscription ? { code: niveauEtudeCodeFromInscription } : null;
 
         fetch('/esbtp/matricule-config/mode-info', {
             method: 'GET',
@@ -477,10 +481,13 @@
         .then(data => {
             currentMatriculeMode = data.mode || 'automatique';
             updateMatriculeUI();
+            // Vérifier le statut du niveau config après avoir mis à jour l'UI
+            checkNiveauConfigStatus();
         })
         .catch(error => {
             console.error('Erreur lors du chargement du mode matricule:', error);
             updateMatriculeUI();
+            checkNiveauConfigStatus();
         });
 
         function updateMatriculeUI() {
@@ -645,54 +652,20 @@
             matriculeStatus.innerHTML = `<small class="alert ${alertClass} p-1 m-0">${message}</small>`;
         }
 
-        // Détecter le niveau d'études depuis la classe sélectionnée
-        // Pour les étudiants, on devrait déjà avoir une classe associée
-        // Mais pour la génération, on peut récupérer le niveau config de la classe
-        function loadNiveauConfigFromClasse(onLoaded) {
-            if (!classeSelect || !classeSelect.value) {
-                niveauConfig = null;
-                if (typeof onLoaded === 'function') {
-                    onLoaded(null);
-                }
-                return;
+        // Vérifier si le niveau est configuré pour la génération automatique
+        // (niveauConfig est déjà initialisé depuis les données Blade de l'inscription récente)
+        function checkNiveauConfigStatus() {
+            if (!niveauConfig && currentMatriculeMode === 'automatique' && authUserIsSuperAdmin) {
+                showMatriculeStatus('⚠️ Aucune inscription trouvée - génération automatique impossible', 'warning');
+                if (generateBtn) generateBtn.disabled = true;
+            } else if (niveauConfig) {
+                showMatriculeStatus('', '');
+                if (generateBtn && authUserIsSuperAdmin) generateBtn.disabled = false;
             }
-
-            const classeId = classeSelect.value;
-
-            fetch(`/esbtp/api/classes/${classeId}/niveau-config`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                niveauConfig = data.niveau_config;
-
-                if (!niveauConfig && currentMatriculeMode === 'automatique' && authUserIsSuperAdmin) {
-                    showMatriculeStatus('⚠️ Niveau non configuré pour génération automatique', 'warning');
-                    if (generateBtn) generateBtn.disabled = true;
-                } else {
-                    showMatriculeStatus('', '');
-                    if (generateBtn && authUserIsSuperAdmin) generateBtn.disabled = false;
-                }
-
-                if (typeof onLoaded === 'function') {
-                    onLoaded(niveauConfig);
-                }
-            })
-            .catch(error => {
-                console.error('Erreur:', error);
-                niveauConfig = null;
-                if (typeof onLoaded === 'function') {
-                    onLoaded(null);
-                }
-            });
         }
 
-        // Charger la config du niveau au démarrage
-        loadNiveauConfigFromClasse();
+        // Vérifier le statut au démarrage (après le chargement du mode)
+        // Note: On appelle cette fonction après avoir récupéré le mode matricule
 
         function maybeAutoRegenerateMatricule(force) {
             if (!authUserIsSuperAdmin) {
@@ -718,25 +691,14 @@
             }
         }
 
-        // Écouter les changements de classe
-        if (classeSelect && authUserIsSuperAdmin) {
-            classeSelect.addEventListener('change', function() {
-                loadNiveauConfigFromClasse(() => {
-                    const genreChanged = genreSelect && genreSelect.value !== initialGenre;
-                    const classeChanged = classeSelect.value !== initialClasse;
-                    if (genreChanged || classeChanged) {
-                        maybeAutoRegenerateMatricule(true);
-                    }
-                });
-            });
-        }
-
         // Écouter les changements de genre pour le mode auto
+        // (pas besoin d'écouter la classe car on utilise les infos de l'inscription récente)
         if (genreSelect && authUserIsSuperAdmin) {
             genreSelect.addEventListener('change', function() {
-                loadNiveauConfigFromClasse(() => {
+                // Vérifier si le genre a changé et régénérer si nécessaire
+                if (genreSelect.value !== initialGenre) {
                     maybeAutoRegenerateMatricule(true);
-                });
+                }
             });
         }
 
@@ -788,17 +750,16 @@
         }
 
         // Si mode auto et genre déjà sélectionné, générer le matricule au chargement
+        // Note: niveauConfig est déjà initialisé depuis les données Blade de l'inscription récente
         $(document).ready(function() {
             if (currentMatriculeMode === 'automatique' && authUserIsSuperAdmin) {
-                if (genreSelect && genreSelect.value && !matriculeInput.value) {
+                // Vérifier le statut du niveau config
+                checkNiveauConfigStatus();
+
+                // Si on a les infos nécessaires et pas de matricule, générer automatiquement
+                if (genreSelect && genreSelect.value && !matriculeInput.value && niveauConfig) {
                     setTimeout(() => {
-                        loadNiveauConfigFromClasse();
-                        // Attendre un peu pour la récupération de la config du niveau
-                        setTimeout(() => {
-                            if (niveauConfig) {
-                                generateMatriculeAuto();
-                            }
-                        }, 500);
+                        generateMatriculeAuto();
                     }, 100);
                 }
             }
