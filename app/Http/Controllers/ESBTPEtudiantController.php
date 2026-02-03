@@ -445,6 +445,9 @@ class ESBTPEtudiantController extends Controller
      */
     public function edit(ESBTPEtudiant $etudiant)
     {
+        // DEBUG TEMPORAIRE - À SUPPRIMER APRÈS DIAGNOSTIC
+        \Log::warning('=== DEBUG EDIT ETUDIANT START ===', ['etudiant_id' => $etudiant->id]);
+
         // Charger les relations nécessaires
         $etudiant->load(['user', 'parents', 'inscriptions.filiere', 'inscriptions.niveau', 'inscriptions.classe']);
 
@@ -542,6 +545,27 @@ class ESBTPEtudiantController extends Controller
             'niveau_etude_code' => $niveauEtudeCode,
             'filiere_id_matricule' => $filiereIdForMatricule,
         ]);
+
+        // DEBUG TEMPORAIRE - Afficher les infos de debug dans la session
+        // À SUPPRIMER APRÈS DIAGNOSTIC
+        $debugInfo = [
+            'etudiant_id' => $etudiant->id,
+            'inscription_found' => $inscriptionRecente ? true : false,
+            'inscription_id' => $inscriptionRecente?->id,
+            'classe_name' => $inscriptionRecente?->classe?->name,
+            'classe_niveau_id' => $inscriptionRecente?->classe?->niveau_etude_id,
+            'niveau_code' => $niveauEtudeCode,
+            'filiere_id' => $filiereIdForMatricule,
+        ];
+        \Log::warning('=== DEBUG EDIT ETUDIANT END ===', $debugInfo);
+
+        // Si le paramètre debug=1 est présent, afficher un dd()
+        if (request()->has('debug')) {
+            dd('DEBUG MATRICULE', $debugInfo, [
+                'inscription_status' => $inscriptionRecente?->status,
+                'classe_niveau_object' => $inscriptionRecente?->classe?->niveau,
+            ]);
+        }
 
         return view('esbtp.etudiants.edit', compact(
             'etudiant',
