@@ -28,18 +28,18 @@ class ESBTPAbidjanMatriculeConfigSeeder extends Seeder
             ->where('etablissement_id', $etablissementAbidjan->id)
             ->delete();
 
-        // Configuration pour BTS
-        $configBTS = [
+        // Configuration pour BTS 1ère Année (code: 1A)
+        $config1A = [
             'etablissement_id' => $etablissementAbidjan->id,
-            'niveau_etude_code' => 'BTS',
-            'niveau_etude_name' => 'BTS (Brevet de Technicien Supérieur)',
+            'niveau_etude_code' => '1A',
+            'niveau_etude_name' => 'Première Année BTS',
             'pattern' => '{GENRE}ESBTP{ANNEE}-{NUMERO}',
             'prefixe' => null,
             'annee_format' => 2, // 2 chiffres (25, 26, etc.)
             'numero_digits' => 4, // 4 chiffres (0001, 0002, etc.)
             'etablissement_code' => 'ESBTP',
             'is_active' => true,
-            'description' => 'Configuration automatique BTS - Format: MESBTP25-0001, FESBTP25-0001',
+            'description' => 'Configuration automatique BTS 1ère Année - Format: MESBTP25-0001, FESBTP25-0001',
             'exemple' => json_encode([
                 'masculin' => 'MESBTP25-0001',
                 'feminin' => 'FESBTP25-0001'
@@ -48,18 +48,58 @@ class ESBTPAbidjanMatriculeConfigSeeder extends Seeder
             'updated_at' => now()
         ];
 
-        // Configuration pour LICENCE
-        $configLICENCE = [
+        // Configuration pour BTS 2ème Année (code: 2A)
+        $config2A = [
             'etablissement_id' => $etablissementAbidjan->id,
-            'niveau_etude_code' => 'LICENCE',
-            'niveau_etude_name' => 'LICENCE',
+            'niveau_etude_code' => '2A',
+            'niveau_etude_name' => 'Deuxième Année BTS',
+            'pattern' => '{GENRE}ESBTP{ANNEE}-{NUMERO}',
+            'prefixe' => null,
+            'annee_format' => 2, // 2 chiffres (25, 26, etc.)
+            'numero_digits' => 4, // 4 chiffres (0001, 0002, etc.)
+            'etablissement_code' => 'ESBTP',
+            'is_active' => true,
+            'description' => 'Configuration automatique BTS 2ème Année - Format: MESBTP25-0001, FESBTP25-0001',
+            'exemple' => json_encode([
+                'masculin' => 'MESBTP25-0001',
+                'feminin' => 'FESBTP25-0001'
+            ]),
+            'created_at' => now(),
+            'updated_at' => now()
+        ];
+
+        // Configuration pour Licence 1 (code: L1)
+        $configL1 = [
+            'etablissement_id' => $etablissementAbidjan->id,
+            'niveau_etude_code' => 'L1',
+            'niveau_etude_name' => 'Licence 1',
             'pattern' => '{GENRE}{PREFIXE}ESBTP{ANNEE}-{NUMERO}',
             'prefixe' => 'L',
             'annee_format' => 4, // 4 chiffres (2025, 2026, etc.)
             'numero_digits' => 4, // 4 chiffres (0001, 0002, etc.)
             'etablissement_code' => 'ESBTP',
             'is_active' => true,
-            'description' => 'Configuration automatique LICENCE - Format: MLESBTP2025-0001, FLESBTP2025-0001',
+            'description' => 'Configuration automatique Licence 1 - Format: MLESBTP2025-0001, FLESBTP2025-0001',
+            'exemple' => json_encode([
+                'masculin' => 'MLESBTP2025-0001',
+                'feminin' => 'FLESBTP2025-0001'
+            ]),
+            'created_at' => now(),
+            'updated_at' => now()
+        ];
+
+        // Configuration pour Licence 2 (code: L2)
+        $configL2 = [
+            'etablissement_id' => $etablissementAbidjan->id,
+            'niveau_etude_code' => 'L2',
+            'niveau_etude_name' => 'Licence 2',
+            'pattern' => '{GENRE}{PREFIXE}ESBTP{ANNEE}-{NUMERO}',
+            'prefixe' => 'L',
+            'annee_format' => 4, // 4 chiffres (2025, 2026, etc.)
+            'numero_digits' => 4, // 4 chiffres (0001, 0002, etc.)
+            'etablissement_code' => 'ESBTP',
+            'is_active' => true,
+            'description' => 'Configuration automatique Licence 2 - Format: MLESBTP2025-0001, FLESBTP2025-0001',
             'exemple' => json_encode([
                 'masculin' => 'MLESBTP2025-0001',
                 'feminin' => 'FLESBTP2025-0001'
@@ -136,14 +176,60 @@ class ESBTPAbidjanMatriculeConfigSeeder extends Seeder
             'updated_at' => now()
         ];
 
+        // Configuration pour Licence 3 Pro (code: L3Pro)
+        $configL3Pro = [
+            'etablissement_id' => $etablissementAbidjan->id,
+            'niveau_etude_code' => 'L3Pro',
+            'niveau_etude_name' => 'Licence 3 Pro',
+            'pattern' => '{GENRE}{PREFIXE}ESBTP{ANNEE}-{NUMERO}',
+            'prefixe' => 'L',
+            'annee_format' => 4,
+            'numero_digits' => 4,
+            'etablissement_code' => 'ESBTP',
+            'is_active' => true,
+            'description' => 'Configuration automatique Licence 3 Pro - Format: MLESBTP2025-0001, FLESBTP2025-0001',
+            'exemple' => json_encode([
+                'masculin' => 'MLESBTP2025-0001',
+                'feminin' => 'FLESBTP2025-0001'
+            ]),
+            'created_at' => now(),
+            'updated_at' => now()
+        ];
+
+        // Configuration pour Cinquième Année (code: 5A)
+        $config5A = [
+            'etablissement_id' => $etablissementAbidjan->id,
+            'niveau_etude_code' => '5A',
+            'niveau_etude_name' => 'Cinquième Année',
+            'pattern' => '{GENRE}ESBTP{ANNEE}-{NUMERO}',
+            'prefixe' => null,
+            'annee_format' => 2,
+            'numero_digits' => 4,
+            'etablissement_code' => 'ESBTP',
+            'is_active' => true,
+            'description' => 'Configuration automatique 5ème Année - Format: MESBTP25-0001, FESBTP25-0001',
+            'exemple' => json_encode([
+                'masculin' => 'MESBTP25-0001',
+                'feminin' => 'FESBTP25-0001'
+            ]),
+            'created_at' => now(),
+            'updated_at' => now()
+        ];
+
         // Préparer les configurations à insérer (uniquement les manquantes)
         $configsToInsert = [];
-        
-        if (!in_array('BTS', $existingConfigs)) {
-            $configsToInsert[] = $configBTS;
+
+        if (!in_array('1A', $existingConfigs)) {
+            $configsToInsert[] = $config1A;
         }
-        if (!in_array('LICENCE', $existingConfigs)) {
-            $configsToInsert[] = $configLICENCE;
+        if (!in_array('2A', $existingConfigs)) {
+            $configsToInsert[] = $config2A;
+        }
+        if (!in_array('L1', $existingConfigs)) {
+            $configsToInsert[] = $configL1;
+        }
+        if (!in_array('L2', $existingConfigs)) {
+            $configsToInsert[] = $configL2;
         }
         if (!in_array('L3', $existingConfigs)) {
             $configsToInsert[] = $configL3;
@@ -153,6 +239,12 @@ class ESBTPAbidjanMatriculeConfigSeeder extends Seeder
         }
         if (!in_array('M2', $existingConfigs)) {
             $configsToInsert[] = $configM2;
+        }
+        if (!in_array('L3Pro', $existingConfigs)) {
+            $configsToInsert[] = $configL3Pro;
+        }
+        if (!in_array('5A', $existingConfigs)) {
+            $configsToInsert[] = $config5A;
         }
 
         if (empty($configsToInsert)) {
@@ -172,15 +264,17 @@ class ESBTPAbidjanMatriculeConfigSeeder extends Seeder
         }
 
         $this->command->info('');
-        $this->command->info('🎯 Problème résolu :');
-        $this->command->info('   ➤ Classes L3 (8 classes) peuvent maintenant générer des matricules');
-        $this->command->info('   ➤ Classes MASTER (4 classes) peuvent maintenant générer des matricules');
-        $this->command->info('   ➤ Les inscriptions ne sont plus bloquées par manque de configuration matricule');
+        $this->command->info('🎯 Configurations disponibles :');
+        $this->command->info('   ➤ 1A (Première Année BTS) - 37 classes');
+        $this->command->info('   ➤ 2A (Deuxième Année BTS) - 39 classes');
+        $this->command->info('   ➤ 5A (Cinquième Année) - 1 classe');
+        $this->command->info('   ➤ L1, L2, L3, L3Pro (Licence) - 16 classes');
+        $this->command->info('   ➤ M1, M2 (Master) - 3 classes');
         $this->command->info('');
         $this->command->info('📝 Format matricules :');
-        $this->command->info('   • Hommes L1/L2/L3/M1/M2 : MLESBTP2025-0001');
-        $this->command->info('   • Femmes L1/L2/L3/M1/M2 : FLESBTP2025-0001');
-        $this->command->info('   • Hommes BTS : MESBTP25-0001');
-        $this->command->info('   • Femmes BTS : FESBTP25-0001');
+        $this->command->info('   • Hommes BTS (1A/2A/5A) : MESBTP25-0001');
+        $this->command->info('   • Femmes BTS (1A/2A/5A) : FESBTP25-0001');
+        $this->command->info('   • Hommes L1/L2/L3/L3Pro/M1/M2 : MLESBTP2025-0001');
+        $this->command->info('   • Femmes L1/L2/L3/L3Pro/M1/M2 : FLESBTP2025-0001');
     }
 }
