@@ -876,6 +876,7 @@
 @push('scripts')
 <script>
     const ADMIN_REFRESH_CONTEXT = 'administration';
+    const ADMIN_BASE_URL = "{{ route('esbtp.inscriptions.administration') }}";
 
     // Fonction de debug pour les erreurs
     function debugError(error) {
@@ -1184,7 +1185,9 @@
                 alert(data.message);
             }
 
-            refreshInscriptionLigne(inscriptionId, 'validate');
+            const problems = data.inscriptions_problemes || {};
+            const actionType = problems[inscriptionId] ? 'reject' : 'validate';
+            refreshInscriptionLigne(inscriptionId, actionType);
         })
         .catch(error => {
             highlightInscriptionRow(inscriptionId, 'reject');
@@ -1636,6 +1639,18 @@
             })
             .finally(() => setLoading(false));
         }
+
+        window.fetchResults = fetchResults;
+
+        window.resetAdminFilters = function() {
+            const form = document.getElementById('inscriptions-admin-filter-form');
+            if (form) {
+                form.reset();
+            }
+            const headerSearch = document.querySelector('.dashboard-header .search-bar');
+            if (headerSearch) headerSearch.value = '';
+            fetchResults(ADMIN_BASE_URL, { pushState: true });
+        };
 
         if (window.history && window.history.replaceState) {
             window.history.replaceState({ url: window.location.href }, '', window.location.href);

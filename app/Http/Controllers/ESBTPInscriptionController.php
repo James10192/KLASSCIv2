@@ -4457,10 +4457,7 @@ class ESBTPInscriptionController extends Controller
             $inscriptionsProblemes = [];
 
             // Si statut pending, vérifier les problèmes potentiels
-            if (
-                $inscription->status == "pending" ||
-                $inscription->status == "en_attente"
-            ) {
+            if ($inscription->workflow_step !== 'etudiant_cree') {
                 // Vérifier paiement
                 $paiement = $inscription
                     ->paiements()

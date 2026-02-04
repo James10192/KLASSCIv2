@@ -36,8 +36,8 @@
         </div>
         <h4>Aucune inscription trouvée</h4>
         <p class="text-muted">Aucune inscription en attente ne correspond aux filtres appliqués.</p>
-        <a href="{{ route('esbtp.inscriptions.administration') }}" class="btn-acasi primary">
+        <button type="button" class="btn-acasi primary" onclick="resetAdminFilters()">
             <i class="fas fa-refresh"></i>Réinitialiser les filtres
-        </a>
+        </button>
     </div>
 @endif
