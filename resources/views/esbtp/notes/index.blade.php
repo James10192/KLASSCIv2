@@ -1325,7 +1325,9 @@ function showSuccessMessage(message) {
 
 #classSelectionModal .modal-body {
     flex: 1 !important;
-    overflow-y: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
     max-height: none !important;
     padding: 1.25rem 1.5rem;
 }
@@ -1353,6 +1355,7 @@ function showSuccessMessage(message) {
     border-radius: 10px;
     border: 1px solid rgba(59, 130, 246, 0.15);
     margin-bottom: 12px;
+    flex-shrink: 0;
 }
 
 .notes-modal-intro .intro-icon {
@@ -1378,6 +1381,16 @@ function showSuccessMessage(message) {
     color: var(--text-secondary);
 }
 
+/* Filtres matière/période restent fixes en haut du modal */
+#classSelectionModal .modal-body > .row {
+    flex-shrink: 0;
+}
+
+/* Alerte "notes enregistrées" reste fixe en bas */
+#classSelectionModal .modal-body > .mt-2 {
+    flex-shrink: 0;
+}
+
 .notes-grid-table th,
 .notes-grid-table td {
     padding: 8px 6px;
@@ -1391,8 +1404,8 @@ function showSuccessMessage(message) {
 }
 
 .notes-grid-table thead th {
-    position: sticky;
-    top: 0;
+    position: sticky !important;
+    top: 0 !important;
     z-index: 4;
     background: #f8fafc;
 }
@@ -1546,7 +1559,8 @@ function showSuccessMessage(message) {
 .notes-grid-wrapper {
     border-radius: 12px;
     border: 1px solid rgba(148, 163, 184, 0.35);
-    max-height: 75vh;
+    flex: 1;
+    min-height: 0;
     overflow-x: auto !important;
     overflow-y: auto !important;
     overscroll-behavior: contain;
