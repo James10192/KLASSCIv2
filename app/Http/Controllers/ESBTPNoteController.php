@@ -237,8 +237,11 @@ class ESBTPNoteController extends Controller
             // Get filter options
             $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
             $matieres = ESBTPMatiere::orderBy('name')->get();
+            $filieres = ESBTPFiliere::orderBy('name')->get();
+            $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
+            $allClasses = $classes;
 
-            return view('esbtp.notes.index', compact('notes', 'classes', 'matieres', 'anneeAcademique'));
+            return view('esbtp.notes.index', compact('notes', 'classes', 'allClasses', 'matieres', 'anneeAcademique', 'filieres', 'niveaux', 'classStatsById', 'semesterWeights'));
         }
 
         // Get filter options for dropdowns (if needed)

@@ -666,7 +666,7 @@
                         <div class="col-lg-4">
                             <div class="form-group">
                                 <label class="form-label">Date d'embauche <span class="text-danger">*</span></label>
-                                <input type="text" name="date_embauche" id="teacher_hire_date" class="form-control" placeholder="JJ-MM-AAAA" autocomplete="off" inputmode="numeric" required>
+                                <input type="date" name="date_embauche" id="teacher_hire_date" class="form-control" required>
                             </div>
                         </div>
                         <div class="col-lg-4">
@@ -775,17 +775,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    const teacherHireDateInput = document.getElementById('teacher_hire_date');
-    if (teacherHireDateInput) {
-        flatpickr(teacherHireDateInput, {
-            locale: "fr",
-            dateFormat: "Y-m-d",
-            altInput: true,
-            altFormat: "d-m-Y",
-            allowInput: false,
-            disableMobile: true
-        });
-    }
 
 
 

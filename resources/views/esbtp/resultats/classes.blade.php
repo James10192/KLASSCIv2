@@ -106,7 +106,37 @@
             </div>
             <div class="main-card-body">
                 <form id="filter-form" class="row g-3">
-                    <div class="col-md-6 col-lg-4">
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Recherche</label>
+                        <input type="text" name="search" id="search" class="form-select" placeholder="Nom ou code..." value="{{ request('search') }}">
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label">Filière</label>
+                        <select class="form-select" name="filiere_id" id="filiere_id">
+                            <option value="">Toutes les filières</option>
+                            @foreach($filieres as $filiere)
+                                <option value="{{ $filiere->id }}" {{ request('filiere_id') == $filiere->id ? 'selected' : '' }}>{{ $filiere->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label">Niveau</label>
+                        <select class="form-select" name="niveau_id" id="niveau_id">
+                            <option value="">Tous les niveaux</option>
+                            @foreach($niveaux as $niveau)
+                                <option value="{{ $niveau->id }}" {{ request('niveau_id') == $niveau->id ? 'selected' : '' }}>{{ $niveau->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label">Statut</label>
+                        <select class="form-select" name="statut" id="statut">
+                            <option value="">Tous les statuts</option>
+                            <option value="active" {{ request('statut') == 'active' ? 'selected' : '' }}>Actives</option>
+                            <option value="inactive" {{ request('statut') == 'inactive' ? 'selected' : '' }}>Inactives</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-2">
                         <label class="form-label">Année universitaire</label>
                         <select class="form-select select2" name="annee_universitaire_id" id="annee_universitaire_id">
                             <option value="">Toutes les années</option>
@@ -118,12 +148,12 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-3 col-lg-2 d-flex align-items-end">
+                    <div class="col-6 col-md-2 d-flex align-items-end">
                         <button type="submit" class="btn btn-primary w-100">
                             <i class="fas fa-search me-1"></i>Filtrer
                         </button>
                     </div>
-                    <div class="col-md-3 col-lg-2 d-flex align-items-end">
+                    <div class="col-6 col-md-2 d-flex align-items-end">
                         <button type="button" id="reset-btn" class="btn btn-light w-100">
                             <i class="fas fa-undo me-1"></i>Réinitialiser
                         </button>
@@ -159,51 +189,37 @@
 $(document).ready(function() {
     if (typeof $.fn.select2 !== 'undefined') {
         $('.select2').select2({ width: '100%' });
-    } else {
-        debugLog('Select2 not available for classe selector');
     }
 
-    // Fonction de filtrage AJAX
-    function filterClasses(anneeId) {
-        // Afficher l'overlay de chargement
-        const container = $('#classes-grid-container');
-        container.css({
-            'position': 'relative',
-            'pointer-events': 'none',
-            'opacity': '0.5'
-        });
+    let searchTimeout = null;
 
-        // Ajouter un spinner
+    function filterClasses() {
+        const container = $('#classes-grid-container');
+        container.css({ 'position': 'relative', 'pointer-events': 'none', 'opacity': '0.5' });
+
+        $('#loading-overlay').remove();
         const loadingOverlay = $('<div>')
             .attr('id', 'loading-overlay')
-            .css({
-                'position': 'absolute',
-                'top': '50%',
-                'left': '50%',
-                'transform': 'translate(-50%, -50%)',
-                'z-index': '1000'
-            })
+            .css({ 'position': 'absolute', 'top': '50%', 'left': '50%', 'transform': 'translate(-50%, -50%)', 'z-index': '1000' })
             .html('<div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"><span class="visually-hidden">Chargement...</span></div>');
-
         container.append(loadingOverlay);
+
+        // Serialiser tous les champs du formulaire (exclure les valeurs vides pour une URL propre)
+        const formParams = $('#filter-form').serializeArray().filter(function(item) {
+            return item.value !== '';
+        });
 
         $.ajax({
             url: '{{ route("esbtp.resultats.classes") }}',
             method: 'GET',
-            data: { annee_universitaire_id: anneeId },
+            data: formParams,
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
             success: function(response) {
-                // Retirer l'overlay de chargement
                 $('#loading-overlay').remove();
-                container.css({
-                    'pointer-events': 'auto',
-                    'opacity': '1'
-                });
+                container.css({ 'pointer-events': 'auto', 'opacity': '1' });
 
-                // Mettre à jour la grille des classes
                 container.html(response.html);
 
-                // Mettre à jour les KPIs
                 if (response.kpis) {
                     $('#kpi-classes').text(response.kpis.totalClasses);
                     $('#kpi-filieres').text(response.kpis.totalFilieres);
@@ -211,9 +227,7 @@ $(document).ready(function() {
                     $('#kpi-etudiants').text(response.kpis.totalEtudiants);
                 }
 
-                // Mettre à jour le label de l'année
                 if (response.selectedAnnee) {
-                    // Chercher d'abord name, puis label, sinon construire avec annee_debut-annee_fin
                     const anneeLabel = response.selectedAnnee.name
                         || response.selectedAnnee.label
                         || (response.selectedAnnee.annee_debut + '-' + response.selectedAnnee.annee_fin);
@@ -222,34 +236,25 @@ $(document).ready(function() {
                     $('#annee-label').text('Toutes années confondues');
                 }
 
-                // Mettre à jour l'URL sans recharger
-                const newUrl = anneeId
-                    ? '{{ route("esbtp.resultats.classes") }}?annee_universitaire_id=' + anneeId
+                const queryStr = $.param(formParams);
+                const newUrl = queryStr
+                    ? '{{ route("esbtp.resultats.classes") }}?' + queryStr
                     : '{{ route("esbtp.resultats.classes") }}';
                 window.history.pushState({}, '', newUrl);
 
-                // Réinitialiser la recherche locale
                 bindLocalSearch();
             },
             error: function(xhr, status, error) {
-                // Retirer l'overlay en cas d'erreur
                 $('#loading-overlay').remove();
-                container.css({
-                    'pointer-events': 'auto',
-                    'opacity': '1'
-                });
-
-                debugError('Erreur AJAX:', error);
+                container.css({ 'pointer-events': 'auto', 'opacity': '1' });
                 alert('Une erreur est survenue lors du filtrage.');
             }
         });
     }
 
-    // Fonction pour la recherche locale
     function bindLocalSearch() {
         $('#classe-search').off('input').on('input', function() {
             const term = $(this).val().toLowerCase();
-
             $('.class-card-wrapper').each(function() {
                 const name = ($(this).data('name') || '').toString().toLowerCase();
                 if (!term || name.includes(term)) {
@@ -261,20 +266,32 @@ $(document).ready(function() {
         });
     }
 
-    // Intercepter la soumission du formulaire
+    // Soumission du formulaire
     $('#filter-form').on('submit', function(e) {
         e.preventDefault();
-        const anneeId = $('#annee_universitaire_id').val();
-        filterClasses(anneeId);
+        filterClasses();
     });
 
-    // Bouton de réinitialisation
+    // Auto-filtrage sur changement des selects
+    $('#filter-form select').on('change', function() {
+        filterClasses();
+    });
+
+    // Auto-filtrage sur la recherche avec débounce 400ms
+    $('#search').on('input', function() {
+        if (searchTimeout) clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+            filterClasses();
+        }, 400);
+    });
+
+    // Réinitialiser tous les filtres
     $('#reset-btn').on('click', function() {
-        $('#annee_universitaire_id').val('').trigger('change');
-        filterClasses('');
+        $('#search').val('');
+        $('#filiere_id, #niveau_id, #statut, #annee_universitaire_id').val('');
+        filterClasses();
     });
 
-    // Initialiser la recherche locale
     bindLocalSearch();
 });
 </script>

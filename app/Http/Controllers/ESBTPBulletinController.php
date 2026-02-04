@@ -1392,8 +1392,14 @@ class ESBTPBulletinController extends Controller
     public function resultatsClasses(Request $request)
     {
         $annee_universitaire_id = $request->get('annee_universitaire_id');
+        $filiere_id = $request->get('filiere_id');
+        $niveau_id = $request->get('niveau_id');
+        $statut = $request->get('statut');
+        $search = $request->get('search');
 
         $annees_universitaires = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
+        $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::where('is_active', true)->orderBy('name')->get();
 
         // Récupérer l'année courante (is_current = true) pour les inscriptions
         $currentAnnee = $annees_universitaires->firstWhere('is_current', true);
@@ -1403,16 +1409,34 @@ class ESBTPBulletinController extends Controller
             $annee_universitaire_id = $currentAnnee->id;
         }
 
-        // Récupérer TOUTES les classes actives (peu importe leur année universitaire)
         $classesQuery = ESBTPClasse::with(['filiere', 'niveau', 'anneeUniversitaire'])
-            ->where('is_active', true)
             ->withCount(['inscriptions as actifs_count' => function ($query) use ($annee_universitaire_id) {
-                // Compter les étudiants avec inscription active pour l'année sélectionnée
                 $query->where('status', 'active')
                     ->where('annee_universitaire_id', $annee_universitaire_id);
             }]);
 
-        // NE PAS filtrer les classes par année universitaire, on les veut toutes
+        // Filtre statut (actif par défaut)
+        if ($statut === 'inactive') {
+            $classesQuery->where('is_active', false);
+        } else {
+            $classesQuery->where('is_active', true);
+        }
+
+        if ($filiere_id) {
+            $classesQuery->where('filiere_id', $filiere_id);
+        }
+
+        if ($niveau_id) {
+            $classesQuery->where('niveau_etude_id', $niveau_id);
+        }
+
+        if ($search) {
+            $classesQuery->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('code', 'like', '%'.$search.'%');
+            });
+        }
+
         $classes = $classesQuery->orderBy('name')->get();
 
         $totalClasses = $classes->count();
@@ -1444,6 +1468,8 @@ class ESBTPBulletinController extends Controller
         return view('esbtp.resultats.classes', [
             'classes' => $classes,
             'annees_universitaires' => $annees_universitaires,
+            'filieres' => $filieres,
+            'niveaux' => $niveaux,
             'annee_universitaire_id' => $annee_universitaire_id,
             'totalClasses' => $totalClasses,
             'totalFilieres' => $totalFilieres,
