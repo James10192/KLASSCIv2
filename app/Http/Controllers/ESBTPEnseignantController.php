@@ -454,6 +454,8 @@ class ESBTPEnseignantController extends Controller
             }
 
             if ($request->has("availability")) {
+                ESBTPTeacherAvailability::where("teacher_id", $teacher->id)->delete();
+
                 foreach ($request->availability as $key => $status) {
                     if ($status !== "unavailable") {
                         [$dayIndex, $hour] = explode("_", $key);
