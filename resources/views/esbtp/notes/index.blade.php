@@ -296,7 +296,7 @@
 
 <!-- Modal Sélection Classe et Matière -->
 <div class="modal fade notes-management-modal" id="classSelectionModal" tabindex="-1" aria-labelledby="classSelectionModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-fullscreen">
         <div class="modal-content notes-modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="classSelectionModalLabel">
@@ -315,7 +315,7 @@
                         <div class="intro-subtitle">Choisissez une matiere, creez des evaluations et saisissez les notes en temps reel.</div>
                     </div>
                 </div>
-                <div class="row mb-4">
+                <div class="row mb-2">
                     <div class="col-md-5">
                         <div class="form-group">
                             <label class="form-label fw-bold">Matière</label>
@@ -353,10 +353,10 @@
                     <table class="table table-bordered table-hover notes-grid-table" id="notesGrid">
                         <thead class="bg-light">
                             <tr>
-                                <th style="width: 200px; min-width: 200px;">Étudiants</th>
+                                <th style="width: 160px; min-width: 160px;">Étudiants</th>
                                 <!-- Colonnes d'évaluations seront ajoutées dynamiquement ici -->
-                                <th class="notes-average-col" style="min-width: 110px;">Moyenne</th>
-                                <th class="notes-appreciation-col" style="min-width: 140px;">Appréciation</th>
+                                <th class="notes-average-col" style="min-width: 90px;">Moyenne</th>
+                                <th class="notes-appreciation-col" style="min-width: 110px;">Appréciation</th>
                             </tr>
                         </thead>
                         <tbody id="studentsRows">
@@ -374,11 +374,10 @@
                     </table>
                 </div>
 
-                <div class="mt-4">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>Instructions :</strong> Cliquez sur "Choisir une classe" dans la liste ci-dessus, puis sélectionnez une matière. 
-                        Les notes seront automatiquement enregistrées à chaque modification.
+                <div class="mt-2">
+                    <div class="alert alert-info alert-sm py-2 px-3">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <small>Les notes sont automatiquement enregistrées à chaque modification.</small>
                     </div>
                 </div>
             </div>
@@ -705,7 +704,7 @@ function buildNotesGrid() {
             };
 
             const periodRow = $('<tr class="period-row"></tr>');
-            periodRow.append('<th class="notes-student-col" style="width: 200px; min-width: 200px; position: sticky; left: 0; top: 0; z-index: 8; background: #ffffff;">Étudiants</th>');
+            periodRow.append('<th class="notes-student-col" style="width: 160px; min-width: 160px; position: sticky; left: 0; top: 0; z-index: 8; background: #ffffff;">Étudiants</th>');
             if (periodCounts.semestre1 > 0) {
                 periodRow.append(`<th colspan="${periodCounts.semestre1}" class="period-cell semester-1 text-center">Semestre 1</th>`);
             }
@@ -716,13 +715,13 @@ function buildNotesGrid() {
             thead.append(periodRow);
 
             const evalRow = $('<tr></tr>');
-            evalRow.append('<th class="notes-student-col" style="width: 200px; min-width: 200px; position: sticky; left: 0; top: 0; z-index: 7; background: #ffffff;">Étudiants</th>');
+            evalRow.append('<th class="notes-student-col" style="width: 160px; min-width: 160px; position: sticky; left: 0; top: 0; z-index: 7; background: #ffffff;">Étudiants</th>');
 
             sortedEvaluations.forEach(evaluation => {
                 const periodKey = normalizePeriode(evaluation.periode);
                 const periodLabel = periodKey === 'semestre2' ? 'S2' : 'S1';
                 const header = `
-                    <th id="evalHeader${evaluation.id}" class="evaluation-header" style="min-width: 180px;">
+                    <th id="evalHeader${evaluation.id}" class="evaluation-header" style="min-width: 130px;">
                         <div class="evaluation-title">${evaluation.titre || 'Éval'}</div>
                         <div class="evaluation-controls">
                             <div class="evaluation-control">
@@ -747,8 +746,8 @@ function buildNotesGrid() {
                 evalRow.append(header);
             });
 
-            evalRow.append('<th class="notes-average-col" style="min-width: 110px; position: sticky; right: 140px; top: 0; z-index: 6; background: #f8fafc;">Moyenne</th>');
-            evalRow.append('<th class="notes-appreciation-col" style="min-width: 140px; position: sticky; right: 0; top: 0; z-index: 7; background: #f8fafc;">Appréciation</th>');
+            evalRow.append('<th class="notes-average-col" style="min-width: 90px; position: sticky; right: 110px; top: 0; z-index: 6; background: #f8fafc;">Moyenne</th>');
+            evalRow.append('<th class="notes-appreciation-col" style="min-width: 110px; position: sticky; right: 0; top: 0; z-index: 7; background: #f8fafc;">Appréciation</th>');
 
             thead.append(evalRow);
             
@@ -1309,32 +1308,33 @@ function showSuccessMessage(message) {
 }
 
 .notes-modal-content {
-    border-radius: 16px;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.15);
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
 }
 
 .notes-modal-intro {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     align-items: center;
-    padding: 12px 14px;
+    padding: 8px 12px;
     background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(14, 116, 144, 0.05));
-    border-radius: 12px;
+    border-radius: 10px;
     border: 1px solid rgba(59, 130, 246, 0.15);
-    margin-bottom: 18px;
+    margin-bottom: 12px;
 }
 
 .notes-modal-intro .intro-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
     background: rgba(59, 130, 246, 0.12);
     color: #2563eb;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1rem;
+    font-size: 0.9rem;
+    flex-shrink: 0;
 }
 
 .notes-modal-intro .intro-title {
@@ -1349,7 +1349,7 @@ function showSuccessMessage(message) {
 
 .notes-grid-table th,
 .notes-grid-table td {
-    padding: 12px 10px;
+    padding: 8px 6px;
     border: 1px solid #e2e8f0;
 }
 
@@ -1369,7 +1369,7 @@ function showSuccessMessage(message) {
 #notesGrid thead th.notes-average-col {
     position: sticky !important;
     top: 0;
-    right: 140px;
+    right: 110px;
     z-index: 6;
 }
 
@@ -1386,6 +1386,23 @@ function showSuccessMessage(message) {
     left: 0;
     z-index: 6;
     background: #ffffff;
+}
+
+/* Colonne étudiants — compact */
+.notes-grid-table tbody .notes-student-col .d-flex {
+    align-items: center;
+    gap: 6px;
+}
+.notes-grid-table tbody .notes-student-col .me-2 {
+    margin-right: 0 !important;
+}
+.notes-grid-table tbody .notes-student-col .fw-medium {
+    font-size: 0.82rem;
+    line-height: 1.3;
+}
+.notes-grid-table tbody .notes-student-col small {
+    font-size: 0.7rem;
+    opacity: 0.7;
 }
 
 .notes-grid-table tfoot td {
@@ -1412,10 +1429,10 @@ function showSuccessMessage(message) {
 
 .notes-average-col {
     position: sticky;
-    right: 140px;
+    right: 110px;
     z-index: 4;
     background: #f8fafc;
-    min-width: 110px;
+    min-width: 90px;
 }
 
 .notes-appreciation-col {
@@ -1423,7 +1440,7 @@ function showSuccessMessage(message) {
     right: 0;
     z-index: 5;
     background: #f8fafc;
-    min-width: 140px;
+    min-width: 110px;
 }
 
 .notes-grid-table tfoot .notes-average-col,
@@ -1434,58 +1451,150 @@ function showSuccessMessage(message) {
 .evaluation-header {
     background: #f8fafc;
     border-left: 3px solid rgba(59, 130, 246, 0.4);
+    padding: 6px 5px !important;
 }
 
 .evaluation-title {
     font-weight: 700;
     color: var(--text-primary);
     text-align: center;
-    margin-bottom: 6px;
-    font-size: 0.9rem;
+    margin-bottom: 3px;
+    font-size: 0.82rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .evaluation-controls {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(70px, 1fr));
-    gap: 6px;
-    margin-bottom: 4px;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 2px;
 }
 
 .evaluation-control {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
 }
 
 .evaluation-control .control-label {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.2px;
     color: var(--text-muted);
+    font-weight: 600;
 }
 
 .evaluation-control input {
-    min-width: 62px;
+    min-width: 46px;
+    width: 46px;
+    font-size: 0.78rem;
+    padding: 0.15rem 0.25rem;
+    text-align: center;
 }
 
 .evaluation-type {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     text-align: center;
     color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
 }
 
 .note-input {
-    min-width: 70px;
+    min-width: 56px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.3rem 0.2rem;
 }
 
 .notes-grid-wrapper {
     border-radius: 12px;
     border: 1px solid rgba(148, 163, 184, 0.35);
-    max-height: 60vh;
+    max-height: 75vh;
     overflow-x: auto !important;
     overflow-y: auto !important;
     overscroll-behavior: contain;
+    position: relative;
+}
+
+/* Zebra striping */
+.notes-grid-table tbody tr:nth-child(even) {
+    background-color: #f8fafc;
+}
+.notes-grid-table tbody tr:nth-child(even) td.notes-student-col {
+    background-color: #f8fafc;
+}
+.notes-grid-table tbody tr:nth-child(even) td.notes-average-col,
+.notes-grid-table tbody tr:nth-child(even) td.notes-appreciation-col {
+    background-color: #f0f4f8;
+}
+.notes-grid-table tbody tr:hover {
+    background-color: rgba(59, 130, 246, 0.04) !important;
+}
+.notes-grid-table tbody tr:hover td.notes-student-col {
+    background-color: rgba(59, 130, 246, 0.06) !important;
+}
+
+/* Scroll indicator bas */
+.notes-grid-wrapper::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: linear-gradient(to top, rgba(148, 163, 184, 0.18), transparent);
+    pointer-events: none;
+    border-radius: 0 0 12px 12px;
+}
+
+/* Badges appréciation — plus compacts et saturés */
+.notes-appreciation-col .badge {
+    font-size: 0.72rem;
+    padding: 0.28em 0.5em;
+    border-radius: 999px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.notes-appreciation-col .badge.bg-warning {
+    color: #fff !important;
+    background-color: #d97706 !important;
+}
+.notes-appreciation-col .badge.bg-info {
+    color: #fff !important;
+    background-color: #0891b2 !important;
+}
+
+/* Alerte compacte */
+.notes-management-modal .alert-sm {
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+/* Cellules notes — centrées, compactes */
+.notes-grid-table tbody td:not(.notes-student-col):not(.notes-average-col):not(.notes-appreciation-col) {
+    padding: 6px 4px;
+}
+
+/* Checkbox absence — repositionné pour les petits inputs */
+.notes-grid-table .position-relative .position-absolute {
+    top: 2px !important;
+    right: 2px !important;
+}
+.notes-grid-table .absence-checkbox {
+    width: 13px !important;
+    height: 13px !important;
+}
+
+/* Tfoot moyennes classe */
+.notes-grid-table tfoot td {
+    font-size: 0.82rem;
+    font-weight: 700;
 }
 
 .notes-modal-footer {

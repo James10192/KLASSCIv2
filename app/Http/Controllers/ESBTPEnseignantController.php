@@ -503,11 +503,14 @@ class ESBTPEnseignantController extends Controller
             DB::rollBack();
             \Log::error(
                 "Erreur création enseignant rapide: " . $e->getMessage(),
+                ['exception' => $e],
             );
             return response()->json(
                 [
                     "success" => false,
-                    "message" => 'Erreur lors de la création de l\'enseignant.',
+                    "message" => config('app.debug')
+                        ? $e->getMessage()
+                        : 'Erreur lors de la création de l\'enseignant.',
                 ],
                 500,
             );
