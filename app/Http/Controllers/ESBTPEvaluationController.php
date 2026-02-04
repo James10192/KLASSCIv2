@@ -1552,6 +1552,7 @@ $evaluation->titre = $request->titre;
                                 'id' => $note->id,
                                 'etudiant_id' => $note->etudiant_id,
                                 'note' => $note->note,
+                                'is_absent' => $note->is_absent ?? false,
                                 'observation' => $note->observation,
                             ];
                         })->keyBy('etudiant_id'),
@@ -1565,6 +1566,16 @@ $evaluation->titre = $request->titre;
                 'matiere_name' => $matiere->name,
                 'evaluation_count' => $evaluations->count(),
             ]);
+
+            // Construire notesData au format attendu par le frontend :
+            // { studentId: { evaluationId: noteValue, evaluationId_absent: true/false } }
+            $notesMap = [];
+            foreach ($evaluations as $eval) {
+                foreach ($eval['notes'] as $etudiantId => $noteData) {
+                    $notesMap[$etudiantId][$eval['id']] = $noteData['note'];
+                    $notesMap[$etudiantId][$eval['id'] . '_absent'] = ($noteData['is_absent'] ?? false) ? true : false;
+                }
+            }
 
             return response()->json([
                 'success' => true,
@@ -1580,6 +1591,7 @@ $evaluation->titre = $request->titre;
                     'code' => $matiere->code,
                 ],
                 'evaluations' => $evaluations,
+                'notes' => $notesMap,
                 'evaluation_count' => $evaluations->count(),
             ]);
 

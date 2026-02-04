@@ -1444,8 +1444,12 @@
             button.addEventListener('click', function () {
                 const inscriptionId = this.dataset.inscriptionId;
                 if (this.dataset.action === 'payment') {
+                    const bulkModal = bootstrap.Modal.getInstance(document.getElementById('bulkValidationModal'));
+                    if (bulkModal) bulkModal.hide();
                     openPaymentModal(inscriptionId, { autoValidate: true });
                 } else if (this.dataset.action === 'validate-payment') {
+                    const bulkModal = bootstrap.Modal.getInstance(document.getElementById('bulkValidationModal'));
+                    if (bulkModal) bulkModal.hide();
                     ouvrirModalValiderPaiement(inscriptionId);
                 } else if (this.dataset.action === 'show') {
                     window.open(`/esbtp/inscriptions/${inscriptionId}`, '_blank');
@@ -1501,7 +1505,15 @@
             }
 
             if (data.message) {
-                alert(data.message);
+                let fullMessage = data.message;
+                // Ajouter les détails individuels des inscriptions ignorées
+                if (data.stats && data.stats.ignorees && data.stats.ignorees.length > 0) {
+                    fullMessage += '\n\nDétails des ignorées :\n';
+                    data.stats.ignorees.forEach(item => {
+                        fullMessage += `- ${item.etudiant} : ${item.raison}\n`;
+                    });
+                }
+                alert(fullMessage);
             }
 
             const problems = data.inscriptions_problemes || {};

@@ -3815,21 +3815,23 @@ class ESBTPInscriptionController extends Controller
 
                         // Vérifications en amont
 
-                        // 1. Vérifier la disponibilité de la classe
-                        $classAvailability = $this->workflowService->checkClassAvailability(
-                            $inscription->classe_id,
-                        );
-                        if (!$classAvailability["available"]) {
-                            $stats["ignorees"][] = [
-                                "id" => $inscription->id,
-                                "etudiant" => $etudiantNom,
-                                "raison" =>
-                                    "Classe pleine - " .
-                                    $classAvailability["message"],
-                            ];
-                            $stats["raisons_ignorees"]["classe_pleine"]++;
+                        // 1. Vérifier la disponibilité de la classe (sauf si force = true)
+                        if (!$forceValidation) {
+                            $classAvailability = $this->workflowService->checkClassAvailability(
+                                $inscription->classe_id,
+                            );
+                            if (!$classAvailability["available"]) {
+                                $stats["ignorees"][] = [
+                                    "id" => $inscription->id,
+                                    "etudiant" => $etudiantNom,
+                                    "raison" =>
+                                        "Classe pleine - " .
+                                        $classAvailability["message"],
+                                ];
+                                $stats["raisons_ignorees"]["classe_pleine"]++;
 
-                            continue;
+                                continue;
+                            }
                         }
 
                         // 2. Vérifier inscription active existante

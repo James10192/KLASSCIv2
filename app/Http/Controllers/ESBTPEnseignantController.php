@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class ESBTPEnseignantController extends Controller
 {
@@ -289,7 +290,7 @@ class ESBTPEnseignantController extends Controller
                         $request->charge_horaire_max_semaine ?? 40,
                     "type_contrat" => $request->type_contrat,
                     "statut_emploi" => $request->statut_emploi,
-                    "date_embauche" => $request->date_embauche,
+                    "date_embauche" => $request->date_embauche ? Carbon::parse($request->date_embauche)->format('Y-m-d') : null,
                     "fin_contrat" => $request->fin_contrat,
                     "taux_horaire" => $request->taux_horaire,
                     "accepte_enseignement_distance" => $request->boolean(
@@ -418,7 +419,7 @@ class ESBTPEnseignantController extends Controller
                         $request->charge_horaire_max_semaine ?? 40,
                     "type_contrat" => $request->type_contrat,
                     "statut_emploi" => $request->statut_emploi,
-                    "date_embauche" => $request->date_embauche,
+                    "date_embauche" => $request->date_embauche ? Carbon::parse($request->date_embauche)->format('Y-m-d') : null,
                     "fin_contrat" => null,
                     "taux_horaire" => null,
                     "accepte_enseignement_distance" => false,

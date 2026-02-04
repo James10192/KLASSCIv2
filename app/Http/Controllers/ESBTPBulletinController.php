@@ -9,6 +9,8 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPConfigMatiere;
+use App\Models\ESBTPFiliere;
+use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPMatiere;
