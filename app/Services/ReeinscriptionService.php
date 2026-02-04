@@ -503,24 +503,36 @@ class ReeinscriptionService
 
     private function getClassesNiveauSuperieut($classeActuelle)
     {
-        // Définir la hiérarchie des niveaux basée sur les codes
-        $hierarchie = ['1A' => 1, '2A' => 2, 'L1' => 3, 'L2' => 4, 'L3' => 5, 'M1' => 6, 'M2' => 7];
-        
-        $niveauActuel = $classeActuelle->niveau->code ?? '';
-        $ordreActuel = $hierarchie[$niveauActuel] ?? 0;
-        
-        // Trouver les codes de niveaux supérieurs
-        $niveauxSuperieurs = array_keys(array_filter($hierarchie, function($ordre) use ($ordreActuel) {
-            return $ordre > $ordreActuel;
-        }));
-        
-        if (empty($niveauxSuperieurs)) {
-            return collect(); // Aucun niveau supérieur
+        $niveauActuel = $classeActuelle->niveau;
+        if (!$niveauActuel) {
+            return collect();
         }
-        
-        return ESBTPClasse::where('filiere_id', $classeActuelle->filiere_id)
-            ->whereHas('niveau', function($query) use ($niveauxSuperieurs) {
-                $query->whereIn('code', $niveauxSuperieurs);
+
+        $yearActuel = $niveauActuel->year;
+        $typeActuel = $niveauActuel->type;
+        $filiereId = $classeActuelle->filiere_id;
+
+        // Passage normal : même type de formation, année suivante (year + 1)
+        $classesNiveauSuivant = ESBTPClasse::where('filiere_id', $filiereId)
+            ->where('is_active', 1)
+            ->whereHas('niveau', function($query) use ($yearActuel, $typeActuel) {
+                $query->where('year', $yearActuel + 1)
+                      ->where('type', $typeActuel);
+            })
+            ->with(['niveau', 'filiere'])
+            ->get();
+
+        if ($classesNiveauSuivant->isNotEmpty()) {
+            return $classesNiveauSuivant;
+        }
+
+        // Dernière année du type actuel : proposer la 1ère année de tous les autres types
+        // disponibles pour cette même filière
+        return ESBTPClasse::where('filiere_id', $filiereId)
+            ->where('is_active', 1)
+            ->whereHas('niveau', function($query) use ($typeActuel) {
+                $query->where('year', 1)
+                      ->where('type', '!=', $typeActuel);
             })
             ->with(['niveau', 'filiere'])
             ->get();

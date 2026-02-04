@@ -358,12 +358,14 @@
                                         @foreach($matieres as $matiere)
                                             <option value="{{ $matiere['matiere']->id }}"
                                                     data-heures-restantes="{{ $matiere['heures_restantes'] }}"
+                                                    data-heures-restantes-formatted="{{ $matiere['heures_restantes_formatted'] ?? $matiere['heures_restantes'] }}"
                                                     data-volume-total="{{ $matiere['volume_horaire_total'] }}"
+                                                    data-volume-total-formatted="{{ $matiere['volume_horaire_total_formatted'] ?? $matiere['volume_horaire_total'] }}"
                                                     data-enseignants="{{ ($matiere['enseignants_selectables'] ?? collect())->pluck('id')->toJson() }}"
                                                     data-planification-id="{{ $matiere['planification_id'] ?? '' }}"
                                                     {{ old('matiere_id') == $matiere['matiere']->id ? 'selected' : '' }}>
                                                 {{ $matiere['matiere']->name }}
-                                                ({{ $matiere['heures_restantes'] }}h restantes / {{ $matiere['volume_horaire_total'] }}h)
+                                                ({{ $matiere['heures_restantes_formatted'] ?? $matiere['heures_restantes'] }} restantes / {{ $matiere['volume_horaire_total_formatted'] ?? $matiere['volume_horaire_total'] }})
                                             </option>
                                         @endforeach
                                     </select>
@@ -1570,9 +1572,11 @@ function updateTeachersForSubject() {
         const enseignantsIds = JSON.parse(selectedOption.dataset.enseignants || '[]');
         const heuresRestantes = selectedOption.dataset.heuresRestantes;
         const volumeTotal = selectedOption.dataset.volumeTotal;
+        const heuresRestantesFormatted = selectedOption.dataset.heuresRestantesFormatted || (heuresRestantes + 'h');
+        const volumeTotalFormatted = selectedOption.dataset.volumeTotalFormatted || (volumeTotal + 'h');
 
         // Afficher les informations sur la matière
-        heuresRestantesText.textContent = `${heuresRestantes}h restantes sur ${volumeTotal}h`;
+        heuresRestantesText.textContent = `${heuresRestantesFormatted} restantes sur ${volumeTotalFormatted}`;
         matiereInfo.style.display = 'block';
 
         if (!requiresTeacher) {

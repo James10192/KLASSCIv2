@@ -1177,20 +1177,19 @@ class ESBTPReinscriptionController extends Controller
     public function getNiveauxByFiliere($filiereId)
     {
         try {
-            // Récupérer les niveaux distincts qui ont des classes pour cette filière
             $niveaux = \App\Models\ESBTPClasse::where('filiere_id', $filiereId)
                 ->where('is_active', 1)
                 ->with('niveau')
                 ->get()
                 ->pluck('niveau')
-                ->filter() // Enlever les null
+                ->filter()
                 ->unique('id')
-                ->sortBy('name')
+                ->sortBy('year')
                 ->values()
                 ->map(function($niveau) {
                     return [
                         'id' => $niveau->id,
-                        'name' => $niveau->name
+                        'name' => $this->formatNiveauLabel($niveau->year, $niveau->type)
                     ];
                 });
 
@@ -1206,6 +1205,16 @@ class ESBTPReinscriptionController extends Controller
                 'niveaux' => []
             ], 500);
         }
+    }
+
+    /**
+     * Formate le label d'un niveau : "1ère année — BTS", "2ème année — Licence", etc.
+     */
+    private function formatNiveauLabel(int $year, string $type): string
+    {
+        $suffixes = [1 => 'ère', 2 => 'ème', 3 => 'ème', 4 => 'ème', 5 => 'ème'];
+        $suffix = $suffixes[$year] ?? 'ème';
+        return "{$year}{$suffix} année — {$type}";
     }
 
     /**

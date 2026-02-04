@@ -213,10 +213,6 @@
     </div>
 </div>
 
-<!-- Floating Action Button -->
-<button class="floating-add-btn" onclick="window.location.href='{{ route('esbtp.niveaux-etudes.create') }}'">
-    <i class="fas fa-plus"></i>
-</button>
 @endsection
 
 @section('scripts')
