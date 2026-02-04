@@ -296,7 +296,7 @@
 
 <!-- Modal Sélection Classe et Matière -->
 <div class="modal fade notes-management-modal" id="classSelectionModal" tabindex="-1" aria-labelledby="classSelectionModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-fullscreen">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content notes-modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="classSelectionModalLabel">
@@ -1307,10 +1307,41 @@ function showSuccessMessage(message) {
     vertical-align: middle;
 }
 
+/* Override CSS globaux qui forcent max-width sur tous les .modal-dialog */
+#classSelectionModal .modal-dialog {
+    max-width: 92vw !important;
+    width: 92vw !important;
+    margin: 2vh auto !important;
+}
+
+#classSelectionModal .modal-content {
+    max-height: 96vh !important;
+    height: 96vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+#classSelectionModal .modal-body {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    max-height: none !important;
+    padding: 1.25rem 1.5rem;
+}
+
+#classSelectionModal .modal-header {
+    flex-shrink: 0;
+}
+
+#classSelectionModal .modal-footer {
+    flex-shrink: 0;
+}
+
 .notes-modal-content {
-    border-radius: 0;
-    border: none;
-    box-shadow: none;
+    border-radius: 12px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.15);
 }
 
 .notes-modal-intro {

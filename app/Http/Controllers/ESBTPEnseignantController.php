@@ -405,33 +405,51 @@ class ESBTPEnseignantController extends Controller
             ]);
 
             if (Schema::hasTable("esbtp_enseignant_profiles")) {
-                DB::table("esbtp_enseignant_profiles")->insert([
-                    "user_id" => $user->id,
-                    "matricule_enseignant" => $teacher->matricule,
-                    "titre_academique" => $request->titre_academique,
-                    "grade_academique" => $request->grade_academique,
-                    "diplome_principal" => null,
-                    "universite_diplome" => null,
-                    "annee_diplome" => null,
-                    "annees_experience_enseignement" => 0,
-                    "annees_experience_professionnelle" => 0,
-                    "charge_horaire_max_semaine" =>
-                        $request->charge_horaire_max_semaine ?? 40,
-                    "type_contrat" => $request->type_contrat,
-                    "statut_emploi" => $request->statut_emploi,
-                    "date_embauche" => $request->date_embauche ? Carbon::parse($request->date_embauche)->format('Y-m-d') : null,
-                    "fin_contrat" => null,
-                    "taux_horaire" => null,
-                    "accepte_enseignement_distance" => false,
-                    "accepte_cours_weekend" => false,
-                    "accepte_cours_soir" => false,
-                    "motivation" => null,
-                    "objectifs_pedagogiques" => null,
-                    "statut" => "actif",
-                    "created_by" => auth()->id(),
-                    "created_at" => now(),
-                    "updated_at" => now(),
-                ]);
+                try {
+                    $profileData = [
+                        "user_id" => $user->id,
+                        "matricule_enseignant" => $teacher->matricule,
+                        "titre_academique" => $request->titre_academique,
+                        "grade_academique" => $request->grade_academique,
+                        "charge_horaire_max_semaine" =>
+                            $request->charge_horaire_max_semaine ?? 40,
+                        "type_contrat" => $request->type_contrat,
+                        "statut_emploi" => $request->statut_emploi,
+                        "date_embauche" => $request->date_embauche ? Carbon::parse($request->date_embauche)->format('Y-m-d') : null,
+                        "statut" => "actif",
+                        "created_by" => auth()->id(),
+                        "created_at" => now(),
+                        "updated_at" => now(),
+                    ];
+
+                    // Colonnes optionnelles — vérifier leur existence avant insertion
+                    $optionalColumns = [
+                        'diplome_principal' => null,
+                        'universite_diplome' => null,
+                        'annee_diplome' => null,
+                        'annees_experience_enseignement' => 0,
+                        'annees_experience_professionnelle' => 0,
+                        'fin_contrat' => null,
+                        'taux_horaire' => null,
+                        'accepte_enseignement_distance' => false,
+                        'accepte_cours_weekend' => false,
+                        'accepte_cours_soir' => false,
+                        'motivation' => null,
+                        'objectifs_pedagogiques' => null,
+                    ];
+
+                    foreach ($optionalColumns as $col => $default) {
+                        if (Schema::hasColumn('esbtp_enseignant_profiles', $col)) {
+                            $profileData[$col] = $default;
+                        }
+                    }
+
+                    DB::table("esbtp_enseignant_profiles")->insert($profileData);
+                } catch (\Exception $profileEx) {
+                    \Log::warning(
+                        "Profil enseignant non créé (non-bloquant): " . $profileEx->getMessage(),
+                    );
+                }
             }
 
             if ($request->has("availability")) {
