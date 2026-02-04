@@ -60,13 +60,13 @@ class User extends Authenticatable
         // 'password' => 'hashed', // ❌ SUPPRIMÉ car non supporté
     ];
 
-    // ✅ CORRIGÉ : Mutateur manuel pour hasher le mot de passe
     public function setPasswordAttribute($value)
     {
         if (!empty($value)) {
-            $this->attributes['password'] = Hash::needsRehash($value)
-                ? Hash::make($value)
-                : $value;
+            // Si déjà hashé (bcrypt $2y$/$2b$, argon2 $argon2) on ne re-hashe pas
+            $this->attributes['password'] = (str_starts_with($value, '$2y$') || str_starts_with($value, '$2b$') || str_starts_with($value, '$argon2'))
+                ? $value
+                : Hash::make($value);
         }
     }
 

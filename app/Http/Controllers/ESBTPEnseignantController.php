@@ -389,7 +389,8 @@ class ESBTPEnseignantController extends Controller
                 "enseignant",
             );
 
-            $user->assignRole("enseignant");
+            $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'enseignant']);
+            $user->assignRole($role);
 
             $teacher = ESBTPTeacher::create([
                 "user_id" => $user->id,
@@ -517,18 +518,23 @@ class ESBTPEnseignantController extends Controller
                 "teacher" => $teacher,
                 "availability" => $availabilityData,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             \Log::error(
                 "Erreur création enseignant rapide: " . $e->getMessage(),
-                ['exception' => $e],
+                [
+                    'exception' => $e,
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => $e->getTraceAsString(),
+                ],
             );
             return response()->json(
                 [
                     "success" => false,
-                    "message" => config('app.debug')
-                        ? $e->getMessage()
-                        : 'Erreur lors de la création de l\'enseignant.',
+                    "message" => $e->getMessage(),
+                    "file" => $e->getFile(),
+                    "line" => $e->getLine(),
                 ],
                 500,
             );

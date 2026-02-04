@@ -1830,6 +1830,9 @@ function handleTeacherCreateSubmit(event) {
                     list.forEach(item => messages.push(`<li>${item}</li>`));
                 });
             }
+            if (error && error.message) {
+                messages.push(`<li>${error.message}${error.file ? ' — ' + error.file + ':' + error.line : ''}</li>`);
+            }
             if (messages.length === 0) {
                 messages.push('<li>Impossible de créer l\'enseignant. Vérifiez les champs.</li>');
             }
