@@ -1559,36 +1559,53 @@ class ESBTPClasseController extends Controller
             // Rechercher la configuration matricule pour ce niveau
             $currentEtablissementId = \App\Models\ESBTPSystemSetting::getCurrentEtablissementId();
 
-            // Mapper le type de niveau vers le code de configuration matricule
+            // Construire le code depuis type + year (même logique que MatriculeGenerator::buildNiveauCode)
             $niveauType = $classe->niveau->type ?? null;
+            $niveauYear = $classe->niveau->year ?? null;
+
             $configCode = null;
-
-            if ($niveauType) {
-                $configCode = strtoupper($niveauType); // BTS, Licence, Master, etc.
-
-                // Normaliser certains types si nécessaire
-                if (strtolower($niveauType) === "licence") {
-                    $configCode = "LICENCE";
-                } elseif (strtolower($niveauType) === "bts") {
-                    $configCode = "BTS";
-                }
+            if ($niveauType && $niveauYear !== null) {
+                $configCode = match (strtolower(trim($niveauType))) {
+                    'bts'       => $niveauYear . 'A',
+                    'licence'   => 'L' . $niveauYear,
+                    'master'    => 'M' . $niveauYear,
+                    'bachelor'  => 'B' . $niveauYear,
+                    'doctorat'  => 'D' . $niveauYear,
+                    'diplome', 'diplôme' => 'DIP' . $niveauYear,
+                    'certificat' => 'CER' . $niveauYear,
+                    default     => null,
+                };
             }
 
-            if (!$configCode) {
+            // Chercher la config : d'abord par type+year, puis fallback sur niveau->code
+            $matriculeConfig = null;
+
+            if ($configCode) {
+                $matriculeConfig = \App\Models\ESBTPMatriculeConfig::where(
+                    "etablissement_id", $currentEtablissementId,
+                )
+                    ->where("niveau_etude_code", $configCode)
+                    ->where("is_active", true)
+                    ->first();
+            }
+
+            // Fallback : niveau->code (pour les cas spéciaux comme L3Pro)
+            if (!$matriculeConfig && $classe->niveau->code) {
+                $matriculeConfig = \App\Models\ESBTPMatriculeConfig::where(
+                    "etablissement_id", $currentEtablissementId,
+                )
+                    ->where("niveau_etude_code", $classe->niveau->code)
+                    ->where("is_active", true)
+                    ->first();
+            }
+
+            if (!$matriculeConfig && !$configCode && !$classe->niveau->code) {
                 return response()->json([
                     "success" => true,
                     "niveau_config" => null,
                     "message" => "Type de niveau non défini pour cette classe",
                 ]);
             }
-
-            $matriculeConfig = \App\Models\ESBTPMatriculeConfig::where(
-                "etablissement_id",
-                $currentEtablissementId,
-            )
-                ->where("niveau_etude_code", $configCode)
-                ->where("is_active", true)
-                ->first();
 
             if (!$matriculeConfig) {
                 return response()->json([
