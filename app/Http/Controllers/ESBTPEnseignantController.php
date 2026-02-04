@@ -462,10 +462,6 @@ class ESBTPEnseignantController extends Controller
                         $dayIndex = (int) $dayIndex;
                         $hour = (int) $hour;
 
-                        if ($dayIndex >= 1 && $dayIndex <= 6) {
-                            $dayIndex -= 1;
-                        }
-
                         $startTime = sprintf("%02d:00", $hour);
                         $endTime = sprintf("%02d:00", $hour + 1);
 

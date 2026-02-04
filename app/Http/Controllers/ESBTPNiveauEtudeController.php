@@ -55,6 +55,10 @@ class ESBTPNiveauEtudeController extends Controller
         // S'assurer que is_active est défini
         $validatedData['is_active'] = $request->has('is_active') ? true : false;
 
+        // Mapper 'niveau' vers 'year' (colonne réelle en BDD)
+        $validatedData['year'] = $validatedData['niveau'];
+        unset($validatedData['niveau']);
+
         // Créer le nouveau niveau d'études
         ESBTPNiveauEtude::create($validatedData);
 
@@ -115,6 +119,10 @@ class ESBTPNiveauEtudeController extends Controller
 
         // S'assurer que is_active est défini
         $validatedData['is_active'] = $request->has('is_active') ? true : false;
+
+        // Mapper 'niveau' vers 'year' (colonne réelle en BDD)
+        $validatedData['year'] = $validatedData['niveau'];
+        unset($validatedData['niveau']);
 
         // Mettre à jour le niveau d'études
         $niveauxEtude->update($validatedData);
