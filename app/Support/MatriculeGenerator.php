@@ -7,6 +7,7 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatriculeConfig;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPSystemSetting;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -42,6 +43,8 @@ class MatriculeGenerator
 
     /**
      * Recherche la configuration active associée au niveau.
+     * Utilise type + year du niveau comme source primaire (champs structurés fiables),
+     * puis fall back sur le champ code du niveau si type/year ne donnent rien.
      */
     protected function resolveConfiguration(int $niveauId): ?ESBTPMatriculeConfig
     {
@@ -50,14 +53,82 @@ class MatriculeGenerator
             return null;
         }
 
-        $niveauCode = $niveau->code ?: Str::upper(Str::substr(Str::ascii($niveau->name ?? ''), 0, 3));
-        if (!$niveauCode) {
+        $etablissementId = ESBTPSystemSetting::getCurrentEtablissementId();
+
+        // 1) Construire le code depuis type + year (source fiable)
+        $codeFromTypeYear = $this->buildNiveauCode($niveau->type, $niveau->year);
+
+        if ($codeFromTypeYear) {
+            $config = ESBTPMatriculeConfig::where('etablissement_id', $etablissementId)
+                ->where('niveau_etude_code', $codeFromTypeYear)
+                ->where('is_active', true)
+                ->first();
+
+            if ($config) {
+                return $config;
+            }
+        }
+
+        // 2) Fallback sur niveau->code (pour les cas spéciaux comme L3Pro)
+        if ($niveau->code) {
+            $config = ESBTPMatriculeConfig::where('etablissement_id', $etablissementId)
+                ->where('niveau_etude_code', $niveau->code)
+                ->where('is_active', true)
+                ->first();
+
+            if ($config) {
+                return $config;
+            }
+        }
+
+        // 3) Dernier fallback : sans filtre etablissement (compatibilité anienne)
+        $candidates = [$codeFromTypeYear, $niveau->code];
+        foreach ($candidates as $code) {
+            if (!$code) continue;
+
+            $config = ESBTPMatriculeConfig::where('niveau_etude_code', $code)
+                ->where('is_active', true)
+                ->first();
+
+            if ($config) {
+                return $config;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Construit le niveau_etude_code à partir de type et year.
+     *
+     * Exemples :
+     *   BTS + 1     → 1A
+     *   BTS + 2     → 2A
+     *   BTS + 5     → 5A
+     *   Licence + 1 → L1
+     *   Licence + 2 → L2
+     *   Licence + 3 → L3
+     *   Master + 1  → M1
+     *   Master + 2  → M2
+     */
+    protected function buildNiveauCode(?string $type, ?int $year): ?string
+    {
+        if (!$type || $year === null) {
             return null;
         }
 
-        return ESBTPMatriculeConfig::where('niveau_etude_code', $niveauCode)
-            ->where('is_active', true)
-            ->first();
+        $type = strtolower(trim($type));
+
+        return match ($type) {
+            'bts'       => $year . 'A',
+            'licence'   => 'L' . $year,
+            'master'    => 'M' . $year,
+            'bachelor'  => 'B' . $year,
+            'doctorat'  => 'D' . $year,
+            'diplome', 'diplôme' => 'DIP' . $year,
+            'certificat' => 'CER' . $year,
+            default     => null,
+        };
     }
 
     /**
