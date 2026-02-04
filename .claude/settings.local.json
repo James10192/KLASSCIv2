@@ -27,7 +27,9 @@
       "Bash(\"C:/Users/PAVILION/Downloads/php-8.5.1-nts-Win32-vs17-x64/php.exe\" -v)",
       "Bash(\"C:/Users/PAVILION/Downloads/php-8.5.1-nts-Win32-vs17-x64/php.exe\" -m)",
       "WebFetch(domain:windows.php.net)",
-      "Bash(unzip:*)"
+      "Bash(unzip:*)",
+      "Bash(grep:*)",
+      "Bash(python3 -c \" import sys, json lines = sys.stdin.readlines\\(\\) # Find messages mentioning quick-create or date_embauche for i, line in enumerate\\(lines\\): try: msg = json.loads\\(line\\) content = str\\(msg.get\\(''content'', ''''\\)\\) if ''quick-create'' in content.lower\\(\\) or ''date_embauche'' in content.lower\\(\\) or ''quick create'' in content.lower\\(\\): # Print a snippet around this print\\(f''=== Line {i} \\(role: {msg.get\\(\"\"role\"\",\"\"?\"\"\\)}\\) ===''\\) # Find the relevant portion idx = max\\(content.lower\\(\\).find\\(''quick-create''\\), content.lower\\(\\).find\\(''quick create''\\), content.lower\\(\\).find\\(''date_embauche''\\)\\) start = max\\(0, idx - 200\\) end = min\\(len\\(content\\), idx + 600\\) print\\(content[start:end]\\) print\\(\\) except: pass \")"
     ],
     "deny": [],
     "ask": [],
