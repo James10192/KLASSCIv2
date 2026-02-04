@@ -476,7 +476,7 @@
         console.log('Variables PHP brutes - $inscriptionRecente:', '@php echo isset($inscriptionRecente) && $inscriptionRecente ? "ID=" . $inscriptionRecente->id : "NON DEFINI"; @endphp');
         console.log('============================');
 
-        // Initialiser niveauConfig directement si on a les infos
+        // Initialiser niveauConfig directement si on a les infos depuis l'inscription la plus récente
         let niveauConfig = niveauEtudeCodeFromInscription ? { code: niveauEtudeCodeFromInscription } : null;
         console.log('niveauConfig initialisé:', niveauConfig);
 

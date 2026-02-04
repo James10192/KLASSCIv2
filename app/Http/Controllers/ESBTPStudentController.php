@@ -373,8 +373,27 @@ class ESBTPStudentController extends Controller
         $classes = ESBTPClasse::where('is_active', true)->get();
         $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
 
+        // Récupérer l'inscription la plus récente pour la génération de matricule
+        // Le JS edit-form-scripts.blade.php en a besoin pour appeler /matricule-config/generate
+        $niveauEtudeCode = null;
+        $filiereIdForMatricule = null;
+        $inscriptionRecente = $etudiant->inscriptions()
+            ->with(['classe.niveauEtude', 'filiere'])
+            ->orderByDesc('created_at')
+            ->first();
+
+        if ($inscriptionRecente) {
+            // Chemin : inscription → classe → niveauEtude → code
+            if ($inscriptionRecente->classe && $inscriptionRecente->classe->niveauEtude) {
+                $niveauEtudeCode = $inscriptionRecente->classe->niveauEtude->code;
+            }
+            $filiereIdForMatricule = $inscriptionRecente->filiere_id;
+        }
+
         if ($request->boolean('embedded')) {
-            return view('esbtp.etudiants.embed.edit', compact('etudiant'));
+            return view('esbtp.etudiants.embed.edit', compact(
+                'etudiant', 'niveauEtudeCode', 'filiereIdForMatricule', 'inscriptionRecente'
+            ));
         }
 
         return view('esbtp.etudiants.edit', compact(
@@ -382,7 +401,10 @@ class ESBTPStudentController extends Controller
             'filieres',
             'niveaux',
             'classes',
-            'annees'
+            'annees',
+            'niveauEtudeCode',
+            'filiereIdForMatricule',
+            'inscriptionRecente'
         ));
     }
 
