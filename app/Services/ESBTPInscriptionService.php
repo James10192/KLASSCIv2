@@ -251,14 +251,29 @@ class ESBTPInscriptionService
         $prenom = strtolower($prenoms[0] ?? '');
         $nom = strtolower($etudiantData['nom'] ?? '');
 
+        // Translitérer les accents avant la regex (ex: é→e, '→ supprimé)
+        $translit = [
+            'à'=>'a','â'=>'a','ä'=>'a','á'=>'a','ã'=>'a',
+            'è'=>'e','ê'=>'e','ë'=>'e','é'=>'e',
+            'ì'=>'i','î'=>'i','ï'=>'i','í'=>'i',
+            'ò'=>'o','ô'=>'o','ö'=>'o','ó'=>'o','õ'=>'o',
+            'ù'=>'u','û'=>'u','ü'=>'u','ú'=>'u',
+            'ÿ'=>'y','ý'=>'y',
+            'ç'=>'c','ñ'=>'n',
+            "'"=>'',"\u{2019}"=>'' // apostrophe simple + typographique (U+2019)
+        ];
+        $prenom = strtr($prenom, $translit);
+        $nom    = strtr($nom,    $translit);
+
         // Créer un username basé sur le prénom et le nom
         $baseUsername = $prenom . '.' . $nom;
-        $baseUsername = preg_replace('/[^a-z0-9.]/', '', $baseUsername); // Supprime les caractères spéciaux
+        $baseUsername = preg_replace('/[^a-z0-9.]/', '', $baseUsername);
         $username = $baseUsername;
 
-        // Si le username existe déjà, ajouter un nombre aléatoire
+        // withTrashed() : les users soft-deleted occupent toujours leur username
+        // (même logique que pour les matricules — cf. commit 0ee6748)
         $count = 1;
-        while (User::where('username', $username)->exists()) {
+        while (User::withTrashed()->where('username', $username)->exists()) {
             $username = $baseUsername . '.' . $count;
             $count++;
         }
@@ -267,7 +282,7 @@ class ESBTPInscriptionService
         $baseEmail = $username . '@esbtp.edu';
         $email = $baseEmail;
         $count = 1;
-        while (User::where('email', $email)->exists()) {
+        while (User::withTrashed()->where('email', $email)->exists()) {
             $email = str_replace('@', '.' . $count . '@', $baseEmail);
             $count++;
         }
