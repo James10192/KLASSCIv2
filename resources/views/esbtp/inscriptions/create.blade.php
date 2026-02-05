@@ -2627,38 +2627,25 @@ document.addEventListener('DOMContentLoaded', function() {
             // MODE AUTOMATIQUE
             // ====================================
             if (currentMatriculeMode === 'automatique') {
-                e.preventDefault(); // Bloquer le submit pour générer le matricule
-
                 // Vérifications pré-requis
                 if (!genreSelect || !genreSelect.value) {
+                    e.preventDefault();
                     alert('⚠️ Veuillez sélectionner le genre/sexe avant de soumettre le formulaire.');
                     if (genreSelect) genreSelect.focus();
                     return;
                 }
 
                 if (!niveauConfig) {
+                    e.preventDefault();
                     alert('⚠️ La classe sélectionnée n\'a pas de configuration de matricule.\n\nContactez l\'équipe technique ou sélectionnez une autre classe.');
                     if (classeSelect) classeSelect.focus();
                     return;
                 }
 
-                // Générer le matricule automatiquement
-                debugLog('⏳ Génération automatique du matricule...');
-                const matricule = await generateMatriculeAuto();
-
-                if (matricule) {
-                    // ✅ Matricule généré avec succès
-                    matriculeInput.value = matricule;
-                    debugLog('✅ Matricule généré et assigné:', matricule);
-
-                    // Soumettre RÉELLEMENT le formulaire
-                    debugLog('📤 Soumission réelle du formulaire...');
-                    inscriptionForm.submit();
-                } else {
-                    // ❌ Erreur de génération
-                    alert('❌ Impossible de générer le matricule automatiquement.\n\nVeuillez vérifier que:\n• Le genre/sexe est sélectionné\n• La classe a une configuration de matricule valide\n\nSi le problème persiste, contactez l\'équipe technique.');
-                    debugError('Échec de la génération du matricule');
-                }
+                // Vider le champ matricule — le serveur génère avec logique de retry
+                matriculeInput.value = '';
+                debugLog('📤 Mode AUTO : matricule laissé vide, génération serverside avec retry');
+                // Laisser le submit se poursuivre naturellement
             }
 
             // ====================================

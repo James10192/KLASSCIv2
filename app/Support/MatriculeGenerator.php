@@ -30,11 +30,7 @@ class MatriculeGenerator
             $config = $this->resolveConfiguration($niveauId);
             if ($config) {
                 $annee = $this->resolveAnnee($anneeUniversitaireId);
-                $matricule = $config->genererMatricule($genre, $annee);
-
-                if (!ESBTPEtudiant::where('matricule', $matricule)->exists()) {
-                    return $matricule;
-                }
+                return $config->genererMatricule($genre, $annee);
             }
         }
 
@@ -172,9 +168,9 @@ class MatriculeGenerator
 
         $matriculePrefix = Str::upper($filiereCode . $niveauCode . $anneeCode);
 
-        // ⚡ Optimisation : récupérer toutes les séquences existantes en une seule requête
-        $existing = ESBTPEtudiant::where('matricule', 'like', "{$matriculePrefix}%")
-            ->whereNull('deleted_at')
+        // ⚡ Optimisation : récupérer toutes les séquences existantes en une seule requête (inclut soft deleted)
+        $existing = ESBTPEtudiant::withTrashed()
+            ->where('matricule', 'like', "{$matriculePrefix}%")
             ->pluck('matricule')
             ->map(function ($m) {
                 // Récupérer la partie après le tiret
@@ -204,8 +200,8 @@ class MatriculeGenerator
         $seqFormatted = str_pad($seq, 6, '0', STR_PAD_LEFT);
         $matricule = $matriculePrefix . $seqFormatted;
 
-        // 🔒 Double vérification finale pour éviter toute collision
-        if (ESBTPEtudiant::where('matricule', $matricule)->exists()) {
+        // 🔒 Double vérification finale pour éviter toute collision (inclut soft deleted)
+        if (ESBTPEtudiant::withTrashed()->where('matricule', $matricule)->exists()) {
             // Si collision, on incrémente automatiquement
             $seq = $existing->isNotEmpty() ? $existing->last() + 1 : 1;
             $seqFormatted = str_pad($seq, 6, '0', STR_PAD_LEFT);

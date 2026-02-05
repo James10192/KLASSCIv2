@@ -167,7 +167,10 @@ class ESBTPMatriculeConfigController extends Controller
         ]);
 
         try {
-            $config = ESBTPMatriculeConfig::where('niveau_etude_code', $request->niveau_etude_code)
+            $etablissementId = ESBTPSystemSetting::getCurrentEtablissementId();
+
+            $config = ESBTPMatriculeConfig::where('etablissement_id', $etablissementId)
+                ->where('niveau_etude_code', $request->niveau_etude_code)
                 ->where('is_active', true)
                 ->first();
 

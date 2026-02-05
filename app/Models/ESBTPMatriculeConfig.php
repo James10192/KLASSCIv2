@@ -83,9 +83,9 @@ class ESBTPMatriculeConfig extends Model
                   $this->etablissement_code .
                   $anneeFormatee . '-%';
 
-        // Chercher le dernier matricule avec ce pattern (excluant soft deleted)
-        $dernierEtudiant = ESBTPEtudiant::where('matricule', 'LIKE', $pattern)
-            ->whereNull('deleted_at')
+        // Chercher le dernier matricule avec ce pattern (inclut soft deleted — matricules jamais réutilisés)
+        $dernierEtudiant = ESBTPEtudiant::withTrashed()
+            ->where('matricule', 'LIKE', $pattern)
             ->orderByRaw("CAST(SUBSTRING_INDEX(matricule, '-', -1) AS UNSIGNED) DESC")
             ->first();
 
@@ -109,9 +109,9 @@ class ESBTPMatriculeConfig extends Model
                             $anneeFormatee . '-' .
                             $numeroFormate;
 
-            // Vérifier si ce matricule existe (requête EXISTS rapide)
-            $exists = ESBTPEtudiant::where('matricule', $testMatricule)
-                ->whereNull('deleted_at')
+            // Vérifier si ce matricule existe (inclut soft deleted — jamais réutilisés)
+            $exists = ESBTPEtudiant::withTrashed()
+                ->where('matricule', $testMatricule)
                 ->exists();
 
             if (!$exists) {
@@ -186,6 +186,6 @@ class ESBTPMatriculeConfig extends Model
      */
     public static function matriculeExists($matricule)
     {
-        return ESBTPEtudiant::where('matricule', $matricule)->exists();
+        return ESBTPEtudiant::withTrashed()->where('matricule', $matricule)->exists();
     }
 }
