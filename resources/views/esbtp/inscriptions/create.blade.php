@@ -2635,13 +2635,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
 
-                if (!niveauConfig) {
-                    e.preventDefault();
-                    alert('⚠️ La classe sélectionnée n\'a pas de configuration de matricule.\n\nContactez l\'équipe technique ou sélectionnez une autre classe.');
-                    if (classeSelect) classeSelect.focus();
-                    return;
-                }
-
                 // Vider le champ matricule — le serveur génère avec logique de retry
                 matriculeInput.value = '';
                 debugLog('📤 Mode AUTO : matricule laissé vide, génération serverside avec retry');
