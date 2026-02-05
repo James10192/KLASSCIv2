@@ -605,8 +605,9 @@ class ESBTPInscriptionController extends Controller
             "ville" => "nullable|string|max:100",
             "commune" => "nullable|string|max:100",
             "photo" => "nullable|image|mimes:jpeg,png,jpg,gif|max:2048",
-            "matricule" =>
-                "required|string|max:20|unique:esbtp_etudiants,matricule",
+            "matricule" => empty(trim((string) $request->matricule))
+                ? "nullable"
+                : "required|string|max:20|unique:esbtp_etudiants,matricule",
         ];
         $messages = [
             "classe_id.required" => "Veuillez sélectionner une classe",
