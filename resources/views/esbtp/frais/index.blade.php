@@ -188,7 +188,9 @@
 }
 
 /* Modal centering fix - ensures modals are centered regardless of scroll position */
-.modal {
+/* NOTE: Must target .modal.show only — targeting .modal causes hidden modals to become
+   invisible fullscreen overlays (position:fixed 100vw/100vh) that block all clicks */
+.modal.show {
     display: flex !important;
     align-items: center;
     justify-content: center;
@@ -198,10 +200,6 @@
     width: 100vw !important;
     height: 100vh !important;
     z-index: 1050;
-}
-
-.modal.show {
-    display: flex !important;
 }
 
 .modal-dialog {
