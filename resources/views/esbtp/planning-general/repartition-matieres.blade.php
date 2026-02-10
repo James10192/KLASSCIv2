@@ -4,7 +4,7 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 <style>
     .repartition-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -48,23 +48,15 @@
     .chart-container {
         background: var(--surface);
         border-radius: var(--radius-medium);
-        padding: var(--space-xl);
+        padding: var(--space-lg);
         margin-bottom: var(--space-lg);
         box-shadow: var(--shadow-card);
         position: relative;
-        height: 450px;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
     }
-    
-    .chart-container canvas {
-        max-height: 320px;
-        max-width: 100%;
-        width: 100% !important;
-        height: 320px !important;
+
+    .chart-container .chart-area {
+        width: 100%;
+        height: 400px;
     }
     
     .matiere-card {
@@ -214,6 +206,48 @@
         padding: var(--space-lg);
         margin-bottom: var(--space-xl);
         box-shadow: var(--shadow-card);
+    }
+
+    .filters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: var(--space-md);
+        margin-bottom: var(--space-md);
+    }
+
+    .filters-grid label {
+        display: block;
+        margin-bottom: var(--space-sm);
+        font-weight: 600;
+        font-size: var(--text-small);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-secondary);
+    }
+
+    .filters-actions {
+        display: flex;
+        gap: var(--space-md);
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .filters-count {
+        margin-left: auto;
+        font-size: var(--text-small);
+        color: var(--text-muted);
+    }
+
+    .filter-loading {
+        display: none;
+        align-items: center;
+        gap: var(--space-sm);
+        font-size: var(--text-small);
+        color: var(--text-secondary);
+    }
+
+    .filter-loading.active {
+        display: flex;
     }
     
     .summary-stats {
@@ -416,13 +450,8 @@
             justify-content: space-between;
         }
 
-        .chart-container {
+        .chart-container .chart-area {
             height: 350px;
-            padding: var(--space-md);
-        }
-        
-        .chart-container canvas {
-            max-height: 300px !important;
         }
         
         .matiere-stats {
@@ -436,11 +465,10 @@
     }
     
     @media (max-width: 576px) {
-        .chart-container {
-            height: 300px;
-            padding: var(--space-sm);
+        .chart-container .chart-area {
+            height: 280px;
         }
-        
+
         .chart-container h5 {
             font-size: 1rem;
         }
@@ -448,65 +476,121 @@
 </style>
 @endsection
 
+@php
+    // Helper : convertir heures décimales en format HHhMM (ex: 10.5 → "10H30")
+    $formatHM = function($decimal) {
+        if ($decimal == 0) return '0H00';
+        $hours = floor(abs($decimal));
+        $minutes = round((abs($decimal) - $hours) * 60);
+        if ($minutes >= 60) { $hours++; $minutes = 0; }
+        $sign = $decimal < 0 ? '-' : '';
+        return $sign . $hours . 'H' . str_pad($minutes, 2, '0', STR_PAD_LEFT);
+    };
+@endphp
+
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
         <!-- Header et navigation du planning -->
-        <x-planning-header 
-            title="Charge pédagogique par classe" 
+        <x-planning-header
+            title="Charge pédagogique par classe"
             subtitle="Suivi des heures planifiées et réalisées par matière, avec les enseignants affectés"
             active-tab="repartition"
             :annee-selectionnee="$anneeSelectionnee"
             :annees="$annees"
         />
 
-
-        <!-- Filtres -->
+        <!-- Filtres de recherche -->
         <div class="filters-section">
-            <form method="GET" class="row align-items-end">
-                <div class="col-md-3">
-                    <label for="annee_id" class="form-label">Année Universitaire</label>
-                    <select name="annee_id" id="annee_id" class="form-select">
-                        <option value="all" {{ request('annee_id') == 'all' ? 'selected' : '' }}>Toutes les années</option>
-                        @foreach($annees as $annee)
-                            <option value="{{ $annee->id }}" {{ request('annee_id') == $annee->id ? 'selected' : '' }}>
-                                {{ $annee->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="classe_id" class="form-label">Classe</label>
-                    <select name="classe_id" id="classe_id" class="form-select">
-                        <option value="">Toutes les classes</option>
-                        @foreach($classes as $classe)
-                            <option value="{{ $classe->id }}" 
-                                    data-filiere-id="{{ $classe->filiere_id }}"
-                                    data-niveau-id="{{ $classe->niveau_etude_id }}"
-                                    {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
-                                {{ $classe->name }} ({{ $classe->filiere->name ?? 'N/A' }})
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Période</label>
-                    <div class="d-flex gap-2">
-                        <button type="submit" name="periode" value="semestre1" class="btn btn-sm btn-outline-primary {{ request('periode') == 'semestre1' ? 'active' : '' }}">
-                            Semestre 1
-                        </button>
-                        <button type="submit" name="periode" value="semestre2" class="btn btn-sm btn-outline-primary {{ request('periode') == 'semestre2' ? 'active' : '' }}">
-                            Semestre 2
-                        </button>
-                        <button type="submit" name="periode" value="annee" class="btn btn-sm btn-outline-primary {{ request('periode') == 'annee' || !request('periode') ? 'active' : '' }}">
-                            Année
-                        </button>
+            <div class="section-title mb-md">
+                <i class="fas fa-filter me-2"></i>Filtres de recherche
+            </div>
+            <form method="GET" id="repartitionFiltersForm">
+                <div class="filters-grid">
+                    <!-- Recherche texte -->
+                    <div>
+                        <label for="search">Recherche</label>
+                        <input type="text" name="search" id="search" value="{{ $search ?? '' }}" placeholder="Nom de classe..." class="form-control" style="width: 100%;">
+                    </div>
+
+                    <!-- Année Universitaire -->
+                    <div>
+                        <label for="annee_id">Année</label>
+                        <select name="annee_id" id="annee_id" class="form-control" style="width: 100%;">
+                            <option value="all" {{ request('annee_id') == 'all' ? 'selected' : '' }}>Toutes les années</option>
+                            @foreach($annees as $annee)
+                                <option value="{{ $annee->id }}" {{ request('annee_id') == $annee->id ? 'selected' : '' }}>
+                                    {{ $annee->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Filière -->
+                    <div>
+                        <label for="filiere_id">Filière</label>
+                        <select name="filiere_id" id="filiere_id" class="form-control" style="width: 100%;">
+                            <option value="">Toutes les filières</option>
+                            @foreach($filieres as $filiere)
+                                <option value="{{ $filiere->id }}" {{ ($filiereId ?? '') == $filiere->id ? 'selected' : '' }}>
+                                    {{ $filiere->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Niveau -->
+                    <div>
+                        <label for="niveau_id">Niveau</label>
+                        <select name="niveau_id" id="niveau_id" class="form-control" style="width: 100%;">
+                            <option value="">Tous les niveaux</option>
+                            @foreach($niveaux as $niveau)
+                                <option value="{{ $niveau->id }}" {{ ($niveauId ?? '') == $niveau->id ? 'selected' : '' }}>
+                                    {{ $niveau->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Classe spécifique -->
+                    <div>
+                        <label for="classe_id">Classe</label>
+                        <select name="classe_id" id="classe_id" class="form-control" style="width: 100%;">
+                            <option value="">Toutes les classes</option>
+                            @foreach($classes as $classe)
+                                <option value="{{ $classe->id }}" {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
+                                    {{ $classe->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Période -->
+                    <div>
+                        <label>Période</label>
+                        <div class="d-flex gap-2 mt-1">
+                            <button type="button" name="periode" value="semestre1" class="btn btn-sm btn-outline-primary periode-btn {{ request('periode') == 'semestre1' ? 'active' : '' }}">S1</button>
+                            <button type="button" name="periode" value="semestre2" class="btn btn-sm btn-outline-primary periode-btn {{ request('periode') == 'semestre2' ? 'active' : '' }}">S2</button>
+                            <button type="button" name="periode" value="annee" class="btn btn-sm btn-outline-primary periode-btn {{ request('periode') == 'annee' || !request('periode') ? 'active' : '' }}">Année</button>
+                        </div>
+                        <input type="hidden" name="periode" id="periode_value" value="{{ request('periode', 'annee') }}">
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn-acasi primary">
+
+                <div class="filters-actions">
+                    <button type="submit" class="btn-acasi primary" id="btn-filtrer">
                         <i class="fas fa-search me-1"></i>Filtrer
                     </button>
+                    <button type="button" id="reset-filters-btn" class="btn-acasi secondary">
+                        <i class="fas fa-times me-1"></i>Réinitialiser
+                    </button>
+                    <div class="filter-loading" id="filter-loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>Chargement...</span>
+                    </div>
+                    <div class="filters-count">
+                        <i class="fas fa-layer-group me-1"></i><span id="classes-count">{{ $repartition->count() }}</span> classe(s)
+                    </div>
                 </div>
             </form>
         </div>
@@ -532,7 +616,7 @@
                 <div class="icon">
                     <i class="fas fa-calendar-check"></i>
                 </div>
-                <div class="stat-value">{{ number_format($statsRepartition['heures_planifiees'] ?? 0, 1) }}h</div>
+                <div class="stat-value">{{ $formatHM($statsRepartition['heures_planifiees'] ?? 0) }}</div>
                 <div class="stat-label">Heures planifiées</div>
             </div>
             <div class="summary-card warning">
@@ -549,7 +633,7 @@
                 <div class="stat-label">Taux de réalisation</div>
                 @if($tauxRealisation > 100)
                     <div class="mt-2">
-                        <span class="overage-badge">Dépassement +{{ number_format($depassement, 1) }}h</span>
+                        <span class="overage-badge">Dépassement +{{ $formatHM($depassement) }}</span>
                     </div>
                 @endif
             </div>
@@ -560,15 +644,15 @@
             <div class="col-md-6">
                 <div class="chart-container">
                     <h5 class="mb-3"><i class="fas fa-chart-pie me-2"></i>Répartition des heures réalisées</h5>
-                    <canvas id="pieChart"></canvas>
+                    <div id="pieChart" class="chart-area"></div>
                 </div>
             </div>
-            
-            <!-- Graphique en barres -->
+
+            <!-- Graphique en barres (scrollable) -->
             <div class="col-md-6">
                 <div class="chart-container">
                     <h5 class="mb-3"><i class="fas fa-chart-bar me-2"></i>Planifié vs Réalisé par classe</h5>
-                    <canvas id="barChart"></canvas>
+                    <div id="barChart" class="chart-area"></div>
                 </div>
             </div>
         </div>
@@ -616,25 +700,34 @@
                                         <span class="badge bg-info">{{ $filiereName }} - {{ $niveauName }}</span>
                                     </div>
                                 </div>
+                                @php
+                                    $heuresPlanifieesClasse = $classeData['stats']['heures_planifiees_total'];
+                                    $heuresRealiseesClasse = $classeData['stats']['heures_realisees_total'];
+                                    $heuresRestantesClasse = max(0, $heuresPlanifieesClasse - $heuresRealiseesClasse);
+                                    $depassementClasse = max(0, $heuresRealiseesClasse - $heuresPlanifieesClasse);
+                                @endphp
                                 <div class="class-kpis">
                                     <div class="class-kpi">
-                                        <span class="value">{{ number_format($classeData['stats']['heures_planifiees_total'], 1) }}h</span>
+                                        <span class="value">{{ $formatHM($heuresPlanifieesClasse) }}</span>
                                         <span class="label">Planifiées</span>
                                     </div>
                                     <div class="class-kpi">
-                                        <span class="value">{{ number_format($classeData['stats']['heures_realisees_total'], 1) }}h</span>
+                                        <span class="value">{{ $formatHM($heuresRealiseesClasse) }}</span>
                                         <span class="label">Réalisées</span>
                                     </div>
+                                    @if($heuresRestantesClasse > 0)
+                                    <div class="class-kpi">
+                                        <span class="value text-warning">{{ $formatHM($heuresRestantesClasse) }}</span>
+                                        <span class="label">Restantes</span>
+                                    </div>
+                                    @endif
                                     <div class="class-kpi">
                                         <span class="value">{{ $classeData['stats']['taux_realisation'] }}%</span>
                                         <span class="label">Réalisation</span>
                                     </div>
                                     @if($classeData['stats']['taux_realisation'] > 100)
-                                        @php
-                                            $depassementClasse = max(0, $classeData['stats']['heures_realisees_total'] - $classeData['stats']['heures_planifiees_total']);
-                                        @endphp
                                         <div class="class-kpi">
-                                            <span class="overage-badge">+{{ number_format($depassementClasse, 1) }}h</span>
+                                            <span class="overage-badge">+{{ $formatHM($depassementClasse) }}</span>
                                             <span class="label">Dépassement</span>
                                         </div>
                                     @endif
@@ -675,16 +768,16 @@
 
                                                 <div class="matiere-stats">
                                                     <div class="stat-item">
-                                                        <div class="stat-value">{{ number_format($item['heures_realisees'], 1) }}h</div>
+                                                        <div class="stat-value">{{ $formatHM($item['heures_realisees']) }}</div>
                                                         <div class="stat-label">Heures réalisées</div>
                                                     </div>
                                                     @if($item['est_configure'])
                                                         <div class="stat-item">
-                                                            <div class="stat-value">{{ number_format($item['heures_planifiees'], 1) }}h</div>
+                                                            <div class="stat-value">{{ $formatHM($item['heures_planifiees']) }}</div>
                                                             <div class="stat-label">Heures planifiées</div>
                                                         </div>
                                                         <div class="stat-item">
-                                                            <div class="stat-value">{{ number_format($item['heures_restantes'], 1) }}h</div>
+                                                            <div class="stat-value">{{ $formatHM($item['heures_restantes']) }}</div>
                                                             <div class="stat-label">Heures restantes</div>
                                                         </div>
                                                     @else
@@ -693,7 +786,7 @@
                                                             <div class="stat-label">Séances</div>
                                                         </div>
                                                         <div class="stat-item">
-                                                            <div class="stat-value">{{ number_format($item['heures_realisees'] / max($item['nb_seances'], 1), 1) }}h</div>
+                                                            <div class="stat-value">{{ $formatHM($item['heures_realisees'] / max($item['nb_seances'], 1)) }}</div>
                                                             <div class="stat-label">Moy. par séance</div>
                                                         </div>
                                                     @endif
@@ -709,9 +802,9 @@
                                                             <div class="progress-fill-volume realise {{ $item['pourcentage_realise'] > 100 ? 'overage' : '' }}" style="width: {{ min($item['pourcentage_realise'], 100) }}%"></div>
                                                         </div>
                                                         <div class="d-flex justify-content-between mt-1">
-                                                            <small class="text-success">✓ {{ number_format($item['heures_realisees'], 1) }}h réalisées</small>
+                                                            <small class="text-success">✓ {{ $formatHM($item['heures_realisees']) }} réalisées</small>
                                                             @if($item['heures_restantes'] > 0)
-                                                                <small class="text-warning">⏱ {{ number_format($item['heures_restantes'], 1) }}h restantes</small>
+                                                                <small class="text-warning">⏱ {{ $formatHM($item['heures_restantes']) }} restantes</small>
                                                             @else
                                                                 <small class="text-success">✅ Objectif atteint</small>
                                                             @endif
@@ -756,7 +849,7 @@
                                                             @foreach($item['enseignants'] as $enseignant)
                                                                 <a href="{{ route('esbtp.enseignants.show', ['enseignant' => $enseignant['id']]) }}" class="teacher-chip">
                                                                     <span class="teacher-name">{{ $enseignant['name'] }}</span>
-                                                                    <span class="teacher-hours">{{ number_format($enseignant['heures_realisees'], 1) }}h • {{ $enseignant['nb_seances'] }} séances</span>
+                                                                    <span class="teacher-hours">{{ $formatHM($enseignant['heures_realisees']) }} • {{ $enseignant['nb_seances'] }} séances</span>
                                                                 </a>
                                                             @endforeach
                                                         </div>
@@ -812,8 +905,8 @@
                     <input type="hidden" id="matiere_id" name="matiere_id">
                     <input type="hidden" name="annee_id" value="{{ $anneeSelectionnee?->id }}">
                     <input type="hidden" id="classe_id_modal" name="classe_id" value="">
-                    <input type="hidden" id="filiere_id" name="filiere_id">
-                    <input type="hidden" id="niveau_id" name="niveau_id">
+                    <input type="hidden" id="filiere_id_modal" name="filiere_id">
+                    <input type="hidden" id="niveau_id_modal" name="niveau_id">
                     
                     <!-- Informations contextuelles -->
                     <div class="alert alert-info">
@@ -913,154 +1006,222 @@
 
 @push('scripts')
 <script>
-const debugLog = () => {};
-const debugWarn = () => {};
-const debugError = () => {};
-
 $(document).ready(function() {
-    const colors = [
+
+    // ==========================================
+    // Helper : format décimal → HHhMM
+    // ==========================================
+    function formatHM(decimal) {
+        if (!decimal || decimal === 0) return '0H00';
+        const h = Math.floor(Math.abs(decimal));
+        let m = Math.round((Math.abs(decimal) - h) * 60);
+        if (m >= 60) { return (h + 1) + 'H00'; }
+        const sign = decimal < 0 ? '-' : '';
+        return sign + h + 'H' + String(m).padStart(2, '0');
+    }
+
+    // ==========================================
+    // ECharts : Initialisation et rendu
+    // ==========================================
+    const COLORS = [
         '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
-        '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#84CC16'
+        '#EC4899', '#14B8A6', '#F97316', '#6366F1', '#84CC16',
+        '#0EA5E9', '#F43F5E', '#22C55E', '#A855F7', '#FB923C',
+        '#06B6D4', '#E11D48', '#4ADE80', '#7C3AED', '#FBBF24'
     ];
+    const MAX_PIE_ITEMS = 15;
 
     window.repartitionCharts = window.repartitionCharts || { pie: null, bar: null };
 
-    const readChartData = () => {
+    function readChartData() {
         const raw = document.getElementById('repartition-chart-data');
-        if (!raw) {
-            return { labels: [], planifiees: [], realisees: [] };
-        }
-        try {
-            return JSON.parse(raw.textContent || '{}');
-        } catch (e) {
-            return { labels: [], planifiees: [], realisees: [] };
-        }
-    };
+        if (!raw) return { labels: [], planifiees: [], realisees: [] };
+        try { return JSON.parse(raw.textContent || '{}'); }
+        catch (e) { return { labels: [], planifiees: [], realisees: [] }; }
+    }
 
-    const renderCharts = () => {
+    function renderCharts() {
         const chartData = readChartData();
-        const chartLabels = chartData.labels || [];
-        const heuresPlanifiees = chartData.planifiees || [];
-        const heuresRealisees = chartData.realisees || [];
-        const totalHeures = heuresRealisees.reduce((sum, value) => sum + parseFloat(value || 0), 0);
+        const labels = chartData.labels || [];
+        const planifiees = chartData.planifiees || [];
+        const realisees = chartData.realisees || [];
 
-        if (window.repartitionCharts.pie) {
-            window.repartitionCharts.pie.destroy();
-        }
-        if (window.repartitionCharts.bar) {
-            window.repartitionCharts.bar.destroy();
-        }
+        // Dispose anciennes instances
+        if (window.repartitionCharts.pie) { window.repartitionCharts.pie.dispose(); }
+        if (window.repartitionCharts.bar) { window.repartitionCharts.bar.dispose(); }
 
-        if (chartLabels.length === 0) {
-            return;
-        }
+        if (labels.length === 0) return;
 
-        const pieElement = document.getElementById('pieChart');
-        const barElement = document.getElementById('barChart');
+        // ---- PIE CHART (Doughnut) ----
+        const pieEl = document.getElementById('pieChart');
+        if (pieEl) {
+            const pieInstance = echarts.init(pieEl);
+            window.repartitionCharts.pie = pieInstance;
 
-        if (pieElement) {
-            const pieCtx = pieElement.getContext('2d');
-            window.repartitionCharts.pie = new Chart(pieCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: chartLabels,
-                    datasets: [{
-                        data: heuresRealisees,
-                        backgroundColor: colors.slice(0, chartLabels.length),
-                        borderWidth: 2,
-                        borderColor: '#fff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: window.innerWidth < 768 ? 'bottom' : 'right',
-                            labels: {
-                                usePointStyle: true,
-                                padding: window.innerWidth < 768 ? 10 : 15,
-                                font: {
-                                    size: window.innerWidth < 768 ? 10 : 11
-                                },
-                                boxWidth: window.innerWidth < 768 ? 10 : 12
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.label || '';
-                                    const value = context.parsed;
-                                    const percentage = totalHeures > 0 ? ((value / totalHeures) * 100).toFixed(1) : 0;
-                                    return `${label}: ${value}h (${percentage}%)`;
-                                }
-                            }
-                        }
+            // Grouper les petites classes dans "Autres" si > MAX_PIE_ITEMS
+            let pieData = labels.map((label, i) => ({ name: label, value: parseFloat(realisees[i]) || 0 }));
+            pieData.sort((a, b) => b.value - a.value);
+
+            if (pieData.length > MAX_PIE_ITEMS) {
+                const top = pieData.slice(0, MAX_PIE_ITEMS);
+                const rest = pieData.slice(MAX_PIE_ITEMS);
+                const restTotal = rest.reduce((sum, item) => sum + item.value, 0);
+                top.push({ name: 'Autres (' + rest.length + ' classes)', value: restTotal });
+                pieData = top;
+            }
+
+            pieInstance.setOption({
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        return '<strong>' + params.name + '</strong><br/>' +
+                               formatHM(params.value) + ' (' + params.percent + '%)';
                     }
-                }
-            });
-        }
-
-        if (barElement) {
-            const barCtx = barElement.getContext('2d');
-            window.repartitionCharts.bar = new Chart(barCtx, {
-                type: 'bar',
-                data: {
-                    labels: chartLabels,
-                    datasets: [
-                        {
-                            label: 'Heures planifiées',
-                            data: heuresPlanifiees,
-                            backgroundColor: 'rgba(59, 130, 246, 0.6)',
-                            borderColor: '#3B82F6',
-                            borderWidth: 1
-                        },
-                        {
-                            label: 'Heures réalisées',
-                            data: heuresRealisees,
-                            backgroundColor: 'rgba(16, 185, 129, 0.6)',
-                            borderColor: '#10B981',
-                            borderWidth: 1
-                        }
-                    ]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return value + 'h';
-                                }
-                            }
-                        }
+                legend: {
+                    type: 'scroll',
+                    orient: window.innerWidth < 768 ? 'horizontal' : 'vertical',
+                    right: window.innerWidth < 768 ? 'center' : '3%',
+                    top: window.innerWidth < 768 ? 'bottom' : '15%',
+                    bottom: window.innerWidth < 768 ? '0%' : '15%',
+                    textStyle: { fontSize: 11 },
+                    pageIconSize: 12
+                },
+                color: COLORS,
+                series: [{
+                    name: 'Heures réalisées',
+                    type: 'pie',
+                    radius: ['35%', '65%'],
+                    center: window.innerWidth < 768 ? ['50%', '40%'] : ['35%', '50%'],
+                    avoidLabelOverlap: true,
+                    label: { show: false },
+                    emphasis: {
+                        label: { show: true, fontWeight: 'bold', fontSize: 13 }
                     },
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const value = context.parsed.y;
-                                    const percentage = totalHeures > 0 ? ((value / totalHeures) * 100).toFixed(1) : 0;
-                                    return `${context.dataset.label}: ${value}h (${percentage}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
+                    data: pieData
+                }]
             });
         }
-    };
 
-    const fetchRepartitionContent = (params) => {
-        const url = `${window.location.pathname}?${params.toString()}`;
+        // ---- BAR CHART (Scrollable avec dataZoom) ----
+        const barEl = document.getElementById('barChart');
+        if (barEl) {
+            const barInstance = echarts.init(barEl);
+            window.repartitionCharts.bar = barInstance;
+
+            // Calculer l'affichage initial (max ~20 classes visibles)
+            const visiblePercent = labels.length > 20 ? Math.round((20 / labels.length) * 100) : 100;
+
+            barInstance.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: function(params) {
+                        let html = '<strong>' + params[0].axisValue + '</strong>';
+                        params.forEach(function(p) {
+                            html += '<br/>' + p.marker + ' ' + p.seriesName + ': ' + formatHM(p.value);
+                        });
+                        return html;
+                    }
+                },
+                legend: {
+                    data: ['Heures planifiées', 'Heures réalisées'],
+                    bottom: labels.length > 20 ? 35 : 0
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: labels.length > 20 ? 80 : 40,
+                    top: 15,
+                    containLabel: true
+                },
+                dataZoom: labels.length > 20 ? [
+                    {
+                        type: 'slider',
+                        show: true,
+                        xAxisIndex: [0],
+                        start: 0,
+                        end: visiblePercent,
+                        bottom: 5,
+                        height: 25,
+                        borderColor: '#ddd',
+                        fillerColor: 'rgba(59, 130, 246, 0.1)',
+                        handleStyle: { color: '#3B82F6' }
+                    },
+                    {
+                        type: 'inside',
+                        xAxisIndex: [0],
+                        start: 0,
+                        end: visiblePercent
+                    }
+                ] : [],
+                xAxis: {
+                    type: 'category',
+                    data: labels,
+                    axisLabel: {
+                        rotate: labels.length > 10 ? 45 : 0,
+                        fontSize: 10,
+                        interval: 0
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        formatter: function(value) { return formatHM(value); },
+                        fontSize: 10
+                    }
+                },
+                series: [
+                    {
+                        name: 'Heures planifiées',
+                        type: 'bar',
+                        data: planifiees,
+                        itemStyle: { color: 'rgba(59, 130, 246, 0.7)', borderColor: '#3B82F6', borderWidth: 1 },
+                        barMaxWidth: 40
+                    },
+                    {
+                        name: 'Heures réalisées',
+                        type: 'bar',
+                        data: realisees,
+                        itemStyle: { color: 'rgba(16, 185, 129, 0.7)', borderColor: '#10B981', borderWidth: 1 },
+                        barMaxWidth: 40
+                    }
+                ]
+            });
+        }
+
+        // Resize auto
+        window.addEventListener('resize', function() {
+            if (window.repartitionCharts.pie) window.repartitionCharts.pie.resize();
+            if (window.repartitionCharts.bar) window.repartitionCharts.bar.resize();
+        });
+    }
+
+    // ==========================================
+    // AJAX Filtering (sans refresh page)
+    // ==========================================
+    const filterForm = document.getElementById('repartitionFiltersForm');
+    const loadingIndicator = document.getElementById('filter-loading');
+    const classesCountEl = document.getElementById('classes-count');
+    let searchTimeout = null;
+
+    function getFilterParams() {
+        const formData = new FormData(filterForm);
+        // S'assurer que la période est incluse
+        const periodeHidden = document.getElementById('periode_value');
+        if (periodeHidden) {
+            formData.set('periode', periodeHidden.value);
+        }
+        return new URLSearchParams(formData);
+    }
+
+    function fetchRepartitionContent(params) {
+        const url = window.location.pathname + '?' + params.toString();
+        if (loadingIndicator) loadingIndicator.classList.add('active');
+
         return fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(response => response.text())
-            .then(html => {
+            .then(function(response) { return response.text(); })
+            .then(function(html) {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
                 const nextContent = doc.querySelector('#repartition-content');
@@ -1068,143 +1229,163 @@ $(document).ready(function() {
                 if (nextContent && currentContent) {
                     currentContent.innerHTML = nextContent.innerHTML;
                     renderCharts();
+                    // Mettre à jour le compteur de classes
+                    const newCount = doc.querySelector('#classes-count');
+                    if (newCount && classesCountEl) {
+                        classesCountEl.textContent = newCount.textContent;
+                    }
                 }
                 window.history.replaceState({}, '', url);
             })
-            .catch(() => {
+            .catch(function() {
                 window.location.href = url;
+            })
+            .finally(function() {
+                if (loadingIndicator) loadingIndicator.classList.remove('active');
             });
-    };
+    }
 
-    const filterForm = document.querySelector('.filters-section form');
+    function triggerAjaxFilter() {
+        fetchRepartitionContent(getFilterParams());
+    }
+
     if (filterForm) {
-        filterForm.addEventListener('click', (event) => {
-            const button = event.target.closest('button[name="periode"]');
-            if (!button) {
-                return;
-            }
-            event.preventDefault();
-            filterForm.querySelectorAll('button[name="periode"]').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            button.classList.add('active');
-            const formData = new FormData(filterForm);
-            formData.set('periode', button.value);
-            const params = new URLSearchParams(formData);
-            fetchRepartitionContent(params);
+        // Soumission du formulaire (bouton Filtrer)
+        filterForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            triggerAjaxFilter();
         });
 
-        filterForm.addEventListener('change', (event) => {
-            if (!event.target.matches('#annee_id, #classe_id')) {
-                return;
+        // Changement de select → filtre AJAX immédiat
+        filterForm.addEventListener('change', function(e) {
+            if (e.target.matches('#annee_id, #classe_id, #filiere_id, #niveau_id')) {
+                triggerAjaxFilter();
             }
-            const params = new URLSearchParams(new FormData(filterForm));
-            const currentParams = new URLSearchParams(window.location.search);
-            params.set('periode', currentParams.get('periode') || 'annee');
-            fetchRepartitionContent(params);
+        });
+
+        // Recherche texte avec debounce (300ms)
+        var searchInput = document.getElementById('search');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(function() {
+                    triggerAjaxFilter();
+                }, 300);
+            });
+        }
+
+        // Boutons période
+        filterForm.addEventListener('click', function(e) {
+            var btn = e.target.closest('.periode-btn');
+            if (!btn) return;
+            e.preventDefault();
+            filterForm.querySelectorAll('.periode-btn').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            document.getElementById('periode_value').value = btn.value;
+            triggerAjaxFilter();
+        });
+
+        // Bouton réinitialiser
+        document.getElementById('reset-filters-btn').addEventListener('click', function() {
+            document.getElementById('search').value = '';
+            document.getElementById('annee_id').value = 'all';
+            document.getElementById('filiere_id').value = '';
+            document.getElementById('niveau_id').value = '';
+            document.getElementById('classe_id').value = '';
+            document.getElementById('periode_value').value = 'annee';
+            filterForm.querySelectorAll('.periode-btn').forEach(function(b) { b.classList.remove('active'); });
+            filterForm.querySelector('.periode-btn[value="annee"]').classList.add('active');
+            triggerAjaxFilter();
         });
     }
 
+    // ==========================================
+    // Initialisation
+    // ==========================================
     renderCharts();
-    
-    // Animation des barres de progression
-    setTimeout(() => {
-        $('.progress-fill-matiere').each(function(index) {
-            const width = $(this).css('width');
-            $(this).css('width', '0');
-            
-            setTimeout(() => {
-                $(this).animate({
-                    'width': width
-                }, 800);
-            }, index * 200);
-        });
-    }, 500);
-    
-    // Animation d'entrée des cartes
-    $('.matiere-card').each(function(index) {
-        $(this).css({
-            'opacity': '0',
-            'transform': 'translateY(20px)'
-        });
-        
-        setTimeout(() => {
-            $(this).animate({
-                'opacity': '1',
-                'transform': 'translateY(0)'
-            }, 300);
-        }, index * 100);
-    });
 
-    // Gestion du modal de configuration
-    document.getElementById('configureModal').addEventListener('show.bs.modal', function (event) {
-        const button = event.relatedTarget;
-        const matiereId = button.getAttribute('data-matiere-id');
-        const matiereName = button.getAttribute('data-matiere-name');
-        const matiereCode = button.getAttribute('data-matiere-code');
-        const filiereId = button.getAttribute('data-filiere-id');
-        const niveauId = button.getAttribute('data-niveau-id');
-        const filiereName = button.getAttribute('data-filiere-name');
-        const niveauName = button.getAttribute('data-niveau-name');
-        const classeId = button.getAttribute('data-classe-id');
-        const classeName = button.getAttribute('data-classe-name');
-        
-        // Mettre à jour le titre du modal
-        document.getElementById('configureModalLabel').innerHTML = '<i class="fas fa-cog me-2"></i>Configuration du planning - ' + matiereName;
-        
-        // Remplir le formulaire
-        document.getElementById('matiere_id').value = matiereId;
-        document.getElementById('filiere_id').value = filiereId || '';
-        document.getElementById('niveau_id').value = niveauId || '';
-        document.getElementById('classe_id_modal').value = classeId || '';
-        
-        // Mettre à jour le contexte affiché
-        const contextElement = document.getElementById('modal-context');
-        if (contextElement) {
-            let contextHTML = 'Année {{ $anneeSelectionnee?->name }}';
-            if (classeName) {
-                contextHTML += ` - <strong>${classeName}</strong> <small class="text-muted">(${filiereName} - ${niveauName})</small>`;
-            } else if (filiereId && niveauId) {
-                contextHTML += ` - <strong>${filiereName} - ${niveauName}</strong>`;
-            } else {
-                contextHTML += ' - <em>Toutes les filières/niveaux</em>';
+    // ==========================================
+    // Modal de configuration rapide
+    // ==========================================
+    var configureModalEl = document.getElementById('configureModal');
+    if (configureModalEl) {
+        configureModalEl.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            if (!button) return;
+            var matiereId = button.getAttribute('data-matiere-id');
+            var matiereName = button.getAttribute('data-matiere-name');
+            var filiereIdModal = button.getAttribute('data-filiere-id');
+            var niveauIdModal = button.getAttribute('data-niveau-id');
+            var filiereName = button.getAttribute('data-filiere-name');
+            var niveauName = button.getAttribute('data-niveau-name');
+            var classeIdModal = button.getAttribute('data-classe-id');
+            var classeName = button.getAttribute('data-classe-name');
+
+            document.getElementById('configureModalLabel').innerHTML = '<i class="fas fa-cog me-2"></i>Configuration du planning - ' + matiereName;
+
+            document.getElementById('matiere_id').value = matiereId;
+            document.getElementById('filiere_id_modal').value = filiereIdModal || '';
+            document.getElementById('niveau_id_modal').value = niveauIdModal || '';
+            document.getElementById('classe_id_modal').value = classeIdModal || '';
+
+            var contextElement = document.getElementById('modal-context');
+            if (contextElement) {
+                var contextHTML = 'Année {{ $anneeSelectionnee?->name }}';
+                if (classeName) {
+                    contextHTML += ' - <strong>' + classeName + '</strong> <small class="text-muted">(' + filiereName + ' - ' + niveauName + ')</small>';
+                } else if (filiereIdModal && niveauIdModal) {
+                    contextHTML += ' - <strong>' + filiereName + ' - ' + niveauName + '</strong>';
+                } else {
+                    contextHTML += ' - <em>Toutes les filières/niveaux</em>';
+                }
+                contextElement.innerHTML = contextHTML;
             }
-            contextElement.innerHTML = contextHTML;
-        }
-        
-        // Réinitialiser le formulaire
-        document.getElementById('configureForm').reset();
-        document.getElementById('matiere_id').value = matiereId; // Remettre l'ID après reset
-        document.getElementById('filiere_id').value = filiereId || '';
-        document.getElementById('niveau_id').value = niveauId || '';
-        document.getElementById('calcul-automatique').style.display = 'none';
-    });
+
+            document.getElementById('configureForm').reset();
+            document.getElementById('matiere_id').value = matiereId;
+            document.getElementById('filiere_id_modal').value = filiereIdModal || '';
+            document.getElementById('niveau_id_modal').value = niveauIdModal || '';
+            document.getElementById('calcul-automatique').style.display = 'none';
+        });
+
+        // Test manuel d'ouverture du modal
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('button[data-bs-target="#configureModal"]')) {
+                setTimeout(function() {
+                    var modalEl = document.getElementById('configureModal');
+                    if (modalEl && typeof bootstrap !== 'undefined') {
+                        var modalInstance = new bootstrap.Modal(modalEl);
+                        modalInstance.show();
+                    }
+                }, 100);
+            }
+        });
+    }
 
     // Calculs automatiques en temps réel
     function updateCalculations() {
-        const volumeHoraire = parseFloat(document.getElementById('volume_horaire').value) || 0;
-        const nbSeances = parseInt(document.getElementById('nb_seances').value) || 0;
-        const dureeSeance = parseFloat(document.getElementById('duree_seance').value) || 0;
-        
+        var volumeHoraire = parseFloat(document.getElementById('volume_horaire').value) || 0;
+        var nbSeances = parseInt(document.getElementById('nb_seances').value) || 0;
+        var dureeSeance = parseFloat(document.getElementById('duree_seance').value) || 0;
+
         if (volumeHoraire > 0 && nbSeances > 0 && dureeSeance > 0) {
-            const totalCalcule = nbSeances * dureeSeance;
-            const difference = Math.abs(totalCalcule - volumeHoraire);
-            
-            let message = '';
-            let alertClass = 'alert-secondary';
-            
+            var totalCalcule = nbSeances * dureeSeance;
+            var difference = Math.abs(totalCalcule - volumeHoraire);
+            var message = '';
+            var alertClass = 'alert-secondary';
+
             if (Math.abs(totalCalcule - volumeHoraire) < 0.1) {
-                message = `Parfait ! ${nbSeances} séances de ${dureeSeance}h = ${totalCalcule}h`;
+                message = 'Parfait ! ' + nbSeances + ' séances de ' + formatHM(dureeSeance) + ' = ' + formatHM(totalCalcule);
                 alertClass = 'alert-success';
             } else if (totalCalcule > volumeHoraire) {
-                message = `Attention : ${nbSeances} séances de ${dureeSeance}h = ${totalCalcule}h (${difference}h de plus que prévu)`;
+                message = 'Attention : ' + nbSeances + ' séances de ' + formatHM(dureeSeance) + ' = ' + formatHM(totalCalcule) + ' (' + formatHM(difference) + ' de plus que prévu)';
                 alertClass = 'alert-warning';
             } else {
-                message = `Attention : ${nbSeances} séances de ${dureeSeance}h = ${totalCalcule}h (${difference}h de moins que prévu)`;
+                message = 'Attention : ' + nbSeances + ' séances de ' + formatHM(dureeSeance) + ' = ' + formatHM(totalCalcule) + ' (' + formatHM(difference) + ' de moins que prévu)';
                 alertClass = 'alert-warning';
             }
-            
-            const calculElement = document.getElementById('calcul-automatique');
+
+            var calculElement = document.getElementById('calcul-automatique');
             calculElement.className = 'alert ' + alertClass;
             document.getElementById('calcul-text').textContent = message;
             calculElement.style.display = 'block';
@@ -1213,133 +1394,65 @@ $(document).ready(function() {
         }
     }
 
-    // Auto-calcul des valeurs manquantes
     function setupInputListeners() {
-        const inputs = ['volume_horaire', 'nb_seances', 'duree_seance'];
-        inputs.forEach(inputId => {
-            document.getElementById(inputId).addEventListener('input', function() {
+        ['volume_horaire', 'nb_seances', 'duree_seance'].forEach(function(inputId) {
+            var el = document.getElementById(inputId);
+            if (!el) return;
+            el.addEventListener('input', function() {
                 updateCalculations();
-                
-                // Auto-calcul intelligent
-                const volumeHoraire = parseFloat(document.getElementById('volume_horaire').value) || 0;
-                const nbSeances = parseInt(document.getElementById('nb_seances').value) || 0;
-                const dureeSeance = parseFloat(document.getElementById('duree_seance').value) || 0;
-                
-                // Si on a volume et nb séances, calculer durée
+                var volumeHoraire = parseFloat(document.getElementById('volume_horaire').value) || 0;
+                var nbSeances = parseInt(document.getElementById('nb_seances').value) || 0;
+                var dureeSeance = parseFloat(document.getElementById('duree_seance').value) || 0;
+
                 if (volumeHoraire > 0 && nbSeances > 0 && dureeSeance === 0) {
-                    const dureeCalculee = Math.round((volumeHoraire / nbSeances) * 2) / 2; // Arrondir au 0.5 près
-                    document.getElementById('duree_seance').value = dureeCalculee;
+                    document.getElementById('duree_seance').value = Math.round((volumeHoraire / nbSeances) * 2) / 2;
                 }
-                
-                // Si on a volume et durée, calculer nb séances
                 if (volumeHoraire > 0 && dureeSeance > 0 && nbSeances === 0) {
-                    const seancesCalculees = Math.round(volumeHoraire / dureeSeance);
-                    document.getElementById('nb_seances').value = seancesCalculees;
+                    document.getElementById('nb_seances').value = Math.round(volumeHoraire / dureeSeance);
                 }
-                
                 updateCalculations();
             });
         });
     }
-    
-    // Initialiser les écouteurs d'événements
     setupInputListeners();
 
-    // Soumission du formulaire
-    document.getElementById('configureForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        const submitBtn = document.getElementById('saveBtn');
-        
-        // Désactiver le bouton
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement...';
-        
-        fetch('{{ route("esbtp.planning-general.configure-rapide") }}', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        })
-        .then(response => response.json())
-        .then(response => {
-            if (response.success) {
-                // Fermer le modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('configureModal'));
-                modal.hide();
-                
-                // Afficher un message de succès
-                const alertDiv = document.createElement('div');
-                alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
-                alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-                alertDiv.innerHTML = `
-                    <i class="fas fa-check-circle me-2"></i>${response.message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                `;
-                document.body.appendChild(alertDiv);
-                
-                // Recharger la page après un délai
-                setTimeout(() => {
-                    window.location.reload();
-                }, 2000);
-            } else {
-                alert('Erreur : ' + response.message);
-            }
-        })
-        .catch(error => {
-            debugError('Erreur:', error);
-            alert('Erreur lors de la sauvegarde');
-        })
-        .finally(() => {
-            // Réactiver le bouton
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Enregistrer';
-        });
-    });
+    // Soumission du formulaire de configuration
+    var configForm = document.getElementById('configureForm');
+    if (configForm) {
+        configForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var formData = new FormData(this);
+            var submitBtn = document.getElementById('saveBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement...';
 
-    // ===== DEBUG MODAL =====
-    debugLog('Bootstrap version:', typeof bootstrap !== 'undefined' ? 'loaded' : 'NOT LOADED');
-    
-    // Test de clic sur les boutons
-    document.addEventListener('click', function(e) {
-        if (e.target.closest('button[data-bs-target="#configureModal"]')) {
-            debugLog('Bouton modal cliqué!');
-            debugLog('Button:', e.target.closest('button'));
-            debugLog('Modal element:', document.getElementById('configureModal'));
-            
-            // Test manuel d'ouverture du modal
-            setTimeout(() => {
-                const modalEl = document.getElementById('configureModal');
-                if (modalEl && typeof bootstrap !== 'undefined') {
-                    const modalInstance = new bootstrap.Modal(modalEl);
-                    modalInstance.show();
-                    debugLog('Modal ouvert manuellement');
+            fetch('{{ route("esbtp.planning-general.configure-rapide") }}', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(response) {
+                if (response.success) {
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('configureModal'));
+                    modal.hide();
+                    var alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+                    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+                    alertDiv.innerHTML = '<i class="fas fa-check-circle me-2"></i>' + response.message + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                    document.body.appendChild(alertDiv);
+                    setTimeout(function() { triggerAjaxFilter(); }, 1500);
                 } else {
-                    debugError('Bootstrap ou modal element introuvable');
+                    alert('Erreur : ' + response.message);
                 }
-            }, 100);
-        }
-    });
-    
-    // Vérifier l'état du modal
-    const modalElement = document.getElementById('configureModal');
-    if (modalElement) {
-        debugLog('Modal element found:', modalElement);
-        modalElement.addEventListener('shown.bs.modal', function () {
-            debugLog('Modal shown event triggered');
+            })
+            .catch(function() { alert('Erreur lors de la sauvegarde'); })
+            .finally(function() {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Enregistrer';
+            });
         });
-        modalElement.addEventListener('hidden.bs.modal', function () {
-            debugLog('Modal hidden event triggered');
-        });
-        modalElement.addEventListener('show.bs.modal', function () {
-            debugLog('Modal show event triggered');
-        });
-    } else {
-        debugError('Modal element NOT FOUND');
     }
-
 });
 </script>
 @endpush
