@@ -2,13 +2,11 @@
 
 namespace App\Support;
 
-use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatriculeConfig;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPSystemSetting;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 class MatriculeGenerator
@@ -129,22 +127,12 @@ class MatriculeGenerator
 
     /**
      * Détermine l'année à utiliser pour la génération du matricule.
+     *
+     * Utilise toujours l'année civile courante (date du jour de l'inscription).
+     * L'année universitaire de la classe n'influence pas l'année du matricule.
      */
     protected function resolveAnnee(?int $anneeUniversitaireId): int
     {
-        if ($anneeUniversitaireId) {
-            $annee = ESBTPAnneeUniversitaire::find($anneeUniversitaireId);
-            if ($annee) {
-                if ($annee->start_date) {
-                    return Carbon::parse($annee->start_date)->year;
-                }
-
-                if ($annee->name && preg_match('/\d{4}/', $annee->name, $matches)) {
-                    return (int) $matches[0];
-                }
-            }
-        }
-
         return now()->year;
     }
 
