@@ -589,16 +589,28 @@ document.addEventListener('DOMContentLoaded', () => {
                         <i class="fas fa-users"></i>
                         Liste des étudiants inscrits
                     </div>
-                    <div class="main-card-subtitle">{{ $classe->etudiants->count() }} étudiant(s) inscrit(s) dans cette classe pour l'année courante</div>
+                    <div class="main-card-subtitle" id="studentCountSubtitle">{{ $classe->etudiants->count() }} étudiant(s) inscrit(s) dans cette classe pour l'année courante</div>
                 </div>
-                <button class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#classeEtudiantsCollapse"
-                        aria-expanded="true"
-                        aria-controls="classeEtudiantsCollapse">
-                    <i class="fas fa-chevron-up"></i>
-                </button>
+                <div class="d-flex align-items-center gap-2">
+                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur'))
+                    <button type="button" class="btn btn-sm btn-success d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addStudentsModal" title="Ajouter des étudiants">
+                        <i class="fas fa-user-plus"></i>
+                        <span class="d-none d-md-inline">Ajouter</span>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-warning d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#removeStudentsModal" title="Retirer / Transférer des étudiants">
+                        <i class="fas fa-user-minus"></i>
+                        <span class="d-none d-md-inline">Retirer / Transférer</span>
+                    </button>
+                    @endif
+                    <button class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#classeEtudiantsCollapse"
+                            aria-expanded="true"
+                            aria-controls="classeEtudiantsCollapse">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                </div>
             </div>
 
             <div id="classeEtudiantsCollapse" class="collapse show">
@@ -690,46 +702,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
             @endif
-            <div class="main-card-body">
-                @if($classe->etudiants->count() > 0)
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0 datatable">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th>Matricule</th>
-                                    <th>Nom complet</th>
-                                    <th>Genre</th>
-                                    <th>Date de naissance</th>
-                                    <th>Contact</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($classe->etudiants as $etudiant)
-                                    <tr>
-                                        <td>{{ $etudiant->matricule }}</td>
-                                        <td>{{ $etudiant->nom }} {{ $etudiant->prenoms }}</td>
-                                        <td>{{ $etudiant->genre == 'M' ? 'Masculin' : 'Féminin' }}</td>
-                                        <td>{{ $etudiant->date_naissance ? $etudiant->date_naissance->format('d/m/Y') : 'Non renseigné' }}</td>
-                                        <td>
-                                            {{ $etudiant->telephone }}<br>
-                                            <small>{{ $etudiant->email }}</small>
-                                        </td>
-                                        <td>
-                                            <a href="{{ route('esbtp.etudiants.show', ['etudiant' => $etudiant->id]) }}" class="btn btn-info btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1" title="Voir détails">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @else
-                    <div class="alert alert-info mb-0">
-                        <i class="fas fa-info-circle me-2"></i>Aucun étudiant inscrit dans cette classe pour l'année courante.
-                    </div>
-                @endif
+            <div class="main-card-body" id="studentTableContainer">
+                @include('esbtp.classes.partials.student-table-rows', ['classe' => $classe])
             </div>
             </div>
         </div>
@@ -740,20 +714,505 @@ document.addEventListener('DOMContentLoaded', () => {
 @section('scripts')
 <script>
     $(document).ready(function() {
-        $('.datatable').DataTable({
-            "responsive": true,
-            "autoWidth": false,
-            "language": {
-                "url": "//cdn.datatables.net/plug-ins/1.10.22/i18n/French.json"
+        // Initialiser DataTables sur la table étudiants
+        function initStudentDataTable() {
+            if ($.fn.DataTable.isDataTable('#studentsDataTable')) {
+                $('#studentsDataTable').DataTable().destroy();
+            }
+            var table = document.getElementById('studentsDataTable');
+            if (table) {
+                $('#studentsDataTable').DataTable({
+                    "responsive": true,
+                    "autoWidth": false,
+                    "language": {
+                        "url": "//cdn.datatables.net/plug-ins/1.10.22/i18n/French.json"
+                    }
+                });
+            }
+        }
+        initStudentDataTable();
+
+        // ==========================================
+        // RAFRAICHIR LA TABLE ÉTUDIANTS (AJAX)
+        // ==========================================
+        function refreshStudentTable() {
+            var container = document.getElementById('studentTableContainer');
+            container.style.opacity = '0.5';
+
+            fetch("{{ route('esbtp.classes.student-table-html', ['classe' => $classe->id]) }}", {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    container.innerHTML = data.html;
+                    container.style.opacity = '1';
+                    // Mettre à jour le compteur dans le header
+                    document.getElementById('studentCountSubtitle').textContent =
+                        data.count + ' étudiant(s) inscrit(s) dans cette classe pour l\'année courante';
+                    // Réinitialiser DataTables
+                    initStudentDataTable();
+                    // Mettre à jour la liste dans le modal Retirer
+                    refreshRemoveModalStudentList(data.html);
+                }
+            })
+            .catch(function() {
+                container.style.opacity = '1';
+            });
+        }
+
+        // Mettre à jour la liste étudiants dans le modal "Retirer"
+        function refreshRemoveModalStudentList(tableHtml) {
+            var parser = new DOMParser();
+            var doc = parser.parseFromString(tableHtml, 'text/html');
+            var rows = doc.querySelectorAll('tbody tr[data-etudiant-id]');
+            var listContainer = document.getElementById('removeStudentsList');
+            if (!listContainer) return;
+
+            if (rows.length === 0) {
+                listContainer.innerHTML = '<div class="text-muted text-center py-3">Aucun étudiant dans cette classe.</div>';
+                return;
+            }
+
+            var html = '';
+            rows.forEach(function(row) {
+                var id = row.getAttribute('data-etudiant-id');
+                var cells = row.querySelectorAll('td');
+                var matricule = cells[0] ? cells[0].textContent.trim() : '';
+                var nom = cells[1] ? cells[1].textContent.trim() : '';
+                html += '<label class="list-group-item d-flex align-items-center gap-2" style="cursor: pointer;">' +
+                    '<input type="checkbox" class="form-check-input remove-student-checkbox" value="' + id + '" style="margin: 0;">' +
+                    '<span class="badge bg-light text-dark" style="font-family: monospace; font-size: 0.8rem;">' + matricule + '</span>' +
+                    '<span>' + nom + '</span>' +
+                    '</label>';
+            });
+            listContainer.innerHTML = html;
+            updateRemoveSelectedCount();
+        }
+
+        // ==========================================
+        // MODAL AJOUTER ÉTUDIANTS
+        // ==========================================
+        var addSearchTimer = null;
+        var addSelectedStudents = {};
+
+        // Recherche avec debounce
+        document.getElementById('addStudentSearchInput').addEventListener('input', function() {
+            clearTimeout(addSearchTimer);
+            var query = this.value;
+            addSearchTimer = setTimeout(function() {
+                searchAvailableStudents(query);
+            }, 300);
+        });
+
+        function searchAvailableStudents(query) {
+            var resultsContainer = document.getElementById('addSearchResults');
+            var loadingEl = document.getElementById('addSearchLoading');
+            loadingEl.style.display = 'block';
+            resultsContainer.innerHTML = '';
+
+            var url = "{{ route('esbtp.classes.search-available-students', ['classe' => $classe->id]) }}?q=" + encodeURIComponent(query);
+
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                loadingEl.style.display = 'none';
+                if (!data.success) {
+                    resultsContainer.innerHTML = '<div class="text-danger p-3">' + (data.message || 'Erreur') + '</div>';
+                    return;
+                }
+                if (data.etudiants.length === 0) {
+                    resultsContainer.innerHTML = '<div class="text-muted text-center py-3"><i class="fas fa-search me-2"></i>Aucun étudiant trouvé.</div>';
+                    return;
+                }
+                var html = '';
+                data.etudiants.forEach(function(etudiant) {
+                    var isChecked = addSelectedStudents[etudiant.id] ? 'checked' : '';
+                    html += '<label class="list-group-item d-flex align-items-center gap-2" style="cursor: pointer;">' +
+                        '<input type="checkbox" class="form-check-input add-student-checkbox" value="' + etudiant.id + '" ' + isChecked + ' style="margin: 0;">' +
+                        '<div class="flex-grow-1">' +
+                        '<div class="d-flex align-items-center gap-2">' +
+                        '<span class="badge bg-light text-dark" style="font-family: monospace; font-size: 0.8rem;">' + (etudiant.matricule || 'N/A') + '</span>' +
+                        '<strong>' + etudiant.nom_complet + '</strong>' +
+                        '</div>' +
+                        '<small class="text-muted">Classe actuelle : ' + etudiant.classe_actuelle + '</small>' +
+                        '</div>' +
+                        '</label>';
+                });
+                resultsContainer.innerHTML = html;
+            })
+            .catch(function() {
+                loadingEl.style.display = 'none';
+                resultsContainer.innerHTML = '<div class="text-danger p-3">Erreur de connexion.</div>';
+            });
+        }
+
+        // Gérer la sélection/désélection
+        document.getElementById('addSearchResults').addEventListener('change', function(e) {
+            if (e.target.classList.contains('add-student-checkbox')) {
+                var id = e.target.value;
+                var label = e.target.closest('label');
+                var nameEl = label.querySelector('strong');
+                if (e.target.checked) {
+                    addSelectedStudents[id] = nameEl ? nameEl.textContent : 'Étudiant ' + id;
+                } else {
+                    delete addSelectedStudents[id];
+                }
+                updateAddSelectedCount();
             }
         });
+
+        function updateAddSelectedCount() {
+            var count = Object.keys(addSelectedStudents).length;
+            document.getElementById('addSelectedCount').textContent = count;
+            document.getElementById('addSubmitBtn').disabled = count === 0;
+
+            // Mettre à jour le tag area
+            var tagsContainer = document.getElementById('addSelectedTags');
+            if (count === 0) {
+                tagsContainer.innerHTML = '<span class="text-muted">Aucun étudiant sélectionné</span>';
+            } else {
+                var html = '';
+                for (var id in addSelectedStudents) {
+                    html += '<span class="badge bg-primary me-1 mb-1" style="font-size: 0.8rem;">' +
+                        addSelectedStudents[id] +
+                        ' <i class="fas fa-times ms-1" style="cursor:pointer;" data-remove-id="' + id + '"></i>' +
+                        '</span>';
+                }
+                tagsContainer.innerHTML = html;
+            }
+        }
+
+        // Supprimer un tag
+        document.getElementById('addSelectedTags').addEventListener('click', function(e) {
+            var removeBtn = e.target.closest('[data-remove-id]');
+            if (removeBtn) {
+                var id = removeBtn.getAttribute('data-remove-id');
+                delete addSelectedStudents[id];
+                // Décocher la checkbox si visible
+                var checkbox = document.querySelector('.add-student-checkbox[value="' + id + '"]');
+                if (checkbox) checkbox.checked = false;
+                updateAddSelectedCount();
+            }
+        });
+
+        // Soumettre l'ajout
+        document.getElementById('addSubmitBtn').addEventListener('click', function() {
+            var ids = Object.keys(addSelectedStudents).map(Number);
+            if (ids.length === 0) return;
+
+            var btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Ajout en cours...';
+
+            fetch("{{ route('esbtp.classes.add-students', ['classe' => $classe->id]) }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ etudiant_ids: ids })
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    // Fermer le modal
+                    bootstrap.Modal.getInstance(document.getElementById('addStudentsModal')).hide();
+                    // Réinitialiser
+                    addSelectedStudents = {};
+                    updateAddSelectedCount();
+                    document.getElementById('addStudentSearchInput').value = '';
+                    document.getElementById('addSearchResults').innerHTML = '';
+                    // Rafraîchir la table
+                    refreshStudentTable();
+                    // Notification
+                    showNotification('success', data.message);
+                } else {
+                    showNotification('danger', data.message || 'Erreur lors de l\'ajout.');
+                }
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-plus me-1"></i>Ajouter <span class="badge bg-light text-success" id="addSelectedCount">0</span> étudiant(s)';
+            })
+            .catch(function() {
+                showNotification('danger', 'Erreur de connexion.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-plus me-1"></i>Ajouter <span class="badge bg-light text-success" id="addSelectedCount">0</span> étudiant(s)';
+            });
+        });
+
+        // Charger les résultats au premier affichage du modal
+        document.getElementById('addStudentsModal').addEventListener('shown.bs.modal', function() {
+            document.getElementById('addStudentSearchInput').focus();
+            if (document.getElementById('addSearchResults').innerHTML === '') {
+                searchAvailableStudents('');
+            }
+        });
+
+        // ==========================================
+        // MODAL RETIRER / TRANSFÉRER ÉTUDIANTS
+        // ==========================================
+
+        // Charger la liste des étudiants actuels à l'ouverture du modal
+        document.getElementById('removeStudentsModal').addEventListener('shown.bs.modal', function() {
+            populateRemoveStudentsList();
+        });
+
+        function populateRemoveStudentsList() {
+            var tableRows = document.querySelectorAll('#studentTableContainer tr[data-etudiant-id]');
+            var listContainer = document.getElementById('removeStudentsList');
+
+            if (tableRows.length === 0) {
+                listContainer.innerHTML = '<div class="text-muted text-center py-3">Aucun étudiant dans cette classe.</div>';
+                return;
+            }
+
+            var html = '';
+            tableRows.forEach(function(row) {
+                var id = row.getAttribute('data-etudiant-id');
+                var cells = row.querySelectorAll('td');
+                var matricule = cells[0] ? cells[0].textContent.trim() : '';
+                var nom = cells[1] ? cells[1].textContent.trim() : '';
+                html += '<label class="list-group-item d-flex align-items-center gap-2" style="cursor: pointer;">' +
+                    '<input type="checkbox" class="form-check-input remove-student-checkbox" value="' + id + '" style="margin: 0;">' +
+                    '<span class="badge bg-light text-dark" style="font-family: monospace; font-size: 0.8rem;">' + matricule + '</span>' +
+                    '<span>' + nom + '</span>' +
+                    '</label>';
+            });
+            listContainer.innerHTML = html;
+            updateRemoveSelectedCount();
+        }
+
+        // Sélectionner / Désélectionner tout
+        document.getElementById('removeSelectAll').addEventListener('change', function() {
+            var checkboxes = document.querySelectorAll('.remove-student-checkbox');
+            var checked = this.checked;
+            checkboxes.forEach(function(cb) { cb.checked = checked; });
+            updateRemoveSelectedCount();
+        });
+
+        // Recherche dans la liste retirer
+        document.getElementById('removeSearchInput').addEventListener('input', function() {
+            var query = this.value.toLowerCase();
+            var items = document.querySelectorAll('#removeStudentsList .list-group-item');
+            items.forEach(function(item) {
+                var text = item.textContent.toLowerCase();
+                item.style.display = text.includes(query) ? '' : 'none';
+            });
+        });
+
+        // Mettre à jour le compteur de sélection
+        document.getElementById('removeStudentsList').addEventListener('change', function() {
+            updateRemoveSelectedCount();
+        });
+
+        function updateRemoveSelectedCount() {
+            var count = document.querySelectorAll('.remove-student-checkbox:checked').length;
+            document.getElementById('removeSelectedCount').textContent = count;
+            document.getElementById('removeSubmitBtn').disabled = count === 0;
+        }
+
+        // Soumettre le retrait/transfert
+        document.getElementById('removeSubmitBtn').addEventListener('click', function() {
+            var checkboxes = document.querySelectorAll('.remove-student-checkbox:checked');
+            var ids = [];
+            checkboxes.forEach(function(cb) { ids.push(parseInt(cb.value)); });
+
+            if (ids.length === 0) return;
+
+            var destinationSelect = document.getElementById('destinationClasseId');
+            var destinationClasseId = destinationSelect.value || null;
+
+            // Confirmation
+            var actionText = destinationClasseId
+                ? 'transférer ' + ids.length + ' étudiant(s) vers "' + destinationSelect.options[destinationSelect.selectedIndex].text + '"'
+                : 'retirer ' + ids.length + ' étudiant(s) de cette classe (ils seront marqués comme non affectés)';
+
+            if (!confirm('Confirmer : ' + actionText + ' ?')) return;
+
+            var btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Traitement...';
+
+            var body = { etudiant_ids: ids };
+            if (destinationClasseId) {
+                body.destination_classe_id = parseInt(destinationClasseId);
+            }
+
+            fetch("{{ route('esbtp.classes.remove-students', ['classe' => $classe->id]) }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(body)
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    // Fermer le modal
+                    bootstrap.Modal.getInstance(document.getElementById('removeStudentsModal')).hide();
+                    // Réinitialiser
+                    document.getElementById('removeSelectAll').checked = false;
+                    document.getElementById('removeSearchInput').value = '';
+                    // Rafraîchir la table
+                    refreshStudentTable();
+                    // Notification
+                    showNotification('success', data.message);
+                } else {
+                    showNotification('danger', data.message || 'Erreur lors du retrait.');
+                }
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-exchange-alt me-1"></i>Retirer / Transférer <span class="badge bg-light text-warning" id="removeSelectedCount">0</span> étudiant(s)';
+            })
+            .catch(function() {
+                showNotification('danger', 'Erreur de connexion.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-exchange-alt me-1"></i>Retirer / Transférer <span class="badge bg-light text-warning" id="removeSelectedCount">0</span> étudiant(s)';
+            });
+        });
+
+        // ==========================================
+        // NOTIFICATION TOAST
+        // ==========================================
+        function showNotification(type, message) {
+            var alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-' + type + ' alert-dismissible fade show';
+            alertDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px; max-width: 500px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
+            alertDiv.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + ' me-2"></i>' +
+                message +
+                '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+            document.body.appendChild(alertDiv);
+            setTimeout(function() {
+                if (alertDiv.parentNode) {
+                    alertDiv.classList.remove('show');
+                    setTimeout(function() { alertDiv.remove(); }, 300);
+                }
+            }, 5000);
+        }
     });
-    
+
     // Fonction pour afficher le modal d'information sur le changement d'année
     function showYearChangeInfo() {
         $('#yearChangeModal').modal('show');
     }
 </script>
+
+<!-- ==========================================
+     MODAL : AJOUTER DES ÉTUDIANTS
+     ========================================== -->
+<div class="modal fade" id="addStudentsModal" tabindex="-1" aria-labelledby="addStudentsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+                <h5 class="modal-title" id="addStudentsModalLabel">
+                    <i class="fas fa-user-plus me-2"></i>Ajouter des étudiants à {{ $classe->name }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Barre de recherche -->
+                <div class="mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" id="addStudentSearchInput" class="form-control" placeholder="Rechercher par nom, matricule, téléphone...">
+                    </div>
+                    <small class="text-muted">Recherche parmi les étudiants inscrits cette année mais pas dans cette classe.</small>
+                </div>
+
+                <!-- Tags des étudiants sélectionnés -->
+                <div class="mb-3 p-2" style="background: #f8f9fa; border-radius: 6px; min-height: 36px;" id="addSelectedTags">
+                    <span class="text-muted">Aucun étudiant sélectionné</span>
+                </div>
+
+                <!-- Loading -->
+                <div id="addSearchLoading" style="display: none;" class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    <span class="ms-2 text-muted">Recherche en cours...</span>
+                </div>
+
+                <!-- Résultats de recherche -->
+                <div class="list-group" id="addSearchResults" style="max-height: 400px; overflow-y: auto;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-success" id="addSubmitBtn" disabled>
+                    <i class="fas fa-plus me-1"></i>Ajouter <span class="badge bg-light text-success" id="addSelectedCount">0</span> étudiant(s)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================
+     MODAL : RETIRER / TRANSFÉRER DES ÉTUDIANTS
+     ========================================== -->
+<div class="modal fade" id="removeStudentsModal" tabindex="-1" aria-labelledby="removeStudentsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                <h5 class="modal-title" id="removeStudentsModalLabel">
+                    <i class="fas fa-user-minus me-2"></i>Retirer / Transférer des étudiants
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Destination -->
+                <div class="mb-3 p-3" style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;">
+                    <label for="destinationClasseId" class="form-label fw-bold">
+                        <i class="fas fa-exchange-alt me-1 text-warning"></i>Classe de destination
+                    </label>
+                    <select id="destinationClasseId" class="form-select">
+                        <option value="">-- Non affecté (retirer sans transférer) --</option>
+                        @isset($autresClasses)
+                        @php
+                            $grouped = $autresClasses->groupBy(function($c) {
+                                return optional($c->filiere)->name ?? 'Sans filière';
+                            });
+                        @endphp
+                        @foreach($grouped as $filiereName => $classes)
+                            <optgroup label="{{ $filiereName }}">
+                                @foreach($classes as $autreClasse)
+                                    <option value="{{ $autreClasse->id }}">
+                                        {{ $autreClasse->name }} ({{ optional($autreClasse->niveau)->name ?? '' }})
+                                    </option>
+                                @endforeach
+                            </optgroup>
+                        @endforeach
+                        @endisset
+                    </select>
+                    <small class="text-muted mt-1 d-block">
+                        <i class="fas fa-info-circle me-1"></i>Si aucune classe n'est sélectionnée, les étudiants seront marqués "non affectés".
+                    </small>
+                </div>
+
+                <!-- Sélection rapide + Recherche -->
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="removeSelectAll">
+                        <label class="form-check-label fw-bold" for="removeSelectAll">Tout sélectionner</label>
+                    </div>
+                    <div style="width: 250px;">
+                        <input type="text" id="removeSearchInput" class="form-control form-control-sm" placeholder="Filtrer la liste...">
+                    </div>
+                </div>
+
+                <!-- Liste des étudiants actuels -->
+                <div class="list-group" id="removeStudentsList" style="max-height: 400px; overflow-y: auto;">
+                    <div class="text-muted text-center py-3">Chargement...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-warning" id="removeSubmitBtn" disabled>
+                    <i class="fas fa-exchange-alt me-1"></i>Retirer / Transférer <span class="badge bg-light text-warning" id="removeSelectedCount">0</span> étudiant(s)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Modal pour les instructions de changement d'année -->
 <div class="modal fade" id="yearChangeModal" tabindex="-1" role="dialog" aria-labelledby="yearChangeModalLabel" aria-hidden="true">
@@ -773,8 +1232,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 </ol>
                 <hr style="margin: 15px 0;">
                 <p style="color: #6b7280; font-size: 14px;">
-                    <i class="fas fa-info-circle"></i> 
-                    <strong>Note :</strong> Seule une année peut être "courante" à la fois. 
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Note :</strong> Seule une année peut être "courante" à la fois.
                     Changer l'année courante affecte l'affichage des étudiants dans toute l'application.
                 </p>
                 <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-top: 15px;">
