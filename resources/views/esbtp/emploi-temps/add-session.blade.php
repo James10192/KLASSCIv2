@@ -166,31 +166,51 @@
 
                 <!-- Section 4: Grille de disponibilités de l'enseignant sélectionné -->
                 <div class="main-card" id="availability-card" style="display: none;">
-                    <div class="main-card-header">
-                        <div class="main-card-title">
-                            <i class="fas fa-calendar-check"></i>
-                            Disponibilités de l'enseignant
+                    <div class="main-card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                            <div class="main-card-title">
+                                <i class="fas fa-calendar-check"></i>
+                                Disponibilités de l'enseignant
+                            </div>
+                            <div class="main-card-subtitle">Grille des créneaux disponibles — cliquez sur "Modifier" pour éditer</div>
                         </div>
-                        <div class="main-card-subtitle">Grille des créneaux disponibles</div>
+                        <div class="availability-actions" style="display: flex; gap: 8px;">
+                            <button type="button" class="btn-edit-availability" id="btn-edit-avail" onclick="toggleInlineEdit()">
+                                <i class="fas fa-edit me-1"></i>Modifier
+                            </button>
+                            <button type="button" class="btn-save-availability" id="btn-save-avail" style="display: none;" onclick="saveInlineAvailability()">
+                                <i class="fas fa-save me-1"></i>Sauvegarder
+                            </button>
+                            <button type="button" class="btn-cancel-availability" id="btn-cancel-avail" style="display: none;" onclick="cancelInlineEdit()">
+                                <i class="fas fa-times me-1"></i>Annuler
+                            </button>
+                        </div>
                     </div>
                     <div class="main-card-body">
+                        <div id="availability-save-status" style="display: none;" class="mb-3"></div>
                         <div class="availability-grid-container">
                             <div class="availability-grid" id="availability-grid">
                                 <!-- Grille générée par JavaScript -->
                             </div>
                         </div>
                         <div class="availability-legend mt-3">
-                            <div class="d-flex flex-wrap gap-3">
+                            <div class="d-flex flex-wrap gap-3 justify-content-center">
                                 <div class="legend-item">
-                                    <span class="legend-color available"></span>
-                                    <span class="legend-text">Disponible</span>
-                                </div>
-                                <div class="legend-item">
-                                    <span class="legend-color preferred"></span>
+                                    <div class="legend-color" style="background: #dbeafe; color: #2563eb; border: 1px solid #bfdbfe; width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.65rem;">
+                                        <i class="fas fa-star"></i>
+                                    </div>
                                     <span class="legend-text">Préféré</span>
                                 </div>
                                 <div class="legend-item">
-                                    <span class="legend-color unavailable"></span>
+                                    <div class="legend-color" style="background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.65rem;">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                    <span class="legend-text">Disponible</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color" style="background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; width: 20px; height: 20px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.65rem;">
+                                        <i class="fas fa-minus"></i>
+                                    </div>
                                     <span class="legend-text">Indisponible</span>
                                 </div>
                             </div>
@@ -355,106 +375,191 @@
 
 .availability-grid {
     display: grid;
-    grid-template-columns: 80px repeat(6, 1fr);
-    gap: 1px;
-    min-width: 600px;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
+    grid-template-columns: 72px repeat(6, 1fr);
+    background: #ffffff;
+    padding: 0;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    gap: 0;
     overflow: hidden;
-    background: #dee2e6;
-}
-
-.availability-time-header,
-.availability-day-header,
-.availability-time-slot,
-.availability-slot {
-    padding: 8px;
-    text-align: center;
-    background: #fff;
-    font-size: 0.85rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 40px;
+    min-width: 550px;
 }
 
 .availability-time-header {
-    background: #f8f9fa;
-    font-weight: 600;
-    color: #495057;
+    grid-column: 1;
+    font-weight: 700;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #94a3b8;
+    text-align: center;
+    padding: 10px 4px;
+    background: #f8fafc;
+    border-bottom: 2px solid #e2e8f0;
+    border-right: 2px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .availability-day-header {
-    background: #e9ecef;
-    font-weight: 600;
-    color: #495057;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #1e40af;
+    padding: 10px 4px;
+    background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%);
+    border-bottom: 2px solid #e2e8f0;
+    border-right: 1px solid #f1f5f9;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .availability-time-slot {
-    background: #f8f9fa;
-    font-weight: 500;
-    color: #6c757d;
-    font-size: 0.8rem;
+    text-align: center;
+    padding: 0 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    border-right: 2px solid #e2e8f0;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8fafc;
+    min-height: 38px;
 }
 
 .availability-slot {
-    cursor: default;
-    transition: all 0.2s ease;
-    border: 2px solid transparent;
+    padding: 4px 2px;
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 600;
+    transition: all 0.15s ease;
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid #f1f5f9;
+    border-right: 1px solid #f1f5f9;
+    position: relative;
+    gap: 3px;
+    user-select: none;
 }
 
 .availability-slot.available {
-    background: #d1f2d1;
-    color: #155724;
+    background: #dcfce7;
+    color: #15803d;
+    border-bottom-color: #bbf7d0;
 }
+
+.availability-slot.available i { color: #16a34a; font-size: 0.7rem; }
 
 .availability-slot.preferred {
-    background: #b8e6b8;
-    color: #155724;
-    font-weight: 600;
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-bottom-color: #bfdbfe;
 }
 
+.availability-slot.preferred i { color: #2563eb; font-size: 0.7rem; }
+
 .availability-slot.unavailable {
-    background: #f8d7da;
-    color: #721c24;
+    background: #fee2e2;
+    color: #991b1b;
+    border-bottom-color: #fecaca;
 }
+
+.availability-slot.unavailable i { color: #dc2626; font-size: 0.65rem; opacity: 0.6; }
+
+.availability-slot:hover {
+    filter: brightness(0.95);
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,0.08);
+}
+
+.availability-slot.modified {
+    box-shadow: inset 0 0 0 2px #f59e0b;
+}
+
+.availability-slot.modified::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 6px;
+    height: 6px;
+    background: #f59e0b;
+    border-radius: 50%;
+}
+
+.availability-slot .slot-label { display: inline; }
 
 /* Légende */
 .availability-legend {
-    padding: 15px;
-    background: #f8f9fa;
-    border-radius: 8px;
+    padding: 12px;
 }
 
 .legend-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-}
-
-.legend-color {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    border: 1px solid #dee2e6;
-}
-
-.legend-color.available {
-    background: #d1f2d1;
-}
-
-.legend-color.preferred {
-    background: #b8e6b8;
-}
-
-.legend-color.unavailable {
-    background: #f8d7da;
+    gap: 6px;
 }
 
 .legend-text {
-    font-size: 0.9rem;
-    color: #495057;
+    font-size: 0.8rem;
+    color: #475569;
     font-weight: 500;
+}
+
+/* Boutons édition */
+.btn-edit-availability,
+.btn-save-availability,
+.btn-cancel-availability {
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-edit-availability {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+}
+
+.btn-edit-availability:hover {
+    box-shadow: 0 4px 8px rgba(37, 99, 235, 0.4);
+    transform: translateY(-1px);
+}
+
+.btn-save-availability {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: white;
+    box-shadow: 0 2px 4px rgba(22, 163, 74, 0.3);
+}
+
+.btn-save-availability:hover {
+    box-shadow: 0 4px 8px rgba(22, 163, 74, 0.4);
+    transform: translateY(-1px);
+}
+
+.btn-cancel-availability {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+.btn-cancel-availability:hover {
+    background: #fee2e2;
+    color: #dc2626;
+    border-color: #fecaca;
 }
 
 /* Responsive */
@@ -462,28 +567,28 @@
     .form-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .form-actions {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .main-card-body {
         padding: var(--space-lg);
     }
-    
+
     .availability-grid {
-        grid-template-columns: 60px repeat(6, 1fr);
-        min-width: 500px;
+        grid-template-columns: 52px repeat(6, 1fr);
+        min-width: 450px;
     }
-    
-    .availability-time-header,
-    .availability-day-header,
-    .availability-time-slot,
+
     .availability-slot {
-        padding: 6px;
-        font-size: 0.75rem;
-        min-height: 35px;
+        min-height: 32px;
+        font-size: 0.6rem;
+    }
+
+    .availability-slot .slot-label {
+        display: none;
     }
 }
 
@@ -511,53 +616,273 @@
         
         // Configuration de la grille
         const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        const dayNames = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+        const dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+        const dayNamesFull = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
         const hours = Array.from({length: 11}, (_, i) => i + 8); // 8h à 18h
-        
+
+        // État édition inline
+        let inlineEditMode = false;
+        let inlineOriginalData = {};
+        let inlineModifiedSlots = new Set();
+
+        // Icônes FA pour chaque statut
+        const statusIcons = {
+            unavailable: '<i class="fas fa-minus"></i>',
+            available: '<i class="fas fa-check"></i><span class="slot-label">Dispo</span>',
+            preferred: '<i class="fas fa-star"></i><span class="slot-label">Préf.</span>'
+        };
+
         // Fonction pour afficher la grille de disponibilités
         function displayAvailabilityGrid(availabilityData) {
             debugLog('Affichage disponibilités:', availabilityData);
-            
+
             if (!availabilityData) {
                 debugLog('Pas de données disponibilités');
                 availabilityCard.style.display = 'none';
                 return;
             }
-            
+
+            // Reset edit state
+            inlineEditMode = false;
+            inlineOriginalData = {};
+            inlineModifiedSlots.clear();
+            document.getElementById('btn-edit-avail').style.display = 'flex';
+            document.getElementById('btn-save-avail').style.display = 'none';
+            document.getElementById('btn-cancel-avail').style.display = 'none';
+            document.getElementById('availability-save-status').style.display = 'none';
+
             // Construire la grille HTML
             let gridHTML = '';
-            
+
             // Header avec les jours
-            gridHTML += '<div class="availability-time-header">Heure</div>';
+            gridHTML += '<div class="availability-time-header">Horaires</div>';
             dayNames.forEach(dayName => {
                 gridHTML += `<div class="availability-day-header">${dayName}</div>`;
             });
-            
+
             // Lignes pour chaque heure
             hours.forEach((hour, hourIndex) => {
                 const timeLabel = `${hour.toString().padStart(2, '0')}:00`;
                 gridHTML += `<div class="availability-time-slot">${timeLabel}</div>`;
-                
-                days.forEach(day => {
-                    const status = availabilityData[day] && availabilityData[day][hourIndex] 
-                        ? availabilityData[day][hourIndex] 
+
+                days.forEach((day, dayIndex) => {
+                    const status = availabilityData[day] && availabilityData[day][hourIndex]
+                        ? availabilityData[day][hourIndex]
                         : 'unavailable';
-                    
-                    gridHTML += `<div class="availability-slot ${status}" data-day="${day}" data-hour="${hour}"></div>`;
+
+                    gridHTML += `<div class="availability-slot ${status}"
+                        id="inline-slot-${hourIndex}-${dayIndex}"
+                        data-day="${dayIndex}"
+                        data-hour="${hour}"
+                        data-time-index="${hourIndex}"
+                        data-original-status="${status}"
+                        title="${dayNamesFull[dayIndex]} ${hour.toString().padStart(2, '0')}:00 - ${status === 'preferred' ? 'Préféré' : status === 'available' ? 'Disponible' : 'Indisponible'}">
+                        ${statusIcons[status]}
+                    </div>`;
                 });
             });
-            
+
             availabilityGrid.innerHTML = gridHTML;
             availabilityCard.style.display = 'block';
             debugLog('Grille affichée');
         }
-        
+
+        // Toggle inline edit mode
+        window.toggleInlineEdit = function() {
+            inlineEditMode = !inlineEditMode;
+            const slots = availabilityGrid.querySelectorAll('.availability-slot');
+            const editBtn = document.getElementById('btn-edit-avail');
+            const saveBtn = document.getElementById('btn-save-avail');
+            const cancelBtn = document.getElementById('btn-cancel-avail');
+
+            if (inlineEditMode) {
+                slots.forEach(slot => {
+                    slot.style.cursor = 'pointer';
+                    slot.onclick = () => toggleInlineSlot(slot);
+                    inlineOriginalData[slot.id] = slot.dataset.originalStatus;
+                });
+                editBtn.style.display = 'none';
+                saveBtn.style.display = 'flex';
+                cancelBtn.style.display = 'flex';
+                availabilityGrid.style.boxShadow = 'inset 0 0 0 2px #f59e0b';
+            } else {
+                slots.forEach(slot => {
+                    slot.style.cursor = 'default';
+                    slot.onclick = null;
+                });
+                editBtn.style.display = 'flex';
+                saveBtn.style.display = 'none';
+                cancelBtn.style.display = 'none';
+                availabilityGrid.style.boxShadow = 'none';
+            }
+        };
+
+        // Toggle a single slot status
+        function toggleInlineSlot(slot) {
+            if (!inlineEditMode) return;
+
+            const statuses = ['unavailable', 'available', 'preferred'];
+            let currentStatus = statuses.find(s => slot.classList.contains(s)) || 'unavailable';
+            const nextIndex = (statuses.indexOf(currentStatus) + 1) % statuses.length;
+            const nextStatus = statuses[nextIndex];
+
+            statuses.forEach(s => slot.classList.remove(s));
+            slot.classList.add(nextStatus);
+            slot.innerHTML = statusIcons[nextStatus];
+
+            if (nextStatus !== inlineOriginalData[slot.id]) {
+                slot.classList.add('modified');
+                inlineModifiedSlots.add(slot.id);
+            } else {
+                slot.classList.remove('modified');
+                inlineModifiedSlots.delete(slot.id);
+            }
+
+            // Update tooltip
+            const dayIndex = parseInt(slot.dataset.day);
+            const hour = slot.dataset.hour;
+            const statusNames = { unavailable: 'Indisponible', available: 'Disponible', preferred: 'Préféré' };
+            slot.title = `${dayNamesFull[dayIndex]} ${hour}:00 - ${statusNames[nextStatus]}`;
+        }
+
+        // Cancel inline edit
+        window.cancelInlineEdit = function() {
+            inlineModifiedSlots.forEach(slotId => {
+                const slot = document.getElementById(slotId);
+                if (!slot) return;
+                const originalStatus = inlineOriginalData[slotId];
+                const statuses = ['unavailable', 'available', 'preferred'];
+                statuses.forEach(s => slot.classList.remove(s));
+                slot.classList.add(originalStatus);
+                slot.innerHTML = statusIcons[originalStatus];
+                slot.classList.remove('modified');
+            });
+            inlineModifiedSlots.clear();
+            toggleInlineEdit();
+        };
+
+        // Save inline availability via AJAX
+        window.saveInlineAvailability = function() {
+            const enseignantId = enseignantSelect.value;
+            if (!enseignantId) return;
+
+            if (inlineModifiedSlots.size === 0) {
+                showSaveStatus('Aucune modification à sauvegarder.', 'warning');
+                return;
+            }
+
+            const changedSlots = [];
+            inlineModifiedSlots.forEach(slotId => {
+                const slot = document.getElementById(slotId);
+                if (!slot) return;
+                const statuses = ['unavailable', 'available', 'preferred'];
+                const currentStatus = statuses.find(s => slot.classList.contains(s));
+                const timeIndex = parseInt(slot.dataset.timeIndex);
+                const startHour = 8 + timeIndex;
+                const endHour = startHour + 1;
+
+                changedSlots.push({
+                    day: parseInt(slot.dataset.day),
+                    startTime: String(startHour).padStart(2, '0') + ':00',
+                    endTime: String(endHour).padStart(2, '0') + ':00',
+                    status: currentStatus
+                });
+            });
+
+            showSaveStatus('Sauvegarde en cours...', 'info');
+
+            fetch(`/esbtp/enseignants/${enseignantId}/update-availability`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ changes: changedSlots })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSaveStatus('Disponibilités mises à jour avec succès !', 'success');
+
+                    // Update original data + data-attributes
+                    inlineModifiedSlots.forEach(slotId => {
+                        const slot = document.getElementById(slotId);
+                        if (!slot) return;
+                        const statuses = ['unavailable', 'available', 'preferred'];
+                        const currentStatus = statuses.find(s => slot.classList.contains(s));
+                        inlineOriginalData[slotId] = currentStatus;
+                        slot.dataset.originalStatus = currentStatus;
+                        slot.classList.remove('modified');
+                    });
+                    inlineModifiedSlots.clear();
+
+                    // Update the select option data-availability so it stays in sync
+                    updateSelectAvailability(enseignantId);
+
+                    toggleInlineEdit();
+                } else {
+                    showSaveStatus('Erreur: ' + (data.message || 'Erreur inconnue'), 'danger');
+                }
+            })
+            .catch(error => {
+                showSaveStatus('Erreur de connexion: ' + error.message, 'danger');
+            });
+        };
+
+        // Rebuild availability JSON from the grid and update the select option
+        function updateSelectAvailability(enseignantId) {
+            const newData = {};
+            days.forEach(day => { newData[day] = []; });
+
+            hours.forEach((hour, hourIndex) => {
+                days.forEach((day, dayIndex) => {
+                    const slot = document.getElementById(`inline-slot-${hourIndex}-${dayIndex}`);
+                    if (slot) {
+                        const statuses = ['unavailable', 'available', 'preferred'];
+                        const st = statuses.find(s => slot.classList.contains(s)) || 'unavailable';
+                        newData[day][hourIndex] = st;
+                    }
+                });
+            });
+
+            // Update the option's data-availability
+            const option = enseignantSelect.querySelector(`option[value="${enseignantId}"]`);
+            if (option) {
+                option.dataset.availability = JSON.stringify(newData);
+            }
+        }
+
+        // Show save status message
+        function showSaveStatus(message, type) {
+            const el = document.getElementById('availability-save-status');
+            const colors = {
+                info: { bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8' },
+                success: { bg: '#f0fdf4', border: '#bbf7d0', color: '#15803d' },
+                warning: { bg: '#fefce8', border: '#fde68a', color: '#92400e' },
+                danger: { bg: '#fef2f2', border: '#fecaca', color: '#991b1b' }
+            };
+            const c = colors[type] || colors.info;
+            el.style.display = 'block';
+            el.style.padding = '10px 16px';
+            el.style.borderRadius = '8px';
+            el.style.fontSize = '0.85rem';
+            el.style.fontWeight = '500';
+            el.style.background = c.bg;
+            el.style.border = `1px solid ${c.border}`;
+            el.style.color = c.color;
+            el.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'danger' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'spinner fa-spin'} me-2"></i>${message}`;
+
+            if (type === 'success') {
+                setTimeout(() => { el.style.display = 'none'; }, 4000);
+            }
+        }
+
         // Événement de changement de sélection d'enseignant
         enseignantSelect.addEventListener('change', function() {
             debugLog('Changement enseignant détecté');
             const selectedOption = this.options[this.selectedIndex];
             debugLog('Option sélectionnée:', selectedOption);
-            
+
             if (selectedOption.value && selectedOption.dataset.availability) {
                 debugLog('Données brutes:', selectedOption.dataset.availability);
                 try {

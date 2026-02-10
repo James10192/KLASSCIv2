@@ -93,124 +93,247 @@
         padding: 0;
     }
 
-    /* Grille de disponibilité */
+    /* =============================================
+       CALENDRIER HEBDOMADAIRE - DESIGN MODERNE
+       ============================================= */
+
     .availability-grid {
         display: grid;
-        grid-template-columns: 80px repeat(7, 1fr);
-        gap: 2px;
-        background: white;
-        padding: var(--space-lg);
-        border-radius: var(--radius-medium);
-        border: 1px solid var(--border-light);
+        grid-template-columns: 72px repeat(6, 1fr);
+        background: #ffffff;
+        padding: 16px;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        gap: 0;
+        overflow: hidden;
     }
 
+    /* En-tête "Horaires" */
     .availability-time-header {
         grid-column: 1;
-        font-weight: 600;
+        font-weight: 700;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #94a3b8;
         text-align: center;
-        color: var(--text-secondary);
-        font-size: 0.85rem;
+        padding: 10px 4px;
+        background: #f8fafc;
+        border-bottom: 2px solid #e2e8f0;
+        border-right: 2px solid #e2e8f0;
     }
 
+    /* En-têtes des jours */
     .availability-day-header {
         text-align: center;
         font-weight: 700;
-        color: var(--primary);
-        padding: var(--space-sm);
-        background: rgba(4, 83, 203, 0.1);
-        border-radius: var(--radius-small);
-        font-size: 0.85rem;
+        font-size: 0.8rem;
+        color: #1e40af;
+        padding: 10px 4px;
+        background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%);
+        border-bottom: 2px solid #e2e8f0;
+        border-right: 1px solid #f1f5f9;
+        letter-spacing: 0.3px;
     }
 
+    .availability-day-header:last-of-type {
+        border-right: none;
+    }
+
+    /* Créneaux horaires (colonne gauche) */
     .availability-time-slot {
         text-align: center;
-        padding: var(--space-xs);
+        padding: 0 4px;
         font-size: 0.75rem;
-        color: var(--text-secondary);
-        border-right: 1px solid var(--border-light);
+        font-weight: 600;
+        color: #64748b;
+        border-right: 2px solid #e2e8f0;
+        border-bottom: 1px solid #f1f5f9;
         display: flex;
         align-items: center;
         justify-content: center;
+        background: #f8fafc;
+        min-height: 38px;
     }
 
+    /* Cellules du calendrier */
     .availability-slot {
-        padding: var(--space-xs);
+        padding: 4px 2px;
         text-align: center;
-        border-radius: var(--radius-small);
-        font-size: 0.75rem;
-        transition: all 0.2s ease;
-        cursor: pointer;
-        min-height: 28px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        transition: all 0.15s ease;
+        min-height: 38px;
         display: flex;
         align-items: center;
         justify-content: center;
+        border-bottom: 1px solid #f1f5f9;
+        border-right: 1px solid #f1f5f9;
+        position: relative;
+        gap: 3px;
+        user-select: none;
     }
 
+    .availability-slot:last-child {
+        border-right: none;
+    }
+
+    /* Statut: Disponible */
     .availability-slot.available {
-        background: var(--success);
-        color: white;
-        font-weight: 600;
+        background: #dcfce7;
+        color: #15803d;
+        border-bottom-color: #bbf7d0;
     }
 
+    .availability-slot.available i {
+        color: #16a34a;
+        font-size: 0.7rem;
+    }
+
+    /* Statut: Préféré */
     .availability-slot.preferred {
-        background: var(--primary);
-        color: white;
-        font-weight: 600;
+        background: #dbeafe;
+        color: #1d4ed8;
+        border-bottom-color: #bfdbfe;
     }
 
+    .availability-slot.preferred i {
+        color: #2563eb;
+        font-size: 0.7rem;
+    }
+
+    /* Statut: Indisponible */
     .availability-slot.unavailable {
-        background: var(--border);
-        color: var(--text-muted);
+        background: #fee2e2;
+        color: #991b1b;
+        border-bottom-color: #fecaca;
     }
 
+    .availability-slot.unavailable i {
+        color: #dc2626;
+        font-size: 0.65rem;
+        opacity: 0.6;
+    }
+
+    /* Hover */
     .availability-slot:hover {
-        transform: scale(1.05);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        filter: brightness(0.95);
+        box-shadow: inset 0 0 0 2px rgba(0,0,0,0.08);
+    }
+
+    /* Cellule modifiée (en mode édition) */
+    .availability-slot.modified {
+        position: relative;
+        box-shadow: inset 0 0 0 2px #f59e0b;
     }
 
     .availability-slot.modified::after {
         content: '';
         position: absolute;
-        top: 2px;
-        right: 2px;
+        top: 3px;
+        right: 3px;
         width: 6px;
         height: 6px;
-        background: var(--warning);
+        background: #f59e0b;
         border-radius: 50%;
     }
 
-    /* Légende */
+    /* Zebra striping léger pour les rangées */
+    .availability-grid > .availability-time-slot:nth-of-type(odd),
+    .availability-grid > .availability-slot:nth-child(14n+9),
+    .availability-grid > .availability-slot:nth-child(14n+10),
+    .availability-grid > .availability-slot:nth-child(14n+11),
+    .availability-grid > .availability-slot:nth-child(14n+12),
+    .availability-grid > .availability-slot:nth-child(14n+13),
+    .availability-grid > .availability-slot:nth-child(14n+14) {
+        /* Subtle zebra via slightly different border */
+    }
+
+    /* =============================================
+       LÉGENDE
+       ============================================= */
     .availability-legend {
         display: flex;
         justify-content: center;
-        gap: var(--space-lg);
-        margin-top: var(--space-md);
+        gap: 20px;
+        margin-top: 12px;
         flex-wrap: wrap;
     }
 
     .legend-item {
         display: flex;
         align-items: center;
-        gap: var(--space-xs);
-        font-size: 0.85rem;
+        gap: 6px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: #475569;
     }
 
     .legend-color {
-        width: 16px;
-        height: 16px;
-        border-radius: var(--radius-small);
+        width: 20px;
+        height: 20px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.65rem;
     }
 
-    /* Bloc enseignant */
+    /* =============================================
+       STATS BADGES
+       ============================================= */
+    .availability-stats {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+    }
+
+    .stat-mini {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.82rem;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-weight: 500;
+    }
+
+    .stat-mini.stat-preferred {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+    }
+
+    .stat-mini.stat-available {
+        background: #f0fdf4;
+        color: #15803d;
+        border: 1px solid #bbf7d0;
+    }
+
+    .stat-mini.stat-unavailable {
+        background: #fef2f2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    .stat-mini .stat-value {
+        font-weight: 700;
+        font-size: 0.95rem;
+    }
+
+    /* =============================================
+       BLOC ENSEIGNANT
+       ============================================= */
     .bulk-enseignant-block {
-        background: var(--surface);
-        padding: var(--space-lg);
+        background: #ffffff;
+        padding: 20px;
     }
 
     .bulk-enseignant-block .availability-actions {
         display: flex;
-        gap: var(--space-sm);
-        margin-bottom: var(--space-md);
+        gap: 8px;
+        margin-bottom: 14px;
         flex-wrap: wrap;
     }
 
@@ -218,75 +341,98 @@
     .btn-save-availability,
     .btn-cancel-availability {
         border: none;
-        padding: var(--space-sm) var(--space-md);
-        border-radius: var(--radius-medium);
-        font-size: 0.9rem;
-        font-weight: 500;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
         cursor: pointer;
         transition: all 0.2s ease;
         display: flex;
         align-items: center;
-        gap: var(--space-xs);
+        gap: 6px;
     }
 
     .btn-edit-availability {
-        background: var(--primary);
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
         color: white;
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
     }
 
     .btn-edit-availability:hover {
-        background: var(--primary-dark);
+        box-shadow: 0 4px 8px rgba(37, 99, 235, 0.4);
+        transform: translateY(-1px);
     }
 
     .btn-save-availability {
-        background: var(--success);
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
         color: white;
+        box-shadow: 0 2px 4px rgba(22, 163, 74, 0.3);
     }
 
     .btn-save-availability:hover {
-        background: #059669;
+        box-shadow: 0 4px 8px rgba(22, 163, 74, 0.4);
+        transform: translateY(-1px);
     }
 
     .btn-cancel-availability {
-        background: var(--danger);
-        color: white;
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
     }
 
     .btn-cancel-availability:hover {
-        background: #dc2626;
+        background: #fee2e2;
+        color: #dc2626;
+        border-color: #fecaca;
     }
 
-    /* Stats mini */
-    .availability-stats {
-        display: flex;
-        gap: var(--space-md);
-        margin-bottom: var(--space-md);
-        flex-wrap: wrap;
-    }
-
-    .stat-mini {
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-        font-size: 0.85rem;
-        padding: var(--space-xs) var(--space-sm);
-        background: var(--surface-secondary);
-        border-radius: var(--radius-small);
-    }
-
-    .stat-mini .stat-value {
-        font-weight: 700;
-    }
-
+    /* =============================================
+       RESPONSIVE
+       ============================================= */
     @media (max-width: 768px) {
         .availability-grid {
-            grid-template-columns: 60px repeat(7, 1fr);
-            font-size: 0.7rem;
+            grid-template-columns: 52px repeat(6, 1fr);
+            padding: 8px;
+            font-size: 0.65rem;
         }
 
         .availability-day-header {
-            padding: var(--space-xs);
-            font-size: 0.7rem;
+            padding: 6px 2px;
+            font-size: 0.68rem;
+        }
+
+        .availability-time-slot {
+            font-size: 0.65rem;
+            padding: 0 2px;
+        }
+
+        .availability-slot {
+            min-height: 32px;
+            font-size: 0.6rem;
+            padding: 2px 1px;
+        }
+
+        .availability-slot .slot-label {
+            display: none;
+        }
+
+        .availability-stats {
+            gap: 6px;
+        }
+
+        .stat-mini {
+            font-size: 0.75rem;
+            padding: 4px 8px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .availability-grid {
+            grid-template-columns: 44px repeat(6, 1fr);
+        }
+
+        .availability-slot {
+            min-height: 28px;
         }
     }
 </style>

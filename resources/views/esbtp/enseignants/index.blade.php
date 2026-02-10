@@ -343,6 +343,11 @@
                 <div class="modal-body" style="padding: 1.5rem;">
                     <p class="text-muted mb-3">Sélectionnez les enseignants dont vous souhaitez modifier les disponibilités.</p>
 
+                    {{-- Barre de recherche --}}
+                    <div class="mb-3">
+                        <input type="text" id="bulk-modal-search" class="form-control" placeholder="Rechercher un enseignant...">
+                    </div>
+
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="bulk-select-all-modal">
@@ -368,7 +373,10 @@
                     @else
                         <div class="list-group" style="max-height: 400px; overflow-y: auto;">
                             @foreach($allTeachers as $t)
-                                <label class="list-group-item d-flex align-items-center gap-3" style="cursor: pointer;">
+                                <label class="list-group-item d-flex align-items-center gap-3 bulk-modal-item"
+                                       style="cursor: pointer;"
+                                       data-name="{{ strtolower($t->user->name ?? '') }}"
+                                       data-spec="{{ strtolower($t->specialization ?? '') }}">
                                     <input class="form-check-input bulk-modal-checkbox"
                                            type="checkbox" name="ids[]"
                                            value="{{ $t->id }}">
@@ -411,15 +419,19 @@ $(document).ready(function() {
         const selectAll = document.getElementById('bulk-select-all-modal');
         const submitButton = document.getElementById('bulk-availability-submit');
         const selectedCount = document.getElementById('selected-count');
+        const searchInput = document.getElementById('bulk-modal-search');
+        const items = bulkModal.querySelectorAll('.bulk-modal-item');
         const checkboxes = () => bulkModal.querySelectorAll('.bulk-modal-checkbox');
 
         const updateState = () => {
             const boxes = Array.from(checkboxes());
+            const visibleBoxes = boxes.filter(box => box.closest('.bulk-modal-item').style.display !== 'none');
             const checkedCount = boxes.filter(box => box.checked).length;
+            const visibleCheckedCount = visibleBoxes.filter(box => box.checked).length;
 
             if (selectAll) {
-                selectAll.checked = checkedCount > 0 && checkedCount === boxes.length;
-                selectAll.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
+                selectAll.checked = visibleBoxes.length > 0 && visibleCheckedCount === visibleBoxes.length;
+                selectAll.indeterminate = visibleCheckedCount > 0 && visibleCheckedCount < visibleBoxes.length;
             }
 
             if (submitButton) {
@@ -431,10 +443,28 @@ $(document).ready(function() {
             }
         };
 
+        // Recherche en temps réel
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase().trim();
+                items.forEach(item => {
+                    const name = item.dataset.name || '';
+                    const spec = item.dataset.spec || '';
+                    const matches = !query || name.includes(query) || spec.includes(query);
+                    item.style.display = matches ? '' : 'none';
+                });
+                updateState();
+            });
+        }
+
         if (selectAll) {
             selectAll.addEventListener('change', () => {
-                checkboxes().forEach(checkbox => {
-                    checkbox.checked = selectAll.checked;
+                // Ne sélectionner que les items visibles
+                items.forEach(item => {
+                    if (item.style.display !== 'none') {
+                        const checkbox = item.querySelector('.bulk-modal-checkbox');
+                        if (checkbox) checkbox.checked = selectAll.checked;
+                    }
                 });
                 selectAll.indeterminate = false;
                 updateState();

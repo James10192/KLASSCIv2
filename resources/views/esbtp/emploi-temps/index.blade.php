@@ -1088,12 +1088,18 @@
                 </div>
                 <div class="modal-body">
                     <p class="text-muted">Sélectionnez les classes avec un emploi du temps actif à modifier.</p>
+
+                    {{-- Barre de recherche --}}
+                    <div class="mb-3">
+                        <input type="text" id="bulk-edit-search" class="form-control" placeholder="Rechercher une classe...">
+                    </div>
+
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="bulk-edit-select-all">
                             <label class="form-check-label" for="bulk-edit-select-all">Tout sélectionner</label>
                         </div>
-                        <span class="badge bg-light text-dark">{{ $emploisTempsActifs->count() }} actif(s)</span>
+                        <span class="badge bg-light text-dark" id="bulk-edit-count">{{ $emploisTempsActifs->count() }} actif(s)</span>
                     </div>
 
                     @if($emploisTempsActifs->isEmpty())
@@ -1101,9 +1107,11 @@
                             Aucun emploi du temps actif n'est disponible pour la modification rapide.
                         </div>
                     @else
-                        <div class="list-group">
+                        <div class="list-group" style="max-height: 400px; overflow-y: auto;">
                             @foreach($emploisTempsActifs as $emploiTemps)
-                                <label class="list-group-item d-flex align-items-center gap-3">
+                                <label class="list-group-item d-flex align-items-center gap-3 bulk-edit-item"
+                                       data-name="{{ strtolower($emploiTemps->classe->name ?? '') }}"
+                                       data-titre="{{ strtolower($emploiTemps->titre ?? '') }}">
                                     <input class="form-check-input bulk-edit-checkbox" type="checkbox" name="ids[]" value="{{ $emploiTemps->id }}">
                                     <div class="flex-grow-1">
                                         <div class="fw-semibold">{{ $emploiTemps->classe->name ?? 'Classe non définie' }}</div>
@@ -1447,24 +1455,47 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const selectAll = document.getElementById('bulk-edit-select-all');
     const submitButton = document.getElementById('bulk-edit-submit');
+    const searchInput = document.getElementById('bulk-edit-search');
+    const items = bulkEditModal.querySelectorAll('.bulk-edit-item');
     const checkboxes = () => bulkEditModal.querySelectorAll('.bulk-edit-checkbox');
 
     const updateState = () => {
         const boxes = Array.from(checkboxes());
+        const visibleBoxes = boxes.filter(box => box.closest('.bulk-edit-item').style.display !== 'none');
         const checkedCount = boxes.filter((box) => box.checked).length;
+        const visibleCheckedCount = visibleBoxes.filter(box => box.checked).length;
+
         if (selectAll) {
-            selectAll.checked = checkedCount > 0 && checkedCount === boxes.length;
-            selectAll.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
+            selectAll.checked = visibleBoxes.length > 0 && visibleCheckedCount === visibleBoxes.length;
+            selectAll.indeterminate = visibleCheckedCount > 0 && visibleCheckedCount < visibleBoxes.length;
         }
         if (submitButton) {
             submitButton.disabled = checkedCount === 0;
         }
     };
 
+    // Recherche en temps réel
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            items.forEach(item => {
+                const name = item.dataset.name || '';
+                const titre = item.dataset.titre || '';
+                const matches = !query || name.includes(query) || titre.includes(query);
+                item.style.display = matches ? '' : 'none';
+            });
+            updateState();
+        });
+    }
+
     if (selectAll) {
         selectAll.addEventListener('change', () => {
-            checkboxes().forEach((checkbox) => {
-                checkbox.checked = selectAll.checked;
+            // Ne sélectionner que les items visibles
+            items.forEach(item => {
+                if (item.style.display !== 'none') {
+                    const checkbox = item.querySelector('.bulk-edit-checkbox');
+                    if (checkbox) checkbox.checked = selectAll.checked;
+                }
             });
             selectAll.indeterminate = false;
             updateState();
