@@ -711,7 +711,7 @@ document.addEventListener('DOMContentLoaded', () => {
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
     $(document).ready(function() {
         // Initialiser DataTables sur la table étudiants
@@ -918,7 +918,8 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(function(data) {
                 if (data.success) {
                     // Fermer le modal
-                    bootstrap.Modal.getInstance(document.getElementById('addStudentsModal')).hide();
+                    var addModal = bootstrap.Modal.getInstance(document.getElementById('addStudentsModal'));
+                    if (addModal) addModal.hide();
                     // Réinitialiser
                     addSelectedStudents = {};
                     updateAddSelectedCount();
@@ -1052,7 +1053,8 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(function(data) {
                 if (data.success) {
                     // Fermer le modal
-                    bootstrap.Modal.getInstance(document.getElementById('removeStudentsModal')).hide();
+                    var removeModal = bootstrap.Modal.getInstance(document.getElementById('removeStudentsModal'));
+                    if (removeModal) removeModal.hide();
                     // Réinitialiser
                     document.getElementById('removeSelectAll').checked = false;
                     document.getElementById('removeSearchInput').value = '';
@@ -1095,7 +1097,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Fonction pour afficher le modal d'information sur le changement d'année
     function showYearChangeInfo() {
-        $('#yearChangeModal').modal('show');
+        var el = document.getElementById('yearChangeModal');
+        if (el) {
+            bootstrap.Modal.getOrCreateInstance(el).show();
+        }
     }
 </script>
 
@@ -1252,4 +1257,4 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
 </div>
 
-@endsection
+@endpush
