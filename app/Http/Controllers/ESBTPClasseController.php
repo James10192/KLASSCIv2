@@ -440,6 +440,7 @@ class ESBTPClasseController extends Controller
                                     $anneeCourante->id,
                                 )
                                 ->where("status", "active")
+                                ->where("workflow_step", "etudiant_cree")
                                 ->where("classe_id", $classe->id);
                         });
                 },
@@ -2275,11 +2276,12 @@ class ESBTPClasseController extends Controller
 
             $search = $request->input('q', '');
 
-            // Étudiants ayant une inscription active pour l'année courante mais PAS dans cette classe
+            // Étudiants ayant une inscription active + workflow étudiant créé pour l'année courante mais PAS dans cette classe
             $query = ESBTPEtudiant::query()
                 ->whereHas('inscriptions', function ($q) use ($anneeCourante, $classe) {
                     $q->where('annee_universitaire_id', $anneeCourante->id)
                       ->where('status', 'active')
+                      ->where('workflow_step', 'etudiant_cree')
                       ->where(function ($sub) use ($classe) {
                           $sub->where('classe_id', '!=', $classe->id)
                               ->orWhereNull('classe_id');
@@ -2307,6 +2309,7 @@ class ESBTPClasseController extends Controller
                 ->with(['inscriptions' => function ($q) use ($anneeCourante) {
                     $q->where('annee_universitaire_id', $anneeCourante->id)
                       ->where('status', 'active')
+                      ->where('workflow_step', 'etudiant_cree')
                       ->with('classe:id,name,code');
                 }])
                 ->orderBy('nom')
@@ -2530,6 +2533,7 @@ class ESBTPClasseController extends Controller
                                 $inscriptionQuery
                                     ->where('annee_universitaire_id', $anneeCourante->id)
                                     ->where('status', 'active')
+                                    ->where('workflow_step', 'etudiant_cree')
                                     ->where('classe_id', $classe->id);
                             });
                     },
