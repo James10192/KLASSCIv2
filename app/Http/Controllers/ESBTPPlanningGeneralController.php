@@ -1066,13 +1066,15 @@ class ESBTPPlanningGeneralController extends Controller
     {
         $anneeId = $request->input("annee_id");
         $classeId = $request->input("classe_id");
+        $filiereId = $request->input("filiere_id");
+        $niveauId = $request->input("niveau_id");
+        $search = $request->input("search");
         $periode = $request->input("periode", "annee"); // semestre1, semestre2, ou annee
 
         $annees = ESBTPAnneeUniversitaire::orderBy("start_date", "desc")->get();
 
         // Gérer la sélection d'année
         if (empty($anneeId) || $anneeId === "all") {
-            // "Toutes les années" - utiliser l'année courante pour l'affichage mais traiter toutes les données
             $anneeSelectionnee = ESBTPAnneeUniversitaire::where(
                 "is_current",
                 true,
@@ -1080,37 +1082,49 @@ class ESBTPPlanningGeneralController extends Controller
             if (!$anneeSelectionnee && $annees->count() > 0) {
                 $anneeSelectionnee = $annees->first();
             }
-            // Pour "toutes les années", on passe null à la méthode de calcul
             $anneeIdPourCalcul = null;
         } else {
             $anneeSelectionnee = ESBTPAnneeUniversitaire::find($anneeId);
             $anneeIdPourCalcul = $anneeId;
         }
+
+        // Toutes les classes (pour les selects de filtres)
         $classes = ESBTPClasse::with(["filiere", "niveau"])
             ->orderBy("name")
             ->get();
 
-        // Toujours afficher toutes les combinaisons détaillées
-        // Le filtrage par classe se fera côté client en JavaScript
+        // Filières et niveaux pour les selects de filtrage
+        $filieres = ESBTPFiliere::orderBy("name")->get();
+        $niveaux = ESBTPNiveauEtude::orderBy("name")->get();
+
+        // Construire la liste des classes filtrées
+        $filteredClassIds = null;
+        if ($classeId || $filiereId || $niveauId || $search) {
+            $classFilterQuery = ESBTPClasse::query();
+            if ($classeId) {
+                $classFilterQuery->where('id', $classeId);
+            }
+            if ($filiereId) {
+                $classFilterQuery->where('filiere_id', $filiereId);
+            }
+            if ($niveauId) {
+                $classFilterQuery->where('niveau_etude_id', $niveauId);
+            }
+            if ($search) {
+                $classFilterQuery->where('name', 'like', '%' . $search . '%');
+            }
+            $filteredClassIds = $classFilterQuery->pluck('id')->toArray();
+        }
+
         $repartition = $this->calculerRepartitionMatieresParClasse(
             $anneeIdPourCalcul,
             $periode,
-            $classeId,
+            $filteredClassIds,
         );
         $statsRepartition = $this->calculerStatsRepartitionParClasse(
             $repartition,
         );
         $chartData = $this->buildChartDataParClasse($repartition);
-
-        // Debug: vérifier les données
-        \Log::info("Repartition data:", [
-            "count" => $repartition->count(),
-            "anneeId" => $anneeId,
-            "anneeIdPourCalcul" => $anneeIdPourCalcul,
-            "classeId" => $classeId,
-            "periode" => $periode,
-            "sample" => $repartition->take(2)->toArray(),
-        ]);
 
         // Comparaison avec les objectifs
         $objectifsComparaison = $this->comparerAvecObjectifs(
@@ -1125,10 +1139,15 @@ class ESBTPPlanningGeneralController extends Controller
                 "annees",
                 "anneeSelectionnee",
                 "classes",
+                "filieres",
+                "niveaux",
                 "repartition",
                 "objectifsComparaison",
                 "anneeId",
                 "classeId",
+                "filiereId",
+                "niveauId",
+                "search",
                 "statsRepartition",
                 "chartData",
             ),
@@ -1971,13 +1990,17 @@ class ESBTPPlanningGeneralController extends Controller
     private function calculerRepartitionMatieresParClasse(
         $anneeId,
         $periode = "annee",
-        $classeId = null,
+        $classeIds = null,
     ) {
         $classesQuery = ESBTPClasse::with(["filiere", "niveau"])->orderBy(
             "name",
         );
-        if ($classeId) {
-            $classesQuery->where("id", $classeId);
+        if ($classeIds !== null) {
+            if (is_array($classeIds)) {
+                $classesQuery->whereIn("id", $classeIds);
+            } else {
+                $classesQuery->where("id", $classeIds);
+            }
         }
         $classes = $classesQuery->get();
 
