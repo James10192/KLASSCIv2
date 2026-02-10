@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFiliere;
+use App\Models\ESBTPInscription;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPMatiere;
@@ -473,6 +475,13 @@ class ESBTPClasseController extends Controller
                 ),
             );
         } else {
+            // Charger les autres classes actives pour le modal de transfert
+            $autresClasses = ESBTPClasse::where('is_active', true)
+                ->where('id', '!=', $classe->id)
+                ->with(['filiere:id,name', 'niveau:id,name'])
+                ->orderBy('name')
+                ->get(['id', 'name', 'code', 'filiere_id', 'niveau_etude_id', 'places_totales']);
+
             // For admin and secretary - full functionality view
             return view(
                 "esbtp.classes.show",
@@ -483,6 +492,7 @@ class ESBTPClasseController extends Controller
                     "combinationMatieres",
                     "planningMatiere",
                     "periode",
+                    "autresClasses",
                 ),
             );
         }
@@ -2247,6 +2257,299 @@ class ESBTPClasseController extends Controller
                 ],
                 500,
             );
+        }
+    }
+
+    /**
+     * Recherche les étudiants disponibles pour être ajoutés à cette classe.
+     * Retourne les étudiants ayant une inscription active pour l'année courante
+     * mais qui ne sont PAS dans cette classe.
+     */
+    public function searchAvailableStudents(Request $request, ESBTPClasse $classe)
+    {
+        try {
+            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            if (!$anneeCourante) {
+                return response()->json(['success' => false, 'message' => 'Aucune année universitaire active.'], 400);
+            }
+
+            $search = $request->input('q', '');
+
+            // Étudiants ayant une inscription active pour l'année courante mais PAS dans cette classe
+            $query = ESBTPEtudiant::query()
+                ->whereHas('inscriptions', function ($q) use ($anneeCourante, $classe) {
+                    $q->where('annee_universitaire_id', $anneeCourante->id)
+                      ->where('status', 'active')
+                      ->where(function ($sub) use ($classe) {
+                          $sub->where('classe_id', '!=', $classe->id)
+                              ->orWhereNull('classe_id');
+                      });
+                })
+                // Exclure les étudiants déjà dans cette classe
+                ->whereDoesntHave('inscriptions', function ($q) use ($anneeCourante, $classe) {
+                    $q->where('annee_universitaire_id', $anneeCourante->id)
+                      ->where('status', 'active')
+                      ->where('classe_id', $classe->id);
+                });
+
+            // Filtre recherche texte
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('matricule', 'like', "%{$search}%")
+                      ->orWhere('nom', 'like', "%{$search}%")
+                      ->orWhere('prenoms', 'like', "%{$search}%")
+                      ->orWhere('telephone', 'like', "%{$search}%")
+                      ->orWhere('email_personnel', 'like', "%{$search}%");
+                });
+            }
+
+            $etudiants = $query
+                ->with(['inscriptions' => function ($q) use ($anneeCourante) {
+                    $q->where('annee_universitaire_id', $anneeCourante->id)
+                      ->where('status', 'active')
+                      ->with('classe:id,name,code');
+                }])
+                ->orderBy('nom')
+                ->orderBy('prenoms')
+                ->limit(50)
+                ->get()
+                ->map(function ($etudiant) {
+                    $inscription = $etudiant->inscriptions->first();
+                    return [
+                        'id' => $etudiant->id,
+                        'matricule' => $etudiant->matricule,
+                        'nom' => $etudiant->nom,
+                        'prenoms' => $etudiant->prenoms,
+                        'nom_complet' => $etudiant->nom . ' ' . $etudiant->prenoms,
+                        'genre' => $etudiant->genre,
+                        'telephone' => $etudiant->telephone,
+                        'classe_actuelle' => $inscription && $inscription->classe
+                            ? $inscription->classe->name
+                            : 'Non affecté',
+                        'inscription_id' => $inscription ? $inscription->id : null,
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'etudiants' => $etudiants,
+                'count' => $etudiants->count(),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erreur searchAvailableStudents: ' . $e->getMessage(), [
+                'classe_id' => $classe->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['success' => false, 'message' => 'Erreur serveur.'], 500);
+        }
+    }
+
+    /**
+     * Ajoute des étudiants à cette classe en mettant à jour leurs inscriptions.
+     */
+    public function addStudents(Request $request, ESBTPClasse $classe)
+    {
+        try {
+            $request->validate([
+                'etudiant_ids' => 'required|array|min:1',
+                'etudiant_ids.*' => 'integer|exists:esbtp_etudiants,id',
+            ]);
+
+            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            if (!$anneeCourante) {
+                return response()->json(['success' => false, 'message' => 'Aucune année universitaire active.'], 400);
+            }
+
+            $etudiantIds = $request->input('etudiant_ids');
+            $added = 0;
+            $errors = [];
+
+            DB::beginTransaction();
+
+            foreach ($etudiantIds as $etudiantId) {
+                // Trouver l'inscription active de l'étudiant pour l'année courante
+                $inscription = ESBTPInscription::where('etudiant_id', $etudiantId)
+                    ->where('annee_universitaire_id', $anneeCourante->id)
+                    ->where('status', 'active')
+                    ->first();
+
+                if (!$inscription) {
+                    $errors[] = "Étudiant ID {$etudiantId}: Aucune inscription active trouvée.";
+                    continue;
+                }
+
+                // Vérifier que l'étudiant n'est pas déjà dans cette classe
+                if ($inscription->classe_id == $classe->id) {
+                    $errors[] = "Étudiant ID {$etudiantId}: Déjà dans cette classe.";
+                    continue;
+                }
+
+                // Mettre à jour l'inscription
+                $inscription->update([
+                    'classe_id' => $classe->id,
+                    'affectation_status' => $inscription->classe_id ? 'réaffecté' : 'affecté',
+                    'updated_by' => Auth::id(),
+                ]);
+
+                $added++;
+            }
+
+            DB::commit();
+
+            \Log::info('Étudiants ajoutés à la classe', [
+                'classe_id' => $classe->id,
+                'classe_name' => $classe->name,
+                'added' => $added,
+                'errors_count' => count($errors),
+                'user_id' => Auth::id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$added} étudiant(s) ajouté(s) à la classe {$classe->name}.",
+                'added' => $added,
+                'errors' => $errors,
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Erreur addStudents: ' . $e->getMessage(), [
+                'classe_id' => $classe->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['success' => false, 'message' => 'Erreur serveur.'], 500);
+        }
+    }
+
+    /**
+     * Retire des étudiants de cette classe.
+     * Deux modes : transfert vers une autre classe OU marquage comme non affecté.
+     */
+    public function removeStudents(Request $request, ESBTPClasse $classe)
+    {
+        try {
+            $request->validate([
+                'etudiant_ids' => 'required|array|min:1',
+                'etudiant_ids.*' => 'integer|exists:esbtp_etudiants,id',
+                'destination_classe_id' => 'nullable|integer|exists:esbtp_classes,id',
+            ]);
+
+            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            if (!$anneeCourante) {
+                return response()->json(['success' => false, 'message' => 'Aucune année universitaire active.'], 400);
+            }
+
+            $etudiantIds = $request->input('etudiant_ids');
+            $destinationClasseId = $request->input('destination_classe_id');
+            $removed = 0;
+            $errors = [];
+
+            // Récupérer la classe de destination pour le message
+            $destinationClasse = $destinationClasseId
+                ? ESBTPClasse::find($destinationClasseId)
+                : null;
+
+            DB::beginTransaction();
+
+            foreach ($etudiantIds as $etudiantId) {
+                $inscription = ESBTPInscription::where('etudiant_id', $etudiantId)
+                    ->where('annee_universitaire_id', $anneeCourante->id)
+                    ->where('status', 'active')
+                    ->where('classe_id', $classe->id)
+                    ->first();
+
+                if (!$inscription) {
+                    $errors[] = "Étudiant ID {$etudiantId}: Pas d'inscription active dans cette classe.";
+                    continue;
+                }
+
+                if ($destinationClasseId) {
+                    // Transfert vers une autre classe
+                    $inscription->update([
+                        'classe_id' => $destinationClasseId,
+                        'affectation_status' => 'réaffecté',
+                        'updated_by' => Auth::id(),
+                    ]);
+                } else {
+                    // Marquer comme non affecté
+                    $inscription->update([
+                        'classe_id' => null,
+                        'affectation_status' => 'non_affecté',
+                        'updated_by' => Auth::id(),
+                    ]);
+                }
+
+                $removed++;
+            }
+
+            DB::commit();
+
+            $actionMsg = $destinationClasse
+                ? "transféré(s) vers {$destinationClasse->name}"
+                : "retiré(s) de la classe (non affectés)";
+
+            \Log::info('Étudiants retirés de la classe', [
+                'classe_id' => $classe->id,
+                'destination_classe_id' => $destinationClasseId,
+                'removed' => $removed,
+                'user_id' => Auth::id(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$removed} étudiant(s) {$actionMsg}.",
+                'removed' => $removed,
+                'errors' => $errors,
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Erreur removeStudents: ' . $e->getMessage(), [
+                'classe_id' => $classe->id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['success' => false, 'message' => 'Erreur serveur.'], 500);
+        }
+    }
+
+    /**
+     * Retourne le HTML de la table étudiants pour rafraîchissement AJAX.
+     */
+    public function studentTableHtml(ESBTPClasse $classe)
+    {
+        try {
+            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+            if ($anneeCourante) {
+                $classe->load([
+                    'etudiants' => function ($query) use ($anneeCourante, $classe) {
+                        $query->distinct()
+                            ->whereHas('inscriptions', function ($inscriptionQuery) use ($anneeCourante, $classe) {
+                                $inscriptionQuery
+                                    ->where('annee_universitaire_id', $anneeCourante->id)
+                                    ->where('status', 'active')
+                                    ->where('classe_id', $classe->id);
+                            });
+                    },
+                ]);
+            } else {
+                $classe->load(['etudiants']);
+            }
+
+            $html = view('esbtp.classes.partials.student-table-rows', [
+                'classe' => $classe,
+            ])->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'count' => $classe->etudiants->count(),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erreur studentTableHtml: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Erreur serveur.'], 500);
         }
     }
 }
