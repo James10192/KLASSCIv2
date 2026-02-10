@@ -714,8 +714,9 @@ document.addEventListener('DOMContentLoaded', () => {
 @push('scripts')
 <script>
     $(document).ready(function() {
-        // Initialiser DataTables sur la table étudiants
+        // Initialiser DataTables sur la table étudiants (si la librairie est chargée)
         function initStudentDataTable() {
+            if (typeof $.fn.DataTable === 'undefined') return;
             if ($.fn.DataTable.isDataTable('#studentsDataTable')) {
                 $('#studentsDataTable').DataTable().destroy();
             }
