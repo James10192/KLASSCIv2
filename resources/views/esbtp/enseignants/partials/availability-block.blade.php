@@ -1,16 +1,16 @@
 <div class="bulk-enseignant-block" data-enseignant-id="{{ $enseignant->id }}">
     <!-- Stats rapides -->
     <div class="availability-stats">
-        <div class="stat-mini">
-            <div class="legend-color" style="background: var(--primary); width: 12px; height: 12px;"></div>
+        <div class="stat-mini stat-preferred">
+            <i class="fas fa-star"></i>
             <span>Préféré: <span class="stat-value">{{ $stats['preferred'] }}</span></span>
         </div>
-        <div class="stat-mini">
-            <div class="legend-color" style="background: var(--success); width: 12px; height: 12px;"></div>
+        <div class="stat-mini stat-available">
+            <i class="fas fa-check-circle"></i>
             <span>Disponible: <span class="stat-value">{{ $stats['available'] }}</span></span>
         </div>
-        <div class="stat-mini">
-            <div class="legend-color" style="background: var(--border); width: 12px; height: 12px;"></div>
+        <div class="stat-mini stat-unavailable">
+            <i class="fas fa-times-circle"></i>
             <span>Indisponible: <span class="stat-value">{{ $stats['unavailable'] }}</span></span>
         </div>
     </div>
@@ -45,7 +45,6 @@
             @foreach($days as $dayIndex => $day)
                 @php
                     $status = $availability[$day][$index] ?? 'unavailable';
-                    $icon = $status === 'preferred' ? '★' : ($status === 'available' ? '✓' : '✗');
                 @endphp
                 <div class="availability-slot {{ $status }}"
                      id="slot-{{ $enseignant->id }}-{{ $index }}-{{ $dayIndex }}"
@@ -55,7 +54,13 @@
                      data-time-index="{{ $index }}"
                      data-original-status="{{ $status }}"
                      title="{{ $joursNoms[$day] }} {{ sprintf('%02d:00', $hour) }} - {{ ucfirst($status) }}">
-                    {{ $icon }}
+                    @if($status === 'preferred')
+                        <i class="fas fa-star"></i><span class="slot-label">Préf.</span>
+                    @elseif($status === 'available')
+                        <i class="fas fa-check"></i><span class="slot-label">Dispo</span>
+                    @else
+                        <i class="fas fa-minus"></i>
+                    @endif
                 </div>
             @endforeach
         @endforeach
@@ -64,15 +69,21 @@
     <!-- Légende -->
     <div class="availability-legend">
         <div class="legend-item">
-            <div class="legend-color" style="background: var(--primary);"></div>
+            <div class="legend-color" style="background: #dbeafe; color: #2563eb; border: 1px solid #bfdbfe;">
+                <i class="fas fa-star"></i>
+            </div>
             <span>Préféré</span>
         </div>
         <div class="legend-item">
-            <div class="legend-color" style="background: var(--success);"></div>
+            <div class="legend-color" style="background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0;">
+                <i class="fas fa-check"></i>
+            </div>
             <span>Disponible</span>
         </div>
         <div class="legend-item">
-            <div class="legend-color" style="background: var(--border);"></div>
+            <div class="legend-color" style="background: #fee2e2; color: #dc2626; border: 1px solid #fecaca;">
+                <i class="fas fa-minus"></i>
+            </div>
             <span>Indisponible</span>
         </div>
     </div>
@@ -112,7 +123,7 @@
             editBtn.style.display = 'none';
             saveBtn.style.display = 'flex';
             cancelBtn.style.display = 'flex';
-            block.style.background = 'linear-gradient(135deg, #fef3c7, #fde68a)';
+            block.style.background = 'linear-gradient(135deg, #fefce8, #fef9c3)';
 
             showNotification('Mode édition activé. Cliquez sur les créneaux pour modifier.', 'info');
         } else {
@@ -125,7 +136,7 @@
             editBtn.style.display = 'flex';
             saveBtn.style.display = 'none';
             cancelBtn.style.display = 'none';
-            block.style.background = 'var(--surface)';
+            block.style.background = '#ffffff';
         }
     };
 
@@ -133,7 +144,7 @@
         if (!window.editModes[id]) return;
 
         const statuses = ['unavailable', 'available', 'preferred'];
-        const icons = ['✗', '✓', '★'];
+        const icons = ['<i class="fas fa-minus"></i>', '<i class="fas fa-check"></i><span class="slot-label">Dispo</span>', '<i class="fas fa-star"></i><span class="slot-label">Préf.</span>'];
         const currentClasses = Array.from(slot.classList);
         let currentStatus = statuses.find(status => currentClasses.includes(status)) || 'unavailable';
 
@@ -143,7 +154,7 @@
 
         statuses.forEach(status => slot.classList.remove(status));
         slot.classList.add(nextStatus);
-        slot.textContent = icons[nextIndex];
+        slot.innerHTML = icons[nextIndex];
 
         if (nextStatus !== window.originalData[id][slot.id]) {
             slot.classList.add('modified');
@@ -162,15 +173,16 @@
     };
 
     window.cancelEditMode = function(id) {
+        const icons = { unavailable: '<i class="fas fa-minus"></i>', available: '<i class="fas fa-check"></i><span class="slot-label">Dispo</span>', preferred: '<i class="fas fa-star"></i><span class="slot-label">Préf.</span>' };
+
         window.modifiedSlots[id].forEach(slotId => {
             const slot = document.getElementById(slotId);
             const originalStatus = window.originalData[id][slotId];
             const statuses = ['unavailable', 'available', 'preferred'];
-            const icons = ['✗', '✓', '★'];
 
             statuses.forEach(status => slot.classList.remove(status));
             slot.classList.add(originalStatus);
-            slot.textContent = icons[statuses.indexOf(originalStatus)];
+            slot.innerHTML = icons[originalStatus];
             slot.classList.remove('modified');
         });
 
