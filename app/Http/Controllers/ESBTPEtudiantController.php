@@ -2010,40 +2010,41 @@ class ESBTPEtudiantController extends Controller
             'inscriptions.niveauEtude',
         ])->findOrFail($id);
 
-        // Récupérer l'inscription active + etudiant_cree la plus récente (par date_debut de l'année)
-        $inscription = $etudiant->inscriptions()
-            ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
+        // Récupérer l'inscription la plus récente par date de l'année universitaire
+        // Priorité : active+etudiant_cree > active+valide > active > toute inscription
+        $inscriptionQuery = $etudiant->inscriptions()
             ->join('esbtp_annee_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annee_universitaires.id')
+            ->orderBy('esbtp_annee_universitaires.start_date', 'desc')
+            ->select('esbtp_inscriptions.*');
+
+        $inscription = (clone $inscriptionQuery)
             ->where('esbtp_inscriptions.status', 'active')
             ->where('esbtp_inscriptions.workflow_step', 'etudiant_cree')
-            ->orderBy('esbtp_annee_universitaires.start_date', 'desc')
-            ->select('esbtp_inscriptions.*')
             ->first();
 
-        // Fallback 1 : active sans contrainte workflow
         if (!$inscription) {
-            $inscription = $etudiant->inscriptions()
-                ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
-                ->join('esbtp_annee_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annee_universitaires.id')
+            $inscription = (clone $inscriptionQuery)
                 ->where('esbtp_inscriptions.status', 'active')
-                ->orderBy('esbtp_annee_universitaires.start_date', 'desc')
-                ->select('esbtp_inscriptions.*')
+                ->whereIn('esbtp_inscriptions.workflow_step', ['etudiant_cree', 'valide'])
                 ->first();
         }
 
-        // Fallback 2 : n'importe quelle inscription
         if (!$inscription) {
-            $inscription = $etudiant->inscriptions()
-                ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
-                ->join('esbtp_annee_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annee_universitaires.id')
-                ->orderBy('esbtp_annee_universitaires.start_date', 'desc')
-                ->select('esbtp_inscriptions.*')
+            $inscription = (clone $inscriptionQuery)
+                ->where('esbtp_inscriptions.status', 'active')
                 ->first();
+        }
+
+        if (!$inscription) {
+            $inscription = (clone $inscriptionQuery)->first();
         }
 
         if (!$inscription) {
             return back()->with('error', 'Aucune inscription trouvée pour cet étudiant.');
         }
+
+        // Charger les relations après la query (évite le conflit with()+join())
+        $inscription->load(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude']);
 
         return view('esbtp.etudiants.attestation-frequentation-preview', [
             'etudiant' => $etudiant,
@@ -2069,40 +2070,41 @@ class ESBTPEtudiantController extends Controller
                 'inscriptions.niveauEtude',
             ])->findOrFail($id);
 
-            // Récupérer l'inscription active + etudiant_cree la plus récente (par date_debut de l'année)
-            $inscription = $etudiant->inscriptions()
-                ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
+            // Récupérer l'inscription la plus récente par date de l'année universitaire
+            // Priorité : active+etudiant_cree > active+valide > active > toute inscription
+            $inscriptionQuery = $etudiant->inscriptions()
                 ->join('esbtp_annee_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annee_universitaires.id')
+                ->orderBy('esbtp_annee_universitaires.start_date', 'desc')
+                ->select('esbtp_inscriptions.*');
+
+            $inscription = (clone $inscriptionQuery)
                 ->where('esbtp_inscriptions.status', 'active')
                 ->where('esbtp_inscriptions.workflow_step', 'etudiant_cree')
-                ->orderBy('esbtp_annee_universitaires.start_date', 'desc')
-                ->select('esbtp_inscriptions.*')
                 ->first();
 
-            // Fallback 1 : active sans contrainte workflow
             if (!$inscription) {
-                $inscription = $etudiant->inscriptions()
-                    ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
-                    ->join('esbtp_annee_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annee_universitaires.id')
+                $inscription = (clone $inscriptionQuery)
                     ->where('esbtp_inscriptions.status', 'active')
-                    ->orderBy('esbtp_annee_universitaires.start_date', 'desc')
-                    ->select('esbtp_inscriptions.*')
+                    ->whereIn('esbtp_inscriptions.workflow_step', ['etudiant_cree', 'valide'])
                     ->first();
             }
 
-            // Fallback 2 : n'importe quelle inscription
             if (!$inscription) {
-                $inscription = $etudiant->inscriptions()
-                    ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
-                    ->join('esbtp_annee_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annee_universitaires.id')
-                    ->orderBy('esbtp_annee_universitaires.start_date', 'desc')
-                    ->select('esbtp_inscriptions.*')
+                $inscription = (clone $inscriptionQuery)
+                    ->where('esbtp_inscriptions.status', 'active')
                     ->first();
+            }
+
+            if (!$inscription) {
+                $inscription = (clone $inscriptionQuery)->first();
             }
 
             if (!$inscription) {
                 return back()->with('error', 'Aucune inscription trouvée pour cet étudiant.');
             }
+
+            // Charger les relations après la query (évite le conflit with()+join())
+            $inscription->load(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude']);
 
             // Récupérer les paramètres de l'école
             $settings = $this->getCertificateDisplaySettings();
