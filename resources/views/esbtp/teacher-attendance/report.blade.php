@@ -4,6 +4,54 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+/* === Teacher Stat Cards === */
+.teacher-stat-card {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    padding: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    transition: box-shadow .2s;
+}
+.teacher-stat-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.09); }
+.teacher-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--card-accent, #0453cb);
+    border-radius: 14px 14px 0 0;
+}
+.tsc-avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .9rem;
+    flex-shrink: 0;
+}
+.tsc-rate-value {
+    font-size: 2rem; font-weight: 800; line-height: 1;
+}
+.tsc-progress-track {
+    height: 6px; background: #f1f5f9; border-radius: 99px; overflow: hidden;
+}
+.tsc-progress-bar {
+    height: 100%; border-radius: 99px;
+    transition: width .6s ease;
+}
+.tsc-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 99px;
+    font-size: .72rem; font-weight: 600;
+}
+</style>
 @endsection
 
 @section('content')
@@ -127,31 +175,57 @@
                             @php
                                 $parts = preg_split('/\s+/', trim($stat['name']));
                                 $initials = strtoupper(collect($parts)->filter()->take(2)->map(fn($p) => mb_substr($p, 0, 1))->implode(''));
+                                $taux = $stat['taux'];
+                                $accentColor = $taux >= 70 ? '#10b981' : ($taux >= 30 ? '#f59e0b' : '#ef4444');
+                                $avatarBg    = $taux >= 70 ? 'rgba(16,185,129,.12)' : ($taux >= 30 ? 'rgba(245,158,11,.12)' : 'rgba(239,68,68,.12)');
                             @endphp
                             <div class="col-12 col-md-6 col-xl-4">
-                                <div class="kpi-card card-moderne h-100" style="background: white; border: 1px solid #e5e7eb;">
-                                    <div class="d-flex gap-3 align-items-center">
-                                        <div style="width:56px; height:56px; border-radius:50%; background: rgba(4,83,203,0.12); color:#0453cb; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:1rem;">
+                                <div class="teacher-stat-card" style="--card-accent: {{ $accentColor }}">
+                                    {{-- Header : Avatar + Nom + Séances --}}
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="tsc-avatar" style="background: {{ $avatarBg }}; color: {{ $accentColor }};">
                                             {{ $initials }}
                                         </div>
-                                        <div class="flex-grow-1">
-                                            <div class="fw-semibold">{{ $stat['name'] }}</div>
-                                            <div class="text-muted small">{{ $stat['total'] }} séance(s)</div>
-                                        </div>
-                                        <div class="text-end">
-                                            <div class="kpi-title" style="color:#64748b; font-size:0.75rem;">Taux</div>
-                                            <div class="kpi-value" style="color: var(--primary); font-size:1.4rem;">{{ $stat['taux'] }}%</div>
+                                        <div class="flex-grow-1 min-width-0">
+                                            <div class="fw-semibold text-truncate" style="color:#1e293b; font-size:.95rem;">{{ $stat['name'] }}</div>
+                                            <div style="color:#94a3b8; font-size:.78rem;">{{ $stat['total'] }} séance(s) planifiée(s)</div>
                                         </div>
                                     </div>
-                                    <div class="mt-3 d-flex flex-wrap gap-2">
-                                        <span class="badge bg-success"><i class="fas fa-check me-1"></i>Présent {{ $stat['present'] }}</span>
-                                        <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>Retard {{ $stat['late'] }}</span>
-                                        <span class="badge bg-danger"><i class="fas fa-user-times me-1"></i>Absent {{ $stat['absent'] }}</span>
-                                        <span class="badge bg-secondary"><i class="fas fa-times me-1"></i>Non émargé {{ $stat['not_signed'] }}</span>
+
+                                    {{-- Taux de présence --}}
+                                    <div>
+                                        <div class="d-flex align-items-baseline gap-2 mb-1">
+                                            <span class="tsc-rate-value" style="color: {{ $accentColor }}">{{ $taux }}%</span>
+                                            <span style="color:#94a3b8; font-size:.78rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em;">Taux présence</span>
+                                        </div>
+                                        <div class="tsc-progress-track">
+                                            <div class="tsc-progress-bar" style="width: {{ min($taux, 100) }}%; background: {{ $accentColor }};"></div>
+                                        </div>
                                     </div>
-                                    <div class="mt-3">
-                                        <a href="{{ route('esbtp.teacher-attendance.teacher-report', ['teacher' => $stat['teacher_id']]) }}" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-chart-line me-1"></i>Voir détail
+
+                                    {{-- Pills compteurs --}}
+                                    <div class="d-flex flex-wrap gap-1">
+                                        <span class="tsc-pill" style="background:rgba(16,185,129,.1); color:#059669;">
+                                            <i class="fas fa-check" style="font-size:.65rem;"></i>{{ $stat['present'] }} Présent
+                                        </span>
+                                        <span class="tsc-pill" style="background:rgba(245,158,11,.1); color:#d97706;">
+                                            <i class="fas fa-clock" style="font-size:.65rem;"></i>{{ $stat['late'] }} Retard
+                                        </span>
+                                        <span class="tsc-pill" style="background:rgba(239,68,68,.1); color:#dc2626;">
+                                            <i class="fas fa-user-times" style="font-size:.65rem;"></i>{{ $stat['absent'] }} Absent
+                                        </span>
+                                        <span class="tsc-pill" style="background:rgba(100,116,139,.1); color:#475569;">
+                                            <i class="fas fa-minus" style="font-size:.65rem;"></i>{{ $stat['not_signed'] }} N/É
+                                        </span>
+                                    </div>
+
+                                    {{-- Footer action --}}
+                                    <div class="mt-auto pt-1">
+                                        <a href="{{ route('esbtp.teacher-attendance.teacher-report', ['teacher' => $stat['teacher_id']]) }}"
+                                           class="btn btn-sm btn-outline-primary w-100"
+                                           style="font-size:.8rem; border-radius:8px;">
+                                            <i class="fas fa-chart-line me-1"></i>Voir le détail
+                                            <i class="fas fa-arrow-right ms-1" style="font-size:.7rem;"></i>
                                         </a>
                                     </div>
                                 </div>

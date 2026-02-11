@@ -1998,8 +1998,6 @@ function startAvailabilityPolling(teacherId) {
     currentPolledTeacherId = teacherId;
     lastAvailabilityTimestamp = null;
 
-    console.debug('[Availability Polling] Démarrage polling pour enseignant', teacherId);
-
     // Timestamp initial silencieux (pas de rendu)
     fetchAvailabilityData(teacherId, true);
 
@@ -2013,7 +2011,6 @@ function stopAvailabilityPolling() {
     if (availabilityPollInterval) {
         clearInterval(availabilityPollInterval);
         availabilityPollInterval = null;
-        console.debug('[Availability Polling] Polling arrêté');
     }
     currentPolledTeacherId = null;
     lastAvailabilityTimestamp = null;
@@ -2021,8 +2018,6 @@ function stopAvailabilityPolling() {
 
 function fetchAvailabilityData(teacherId, isInitial = false) {
     const url = `/esbtp/enseignants/${teacherId}/availability-data`;
-
-    console.debug('[Availability Polling] Fetch', url, '— initial:', isInitial, '— last timestamp:', lastAvailabilityTimestamp);
 
     fetch(url, {
         headers: {
@@ -2035,45 +2030,30 @@ function fetchAvailabilityData(teacherId, isInitial = false) {
         return r.json();
     })
     .then(json => {
-        console.debug('[Availability Polling] Réponse reçue — success:', json.success, '— updated_at:', json.updated_at, '— last:', lastAvailabilityTimestamp);
-
-        if (!json.success) {
-            console.warn('[Availability Polling] Réponse non-success:', json);
-            return;
-        }
+        if (!json.success) return;
 
         if (isInitial) {
             // Premier appel : on stocke juste le timestamp de référence
             lastAvailabilityTimestamp = json.updated_at;
-            console.debug('[Availability Polling] Timestamp initial enregistré:', lastAvailabilityTimestamp);
             return;
         }
 
         // Comparer avec le timestamp précédent
         if (lastAvailabilityTimestamp === json.updated_at) {
-            console.debug('[Availability Polling] Pas de changement (timestamp identique)');
             return;
         }
 
-        console.info('[Availability Polling] 🔄 Changement détecté! Ancien:', lastAvailabilityTimestamp, '→ Nouveau:', json.updated_at);
         lastAvailabilityTimestamp = json.updated_at;
 
         // Mettre à jour la grille discrètement
         refreshAvailabilityGridFromPolling(teacherId, json.data);
     })
-    .catch(err => {
-        console.warn('[Availability Polling] Erreur fetch:', err.message);
-    });
+    .catch(() => {});
 }
 
 function refreshAvailabilityGridFromPolling(teacherId, newData) {
     const availabilityGrid = document.getElementById('availability-grid');
-    if (!availabilityGrid) {
-        console.warn('[Availability Polling] #availability-grid introuvable');
-        return;
-    }
-
-    console.info('[Availability Polling] 🔄 Mise à jour grille pour enseignant', teacherId);
+    if (!availabilityGrid) return;
 
     // Désactiver visuellement pendant le refresh
     availabilityGrid.style.opacity = '0.5';
@@ -2086,7 +2066,6 @@ function refreshAvailabilityGridFromPolling(teacherId, newData) {
     // Mettre à jour les données globales seanceData
     if (window.seanceData && window.seanceData.availability) {
         window.seanceData.availability[teacherId] = newData;
-        console.debug('[Availability Polling] seanceData.availability mis à jour');
     }
 
     // Reconstruire le HTML de la grille (même logique que showTeacherAvailability)
@@ -2138,16 +2117,11 @@ function refreshAvailabilityGridFromPolling(teacherId, newData) {
         availabilityGrid.style.opacity = '1';
         availabilityGrid.style.pointerEvents = 'auto';
         if (refreshIcon) refreshIcon.classList.remove('fa-spin');
-        console.info('[Availability Polling] ✅ Grille mise à jour avec succès');
     }, 300);
 }
 
 function forceRefreshAvailability() {
-    if (!currentPolledTeacherId) {
-        console.warn('[Availability Polling] Aucun enseignant sélectionné pour le refresh');
-        return;
-    }
-    console.info('[Availability Polling] 🔄 Rafraîchissement manuel forcé pour enseignant', currentPolledTeacherId);
+    if (!currentPolledTeacherId) return;
 
     // Forcer la mise à jour en ignorant le timestamp
     const savedTimestamp = lastAvailabilityTimestamp;
@@ -2162,13 +2136,11 @@ function forceRefreshAvailability() {
     })
     .then(r => r.json())
     .then(json => {
-        console.debug('[Availability Polling] Refresh manuel — réponse:', json.success, 'updated_at:', json.updated_at);
         if (!json.success) return;
         lastAvailabilityTimestamp = json.updated_at;
         refreshAvailabilityGridFromPolling(currentPolledTeacherId, json.data);
     })
-    .catch(err => {
-        console.warn('[Availability Polling] Erreur refresh manuel:', err.message);
+    .catch(() => {
         lastAvailabilityTimestamp = savedTimestamp; // Restaurer si erreur
     });
 }

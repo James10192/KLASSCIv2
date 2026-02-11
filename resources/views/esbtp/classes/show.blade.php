@@ -580,7 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     @php
                         $kpiTaux = $planningMatiere['stats']['taux_realisation'] ?? 0;
                         $kpiTauxColor = $kpiTaux >= 70 ? '#10b981' : ($kpiTaux >= 30 ? '#f59e0b' : '#ef4444');
-                        $avatarPalette = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6'];
+                        $avatarPalette = ['#0453cb','#0ea5e9','#10b981','#f59e0b','#ef4444','#06b6d4','#f97316','#14b8a6'];
                     @endphp
 
                     {{-- KPI SUMMARY --}}
@@ -595,7 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="planning-kpi-value">{{ number_format($planningMatiere['stats']['heures_realisees'] ?? 0, 1) }}h</div>
                             <div class="planning-kpi-label">Heures réalisées</div>
                         </div>
-                        <div class="planning-kpi-card" style="--kpi-color: #8b5cf6">
+                        <div class="planning-kpi-card" style="--kpi-color: #06b6d4">
                             <div class="planning-kpi-icon"><i class="fas fa-layer-group"></i></div>
                             <div class="planning-kpi-value">{{ $planningMatiere['stats']['nb_seances'] ?? 0 }}</div>
                             <div class="planning-kpi-label">Séances</div>
@@ -737,7 +737,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="mb-1" style="font-weight: 600; color: #374151;">
-                            <i class="fas fa-download me-2" style="color: #6366f1;"></i>Documents d'export
+                            <i class="fas fa-download me-2" style="color: #0453cb;"></i>Documents d'export
                         </h6>
                         <p class="mb-0 text-muted" style="font-size: 0.875rem;">Générer et télécharger les listes pour cette classe</p>
                     </div>
@@ -747,13 +747,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         <!-- Dropdown pour Liste d'Appel -->
                         <div class="btn-group" role="group">
                             <button type="button" class="btn btn-outline-primary d-flex align-items-center gap-2"
-                                    style="border-color: #6366f1; color: #6366f1; font-weight: 500; padding: 0.5rem 1rem;">
+                                    style="border-color: #0453cb; color: #0453cb; font-weight: 500; padding: 0.5rem 1rem;">
                                 <i class="fas fa-clipboard-list"></i>
                                 <span>Liste d'Appel</span>
                             </button>
                             <button type="button" class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split"
                                     data-bs-toggle="dropdown" aria-expanded="false"
-                                    style="border-color: #6366f1; color: #6366f1;">
+                                    style="border-color: #0453cb; color: #0453cb;">
                                 <span class="visually-hidden">Toggle Dropdown</span>
                             </button>
                             <ul class="dropdown-menu" style="min-width: 180px;">
