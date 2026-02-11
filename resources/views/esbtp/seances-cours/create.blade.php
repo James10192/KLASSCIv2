@@ -419,9 +419,17 @@
 
                             <!-- Grille de disponibilité de l'enseignant sélectionné -->
                             <div id="teacher-availability" class="availability-section" style="display: none;">
-                                <div class="availability-header">
-                                    <i class="fas fa-calendar-check"></i>
-                                    <span>Disponibilité de <span id="selected-teacher-name">l'enseignant</span></span>
+                                <div class="availability-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <i class="fas fa-calendar-check"></i>
+                                        <span>Disponibilité de <span id="selected-teacher-name">l'enseignant</span></span>
+                                    </div>
+                                    <a id="btn-edit-teacher-availability"
+                                       href="#"
+                                       target="_blank"
+                                       style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 8px; font-size: 0.8rem; font-weight: 600; text-decoration: none; box-shadow: 0 2px 4px rgba(37,99,235,0.3);">
+                                        <i class="fas fa-edit"></i> Modifier
+                                    </a>
                                 </div>
 
                                 <!-- Légende des couleurs -->
@@ -1887,6 +1895,12 @@ function showTeacherAvailability() {
         selectedTeacherName.textContent = teacherName;
         teacherAssignmentText.textContent = `Enseignant assigné: ${teacherName}`;
         teacherInfo.style.display = 'block';
+
+        // Mettre à jour le lien "Modifier" disponibilité
+        const editBtn = document.getElementById('btn-edit-teacher-availability');
+        if (editBtn) {
+            editBtn.href = `/esbtp/enseignants/bulk-availability?ids[]=${teacherId}`;
+        }
 
         debugLog('🔍 Availability data for teacher', teacherId, ':', availabilityData[teacherId]);
 
