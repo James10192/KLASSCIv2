@@ -99,7 +99,7 @@
 
     .availability-grid {
         display: grid;
-        grid-template-columns: 72px repeat(6, 1fr);
+        grid-template-columns: 72px repeat(7, 1fr);
         background: #ffffff;
         padding: 16px;
         border-radius: 12px;
@@ -391,7 +391,7 @@
        ============================================= */
     @media (max-width: 768px) {
         .availability-grid {
-            grid-template-columns: 52px repeat(6, 1fr);
+            grid-template-columns: 52px repeat(7, 1fr);
             padding: 8px;
             font-size: 0.65rem;
         }
@@ -428,7 +428,7 @@
 
     @media (max-width: 480px) {
         .availability-grid {
-            grid-template-columns: 44px repeat(6, 1fr);
+            grid-template-columns: 44px repeat(7, 1fr);
         }
 
         .availability-slot {

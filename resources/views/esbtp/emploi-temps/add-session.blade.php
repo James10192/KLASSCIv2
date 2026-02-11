@@ -625,6 +625,10 @@
         let inlineOriginalData = {};
         let inlineModifiedSlots = new Set();
 
+        // Helpers debug (no-op en prod)
+        const debugLog = () => {};
+        const debugError = console.error.bind(console);
+
         // Icônes FA pour chaque statut
         const statusIcons = {
             unavailable: '<i class="fas fa-minus"></i>',
