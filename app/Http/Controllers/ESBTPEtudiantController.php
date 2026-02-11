@@ -2016,7 +2016,7 @@ class ESBTPEtudiantController extends Controller
             ->join('esbtp_annee_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annee_universitaires.id')
             ->where('esbtp_inscriptions.status', 'active')
             ->where('esbtp_inscriptions.workflow_step', 'etudiant_cree')
-            ->orderBy('esbtp_annee_universitaires.date_debut', 'desc')
+            ->orderBy('esbtp_annee_universitaires.start_date', 'desc')
             ->select('esbtp_inscriptions.*')
             ->first();
 
@@ -2026,7 +2026,7 @@ class ESBTPEtudiantController extends Controller
                 ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
                 ->join('esbtp_annee_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annee_universitaires.id')
                 ->where('esbtp_inscriptions.status', 'active')
-                ->orderBy('esbtp_annee_universitaires.date_debut', 'desc')
+                ->orderBy('esbtp_annee_universitaires.start_date', 'desc')
                 ->select('esbtp_inscriptions.*')
                 ->first();
         }
@@ -2036,7 +2036,7 @@ class ESBTPEtudiantController extends Controller
             $inscription = $etudiant->inscriptions()
                 ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
                 ->join('esbtp_annee_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annee_universitaires.id')
-                ->orderBy('esbtp_annee_universitaires.date_debut', 'desc')
+                ->orderBy('esbtp_annee_universitaires.start_date', 'desc')
                 ->select('esbtp_inscriptions.*')
                 ->first();
         }
@@ -2075,7 +2075,7 @@ class ESBTPEtudiantController extends Controller
                 ->join('esbtp_annee_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annee_universitaires.id')
                 ->where('esbtp_inscriptions.status', 'active')
                 ->where('esbtp_inscriptions.workflow_step', 'etudiant_cree')
-                ->orderBy('esbtp_annee_universitaires.date_debut', 'desc')
+                ->orderBy('esbtp_annee_universitaires.start_date', 'desc')
                 ->select('esbtp_inscriptions.*')
                 ->first();
 
@@ -2085,7 +2085,7 @@ class ESBTPEtudiantController extends Controller
                     ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
                     ->join('esbtp_annee_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annee_universitaires.id')
                     ->where('esbtp_inscriptions.status', 'active')
-                    ->orderBy('esbtp_annee_universitaires.date_debut', 'desc')
+                    ->orderBy('esbtp_annee_universitaires.start_date', 'desc')
                     ->select('esbtp_inscriptions.*')
                     ->first();
             }
@@ -2095,7 +2095,7 @@ class ESBTPEtudiantController extends Controller
                 $inscription = $etudiant->inscriptions()
                     ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
                     ->join('esbtp_annee_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annee_universitaires.id')
-                    ->orderBy('esbtp_annee_universitaires.date_debut', 'desc')
+                    ->orderBy('esbtp_annee_universitaires.start_date', 'desc')
                     ->select('esbtp_inscriptions.*')
                     ->first();
             }
