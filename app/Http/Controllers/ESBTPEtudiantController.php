@@ -2010,11 +2010,36 @@ class ESBTPEtudiantController extends Controller
             'inscriptions.niveauEtude',
         ])->findOrFail($id);
 
-        // Récupérer l'inscription la plus récente ou active
+        // Récupérer l'inscription active + etudiant_cree la plus récente (par date_debut de l'année)
         $inscription = $etudiant->inscriptions()
             ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
-            ->orderBy('annee_universitaire_id', 'desc')
+            ->join('esbtp_annees_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annees_universitaires.id')
+            ->where('esbtp_inscriptions.status', 'active')
+            ->where('esbtp_inscriptions.workflow_step', 'etudiant_cree')
+            ->orderBy('esbtp_annees_universitaires.date_debut', 'desc')
+            ->select('esbtp_inscriptions.*')
             ->first();
+
+        // Fallback 1 : active sans contrainte workflow
+        if (!$inscription) {
+            $inscription = $etudiant->inscriptions()
+                ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
+                ->join('esbtp_annees_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annees_universitaires.id')
+                ->where('esbtp_inscriptions.status', 'active')
+                ->orderBy('esbtp_annees_universitaires.date_debut', 'desc')
+                ->select('esbtp_inscriptions.*')
+                ->first();
+        }
+
+        // Fallback 2 : n'importe quelle inscription
+        if (!$inscription) {
+            $inscription = $etudiant->inscriptions()
+                ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
+                ->join('esbtp_annees_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annees_universitaires.id')
+                ->orderBy('esbtp_annees_universitaires.date_debut', 'desc')
+                ->select('esbtp_inscriptions.*')
+                ->first();
+        }
 
         if (!$inscription) {
             return back()->with('error', 'Aucune inscription trouvée pour cet étudiant.');
@@ -2044,11 +2069,36 @@ class ESBTPEtudiantController extends Controller
                 'inscriptions.niveauEtude',
             ])->findOrFail($id);
 
-            // Récupérer l'inscription la plus récente ou active
+            // Récupérer l'inscription active + etudiant_cree la plus récente (par date_debut de l'année)
             $inscription = $etudiant->inscriptions()
                 ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
-                ->orderBy('annee_universitaire_id', 'desc')
+                ->join('esbtp_annees_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annees_universitaires.id')
+                ->where('esbtp_inscriptions.status', 'active')
+                ->where('esbtp_inscriptions.workflow_step', 'etudiant_cree')
+                ->orderBy('esbtp_annees_universitaires.date_debut', 'desc')
+                ->select('esbtp_inscriptions.*')
                 ->first();
+
+            // Fallback 1 : active sans contrainte workflow
+            if (!$inscription) {
+                $inscription = $etudiant->inscriptions()
+                    ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
+                    ->join('esbtp_annees_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annees_universitaires.id')
+                    ->where('esbtp_inscriptions.status', 'active')
+                    ->orderBy('esbtp_annees_universitaires.date_debut', 'desc')
+                    ->select('esbtp_inscriptions.*')
+                    ->first();
+            }
+
+            // Fallback 2 : n'importe quelle inscription
+            if (!$inscription) {
+                $inscription = $etudiant->inscriptions()
+                    ->with(['anneeUniversitaire', 'classe', 'filiere', 'niveauEtude'])
+                    ->join('esbtp_annees_universitaires', 'esbtp_inscriptions.annee_universitaire_id', '=', 'esbtp_annees_universitaires.id')
+                    ->orderBy('esbtp_annees_universitaires.date_debut', 'desc')
+                    ->select('esbtp_inscriptions.*')
+                    ->first();
+            }
 
             if (!$inscription) {
                 return back()->with('error', 'Aucune inscription trouvée pour cet étudiant.');
