@@ -471,20 +471,13 @@
                         Attestation de Fréquentation
                     </div>
 
-                    {{-- DEBUG TEMPORAIRE --}}
-                    @if(isset($_debug))
-                    <div style="background:#fff3cd;border:2px solid #ffc107;padding:12px;margin:10px 0;font-size:12px;font-family:monospace;">
-                        <strong>DEBUG - Inscriptions disponibles :</strong><br>
-                        @foreach($_debug as $d)
-                            <div style="margin:4px 0;padding:4px;background:#f8f9fa;border-left:3px solid #{{ $inscription->id == $d['id'] ? '28a745' : 'ccc' }};">
-                                <b>#{{ $d['id'] }}</b> {{ $d['annee_name'] }} (start: {{ $d['annee_start_date'] }}) | status: {{ $d['status'] }} | workflow: {{ $d['workflow_step'] }} | classe: {{ $d['classe'] }}
-                                @if($inscription->id == $d['id']) <b style="color:green"> ← SÉLECTIONNÉE</b> @endif
-                            </div>
-                        @endforeach
-                        <div style="margin-top:8px"><b>Inscription sélectionnée ID :</b> {{ $inscription->id }} | annee_universitaire_id: {{ $inscription->annee_universitaire_id }} | anneeUniversitaire: {{ optional($inscription->anneeUniversitaire)->name ?? 'NULL' }}</div>
+                    {{-- Alerte workflow --}}
+                    @if(!empty($alerteWorkflow))
+                    <div style="background:#fff3cd;border-left:4px solid #f59e0b;padding:10px 14px;margin:10px 0;border-radius:6px;font-size:13px;">
+                        <strong>⚠️ Attention :</strong> Aucune inscription active et finalisée trouvée pour cet étudiant.
+                        Veuillez <a href="{{ route('esbtp.etudiants.show', $etudiant->id) }}">valider et finaliser l'inscription</a> (étape "Étudiant créé") avant de générer l'attestation.
                     </div>
                     @endif
-                    {{-- FIN DEBUG --}}
 
                     <!-- Contenu principal -->
                     <div class="certificat-content">
@@ -510,7 +503,7 @@
                         <p>
                             Est régulièrement inscrit(e) au titre de l'année scolaire <span class="certificat-highlight">
                             @php
-                                $anneeText = $inscription->anneeUniversitaire->nom ?? $inscription->anneeUniversitaire->libelle ?? '2024-2025';
+                                $anneeText = $inscription->anneeUniversitaire->name ?? $inscription->anneeUniversitaire->nom ?? $inscription->anneeUniversitaire->libelle ?? '';
                                 if (preg_match('/(\d{4}-\d{4})/', $anneeText, $matches)) {
                                     echo $matches[1];
                                 } else {

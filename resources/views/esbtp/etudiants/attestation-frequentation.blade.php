@@ -495,7 +495,7 @@
             <p>
                 Est régulièrement inscrit(e) au titre de l'année scolaire <span class="certificat-highlight">
                 @php
-                    $anneeText = $inscription->anneeUniversitaire->nom ?? $inscription->anneeUniversitaire->libelle ?? '2024-2025';
+                    $anneeText = $inscription->anneeUniversitaire->name ?? $inscription->anneeUniversitaire->nom ?? $inscription->anneeUniversitaire->libelle ?? '';
                     if (preg_match('/(\d{4}-\d{4})/', $anneeText, $matches)) {
                         echo $matches[1];
                     } else {
