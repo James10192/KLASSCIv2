@@ -1515,6 +1515,23 @@ class ESBTPEnseignantController extends Controller
     }
 
     /**
+     * Retourner les données de disponibilité en JSON (pour polling AJAX depuis seances.create)
+     */
+    public function availabilityData(ESBTPTeacher $enseignant)
+    {
+        $enseignant->load(['availabilities']);
+        $data = $this->buildAvailabilityViewData($enseignant);
+
+        $updatedAt = $enseignant->availabilities->max('updated_at');
+
+        return response()->json([
+            'success' => true,
+            'data' => $data['availability'],
+            'updated_at' => $updatedAt ? $updatedAt->timestamp : now()->timestamp,
+        ]);
+    }
+
+    /**
      * Construire les données de disponibilité pour la vue
      */
     private function buildAvailabilityViewData(ESBTPTeacher $enseignant): array

@@ -424,12 +424,21 @@
                                         <i class="fas fa-calendar-check"></i>
                                         <span>Disponibilité de <span id="selected-teacher-name">l'enseignant</span></span>
                                     </div>
-                                    <a id="btn-edit-teacher-availability"
-                                       href="#"
-                                       target="_blank"
-                                       style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 8px; font-size: 0.8rem; font-weight: 600; text-decoration: none; box-shadow: 0 2px 4px rgba(37,99,235,0.3);">
-                                        <i class="fas fa-edit"></i> Modifier
-                                    </a>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <button type="button" id="btn-refresh-availability"
+                                                onclick="forceRefreshAvailability()"
+                                                title="Rafraîchir la disponibilité"
+                                                style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer;">
+                                            <i class="fas fa-sync-alt" id="refresh-icon"></i>
+                                            <span class="d-none d-sm-inline">Rafraîchir</span>
+                                        </button>
+                                        <a id="btn-edit-teacher-availability"
+                                           href="#"
+                                           target="_blank"
+                                           style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 8px; font-size: 0.8rem; font-weight: 600; text-decoration: none; box-shadow: 0 2px 4px rgba(37,99,235,0.3);">
+                                            <i class="fas fa-edit"></i> Modifier
+                                        </a>
+                                    </div>
                                 </div>
 
                                 <!-- Légende des couleurs -->
@@ -1967,10 +1976,201 @@ function showTeacherAvailability() {
             availabilityGrid.innerHTML = '<div class="no-availability">Aucune disponibilité configurée pour cet enseignant</div>';
             teacherAvailability.style.display = 'block';
         }
+
+        // Démarrer le polling pour détecter les changements BDD
+        startAvailabilityPolling(teacherId);
     } else {
         teacherAvailability.style.display = 'none';
         teacherInfo.style.display = 'none';
+        stopAvailabilityPolling();
     }
+}
+
+// ============================
+// POLLING DISPONIBILITÉS
+// ============================
+let availabilityPollInterval = null;
+let lastAvailabilityTimestamp = null;
+let currentPolledTeacherId = null;
+
+function startAvailabilityPolling(teacherId) {
+    stopAvailabilityPolling();
+    currentPolledTeacherId = teacherId;
+    lastAvailabilityTimestamp = null;
+
+    console.debug('[Availability Polling] Démarrage polling pour enseignant', teacherId);
+
+    // Timestamp initial silencieux (pas de rendu)
+    fetchAvailabilityData(teacherId, true);
+
+    // Puis polling toutes les 10 secondes
+    availabilityPollInterval = setInterval(() => {
+        fetchAvailabilityData(teacherId, false);
+    }, 10000);
+}
+
+function stopAvailabilityPolling() {
+    if (availabilityPollInterval) {
+        clearInterval(availabilityPollInterval);
+        availabilityPollInterval = null;
+        console.debug('[Availability Polling] Polling arrêté');
+    }
+    currentPolledTeacherId = null;
+    lastAvailabilityTimestamp = null;
+}
+
+function fetchAvailabilityData(teacherId, isInitial = false) {
+    const url = `/esbtp/enseignants/${teacherId}/availability-data`;
+
+    console.debug('[Availability Polling] Fetch', url, '— initial:', isInitial, '— last timestamp:', lastAvailabilityTimestamp);
+
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+        }
+    })
+    .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+    })
+    .then(json => {
+        console.debug('[Availability Polling] Réponse reçue — success:', json.success, '— updated_at:', json.updated_at, '— last:', lastAvailabilityTimestamp);
+
+        if (!json.success) {
+            console.warn('[Availability Polling] Réponse non-success:', json);
+            return;
+        }
+
+        if (isInitial) {
+            // Premier appel : on stocke juste le timestamp de référence
+            lastAvailabilityTimestamp = json.updated_at;
+            console.debug('[Availability Polling] Timestamp initial enregistré:', lastAvailabilityTimestamp);
+            return;
+        }
+
+        // Comparer avec le timestamp précédent
+        if (lastAvailabilityTimestamp === json.updated_at) {
+            console.debug('[Availability Polling] Pas de changement (timestamp identique)');
+            return;
+        }
+
+        console.info('[Availability Polling] 🔄 Changement détecté! Ancien:', lastAvailabilityTimestamp, '→ Nouveau:', json.updated_at);
+        lastAvailabilityTimestamp = json.updated_at;
+
+        // Mettre à jour la grille discrètement
+        refreshAvailabilityGridFromPolling(teacherId, json.data);
+    })
+    .catch(err => {
+        console.warn('[Availability Polling] Erreur fetch:', err.message);
+    });
+}
+
+function refreshAvailabilityGridFromPolling(teacherId, newData) {
+    const availabilityGrid = document.getElementById('availability-grid');
+    if (!availabilityGrid) {
+        console.warn('[Availability Polling] #availability-grid introuvable');
+        return;
+    }
+
+    console.info('[Availability Polling] 🔄 Mise à jour grille pour enseignant', teacherId);
+
+    // Désactiver visuellement pendant le refresh
+    availabilityGrid.style.opacity = '0.5';
+    availabilityGrid.style.pointerEvents = 'none';
+
+    // Icône refresh en rotation
+    const refreshIcon = document.getElementById('refresh-icon');
+    if (refreshIcon) refreshIcon.classList.add('fa-spin');
+
+    // Mettre à jour les données globales seanceData
+    if (window.seanceData && window.seanceData.availability) {
+        window.seanceData.availability[teacherId] = newData;
+        console.debug('[Availability Polling] seanceData.availability mis à jour');
+    }
+
+    // Reconstruire le HTML de la grille (même logique que showTeacherAvailability)
+    const rawAvailability = newData;
+    let gridHtml = '';
+
+    gridHtml += '<div class="availability-header-row">';
+    gridHtml += '<div class="time-header">Heure</div>';
+    const dayHeaders = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+    dayHeaders.forEach(d => { gridHtml += `<div class="day-header">${d}</div>`; });
+    gridHtml += '</div>';
+
+    const dayKeys = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+    for (let hour = 8; hour < 18; hour++) {
+        gridHtml += '<div class="availability-time-row">';
+        gridHtml += `<div class="time-label">${hour}:00</div>`;
+
+        dayKeys.forEach((dayKey, dayIndex) => {
+            let cellClass = 'unavailable';
+            let cellTitle = 'Non disponible';
+            let cellStatus = 'unavailable';
+
+            if (rawAvailability[dayKey]) {
+                const hourIndex = hour - 8;
+                if (hourIndex >= 0 && hourIndex < rawAvailability[dayKey].length) {
+                    const status = rawAvailability[dayKey][hourIndex];
+                    if (status === 'occupied') {
+                        cellClass = 'occupied'; cellTitle = 'Occupé par une autre séance'; cellStatus = 'occupied';
+                    } else if (status === 'preferred') {
+                        cellClass = 'preferred'; cellTitle = 'Préféré'; cellStatus = 'preferred';
+                    } else if (status === 'available') {
+                        cellClass = 'available'; cellTitle = 'Disponible'; cellStatus = 'available';
+                    }
+                }
+            }
+
+            gridHtml += `<div class="availability-cell ${cellClass}" data-day="${dayIndex + 1}" data-hour="${hour}" data-status="${cellStatus}" title="${cellTitle}"></div>`;
+        });
+        gridHtml += '</div>';
+    }
+
+    availabilityGrid.innerHTML = gridHtml;
+    bindAvailabilityGridHandlers();
+    setTimeout(updateSelectedTimeInGrid, 100);
+
+    // Réactiver avec transition fluide
+    setTimeout(() => {
+        availabilityGrid.style.opacity = '1';
+        availabilityGrid.style.pointerEvents = 'auto';
+        if (refreshIcon) refreshIcon.classList.remove('fa-spin');
+        console.info('[Availability Polling] ✅ Grille mise à jour avec succès');
+    }, 300);
+}
+
+function forceRefreshAvailability() {
+    if (!currentPolledTeacherId) {
+        console.warn('[Availability Polling] Aucun enseignant sélectionné pour le refresh');
+        return;
+    }
+    console.info('[Availability Polling] 🔄 Rafraîchissement manuel forcé pour enseignant', currentPolledTeacherId);
+
+    // Forcer la mise à jour en ignorant le timestamp
+    const savedTimestamp = lastAvailabilityTimestamp;
+    lastAvailabilityTimestamp = null; // Reset pour forcer le rendu
+
+    const url = `/esbtp/enseignants/${currentPolledTeacherId}/availability-data`;
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+        }
+    })
+    .then(r => r.json())
+    .then(json => {
+        console.debug('[Availability Polling] Refresh manuel — réponse:', json.success, 'updated_at:', json.updated_at);
+        if (!json.success) return;
+        lastAvailabilityTimestamp = json.updated_at;
+        refreshAvailabilityGridFromPolling(currentPolledTeacherId, json.data);
+    })
+    .catch(err => {
+        console.warn('[Availability Polling] Erreur refresh manuel:', err.message);
+        lastAvailabilityTimestamp = savedTimestamp; // Restaurer si erreur
+    });
 }
 </script>
 
