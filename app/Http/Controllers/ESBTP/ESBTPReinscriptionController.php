@@ -156,36 +156,58 @@ class ESBTPReinscriptionController extends Controller
     }
     
     /**
-     * Calculer le total attendu pour une inscription avec prise en compte du statut d'affectation
+     * Calculer le total attendu pour une inscription.
+     *
+     * Utilise la même logique de priorité que ESBTPInscriptionController::show() :
+     * 1. Souscription individuelle (ESBTPFraisSubscription) → montant personnalisé
+     * 2. Règle filière/niveau (ESBTPFraisConfiguration) → getMontantByStatus()
+     * 3. Ni l'un ni l'autre → frais non compté (is_configured = false)
+     *
+     * Cela évite de gonfler le total en comptant des frais obligatoires configurés
+     * globalement mais auxquels l'étudiant n'est pas souscrit.
      */
     private function calculerTotalAttendu($inscription)
     {
-        // Récupérer le statut d'affectation de l'inscription (défaut: affecté)
         $affectationStatus = $inscription->affectation_status ?? 'affecté';
 
-        // Récupérer les configurations de frais pour cette filière/niveau
-        $fraisConfigs = \App\Models\ESBTPFraisConfiguration::active()
-            ->where('filiere_id', $inscription->classe->filiere_id)
-            ->where('niveau_id', $inscription->classe->niveau_etude_id)
+        // Souscriptions actives de cet étudiant pour cette inscription
+        $subscriptions = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+            ->where('is_active', true)
             ->with(['fraisCategory'])
+            ->get();
+
+        // Frais obligatoires actifs
+        $mandatoryCategories = \App\Models\ESBTPFraisCategory::where('is_mandatory', true)
+            ->where('is_active', true)
             ->get();
 
         $totalAttendu = 0;
 
-        foreach ($fraisConfigs as $config) {
-            if (!$config->fraisCategory || !$config->fraisCategory->is_mandatory) {
-                continue; // Ignorer les frais non obligatoires ou sans catégorie
+        foreach ($mandatoryCategories as $category) {
+            // Priorité 1 : montant de la souscription individuelle
+            $subscription = $subscriptions->where('frais_category_id', $category->id)->first();
+            if ($subscription) {
+                $totalAttendu += $subscription->amount;
+                continue;
             }
 
-            // CORRECTION: Utiliser le montant selon le statut d'affectation
-            $montant = $config->getMontantByStatus($affectationStatus);
-            $totalAttendu += $montant;
+            // Priorité 2 : règle filière/niveau
+            $rule = $category->getApplicableRule(
+                $inscription->classe->filiere_id,
+                $inscription->classe->niveau_etude_id,
+                $inscription->annee_universitaire_id,
+            );
+            if ($rule) {
+                $totalAttendu += $rule->getMontantByStatus($affectationStatus);
+            }
+            // Aucune règle ni souscription → ce frais n'est pas comptabilisé
         }
 
-        // Ajouter les frais optionnels souscrits
-        $subscriptions = \App\Models\ESBTPFraisSubscription::getActiveSubscriptions($inscription->id);
+        // Frais optionnels souscrits (non-obligatoires)
         foreach ($subscriptions as $subscription) {
-            $totalAttendu += $subscription->amount;
+            if ($subscription->fraisCategory && !$subscription->fraisCategory->is_mandatory) {
+                $totalAttendu += $subscription->amount;
+            }
         }
 
         return $totalAttendu;
