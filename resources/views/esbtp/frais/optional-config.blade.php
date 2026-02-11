@@ -274,15 +274,27 @@ body.modal-open .card:hover {
                             <!-- Header avec icône -->
                             <div style="display: flex; align-items: center; margin-bottom: var(--space-lg);">
                                 <div style="width: 50px; height: 50px; background: linear-gradient(135deg, var(--accent-blue), var(--primary)); border-radius: var(--radius-circle); display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; margin-right: var(--space-md);">
-                                    <i class="fas {{ $category->category_type == 'transport' ? 'fa-bus' : ($category->category_type == 'cantine' ? 'fa-utensils' : 'fa-star') }}"></i>
+                                    @if($category->icon)
+                                        <i class="{{ $category->icon }}"></i>
+                                    @elseif($category->category_type == 'transport')
+                                        <i class="fas fa-bus"></i>
+                                    @elseif($category->category_type == 'cantine')
+                                        <i class="fas fa-utensils"></i>
+                                    @else
+                                        <i class="fas fa-concierge-bell"></i>
+                                    @endif
                                 </div>
                                 <div style="flex: 1;">
                                     <div class="resultat-title" style="color: var(--primary);">
                                         {{ $category->name }}
                                     </div>
-                                    <div style="font-size: var(--text-small); color: var(--text-secondary);">
-                                        {{ ucfirst($category->category_type) }}
-                                    </div>
+                                    @php
+                                        $typeColors = ['transport' => '#0ea5e9', 'cantine' => '#10b981', 'autre' => '#f59e0b'];
+                                        $typeColor = $typeColors[$category->category_type] ?? '#64748b';
+                                    @endphp
+                                    <span style="display: inline-block; font-size: 0.72rem; padding: 2px 10px; border-radius: 20px; background: {{ $typeColor }}20; color: {{ $typeColor }}; border: 1px solid {{ $typeColor }}40; font-weight: 500; margin-top: 3px;">
+                                        {{ ucfirst($category->category_type ?? 'autre') }}
+                                    </span>
                                 </div>
                                 <div style="text-align: right;">
                                     <span class="badge {{ $category->is_active ? 'success' : 'secondary' }}">
@@ -517,7 +529,7 @@ body.modal-open .card:hover {
                                         <div class="col-md-4">
                                             <div class="form-group">
                                                 <label style="font-weight: 600; color: var(--text-primary);">Action</label>
-                                                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                                                <button type="submit" class="btn-acasi primary" style="width: 100%;">
                                                     <i class="fas fa-plus me-1"></i>Ajouter
                                                 </button>
                                             </div>

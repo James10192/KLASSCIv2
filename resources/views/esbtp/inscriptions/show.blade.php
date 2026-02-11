@@ -223,6 +223,78 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
     box-shadow: 0 0 0 3px rgb(59 130 246 / 0.15), 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
     outline: none !important;
 }
+
+/* === OPTIONAL FEE CARDS === */
+.optional-fee-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    border-left: 4px solid #0453cb;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.optional-fee-card:hover {
+    box-shadow: 0 4px 16px rgba(4,83,203,0.1);
+    transform: translateY(-1px);
+}
+.optional-fee-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: rgba(4,83,203,0.08);
+    color: #0453cb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+.optional-fee-body {
+    flex: 1;
+    min-width: 0;
+}
+.optional-fee-name {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 0.95rem;
+}
+.optional-fee-desc {
+    font-size: 0.78rem;
+    color: #64748b;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.optional-fee-price {
+    text-align: right;
+    flex-shrink: 0;
+}
+.optional-fee-price strong {
+    display: block;
+    color: #0453cb;
+    font-size: 1rem;
+    font-weight: 700;
+}
+.optional-fee-price strong small {
+    font-size: 0.7em;
+    font-weight: 500;
+    color: #64748b;
+}
+.badge-optionnel {
+    display: inline-block;
+    font-size: 0.68rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: rgba(6,182,212,0.08);
+    color: #06b6d4;
+    border: 1px solid rgba(6,182,212,0.25);
+    margin-bottom: 4px;
+    font-weight: 500;
+}
 </style>
 @endsection
 
@@ -315,7 +387,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                     <div class="card-moderne">
                         <div class="p-lg">
                             <div class="section-title mb-md">
-                                <i class="fas fa-user"></i>Informations de l'étudiant
+                                <i class="fas fa-user me-2"></i>Informations de l'étudiant
                             </div>
                             <div class="text-center mb-4">
                                 @if($inscription->etudiant->photo_url)
@@ -426,7 +498,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                     <div class="card-moderne mt-4">
                         <div class="p-lg">
                             <div class="section-title mb-md">
-                                <i class="fas fa-chart-line"></i>Statut de l'inscription
+                                <i class="fas fa-chart-line me-2"></i>Statut de l'inscription
                             </div>
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -601,7 +673,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                     <div class="card-moderne mb-4">
                         <div class="p-lg">
                             <div class="section-title mb-md">
-                                <i class="fas fa-graduation-cap"></i>Informations académiques
+                                <i class="fas fa-graduation-cap me-2"></i>Informations académiques
                             </div>
                             <div class="row">
                                 <div class="col-12 col-1600-6 mb-3">
@@ -907,7 +979,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                     <div class="card-moderne mb-4">
                         <div class="p-lg">
                             <div class="section-title mb-md">
-                                <i class="fas fa-users"></i>Parents / Tuteurs
+                                <i class="fas fa-users me-2"></i>Parents / Tuteurs
                             </div>
                             @if($inscription->etudiant->parents->count() > 0)
                                 <div class="accordion" id="accordionParents">
@@ -1013,7 +1085,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                     <div class="card-moderne mb-4">
                         <div class="p-lg">
                             <div class="section-title mb-md">
-                                <i class="fas fa-chart-line"></i>Situation Financière Détaillée
+                                <i class="fas fa-chart-line me-2"></i>Situation Financière Détaillée
                             </div>
 
                             <style>
@@ -1792,34 +1864,31 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                     <div class="card-moderne mb-4">
                         <div class="p-lg">
                             <div class="section-title mb-md">
-                                <i class="fas fa-plus-circle"></i>Frais Optionnels Disponibles
+                                <i class="fas fa-plus-circle me-2"></i>Frais Optionnels Disponibles
                                 <button type="button" class="btn btn-sm btn-primary float-end" data-bs-toggle="modal" data-bs-target="#subscriptionModal">
                                     <i class="fas fa-plus me-1"></i>Souscrire l'étudiant à un frais
                                 </button>
                             </div>
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle me-2"></i>
-                                <strong>{{ $availableOptionalCategories->count() }} frais optionnels</strong> sont disponibles pour cette filière/niveau.
-                                L'administration peut souscrire l'étudiant aux services souhaités.
+                            <div class="d-flex align-items-center gap-2 mb-3 px-3 py-2 rounded-3" style="background: rgba(6,182,212,0.07); border: 1px solid rgba(6,182,212,0.2);">
+                                <i class="fas fa-info-circle text-info" style="font-size:1.1rem;"></i>
+                                <span class="small"><strong>{{ $availableOptionalCategories->count() }} frais optionnel{{ $availableOptionalCategories->count() > 1 ? 's' : '' }}</strong> disponible{{ $availableOptionalCategories->count() > 1 ? 's' : '' }} pour cette filière/niveau. L'administration peut souscrire l'étudiant aux services souhaités.</span>
                             </div>
-                            <div class="row">
+                            <div class="row g-3">
                                 @foreach($availableOptionalCategories as $category)
-                                    <div class="col-md-4 mb-3">
-                                        <div class="card border">
-                                            <div class="card-body text-center">
-                                                @if($category->icon)
-                                                    <i class="{{ $category->icon }} fa-2x mb-2 text-primary"></i>
-                                                @else
-                                                    <i class="fas fa-star fa-2x mb-2 text-primary"></i>
-                                                @endif
-                                                <h6 class="card-title">{{ $category->name }}</h6>
+                                    <div class="col-md-6">
+                                        <div class="optional-fee-card">
+                                            <div class="optional-fee-icon">
+                                                <i class="{{ $category->icon ?? 'fas fa-concierge-bell' }}"></i>
+                                            </div>
+                                            <div class="optional-fee-body">
+                                                <div class="optional-fee-name">{{ $category->name }}</div>
                                                 @if($category->description)
-                                                    <p class="card-text small text-muted">{{ $category->description }}</p>
+                                                    <div class="optional-fee-desc" title="{{ $category->description }}">{{ $category->description }}</div>
                                                 @endif
-                                                <div class="d-flex justify-content-between align-items-center">
-                                                    <span class="badge bg-info">Optionnel</span>
-                                                    <strong class="text-primary">{{ number_format($category->default_amount, 0, ',', ' ') }} FCFA</strong>
-                                                </div>
+                                            </div>
+                                            <div class="optional-fee-price">
+                                                <span class="badge-optionnel">Optionnel</span>
+                                                <strong>{{ number_format($category->default_amount, 0, ',', ' ') }}<small> FCFA</small></strong>
                                             </div>
                                         </div>
                                     </div>
@@ -1834,7 +1903,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                         <div class="p-lg">
                             <div class="section-title mb-md d-flex justify-content-between align-items-center">
                                 <span>
-                                    <i class="fas fa-money-bill-wave"></i>Paiements liés à cette inscription
+                                    <i class="fas fa-money-bill-wave me-2"></i>Paiements liés à cette inscription
                                 </span>
                                 <div class="dropdown pdf-dropdown">
                                     <button class="btn btn-outline-success dropdown-toggle" type="button"
