@@ -1459,9 +1459,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const items = bulkEditModal.querySelectorAll('.bulk-edit-item');
     const checkboxes = () => bulkEditModal.querySelectorAll('.bulk-edit-checkbox');
 
+    const isVisible = item => !item.classList.contains('d-none');
+
     const updateState = () => {
         const boxes = Array.from(checkboxes());
-        const visibleBoxes = boxes.filter(box => box.closest('.bulk-edit-item').style.display !== 'none');
+        const visibleBoxes = boxes.filter(box => isVisible(box.closest('.bulk-edit-item')));
         const checkedCount = boxes.filter((box) => box.checked).length;
         const visibleCheckedCount = visibleBoxes.filter(box => box.checked).length;
 
@@ -1482,7 +1484,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const name = item.dataset.name || '';
                 const titre = item.dataset.titre || '';
                 const matches = !query || name.includes(query) || titre.includes(query);
-                item.style.display = matches ? '' : 'none';
+                item.classList.toggle('d-none', !matches);
             });
             updateState();
         });
@@ -1492,7 +1494,7 @@ document.addEventListener('DOMContentLoaded', function () {
         selectAll.addEventListener('change', () => {
             // Ne sélectionner que les items visibles
             items.forEach(item => {
-                if (item.style.display !== 'none') {
+                if (isVisible(item)) {
                     const checkbox = item.querySelector('.bulk-edit-checkbox');
                     if (checkbox) checkbox.checked = selectAll.checked;
                 }

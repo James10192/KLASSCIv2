@@ -1112,7 +1112,7 @@ function toggleSecretaireStatus(secretaireId) {
                 const name = item.dataset.name || '';
                 const email = item.dataset.email || '';
                 const matches = name.includes(query) || email.includes(query);
-                item.style.display = matches ? '' : 'none';
+                item.classList.toggle('d-none', !matches);
             });
         });
     }
@@ -1121,7 +1121,7 @@ function toggleSecretaireStatus(secretaireId) {
     if (selectAllBtn) {
         selectAllBtn.addEventListener('click', function() {
             items.forEach(item => {
-                if (item.style.display !== 'none') {
+                if (!item.classList.contains('d-none')) {
                     const checkbox = item.querySelector('.bulk-availability-checkbox');
                     if (checkbox) checkbox.checked = true;
                 }

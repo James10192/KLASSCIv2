@@ -423,9 +423,11 @@ $(document).ready(function() {
         const items = bulkModal.querySelectorAll('.bulk-modal-item');
         const checkboxes = () => bulkModal.querySelectorAll('.bulk-modal-checkbox');
 
+        const isVisible = item => !item.classList.contains('d-none');
+
         const updateState = () => {
             const boxes = Array.from(checkboxes());
-            const visibleBoxes = boxes.filter(box => box.closest('.bulk-modal-item').style.display !== 'none');
+            const visibleBoxes = boxes.filter(box => isVisible(box.closest('.bulk-modal-item')));
             const checkedCount = boxes.filter(box => box.checked).length;
             const visibleCheckedCount = visibleBoxes.filter(box => box.checked).length;
 
@@ -451,7 +453,7 @@ $(document).ready(function() {
                     const name = item.dataset.name || '';
                     const spec = item.dataset.spec || '';
                     const matches = !query || name.includes(query) || spec.includes(query);
-                    item.style.display = matches ? '' : 'none';
+                    item.classList.toggle('d-none', !matches);
                 });
                 updateState();
             });
@@ -461,7 +463,7 @@ $(document).ready(function() {
             selectAll.addEventListener('change', () => {
                 // Ne sélectionner que les items visibles
                 items.forEach(item => {
-                    if (item.style.display !== 'none') {
+                    if (isVisible(item)) {
                         const checkbox = item.querySelector('.bulk-modal-checkbox');
                         if (checkbox) checkbox.checked = selectAll.checked;
                     }
