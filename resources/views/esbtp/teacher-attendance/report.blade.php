@@ -382,79 +382,266 @@
     </div>
 </div>
 
-<!-- Modals pour les détails -->
+<!-- Modals pour les détails (redesign moderne) -->
+<style>
+.detail-modal-hero {
+    background: linear-gradient(135deg, #0453cb 0%, #1b64d4 60%, #5e91de 100%);
+    border-radius: 0;
+    padding: 24px 28px 20px;
+    color: white;
+    position: relative; overflow: hidden;
+}
+.detail-modal-hero::after {
+    content: ''; position: absolute; right: -50px; top: -50px;
+    width: 180px; height: 180px; border-radius: 50%;
+    background: rgba(255,255,255,.06); pointer-events: none;
+}
+.detail-modal-hero .teacher-initials {
+    width: 54px; height: 54px; border-radius: 50%;
+    background: rgba(255,255,255,.2); border: 2px solid rgba(255,255,255,.35);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 1.15rem; flex-shrink: 0;
+}
+.detail-modal-hero-name { font-size: 1.15rem; font-weight: 800; line-height: 1.2; }
+.detail-modal-hero-sub  { font-size: .82rem; opacity: .78; margin-top: 2px; }
+.detail-modal-status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    border-radius: 99px; padding: 5px 14px;
+    font-size: .82rem; font-weight: 700;
+    transition: background .2s;
+}
+.detail-modal-status-pill.present    { background:rgba(16,185,129,.22); border:1px solid rgba(16,185,129,.45); }
+.detail-modal-status-pill.late       { background:rgba(245,158,11,.22); border:1px solid rgba(245,158,11,.45); }
+.detail-modal-status-pill.absent     { background:rgba(239,68,68,.22);  border:1px solid rgba(239,68,68,.45); }
+.detail-modal-status-pill.not_signed { background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3); }
+.detail-modal-action-btn {
+    background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3);
+    color: white; border-radius: 99px; padding: 5px 14px;
+    font-size: .78rem; font-weight: 600; cursor: pointer; transition: background .15s;
+}
+.detail-modal-action-btn:hover { background: rgba(255,255,255,.28); }
+.detail-modal-action-btn.danger { background: rgba(239,68,68,.25); border-color: rgba(239,68,68,.5); }
+.detail-modal-action-btn.danger:hover { background: rgba(239,68,68,.4); }
+
+.detail-info-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; padding: 20px 24px;
+}
+.detail-info-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: #f8fafc; border-radius: 10px; padding: 12px 14px;
+    border: 1px solid #e2e8f0;
+}
+.detail-info-item.full { grid-column: 1 / -1; }
+.detail-info-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .8rem; flex-shrink: 0;
+}
+.detail-info-label { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; margin-bottom: 2px; }
+.detail-info-value { font-size: .88rem; font-weight: 600; color: #1e293b; }
+@media (max-width: 576px) {
+    .detail-info-grid { grid-template-columns: 1fr; }
+    .detail-info-item.full { grid-column: 1; }
+}
+</style>
+
 @if(isset($seances))
 @foreach($seances as $seance)
     @php
-        $attendance = $seance->teacherAttendances->first();
+        // Même logique de priorité que seance-row.blade.php
+        $today3 = \Carbon\Carbon::today();
+        $attDetail = $seance->teacherAttendances->first(function($a) use ($today3) {
+            $d = $a->date instanceof \Carbon\Carbon ? $a->date : \Carbon\Carbon::parse($a->date);
+            return $d->isSameDay($today3);
+        });
+        if (!$attDetail) {
+            $attDetail = $seance->teacherAttendances->first(function($a) use ($seance) {
+                $d = $a->date instanceof \Carbon\Carbon ? $a->date : \Carbon\Carbon::parse($a->date);
+                return $d->isSameDay(\Carbon\Carbon::parse($seance->date_seance));
+            });
+        }
+        if (!$attDetail) {
+            $attDetail = $seance->teacherAttendances->sortByDesc('created_at')->first();
+        }
+
+        if (!$attDetail) continue; // pas d'attendance = pas de modal détail
+
+        $detailStatus = $attDetail->status ?? 'not_signed';
+        $detailStatusMap = [
+            'present'    => ['icon'=>'check-circle',  'label'=>'Présent',    'cls'=>'present'],
+            'late'       => ['icon'=>'clock',         'label'=>'En retard',  'cls'=>'late'],
+            'absent'     => ['icon'=>'times-circle',  'label'=>'Absent',     'cls'=>'absent'],
+            'not_signed' => ['icon'=>'minus-circle',  'label'=>'Non émargé', 'cls'=>'not_signed'],
+        ];
+        $dsm = $detailStatusMap[$detailStatus] ?? $detailStatusMap['not_signed'];
+
+        // Initiales enseignant
+        $nameParts = preg_split('/\s+/', trim($seance->teacher?->user?->name ?? 'NA'));
+        $initials2 = strtoupper(collect($nameParts)->filter()->take(2)->map(fn($p) => mb_substr($p,0,1))->implode(''));
     @endphp
-    @if($attendance)
-    <div class="modal fade" id="detailModal{{ $seance->id }}" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Détails de l'émargement</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <strong>Enseignant:</strong> {{ $seance->teacher?->user?->name ?? 'N/A' }}
+    <div class="modal fade" id="detailModal{{ $seance->id }}" tabindex="-1"
+         data-seance-id="{{ $seance->id }}" data-initial-status="{{ $detailStatus }}">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content" style="border:none; border-radius:16px; overflow:hidden;">
+
+                {{-- Hero header --}}
+                <div class="detail-modal-hero">
+                    <button type="button" class="btn-close btn-close-white"
+                            data-bs-dismiss="modal" style="position:absolute;top:16px;right:20px;z-index:2;"></button>
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="teacher-initials">{{ $initials2 }}</div>
+                        <div>
+                            <div class="detail-modal-hero-name">{{ $seance->teacher?->user?->name ?? 'N/A' }}</div>
+                            <div class="detail-modal-hero-sub">
+                                {{ $seance->matiere?->name ?? 'N/A' }}
+                                · {{ $seance->emploiTemps?->classe?->name ?? 'N/A' }}
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <strong>Matière:</strong> {{ $seance->matiere?->name ?? 'N/A' }}
-                        </div>
-                        <div class="col-md-6">
-                            <strong>Classe:</strong> {{ $seance->emploiTemps?->classe?->name ?? 'N/A' }}
-                        </div>
-                        <div class="col-md-6">
-                            <strong>Séance:</strong> 
-                            {{ $seance->getDateCompleteFormattee() }} {{ $seance->heure_debut ? \Carbon\Carbon::parse($seance->heure_debut)->format('H:i') : '' }}-{{ $seance->heure_fin ? \Carbon\Carbon::parse($seance->heure_fin)->format('H:i') : '' }}
-                        </div>
-                        <div class="col-md-6">
-                            <strong>Date d'émargement:</strong> {{ $attendance->validated_at?->format('d/m/Y H:i') ?? ($attendance->created_at?->format('d/m/Y H:i') ?? 'N/A') }}
-                        </div>
-                        <div class="col-md-6">
-                            <strong>Statut:</strong>
-                            @if($attendance->status === 'present')
-                                <span class="badge bg-success">Présent</span>
-                            @elseif($attendance->status === 'late')
-                                <span class="badge bg-warning">En retard</span>
-                            @else
-                                <span class="badge bg-secondary">{{ ucfirst($attendance->status) }}</span>
+                    </div>
+
+                    {{-- Statut + boutons action --}}
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="detail-modal-status-pill {{ $dsm['cls'] }}" id="detailStatusBadge{{ $seance->id }}">
+                            <i class="fas fa-{{ $dsm['icon'] }}" style="font-size:.78rem;"></i>
+                            <span>{{ $dsm['label'] }}</span>
+                        </span>
+
+                        {{-- Actions rapides dans le modal --}}
+                        <div class="d-flex gap-2" id="detailModalActions{{ $seance->id }}">
+                            @if($detailStatus !== 'present')
+                            <button type="button" class="detail-modal-action-btn modal-mark-btn"
+                                    data-seance-id="{{ $seance->id }}" data-status="present" data-type="start"
+                                    title="Marquer présent">
+                                <i class="fas fa-check me-1"></i>Présent
+                            </button>
+                            @endif
+                            @if($detailStatus !== 'absent')
+                            <button type="button" class="detail-modal-action-btn danger modal-mark-btn"
+                                    data-seance-id="{{ $seance->id }}" data-status="absent" data-type="start"
+                                    title="Marquer absent">
+                                <i class="fas fa-user-times me-1"></i>Absent
+                            </button>
                             @endif
                         </div>
-                        <div class="col-md-6">
-                            <strong>IP:</strong> {{ $attendance->ip_address ?? 'N/A' }}
+                        <div class="detail-modal-spinner d-none" id="detailSpinner{{ $seance->id }}">
+                            <div class="spinner-border spinner-border-sm text-white" role="status"></div>
                         </div>
-                        <div class="col-md-6">
-                            <strong>Appareil:</strong> {{ $attendance->device_info ?? 'N/A' }}
-                        </div>
-                        @if($seance->salle)
-                        <div class="col-md-6">
-                            <strong>Salle:</strong> {{ $seance->salle }}
-                        </div>
-                        @endif
-                        @if($attendance->latitude && $attendance->longitude)
-                        <div class="col-md-12">
-                            <strong>Localisation:</strong> {{ $attendance->latitude }}, {{ $attendance->longitude }}
-                        </div>
-                        @endif
-                        @if($attendance->notes)
-                        <div class="col-md-12">
-                            <strong>Notes:</strong>
-                            <div class="mt-2 p-2 bg-light rounded">{{ $attendance->notes }}</div>
-                        </div>
-                        @endif
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+
+                {{-- Info grid --}}
+                <div class="detail-info-grid">
+                    {{-- Date séance --}}
+                    <div class="detail-info-item">
+                        <div class="detail-info-icon" style="background:rgba(4,83,203,.1);color:#0453cb;">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div>
+                            <div class="detail-info-label">Date de la séance</div>
+                            <div class="detail-info-value">{{ $seance->getDateCompleteFormattee() }}</div>
+                        </div>
+                    </div>
+
+                    {{-- Horaires --}}
+                    <div class="detail-info-item">
+                        <div class="detail-info-icon" style="background:rgba(245,158,11,.1);color:#d97706;">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div>
+                            <div class="detail-info-label">Horaires</div>
+                            <div class="detail-info-value">
+                                {{ $seance->heure_debut ? \Carbon\Carbon::parse($seance->heure_debut)->format('H:i') : 'N/A' }}
+                                – {{ $seance->heure_fin ? \Carbon\Carbon::parse($seance->heure_fin)->format('H:i') : 'N/A' }}
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Date émargement --}}
+                    <div class="detail-info-item">
+                        <div class="detail-info-icon" style="background:rgba(16,185,129,.1);color:#059669;">
+                            <i class="fas fa-signature"></i>
+                        </div>
+                        <div>
+                            <div class="detail-info-label">Date d'émargement</div>
+                            <div class="detail-info-value" id="detailDate{{ $seance->id }}">
+                                {{ $attDetail->validated_at?->format('d/m/Y H:i') ?? ($attDetail->created_at?->format('d/m/Y H:i') ?? 'N/A') }}
+                            </div>
+                        </div>
+                    </div>
+
+                    @if($seance->salle)
+                    {{-- Salle --}}
+                    <div class="detail-info-item">
+                        <div class="detail-info-icon" style="background:rgba(100,116,139,.1);color:#475569;">
+                            <i class="fas fa-door-open"></i>
+                        </div>
+                        <div>
+                            <div class="detail-info-label">Salle</div>
+                            <div class="detail-info-value">{{ $seance->salle }}</div>
+                        </div>
+                    </div>
+                    @endif
+
+                    {{-- IP --}}
+                    <div class="detail-info-item">
+                        <div class="detail-info-icon" style="background:rgba(99,102,241,.1);color:#4f46e5;">
+                            <i class="fas fa-network-wired"></i>
+                        </div>
+                        <div>
+                            <div class="detail-info-label">Adresse IP</div>
+                            <div class="detail-info-value">{{ $attDetail->ip_address ?? 'N/A' }}</div>
+                        </div>
+                    </div>
+
+                    {{-- Appareil --}}
+                    <div class="detail-info-item">
+                        <div class="detail-info-icon" style="background:rgba(239,68,68,.08);color:#dc2626;">
+                            <i class="fas fa-mobile-alt"></i>
+                        </div>
+                        <div>
+                            <div class="detail-info-label">Appareil</div>
+                            <div class="detail-info-value" style="word-break:break-all;">
+                                {{ $attDetail->device_info ?? 'N/A' }}
+                            </div>
+                        </div>
+                    </div>
+
+                    @if($attDetail->latitude && $attDetail->longitude)
+                    <div class="detail-info-item full">
+                        <div class="detail-info-icon" style="background:rgba(245,158,11,.1);color:#d97706;">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <div>
+                            <div class="detail-info-label">Localisation GPS</div>
+                            <div class="detail-info-value">{{ $attDetail->latitude }}, {{ $attDetail->longitude }}</div>
+                        </div>
+                    </div>
+                    @endif
+
+                    @if($attDetail->notes)
+                    <div class="detail-info-item full">
+                        <div class="detail-info-icon" style="background:rgba(4,83,203,.1);color:#0453cb;">
+                            <i class="fas fa-sticky-note"></i>
+                        </div>
+                        <div>
+                            <div class="detail-info-label">Notes</div>
+                            <div class="detail-info-value" style="font-weight:400;color:#334155;">{{ $attDetail->notes }}</div>
+                        </div>
+                    </div>
+                    @endif
+                </div>
+
+                <div class="modal-footer" style="border-top:1px solid #f1f5f9; padding:12px 24px;">
+                    <a href="{{ route('esbtp.seances-cours.show', $seance->id) }}"
+                       class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-calendar-day me-1"></i>Voir la séance
+                    </a>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fermer</button>
                 </div>
             </div>
         </div>
     </div>
-    @endif
 @endforeach
 @endif
 
@@ -952,6 +1139,8 @@ tr[data-seance-id].is-loading {
                     debugLog('✅ Statut mis à jour, refresh ligne');
                     // Rafraîchir la ligne avec animation
                     window.refreshSeanceLigne(seanceId, status === 'absent' ? 'absent' : 'present');
+                    // Mettre à jour le modal détail si ouvert
+                    window.updateDetailModalStatus && window.updateDetailModalStatus(seanceId, status);
                 } else {
                     setSeanceRowLoadingState(seanceId, false);
                     alert('Erreur: ' + (data.message || 'Erreur inconnue'));
@@ -964,9 +1153,98 @@ tr[data-seance-id].is-loading {
             });
         }, true); // Capture phase
 
+        // ── Boutons action rapide dans le modal détail ──────────────────
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.modal-mark-btn');
+            if (!btn) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const seanceId = btn.dataset.seanceId;
+            const status   = btn.dataset.status;
+            const type     = btn.dataset.type || 'start';
+            const label    = status === 'present' ? 'présent' : 'absent';
+
+            if (!confirm(`Marquer cet enseignant ${label} ?`)) return;
+
+            // Spinner dans le modal
+            const actionsDiv = document.getElementById('detailModalActions' + seanceId);
+            const spinner    = document.getElementById('detailSpinner' + seanceId);
+            if (actionsDiv) actionsDiv.classList.add('d-none');
+            if (spinner)    spinner.classList.remove('d-none');
+
+            const url = `{{ url('/esbtp/teacher-attendance/seance') }}/${seanceId}/update-status`;
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ status, type })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (spinner) spinner.classList.add('d-none');
+                if (data.success) {
+                    // 1. Mettre à jour le badge statut dans le modal
+                    updateDetailModalStatus(seanceId, status);
+                    // 2. Mettre à jour la ligne dans le tableau (fonction existante)
+                    window.refreshSeanceLigne && window.refreshSeanceLigne(seanceId, status === 'absent' ? 'absent' : 'present');
+                } else {
+                    if (actionsDiv) actionsDiv.classList.remove('d-none');
+                    alert('Erreur : ' + (data.message || 'Erreur inconnue'));
+                }
+            })
+            .catch(err => {
+                if (spinner)    spinner.classList.add('d-none');
+                if (actionsDiv) actionsDiv.classList.remove('d-none');
+                alert('Erreur réseau : ' + err.message);
+            });
+        }, true);
+
         debugLog('✅ Event listeners installés');
     });
 })();
+
+/**
+ * Met à jour le badge statut + boutons d'action dans le modal détail
+ * Appelée aussi depuis refreshSeanceLigne via l'event custom
+ */
+window.updateDetailModalStatus = function(seanceId, status) {
+    const statusMap = {
+        present:    { icon: 'check-circle',  label: 'Présent',    cls: 'present' },
+        late:       { icon: 'clock',         label: 'En retard',  cls: 'late' },
+        absent:     { icon: 'times-circle',  label: 'Absent',     cls: 'absent' },
+        not_signed: { icon: 'minus-circle',  label: 'Non émargé', cls: 'not_signed' },
+    };
+    const m = statusMap[status] || statusMap.not_signed;
+
+    // Badge statut
+    const badge = document.getElementById('detailStatusBadge' + seanceId);
+    if (badge) {
+        badge.className = 'detail-modal-status-pill ' + m.cls;
+        badge.innerHTML = `<i class="fas fa-${m.icon}" style="font-size:.78rem;"></i><span>${m.label}</span>`;
+    }
+
+    // Reconstruire les boutons d'action
+    const actionsDiv = document.getElementById('detailModalActions' + seanceId);
+    if (actionsDiv) {
+        let html = '';
+        if (status !== 'present') {
+            html += `<button type="button" class="detail-modal-action-btn modal-mark-btn"
+                data-seance-id="${seanceId}" data-status="present" data-type="start" title="Marquer présent">
+                <i class="fas fa-check me-1"></i>Présent</button>`;
+        }
+        if (status !== 'absent') {
+            html += `<button type="button" class="detail-modal-action-btn danger modal-mark-btn"
+                data-seance-id="${seanceId}" data-status="absent" data-type="start" title="Marquer absent">
+                <i class="fas fa-user-times me-1"></i>Absent</button>`;
+        }
+        actionsDiv.innerHTML = html;
+        actionsDiv.classList.remove('d-none');
+    }
+};
 </script>
 
 <style>
