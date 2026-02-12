@@ -1028,7 +1028,7 @@ window.bulkMarkStatus = function(status) {
 
     if (!confirm(`Marquer ${ids.length} séance(s) comme ${label} ?`)) return;
 
-    fetch('{{ route("esbtp.teacher-attendance.bulk-update-status") }}', {
+    fetch('{{ url("/esbtp/teacher-attendance/bulk-update-status") }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

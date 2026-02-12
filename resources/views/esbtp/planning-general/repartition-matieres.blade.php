@@ -59,126 +59,150 @@
         height: 400px;
     }
     
+    /* =============================================
+       MATIÈRE CARDS — Modern 2-column layout
+       ============================================= */
     .matiere-card {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-sm);
-        border: 1px solid var(--border);
-        transition: all 0.3s ease;
+        background: #fff;
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        padding: 20px 24px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 4px rgba(0,0,0,.05);
+        display: grid;
+        grid-template-columns: 1fr 260px;
+        gap: 24px;
+        align-items: start;
+        transition: box-shadow .2s;
         position: relative;
-        overflow: hidden;
+        overflow: visible;
     }
-    
-    .matiere-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 4px;
-        height: 100%;
-        background: var(--primary);
-        transition: width 0.3s ease;
-    }
-    
-    .matiere-card:hover::before {
-        width: 8px;
-    }
-    
+
     .matiere-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-hover);
+        box-shadow: 0 4px 12px rgba(0,0,0,.09);
     }
-    
+
+    .matiere-card-left {
+        min-width: 0;
+    }
+
+    .matiere-card-right {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
     .matiere-nom {
-        font-weight: 600;
-        color: var(--primary);
-        margin-bottom: var(--space-xs);
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 4px;
     }
-    
+
+    .matiere-code-pill {
+        display: inline-flex;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 99px;
+        background: #f1f5f9;
+        color: #64748b;
+        margin-bottom: 8px;
+    }
+
     .matiere-stats {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: var(--space-lg);
+        gap: 16px;
+        flex-wrap: wrap;
     }
-    
+
     .stat-item {
         text-align: center;
-        flex: 1;
+        min-width: 80px;
     }
     
     .stat-value {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: var(--primary);
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: #1e293b;
+        line-height: 1;
     }
-    
+
     .stat-label {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        color: #94a3b8;
     }
     
+    /* Progress bars — modern KLASSCI */
     .progress-bar-matiere {
-        height: 6px;
-        background: var(--border);
-        border-radius: var(--radius-full);
+        height: 10px;
+        background: #f1f5f9;
+        border-radius: 99px;
         overflow: hidden;
-        margin-top: var(--space-sm);
+        margin: 10px 0 6px;
     }
-    
+
     .progress-fill-matiere {
         height: 100%;
-        background: linear-gradient(90deg, var(--primary), var(--primary-light));
-        transition: width 0.8s ease;
+        border-radius: 99px;
+        transition: width .7s cubic-bezier(.4,0,.2,1);
+        background: linear-gradient(90deg, #93c5fd, #0453cb);
     }
-    
+
     .progress-bars-container {
-        margin-top: var(--space-md);
+        margin-top: 8px;
     }
-    
+
     .progress-bar-volume {
-        height: 8px;
-        background: #f1f3f4;
-        border-radius: var(--radius-full);
+        height: 10px;
+        background: #f1f5f9;
+        border-radius: 99px;
         overflow: hidden;
-        margin-bottom: var(--space-xs);
+        margin-bottom: 6px;
         position: relative;
     }
-    
-    .progress-bar-volume.realise {
-        background: #e8f5e8;
-    }
-    
-    .progress-bar-volume.planifie {
-        background: #e3f2fd;
-    }
-    
+
     .progress-fill-volume {
         height: 100%;
-        transition: width 0.8s ease;
-        border-radius: var(--radius-full);
+        transition: width .7s cubic-bezier(.4,0,.2,1);
+        border-radius: 99px;
     }
-    
-    .progress-fill-volume.realise {
-        background: linear-gradient(90deg, #4caf50, #66bb6a);
-    }
-    
-    .progress-fill-volume.planifie {
-        background: linear-gradient(90deg, #2196f3, #42a5f5);
-    }
-    
-    .progress-fill-volume.restant {
-        background: linear-gradient(90deg, #ff9800, #ffb74d);
-    }
-    
+
+    /* Level-based colors matching classes/show.blade.php */
+    .progress-fill-volume.level-low  { background: linear-gradient(90deg, #fca5a5, #ef4444); }
+    .progress-fill-volume.level-mid  { background: linear-gradient(90deg, #fcd34d, #f59e0b); }
+    .progress-fill-volume.level-good { background: linear-gradient(90deg, #6ee7b7, #10b981); }
+    .progress-fill-volume.level-done { background: linear-gradient(90deg, #93c5fd, #0453cb); }
+    .progress-fill-volume.overage    { background: linear-gradient(90deg, #ef4444, #f97316); }
+
+    /* Keep backward compat aliases */
+    .progress-fill-volume.realise  { background: linear-gradient(90deg, #6ee7b7, #10b981); }
+    .progress-fill-volume.planifie { background: linear-gradient(90deg, #93c5fd, #0453cb); }
+    .progress-fill-volume.restant  { background: linear-gradient(90deg, #fcd34d, #f59e0b); }
+
     .volume-legend {
         display: flex;
         justify-content: space-between;
         align-items: center;
         font-size: 0.75rem;
-        color: var(--text-secondary);
-        margin-bottom: var(--space-xs);
+        color: #64748b;
+        margin-bottom: 6px;
+    }
+
+    /* Percent badge pill */
+    .planning-percent-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 52px;
+        padding: 3px 10px;
+        border-radius: 99px;
+        font-size: .82rem;
+        font-weight: 700;
+        white-space: nowrap;
     }
     
     .non-configure-card {
@@ -250,38 +274,55 @@
         display: flex;
     }
     
+    /* =============================================
+       KPI SUMMARY CARDS — Modern KLASSCI Design
+       ============================================= */
     .summary-stats {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: var(--space-lg);
-        margin-bottom: var(--space-xl);
+        gap: 16px;
+        margin-bottom: 28px;
     }
-    
+
     .summary-card {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        text-align: center;
-        box-shadow: var(--shadow-card);
-        border: 1px solid var(--border);
+        background: #fff;
+        border-radius: 14px;
+        padding: 18px 20px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 4px rgba(0,0,0,.06);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        position: relative;
+        overflow: hidden;
     }
-    
+
+    .summary-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: var(--kpi-color, #0453cb);
+        border-radius: 14px 14px 0 0;
+    }
+
     .summary-card .icon {
-        width: 50px;
-        height: 50px;
-        border-radius: var(--radius-circle);
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 auto var(--space-md);
-        font-size: 1.25rem;
-        color: white;
+        font-size: 1rem;
+        margin-bottom: 4px;
+        background: color-mix(in srgb, var(--kpi-color, #0453cb) 12%, transparent);
+        color: var(--kpi-color, #0453cb);
     }
-    
-    .summary-card.primary .icon { background: var(--primary); }
-    .summary-card.success .icon { background: var(--success); }
-    .summary-card.info .icon { background: var(--info); }
-    .summary-card.warning .icon { background: var(--warning); }
+
+    .summary-card.primary { --kpi-color: #0453cb; }
+    .summary-card.success { --kpi-color: #10b981; }
+    .summary-card.info    { --kpi-color: #5e91de; }
+    .summary-card.warning { --kpi-color: #f59e0b; }
     
     .legend-item {
         display: flex;
@@ -406,37 +447,57 @@
         gap: var(--space-xs);
     }
 
+    /* Teacher avatar chips — modern pill design */
     .teacher-chip {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        padding: var(--space-xs) var(--space-sm);
-        border-radius: var(--radius-small);
-        border: 1px solid var(--border);
-        background: #f8f9fb;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 4px 12px 4px 4px;
+        border-radius: 99px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
         text-decoration: none;
-        color: var(--text-primary);
-        transition: all 0.2s ease;
+        color: #1e293b;
+        font-size: .8rem;
+        font-weight: 500;
+        transition: box-shadow .15s, transform .15s, border-color .15s;
     }
 
     .teacher-chip:hover {
-        box-shadow: var(--shadow-hover);
+        box-shadow: 0 2px 8px rgba(0,0,0,.1);
         transform: translateY(-1px);
+        border-color: #cbd5e1;
+        color: #1e293b;
+    }
+
+    .teacher-avatar {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .72rem;
+        font-weight: 700;
+        color: #fff;
+        flex-shrink: 0;
+        background: linear-gradient(135deg, #0453cb, #5e91de);
     }
 
     .teacher-name {
         font-weight: 600;
-        font-size: 0.85rem;
+        font-size: 0.8rem;
     }
 
     .teacher-hours {
-        font-size: 0.75rem;
-        color: var(--text-secondary);
+        font-size: 0.72rem;
+        color: #64748b;
+        font-weight: 400;
     }
 
     .teacher-empty {
         font-size: 0.85rem;
-        color: var(--text-secondary);
+        color: #94a3b8;
     }
     
     @media (max-width: 768px) {
@@ -453,14 +514,24 @@
         .chart-container .chart-area {
             height: 350px;
         }
-        
-        .matiere-stats {
-            flex-direction: column;
-            gap: var(--space-md);
-        }
-        
-        .summary-stats {
+
+        .matiere-card {
             grid-template-columns: 1fr;
+        }
+
+        .matiere-card-right {
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .matiere-stats {
+            flex-wrap: wrap;
+            justify-content: flex-start;
+        }
+
+        .summary-stats {
+            grid-template-columns: repeat(2, 1fr);
         }
     }
     
@@ -743,6 +814,12 @@
                                 <div class="class-card-body">
                                     @if($classeData['matieres']->isNotEmpty())
                                         @foreach($classeData['matieres'] as $item)
+                                            @php
+                                                $pct = $item['pourcentage_realise'] ?? 0;
+                                                $levelClass = $pct >= 100 ? 'level-done' : ($pct >= 75 ? 'level-good' : ($pct >= 40 ? 'level-mid' : 'level-low'));
+                                                $badgeBg = $pct >= 100 ? '#dbeafe' : ($pct >= 75 ? '#d1fae5' : ($pct >= 40 ? '#fef3c7' : '#fee2e2'));
+                                                $badgeTxt = $pct >= 100 ? '#1d4ed8' : ($pct >= 75 ? '#065f46' : ($pct >= 40 ? '#92400e' : '#991b1b'));
+                                            @endphp
                                             <div class="matiere-card"
                                                  data-matiere-id="{{ $item['matiere']->id ?? '' }}"
                                                  data-filiere-id="{{ $classe->filiere_id ?? '' }}"
@@ -752,56 +829,24 @@
                                                  data-niveau-name="{{ $niveauName }}"
                                                  data-classe-id="{{ $classe->id }}"
                                                  data-classe-name="{{ $classe->name }}">
-                                                <div class="d-flex justify-content-between align-items-start mb-3">
-                                                    <div>
-                                                        <h6 class="matiere-nom">{{ $item['matiere']->name ?? 'Matière inconnue' }}</h6>
-                                                        <small class="text-muted">{{ $item['matiere']->code ?? 'N/A' }}</small>
-                                                    </div>
-                                                    <div class="objectif-badge {{ $item['est_configure'] ? ($item['pourcentage_realise'] >= 80 ? 'atteint' : ($item['pourcentage_realise'] >= 50 ? 'proche' : 'loin')) : 'loin' }}">
-                                                        @if($item['est_configure'])
-                                                            {{ $item['pourcentage_realise'] }}%
-                                                        @else
-                                                            Non configuré
-                                                        @endif
-                                                    </div>
-                                                </div>
 
-                                                <div class="matiere-stats">
-                                                    <div class="stat-item">
-                                                        <div class="stat-value">{{ $formatHM($item['heures_realisees']) }}</div>
-                                                        <div class="stat-label">Heures réalisées</div>
+                                                <!-- Colonne gauche : nom + infos -->
+                                                <div class="matiere-card-left">
+                                                    <div class="d-flex align-items-start gap-2 mb-2">
+                                                        <div>
+                                                            <div class="matiere-nom">{{ $item['matiere']->name ?? 'Matière inconnue' }}</div>
+                                                            <span class="matiere-code-pill">{{ $item['matiere']->code ?? 'N/A' }}</span>
+                                                        </div>
                                                     </div>
+
                                                     @if($item['est_configure'])
-                                                        <div class="stat-item">
-                                                            <div class="stat-value">{{ $formatHM($item['heures_planifiees']) }}</div>
-                                                            <div class="stat-label">Heures planifiées</div>
+                                                        <div class="volume-legend mt-1">
+                                                            <span class="text-muted" style="font-size:.8rem;">Réalisé vs Planifié ({{ ucfirst($item['periode']) }})</span>
                                                         </div>
-                                                        <div class="stat-item">
-                                                            <div class="stat-value">{{ $formatHM($item['heures_restantes']) }}</div>
-                                                            <div class="stat-label">Heures restantes</div>
+                                                        <div class="progress-bar-volume">
+                                                            <div class="progress-fill-volume {{ $item['pourcentage_realise'] > 100 ? 'overage' : $levelClass }}" style="width: {{ min($pct, 100) }}%"></div>
                                                         </div>
-                                                    @else
-                                                        <div class="stat-item">
-                                                            <div class="stat-value">{{ $item['nb_seances'] }}</div>
-                                                            <div class="stat-label">Séances</div>
-                                                        </div>
-                                                        <div class="stat-item">
-                                                            <div class="stat-value">{{ $formatHM($item['heures_realisees'] / max($item['nb_seances'], 1)) }}</div>
-                                                            <div class="stat-label">Moy. par séance</div>
-                                                        </div>
-                                                    @endif
-                                                </div>
-
-                                                @if($item['est_configure'])
-                                                    <div class="progress-bars-container">
-                                                        <div class="volume-legend">
-                                                            <span>Réalisé vs Planifié ({{ ucfirst($item['periode']) }})</span>
-                                                            <span class="fw-bold">{{ $item['pourcentage_realise'] }}% complété</span>
-                                                        </div>
-                                                        <div class="progress-bar-volume realise">
-                                                            <div class="progress-fill-volume realise {{ $item['pourcentage_realise'] > 100 ? 'overage' : '' }}" style="width: {{ min($item['pourcentage_realise'], 100) }}%"></div>
-                                                        </div>
-                                                        <div class="d-flex justify-content-between mt-1">
+                                                        <div class="d-flex justify-content-between">
                                                             <small class="text-success">✓ {{ $formatHM($item['heures_realisees']) }} réalisées</small>
                                                             @if($item['heures_restantes'] > 0)
                                                                 <small class="text-warning">⏱ {{ $formatHM($item['heures_restantes']) }} restantes</small>
@@ -809,60 +854,78 @@
                                                                 <small class="text-success">✅ Objectif atteint</small>
                                                             @endif
                                                         </div>
-                                                    </div>
-                                                @else
-                                                    <div class="non-configure-card">
-                                                        <div class="icon">
-                                                            <i class="fas fa-exclamation-triangle"></i>
+                                                    @else
+                                                        <div class="non-configure-card mt-2">
+                                                            <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
+                                                            <div class="fw-bold mb-1">Planning non configuré</div>
+                                                            @if($item['matiere'])
+                                                                <div class="text-muted mb-2" style="font-size:.8rem;">
+                                                                    Aucune planification horaire définie pour {{ $filiereName }} - {{ $niveauName }}.
+                                                                </div>
+                                                                <button type="button" class="btn btn-sm btn-warning configure-btn"
+                                                                        data-bs-toggle="modal"
+                                                                        data-bs-target="#configureModal"
+                                                                        data-matiere-id="{{ $item['matiere']->id }}"
+                                                                        data-matiere-name="{{ $item['matiere']->name }}"
+                                                                        data-matiere-code="{{ $item['matiere']->code }}"
+                                                                        data-filiere-id="{{ $classe->filiere_id }}"
+                                                                        data-niveau-id="{{ $classe->niveau_etude_id }}"
+                                                                        data-filiere-name="{{ $filiereName }}"
+                                                                        data-niveau-name="{{ $niveauName }}"
+                                                                        data-classe-id="{{ $classe->id }}"
+                                                                        data-classe-name="{{ $classe->name }}">
+                                                                    <i class="fas fa-cog me-1"></i>Configurer
+                                                                </button>
+                                                            @endif
                                                         </div>
-                                                        <div class="fw-bold mb-1">Planning non configuré</div>
-                                                        @if($item['matiere'])
-                                                            <div class="text-muted mb-2">
-                                                                Aucune planification horaire n'a été définie pour {{ $filiereName }} - {{ $niveauName }}.
+                                                    @endif
+
+                                                    <div class="teacher-list mt-3">
+                                                        @if($item['enseignants']->isNotEmpty())
+                                                            <div class="teacher-label mb-2" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;">Enseignants</div>
+                                                            <div class="teacher-chips d-flex flex-wrap gap-2">
+                                                                @foreach($item['enseignants'] as $enseignant)
+                                                                    <a href="{{ route('esbtp.enseignants.show', ['enseignant' => $enseignant['id']]) }}" class="teacher-chip">
+                                                                        <span class="teacher-avatar">{{ substr($enseignant['name'], 0, 2) }}</span>
+                                                                        <span class="teacher-name">{{ $enseignant['name'] }}</span>
+                                                                        <span class="teacher-hours">{{ $formatHM($enseignant['heures_realisees']) }}</span>
+                                                                    </a>
+                                                                @endforeach
                                                             </div>
-                                                            <button type="button" class="btn btn-sm btn-warning configure-btn"
-                                                                    data-bs-toggle="modal"
-                                                                    data-bs-target="#configureModal"
-                                                                    data-matiere-id="{{ $item['matiere']->id }}"
-                                                                    data-matiere-name="{{ $item['matiere']->name }}"
-                                                                    data-matiere-code="{{ $item['matiere']->code }}"
-                                                                    data-filiere-id="{{ $classe->filiere_id }}"
-                                                                    data-niveau-id="{{ $classe->niveau_etude_id }}"
-                                                                    data-filiere-name="{{ $filiereName }}"
-                                                                    data-niveau-name="{{ $niveauName }}"
-                                                                    data-classe-id="{{ $classe->id }}"
-                                                                    data-classe-name="{{ $classe->name }}">
-                                                                <i class="fas fa-cog me-1"></i>Configurer pour la classe
-                                                            </button>
                                                         @else
-                                                            <span class="text-muted">
-                                                                <i class="fas fa-exclamation-triangle me-1"></i>Matière non définie
-                                                            </span>
+                                                            <div class="teacher-empty">Aucun enseignant trouvé.</div>
                                                         @endif
                                                     </div>
-                                                @endif
+                                                </div>
 
-                                                <div class="teacher-list">
-                                                    @if($item['enseignants']->isNotEmpty())
-                                                        <div class="teacher-label">Enseignants</div>
-                                                        <div class="teacher-chips">
-                                                            @foreach($item['enseignants'] as $enseignant)
-                                                                <a href="{{ route('esbtp.enseignants.show', ['enseignant' => $enseignant['id']]) }}" class="teacher-chip">
-                                                                    <span class="teacher-name">{{ $enseignant['name'] }}</span>
-                                                                    <span class="teacher-hours">{{ $formatHM($enseignant['heures_realisees']) }} • {{ $enseignant['nb_seances'] }} séances</span>
-                                                                </a>
-                                                            @endforeach
+                                                <!-- Colonne droite : KPIs -->
+                                                <div class="matiere-card-right">
+                                                    @if($item['est_configure'])
+                                                        <div class="d-flex align-items-center justify-content-end mb-1">
+                                                            <span class="planning-percent-badge" style="background:{{ $badgeBg }};color:{{ $badgeTxt }};">{{ $pct }}%</span>
                                                         </div>
-                                                    @else
-                                                        <div class="teacher-empty">Aucun enseignant trouvé sur l'emploi du temps.</div>
                                                     @endif
-                                                </div>
-
-                                                <div class="progress-bar-matiere" style="margin-top: {{ $item['est_configure'] ? 'var(--space-md)' : 'var(--space-sm)' }}">
-                                                    <div class="progress-fill-matiere" style="width: {{ min($item['pourcentage'], 100) }}%"></div>
-                                                </div>
-                                                <div class="text-center mt-1">
-                                                    <small class="text-muted">{{ $item['pourcentage'] }}% du total des heures réalisées de la classe</small>
+                                                    <div class="matiere-stats justify-content-end">
+                                                        <div class="stat-item">
+                                                            <div class="stat-value">{{ $formatHM($item['heures_realisees']) }}</div>
+                                                            <div class="stat-label">Réalisées</div>
+                                                        </div>
+                                                        @if($item['est_configure'])
+                                                            <div class="stat-item">
+                                                                <div class="stat-value">{{ $formatHM($item['heures_planifiees']) }}</div>
+                                                                <div class="stat-label">Planifiées</div>
+                                                            </div>
+                                                            <div class="stat-item">
+                                                                <div class="stat-value" style="color:{{ $item['heures_restantes'] > 0 ? '#f59e0b' : '#10b981' }}">{{ $formatHM($item['heures_restantes']) }}</div>
+                                                                <div class="stat-label">Restantes</div>
+                                                            </div>
+                                                        @else
+                                                            <div class="stat-item">
+                                                                <div class="stat-value">{{ $item['nb_seances'] }}</div>
+                                                                <div class="stat-label">Séances</div>
+                                                            </div>
+                                                        @endif
+                                                    </div>
                                                 </div>
                                             </div>
                                         @endforeach
