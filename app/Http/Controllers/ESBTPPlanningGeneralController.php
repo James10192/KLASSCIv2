@@ -2096,7 +2096,14 @@ class ESBTPPlanningGeneralController extends Controller
                 "esbtp_seance_cours.matiere_id",
                 "esbtp_seance_cours.classe_id",
                 "esbtp_seance_cours.teacher_id",
-            );
+            )
+            ->whereRaw("(
+                esbtp_seance_cours.date_seance < CURDATE()
+                OR (
+                    esbtp_seance_cours.date_seance = CURDATE()
+                    AND TIME(esbtp_seance_cours.heure_fin) <= TIME(NOW())
+                )
+            )");
 
         if ($anneeId) {
             $seancesQuery->where(

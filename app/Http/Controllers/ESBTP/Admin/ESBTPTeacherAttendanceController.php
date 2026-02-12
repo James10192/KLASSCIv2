@@ -669,4 +669,55 @@ class ESBTPTeacherAttendanceController extends Controller
             ], 500);
         }
     }
+
+    public function bulkUpdateStatus(Request $request)
+    {
+        $request->validate([
+            'seance_ids' => 'required|array|min:1',
+            'seance_ids.*' => 'exists:esbtp_seance_cours,id',
+            'status' => 'required|in:present,absent',
+        ]);
+
+        $updatedCount = 0;
+        foreach ($request->seance_ids as $seanceId) {
+            $seance = ESBTPSeanceCours::find($seanceId);
+            if (!$seance) continue;
+
+            // Vérification serveur : séance passée ?
+            $seanceEstFuture = false;
+            if ($seance->date_seance) {
+                $dateSeance = Carbon::parse($seance->date_seance)->startOfDay();
+                $today = Carbon::today();
+                if ($dateSeance->gt($today)) {
+                    $seanceEstFuture = true;
+                } elseif ($dateSeance->eq($today) && $seance->heure_fin) {
+                    $seanceEstFuture = Carbon::parse($seance->heure_fin)->gt(now());
+                }
+            }
+            if ($seanceEstFuture) continue;
+
+            $teacher = $seance->teacher;
+            if (!$teacher) continue;
+
+            ESBTPTeacherAttendance::updateOrCreate(
+                [
+                    'course_id' => $seanceId,
+                    'teacher_id' => $teacher->user_id,
+                    'date' => $seance->date_seance ?? today(),
+                ],
+                [
+                    'status' => $request->status,
+                    'validated_at' => now(),
+                    'type' => 'start',
+                ]
+            );
+            $updatedCount++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "$updatedCount séance(s) mise(s) à jour avec le statut " . $request->status,
+            'updated_count' => $updatedCount,
+        ]);
+    }
 }

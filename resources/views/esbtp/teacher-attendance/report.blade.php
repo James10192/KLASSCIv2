@@ -340,6 +340,9 @@
                         <table class="table table-hover mb-0">
                             <thead class="table-light">
                                 <tr>
+                                    <th style="width: 40px;">
+                                        <input type="checkbox" id="select-all-seances" class="form-check-input" title="Sélectionner toutes les séances passées">
+                                    </th>
                                     <th>Enseignant</th>
                                     <th>Matière</th>
                                     <th>Classe</th>
@@ -454,6 +457,110 @@
     @endif
 @endforeach
 @endif
+
+<!-- Modals rapport de cours (ESBTPSessionReport) -->
+@if(isset($seances))
+@foreach($seances as $seance)
+    @if($seance->sessionReport && $seance->sessionReport->status === 'submitted')
+    @php $report = $seance->sessionReport; @endphp
+    <div class="modal fade" id="rapportModal{{ $seance->id }}" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #0453cb, #5e91de); color: white;">
+                    <div>
+                        <h5 class="modal-title mb-0">
+                            <i class="fas fa-file-alt me-2"></i>Rapport de cours
+                        </h5>
+                        <small style="opacity:0.85;">
+                            {{ $seance->matiere?->name }} · {{ $seance->emploiTemps?->classe?->name }}
+                            · {{ \Carbon\Carbon::parse($seance->date_seance)->format('d/m/Y') }}
+                        </small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex gap-2 mb-4 flex-wrap">
+                        <span class="badge bg-success"><i class="fas fa-check me-1"></i>Rapport soumis</span>
+                        <span class="badge bg-{{ $report->behavior_badge_color ?? 'secondary' }}">
+                            Comportement : {{ $report->student_behavior_label ?? $report->student_behavior }}
+                        </span>
+                        <span class="badge bg-secondary">
+                            Soumis le {{ $report->submitted_at ? \Carbon\Carbon::parse($report->submitted_at)->format('d/m/Y à H:i') : '-' }}
+                        </span>
+                    </div>
+
+                    @if($report->content_summary)
+                    <div class="mb-3 p-3 rounded-3 border-start border-4 border-primary bg-light">
+                        <h6 class="fw-bold text-primary mb-2"><i class="fas fa-book-open me-2"></i>Contenu enseigné</h6>
+                        <p class="mb-0">{{ $report->content_summary }}</p>
+                    </div>
+                    @endif
+
+                    @if($report->teaching_methods)
+                    <div class="mb-3 p-3 rounded-3 border-start border-4 border-info bg-light">
+                        <h6 class="fw-bold text-info mb-2"><i class="fas fa-chalkboard-teacher me-2"></i>Méthodes pédagogiques</h6>
+                        <p class="mb-0">{{ $report->teaching_methods }}</p>
+                    </div>
+                    @endif
+
+                    @if($report->difficulties_encountered)
+                    <div class="mb-3 p-3 rounded-3 border-start border-4 border-warning bg-light">
+                        <h6 class="fw-bold text-warning mb-2"><i class="fas fa-exclamation-triangle me-2"></i>Difficultés rencontrées</h6>
+                        <p class="mb-0">{{ $report->difficulties_encountered }}</p>
+                    </div>
+                    @endif
+
+                    @if($report->homework_assigned)
+                    <div class="mb-3 p-3 rounded-3 border-start border-4 border-success bg-light">
+                        <h6 class="fw-bold text-success mb-2"><i class="fas fa-tasks me-2"></i>Devoirs assignés</h6>
+                        <p class="mb-0">{{ $report->homework_assigned }}</p>
+                    </div>
+                    @endif
+
+                    @if($report->next_session_preparation)
+                    <div class="p-3 rounded-3 border-start border-4 border-secondary bg-light">
+                        <h6 class="fw-bold text-secondary mb-2"><i class="fas fa-forward me-2"></i>Préparation prochaine séance</h6>
+                        <p class="mb-0">{{ $report->next_session_preparation }}</p>
+                    </div>
+                    @endif
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+@endforeach
+@endif
+
+<!-- Barre d'actions groupées (bulk edit) -->
+<div id="bulk-actions-bar" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+     background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; padding: 15px 30px;
+     border-radius: 50px; box-shadow: 0 10px 40px rgba(4, 83, 203, 0.4); z-index: 1050;
+     animation: slideUp 0.3s ease-out; white-space: nowrap;">
+    <div style="display: flex; align-items: center; gap: 20px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-check-circle" style="font-size: 1.2rem;"></i>
+            <span id="selected-count" style="font-weight: 600; font-size: 1.1rem;">0</span>
+            <span style="opacity: 0.9;">séance(s) sélectionnée(s)</span>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button type="button" class="btn btn-light btn-sm" onclick="bulkMarkStatus('present')"
+                    style="padding: 8px 20px; border-radius: 25px; font-weight: 600;">
+                <i class="fas fa-check me-1"></i>Marquer Présent
+            </button>
+            <button type="button" onclick="bulkMarkStatus('absent')"
+                    style="padding: 8px 20px; border-radius: 25px; font-weight: 600; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; cursor: pointer;">
+                <i class="fas fa-user-times me-1"></i>Marquer Absent
+            </button>
+            <button type="button" class="btn btn-outline-light btn-sm" onclick="clearBulkSelection()"
+                    style="padding: 8px 20px; border-radius: 25px; font-weight: 600;">
+                <i class="fas fa-times me-1"></i>Annuler
+            </button>
+        </div>
+    </div>
+</div>
 
 <!-- Modal de génération de code -->
 <div class="modal fade" id="generateCodeModal" tabindex="-1">
@@ -860,5 +967,89 @@ tr[data-seance-id].is-loading {
         debugLog('✅ Event listeners installés');
     });
 })();
+</script>
+
+<style>
+@keyframes slideUp {
+    from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+    to   { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+</style>
+<script>
+// === BULK EDIT ===
+let selectedSeances = new Set();
+
+window.toggleSeanceSelection = function() {
+    selectedSeances.clear();
+    document.querySelectorAll('.seance-checkbox:checked').forEach(cb => {
+        selectedSeances.add(cb.value);
+    });
+    updateBulkBar();
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('select-all-seances');
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            document.querySelectorAll('.seance-checkbox').forEach(cb => {
+                cb.checked = this.checked;
+            });
+            toggleSeanceSelection();
+        });
+    }
+});
+
+function updateBulkBar() {
+    const bar = document.getElementById('bulk-actions-bar');
+    const count = document.getElementById('selected-count');
+    if (bar) {
+        if (selectedSeances.size > 0) {
+            bar.style.display = 'block';
+            if (count) count.textContent = selectedSeances.size;
+        } else {
+            bar.style.display = 'none';
+        }
+    }
+}
+
+window.clearBulkSelection = function() {
+    document.querySelectorAll('.seance-checkbox').forEach(cb => cb.checked = false);
+    const selectAll = document.getElementById('select-all-seances');
+    if (selectAll) selectAll.checked = false;
+    selectedSeances.clear();
+    updateBulkBar();
+};
+
+window.bulkMarkStatus = function(status) {
+    if (selectedSeances.size === 0) return;
+
+    const ids = Array.from(selectedSeances);
+    const label = status === 'present' ? 'présent' : 'absent';
+
+    if (!confirm(`Marquer ${ids.length} séance(s) comme ${label} ?`)) return;
+
+    fetch('{{ route("esbtp.teacher-attendance.bulk-update-status") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ seance_ids: ids, status: status })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            if (typeof showNotification === 'function') {
+                showNotification(data.message, 'success');
+            }
+            // Rafraîchir chaque ligne
+            ids.forEach(id => window.refreshSeanceLigne && window.refreshSeanceLigne(id, status));
+            clearBulkSelection();
+        } else {
+            alert(data.message || 'Erreur lors de la mise à jour');
+        }
+    })
+    .catch(() => alert('Erreur réseau. Veuillez réessayer.'));
+};
 </script>
 @endpush

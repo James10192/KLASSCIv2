@@ -30,8 +30,28 @@
 
     $hasAttendance = $attendance !== null;
     $attendanceStatus = $hasAttendance ? $attendance->status : 'not_signed';
+
+    // Détection si la séance n'est pas encore passée
+    $seanceEstFuture = false;
+    if ($seance->date_seance) {
+        $dateSeance = \Carbon\Carbon::parse($seance->date_seance)->startOfDay();
+        if ($dateSeance->gt($today)) {
+            // Date future
+            $seanceEstFuture = true;
+        } elseif ($dateSeance->eq($today) && $seance->heure_fin) {
+            // Même jour mais heure pas encore passée
+            $heureFin = \Carbon\Carbon::parse($seance->heure_fin);
+            $seanceEstFuture = $heureFin->gt(now());
+        }
+    }
 @endphp
-<tr data-seance-id="{{ $seance->id }}">
+<tr data-seance-id="{{ $seance->id }}" class="{{ $seanceEstFuture ? 'table-light opacity-75' : '' }}">
+    <td>
+        @if(!$seanceEstFuture)
+            <input type="checkbox" class="seance-checkbox form-check-input"
+                   value="{{ $seance->id }}" onchange="toggleSeanceSelection()">
+        @endif
+    </td>
     <td>
         <div class="d-flex align-items-center">
             <div class="user-avatar me-2">
@@ -68,6 +88,11 @@
             <div><i class="fas fa-calendar text-muted me-1"></i>
                 {{ $seance->getDateCompleteFormattee() }}
             </div>
+            @if($seanceEstFuture)
+                <span class="badge mt-1" style="background: linear-gradient(135deg, #0453cb, #5e91de); color: white;">
+                    <i class="fas fa-clock me-1"></i>À venir
+                </span>
+            @endif
         </div>
     </td>
     <td>
@@ -97,7 +122,11 @@
         <div class="seance-actions-wrapper">
             <!-- Badges de statut -->
             <div class="seance-status-badges">
-                @if($attendanceStatus === 'present')
+                @if($seanceEstFuture)
+                    <span class="badge bg-light text-muted border">
+                        <i class="fas fa-hourglass-half me-1"></i>En attente
+                    </span>
+                @elseif($attendanceStatus === 'present')
                     <span class="badge bg-success">
                         <i class="fas fa-check me-1"></i>Présent
                     </span>
@@ -120,8 +149,8 @@
                 @endif
             </div>
 
+            @if(!$seanceEstFuture)
             <!-- Boutons d'action rapide (pour coordinateur/admin) -->
-            {{-- DEBUG: Temporairement sans restriction de rôle --}}
             <div class="seance-quick-actions d-flex gap-1 mt-1">
                 @if($attendanceStatus !== 'present')
                 <button type="button"
@@ -145,6 +174,7 @@
                 </button>
                 @endif
             </div>
+            @endif
 
             <!-- Spinner de chargement -->
             <div class="seance-actions-spinner d-none">
@@ -156,12 +186,20 @@
     </td>
     <td>
         <div class="btn-group btn-group-sm">
-            @if($hasAttendance)
+            @if($hasAttendance && !$seanceEstFuture)
                 <button type="button" class="btn btn-outline-primary btn-sm"
                         data-bs-toggle="modal"
                         data-bs-target="#detailModal{{ $seance->id }}"
                         title="Voir détails émargement">
                     <i class="fas fa-eye"></i>
+                </button>
+            @endif
+            @if(!$seanceEstFuture && isset($seance->sessionReport) && $seance->sessionReport && $seance->sessionReport->status === 'submitted')
+                <button type="button" class="btn btn-outline-warning btn-sm"
+                        data-bs-toggle="modal"
+                        data-bs-target="#rapportModal{{ $seance->id }}"
+                        title="Voir le rapport de cours">
+                    <i class="fas fa-file-alt"></i>
                 </button>
             @endif
             <a href="{{ route('esbtp.seances-cours.show', $seance->id) }}"

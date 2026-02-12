@@ -1556,6 +1556,9 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth'])->group(function () 
     Route::get('teacher-attendance/seance/{seance}/refresh-ligne', [ESBTPTeacherAttendanceController::class, 'refreshSeanceLigne'])
         ->name('esbtp.teacher-attendance.refresh-ligne')
         ->middleware(['auth', 'role:superAdmin|coordinateur']);
+    Route::post('teacher-attendance/bulk-update-status', [ESBTPTeacherAttendanceController::class, 'bulkUpdateStatus'])
+        ->name('esbtp.teacher-attendance.bulk-update-status')
+        ->middleware(['auth', 'role:superAdmin|coordinateur']);
 
     // ... autres routes ...
     Route::resource('payment-categories', \App\Http\Controllers\ESBTP\PaymentCategoryController::class);

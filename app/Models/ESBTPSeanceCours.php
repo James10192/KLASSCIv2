@@ -166,6 +166,14 @@ class ESBTPSeanceCours extends Model
     }
 
     /**
+     * Relation vers le rapport de cours soumis par le professeur.
+     */
+    public function sessionReport()
+    {
+        return $this->hasOne(\App\Models\ESBTPSessionReport::class, 'seance_cours_id');
+    }
+
+    /**
      * Helper methods for session types
      */
     public function isCourse()

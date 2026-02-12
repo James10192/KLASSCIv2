@@ -709,7 +709,14 @@ class ESBTPEnseignantController extends Controller
             ->groupBy(
                 "esbtp_seance_cours.matiere_id",
                 "esbtp_seance_cours.classe_id",
-            );
+            )
+            ->whereRaw("(
+                esbtp_seance_cours.date_seance < CURDATE()
+                OR (
+                    esbtp_seance_cours.date_seance = CURDATE()
+                    AND TIME(esbtp_seance_cours.heure_fin) <= TIME(NOW())
+                )
+            )");
 
         if ($periode === "semestre1") {
             $seancesQuery->whereIn("esbtp_emploi_temps.semestre", [

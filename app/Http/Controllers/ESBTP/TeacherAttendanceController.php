@@ -422,7 +422,8 @@ class TeacherAttendanceController extends Controller
             'emploiTemps.classe:id,name,filiere_id,niveau_etude_id',
             'emploiTemps.classe.filiere:id,name',
             'emploiTemps.classe.niveau:id,name',
-            'teacherAttendances'
+            'teacherAttendances',
+            'sessionReport'
         ])
         ->where('type', 'course') // Filtrer seulement les cours
         ->whereHas('emploiTemps', function($q) use ($anneeEnCours, $request) {
