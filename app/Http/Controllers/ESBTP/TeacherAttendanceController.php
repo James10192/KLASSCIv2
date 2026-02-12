@@ -552,7 +552,8 @@ class TeacherAttendanceController extends Controller
             'emploiTemps.classe:id,name,filiere_id,niveau_etude_id',
             'emploiTemps.classe.filiere:id,name',
             'emploiTemps.classe.niveau:id,name',
-            'teacherAttendances'
+            'teacherAttendances',
+            'sessionReport'
         ])
             ->where('type', 'course')
             ->where('teacher_id', $teacher->id)
