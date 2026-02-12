@@ -178,7 +178,7 @@ class ESBTPSeanceCoursController extends Controller
     {
         try {
             // Load relationships
-            $seancesCour->load(['emploiTemps.classe', 'matiere', 'teacher.user']);
+            $seancesCour->load(['emploiTemps.classe', 'matiere', 'teacher.user', 'sessionReport']);
 
             return view('esbtp.seances-cours.show', compact('seancesCour'));
         } catch (\Exception $e) {
