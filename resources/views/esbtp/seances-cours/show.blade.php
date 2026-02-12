@@ -108,7 +108,7 @@
     .seance-status-pill.late     { background: rgba(245,158,11,.22); border:1px solid rgba(245,158,11,.4); }
     .seance-status-pill.not_signed { background: rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); }
 
-    /* Quick action btns in hero */
+    /* Quick action btns in hero — rapport (pill) vs modifier (icon-only) */
     .hero-action-btn {
         background: rgba(255,255,255,.15);
         border: 1px solid rgba(255,255,255,.3);
@@ -121,8 +121,28 @@
         transition: background .15s;
     }
     .hero-action-btn:hover { background: rgba(255,255,255,.28); }
-    .hero-action-btn.danger { background: rgba(239,68,68,.28); border-color: rgba(239,68,68,.5); }
-    .hero-action-btn.danger:hover { background: rgba(239,68,68,.45); }
+
+    /* Séparateur "Modifier :" dans la zone d'action */
+    .hero-edit-label {
+        font-size: .68rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: .07em; opacity: .5; white-space: nowrap;
+    }
+    /* Boutons icon-only — clairement distincts du label statut */
+    .hero-icon-btn {
+        width: 34px; height: 34px;
+        border-radius: 9px;
+        background: rgba(255,255,255,.1);
+        border: 1px solid rgba(255,255,255,.2);
+        color: white;
+        display: flex; align-items: center; justify-content: center;
+        font-size: .88rem;
+        cursor: pointer;
+        transition: background .15s, transform .1s;
+        flex-shrink: 0;
+    }
+    .hero-icon-btn:hover { background: rgba(255,255,255,.25); border-color: rgba(255,255,255,.4); transform: scale(1.1); }
+    .hero-icon-btn.success-btn:hover { background: rgba(16,185,129,.35); border-color: rgba(16,185,129,.6); }
+    .hero-icon-btn.danger-btn:hover  { background: rgba(239,68,68,.35);  border-color: rgba(239,68,68,.6); }
 
     /* ── Workflow card ─────────────────────────────────── */
     .workflow-step {
@@ -307,7 +327,9 @@
 
                 {{-- Statut enseignant --}}
                 <div class="d-flex flex-column align-items-end gap-2">
-                    <div class="d-flex align-items-center gap-2">
+
+                    {{-- Ligne 1 : statut (information) + bouton rapport --}}
+                    <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
                         <span class="seance-status-pill {{ $sl['pill'] }}" id="teacher-status-badge">
                             <i class="fas fa-{{ $sl['icon'] }}" style="font-size:.8rem;"></i>{{ $sl['label'] }}
                         </span>
@@ -322,27 +344,28 @@
                         @endif
                     </div>
 
-                    {{-- Boutons action rapide (seulement si séance passée) --}}
+                    {{-- Ligne 2 : boutons icon-only pour modifier le statut --}}
                     @if(!$seanceEstFuture)
-                    <div class="d-flex gap-2" id="teacher-quick-actions">
+                    <div class="d-flex align-items-center gap-2" id="teacher-quick-actions">
+                        <span class="hero-edit-label">Modifier :</span>
                         @if($teacherGlobalStatus !== 'present')
                             <button type="button"
-                                    class="hero-action-btn mark-teacher-status-btn"
+                                    class="hero-icon-btn success-btn mark-teacher-status-btn"
                                     data-seance-id="{{ $seancesCour->id }}"
                                     data-status="present"
                                     data-type="start"
                                     title="Marquer présent">
-                                <i class="fas fa-check me-1"></i>Présent
+                                <i class="fas fa-check"></i>
                             </button>
                         @endif
                         @if($teacherGlobalStatus !== 'absent')
                             <button type="button"
-                                    class="hero-action-btn danger mark-teacher-status-btn"
+                                    class="hero-icon-btn danger-btn mark-teacher-status-btn"
                                     data-seance-id="{{ $seancesCour->id }}"
                                     data-status="absent"
                                     data-type="start"
                                     title="Marquer absent">
-                                <i class="fas fa-user-times me-1"></i>Absent
+                                <i class="fas fa-user-times"></i>
                             </button>
                         @endif
                     </div>
@@ -768,16 +791,17 @@
         const wrap = document.getElementById('teacher-quick-actions');
         if (!wrap) return;
         const id = '{{ $seancesCour->id }}';
-        let html = '';
+        // Séparateur "Modifier :" + boutons icon-only (distincts du label statut)
+        let html = '<span class="hero-edit-label">Modifier :</span>';
         if (status !== 'present') {
-            html += `<button type="button" class="hero-action-btn mark-teacher-status-btn"
+            html += `<button type="button" class="hero-icon-btn success-btn mark-teacher-status-btn"
                 data-seance-id="${id}" data-status="present" data-type="start" title="Marquer présent">
-                <i class="fas fa-check me-1"></i>Présent</button>`;
+                <i class="fas fa-check"></i></button>`;
         }
         if (status !== 'absent') {
-            html += `<button type="button" class="hero-action-btn danger mark-teacher-status-btn"
+            html += `<button type="button" class="hero-icon-btn danger-btn mark-teacher-status-btn"
                 data-seance-id="${id}" data-status="absent" data-type="start" title="Marquer absent">
-                <i class="fas fa-user-times me-1"></i>Absent</button>`;
+                <i class="fas fa-user-times"></i></button>`;
         }
         wrap.innerHTML = html;
     }

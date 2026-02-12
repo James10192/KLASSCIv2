@@ -414,14 +414,29 @@
 .detail-modal-status-pill.late       { background:rgba(245,158,11,.22); border:1px solid rgba(245,158,11,.45); }
 .detail-modal-status-pill.absent     { background:rgba(239,68,68,.22);  border:1px solid rgba(239,68,68,.45); }
 .detail-modal-status-pill.not_signed { background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3); }
-.detail-modal-action-btn {
-    background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3);
-    color: white; border-radius: 99px; padding: 5px 14px;
-    font-size: .78rem; font-weight: 600; cursor: pointer; transition: background .15s;
+/* Séparateur "Modifier :" */
+.detail-modal-edit-label {
+    font-size: .68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; opacity: .55; white-space: nowrap;
 }
-.detail-modal-action-btn:hover { background: rgba(255,255,255,.28); }
-.detail-modal-action-btn.danger { background: rgba(239,68,68,.25); border-color: rgba(239,68,68,.5); }
-.detail-modal-action-btn.danger:hover { background: rgba(239,68,68,.4); }
+/* Boutons icône-only pour les actions — clairement différents du label statut */
+.detail-modal-action-btn {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.2);
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .85rem;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+    flex-shrink: 0;
+}
+.detail-modal-action-btn:hover { background: rgba(255,255,255,.25); border-color: rgba(255,255,255,.4); transform: scale(1.08); }
+.detail-modal-action-btn.success-btn { }
+.detail-modal-action-btn.success-btn:hover { background: rgba(16,185,129,.35); border-color: rgba(16,185,129,.6); }
+.detail-modal-action-btn.danger-btn { }
+.detail-modal-action-btn.danger-btn:hover { background: rgba(239,68,68,.35); border-color: rgba(239,68,68,.6); }
 
 .detail-info-grid {
     display: grid; grid-template-columns: 1fr 1fr;
@@ -500,30 +515,34 @@
                         </div>
                     </div>
 
-                    {{-- Statut + boutons action --}}
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                    {{-- Statut (label état) + boutons action (icônes discrètes) --}}
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+
+                        {{-- Statut courant : grande pill colorée = information --}}
                         <span class="detail-modal-status-pill {{ $dsm['cls'] }}" id="detailStatusBadge{{ $seance->id }}">
                             <i class="fas fa-{{ $dsm['icon'] }}" style="font-size:.78rem;"></i>
                             <span>{{ $dsm['label'] }}</span>
                         </span>
 
-                        {{-- Actions rapides dans le modal --}}
-                        <div class="d-flex gap-2" id="detailModalActions{{ $seance->id }}">
+                        {{-- Séparateur + boutons icon-only = actions --}}
+                        <div class="d-flex align-items-center gap-2" id="detailModalActions{{ $seance->id }}">
+                            <span class="detail-modal-edit-label">Modifier :</span>
                             @if($detailStatus !== 'present')
-                            <button type="button" class="detail-modal-action-btn modal-mark-btn"
+                            <button type="button" class="detail-modal-action-btn success-btn modal-mark-btn"
                                     data-seance-id="{{ $seance->id }}" data-status="present" data-type="start"
                                     title="Marquer présent">
-                                <i class="fas fa-check me-1"></i>Présent
+                                <i class="fas fa-check"></i>
                             </button>
                             @endif
                             @if($detailStatus !== 'absent')
-                            <button type="button" class="detail-modal-action-btn danger modal-mark-btn"
+                            <button type="button" class="detail-modal-action-btn danger-btn modal-mark-btn"
                                     data-seance-id="{{ $seance->id }}" data-status="absent" data-type="start"
                                     title="Marquer absent">
-                                <i class="fas fa-user-times me-1"></i>Absent
+                                <i class="fas fa-user-times"></i>
                             </button>
                             @endif
                         </div>
+
                         <div class="detail-modal-spinner d-none" id="detailSpinner{{ $seance->id }}">
                             <div class="spinner-border spinner-border-sm text-white" role="status"></div>
                         </div>
@@ -1227,19 +1246,19 @@ window.updateDetailModalStatus = function(seanceId, status) {
         badge.innerHTML = `<i class="fas fa-${m.icon}" style="font-size:.78rem;"></i><span>${m.label}</span>`;
     }
 
-    // Reconstruire les boutons d'action
+    // Reconstruire les boutons d'action (icon-only, séparés visuellement du label statut)
     const actionsDiv = document.getElementById('detailModalActions' + seanceId);
     if (actionsDiv) {
-        let html = '';
+        let html = '<span class="detail-modal-edit-label">Modifier :</span>';
         if (status !== 'present') {
-            html += `<button type="button" class="detail-modal-action-btn modal-mark-btn"
+            html += `<button type="button" class="detail-modal-action-btn success-btn modal-mark-btn"
                 data-seance-id="${seanceId}" data-status="present" data-type="start" title="Marquer présent">
-                <i class="fas fa-check me-1"></i>Présent</button>`;
+                <i class="fas fa-check"></i></button>`;
         }
         if (status !== 'absent') {
-            html += `<button type="button" class="detail-modal-action-btn danger modal-mark-btn"
+            html += `<button type="button" class="detail-modal-action-btn danger-btn modal-mark-btn"
                 data-seance-id="${seanceId}" data-status="absent" data-type="start" title="Marquer absent">
-                <i class="fas fa-user-times me-1"></i>Absent</button>`;
+                <i class="fas fa-user-times"></i></button>`;
         }
         actionsDiv.innerHTML = html;
         actionsDiv.classList.remove('d-none');
