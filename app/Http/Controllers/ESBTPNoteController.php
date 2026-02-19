@@ -10,6 +10,7 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPNote;
+use App\Models\User;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -241,7 +242,12 @@ class ESBTPNoteController extends Controller
             $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
             $allClasses = $classes;
 
-            return view('esbtp.notes.index', compact('notes', 'classes', 'allClasses', 'matieres', 'anneeAcademique', 'filieres', 'niveaux', 'classStatsById', 'semesterWeights'));
+            $evaluationTypes = ESBTPEvaluation::getTypes();
+            $enseignants = Auth::user()->hasRole(['teacher', 'enseignant'])
+                ? collect()
+                : User::whereHas('roles', fn ($q) => $q->whereIn('name', ['teacher', 'enseignant']))->orderBy('name')->get();
+
+            return view('esbtp.notes.index', compact('notes', 'classes', 'allClasses', 'matieres', 'anneeAcademique', 'filieres', 'niveaux', 'classStatsById', 'semesterWeights', 'evaluationTypes', 'enseignants'));
         }
 
         // Get filter options for dropdowns (if needed)
@@ -251,6 +257,11 @@ class ESBTPNoteController extends Controller
         $filieres = ESBTPFiliere::orderBy('name')->get();
         $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
 
+        $evaluationTypes = ESBTPEvaluation::getTypes();
+        $enseignants = Auth::user()->hasRole(['teacher', 'enseignant'])
+            ? collect()
+            : User::whereHas('roles', fn ($q) => $q->whereIn('name', ['teacher', 'enseignant']))->orderBy('name')->get();
+
         return view('esbtp.notes.index', compact(
             'classes',
             'allClasses',
@@ -259,7 +270,9 @@ class ESBTPNoteController extends Controller
             'filieres',
             'niveaux',
             'classStatsById',
-            'semesterWeights'
+            'semesterWeights',
+            'evaluationTypes',
+            'enseignants'
         ));
     }
 
