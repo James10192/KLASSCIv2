@@ -547,6 +547,16 @@ $(document).ready(function() {
         }
     });
 
+    // Nettoyage backdrop après fermeture du modal principal notes
+    $('#classSelectionModal').on('hidden.bs.modal', function() {
+        setTimeout(function() {
+            document.querySelectorAll('.modal-backdrop').forEach(function(b) { b.remove(); });
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+        }, 150);
+    });
+
     $(document).on('click', '#exportBlankPdfBtn.disabled', function(event) {
         event.preventDefault();
     });
@@ -879,10 +889,16 @@ function createEvaluation() {
 // Fonction pour sauvegarder une note
 function saveNote(studentId, evaluationId, noteValue) {
     const isAbsent = $(`#absent-${studentId}-${evaluationId}`).is(':checked');
-    
+
+    // Si non absent et note vide, ne pas envoyer (attendre que l'utilisateur saisisse une note)
+    if (!isAbsent && (noteValue === '' || noteValue === null || noteValue === undefined)) {
+        return;
+    }
+
     $.ajax({
-        url: '{{ route("esbtp.notes.store") }}',
+        url: '{{ route("esbtp.notes.save-ajax") }}',
         method: 'POST',
+        dataType: 'json',
         data: {
             _token: '{{ csrf_token() }}',
             etudiant_id: studentId,
@@ -891,21 +907,30 @@ function saveNote(studentId, evaluationId, noteValue) {
             is_absent: isAbsent ? 'on' : ''
         },
         success: function(response) {
+            if (!response.success) {
+                alert(response.message || 'Erreur lors de la sauvegarde de la note.');
+                return;
+            }
             // Animation de succès
             triggerRowHighlight(studentId);
-            
+
             // Mettre à jour les données locales
             if (!notesData[studentId]) notesData[studentId] = {};
             notesData[studentId][evaluationId] = isAbsent ? 0 : noteValue;
             notesData[studentId][evaluationId + '_absent'] = isAbsent;
-            
+
             // Recalculer les moyennes
             calculateStudentAverage(studentId);
             calculateClassAverages();
         },
         error: function(xhr) {
-            console.error('Erreur lors de la sauvegarde:', xhr);
-            alert('Erreur lors de la sauvegarde de la note.');
+            console.error('Erreur lors de la sauvegarde:', xhr.responseJSON || xhr);
+            const msg = (xhr.responseJSON && xhr.responseJSON.message)
+                ? xhr.responseJSON.message
+                : (xhr.responseJSON && xhr.responseJSON.errors)
+                    ? Object.values(xhr.responseJSON.errors).flat().join('\n')
+                    : 'Erreur lors de la sauvegarde de la note.';
+            alert(msg);
         }
     });
 }
@@ -913,15 +938,16 @@ function saveNote(studentId, evaluationId, noteValue) {
 // Fonction pour basculer l'état d'absence
 function toggleAbsence(studentId, evaluationId, isAbsent) {
     const input = $(`input[data-student-id="${studentId}"][data-eval-id="${evaluationId}"]`);
-    
+
     if (isAbsent) {
+        // Cochage : désactiver l'input et sauvegarder l'absence
         input.val('0').prop('disabled', true);
+        saveNote(studentId, evaluationId, 0);
     } else {
-        input.val('').prop('disabled', false);
+        // Décochage : réactiver l'input et le vider
+        // NE PAS sauvegarder immédiatement : attendre que l'utilisateur saisisse une note
+        input.val('').prop('disabled', false).attr('placeholder', 'Note...').focus();
     }
-    
-    // Sauvegarder automatiquement
-    saveNote(studentId, evaluationId, input.val());
 }
 
 // Fonction pour calculer toutes les moyennes
