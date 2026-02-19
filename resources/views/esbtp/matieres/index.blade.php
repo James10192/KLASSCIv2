@@ -433,49 +433,505 @@ tr[data-matiere-id] {
                     @csrf
                     <input type="hidden" id="modal-matiere-id" name="matiere_id">
                     
-                    <div class="card-moderne">
-                        <div class="main-card-header">
-                            <h3 class="main-card-title">
-                                <i class="fas fa-graduation-cap"></i>Filières &amp; Niveaux
-                            </h3>
-                            <p class="main-card-subtitle">Pour chaque filière, cochez les niveaux concernés</p>
-                        </div>
-                        <div class="main-card-body">
-                            <div id="filieres-niveaux-list">
-                                @foreach($filieres as $filiere)
-                                <div class="filiere-block mb-3 p-3" style="border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-light);">
-                                    <div class="d-flex align-items-center justify-content-between mb-2">
-                                        <div>
-                                            <span class="font-semibold color-dark">{{ $filiere->name }}</span>
-                                            @if($filiere->code)
-                                                <span class="badge secondary ms-2">{{ $filiere->code }}</span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                    <div class="d-flex flex-wrap gap-3">
-                                        @foreach($niveaux as $niveau)
-                                        <div class="form-check">
-                                            <input class="form-check-input niveau-filiere-checkbox"
-                                                   type="checkbox"
-                                                   id="liaison-{{ $filiere->id }}-{{ $niveau->id }}"
-                                                   data-filiere-id="{{ $filiere->id }}"
-                                                   data-filiere-label="{{ $filiere->name }}"
-                                                   data-niveau-id="{{ $niveau->id }}"
-                                                   data-niveau-label="{{ $niveau->name }}">
-                                            <label class="form-check-label" for="liaison-{{ $filiere->id }}-{{ $niveau->id }}" style="cursor: pointer;">
-                                                {{ $niveau->name }}
-                                                @if($niveau->code)
-                                                    <span class="badge secondary ms-1">{{ $niveau->code }}</span>
-                                                @endif
-                                            </label>
-                                        </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                                @endforeach
+                    {{-- ═══════════════════════════════════════════════════
+                         SECTION FILIÈRES & NIVEAUX — Design Selectable Cards
+                         ═══════════════════════════════════════════════════ --}}
+                    <style>
+                        /* ── Variables locales de la section ── */
+                        .fn-section {
+                            --fn-primary: #0453cb;
+                            --fn-primary-light: #e8f0fd;
+                            --fn-primary-mid: #c2d5fa;
+                            --fn-success: #059669;
+                            --fn-success-light: #d1fae5;
+                            --fn-text-dark: #1e293b;
+                            --fn-text-muted: #64748b;
+                            --fn-border: #e2e8f0;
+                            --fn-bg-card: #ffffff;
+                            --fn-bg-section: #f1f5f9;
+                            --fn-radius-card: 14px;
+                            --fn-radius-pill: 22px;
+                            --fn-shadow-card: 0 2px 8px rgba(4, 83, 203, 0.08), 0 0 0 1px rgba(4, 83, 203, 0.06);
+                            --fn-shadow-card-active: 0 4px 20px rgba(4, 83, 203, 0.18), 0 0 0 2px rgba(4, 83, 203, 0.22);
+                            --fn-transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+                        }
+
+                        /* ── Wrapper principal ── */
+                        .fn-section {
+                            background: var(--fn-bg-section);
+                            border-radius: var(--fn-radius-card);
+                            padding: 1.5rem;
+                            border: 1px solid var(--fn-border);
+                        }
+
+                        /* ── Header de section ── */
+                        .fn-section-header {
+                            display: flex;
+                            align-items: center;
+                            gap: 0.75rem;
+                            margin-bottom: 1.25rem;
+                            padding-bottom: 1rem;
+                            border-bottom: 1px solid var(--fn-border);
+                        }
+                        .fn-section-icon {
+                            width: 38px;
+                            height: 38px;
+                            background: linear-gradient(135deg, #0453cb 0%, #1a6ee8 100%);
+                            border-radius: 10px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            flex-shrink: 0;
+                            box-shadow: 0 3px 10px rgba(4, 83, 203, 0.28);
+                        }
+                        .fn-section-icon i { color: #fff; font-size: 0.9rem; }
+                        .fn-section-title {
+                            font-size: 0.95rem;
+                            font-weight: 700;
+                            color: var(--fn-text-dark);
+                            margin: 0;
+                        }
+                        .fn-section-subtitle {
+                            font-size: 0.78rem;
+                            color: var(--fn-text-muted);
+                            margin: 0;
+                        }
+                        .fn-counter {
+                            margin-left: auto;
+                            background: var(--fn-primary-light);
+                            color: var(--fn-primary);
+                            font-size: 0.72rem;
+                            font-weight: 700;
+                            padding: 0.2rem 0.65rem;
+                            border-radius: 20px;
+                            border: 1px solid var(--fn-primary-mid);
+                            white-space: nowrap;
+                            transition: var(--fn-transition);
+                        }
+
+                        /* ── Grille des cartes filières ── */
+                        .fn-grid {
+                            display: grid;
+                            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                            gap: 1rem;
+                        }
+
+                        /* ── Carte filière ── */
+                        .fn-filiere-card {
+                            background: var(--fn-bg-card);
+                            border-radius: var(--fn-radius-card);
+                            box-shadow: var(--fn-shadow-card);
+                            overflow: hidden;
+                            transition: var(--fn-transition);
+                            position: relative;
+                        }
+                        .fn-filiere-card:hover {
+                            box-shadow: 0 6px 24px rgba(4, 83, 203, 0.14), 0 0 0 1.5px rgba(4, 83, 203, 0.14);
+                            transform: translateY(-1px);
+                        }
+                        .fn-filiere-card.has-selection {
+                            box-shadow: var(--fn-shadow-card-active);
+                        }
+
+                        /* ── Header de carte filière ── */
+                        .fn-filiere-header {
+                            padding: 0.85rem 1rem;
+                            background: linear-gradient(135deg, #f8faff 0%, #eef3ff 100%);
+                            border-bottom: 1px solid var(--fn-primary-mid);
+                            display: flex;
+                            align-items: center;
+                            gap: 0.6rem;
+                        }
+                        .fn-filiere-dot {
+                            width: 8px;
+                            height: 8px;
+                            border-radius: 50%;
+                            background: var(--fn-primary);
+                            flex-shrink: 0;
+                            transition: var(--fn-transition);
+                        }
+                        .fn-filiere-card.has-selection .fn-filiere-dot {
+                            background: var(--fn-success);
+                            box-shadow: 0 0 0 3px var(--fn-success-light);
+                        }
+                        .fn-filiere-name {
+                            font-size: 0.82rem;
+                            font-weight: 700;
+                            color: var(--fn-text-dark);
+                            flex: 1;
+                            min-width: 0;
+                            white-space: nowrap;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                        }
+                        .fn-filiere-code {
+                            font-size: 0.67rem;
+                            font-weight: 700;
+                            color: var(--fn-primary);
+                            background: var(--fn-primary-light);
+                            border: 1px solid var(--fn-primary-mid);
+                            border-radius: 6px;
+                            padding: 0.15rem 0.45rem;
+                            letter-spacing: 0.03em;
+                            flex-shrink: 0;
+                        }
+                        .fn-filiere-sel-badge {
+                            font-size: 0.65rem;
+                            font-weight: 600;
+                            color: var(--fn-success);
+                            background: var(--fn-success-light);
+                            border-radius: 10px;
+                            padding: 0.15rem 0.4rem;
+                            display: none;
+                            flex-shrink: 0;
+                        }
+                        .fn-filiere-card.has-selection .fn-filiere-sel-badge { display: inline; }
+
+                        /* ── Action "Tout sélectionner" par filière ── */
+                        .fn-filiere-actions {
+                            padding: 0.5rem 1rem 0;
+                            display: flex;
+                            justify-content: flex-end;
+                        }
+                        .fn-select-all-btn {
+                            font-size: 0.7rem;
+                            color: var(--fn-text-muted);
+                            cursor: pointer;
+                            background: none;
+                            border: none;
+                            padding: 0.15rem 0.4rem;
+                            border-radius: 6px;
+                            transition: var(--fn-transition);
+                            font-weight: 500;
+                            display: flex;
+                            align-items: center;
+                            gap: 0.3rem;
+                        }
+                        .fn-select-all-btn:hover {
+                            color: var(--fn-primary);
+                            background: var(--fn-primary-light);
+                        }
+                        .fn-select-all-btn.all-selected {
+                            color: var(--fn-success);
+                        }
+
+                        /* ── Zone des pills de niveaux ── */
+                        .fn-niveaux-body {
+                            padding: 0.75rem 1rem 1rem;
+                            display: flex;
+                            flex-wrap: wrap;
+                            gap: 0.5rem;
+                        }
+
+                        /* ── Checkbox caché — la PILL est le vrai contrôle ── */
+                        .fn-niveau-checkbox {
+                            position: absolute;
+                            opacity: 0;
+                            width: 0;
+                            height: 0;
+                            pointer-events: none;
+                        }
+
+                        /* ── Pill de niveau (label cliquable) ── */
+                        .fn-niveau-pill {
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 0.35rem;
+                            padding: 0.35rem 0.75rem;
+                            border-radius: var(--fn-radius-pill);
+                            border: 1.5px solid var(--fn-border);
+                            background: #f8fafc;
+                            color: var(--fn-text-muted);
+                            font-size: 0.775rem;
+                            font-weight: 600;
+                            cursor: pointer;
+                            user-select: none;
+                            transition: var(--fn-transition);
+                            position: relative;
+                            white-space: nowrap;
+                        }
+                        .fn-niveau-pill .fn-pill-check {
+                            width: 14px;
+                            height: 14px;
+                            border-radius: 50%;
+                            border: 1.5px solid currentColor;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            flex-shrink: 0;
+                            transition: var(--fn-transition);
+                            font-size: 0.6rem;
+                        }
+                        .fn-niveau-pill .fn-pill-check i {
+                            opacity: 0;
+                            transform: scale(0.4);
+                            transition: var(--fn-transition);
+                        }
+                        .fn-niveau-pill .fn-pill-code {
+                            font-size: 0.64rem;
+                            opacity: 0.65;
+                            font-weight: 500;
+                        }
+
+                        /* ── Hover state ── */
+                        .fn-niveau-pill:hover {
+                            border-color: var(--fn-primary);
+                            color: var(--fn-primary);
+                            background: var(--fn-primary-light);
+                            transform: translateY(-1px);
+                            box-shadow: 0 2px 8px rgba(4, 83, 203, 0.12);
+                        }
+
+                        /* ── Checked state (via JS, classe .active) ── */
+                        .fn-niveau-pill.active {
+                            background: linear-gradient(135deg, #0453cb 0%, #1a6ee8 100%);
+                            border-color: #0453cb;
+                            color: #ffffff;
+                            box-shadow: 0 3px 12px rgba(4, 83, 203, 0.32);
+                            transform: translateY(-1px);
+                        }
+                        .fn-niveau-pill.active .fn-pill-check {
+                            border-color: rgba(255,255,255,0.7);
+                            background: rgba(255,255,255,0.25);
+                        }
+                        .fn-niveau-pill.active .fn-pill-check i {
+                            opacity: 1;
+                            transform: scale(1);
+                            color: #ffffff;
+                        }
+                        .fn-niveau-pill.active:hover {
+                            background: linear-gradient(135deg, #0342a8 0%, #1058cc 100%);
+                            box-shadow: 0 4px 16px rgba(4, 83, 203, 0.4);
+                            color: #ffffff;
+                        }
+                        .fn-niveau-pill.active .fn-pill-code {
+                            opacity: 0.8;
+                        }
+
+                        /* ── État vide (aucun niveau) ── */
+                        .fn-empty-niveaux {
+                            width: 100%;
+                            text-align: center;
+                            padding: 1rem 0.5rem;
+                            color: var(--fn-text-muted);
+                            font-size: 0.78rem;
+                        }
+
+                        /* ── Responsive ── */
+                        @media (max-width: 600px) {
+                            .fn-grid { grid-template-columns: 1fr; }
+                        }
+
+                        /* ── Animation d'entrée des cartes ── */
+                        .fn-filiere-card {
+                            animation: fn-fadeIn 0.3s ease both;
+                        }
+                        @keyframes fn-fadeIn {
+                            from { opacity: 0; transform: translateY(8px); }
+                            to   { opacity: 1; transform: translateY(0); }
+                        }
+                        .fn-filiere-card:nth-child(1) { animation-delay: 0.04s; }
+                        .fn-filiere-card:nth-child(2) { animation-delay: 0.08s; }
+                        .fn-filiere-card:nth-child(3) { animation-delay: 0.12s; }
+                        .fn-filiere-card:nth-child(4) { animation-delay: 0.16s; }
+                        .fn-filiere-card:nth-child(5) { animation-delay: 0.20s; }
+                        .fn-filiere-card:nth-child(6) { animation-delay: 0.24s; }
+                    </style>
+
+                    <div class="fn-section">
+                        {{-- Header de section --}}
+                        <div class="fn-section-header">
+                            <div class="fn-section-icon">
+                                <i class="fas fa-graduation-cap"></i>
                             </div>
+                            <div>
+                                <p class="fn-section-title">Filières &amp; Niveaux</p>
+                                <p class="fn-section-subtitle">Cliquez sur un niveau pour activer la liaison</p>
+                            </div>
+                            <span class="fn-counter" id="fn-global-counter">0 sélection</span>
+                        </div>
+
+                        {{-- Grille des cartes filières --}}
+                        <div class="fn-grid" id="filieres-niveaux-list">
+                            @foreach($filieres as $filiere)
+                            <div class="fn-filiere-card" data-filiere-id="{{ $filiere->id }}" id="fn-card-{{ $filiere->id }}">
+
+                                {{-- Header filière --}}
+                                <div class="fn-filiere-header">
+                                    <span class="fn-filiere-dot"></span>
+                                    <span class="fn-filiere-name" title="{{ $filiere->name }}">{{ $filiere->name }}</span>
+                                    @if($filiere->code)
+                                        <span class="fn-filiere-code">{{ $filiere->code }}</span>
+                                    @endif
+                                    <span class="fn-filiere-sel-badge" id="fn-badge-{{ $filiere->id }}">✓</span>
+                                </div>
+
+                                {{-- Action tout sélectionner --}}
+                                <div class="fn-filiere-actions">
+                                    <button type="button"
+                                            class="fn-select-all-btn"
+                                            id="fn-selectall-{{ $filiere->id }}"
+                                            onclick="fnToggleAllNiveaux({{ $filiere->id }}, this)">
+                                        <i class="fas fa-check-double"></i>
+                                        <span>Tout sélectionner</span>
+                                    </button>
+                                </div>
+
+                                {{-- Pills de niveaux --}}
+                                <div class="fn-niveaux-body">
+                                    @forelse($niveaux as $niveau)
+                                    <span class="fn-niveau-pill"
+                                          id="fn-pill-{{ $filiere->id }}-{{ $niveau->id }}"
+                                          onclick="fnToggleNiveau(this, {{ $filiere->id }}, {{ $niveau->id }}, '{{ addslashes($filiere->name) }}', '{{ addslashes($niveau->name) }}')"
+                                          title="{{ $niveau->name }}">
+                                        <span class="fn-pill-check">
+                                            <i class="fas fa-check"></i>
+                                        </span>
+                                        {{ $niveau->name }}
+                                        @if($niveau->code)
+                                            <span class="fn-pill-code">{{ $niveau->code }}</span>
+                                        @endif
+                                        {{-- Checkbox caché (pour compatibilité JS existant) --}}
+                                        <input class="fn-niveau-checkbox niveau-filiere-checkbox"
+                                               type="checkbox"
+                                               id="liaison-{{ $filiere->id }}-{{ $niveau->id }}"
+                                               data-filiere-id="{{ $filiere->id }}"
+                                               data-filiere-label="{{ $filiere->name }}"
+                                               data-niveau-id="{{ $niveau->id }}"
+                                               data-niveau-label="{{ $niveau->name }}">
+                                    </span>
+                                    @empty
+                                    <div class="fn-empty-niveaux">
+                                        <i class="fas fa-inbox me-1"></i>Aucun niveau disponible
+                                    </div>
+                                    @endforelse
+                                </div>
+
+                            </div>
+                            @endforeach
                         </div>
                     </div>
+
+                    <script>
+                    /**
+                     * FN = Filières & Niveaux
+                     * Gestion du design "selectable pills" avec mise à jour du counter et compatibilité
+                     * avec le système existant (niveau-filiere-checkbox + updateCombinationsPreview).
+                     */
+
+                    /** Toggle un niveau (pill) */
+                    function fnToggleNiveau(pillEl, filiereId, niveauId, filiereLabel, niveauLabel) {
+                        const checkbox = pillEl.querySelector('.niveau-filiere-checkbox');
+                        if (!checkbox) return;
+
+                        const isActive = pillEl.classList.toggle('active');
+                        checkbox.checked = isActive;
+
+                        // Mettre à jour l'état de la carte filière
+                        fnUpdateFiliereCard(filiereId);
+
+                        // Mettre à jour le counter global
+                        fnUpdateGlobalCounter();
+
+                        // Déclencher updateCombinationsPreview du système existant
+                        if (typeof updateCombinationsPreview === 'function') {
+                            updateCombinationsPreview();
+                        }
+                    }
+
+                    /** Toggle tous les niveaux d'une filière */
+                    function fnToggleAllNiveaux(filiereId, btn) {
+                        const card = document.getElementById('fn-card-' + filiereId);
+                        const pills = card.querySelectorAll('.fn-niveau-pill');
+                        const allActive = Array.from(pills).every(p => p.classList.contains('active'));
+                        const targetState = !allActive;
+
+                        pills.forEach(pill => {
+                            const checkbox = pill.querySelector('.niveau-filiere-checkbox');
+                            if (!checkbox) return;
+                            pill.classList.toggle('active', targetState);
+                            checkbox.checked = targetState;
+                        });
+
+                        fnUpdateFiliereCard(filiereId);
+                        fnUpdateGlobalCounter();
+
+                        if (typeof updateCombinationsPreview === 'function') {
+                            updateCombinationsPreview();
+                        }
+                    }
+
+                    /** Met à jour l'état visuel d'une carte filière (has-selection, badge, btn) */
+                    function fnUpdateFiliereCard(filiereId) {
+                        const card = document.getElementById('fn-card-' + filiereId);
+                        const pills = card.querySelectorAll('.fn-niveau-pill');
+                        const btn = document.getElementById('fn-selectall-' + filiereId);
+                        const activeCount = card.querySelectorAll('.fn-niveau-pill.active').length;
+                        const totalCount = pills.length;
+
+                        // has-selection sur la card
+                        card.classList.toggle('has-selection', activeCount > 0);
+
+                        // Bouton "Tout sélectionner" ↔ "Tout désélectionner"
+                        if (btn) {
+                            const allSelected = activeCount === totalCount && totalCount > 0;
+                            btn.classList.toggle('all-selected', allSelected);
+                            const icon = btn.querySelector('i');
+                            const span = btn.querySelector('span');
+                            if (allSelected) {
+                                icon.className = 'fas fa-times-circle';
+                                span.textContent = 'Tout désélectionner';
+                            } else {
+                                icon.className = 'fas fa-check-double';
+                                span.textContent = 'Tout sélectionner';
+                            }
+                        }
+                    }
+
+                    /** Met à jour le counter global "X sélection(s)" */
+                    function fnUpdateGlobalCounter() {
+                        const total = document.querySelectorAll('.fn-niveau-pill.active').length;
+                        const counter = document.getElementById('fn-global-counter');
+                        if (counter) {
+                            counter.textContent = total + ' sélection' + (total > 1 ? 's' : '');
+                            counter.style.background = total > 0 ? '#d1fae5' : '';
+                            counter.style.color = total > 0 ? '#059669' : '';
+                            counter.style.borderColor = total > 0 ? '#a7f3d0' : '';
+                        }
+                    }
+
+                    /**
+                     * Synchronisation pills ↔ checkboxes lors du chargement du modal.
+                     * Appelée par le système existant (openConfigureModal) après avoir coché les checkboxes.
+                     */
+                    function fnSyncPillsFromCheckboxes() {
+                        document.querySelectorAll('.niveau-filiere-checkbox').forEach(cb => {
+                            const filiereId = cb.dataset.filiereId;
+                            const niveauId = cb.dataset.niveauId;
+                            const pill = document.getElementById('fn-pill-' + filiereId + '-' + niveauId);
+                            if (pill) {
+                                pill.classList.toggle('active', cb.checked);
+                            }
+                        });
+
+                        // Mettre à jour toutes les cartes
+                        document.querySelectorAll('.fn-filiere-card[data-filiere-id]').forEach(card => {
+                            fnUpdateFiliereCard(card.dataset.filiereId);
+                        });
+
+                        fnUpdateGlobalCounter();
+                    }
+
+                    // Écouter l'ouverture du modal pour synchroniser
+                    document.addEventListener('DOMContentLoaded', function () {
+                        const modal = document.getElementById('configureModal');
+                        if (modal) {
+                            modal.addEventListener('shown.bs.modal', function () {
+                                fnSyncPillsFromCheckboxes();
+                            });
+                        }
+                    });
+                    </script>
 
                     <div class="card-moderne mt-4">
                         <div class="main-card-header">
@@ -994,6 +1450,8 @@ tr[data-matiere-id] {
         document.querySelectorAll('.niveau-filiere-checkbox').forEach((checkbox) => {
             checkbox.checked = false;
         });
+        // Synchroniser les pills (réinitialiser)
+        if (typeof fnSyncPillsFromCheckboxes === 'function') fnSyncPillsFromCheckboxes();
 
         if (combinationsPreview) {
             combinationsPreview.innerHTML = `
@@ -1048,6 +1506,8 @@ tr[data-matiere-id] {
                         (l) => l.filiere_id === filiereId && l.niveau_id === niveauId
                     );
                 });
+                // Synchroniser les pills avec les checkboxes pré-cochées
+                if (typeof fnSyncPillsFromCheckboxes === 'function') fnSyncPillsFromCheckboxes();
                 updateCombinationsPreview();
             })
             .catch((error) => {
@@ -1106,6 +1566,8 @@ tr[data-matiere-id] {
             document.querySelectorAll('.niveau-filiere-checkbox').forEach((checkbox) => {
                 checkbox.checked = false;
             });
+            // Réinitialiser les pills
+            if (typeof fnSyncPillsFromCheckboxes === 'function') fnSyncPillsFromCheckboxes();
             updateCombinationsPreview();
             document.querySelectorAll('.modal-backdrop').forEach((backdrop) => backdrop.remove());
             document.body.classList.remove('modal-open');
