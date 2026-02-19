@@ -407,99 +407,74 @@ tr[data-matiere-id] {
 </div>
 
 <div class="modal fade" id="configureModal" tabindex="-1" aria-labelledby="configureModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content" style="border: none; border-radius: 12px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);">
-            <div class="modal-header" style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; border-radius: 12px 12px 0 0; padding: 1.5rem;">
-                <div>
-                    <h4 class="modal-title mb-1" id="configureModalLabel" style="font-weight: 600;">
-                        <i class="fas fa-link me-2"></i>Configuration des liaisons
-                    </h4>
-                    <p class="mb-0" style="opacity: 0.9; font-size: 0.9rem;">
-                        Matière : <span id="modal-matiere-name" style="font-weight: 500;"></span>
-                    </p>
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content" style="border: none; border-radius: 12px; box-shadow: 0 10px 40px rgba(4, 83, 203, 0.18);">
+            {{-- Header avec gradient bleu KLASSCI — texte blanc contraste WCAG AA --}}
+            <div class="modal-header" style="background: linear-gradient(135deg, #0453cb 0%, #1a6ee8 100%); border-radius: 12px 12px 0 0; padding: 1.5rem 2rem;">
+                <div class="d-flex align-items-start gap-3 flex-grow-1">
+                    <div class="d-flex align-items-center justify-content-center rounded-3 flex-shrink-0"
+                         style="width: 44px; height: 44px; background: rgba(255,255,255,0.15);">
+                        <i class="fas fa-link" style="color: #ffffff; font-size: 1.1rem;"></i>
+                    </div>
+                    <div>
+                        <h4 class="modal-title mb-1" id="configureModalLabel" style="font-weight: 700; color: #ffffff; font-size: 1.15rem;">
+                            Configuration des liaisons
+                        </h4>
+                        <p class="mb-0" style="font-size: 0.875rem; color: rgba(255,255,255,0.85);">
+                            Matière :&nbsp;<span id="modal-matiere-name" style="font-weight: 600; color: #ffffff;"></span>
+                        </p>
+                    </div>
                 </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer" style="filter: brightness(0) invert(1);"></button>
+                <button type="button" class="btn-close btn-close-white ms-3" data-bs-dismiss="modal"
+                        aria-label="Fermer" style="opacity: 0.85;"></button>
             </div>
-            <div class="modal-body" style="padding: 2rem;">
+            <div class="modal-body" style="padding: 1.75rem 2rem; background: #f8fafc;">
                 <form id="configureLiaisonsForm">
                     @csrf
                     <input type="hidden" id="modal-matiere-id" name="matiere_id">
-                    <input type="hidden" id="modal-mode" value="single">
-                    <input type="hidden" id="modal-selected-ids" value="[]">
                     
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="card-moderne">
-                                <div class="main-card-header">
-                                    <h3 class="main-card-title">
-                                        <i class="fas fa-graduation-cap"></i>Filières
-                                    </h3>
-                                    <p class="main-card-subtitle">Sélectionnez les filières concernées</p>
-                                </div>
-                                <div class="main-card-body">
-                                    <div id="filieres-list" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-light); border-radius: 8px; padding: 1rem; background: var(--bg-light);">
-                                        @foreach($filieres as $filiere)
-                                            <div class="form-check mb-3 p-2" style="border-radius: 6px; transition: all 0.2s ease;">
-                                                <input class="form-check-input filiere-checkbox" type="checkbox"
-                                                       value="{{ $filiere->id }}" id="filiere-{{ $filiere->id }}"
-                                                       data-label="{{ $filiere->name }}">
-                                                <label class="form-check-label" for="filiere-{{ $filiere->id }}" style="cursor: pointer; width: 100%;">
-                                                    <div class="d-flex justify-content-between align-items-center">
-                                                        <div>
-                                                            <span class="font-semibold color-dark">{{ $filiere->name }}</span>
-                                                            @if($filiere->code)
-                                                                <span class="badge secondary ms-2">{{ $filiere->code }}</span>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                </label>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card-moderne">
-                                <div class="main-card-header">
-                                    <h3 class="main-card-title">
-                                        <i class="fas fa-layer-group"></i>Niveaux
-                                    </h3>
-                                    <p class="main-card-subtitle">Sélectionnez les niveaux concernés</p>
-                                </div>
-                                <div class="main-card-body">
-                                    <div id="niveaux-list" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-light); border-radius: 8px; padding: 1rem; background: var(--bg-light);">
-                                        @foreach($niveaux as $niveau)
-                                            <div class="form-check mb-3 p-2" style="border-radius: 6px; transition: all 0.2s ease;">
-                                                <input class="form-check-input niveau-checkbox" type="checkbox"
-                                                       value="{{ $niveau->id }}" id="niveau-{{ $niveau->id }}"
-                                                       data-label="{{ $niveau->name }}">
-                                                <label class="form-check-label" for="niveau-{{ $niveau->id }}" style="cursor: pointer; width: 100%;">
-                                                    <div class="d-flex justify-content-between align-items-center">
-                                                        <div>
-                                                            <span class="font-semibold color-dark">{{ $niveau->name }}</span>
-                                                            @if($niveau->code)
-                                                                <span class="badge secondary ms-2">{{ $niveau->code }}</span>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                </label>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card-moderne mt-4" id="matieres-selection-container" style="display: none;">
+                    <div class="card-moderne">
                         <div class="main-card-header">
                             <h3 class="main-card-title">
-                                <i class="fas fa-book-open"></i>Matières disponibles
+                                <i class="fas fa-graduation-cap"></i>Filières &amp; Niveaux
                             </h3>
-                            <p class="main-card-subtitle">Sélectionnez les matières à attacher à la combinaison</p>
+                            <p class="main-card-subtitle">Pour chaque filière, cochez les niveaux concernés</p>
                         </div>
-                        <div class="main-card-body" id="matieres-list"></div>
+                        <div class="main-card-body">
+                            <div id="filieres-niveaux-list">
+                                @foreach($filieres as $filiere)
+                                <div class="filiere-block mb-3 p-3" style="border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-light);">
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <div>
+                                            <span class="font-semibold color-dark">{{ $filiere->name }}</span>
+                                            @if($filiere->code)
+                                                <span class="badge secondary ms-2">{{ $filiere->code }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-3">
+                                        @foreach($niveaux as $niveau)
+                                        <div class="form-check">
+                                            <input class="form-check-input niveau-filiere-checkbox"
+                                                   type="checkbox"
+                                                   id="liaison-{{ $filiere->id }}-{{ $niveau->id }}"
+                                                   data-filiere-id="{{ $filiere->id }}"
+                                                   data-filiere-label="{{ $filiere->name }}"
+                                                   data-niveau-id="{{ $niveau->id }}"
+                                                   data-niveau-label="{{ $niveau->name }}">
+                                            <label class="form-check-label" for="liaison-{{ $filiere->id }}-{{ $niveau->id }}" style="cursor: pointer;">
+                                                {{ $niveau->name }}
+                                                @if($niveau->code)
+                                                    <span class="badge secondary ms-1">{{ $niveau->code }}</span>
+                                                @endif
+                                            </label>
+                                        </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
                     </div>
 
                     <div class="card-moderne mt-4">
@@ -507,22 +482,23 @@ tr[data-matiere-id] {
                             <h3 class="main-card-title">
                                 <i class="fas fa-lightbulb"></i>Aperçu des combinaisons
                             </h3>
-                            <p class="main-card-subtitle">Visualisez les liaisons générées</p>
+                            <p class="main-card-subtitle">Visualisez les liaisons configurées</p>
                         </div>
                         <div class="main-card-body" id="combinations-preview">
                             <div class="d-flex align-items-center" style="color: #0369a1;">
                                 <i class="fas fa-info-circle me-2"></i>
-                                <span>Sélectionnez au moins une filière et un niveau pour voir les combinaisons possibles.</span>
+                                <span>Cochez des niveaux dans les filières ci-dessus pour voir les liaisons.</span>
                             </div>
                         </div>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer" style="padding: 1.5rem;">
+            <div class="modal-footer" style="padding: 1rem 2rem; background: #f8fafc; border-top: 1px solid #e2e8f0; border-radius: 0 0 12px 12px;">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                    Annuler
+                    <i class="fas fa-times me-1"></i>Annuler
                 </button>
-                <button type="button" class="btn btn-primary" id="save-liaisons-btn">
+                <button type="button" class="btn" id="save-liaisons-btn"
+                        style="background: linear-gradient(135deg, #0453cb 0%, #1a6ee8 100%); color: #ffffff; border: none; font-weight: 600; padding: 0.5rem 1.5rem;">
                     <i class="fas fa-save me-1"></i>Enregistrer les liaisons
                 </button>
             </div>
@@ -1011,17 +987,11 @@ tr[data-matiere-id] {
     }
 
     function openConfigureModal(options) {
-        const mode = options.mode || 'single';
         const matiereNameElement = document.getElementById('modal-matiere-name');
         const matiereIdInput = document.getElementById('modal-matiere-id');
-        const modalModeInput = document.getElementById('modal-mode');
-        const modalSelectedIdsInput = document.getElementById('modal-selected-ids');
-        const saveBtn = document.getElementById('save-liaisons-btn');
         const combinationsPreview = document.getElementById('combinations-preview');
-        const matieresContainer = document.getElementById('matieres-selection-container');
-        const matieresList = document.getElementById('matieres-list');
 
-        document.querySelectorAll('.filiere-checkbox, .niveau-checkbox').forEach((checkbox) => {
+        document.querySelectorAll('.niveau-filiere-checkbox').forEach((checkbox) => {
             checkbox.checked = false;
         });
 
@@ -1029,37 +999,19 @@ tr[data-matiere-id] {
             combinationsPreview.innerHTML = `
                 <div class="d-flex align-items-center" style="color: #0369a1;">
                     <i class="fas fa-info-circle me-2"></i>
-                    <span>Sélectionnez au moins une filière et un niveau pour voir les combinaisons possibles.</span>
+                    <span>Cochez des niveaux dans les filières ci-dessus pour voir les liaisons.</span>
                 </div>
             `;
-        }
-
-        if (matieresContainer) {
-            matieresContainer.style.display = 'none';
-        }
-        if (matieresList) {
-            matieresList.innerHTML = '';
         }
 
         if (matiereNameElement) {
             matiereNameElement.textContent = options.matiereName || '';
         }
         if (matiereIdInput) {
-            matiereIdInput.value = mode === 'single' ? options.matiereId : '';
-        }
-        if (modalModeInput) {
-            modalModeInput.value = mode;
-        }
-        if (modalSelectedIdsInput) {
-            modalSelectedIdsInput.value = mode === 'bulk' ? JSON.stringify(options.selectedIds || []) : '[]';
-        }
-        if (saveBtn) {
-            saveBtn.innerHTML = mode === 'bulk'
-                ? '<i class="fas fa-link me-1"></i>Attacher les matières sélectionnées'
-                : '<i class="fas fa-save me-1"></i>Enregistrer les liaisons';
+            matiereIdInput.value = options.matiereId || '';
         }
 
-        if (mode === 'single' && options.matiereId) {
+        if (options.matiereId) {
             loadExistingLiaisons(options.matiereId);
         }
 
@@ -1088,86 +1040,18 @@ tr[data-matiere-id] {
                 if (!data.success) {
                     return;
                 }
-                document.querySelectorAll('.filiere-checkbox').forEach((checkbox) => {
-                    checkbox.checked = data.filieres?.includes(Number(checkbox.value));
-                });
-                document.querySelectorAll('.niveau-checkbox').forEach((checkbox) => {
-                    checkbox.checked = data.niveaux?.includes(Number(checkbox.value));
+                // Cocher les checkboxes correspondant aux liaisons filière+niveau
+                document.querySelectorAll('.niveau-filiere-checkbox').forEach((checkbox) => {
+                    const filiereId = Number(checkbox.dataset.filiereId);
+                    const niveauId = Number(checkbox.dataset.niveauId);
+                    checkbox.checked = (data.liaisons || []).some(
+                        (l) => l.filiere_id === filiereId && l.niveau_id === niveauId
+                    );
                 });
                 updateCombinationsPreview();
             })
             .catch((error) => {
                 debugError('Erreur chargement liaisons matière:', error);
-            });
-    }
-
-    function loadAvailableMatieres(filiereId, niveauId) {
-        const matieresListDiv = document.getElementById('matieres-list');
-        const matieresContainer = document.getElementById('matieres-selection-container');
-
-        if (!filiereId || !niveauId || !matieresListDiv || !matieresContainer) {
-            return;
-        }
-
-        matieresContainer.style.display = 'block';
-        matieresListDiv.innerHTML = `
-            <div class="d-flex justify-content-center align-items-center py-4 text-muted">
-                <div class="spinner-border text-primary me-2" role="status"></div>
-                <span>Chargement des matières disponibles...</span>
-            </div>
-        `;
-
-        fetch(`/esbtp/matieres/available-for-combination?filiere_id=${filiereId}&niveau_id=${niveauId}`)
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                return response.json();
-            })
-            .then((data) => {
-                if (!data.success || !Array.isArray(data.matieres)) {
-                    throw new Error(data.message || 'Réponse invalide');
-                }
-
-                if (data.matieres.length === 0) {
-                    matieresListDiv.innerHTML = `
-                        <div class="d-flex align-items-center justify-content-center py-4 text-muted">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <span>Aucune matière disponible pour cette combinaison</span>
-                        </div>
-                    `;
-                    return;
-                }
-
-        matieresListDiv.innerHTML = data.matieres.map((matiere) => `
-            <div class="form-check mb-3 p-2" style="border-radius: 6px; transition: all 0.2s ease;">
-                <input class="form-check-input matiere-modal-checkbox" type="checkbox"
-                       value="${matiere.id}" id="matiere-${matiere.id}"
-                       name="selected_matieres[]">
-                        <label class="form-check-label" for="matiere-${matiere.id}" style="cursor: pointer; width: 100%;">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <span class="font-semibold color-dark">${matiere.name}</span>
-                                    ${matiere.code ? `<span class="badge secondary ms-2">${matiere.code}</span>` : ''}
-                                </div>
-                                <div class="text-muted small">
-                                    ${matiere.coefficient ? `Coeff: ${matiere.coefficient}` : ''}
-                                    ${matiere.total_heures ? `• ${matiere.total_heures}h` : ''}
-                                </div>
-                            </div>
-                            ${matiere.description ? `<small class="text-muted d-block mt-1">${matiere.description}</small>` : ''}
-                        </label>
-                    </div>
-                `).join('');
-            })
-            .catch((error) => {
-                debugError('Erreur lors du chargement des matières:', error);
-                matieresListDiv.innerHTML = `
-                    <div class="d-flex align-items-center justify-content-center py-4 text-danger">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <span>Erreur lors du chargement des matières</span>
-                    </div>
-                `;
             });
     }
 
@@ -1177,31 +1061,13 @@ tr[data-matiere-id] {
             return;
         }
 
-        const selectedFilieres = Array.from(document.querySelectorAll('.filiere-checkbox:checked')).map((checkbox) => {
-            const fallbackLabel = checkbox.closest('label')?.querySelector('.font-semibold')?.textContent?.trim()
-                || checkbox.closest('label')?.textContent?.trim()
-                || '';
-            return {
-                id: Number(checkbox.value),
-                label: checkbox.dataset.label?.trim() || fallbackLabel
-            };
-        });
+        const checked = Array.from(document.querySelectorAll('.niveau-filiere-checkbox:checked'));
 
-        const selectedNiveaux = Array.from(document.querySelectorAll('.niveau-checkbox:checked')).map((checkbox) => {
-            const fallbackLabel = checkbox.closest('label')?.querySelector('.font-semibold')?.textContent?.trim()
-                || checkbox.closest('label')?.textContent?.trim()
-                || '';
-            return {
-                id: Number(checkbox.value),
-                label: checkbox.dataset.label?.trim() || fallbackLabel
-            };
-        });
-
-        if (selectedFilieres.length === 0 || selectedNiveaux.length === 0) {
+        if (checked.length === 0) {
             combinationsPreview.innerHTML = `
                 <div class="d-flex align-items-center" style="color: #0369a1;">
                     <i class="fas fa-info-circle me-2"></i>
-                    <span>Sélectionnez au moins une filière et un niveau pour voir les combinaisons possibles.</span>
+                    <span>Cochez des niveaux dans les filières ci-dessus pour voir les liaisons.</span>
                 </div>
             `;
             return;
@@ -1210,35 +1076,25 @@ tr[data-matiere-id] {
         let html = `
             <div class="d-flex align-items-center mb-3">
                 <i class="fas fa-check-circle me-2" style="color: #059669;"></i>
-                <strong style="color: #047857;">${selectedFilieres.length * selectedNiveaux.length} combinaison(s) sélectionnée(s)</strong>
+                <strong style="color: #047857;">${checked.length} liaison(s) configurée(s)</strong>
             </div>
             <div class="d-flex flex-wrap gap-2">
         `;
 
-        selectedFilieres.forEach((filiere) => {
-            selectedNiveaux.forEach((niveau) => {
-                html += `
-                    <span class="badge primary">
-                        <i class="fas fa-link me-1"></i>
-                        ${filiere.label} ↔ ${niveau.label}
-                    </span>
-                `;
-            });
+        checked.forEach((cb) => {
+            html += `
+                <span class="badge primary">
+                    <i class="fas fa-link me-1"></i>
+                    ${cb.dataset.filiereLabel} ↔ ${cb.dataset.niveauLabel}
+                </span>
+            `;
         });
 
         html += '</div>';
         combinationsPreview.innerHTML = html;
-
-        if (document.getElementById('modal-mode')?.value === 'bulk') {
-            const filiereId = selectedFilieres.length === 1 ? selectedFilieres[0].id : null;
-            const niveauId = selectedNiveaux.length === 1 ? selectedNiveaux[0].id : null;
-            if (filiereId && niveauId) {
-                loadAvailableMatieres(filiereId, niveauId);
-            }
-        }
     }
 
-    document.querySelectorAll('.filiere-checkbox, .niveau-checkbox').forEach((checkbox) => {
+    document.querySelectorAll('.niveau-filiere-checkbox').forEach((checkbox) => {
         checkbox.addEventListener('change', () => {
             updateCombinationsPreview();
         });
@@ -1247,7 +1103,7 @@ tr[data-matiere-id] {
     const configureModalElement = document.getElementById('configureModal');
     if (configureModalElement) {
         configureModalElement.addEventListener('hidden.bs.modal', () => {
-            document.querySelectorAll('.filiere-checkbox, .niveau-checkbox').forEach((checkbox) => {
+            document.querySelectorAll('.niveau-filiere-checkbox').forEach((checkbox) => {
                 checkbox.checked = false;
             });
             updateCombinationsPreview();
@@ -1262,11 +1118,14 @@ tr[data-matiere-id] {
         saveLiaisonsBtn.addEventListener('click', () => {
             const mode = document.getElementById('modal-mode')?.value ?? 'single';
             const matiereId = document.getElementById('modal-matiere-id')?.value;
-            const selectedFilieres = Array.from(document.querySelectorAll('.filiere-checkbox:checked')).map((checkbox) => Number(checkbox.value));
-            const selectedNiveaux = Array.from(document.querySelectorAll('.niveau-checkbox:checked')).map((checkbox) => Number(checkbox.value));
+            const checkedBoxes = Array.from(document.querySelectorAll('.niveau-filiere-checkbox:checked'));
+            const liaisons = checkedBoxes.map((cb) => ({
+                filiere_id: Number(cb.dataset.filiereId),
+                niveau_id: Number(cb.dataset.niveauId)
+            }));
 
-            if (selectedFilieres.length === 0 || selectedNiveaux.length === 0) {
-                if (!confirm('Aucune combinaison complète sélectionnée. Voulez-vous tout de même continuer ?')) {
+            if (liaisons.length === 0) {
+                if (!confirm('Aucune liaison sélectionnée. Voulez-vous tout de même continuer (cela supprimera toutes les liaisons) ?')) {
                     return;
                 }
             }
@@ -1278,57 +1137,14 @@ tr[data-matiere-id] {
             const originalLabel = saveLiaisonsBtn.innerHTML;
             saveLiaisonsBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement...';
 
-            if (mode === 'bulk') {
-                const selectedIds = JSON.parse(document.getElementById('modal-selected-ids')?.value || '[]');
-                fetch('{{ route('esbtp.matieres.add-to-combination') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify({
-                        matiere_ids: selectedIds,
-                        filiere_ids: selectedFilieres,
-                        niveau_ids: selectedNiveaux
-                    })
-                })
-                    .then((response) => {
-                        if (!response.ok) {
-                            throw new Error(`HTTP ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then((data) => {
-                        if (!data.success) {
-                            throw new Error(data.message || 'Erreur serveur');
-                        }
-                        selectedIds.forEach((id) => refreshMatiereRow(id));
-                        clearSelection();
-                        modalInstance?.hide();
-                        document.querySelectorAll('.modal-backdrop').forEach((backdrop) => backdrop.remove());
-                        document.body.classList.remove('modal-open');
-                        document.body.style.removeProperty('padding-right');
-                        showToast('success', data.message || 'Liaisons mises à jour avec succès.');
-                    })
-                    .catch((error) => {
-                        debugError('Erreur lors de l\'ajout des matières:', error);
-                        showToast('error', 'Impossible d\'ajouter les matières sélectionnées.');
-                    })
-                    .finally(() => {
-                        saveLiaisonsBtn.disabled = false;
-                        saveLiaisonsBtn.innerHTML = originalLabel;
-                    });
-            } else if (matiereId) {
+            if (matiereId) {
                 fetch(`/esbtp/matieres/${matiereId}/update-liaisons`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     },
-                    body: JSON.stringify({
-                        filieres: selectedFilieres,
-                        niveaux: selectedNiveaux
-                    })
+                    body: JSON.stringify({ liaisons })
                 })
                     .then((response) => {
                         if (!response.ok) {

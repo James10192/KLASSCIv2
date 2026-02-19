@@ -706,15 +706,15 @@ class ESBTPMatiereController extends Controller
     public function getLiaisons(ESBTPMatiere $matiere)
     {
         try {
-            $matiere->load(['filieres', 'niveaux']);
-
-            $filieres = $matiere->filieres->pluck('id')->toArray();
-            $niveaux = $matiere->niveaux->pluck('id')->toArray();
+            $liaisons = \App\Models\ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)
+                ->get(['filiere_id', 'niveau_etude_id'])
+                ->map(fn($l) => ['filiere_id' => $l->filiere_id, 'niveau_id' => $l->niveau_etude_id])
+                ->values()
+                ->toArray();
 
             return response()->json([
                 'success' => true,
-                'filieres' => $filieres,
-                'niveaux' => $niveaux,
+                'liaisons' => $liaisons,
             ]);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la récupération des liaisons: '.$e->getMessage());
@@ -727,7 +727,8 @@ class ESBTPMatiereController extends Controller
     }
 
     /**
-     * Met à jour les liaisons d'une matière avec les filières et niveaux sélectionnés.
+     * Met à jour les liaisons d'une matière avec les combinaisons filière+niveau sélectionnées.
+     * Format attendu : { "liaisons": [ {"filiere_id": 1, "niveau_id": 1}, ... ] }
      *
      * @return \Illuminate\Http\JsonResponse
      */
@@ -735,63 +736,35 @@ class ESBTPMatiereController extends Controller
     {
         try {
             $validated = $request->validate([
-                'filieres' => 'array', // Permettre les tableaux vides pour supprimer toutes les liaisons
-                'filieres.*' => 'exists:esbtp_filieres,id',
-                'niveaux' => 'array', // Permettre les tableaux vides pour supprimer toutes les liaisons
-                'niveaux.*' => 'exists:esbtp_niveau_etudes,id',
+                'liaisons'             => 'array',
+                'liaisons.*.filiere_id' => 'required|exists:esbtp_filieres,id',
+                'liaisons.*.niveau_id'  => 'required|exists:esbtp_niveau_etudes,id',
             ]);
 
-            // Synchroniser les filières (les tableaux vides suppriment toutes les liaisons)
-            $filieres = $validated['filieres'] ?? [];
-            $matiere->filieres()->sync($filieres);
+            $liaisons = $validated['liaisons'] ?? [];
 
-            // Synchroniser les niveaux (les tableaux vides suppriment toutes les liaisons)
-            $niveaux = $validated['niveaux'] ?? [];
-            $matiere->niveaux()->sync($niveaux);
+            // Supprimer toutes les liaisons existantes pour cette matière
+            \App\Models\ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)->delete();
 
-            // Mettre à jour les champs directs pour compatibilité (uniquement si les colonnes existent encore)
-            $legacyColumns = [
-                'filiere_id' => Schema::hasColumn('esbtp_matieres', 'filiere_id'),
-                'niveau_etude_id' => Schema::hasColumn('esbtp_matieres', 'niveau_etude_id'),
-                'updated_by' => Schema::hasColumn('esbtp_matieres', 'updated_by'),
-            ];
+            // Réinsérer les nouvelles combinaisons (dédoublonnées)
+            $seen = [];
+            foreach ($liaisons as $liaison) {
+                $key = $liaison['filiere_id'].'_'.$liaison['niveau_id'];
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
 
-            $legacyUpdates = [];
-
-            if ($legacyColumns['updated_by']) {
-                $legacyUpdates['updated_by'] = Auth::id();
+                \App\Models\ESBTPMatiereFilierNiveau::create([
+                    'matiere_id'      => $matiere->id,
+                    'filiere_id'      => $liaison['filiere_id'],
+                    'niveau_etude_id' => $liaison['niveau_id'],
+                ]);
             }
 
-            if (count($filieres) === 1 && count($niveaux) === 1) {
-                if ($legacyColumns['filiere_id']) {
-                    $legacyUpdates['filiere_id'] = $filieres[0];
-                }
-
-                if ($legacyColumns['niveau_etude_id']) {
-                    $legacyUpdates['niveau_etude_id'] = $niveaux[0];
-                }
-            } elseif (count($filieres) === 0 || count($niveaux) === 0) {
-                if ($legacyColumns['filiere_id']) {
-                    $legacyUpdates['filiere_id'] = null;
-                }
-
-                if ($legacyColumns['niveau_etude_id']) {
-                    $legacyUpdates['niveau_etude_id'] = null;
-                }
-            }
-
-            if (! empty($legacyUpdates)) {
-                $matiere->fill($legacyUpdates);
-
-                if ($matiere->isDirty()) {
-                    $matiere->save();
-                }
-            }
-
-            $totalCombinations = count($filieres) * count($niveaux);
-
-            $message = $totalCombinations > 0
-                ? "Liaisons mises à jour avec succès ! {$totalCombinations} combinaison(s) configurée(s)."
+            $count = count($seen);
+            $message = $count > 0
+                ? "Liaisons mises à jour avec succès ! {$count} combinaison(s) configurée(s)."
                 : 'Liaisons mises à jour avec succès ! Toutes les liaisons ont été supprimées.';
 
             return response()->json([
