@@ -396,25 +396,241 @@
     </div>
 </div>
 
-<!-- Modal pour charger evaluations.create -->
-<div class="modal fade" id="evaluationCreateModal" tabindex="-1" aria-labelledby="evaluationCreateModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="evaluationCreateModalLabel">
-                    <i class="fas fa-plus-circle me-2"></i>Créer une évaluation
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body" id="evaluationCreateContent">
-                <!-- Contenu du modal evaluations.create sera chargé ici via AJAX -->
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Chargement...</span>
-                    </div>
-                    <p class="mt-3">Chargement du formulaire...</p>
+<!-- Modal création d'évaluation (autonome, sans embed AJAX) -->
+<div class="modal fade" id="evaluationCreateModal" tabindex="-1"
+     aria-labelledby="evaluationCreateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content eval-modal-content">
+
+            {{-- Header --}}
+            <div class="modal-header eval-modal-header">
+                <div>
+                    <h5 class="modal-title text-white mb-1" id="evaluationCreateModalLabel">
+                        <i class="fas fa-plus-circle me-2"></i>Créer une évaluation
+                    </h5>
+                    <p id="evalModal_context" class="eval-modal-context mb-0"></p>
                 </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
+
+            {{-- Bandeau publication automatique --}}
+            <div class="eval-autopublish-notice">
+                <i class="fas fa-check-circle eval-autopublish-icon"></i>
+                <span><strong>Publication automatique</strong> — L'évaluation sera publiée immédiatement pour permettre la saisie des notes.</span>
+            </div>
+
+            {{-- Body --}}
+            <div class="modal-body eval-modal-body">
+                <form id="evaluationCreateForm"
+                      action="{{ route('esbtp.evaluations.store') }}" method="POST"
+                      novalidate>
+                    @csrf
+                    <input type="hidden" name="embed"        value="1">
+                    <input type="hidden" name="is_published" value="1">
+                    <input type="hidden" id="evalModal_classe_id"  name="classe_id">
+                    <input type="hidden" id="evalModal_matiere_id" name="matiere_id">
+
+                    {{-- Zone d'erreurs globales --}}
+                    <div id="evalModal_errors" class="eval-errors-zone" style="display:none;"></div>
+
+                    {{-- Section 1 : Informations générales --}}
+                    <div class="eval-section">
+                        <div class="eval-section-header">
+                            <span class="eval-section-num">1</span>
+                            <span class="eval-section-label">Informations générales</span>
+                        </div>
+                        <div class="eval-section-body">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold" for="eval_titre">
+                                    Titre <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" id="eval_titre" name="titre"
+                                       class="form-control"
+                                       placeholder="Ex : Devoir de mathématiques n°2"
+                                       maxlength="255" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-sm-6">
+                                    <label class="form-label fw-semibold" for="eval_type">
+                                        Type <span class="text-danger">*</span>
+                                    </label>
+                                    <select id="eval_type" name="type" class="form-select" required>
+                                        <option value="">— Choisir —</option>
+                                        @foreach($evaluationTypes as $typeKey => $typeLabel)
+                                            <option value="{{ $typeKey }}">{{ $typeLabel }}</option>
+                                        @endforeach
+                                    </select>
+                                    <div class="invalid-feedback"></div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <label class="form-label fw-semibold" for="eval_periode">
+                                        Période <span class="text-danger">*</span>
+                                    </label>
+                                    <select id="eval_periode" name="periode" class="form-select" required>
+                                        <option value="">— Choisir —</option>
+                                        <option value="semestre1">Semestre 1</option>
+                                        <option value="semestre2">Semestre 2</option>
+                                    </select>
+                                    <div class="invalid-feedback"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Section 2 : Date & Horaires --}}
+                    <div class="eval-section">
+                        <div class="eval-section-header">
+                            <span class="eval-section-num">2</span>
+                            <span class="eval-section-label">Date &amp; Horaires</span>
+                        </div>
+                        <div class="eval-section-body">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold" for="eval_date">
+                                    Date d'évaluation <span class="text-danger">*</span>
+                                </label>
+                                <input type="date" id="eval_date" name="date_evaluation"
+                                       class="form-control"
+                                       max="{{ date('Y-m-d') }}" required>
+                                <div class="form-text">
+                                    <i class="fas fa-calendar-check me-1 text-muted"></i>
+                                    Seules les dates passées ou d'aujourd'hui sont acceptées (évaluation déjà réalisée).
+                                </div>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="row g-3 align-items-end">
+                                <div class="col-sm-4">
+                                    <label class="form-label fw-semibold" for="eval_heure_debut">
+                                        Heure de début <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="time" id="eval_heure_debut" name="heure_debut"
+                                           class="form-control" value="08:00" required>
+                                    <div class="invalid-feedback"></div>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label fw-semibold" for="eval_heure_fin">
+                                        Heure de fin <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="time" id="eval_heure_fin" name="heure_fin"
+                                           class="form-control" value="10:00" required>
+                                    <div class="invalid-feedback"></div>
+                                </div>
+                                <div class="col-sm-4">
+                                    <label class="form-label fw-semibold" for="eval_duree">
+                                        Durée <span class="text-muted fw-normal">(min)</span>
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="number" id="eval_duree" name="duree_minutes"
+                                               class="form-control" min="0" max="720"
+                                               placeholder="Auto">
+                                        <span class="input-group-text eval-duree-badge" id="evalDureeBadge">120 min</span>
+                                    </div>
+                                    <div class="form-text">Calculée automatiquement</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Section 3 : Barème & Coefficient --}}
+                    <div class="eval-section">
+                        <div class="eval-section-header">
+                            <span class="eval-section-num">3</span>
+                            <span class="eval-section-label">Barème &amp; Coefficient</span>
+                        </div>
+                        <div class="eval-section-body">
+                            <div class="row g-3">
+                                <div class="col-sm-6">
+                                    <label class="form-label fw-semibold" for="eval_bareme">
+                                        Barème <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="number" id="eval_bareme" name="bareme"
+                                           class="form-control" value="20"
+                                           min="1" step="0.5" required>
+                                    <div class="form-text">Note maximale (ex : 20)</div>
+                                    <div class="invalid-feedback"></div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <label class="form-label fw-semibold" for="eval_coefficient">
+                                        Coefficient <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="number" id="eval_coefficient" name="coefficient"
+                                           class="form-control" value="1"
+                                           min="0.1" max="10" step="0.1" required>
+                                    <div class="form-text">Poids dans la moyenne (0,1 – 10)</div>
+                                    <div class="invalid-feedback"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Section 4 : Description --}}
+                    <div class="eval-section">
+                        <div class="eval-section-header">
+                            <span class="eval-section-num">4</span>
+                            <span class="eval-section-label">
+                                Description
+                                <span class="eval-optional-badge">optionnelle</span>
+                            </span>
+                        </div>
+                        <div class="eval-section-body">
+                            <textarea id="eval_description" name="description"
+                                      class="form-control" rows="3"
+                                      placeholder="Chapitres couverts, instructions pour les étudiants…"></textarea>
+                        </div>
+                    </div>
+
+                    {{-- Section 5 : Enseignant (non-enseignants seulement) --}}
+                    @if(auth()->check() && !auth()->user()->hasRole(['teacher', 'enseignant']))
+                    <div class="eval-section">
+                        <div class="eval-section-header">
+                            <span class="eval-section-num">5</span>
+                            <span class="eval-section-label">
+                                Enseignant
+                                <span class="eval-optional-badge">optionnel</span>
+                            </span>
+                        </div>
+                        <div class="eval-section-body">
+                            <div class="row g-3">
+                                <div class="col-sm-6">
+                                    <label class="form-label fw-semibold" for="eval_enseignant_id">
+                                        Enseignant plateforme
+                                    </label>
+                                    <select id="eval_enseignant_id" name="enseignant_id" class="form-select">
+                                        <option value="">— Sélectionner —</option>
+                                        @foreach($enseignants as $enseignant)
+                                            <option value="{{ $enseignant->id }}">{{ $enseignant->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <div class="form-text">Peut se connecter et saisir les notes</div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <label class="form-label fw-semibold" for="eval_enseignant_ext">
+                                        Enseignant externe
+                                    </label>
+                                    <input type="text" id="eval_enseignant_ext"
+                                           name="enseignant_externe_nom"
+                                           class="form-control" placeholder="Nom complet">
+                                    <div class="form-text">Sans compte sur la plateforme</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
+                </form>
+            </div>
+
+            {{-- Footer --}}
+            <div class="modal-footer eval-modal-footer">
+                <button type="button" class="btn btn-light border fw-semibold" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Annuler
+                </button>
+                <button type="button" id="evalModal_submit" class="btn eval-submit-btn">
+                    <span id="evalModal_submitSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
+                    <i class="fas fa-save me-2" id="evalModal_submitIcon"></i>Créer l'évaluation
+                </button>
+            </div>
+
         </div>
     </div>
 </div>
@@ -464,6 +680,7 @@
 let currentClassId = null;
 let currentClassname = '';
 let currentMatiereId = null;
+let currentMatiereName = '';
 let currentPeriodeFilter = 'all';
 let evaluationsData = {}; // Stocke les évaluations par matière
 let notesData = {}; // Stocke les notes existantes
@@ -556,7 +773,8 @@ $(document).ready(function() {
 
     // Gestion de la sélection de matière
     $('#matiereSelect').on('change', function() {
-        currentMatiereId = $(this).val();
+        currentMatiereId  = $(this).val();
+        currentMatiereName = $(this).find('option:selected').text().trim();
         if (currentClassId && currentMatiereId) {
             loadEvaluationsAndNotes();
         }
@@ -902,25 +1120,48 @@ function createEvaluation() {
         alert('Veuillez d\'abord sélectionner une classe et une matière.');
         return;
     }
-    
-    // Charger le modal evaluations.create via AJAX
-    $.ajax({
-        url: '{{ route("esbtp.evaluations.create") }}',
-        method: 'GET',
-        data: {
-            classe_id: currentClassId,
-            matiere_id: currentMatiereId,
-            embed: true
-        },
-        success: function(response) {
-            $('#evaluationCreateContent').html(response);
-            $('#evaluationCreateModal').modal('show');
-        },
-        error: function(xhr) {
-            console.error('Erreur lors du chargement du formulaire:', xhr);
-            alert('Erreur lors du chargement du formulaire de création d\'évaluation.');
-        }
-    });
+
+    // Pré-remplir les champs cachés
+    document.getElementById('evalModal_classe_id').value  = currentClassId;
+    document.getElementById('evalModal_matiere_id').value = currentMatiereId;
+
+    // Afficher le contexte (classe + matière) dans le header
+    const matiereName = currentMatiereName || 'Matière sélectionnée';
+    const contextEl = document.getElementById('evalModal_context');
+    if (contextEl) {
+        contextEl.textContent = currentClassname
+            ? `${currentClassname} — ${matiereName}`
+            : matiereName;
+    }
+
+    // Réinitialiser le formulaire et masquer les erreurs précédentes
+    const form = document.getElementById('evaluationCreateForm');
+    if (form) {
+        form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+        form.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
+        // Réinitialiser seulement les champs texte/select/textarea (garder les hidden)
+        ['eval_titre','eval_type','eval_periode','eval_date',
+         'eval_description','eval_enseignant_id','eval_enseignant_ext'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = (el.tagName === 'SELECT') ? '' : '';
+        });
+        document.getElementById('eval_heure_debut').value = '08:00';
+        document.getElementById('eval_heure_fin').value   = '10:00';
+        document.getElementById('eval_bareme').value      = '20';
+        document.getElementById('eval_coefficient').value = '1';
+        document.getElementById('eval_duree').value       = '';
+        evalUpdateDuree();
+    }
+    const errorsEl = document.getElementById('evalModal_errors');
+    if (errorsEl) { errorsEl.style.display = 'none'; errorsEl.innerHTML = ''; }
+
+    // Afficher le modal
+    const modalEl = document.getElementById('evaluationCreateModal');
+    if (window.bootstrap && window.bootstrap.Modal) {
+        new window.bootstrap.Modal(modalEl).show();
+    } else {
+        $(modalEl).modal('show');
+    }
 }
 
 // Fonction pour sauvegarder une note
@@ -1152,95 +1393,160 @@ $('#saveAllNotesBtn').on('click', function() {
     });
 });
 
+// ── Auto-calcul durée depuis heure_debut / heure_fin ──
+function evalUpdateDuree() {
+    const debut = document.getElementById('eval_heure_debut');
+    const fin   = document.getElementById('eval_heure_fin');
+    const duree = document.getElementById('eval_duree');
+    const badge = document.getElementById('evalDureeBadge');
+    if (!debut || !fin) return;
+    const [dh, dm] = debut.value.split(':').map(Number);
+    const [fh, fm] = fin.value.split(':').map(Number);
+    if (isNaN(dh) || isNaN(fh)) return;
+    let diff = (fh * 60 + fm) - (dh * 60 + dm);
+    if (diff <= 0) diff += 24 * 60; // passage minuit
+    if (duree && !duree.value) duree.value = diff;
+    if (badge) badge.textContent = `${diff} min`;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const debutEl = document.getElementById('eval_heure_debut');
+    const finEl   = document.getElementById('eval_heure_fin');
+    if (debutEl) debutEl.addEventListener('change', evalUpdateDuree);
+    if (finEl)   finEl.addEventListener('change', evalUpdateDuree);
+    evalUpdateDuree();
+
+    // Bouton "Créer l'évaluation" dans le footer du modal
+    const submitBtn = document.getElementById('evalModal_submit');
+    if (submitBtn) {
+        submitBtn.addEventListener('click', function () {
+            const form = document.getElementById('evaluationCreateForm');
+            if (form) form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        });
+    }
+});
+
 // Gestion de la soumission du formulaire d'évaluation
-$(document).on('submit', '#evaluationCreateForm', function(e) {
+$(document).on('submit', '#evaluationCreateForm', function (e) {
     e.preventDefault();
-    
-    const form = $(this);
+
+    const form     = $(this);
     const formData = new FormData(this);
-    
+    const spinner  = document.getElementById('evalModal_submitSpinner');
+    const icon     = document.getElementById('evalModal_submitIcon');
+    const btn      = document.getElementById('evalModal_submit');
+
+    // État chargement
+    if (spinner) spinner.classList.remove('d-none');
+    if (icon)    icon.classList.add('d-none');
+    if (btn)     btn.disabled = true;
+
     $.ajax({
-        url: form.attr('action'),
-        method: 'POST',
-        data: formData,
+        url:         form.attr('action'),
+        method:      'POST',
+        data:        formData,
         processData: false,
         contentType: false,
-        success: function(response) {
+        success: function (response) {
             if (response && response.success === false) {
                 showEvaluationErrors(response.errors || {});
+                evalResetSubmitBtn();
                 return;
             }
-
             closeEvaluationModal();
-            setTimeout(closeEvaluationModal, 150);
             loadEvaluationsAndNotes();
             showSuccessMessage('Évaluation créée avec succès !');
         },
-        error: function(xhr) {
+        error: function (xhr) {
+            evalResetSubmitBtn();
             if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
                 showEvaluationErrors(xhr.responseJSON.errors);
                 return;
             }
-
             console.error('Erreur lors de la création:', xhr);
             alert('Erreur lors de la création de l\'évaluation.');
         }
     });
 });
 
+function evalResetSubmitBtn() {
+    const spinner = document.getElementById('evalModal_submitSpinner');
+    const icon    = document.getElementById('evalModal_submitIcon');
+    const btn     = document.getElementById('evalModal_submit');
+    if (spinner) spinner.classList.add('d-none');
+    if (icon)    icon.classList.remove('d-none');
+    if (btn)     btn.disabled = false;
+}
+
+// Champs avec erreur → is-invalid Bootstrap
+const evalFieldMap = {
+    titre:           'eval_titre',
+    type:            'eval_type',
+    periode:         'eval_periode',
+    date_evaluation: 'eval_date',
+    heure_debut:     'eval_heure_debut',
+    heure_fin:       'eval_heure_fin',
+    bareme:          'eval_bareme',
+    coefficient:     'eval_coefficient',
+    classe_id:       null,
+    matiere_id:      null,
+};
+
 function showEvaluationErrors(errors) {
-    $('#evaluationCreateContent .alert').remove();
-    const errorList = Object.values(errors || {}).flat().map(message => `<li>${message}</li>`).join('');
-    const alertHtml = `
-        <div class="alert alert-danger border-start border-danger border-4 mb-3">
-            <div class="d-flex">
-                <div class="me-3"><i class="fas fa-exclamation-circle fs-4"></i></div>
+    // Nettoyer les anciennes erreurs par champ
+    Object.values(evalFieldMap).forEach(id => {
+        if (!id) return;
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.remove('is-invalid');
+            const fb = el.parentElement.querySelector('.invalid-feedback');
+            if (fb) fb.textContent = '';
+        }
+    });
+
+    // Bannière globale
+    const zone = document.getElementById('evalModal_errors');
+    const errorList = Object.values(errors || {}).flat()
+        .map(msg => `<li>${msg}</li>`).join('');
+    zone.innerHTML = `
+        <div class="alert alert-danger border-start border-danger border-4 mb-0">
+            <div class="d-flex gap-3">
+                <i class="fas fa-exclamation-circle fs-5 mt-1 flex-shrink-0"></i>
                 <div>
-                    <h6 class="alert-heading">Erreur de validation</h6>
-                    <ul class="mb-0 ps-3">${errorList || '<li>Veuillez verifier les champs.</li>'}</ul>
+                    <strong class="d-block mb-1">Veuillez corriger les erreurs suivantes :</strong>
+                    <ul class="mb-0 ps-3">${errorList || '<li>Vérifiez les champs obligatoires.</li>'}</ul>
                 </div>
             </div>
-        </div>
-    `;
+        </div>`;
+    zone.style.display = 'block';
 
-    $('#evaluationCreateContent').prepend(alertHtml);
+    // Marquer les champs concernés
+    Object.entries(errors || {}).forEach(([field, messages]) => {
+        const inputId = evalFieldMap[field];
+        if (!inputId) return;
+        const el = document.getElementById(inputId);
+        if (!el) return;
+        el.classList.add('is-invalid');
+        const fb = el.parentElement.querySelector('.invalid-feedback');
+        if (fb) fb.textContent = (messages || [])[0] || '';
+    });
+
+    // Scroll vers le haut du modal body
+    const modalBody = document.querySelector('#evaluationCreateModal .modal-body');
+    if (modalBody) modalBody.scrollTop = 0;
 }
 
 function closeEvaluationModal() {
-    const modalElement = document.getElementById('evaluationCreateModal');
-    if (!modalElement) {
-        return;
-    }
+    const modalEl = document.getElementById('evaluationCreateModal');
+    if (!modalEl) return;
 
     if (window.bootstrap && typeof window.bootstrap.Modal === 'function') {
-        const instance = window.bootstrap.Modal.getInstance(modalElement) || new window.bootstrap.Modal(modalElement);
-        instance.hide();
-    } else if (window.jQuery) {
+        const inst = window.bootstrap.Modal.getInstance(modalEl);
+        if (inst) inst.hide();
+    } else {
         $('#evaluationCreateModal').modal('hide');
     }
-
-    modalElement.classList.remove('show');
-    modalElement.style.display = 'none';
-    modalElement.setAttribute('aria-hidden', 'true');
-
-    setTimeout(() => {
-        const openModals = Array.from(document.querySelectorAll('.modal.show'))
-            .filter(modal => modal.id !== 'evaluationCreateModal');
-
-        const evalBackdrop = document.querySelector('.modal-backdrop.evaluation-backdrop');
-        if (evalBackdrop) {
-            evalBackdrop.remove();
-        }
-
-        if (openModals.length > 0) {
-            document.body.classList.add('modal-open');
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.classList.remove('modal-open');
-            document.body.style.overflow = '';
-            document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
-        }
-    }, 50);
+    evalResetSubmitBtn();
 }
 
 // Fonction pour afficher un message de succès
@@ -1718,6 +2024,121 @@ function showYearChangeInfo() {
 .notes-modal-footer {
     background: #f8fafc;
 }
+
+/* ── Modal Création Évaluation ────────────────────────── */
+.eval-modal-content {
+    border: none;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 24px 64px rgba(4, 83, 203, 0.18);
+}
+.eval-modal-header {
+    background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
+    padding: 20px 24px;
+    border-bottom: none;
+    align-items: flex-start;
+}
+.eval-modal-context {
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.72);
+    font-weight: 500;
+    letter-spacing: 0.2px;
+}
+.eval-autopublish-notice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #ecfdf5;
+    border-bottom: 1px solid #d1fae5;
+    padding: 10px 24px;
+    font-size: 0.84rem;
+    color: #065f46;
+}
+.eval-autopublish-icon {
+    color: #10b981;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+.eval-modal-body {
+    padding: 0;
+    background: #f8fafc;
+}
+.eval-modal-body form > div[id="evalModal_errors"] {
+    margin: 16px 24px 0;
+}
+.eval-section {
+    background: #fff;
+    border-radius: 10px;
+    margin: 16px 20px;
+    border: 1px solid #e8edf5;
+    overflow: hidden;
+}
+.eval-section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #f1f5fb;
+    border-bottom: 1px solid #e2e8f4;
+}
+.eval-section-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #0453cb;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.eval-section-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e293b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.eval-optional-badge {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: #94a3b8;
+    text-transform: none;
+    letter-spacing: 0;
+    margin-left: 4px;
+}
+.eval-section-body {
+    padding: 16px;
+}
+.eval-errors-zone {
+    margin: 16px 20px 0;
+}
+.eval-duree-badge {
+    font-size: 0.78rem;
+    color: #475569;
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    white-space: nowrap;
+}
+.eval-modal-footer {
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    padding: 14px 20px;
+    gap: 10px;
+}
+.eval-submit-btn {
+    background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
+    color: #fff;
+    border: none;
+    padding: 8px 22px;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: opacity 0.15s;
+}
+.eval-submit-btn:hover   { color: #fff; opacity: 0.9; }
+.eval-submit-btn:disabled { opacity: 0.65; cursor: not-allowed; }
 </style>
 @endpush
 
