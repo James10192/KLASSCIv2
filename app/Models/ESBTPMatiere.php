@@ -207,6 +207,17 @@ class ESBTPMatiere extends Model
     }
 
     /**
+     * Liaisons précises filière+niveau (une ligne par combinaison).
+     * Utilisé par la nouvelle modal de configuration des liaisons.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function liaisonsFilieresNiveaux()
+    {
+        return $this->hasMany(\App\Models\ESBTPMatiereFilierNiveau::class, 'matiere_id');
+    }
+
+    /**
      * Relation avec les séances de cours.
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
