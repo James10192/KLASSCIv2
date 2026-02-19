@@ -419,6 +419,43 @@
     </div>
 </div>
 
+<!-- Modal info : comment changer d'année académique -->
+<div class="modal fade" id="yearChangeInfoModal" tabindex="-1" aria-labelledby="yearChangeInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: #fff;">
+                <h5 class="modal-title" id="yearChangeInfoModalLabel">
+                    <i class="fas fa-calendar-alt me-2"></i>Changer d'année académique
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info mb-3" style="font-size: 0.92rem;">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Pourquoi l'année est-elle verrouillée ici ?</strong><br>
+                    La page de saisie des notes affiche uniquement les évaluations de <strong>l'année académique courante</strong>. Ce choix est intentionnel pour éviter toute confusion entre les notes de différentes années.
+                </div>
+                <p class="mb-2" style="font-size: 0.92rem;">Pour changer d'année académique, rendez-vous dans la gestion des années universitaires et cliquez sur <strong>"Définir comme courante"</strong> sur l'année souhaitée.</p>
+                <div class="d-flex align-items-center gap-2 mt-3 p-3 rounded" style="background: #f1f5f9; border-left: 4px solid #0453cb;">
+                    <i class="fas fa-cog text-primary"></i>
+                    <div>
+                        <div style="font-weight: 600; font-size: 0.88rem;">Année courante</div>
+                        <div style="font-size: 0.85rem; color: #64748b;">{{ $anneeAcademique }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="background: #f8fafc;">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fermer</button>
+                @if(auth()->user()->hasRole('superAdmin'))
+                <a href="{{ route('esbtp.annees-universitaires.index') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-external-link-alt me-1"></i>Gérer les années
+                </a>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -1220,6 +1257,16 @@ function showSuccessMessage(message) {
     setTimeout(() => {
         alert.alert('close');
     }, 5000);
+}
+
+function showYearChangeInfo() {
+    const modalEl = document.getElementById('yearChangeInfoModal');
+    if (!modalEl) return;
+    if (window.bootstrap && window.bootstrap.Modal) {
+        new window.bootstrap.Modal(modalEl).show();
+    } else {
+        $(modalEl).modal('show');
+    }
 }
 </script>
 @endpush
