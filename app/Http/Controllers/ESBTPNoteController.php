@@ -493,6 +493,89 @@ class ESBTPNoteController extends Controller
     }
 
     /**
+     * Sauvegarde (création ou mise à jour) d'une note via AJAX depuis notes.index.
+     * Retourne toujours du JSON. Utilise un UPSERT pour éviter le "already exists".
+     */
+    public function saveNoteAjax(Request $request)
+    {
+        $request->validate([
+            'etudiant_id'   => 'required|exists:esbtp_etudiants,id',
+            'evaluation_id' => 'required|exists:esbtp_evaluations,id',
+            'note'          => 'nullable|numeric|min:0',
+            'is_absent'     => 'nullable|string',
+        ]);
+
+        try {
+            $isAbsent = in_array($request->is_absent, ['on', '1', 'true', true], true);
+
+            $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
+
+            // Vérification publication évaluation
+            if (! $evaluation->is_published) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Cette évaluation n'est pas publiée. Activez-la avant de saisir les notes.",
+                ], 422);
+            }
+
+            // UPSERT : trouver la note existante ou en créer une nouvelle
+            $note = ESBTPNote::where('etudiant_id', $request->etudiant_id)
+                ->where('evaluation_id', $request->evaluation_id)
+                ->first();
+
+            // Vérification permission coordinateur : ne peut pas modifier une note existante
+            if ($note && Auth::user()->hasRole('coordinateur')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Vous ne pouvez pas modifier les notes déjà enregistrées.",
+                ], 403);
+            }
+
+            if (! $note) {
+                $note = new ESBTPNote;
+                $note->etudiant_id        = $request->etudiant_id;
+                $note->evaluation_id      = $request->evaluation_id;
+                $note->classe_id          = $evaluation->classe_id;
+                $note->matiere_id         = $evaluation->matiere_id;
+                $note->semestre           = $evaluation->periode;
+                $note->annee_universitaire = $evaluation->anneeUniversitaire
+                    ? $evaluation->anneeUniversitaire->name : 'N/A';
+                $note->type_evaluation    = $evaluation->type;
+                $note->created_by         = Auth::id();
+            } else {
+                $note->semestre = $evaluation->periode;
+            }
+
+            // Valeur de la note : 0 si absent, valeur saisie sinon
+            $note->note       = $isAbsent ? 0 : (float) ($request->note ?? 0);
+            $note->is_absent  = $isAbsent ? 1 : 0;
+            $note->commentaire = $request->commentaire;
+            $note->updated_by  = Auth::id();
+            $note->save();
+
+            // Notification d'absence si nécessaire
+            if ($isAbsent && $note->wasRecentlyCreated) {
+                $this->sendAbsenceNotificationForNote($note, $evaluation);
+            }
+
+            return response()->json([
+                'success'  => true,
+                'message'  => 'Note enregistrée avec succès.',
+                'note_id'  => $note->id,
+                'is_absent' => (bool) $note->is_absent,
+                'note'     => $note->note,
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('saveNoteAjax error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur serveur : ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Supprime une note spécifique.
      *
      * @return \Illuminate\Http\Response
