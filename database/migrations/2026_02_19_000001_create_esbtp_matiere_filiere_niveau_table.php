@@ -15,7 +15,7 @@ return new class extends Migration
             $table->unsignedBigInteger('niveau_etude_id');
             $table->timestamps();
 
-            $table->unique(['matiere_id', 'filiere_id', 'niveau_etude_id']);
+            $table->unique(['matiere_id', 'filiere_id', 'niveau_etude_id'], 'uq_mat_fil_niv');
 
             $table->foreign('matiere_id')->references('id')->on('esbtp_matieres')->onDelete('cascade');
             $table->foreign('filiere_id')->references('id')->on('esbtp_filieres')->onDelete('cascade');
