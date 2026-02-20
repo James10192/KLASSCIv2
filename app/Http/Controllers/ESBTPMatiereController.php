@@ -79,7 +79,12 @@ class ESBTPMatiereController extends Controller
     public function refreshLigne(ESBTPMatiere $matiere)
     {
         try {
-            $matiere->load(['filieres:id,name,code', 'niveaux:id,name,code']);
+            $matiere->load([
+                'filieres:id,name,code',
+                'niveaux:id,name,code',
+                'liaisonsFilieresNiveaux.filiere:id,name,code',
+                'liaisonsFilieresNiveaux.niveauEtude:id,name,code',
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -121,7 +126,12 @@ class ESBTPMatiereController extends Controller
         $totalHeuresExpression = 'COALESCE(heures_cm, 0) + COALESCE(heures_td, 0) + COALESCE(heures_tp, 0) + COALESCE(heures_stage, 0) + COALESCE(heures_perso, 0)';
 
         $query = ESBTPMatiere::query()
-            ->with(['filieres:id,name,code', 'niveaux:id,name,code'])
+            ->with([
+                'filieres:id,name,code',
+                'niveaux:id,name,code',
+                'liaisonsFilieresNiveaux.filiere:id,name,code',
+                'liaisonsFilieresNiveaux.niveauEtude:id,name,code',
+            ])
             ->orderBy('name');
 
         if ($filiere) {

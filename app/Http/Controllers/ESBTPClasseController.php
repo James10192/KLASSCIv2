@@ -1042,6 +1042,8 @@ class ESBTPClasseController extends Controller
         $matieres = ESBTPMatiere::with([
             "filieres:id,name,code",
             "niveaux:id,name,code",
+            "liaisonsFilieresNiveaux.filiere:id,name,code",
+            "liaisonsFilieresNiveaux.niveauEtude:id,name,code",
         ])
             ->where("is_active", true)
             ->orderBy("name")
@@ -1053,10 +1055,10 @@ class ESBTPClasseController extends Controller
                 if (!$classeFiliereId || !$classeNiveauId) {
                     return false;
                 }
-                return $matiere->filieres
-                    ->pluck("id")
-                    ->contains($classeFiliereId) &&
-                    $matiere->niveaux->pluck("id")->contains($classeNiveauId);
+                return $matiere->liaisonsFilieresNiveaux
+                    ->where('filiere_id', $classeFiliereId)
+                    ->where('niveau_etude_id', $classeNiveauId)
+                    ->isNotEmpty();
             })
             ->values()
             ->map(function (ESBTPMatiere $matiere) {
@@ -1072,6 +1074,8 @@ class ESBTPClasseController extends Controller
         $availableMatieres = ESBTPMatiere::with([
             "filieres:id,name,code",
             "niveaux:id,name,code",
+            "liaisonsFilieresNiveaux.filiere:id,name,code",
+            "liaisonsFilieresNiveaux.niveauEtude:id,name,code",
         ])
             ->where("is_active", true)
             ->orderBy("name")
@@ -1084,14 +1088,10 @@ class ESBTPClasseController extends Controller
                     return false;
                 }
 
-                $hasFiliere = $matiere->filieres
-                    ->pluck("id")
-                    ->contains($classeFiliereId);
-                $hasNiveau = $matiere->niveaux
-                    ->pluck("id")
-                    ->contains($classeNiveauId);
-
-                return !($hasFiliere && $hasNiveau);
+                return $matiere->liaisonsFilieresNiveaux
+                    ->where('filiere_id', $classeFiliereId)
+                    ->where('niveau_etude_id', $classeNiveauId)
+                    ->isEmpty();
             })
             ->values()
             ->map(function (ESBTPMatiere $matiere) {
