@@ -193,19 +193,21 @@ async function toggleCombination(matiereId, action, button) {
             throw new Error(liaisonData.message || 'Impossible de récupérer les liaisons.');
         }
 
-        let filieres = liaisonData.filieres || [];
-        let niveaux = liaisonData.niveaux || [];
+        // liaisonData.liaisons = [{filiere_id, niveau_id}, ...]
+        let liaisons = (liaisonData.liaisons || []).map(l => ({
+            filiere_id: l.filiere_id,
+            niveau_id: l.niveau_id
+        }));
+
+        const comboKey = l => `${l.filiere_id}-${l.niveau_id}`;
+        const thisKey = `${CLASSE_FILIERE_ID}-${CLASSE_NIVEAU_ID}`;
 
         if (action === 'add') {
-            if (!filieres.includes(CLASSE_FILIERE_ID)) {
-                filieres.push(CLASSE_FILIERE_ID);
-            }
-            if (!niveaux.includes(CLASSE_NIVEAU_ID)) {
-                niveaux.push(CLASSE_NIVEAU_ID);
+            if (!liaisons.some(l => comboKey(l) === thisKey)) {
+                liaisons.push({ filiere_id: CLASSE_FILIERE_ID, niveau_id: CLASSE_NIVEAU_ID });
             }
         } else if (action === 'remove') {
-            filieres = filieres.filter(id => id !== CLASSE_FILIERE_ID);
-            niveaux = niveaux.filter(id => id !== CLASSE_NIVEAU_ID);
+            liaisons = liaisons.filter(l => comboKey(l) !== thisKey);
         }
 
         const updateResponse = await fetch(`/esbtp/matieres/${matiereId}/update-liaisons`, {
@@ -216,7 +218,7 @@ async function toggleCombination(matiereId, action, button) {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({ filieres, niveaux })
+            body: JSON.stringify({ liaisons })
         });
 
         if (!updateResponse.ok) {
