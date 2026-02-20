@@ -26,8 +26,7 @@
                         <th>Nom</th>
                         <th>Coefficient</th>
                         <th>Total heures</th>
-                        <th>Filières</th>
-                        <th>Niveaux</th>
+                        <th>Liaisons</th>
                         <th>Statut</th>
                         <th style="width: 180px;">Actions</th>
                     </tr>
@@ -37,7 +36,7 @@
                         @include('esbtp.matieres.partials.matiere-row', ['matiere' => $matiere])
                     @empty
                         <tr>
-                            <td colspan="9" class="py-5 text-center">
+                            <td colspan="8" class="py-5 text-center">
                                 <div class="d-flex flex-column align-items-center gap-2 text-muted">
                                     <i class="fas fa-inbox fa-2x"></i>
                                     <span>Aucune matière trouvée avec ces critères.</span>

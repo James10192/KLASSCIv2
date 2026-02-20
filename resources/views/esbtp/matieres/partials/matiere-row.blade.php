@@ -1,6 +1,10 @@
 @php
     $filieres = $matiere->filieres ?? collect();
     $niveaux = $matiere->niveaux ?? collect();
+    $liaisons = $matiere->liaisonsFilieresNiveaux ?? collect();
+    $liaisonCount = $liaisons->count();
+    $liaisonsVisible = $liaisons->take(3);
+    $liaisonsExtra = max(0, $liaisonCount - 3);
 @endphp
 
 <tr data-matiere-id="{{ $matiere->id }}" class="position-relative">
@@ -18,9 +22,9 @@
         @if($matiere->description)
             <small class="text-muted d-block">{{ \Illuminate\Support\Str::limit($matiere->description, 80) }}</small>
         @endif
-        @if($filieres->count() && $niveaux->count())
+        @if($liaisonCount > 0)
             <small class="text-muted">
-                <i class="fas fa-link me-1"></i>{{ $filieres->count() * $niveaux->count() }} combinaison(s)
+                <i class="fas fa-link me-1"></i>{{ $liaisonCount }} combinaison(s)
             </small>
         @endif
     </td>
@@ -30,43 +34,35 @@
     <td>
         <span class="font-bold color-primary">{{ $matiere->total_heures_default ?? 0 }}h</span>
     </td>
+    {{-- Colonne Liaisons : pills filière · niveau exactes --}}
     <td>
-        @if($filieres->isNotEmpty())
+        @if($liaisonCount > 0)
             <div class="d-flex flex-wrap gap-1">
-                @foreach($filieres->take(3) as $filiere)
-                    <span class="badge bg-primary text-white" title="{{ $filiere->name }}">
-                        {{ $filiere->code ?? \Illuminate\Support\Str::limit($filiere->name, 8) }}
+                @foreach($liaisonsVisible as $liaison)
+                    @php
+                        $fCode = $liaison->filiere->code ?? \Illuminate\Support\Str::limit($liaison->filiere->name ?? '?', 8);
+                        $nCode = $liaison->niveauEtude->code ?? \Illuminate\Support\Str::limit($liaison->niveauEtude->name ?? '?', 4);
+                        $tooltip = ($liaison->filiere->name ?? $fCode) . ' — ' . ($liaison->niveauEtude->name ?? $nCode);
+                    @endphp
+                    <span class="badge d-inline-flex align-items-center gap-1 px-2 py-1"
+                          style="background: linear-gradient(135deg,#e8f0fe 0%,#d2e3fc 100%); color:#1a56db; font-size:.72rem; font-weight:600; border:1px solid #c2d4f8; border-radius:999px;"
+                          title="{{ $tooltip }}">
+                        <span style="color:#1a56db;">{{ $fCode }}</span>
+                        <span style="color:#94a3b8; font-weight:400;">·</span>
+                        <span style="color:#0f3fa6;">{{ $nCode }}</span>
                     </span>
                 @endforeach
-                @if($filieres->count() > 3)
-                    <span class="badge bg-info text-white" title="{{ $filieres->count() }} filières au total">
-                        +{{ $filieres->count() - 3 }}
+                @if($liaisonsExtra > 0)
+                    <span class="badge d-inline-flex align-items-center px-2 py-1"
+                          style="background:#f1f5f9; color:#64748b; font-size:.72rem; border:1px solid #e2e8f0; border-radius:999px;"
+                          title="{{ $liaisonCount }} combinaisons au total">
+                        +{{ $liaisonsExtra }}
                     </span>
                 @endif
             </div>
         @else
-            <span class="badge bg-secondary">
-                <i class="fas fa-minus me-1"></i>Aucune
-            </span>
-        @endif
-    </td>
-    <td>
-        @if($niveaux->isNotEmpty())
-            <div class="d-flex flex-wrap gap-1">
-                @foreach($niveaux->take(3) as $niveau)
-                    <span class="badge bg-info text-white" title="{{ $niveau->name }}">
-                        {{ $niveau->code ?? \Illuminate\Support\Str::limit($niveau->name, 8) }}
-                    </span>
-                @endforeach
-                @if($niveaux->count() > 3)
-                    <span class="badge bg-warning text-dark" title="{{ $niveaux->count() }} niveaux au total">
-                        +{{ $niveaux->count() - 3 }}
-                    </span>
-                @endif
-            </div>
-        @else
-            <span class="badge bg-secondary">
-                <i class="fas fa-minus me-1"></i>Aucun
+            <span class="badge bg-light text-muted border" style="border-color:#e2e8f0 !important; font-size:.72rem;">
+                <i class="fas fa-unlink me-1 opacity-50"></i>Non configuré
             </span>
         @endif
     </td>
