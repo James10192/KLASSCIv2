@@ -64,6 +64,41 @@ Once OKAY is received:
 
 ---
 
+## Phase 5 — Workflow GitHub (après implémentation)
+
+Une fois le code implémenté et validé localement, suivre ce workflow dans l'ordre :
+
+1. **Créer une issue GitHub** si elle n'existe pas encore :
+   ```bash
+   gh issue create --title "feat/fix: description" --body-file /tmp/issue_body.md --label enhancement
+   ```
+
+2. **Créer le worktree** via `/git:worktree-start <N>` (N = numéro d'issue) :
+   - Worktree créé dans `../KLASSCIv2-issue-<N>` (répertoire sibling)
+   - Branche : `issue-<N>-<slug>` basée sur `presentation`
+
+3. **Coder dans le worktree** `../KLASSCIv2-issue-<N>/`
+
+4. **Committer** via `/commit` :
+   - Auteur : `James10192 <djedjelipatrick@gmail.com>`
+   - Format : `type(scope): description en impératif présent`
+   - JAMAIS `git add .` ou `git add -A` — toujours des fichiers explicites
+
+5. **Créer la PR** via `/workflow:create-pr` :
+   - Base toujours : `presentation`
+   - Tester sur le serveur après deploy si applicable
+
+6. **Nettoyer** via `/git:worktree-finish <N>` après merge de la PR :
+   - Supprimer worktree, branche locale, branche distante
+   - Revenir sur `presentation` et pull
+
+7. **Fermer l'issue** :
+   ```bash
+   gh issue close <N> --comment "Fermé via merge de la PR #<PR>"
+   ```
+
+---
+
 ## Rules
 
 - **Never code without OKAY** — this is rule #1

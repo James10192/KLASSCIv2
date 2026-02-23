@@ -11,13 +11,24 @@ Create a conventional commit following these steps:
 
 4. Analyze the changes and determine:
    - **type**: feat | fix | refactor | test | docs | chore | perf | style | ci
-   - **scope**: a short noun from the project's CLAUDE.md scopes (e.g. auth, gallery, api, ui, db)
-   - **description**: imperative English, ≤ 72 chars (e.g. "add image filter by category")
+   - **scope**: a short noun describing the area changed (e.g. matieres, liaisons, auth, migrations)
+   - **description**: imperative present tense, ≤ 72 chars (e.g. "add filiere liaison modal")
 
-5. Stage only relevant files explicitly (NEVER `git add -A` or `git add .`)
+5. Verify commit author is set correctly in the worktree:
+   ```bash
+   git config user.name
+   git config user.email
+   ```
+   If not set, configure before committing:
+   ```bash
+   git config user.name "James10192"
+   git config user.email "djedjelipatrick@gmail.com"
+   ```
+
+6. Stage only relevant files explicitly (NEVER `git add -A` or `git add .`)
    - Never stage: `.env`, `.env.*`, secrets, build artifacts, OS files (.DS_Store, Thumbs.db)
 
-6. Create the commit:
+7. Create the commit:
 ```bash
 git commit -m "$(cat <<'EOF'
 <type>(<scope>): <description>
@@ -30,6 +41,7 @@ EOF
 **Rules:**
 - NO "Generated with Claude Code" or "Co-Authored-By" in commits
 - NO WIP commits
+- Commit author: `James10192 <djedjelipatrick@gmail.com>`
 - If multiple unrelated changes exist, ask the user to split into separate commits
 - Always verify `git diff --staged` before committing
 

@@ -1,88 +1,84 @@
 ---
 name: worktree-finish
-description: Finish work on a worktree — push branch, create PR to develop, clean up. Use when the feature/fix is complete.
+description: Clean up after a worktree PR is merged. Use after the PR has been merged into presentation.
 ---
 
-# Finish Worktree — Push → PR → Cleanup
+# Finish Worktree — Cleanup après merge
 
-Follow these steps to finalize work in a worktree.
+Follow these steps **strictly in order** to clean up after a merged PR.
 
-## Step 1 — Check state
+The branch being cleaned is: `issue-<N>-<slug>` (passed as `$ARGUMENTS`)
 
-```bash
-git status
-git diff --staged
-git log --oneline origin/develop..HEAD
-```
-
-Make sure there are no uncommitted changes.
-
-## Step 2 — Push branch
+## Step 1 — Verify that the PR is merged
 
 ```bash
-git push -u origin HEAD
+gh pr view issue-<N>-<slug> --json state,mergedAt,number
 ```
 
-## Step 3 — Create the PR targeting `develop`
+If `state` is NOT `MERGED` → **stop and inform the user** that the PR is not yet merged.
+
+## Step 2 — Find the worktree path
 
 ```bash
-gh pr create \
-  --base develop \
-  --title "<type>(<scope>): <description>" \
-  --body "$(cat <<'EOF'
-## Description
-
-<!-- What this PR does -->
-
-## Closes
-
-Closes #<issue-number>
-
-## Checklist
-
-- [ ] Tests pass
-- [ ] Linting passes
-- [ ] Branch is up to date with develop
-- [ ] No secrets committed
-EOF
-)"
+git worktree list
 ```
 
-If there is no `develop` branch, use `main` as the base.
+Confirm the path is `../KLASSCIv2-issue-<N>`.
 
-## Step 4 — Show the PR link
+## Step 3 — Remove the worktree
 
 ```bash
-gh pr view --web
+git worktree remove ../KLASSCIv2-issue-<N> --force
 ```
 
-## Step 5 — Clean up the worktree (AFTER merge only)
+`--force` is required because the local branch hasn't been merged locally yet.
 
-**Only remove the worktree AFTER the PR is merged into develop.**
+## Step 4 — Delete the local branch
+
+Use `-D` (uppercase) because the branch was only merged on GitHub (remote merge commit):
 
 ```bash
-# From the main repo folder (not the worktree)
-git worktree remove ../worktree-<issue>-<slug>
-git worktree prune
+git branch -D issue-<N>-<slug>
 ```
 
-## Step 6 — Confirm to user
+## Step 5 — Delete the remote branch
 
+```bash
+git push origin --delete issue-<N>-<slug>
 ```
-PR created: <URL>
-  Base   : develop
-  Branch : <branch-name>
-  Issue  : #<issue-number>
 
-Waiting for review.
-Once merged, clean up with:
-  git worktree remove ../worktree-<issue>-<slug>
+If GitHub already auto-deleted it → ignore the error.
+
+## Step 6 — Update presentation
+
+```bash
+git checkout presentation
+git pull origin presentation
+```
+
+## Step 7 — Close the GitHub issue (if applicable)
+
+```bash
+gh issue close <N> --comment "Fermé via merge de la PR #<PR number>"
+```
+
+To find open issues: `gh issue list --state open`
+
+## Step 8 — Verify
+
+```bash
+git worktree list          # must show only the main repo
+git log --oneline -3       # must show the merge commit at top
+git branch -a | grep issue-<N>   # must return nothing
 ```
 
 ## Rules
 
-- **PR targets `develop`, never directly `main`**
-- PR title must follow: `type(scope): description`
-- `Closes #N` in the body auto-closes the issue on merge
+- **Always verify that the PR is MERGED before cleaning up**
+- **Always use `git worktree list` before removing** to confirm the path
+- **Always use `--force` on `worktree remove`**
+- **Always use `-D` (uppercase) on `branch` delete** — branch is not merged locally
+- **Always return to `presentation`** at the end (never `main`, never `develop`)
+- **Always delete the remote branch** with `git push origin --delete`
 
 $ARGUMENTS

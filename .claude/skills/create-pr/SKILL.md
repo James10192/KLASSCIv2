@@ -8,11 +8,11 @@ Create a pull request following the team workflow.
 ## Step 1 — Verify state
 ```bash
 git status
-git log develop..HEAD --oneline
-git diff develop...HEAD --stat
+git log presentation..HEAD --oneline
+git diff presentation...HEAD --stat
 ```
 
-If there is no `develop` branch, use `main` as the base.
+**For this project, the base branch is always `presentation`.**
 
 ## Step 2 — Push branch
 ```bash
@@ -23,13 +23,14 @@ git push -u origin HEAD
 Before creating the PR, verify:
 - No `.env`, secrets, or build artifacts committed
 - All commits follow conventional format (`type(scope): description`)
-- CI checks are expected to pass
+- Commit author is `James10192 <djedjelipatrick@gmail.com>`
+- No "Generated with Claude Code" or "Co-Authored-By" in any commit
 
 ## Step 4 — Create the PR
 
 ```bash
 gh pr create \
-  --base develop \
+  --base presentation \
   --title "<type>(<scope>): <description>" \
   --body "$(cat <<'EOF'
 ## Summary
@@ -42,27 +43,23 @@ gh pr create \
 - [ ] feat — new feature
 - [ ] fix — bug fix
 - [ ] refactor — no behavior change
-- [ ] test — tests only
 - [ ] chore — maintenance
 
 ## Testing
-- [ ] Tests added/updated
-- [ ] Tested locally
+- [ ] Tested on esbtp-abidjan.klassci.com after deploy
 - [ ] No regressions
 
-## Breaking changes
-- [ ] No breaking changes
-- [ ] Breaking change — describe migration steps below
-
 ## Checklist
-- [ ] Follows project conventions (CLAUDE.md)
 - [ ] No secrets or sensitive data committed
-- [ ] CI expected to pass
+- [ ] PHP syntax verified (php -l) on all modified PHP files
 EOF
 )"
 ```
 
 ## Step 5 — Output
 Return the PR URL to the user.
+
+After PR is created, inform the user:
+> "PR créée. Après review et merge, lancez `/git:worktree-finish <N>`"
 
 $ARGUMENTS
