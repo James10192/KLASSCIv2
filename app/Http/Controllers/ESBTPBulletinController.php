@@ -2839,7 +2839,7 @@ class ESBTPBulletinController extends Controller
         $inscription = $inscriptionQuery->first();
 
         $classe_id = $inscription->classe_id ?? $request->classe_id ?? null;
-        $classe = $classe_id ? ESBTPClasse::with('filiere')->find($classe_id) : null;
+        $classe = $classe_id ? ESBTPClasse::with(['filiere', 'niveau'])->find($classe_id) : null;
         // Get the academic year object for display
         $anneeUniversitaire = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
         // Get all active classes for the filter dropdown

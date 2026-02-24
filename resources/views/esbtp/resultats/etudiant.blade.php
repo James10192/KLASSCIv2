@@ -8,19 +8,43 @@
 
 @php
     $coeffContext = session('coefficient_missing_context');
-    $reason = $coeffContext['reason'] ?? null;
-    $matiereName = $coeffContext['matiere']['name'] ?? null;
-    $matiereCode = $coeffContext['matiere']['code'] ?? null;
-    $classeName = $coeffContext['classe']['name'] ?? null;
-    $filiereName = $coeffContext['classe']['filiere_name'] ?? null;
-    $niveauName = $coeffContext['classe']['niveau_name'] ?? null;
-    $configUrl = null;
-    $classeMatieresUrl = null;
-    $evaluationsUrl = null;
-    if ($coeffContext) {
-        $configUrl = $coeffContext['config_url'] ?? route('esbtp.evaluations.index', ['open_coefficients' => 1]);
-        $classeMatieresUrl = $coeffContext['classe_matieres_url'] ?? (isset($classe) && $classe ? route('classes.matieres', ['classe' => $classe->id]) : null);
-        $evaluationsUrl = $coeffContext['evaluations_url'] ?? route('esbtp.evaluations.index');
+
+    // ── Données pour le modal auto-suffisant de coefficients ──
+    $coeffFiliere       = null;
+    $coeffNiveau        = null;
+    $coeffAnneeId       = $annee_id ?? null;
+    $coeffMatieresLiees = collect();
+    $coeffMatieresEvals = collect();
+    $coefficients       = collect();
+
+    if (isset($classe) && $classe && $classe->filiere && $classe->niveau) {
+        $coeffFiliere = $classe->filiere;
+        $coeffNiveau  = $classe->niveau;
+
+        // Groupe 1 : matières formellement liées à la combinaison filière/niveau
+        $coeffMatieresLiees = \App\Models\ESBTPMatiere::where('is_active', true)
+            ->whereHas('filieres', fn($q) => $q->where('esbtp_filieres.id', $coeffFiliere->id))
+            ->whereHas('niveaux',  fn($q) => $q->where('esbtp_niveau_etudes.id', $coeffNiveau->id))
+            ->orderBy('name')
+            ->get();
+
+        $idsLiees = $coeffMatieresLiees->pluck('id');
+
+        // Groupe 2 : matières avec évaluations dans la classe, hors combinaison
+        $coeffMatieresEvals = \App\Models\ESBTPMatiere::where('is_active', true)
+            ->whereHas('evaluations', fn($q) => $q->where('classe_id', $classe->id))
+            ->whereNotIn('id', $idsLiees)
+            ->orderBy('name')
+            ->get();
+
+        // Coefficients existants pour la combinaison
+        if ($coeffAnneeId) {
+            $coefficients = \App\Models\ESBTPMatiereCoefficient::where('filiere_id', $coeffFiliere->id)
+                ->where('niveau_etude_id', $coeffNiveau->id)
+                ->where('annee_universitaire_id', $coeffAnneeId)
+                ->get()
+                ->keyBy('matiere_id');
+        }
     }
 @endphp
 
@@ -77,99 +101,8 @@
         <!-- Actions et navigation -->
         @include('components.student-results.action-buttons')
 
-        @if($coeffContext)
-            <div class="modal fade" id="bulletinIssueModal" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-lg modal-dialog-centered">
-                    <div class="modal-content bulletin-issue-modal">
-                        <div class="modal-header">
-                            <div class="issue-header">
-                                <div class="issue-badge">
-                                    <i class="fas fa-triangle-exclamation"></i>
-                                </div>
-                                <div>
-                                    <h5 class="modal-title">Bulletin bloqué</h5>
-                                    <div class="issue-subtitle">Une configuration est nécessaire pour continuer.</div>
-                                </div>
-                            </div>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="issue-card">
-                                @if($reason === 'matiere_hors_combinaison')
-                                    <div class="issue-title">Matière hors combinaison filière / niveau</div>
-                                    <p class="issue-text">
-                                        La matière <strong>{{ $matiereName ?? 'sélectionnée' }}</strong>
-                                        n'est pas rattachée à la combinaison <strong>{{ $filiereName ?? 'filière' }}</strong> /
-                                        <strong>{{ $niveauName ?? 'niveau' }}</strong> de la classe
-                                        <strong>{{ $classeName ?? 'sélectionnée' }}</strong>.
-                                    </p>
-                                    <div class="issue-note">
-                                        Les coefficients se configurent uniquement sur les matières liées à cette combinaison.
-                                    </div>
-                                @elseif($reason === 'matiere_introuvable')
-                                    <div class="issue-title">Matière introuvable</div>
-                                    <p class="issue-text">
-                                        La matière associée aux notes n'a pas été retrouvée. Veuillez vérifier la configuration des évaluations.
-                                    </p>
-                                @else
-                                    <div class="issue-title">Coefficient manquant</div>
-                                    <p class="issue-text">
-                                        Aucun coefficient n'est défini pour
-                                        <strong>{{ $matiereName ?? 'cette matière' }}</strong> sur
-                                        <strong>{{ $classeName ?? 'cette classe' }}</strong>.
-                                    </p>
-                                    <div class="issue-note">
-                                        Configurez les coefficients pour générer la preview et le PDF.
-                                    </div>
-                                @endif
-
-                                <div class="issue-grid">
-                                    <div class="issue-item">
-                                        <span>Matière</span>
-                                        <strong>{{ $matiereName ?? 'Non renseignée' }}{{ $matiereCode ? ' · '.$matiereCode : '' }}</strong>
-                                    </div>
-                                    <div class="issue-item">
-                                        <span>Classe</span>
-                                        <strong>{{ $classeName ?? 'Non renseignée' }}</strong>
-                                    </div>
-                                    <div class="issue-item">
-                                        <span>Combinaison</span>
-                                        <strong>{{ $filiereName ?? '—' }} · {{ $niveauName ?? '—' }}</strong>
-                                    </div>
-                                </div>
-
-                                <div class="issue-actions">
-                                    @if($reason === 'matiere_hors_combinaison' && $classeMatieresUrl)
-                                        <a href="{{ $classeMatieresUrl }}" class="btn-acasi primary">
-                                            <i class="fas fa-list-check"></i>Gérer matières de la classe
-                                        </a>
-                                        <a href="{{ $configUrl }}" class="btn-acasi secondary">
-                                            <i class="fas fa-sliders-h"></i>Configurer coefficients
-                                        </a>
-                                    @else
-                                        <a href="{{ $configUrl }}" class="btn-acasi primary">
-                                            <i class="fas fa-sliders-h"></i>Configurer coefficients
-                                        </a>
-                                        @if($classeMatieresUrl)
-                                            <a href="{{ $classeMatieresUrl }}" class="btn-acasi secondary">
-                                                <i class="fas fa-list-check"></i>Matières de la classe
-                                            </a>
-                                        @endif
-                                    @endif
-                                    <a href="{{ $evaluationsUrl }}" class="btn-acasi info">
-                                        <i class="fas fa-clipboard-list"></i>Vérifier évaluations
-                                    </a>
-                                </div>
-
-                                <div class="issue-footnote">
-                                    Besoin d'aide ? Vérifiez que les évaluations utilisent des matières rattachées à la classe.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        @endif
+        {{-- Modal auto-suffisant de configuration des coefficients --}}
+        @include('esbtp.resultats.partials.student-coefficients-modal')
 
     </div>
 </div>
@@ -215,125 +148,12 @@ document.addEventListener('DOMContentLoaded', function() {
 @if($coeffContext)
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const modalElement = document.getElementById('bulletinIssueModal');
+        const modalElement = document.getElementById('studentCoeffModal');
         if (modalElement && typeof bootstrap !== 'undefined') {
-            const modalInstance = new bootstrap.Modal(modalElement);
+            const modalInstance = new bootstrap.Modal(modalElement, { backdrop: 'static', keyboard: false });
             modalInstance.show();
         }
     });
     </script>
 @endif
 @endsection
-
-@push('styles')
-<style>
-.bulletin-issue-modal .modal-content {
-    border-radius: 18px;
-    overflow: hidden;
-    border: 1px solid rgba(4, 83, 203, 0.15);
-    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
-}
-
-.bulletin-issue-modal .modal-header {
-    background: linear-gradient(135deg, rgba(4, 83, 203, 0.12), rgba(94, 145, 222, 0.18));
-    border-bottom: 1px solid rgba(4, 83, 203, 0.18);
-}
-
-.issue-header {
-    display: flex;
-    align-items: center;
-    gap: 0.9rem;
-}
-
-.issue-badge {
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 14px;
-    background: rgba(239, 68, 68, 0.12);
-    color: #dc2626;
-    font-size: 1.25rem;
-}
-
-.issue-subtitle {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-}
-
-.issue-card {
-    background: #fff;
-    border-radius: 16px;
-    border: 1px solid rgba(148, 163, 184, 0.3);
-    padding: 1.5rem;
-    display: grid;
-    gap: 1rem;
-}
-
-.issue-title {
-    font-weight: 700;
-    font-size: 1.1rem;
-    color: var(--text-primary);
-}
-
-.issue-text {
-    color: var(--text-secondary);
-    margin: 0;
-}
-
-.issue-note {
-    background: rgba(4, 83, 203, 0.08);
-    border-left: 4px solid var(--primary);
-    padding: 0.75rem 1rem;
-    border-radius: 10px;
-    color: var(--text-primary);
-    font-size: 0.9rem;
-}
-
-.issue-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 0.75rem;
-}
-
-.issue-item {
-    background: var(--background-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 0.75rem 0.9rem;
-    display: grid;
-    gap: 0.25rem;
-}
-
-.issue-item span {
-    text-transform: uppercase;
-    font-size: 0.7rem;
-    letter-spacing: 0.08em;
-    color: var(--text-secondary);
-}
-
-.issue-item strong {
-    font-size: 0.9rem;
-    color: var(--text-primary);
-}
-
-.issue-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-}
-
-.issue-footnote {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-}
-
-@media (max-width: 576px) {
-    .issue-actions .btn-acasi {
-        width: 100%;
-        justify-content: center;
-    }
-}
-</style>
-@endpush
