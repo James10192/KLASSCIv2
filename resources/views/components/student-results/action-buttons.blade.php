@@ -70,10 +70,15 @@
                         <i class="fas fa-file-pdf"></i>
                         Génération
                     </h6>
-                    <a href="#" class="btn-acasi danger featured"
-                       onclick="window.open('{{ route('esbtp.bulletins.pdf-params', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]) }}', '_blank')">
-                        <i class="fas fa-file-pdf"></i>Générer le bulletin PDF
-                    </a>
+                    <div class="info-notice">
+                        <div class="notice-content">
+                            <i class="fas fa-file-pdf"></i>
+                            <div>
+                                <h6>Téléchargement</h6>
+                                <p>Utilisez le bouton principal en haut de page pour générer le PDF du bulletin.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             @else
                 <div class="action-section">

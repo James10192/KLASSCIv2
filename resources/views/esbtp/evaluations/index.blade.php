@@ -716,6 +716,112 @@
     display: flex;
     justify-content: flex-end;
 }
+
+.coeff-modal .modal-content {
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(4, 83, 203, 0.2);
+    box-shadow: 0 22px 50px rgba(15, 23, 42, 0.25);
+}
+
+.coeff-modal .modal-header {
+    background: linear-gradient(135deg, rgba(4, 83, 203, 0.14), rgba(94, 145, 222, 0.2));
+    border-bottom: 1px solid rgba(4, 83, 203, 0.2);
+    color: var(--text-primary);
+}
+
+.coeff-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.coeff-modal-intro {
+    display: flex;
+    gap: 0.85rem;
+    align-items: flex-start;
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+    background: rgba(4, 83, 203, 0.08);
+    border: 1px solid rgba(4, 83, 203, 0.16);
+    margin-bottom: 1.25rem;
+}
+
+.coeff-modal-intro .intro-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(4, 83, 203, 0.18);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.coeff-modal-intro .intro-title {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.coeff-modal-intro .intro-text {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.coeff-status {
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.coeff-status.status-complete {
+    background: rgba(16, 185, 129, 0.16);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.coeff-status.status-partial {
+    background: rgba(245, 158, 11, 0.16);
+    color: #b45309;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.coeff-status.status-missing {
+    background: rgba(239, 68, 68, 0.14);
+    color: #b91c1c;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.coeff-status.status-empty {
+    background: rgba(148, 163, 184, 0.18);
+    color: #475569;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.coeff-alert {
+    padding: 0.65rem 0.85rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    margin-bottom: 0.85rem;
+}
+
+.coeff-alert-warning {
+    background: rgba(245, 158, 11, 0.14);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: #92400e;
+}
+
+.coeff-alert-empty {
+    background: rgba(148, 163, 184, 0.18);
+    border: 1px dashed rgba(148, 163, 184, 0.5);
+    color: #475569;
+}
 </style>
 @endpush
 
