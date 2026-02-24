@@ -17,7 +17,7 @@
                 $periodeNom = $periodeKey === 'semestre1' ? 'Semestre 1' : 'Semestre 2';
                 if (isset($periodes)) {
                     foreach ($periodes as $p) {
-                        if ((string) $p->id === (string) $periode || $p->code === $periodeKey) {
+                        if ((string) $p->id === (string) $periode || (isset($p->code) && $p->code === $periodeKey)) {
                             $periodeNom = $p->nom;
                             break;
                         }
