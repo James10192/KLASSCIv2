@@ -14,9 +14,14 @@
     $classeName = $coeffContext['classe']['name'] ?? null;
     $filiereName = $coeffContext['classe']['filiere_name'] ?? null;
     $niveauName = $coeffContext['classe']['niveau_name'] ?? null;
-    $configUrl = $coeffContext['config_url'] ?? route('esbtp.evaluations.index', ['open_coefficients' => 1]);
-    $classeMatieresUrl = $coeffContext['classe_matieres_url'] ?? (isset($classe) && $classe ? route('classes.matieres', ['classe' => $classe->id]) : null);
-    $evaluationsUrl = $coeffContext['evaluations_url'] ?? route('esbtp.evaluations.index');
+    $configUrl = null;
+    $classeMatieresUrl = null;
+    $evaluationsUrl = null;
+    if ($coeffContext) {
+        $configUrl = $coeffContext['config_url'] ?? route('esbtp.evaluations.index', ['open_coefficients' => 1]);
+        $classeMatieresUrl = $coeffContext['classe_matieres_url'] ?? (isset($classe) && $classe ? route('classes.matieres', ['classe' => $classe->id]) : null);
+        $evaluationsUrl = $coeffContext['evaluations_url'] ?? route('esbtp.evaluations.index');
+    }
 @endphp
 
 @section('content')
