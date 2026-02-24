@@ -8041,7 +8041,9 @@ class ESBTPBulletinController extends Controller
 
         if ($classeId) {
             $context['classe_matieres_url'] = $context['classe_matieres_url']
-                ?? route('classes.matieres', ['classe' => $classeId]);
+                ?? (\Illuminate\Support\Facades\Route::has('classes.matieres')
+                    ? route('classes.matieres', ['classe' => $classeId])
+                    : route('esbtp.evaluations.index', ['open_coefficients' => 1]));
         }
 
         $query = array_filter([
