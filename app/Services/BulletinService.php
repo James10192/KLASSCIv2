@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Exceptions\CoefficientMissingException;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
@@ -423,6 +425,7 @@ class BulletinService
         }
 
         $classeCourante = $this->classeCache[$classe->id];
+        $classeCourante->loadMissing(['filiere', 'niveauEtude']);
 
         if (! $classeCourante || ! $classeCourante->filiere_id || ! $classeCourante->niveau_etude_id) {
             throw new \RuntimeException('Classe invalide pour le calcul du coefficient.');
@@ -435,7 +438,56 @@ class BulletinService
             ->value('coefficient');
 
         if ($coefficient === null) {
-            throw new \RuntimeException('Coefficient manquant pour la matière sélectionnée.');
+            $matiere = ESBTPMatiere::find($matiereId);
+            $inFiliere = false;
+            $inNiveau = false;
+
+            if ($matiere) {
+                $inFiliere = $matiere->filieres()
+                    ->where('esbtp_filieres.id', $classeCourante->filiere_id)
+                    ->exists();
+                $inNiveau = $matiere->niveaux()
+                    ->where('esbtp_niveau_etudes.id', $classeCourante->niveau_etude_id)
+                    ->exists();
+
+                if (! $inFiliere && $matiere->filiere_id) {
+                    $inFiliere = (int) $matiere->filiere_id === (int) $classeCourante->filiere_id;
+                }
+                if (! $inNiveau && $matiere->niveau_etude_id) {
+                    $inNiveau = (int) $matiere->niveau_etude_id === (int) $classeCourante->niveau_etude_id;
+                }
+            }
+
+            $reason = 'coefficient_missing';
+            if (! $matiere) {
+                $reason = 'matiere_introuvable';
+            } elseif (! $inFiliere || ! $inNiveau) {
+                $reason = 'matiere_hors_combinaison';
+            }
+
+            $context = [
+                'reason' => $reason,
+                'matiere' => $matiere
+                    ? [
+                        'id' => $matiere->id,
+                        'name' => $matiere->name,
+                        'code' => $matiere->code,
+                    ]
+                    : [
+                        'id' => $matiereId,
+                    ],
+                'classe' => [
+                    'id' => $classeCourante->id,
+                    'name' => $classeCourante->name,
+                    'filiere_id' => $classeCourante->filiere_id,
+                    'niveau_etude_id' => $classeCourante->niveau_etude_id,
+                    'filiere_name' => $classeCourante->filiere->name ?? null,
+                    'niveau_name' => $classeCourante->niveauEtude->name ?? null,
+                ],
+                'annee_universitaire_id' => $anneeUniversitaireId,
+            ];
+
+            throw new CoefficientMissingException('Coefficient manquant pour la matière sélectionnée.', $context);
         }
 
         $this->coefficientCache[$cacheKey] = (float) $coefficient;

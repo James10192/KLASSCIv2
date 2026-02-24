@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\CoefficientMissingException;
 use App\Helpers\SettingsHelper;
 use App\Models\Classe;
 use App\Models\ESBTPAbsence;
@@ -4250,6 +4251,13 @@ class ESBTPBulletinController extends Controller
 
             return view($this->getBulletinTemplateView(), $donnees);
 
+        } catch (CoefficientMissingException $e) {
+            $context = $this->buildCoefficientIssueContext($e->getContext(), $request);
+            $message = $this->formatCoefficientIssueMessage($context);
+
+            return redirect()->back()
+                ->with('error', $message)
+                ->with('coefficient_missing_context', $context);
         } catch (\Exception $e) {
             if (str_contains($e->getMessage(), 'Configuration bulletin manquante')) {
                 $bulletin = ESBTPBulletin::where('etudiant_id', $etudiantId)
@@ -4823,6 +4831,13 @@ class ESBTPBulletinController extends Controller
 
             return $pdf->download($filename);
 
+        } catch (CoefficientMissingException $e) {
+            $context = $this->buildCoefficientIssueContext($e->getContext(), $request);
+            $message = $this->formatCoefficientIssueMessage($context);
+
+            return redirect()->back()
+                ->with('error', $message)
+                ->with('coefficient_missing_context', $context);
         } catch (\Exception $e) {
             // Gestion des erreurs de configuration
             if (str_contains($e->getMessage(), 'Configuration bulletin manquante')) {
@@ -8014,5 +8029,50 @@ class ESBTPBulletinController extends Controller
         return $style === 'abidjan'
             ? 'esbtp.bulletins.preview-abidjan'
             : 'esbtp.bulletins.preview';
+    }
+
+    private function buildCoefficientIssueContext(array $context, Request $request): array
+    {
+        $classeId = $context['classe']['id'] ?? $request->input('classe_id');
+        $matiereId = $context['matiere']['id'] ?? null;
+
+        $context['config_url'] = $context['config_url']
+            ?? route('esbtp.evaluations.index', ['open_coefficients' => 1]);
+
+        if ($classeId) {
+            $context['classe_matieres_url'] = $context['classe_matieres_url']
+                ?? route('classes.matieres', ['classe' => $classeId]);
+        }
+
+        $query = array_filter([
+            'classe_id' => $classeId,
+            'matiere_id' => $matiereId,
+        ], fn ($value) => ! is_null($value) && $value !== '');
+
+        if (! empty($query)) {
+            $context['evaluations_url'] = $context['evaluations_url']
+                ?? route('esbtp.evaluations.index', $query);
+        }
+
+        return $context;
+    }
+
+    private function formatCoefficientIssueMessage(array $context): string
+    {
+        $reason = $context['reason'] ?? 'coefficient_missing';
+        $matiereName = $context['matiere']['name'] ?? 'la matière sélectionnée';
+        $classeName = $context['classe']['name'] ?? 'la classe';
+        $filiereName = $context['classe']['filiere_name'] ?? 'la filière';
+        $niveauName = $context['classe']['niveau_name'] ?? 'le niveau';
+
+        if ($reason === 'matiere_hors_combinaison') {
+            return "La matière {$matiereName} n'est pas rattachée à la combinaison {$filiereName} / {$niveauName} de {$classeName}.";
+        }
+
+        if ($reason === 'matiere_introuvable') {
+            return 'Matière introuvable. Veuillez vérifier la configuration des évaluations.';
+        }
+
+        return "Coefficient manquant pour {$matiereName}. Configurez les coefficients avant de continuer.";
     }
 }

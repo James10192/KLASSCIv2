@@ -42,6 +42,36 @@ class Handler extends ExceptionHandler
 
     public function render($request, Throwable $e)
     {
+        if ($e instanceof CoefficientMissingException) {
+            $context = $e->getContext();
+            $classeId = $context['classe']['id'] ?? null;
+            $matiereId = $context['matiere']['id'] ?? null;
+
+            $context['config_url'] = route('esbtp.evaluations.index', ['open_coefficients' => 1]);
+            if ($classeId) {
+                $context['classe_matieres_url'] = route('classes.matieres', ['classe' => $classeId]);
+            }
+            if ($classeId || $matiereId) {
+                $query = array_filter([
+                    'classe_id' => $classeId,
+                    'matiere_id' => $matiereId,
+                ], fn ($value) => ! is_null($value) && $value !== '');
+                $context['evaluations_url'] = route('esbtp.evaluations.index', $query);
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                    'context' => $context,
+                ], 422);
+            }
+
+            return redirect()->back()
+                ->with('error', $e->getMessage())
+                ->with('coefficient_missing_context', $context);
+        }
+
         if ($e instanceof RuntimeException) {
             $message = $e->getMessage();
 

@@ -7,10 +7,17 @@
         </div>
         <div class="main-card-subtitle">
             @php
-                $periodeNom = $periode == 1 ? 'Semestre 1' : 'Semestre 2';
+                $periodeKey = (string) $periode;
+                if ($periodeKey === '1') {
+                    $periodeKey = 'semestre1';
+                } elseif ($periodeKey === '2') {
+                    $periodeKey = 'semestre2';
+                }
+
+                $periodeNom = $periodeKey === 'semestre1' ? 'Semestre 1' : 'Semestre 2';
                 if (isset($periodes)) {
                     foreach ($periodes as $p) {
-                        if ($p->id == $periode) {
+                        if ((string) $p->id === (string) $periode || $p->code === $periodeKey) {
                             $periodeNom = $p->nom;
                             break;
                         }
