@@ -119,7 +119,7 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Auto-submit form when filters change
@@ -133,38 +133,37 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-    
+
     // Initialize tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
-    
+
     // Smooth scroll for internal links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
             e.preventDefault();
             const target = document.querySelector(this.getAttribute('href'));
             if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         });
     });
-});
-</script>
 
-@if($coeffContext)
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const modalElement = document.getElementById('studentCoeffModal');
+    // Ouverture automatique du modal coefficients :
+    // 1) Via session flash après redirect CoefficientMissingException
+    // 2) Via paramètre URL ?open_coeff_modal=1 (ex: depuis moyennes-preview)
+    var shouldOpenCoeffModal = {{ $coeffContext ? 'true' : 'false' }}
+        || new URLSearchParams(window.location.search).get('open_coeff_modal') === '1';
+
+    if (shouldOpenCoeffModal) {
+        var modalElement = document.getElementById('studentCoeffModal');
         if (modalElement && typeof bootstrap !== 'undefined') {
-            const modalInstance = new bootstrap.Modal(modalElement, { backdrop: 'static', keyboard: false });
+            var modalInstance = new bootstrap.Modal(modalElement, { backdrop: 'static', keyboard: false });
             modalInstance.show();
         }
-    });
-    </script>
-@endif
-@endsection
+    }
+});
+</script>
+@endpush

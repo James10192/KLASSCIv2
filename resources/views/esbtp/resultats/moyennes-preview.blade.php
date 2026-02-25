@@ -129,7 +129,7 @@
                             <p><i class="fas fa-check-circle text-success me-2"></i>Les coefficients sont gérés par filière, niveau et année.</p>
                             <p class="mb-0">
                                 <i class="fas fa-sliders-h text-primary me-2"></i>
-                                <a href="{{ route('esbtp.evaluations.index', ['open_coefficients' => 1]) }}" class="text-decoration-none">Configurer les coefficients</a>
+                                <a href="{{ route('esbtp.resultats.etudiant', $etudiant) }}?classe_id={{ $classe->id }}&periode={{ $periode == 'semestre1' ? '1' : ($periode == 'semestre2' ? '2' : $periode) }}&annee_universitaire_id={{ $anneeUniversitaire->id }}&open_coeff_modal=1" class="text-decoration-none">Configurer les coefficients</a>
                             </p>
                             <p><i class="fas fa-info-circle text-primary me-2"></i>Les moyennes doivent être comprises entre 0 et 20.</p>
                         </div>
