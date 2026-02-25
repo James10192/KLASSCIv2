@@ -60,8 +60,8 @@
                             <strong>Matière hors combinaison</strong>
                             <span>{{ $coeffContext['matiere']['name'] ?? 'Matière inconnue' }} n'est pas rattachée à cette combinaison. Ajoutez son coefficient ci-dessous.</span>
                         @else
-                            <strong>Coefficient manquant — bulletin bloqué</strong>
-                            <span>La matière <em>{{ $coeffContext['matiere']['name'] ?? '—' }}</em> n'a pas de coefficient pour cette combinaison filière / niveau.</span>
+                            <strong>Coefficient manquant pour l'année en cours</strong>
+                            <span>La matière <em>{{ $coeffContext['matiere']['name'] ?? '—' }}</em> n'a pas de coefficient pour l'année universitaire actuelle. La valeur pré-remplie vient d'une autre année — cliquez <strong>Enregistrer</strong> pour l'appliquer.</span>
                         @endif
                     </div>
                 </div>

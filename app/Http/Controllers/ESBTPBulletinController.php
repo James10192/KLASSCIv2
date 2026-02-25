@@ -5921,7 +5921,14 @@ class ESBTPBulletinController extends Controller
                 'resultatsData'
             ));
         } catch (\RuntimeException $exception) {
-            return redirect()->route('esbtp.evaluations.index', ['open_coefficients' => 1])
+            $periodeParam = isset($periode) ? str_replace('semestre', '', $periode) : '1';
+            $redirectUrl = route('esbtp.resultats.etudiant', ['etudiant' => $etudiantId])
+                . '?classe_id=' . ($classeId ?? '')
+                . '&annee_universitaire_id=' . ($anneeUniversitaireId ?? '')
+                . '&periode=' . $periodeParam
+                . '&open_coeff_modal=1';
+
+            return redirect($redirectUrl)
                 ->with('error', $exception->getMessage().' Configurez les coefficients avant de continuer.');
         }
     }
