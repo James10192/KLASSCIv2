@@ -508,7 +508,7 @@
     // === GESTION DES COEFFICIENTS DE MATIÈRES ===
     
     // URL pour la récupération du coefficient
-    const getCoefficientUrl = '{{ route("resultats.get-matiere-coefficient") }}';
+    const getCoefficientUrl = '{{ route("esbtp.resultats.get-matiere-coefficient") }}';
     const classeId = '{{ $classe->id }}';
     
     // Fonction pour récupérer et afficher les informations du coefficient
