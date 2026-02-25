@@ -612,111 +612,7 @@
     margin-bottom: 0;
 }
 
-.coeff-modal .modal-content {
-    border-radius: 16px;
-    border: none;
-    overflow: hidden;
-}
-
-.coeff-modal .modal-header {
-    background: linear-gradient(135deg, #0f3f87 0%, #0453cb 100%);
-    color: #fff;
-    border-bottom: none;
-}
-
-.coeff-modal .modal-body {
-    background: #f8fafc;
-}
-
-.coeff-modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.coeff-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 1rem;
-}
-
-.coeff-card {
-    background: #fff;
-    border-radius: 14px;
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-.coeff-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 0.75rem;
-}
-
-.coeff-combo {
-    display: flex;
-    gap: 0.4rem;
-    flex-wrap: wrap;
-}
-
-.coeff-status {
-    font-size: 0.75rem;
-    font-weight: 700;
-    padding: 0.25rem 0.6rem;
-    border-radius: 999px;
-}
-
-.status-complete {
-    background: rgba(16, 185, 129, 0.15);
-    color: #047857;
-}
-
-.status-partial {
-    background: rgba(245, 158, 11, 0.15);
-    color: #b45309;
-}
-
-.status-missing {
-    background: rgba(239, 68, 68, 0.15);
-    color: #b91c1c;
-}
-
-.status-empty {
-    background: rgba(148, 163, 184, 0.2);
-    color: #475569;
-}
-
-.coeff-grid {
-    display: grid;
-    gap: 0.6rem;
-}
-
-.coeff-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.6rem 0.75rem;
-    border-radius: 10px;
-    background: rgba(4, 83, 203, 0.06);
-    border: 1px solid rgba(4, 83, 203, 0.12);
-}
-
-.coeff-input {
-    max-width: 90px;
-}
-
-.coeff-card-footer {
-    display: flex;
-    justify-content: flex-end;
-}
-
+/* ── Modal coefficients ── */
 .coeff-modal .modal-content {
     border-radius: 18px;
     overflow: hidden;
@@ -730,14 +626,21 @@
     color: var(--text-primary);
 }
 
+.coeff-modal .modal-body {
+    background: #f8fafc;
+    padding: 1.5rem;
+}
+
+/* ── En-tête du partial ── */
 .coeff-modal-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.25rem;
 }
 
+/* ── Intro info-box ── */
 .coeff-modal-intro {
     display: flex;
     gap: 0.85rem;
@@ -746,7 +649,7 @@
     border-radius: 14px;
     background: rgba(4, 83, 203, 0.08);
     border: 1px solid rgba(4, 83, 203, 0.16);
-    margin-bottom: 1.25rem;
+    margin-bottom: 1.5rem;
 }
 
 .coeff-modal-intro .intro-icon {
@@ -771,13 +674,99 @@
     font-size: 0.85rem;
 }
 
+/* ── État vide ── */
+.coeff-empty-state {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: var(--text-secondary);
+}
+
+/* ── Grille de cards ── */
+.coeff-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 1.25rem;
+}
+
+/* ── Card individuelle ── */
+.coeff-card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+    padding: 1.1rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    transition: box-shadow 0.2s;
+}
+
+.coeff-card:hover {
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.1);
+}
+
+/* Bordure colorée selon statut */
+.complete-card  { border-left: 4px solid #10b981; }
+.partial-card   { border-left: 4px solid #f59e0b; }
+.missing-card   { border-left: 4px solid #ef4444; }
+.empty-card     { border-left: 4px solid #94a3b8; }
+
+/* ── En-tête card ── */
+.coeff-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.coeff-card-title {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.coeff-ordinal {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(4, 83, 203, 0.12);
+    color: var(--primary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.coeff-combo-info {
+    min-width: 0;
+}
+
+.coeff-combo {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.3rem;
+}
+
+.coeff-progress-text {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+/* ── Badge statut ── */
 .coeff-status {
     padding: 0.3rem 0.7rem;
     border-radius: 999px;
     font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .coeff-status.status-complete {
@@ -804,23 +793,137 @@
     border: 1px solid rgba(148, 163, 184, 0.35);
 }
 
+/* ── Barre de progression ── */
+.coeff-progress-bar-wrap {
+    height: 4px;
+    border-radius: 99px;
+    background: rgba(148, 163, 184, 0.2);
+    overflow: hidden;
+}
+
+.coeff-progress-bar {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.4s ease;
+}
+
+.coeff-progress-bar[data-status="complete"] { background: #10b981; }
+.coeff-progress-bar[data-status="partial"]  { background: #f59e0b; }
+.coeff-progress-bar[data-status="missing"]  { background: #ef4444; }
+.coeff-progress-bar[data-status="empty"]    { background: #94a3b8; }
+
+/* ── Corps card ── */
+.coeff-card-body {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Alertes ── */
 .coeff-alert {
     padding: 0.65rem 0.85rem;
     border-radius: 10px;
-    font-size: 0.85rem;
+    font-size: 0.83rem;
     margin-bottom: 0.85rem;
 }
 
 .coeff-alert-warning {
-    background: rgba(245, 158, 11, 0.14);
-    border: 1px solid rgba(245, 158, 11, 0.35);
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
     color: #92400e;
 }
 
 .coeff-alert-empty {
-    background: rgba(148, 163, 184, 0.18);
-    border: 1px dashed rgba(148, 163, 184, 0.5);
+    background: rgba(148, 163, 184, 0.12);
+    border: 1px dashed rgba(148, 163, 184, 0.4);
     color: #475569;
+}
+
+/* ── Grille matières ── */
+.coeff-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.coeff-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 10px;
+    background: rgba(4, 83, 203, 0.04);
+    border: 1px solid rgba(4, 83, 203, 0.1);
+    transition: background 0.15s;
+}
+
+.coeff-row.has-value {
+    background: rgba(16, 185, 129, 0.04);
+    border-color: rgba(16, 185, 129, 0.18);
+}
+
+.coeff-row.missing-value {
+    background: rgba(239, 68, 68, 0.04);
+    border-color: rgba(239, 68, 68, 0.14);
+}
+
+.coeff-matiere-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.coeff-matiere-name {
+    font-weight: 600;
+    font-size: 0.87rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.coeff-matiere-code {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin-top: 1px;
+}
+
+.coeff-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.coeff-current-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.15rem 0.45rem;
+    border-radius: 6px;
+    background: rgba(16, 185, 129, 0.14);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    white-space: nowrap;
+}
+
+.coeff-input {
+    width: 80px;
+    min-width: 80px;
+    text-align: center;
+}
+
+/* ── Pied card ── */
+.coeff-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding-top: 0.25rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.coeff-save-feedback {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
 }
 </style>
 @endpush
@@ -1555,6 +1658,10 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('niveau_etude_id', form.dataset.niveauId || '');
         formData.append('annee_universitaire_id', coeffYearId || '');
 
+        const saveBtn = form.querySelector('.coeff-save-btn');
+        const saveFeedback = form.querySelector('.coeff-save-feedback');
+        if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement...'; }
+
         fetch(coeffUpdateUrl, {
             method: 'POST',
             headers: {
@@ -1569,18 +1676,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!data.success) {
                     throw new Error(data.message || 'Enregistrement impossible');
                 }
-                const toast = document.createElement('div');
-                toast.className = 'alert alert-success mt-3';
-                toast.textContent = data.message || 'Coefficients enregistrés.';
-                form.prepend(toast);
-                setTimeout(() => toast.remove(), 2500);
+                if (saveFeedback) {
+                    saveFeedback.classList.remove('d-none');
+                    setTimeout(() => saveFeedback.classList.add('d-none'), 2500);
+                }
             })
             .catch(error => {
                 const toast = document.createElement('div');
-                toast.className = 'alert alert-danger mt-3';
+                toast.className = 'alert alert-danger mt-2 mb-0';
+                toast.style.cssText = 'font-size:0.83rem;padding:0.5rem 0.75rem';
                 toast.textContent = error.message;
-                form.prepend(toast);
+                form.querySelector('.coeff-card-footer')?.before(toast);
                 setTimeout(() => toast.remove(), 3500);
+            })
+            .finally(() => {
+                if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Enregistrer'; }
             });
     });
 
