@@ -874,8 +874,10 @@
         .then(function ({ ok, data }) {
             if (ok && data.success) {
                 success.classList.remove('d-none');
-                /* Reload after progress animation (1.5s) */
-                setTimeout(function () { window.location.reload(); }, 1600);
+                /* Après l'animation (1.5s), rafraîchir le contenu sans recharger toute la page */
+                setTimeout(function () {
+                    scmRefreshContent();
+                }, 1600);
             } else {
                 throw new Error(data.message || 'Erreur lors de l\'enregistrement.');
             }
@@ -890,6 +892,43 @@
             saveBtn.querySelector('.scm-btn-icon')?.classList?.remove('d-none');
         });
     });
+
+    /**
+     * Rafraîchit le contenu de la page résultats en AJAX sans rechargement complet.
+     * Fetche la même URL, extrait #etudiant-resultats-content et le remplace.
+     * Ferme le modal proprement avant le swap.
+     */
+    function scmRefreshContent() {
+        var modalEl = document.getElementById('studentCoeffModal');
+        var bsModal = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
+        if (bsModal) bsModal.hide();
+
+        var target = document.getElementById('etudiant-resultats-content');
+        if (!target) {
+            /* Fallback si le conteneur n'existe pas */
+            window.location.reload();
+            return;
+        }
+
+        fetch(window.location.href, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function (res) { return res.text(); })
+        .then(function (html) {
+            var parser = new DOMParser();
+            var doc = parser.parseFromString(html, 'text/html');
+            var fresh = doc.getElementById('etudiant-resultats-content');
+            if (fresh) {
+                target.innerHTML = fresh.innerHTML;
+            } else {
+                /* Contenu introuvable dans la réponse, reload complet en dernier recours */
+                window.location.reload();
+            }
+        })
+        .catch(function () {
+            window.location.reload();
+        });
+    }
 })();
 </script>
 @endif

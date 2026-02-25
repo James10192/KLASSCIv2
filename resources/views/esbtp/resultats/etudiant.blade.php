@@ -38,6 +38,7 @@
             ->get();
 
         // Coefficients existants pour la combinaison
+        // Priorité : année filtrée → si vide, fallback sur les derniers coefficients enregistrés
         if ($coeffAnneeId) {
             $coefficients = \App\Models\ESBTPMatiereCoefficient::where('filiere_id', $coeffFiliere->id)
                 ->where('niveau_etude_id', $coeffNiveau->id)
@@ -45,12 +46,22 @@
                 ->get()
                 ->keyBy('matiere_id');
         }
+
+        // Fallback : si aucun coefficient pour cette année, charger les plus récents (toutes années)
+        if ($coefficients->isEmpty()) {
+            $coefficients = \App\Models\ESBTPMatiereCoefficient::where('filiere_id', $coeffFiliere->id)
+                ->where('niveau_etude_id', $coeffNiveau->id)
+                ->orderByDesc('annee_universitaire_id')
+                ->get()
+                ->unique('matiere_id')
+                ->keyBy('matiere_id');
+        }
     }
 @endphp
 
 @section('content')
 <div class="dashboard-acasi">
-    <div class="main-content">
+    <div class="main-content" id="etudiant-resultats-content">
         <!-- Header Section -->
         <div class="dashboard-header">
             <div class="header-left">
