@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-@if(session('coefficient_missing_context'))
+@if($coeffContext)
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         const modalElement = document.getElementById('studentCoeffModal');
