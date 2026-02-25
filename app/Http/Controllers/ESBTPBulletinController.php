@@ -956,6 +956,22 @@ class ESBTPBulletinController extends Controller
             // Préparer le logo en base64
             $data['logoBase64'] = $this->prepareLogoBase64($config['school_logo']);
 
+            // Préparer la photo étudiant en base64 pour le PDF
+            $data['photoEtudiantBase64'] = null;
+            if (!empty($data['etudiant']?->photo)) {
+                $photoCandidates = [
+                    storage_path('app/public/photos/etudiants/' . $data['etudiant']->photo),
+                    storage_path('app/public/' . $data['etudiant']->photo),
+                ];
+                foreach ($photoCandidates as $photoPath) {
+                    if (file_exists($photoPath)) {
+                        $mime = mime_content_type($photoPath) ?: 'image/jpeg';
+                        $data['photoEtudiantBase64'] = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($photoPath));
+                        break;
+                    }
+                }
+            }
+
             try {
                 Log::info('Chargement de la vue PDF avec le template configurable pour le bulletin #'.$bulletin->id);
                 $pdf = PDF::loadView($this->getBulletinTemplateView(), $data);

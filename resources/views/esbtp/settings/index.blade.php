@@ -40,6 +40,139 @@
     .section-icon.display { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
     .section-icon.mentions { background: linear-gradient(135deg, #1abc9c, #16a085); }
     .section-icon.stats { background: linear-gradient(135deg, #34495e, #2c3e50); }
+
+    /* ── Zone upload logo premium ──────────────────────────── */
+    .pdf-logo-zone {
+        display: flex; gap: 24px; align-items: flex-start;
+        background: #f8fafc; border: 1px solid #e5e7eb;
+        border-radius: 14px; padding: 20px;
+    }
+    .pdf-logo-current {
+        position: relative; flex-shrink: 0;
+        width: 120px; height: 120px;
+        border-radius: 12px; overflow: hidden;
+        background: #fff; border: 2px dashed #d1d5db;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .pdf-logo-current img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .pdf-logo-placeholder { color: #9ca3af; text-align: center; font-size: .78rem; }
+    .pdf-logo-placeholder i { display: block; font-size: 2rem; margin-bottom: 4px; }
+    .pdf-logo-badge {
+        position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+        background: #10b981; color: #fff; font-size: .65rem; font-weight: 700;
+        padding: 2px 7px; border-radius: 20px; white-space: nowrap;
+    }
+    .pdf-logo-upload-side { flex: 1; display: flex; flex-direction: column; gap: 14px; }
+    .pdf-logo-drop {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        border: 2px dashed #cbd5e1; border-radius: 12px; padding: 20px 16px;
+        cursor: pointer; transition: all .25s; background: #fff; text-align: center;
+    }
+    .pdf-logo-drop:hover { border-color: var(--primary); background: #f0f7ff; }
+    .pdf-logo-drop-icon { font-size: 2rem; color: #94a3b8; margin-bottom: 8px; transition: color .2s; }
+    .pdf-logo-drop:hover .pdf-logo-drop-icon { color: var(--primary); }
+    .pdf-logo-drop-title { font-weight: 700; color: #374151; font-size: .9rem; }
+    .pdf-logo-drop-sub { color: #6b7280; font-size: .82rem; }
+    .pdf-logo-drop-hint { color: #9ca3af; font-size: .73rem; margin-top: 4px; }
+    .pdf-logo-toggles { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+
+    /* ── Layout couleurs : 2 colonnes ─────────────────────── */
+    .pdf-color-layout {
+        display: grid; grid-template-columns: 1fr 300px; gap: 28px; align-items: start;
+    }
+    @media (max-width: 900px) { .pdf-color-layout { grid-template-columns: 1fr; } }
+
+    /* ── Lignes de picker ──────────────────────────────────── */
+    .pdf-color-pickers { display: flex; flex-direction: column; gap: 12px; }
+    .pdf-picker-row {
+        display: flex; align-items: flex-start; gap: 14px;
+        padding: 14px 16px; border-radius: 10px; background: #f8fafc;
+        border: 1px solid #e5e7eb; cursor: pointer;
+        transition: border-color .2s, box-shadow .2s;
+    }
+    .pdf-picker-row:hover { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(4,83,203,.07); }
+    .pdf-picker-swatch-wrap {
+        position: relative; flex-shrink: 0; width: 48px; height: 48px; cursor: pointer;
+    }
+    .pdf-color-input {
+        position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%;
+        cursor: pointer; border: none; padding: 0;
+    }
+    .pdf-picker-swatch {
+        display: block; width: 48px; height: 48px;
+        border-radius: 10px; border: 2px solid rgba(0,0,0,.12);
+        pointer-events: none; transition: background .15s;
+        box-shadow: 0 2px 6px rgba(0,0,0,.12);
+    }
+    .pdf-picker-meta { flex: 1; }
+    .pdf-picker-label { font-weight: 700; color: #1e293b; font-size: .88rem; margin-bottom: 3px; }
+    .pdf-picker-desc { color: #6b7280; font-size: .78rem; line-height: 1.4; }
+    .pdf-contrast-badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: .7rem; font-weight: 700; padding: 2px 8px;
+        border-radius: 20px; margin-top: 6px;
+    }
+    .pdf-contrast-badge.ok { background: #d1fae5; color: #065f46; }
+    .pdf-contrast-badge.warn { background: #fef3c7; color: #92400e; }
+    .pdf-contrast-badge.bad { background: #fee2e2; color: #991b1b; }
+
+    /* ── Prévisualisation mini-document ───────────────────── */
+    .pdf-color-preview {
+        border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0,0,0,.07); background: #fff; font-family: serif;
+        position: sticky; top: 100px;
+    }
+    .prev-header {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 14px; transition: background .2s;
+    }
+    .prev-logo-placeholder {
+        width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+        background: rgba(255,255,255,.25); border-radius: 6px; font-size: .9rem; color: rgba(255,255,255,.7);
+        flex-shrink: 0;
+    }
+    .prev-school-name { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+    .prev-school-meta { font-size: .6rem; opacity: .82; }
+    .prev-divider { height: 3px; transition: background .2s; }
+    .prev-doc-title {
+        text-align: center; font-size: .7rem; font-weight: 800; letter-spacing: .1em;
+        padding: 10px 14px 6px; text-transform: uppercase; transition: color .2s, border-color .2s;
+        border-bottom-width: 2px; border-bottom-style: solid; display: inline-block;
+        margin: 0 auto; display: block;
+    }
+    .prev-body { padding: 10px 14px; }
+    .prev-line {
+        height: 6px; background: #e2e8f0; border-radius: 3px; margin-bottom: 6px;
+    }
+    .prev-line-lg { width: 90%; }
+    .prev-line-md { width: 70%; }
+    .prev-line-sm { width: 50%; }
+    .prev-hl-block {
+        padding: 8px 10px; border-radius: 6px; margin: 8px 0;
+        transition: border-color .2s, background .2s;
+    }
+    .prev-table { border-collapse: collapse; width: 100%; font-size: .65rem; }
+    .prev-table-head {
+        display: flex; transition: background .2s, color .2s;
+        padding: 5px 14px;
+    }
+    .prev-table-head span, .prev-table-row span { flex: 1; }
+    .prev-table-row {
+        display: flex; padding: 4px 14px;
+        border-bottom: 1px solid #e5e7eb; transition: color .2s;
+    }
+    .prev-legend {
+        text-align: center; font-size: .58rem; color: #9ca3af; font-style: italic;
+        padding: 6px; border-top: 1px solid #f1f5f9;
+    }
+
+    /* ── Avertissement contraste global ──────────────────── */
+    .pdf-contrast-warning {
+        display: flex; align-items: center; gap: 8px;
+        background: #fef3c7; border-left: 4px solid #f59e0b;
+        border-radius: 8px; padding: 10px 14px; margin-top: 16px;
+        font-size: .83rem; color: #92400e;
+    }
     
     .section-title {
         font-size: 1.25rem;
@@ -448,19 +581,71 @@
                 <!-- Tab 2: Configuration PDF -->
                 <div class="tab-pane fade" id="pdf" role="tabpanel">
 
-            <!-- Section 2: Configuration PDF de Base -->
+            <!-- Section 2: Logo & Identité Visuelle -->
             <div class="settings-section">
                 <div class="section-header">
                     <div class="section-icon pdf">
-                        <i class="fas fa-file-pdf"></i>
+                        <i class="fas fa-image"></i>
                     </div>
                     <div>
-                        <h3 class="section-title">Configuration PDF de Base</h3>
-                        <p class="section-description">Paramètres généraux des bulletins PDF</p>
+                        <h3 class="section-title">Logo & Identité Visuelle</h3>
+                        <p class="section-description">Logo affiché en en-tête de tous vos documents (bulletins, certificats, attestations…)</p>
                     </div>
                 </div>
 
-                <div class="settings-grid-2">
+                <!-- Zone upload logo premium -->
+                <div class="pdf-logo-zone">
+                    <div class="pdf-logo-current" id="logoCurrentWrap">
+                        @if(\App\Helpers\SettingsHelper::get('school_logo', ''))
+                            <img id="logoPreviewImg"
+                                 src="{{ asset('storage/' . \App\Helpers\SettingsHelper::get('school_logo', '')) }}"
+                                 alt="Logo actuel">
+                            <span class="pdf-logo-badge"><i class="fas fa-check-circle"></i> Logo actuel</span>
+                        @else
+                            <div class="pdf-logo-placeholder" id="logoPlaceholder">
+                                <i class="fas fa-image"></i>
+                                <span>Aucun logo</span>
+                            </div>
+                            <img id="logoPreviewImg" src="" alt="" style="display:none;">
+                        @endif
+                    </div>
+                    <div class="pdf-logo-upload-side">
+                        <label class="pdf-logo-drop" id="logoDrop" for="logoFileInput">
+                            <i class="fas fa-cloud-upload-alt pdf-logo-drop-icon"></i>
+                            <div class="pdf-logo-drop-title">Déposer votre logo ici</div>
+                            <div class="pdf-logo-drop-sub">ou cliquez pour choisir un fichier</div>
+                            <div class="pdf-logo-drop-hint">PNG, JPG, SVG — max 2 Mo · Recommandé : fond transparent</div>
+                        </label>
+                        <input type="file" id="logoFileInput" name="setting_school_logo"
+                               accept="image/*" style="display:none" onchange="handleLogoUpload(this)">
+                        <div class="pdf-logo-toggles">
+                            <div class="form-group mb-0">
+                                <label class="form-label-modern mb-1" style="font-size:.82rem;">
+                                    <i class="fas fa-eye text-primary"></i>
+                                    Afficher le logo sur les documents
+                                </label>
+                                <label class="form-switch-modern">
+                                    <input type="checkbox" name="bulletin_show_logo" value="1"
+                                           {{ \App\Helpers\SettingsHelper::get('bulletin_show_logo', '1') == '1' ? 'checked' : '' }}>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-grid-2" style="margin-top:20px;">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-university text-primary"></i>
+                            Nom affiché sur les bulletins
+                        </label>
+                        <input type="text" class="form-control form-control-modern"
+                               name="bulletin_school_name_custom"
+                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_school_name_custom', '') }}"
+                               placeholder="Laissez vide pour utiliser le nom de l'établissement">
+                        <small class="text-muted"><i class="fas fa-info-circle"></i> Si vide, utilise le nom défini dans l'onglet Général.</small>
+                    </div>
                     <div class="form-group">
                         <label class="form-label-modern">
                             <i class="fas fa-font text-primary"></i>
@@ -471,62 +656,13 @@
                                value="{{ \App\Helpers\SettingsHelper::get('bulletin_font_size', '11') }}"
                                min="8" max="16" step="1">
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-image text-primary"></i>
-                            Afficher le logo
-                        </label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_logo" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_logo', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-image text-primary"></i>
-                            Logo de l'établissement
-                        </label>
-                        <div class="file-upload-area">
-                            @if(\App\Helpers\SettingsHelper::get('school_logo', ''))
-                                <div class="current-logo mb-2">
-                                    <img src="{{ asset('storage/' . \App\Helpers\SettingsHelper::get('school_logo', '')) }}" 
-                                         alt="Logo actuel" style="max-height: 80px;" class="img-thumbnail">
-                                    <p class="text-muted small">Logo actuel</p>
-                                </div>
-                            @endif
-                            <input type="file" class="form-control form-control-modern"
-                                   name="setting_school_logo"
-                                   accept="image/*"
-                                   onchange="previewLogo(this)">
-                            <small class="text-muted">Formats acceptés: PNG, JPG, GIF (max 2MB)</small>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-university text-primary"></i>
-                            Nom pour les bulletins
-                        </label>
-                        <input type="text" class="form-control form-control-modern"
-                               name="bulletin_school_name_custom"
-                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_school_name_custom', '') }}"
-                               placeholder="Laissez vide pour utiliser le nom de l'établissement">
-                        <small class="text-muted">
-                            <i class="fas fa-info-circle"></i>
-                            Ce nom apparaîtra sur les bulletins. Si vide, utilisera le nom de l'établissement défini ci-dessus.
-                        </small>
-                    </div>
-
                     <div class="form-group">
                         <label class="form-label-modern">
                             <i class="fas fa-calendar text-primary"></i>
                             Afficher date d'édition
                         </label>
                         <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_edition_date" value="1" 
+                            <input type="checkbox" name="bulletin_show_edition_date" value="1"
                                    {{ \App\Helpers\SettingsHelper::get('bulletin_show_edition_date', '1') == '1' ? 'checked' : '' }}>
                             <span class="slider"></span>
                         </label>
@@ -534,81 +670,141 @@
                 </div>
             </div>
 
-            <!-- Section: Couleurs PDF -->
+            <!-- Section: Couleurs des Documents -->
             <div class="settings-section">
                 <div class="section-header">
                     <div class="section-icon pdf">
                         <i class="fas fa-palette"></i>
                     </div>
                     <div>
-                        <h3 class="section-title">Couleurs des PDFs</h3>
-                        <p class="section-description">Palette appliquée à tous les documents PDF</p>
+                        <h3 class="section-title">Couleurs des Documents PDF</h3>
+                        <p class="section-description">Chaque couleur cible un élément précis — le prévisionnement ci-contre se met à jour en temps réel</p>
                     </div>
                 </div>
 
-                <div class="settings-grid-3">
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-fill-drip text-primary"></i>
-                            Couleur principale
-                        </label>
-                        <input type="color" class="form-control form-control-modern"
-                               name="setting_pdf_primary_color"
-                               value="{{ \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb') }}">
-                    </div>
+                <!-- Layout 2 colonnes : pickers gauche | preview droite -->
+                <div class="pdf-color-layout">
 
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-fill-drip text-secondary"></i>
-                            Couleur secondaire
-                        </label>
-                        <input type="color" class="form-control form-control-modern"
-                               name="setting_pdf_secondary_color"
-                               value="{{ \App\Helpers\SettingsHelper::get('pdf_secondary_color', '#64748b') }}">
-                    </div>
+                    <!-- Colonne pickers -->
+                    <div class="pdf-color-pickers">
 
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-highlighter text-warning"></i>
-                            Couleur d'accent
-                        </label>
-                        <input type="color" class="form-control form-control-modern"
-                               name="setting_pdf_accent_color"
-                               value="{{ \App\Helpers\SettingsHelper::get('pdf_accent_color', '#f59e0b') }}">
-                    </div>
+                        <!-- Picker 1 : Fond en-tête -->
+                        <div class="pdf-picker-row" data-target="prev-header-bg">
+                            <div class="pdf-picker-swatch-wrap">
+                                <input type="color" id="colorHeaderBg" class="pdf-color-input"
+                                       name="setting_pdf_header_bg_color"
+                                       value="{{ \App\Helpers\SettingsHelper::get('pdf_header_bg_color', '#0453cb') }}"
+                                       oninput="updatePreview()">
+                                <span class="pdf-picker-swatch" id="swatchHeaderBg"
+                                      style="background:{{ \App\Helpers\SettingsHelper::get('pdf_header_bg_color', '#0453cb') }}"></span>
+                            </div>
+                            <div class="pdf-picker-meta">
+                                <div class="pdf-picker-label">Fond de l'en-tête établissement</div>
+                                <div class="pdf-picker-desc">Bannière colorée en haut de chaque document (bulletins, certificats, attestations)</div>
+                                <div class="pdf-contrast-badge" id="contrastHeaderBg"></div>
+                            </div>
+                        </div>
+
+                        <!-- Picker 2 : Texte en-tête -->
+                        <div class="pdf-picker-row" data-target="prev-header-text">
+                            <div class="pdf-picker-swatch-wrap">
+                                <input type="color" id="colorHeaderText" class="pdf-color-input"
+                                       name="setting_pdf_header_text_color"
+                                       value="{{ \App\Helpers\SettingsHelper::get('pdf_header_text_color', '#ffffff') }}"
+                                       oninput="updatePreview()">
+                                <span class="pdf-picker-swatch" id="swatchHeaderText"
+                                      style="background:{{ \App\Helpers\SettingsHelper::get('pdf_header_text_color', '#ffffff') }}"></span>
+                            </div>
+                            <div class="pdf-picker-meta">
+                                <div class="pdf-picker-label">Texte dans l'en-tête établissement</div>
+                                <div class="pdf-picker-desc">Nom de l'école, adresse, téléphone affichés sur la bannière colorée</div>
+                                <div class="pdf-contrast-badge" id="contrastHeaderText"></div>
+                            </div>
+                        </div>
+
+                        <!-- Picker 3 : Couleur accent / titres -->
+                        <div class="pdf-picker-row" data-target="prev-accent">
+                            <div class="pdf-picker-swatch-wrap">
+                                <input type="color" id="colorAccent" class="pdf-color-input"
+                                       name="setting_pdf_primary_color"
+                                       value="{{ \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb') }}"
+                                       oninput="updatePreview()">
+                                <span class="pdf-picker-swatch" id="swatchAccent"
+                                      style="background:{{ \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb') }}"></span>
+                            </div>
+                            <div class="pdf-picker-meta">
+                                <div class="pdf-picker-label">Couleur d'accent — titres & soulignements</div>
+                                <div class="pdf-picker-desc">Titre du document (ex: « CERTIFICAT DE SCOLARITÉ »), en-têtes de tableaux, séparateurs colorés</div>
+                                <div class="pdf-contrast-badge" id="contrastAccent"></div>
+                            </div>
+                        </div>
+
+                        <!-- Picker 4 : Texte principal -->
+                        <div class="pdf-picker-row" data-target="prev-body">
+                            <div class="pdf-picker-swatch-wrap">
+                                <input type="color" id="colorBody" class="pdf-color-input"
+                                       name="setting_pdf_text_color"
+                                       value="{{ \App\Helpers\SettingsHelper::get('pdf_text_color', '#1f2937') }}"
+                                       oninput="updatePreview()">
+                                <span class="pdf-picker-swatch" id="swatchBody"
+                                      style="background:{{ \App\Helpers\SettingsHelper::get('pdf_text_color', '#1f2937') }}"></span>
+                            </div>
+                            <div class="pdf-picker-meta">
+                                <div class="pdf-picker-label">Texte principal du corps du document</div>
+                                <div class="pdf-picker-desc">Paragraphes, informations étudiant, notes de bas de page</div>
+                                <div class="pdf-contrast-badge" id="contrastBody"></div>
+                            </div>
+                        </div>
+
+                    </div><!-- /pdf-color-pickers -->
+
+                    <!-- Colonne preview -->
+                    <div class="pdf-color-preview" id="docPreview">
+                        <!-- En-tête établissement -->
+                        <div class="prev-header" id="prev-header-bg" style="background:{{ \App\Helpers\SettingsHelper::get('pdf_header_bg_color', '#0453cb') }}">
+                            <div class="prev-logo-placeholder"><i class="fas fa-university"></i></div>
+                            <div id="prev-header-text" style="color:{{ \App\Helpers\SettingsHelper::get('pdf_header_text_color', '#ffffff') }}">
+                                <div class="prev-school-name">NOM DE L'ÉTABLISSEMENT</div>
+                                <div class="prev-school-meta">Adresse · Tél · Email</div>
+                            </div>
+                        </div>
+                        <!-- Séparateur accent -->
+                        <div class="prev-divider" id="prev-accent" style="background:{{ \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb') }}"></div>
+                        <!-- Titre document -->
+                        <div class="prev-doc-title" style="color:{{ \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb') }}; border-bottom:2px solid {{ \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb') }}">
+                            CERTIFICAT DE SCOLARITÉ
+                        </div>
+                        <!-- Corps -->
+                        <div class="prev-body" id="prev-body" style="color:{{ \App\Helpers\SettingsHelper::get('pdf_text_color', '#1f2937') }}">
+                            <div class="prev-line prev-line-lg"></div>
+                            <div class="prev-line"></div>
+                            <div class="prev-hl-block" style="border-left:3px solid {{ \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb') }}; background:{{ \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb') }}12">
+                                <div class="prev-line prev-line-sm" style="background:{{ \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb') }}55"></div>
+                                <div class="prev-line prev-line-md" style="background:{{ \App\Helpers\SettingsHelper::get('pdf_text_color', '#1f2937') }}33"></div>
+                            </div>
+                            <div class="prev-line prev-line-md"></div>
+                        </div>
+                        <!-- Tableau -->
+                        <div class="prev-table">
+                            <div class="prev-table-head" style="background:{{ \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb') }}; color:{{ \App\Helpers\SettingsHelper::get('pdf_header_text_color', '#ffffff') }}">
+                                <span>Année</span><span>Classe</span><span>Filière</span>
+                            </div>
+                            <div class="prev-table-row" style="color:{{ \App\Helpers\SettingsHelper::get('pdf_text_color', '#1f2937') }}">
+                                <span>2024-2025</span><span>BTS2</span><span>GC</span>
+                            </div>
+                        </div>
+                        <!-- Légende -->
+                        <div class="prev-legend">Aperçu non contractuel · Données fictives</div>
+                    </div><!-- /pdf-color-preview -->
+
+                </div><!-- /pdf-color-layout -->
+
+                <!-- Avertissement contraste global -->
+                <div class="pdf-contrast-warning" id="globalContrastWarning" style="display:none">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="globalContrastMsg"></span>
                 </div>
 
-                <div class="settings-grid-3">
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-font text-muted"></i>
-                            Couleur du texte
-                        </label>
-                        <input type="color" class="form-control form-control-modern"
-                               name="setting_pdf_text_color"
-                               value="{{ \App\Helpers\SettingsHelper::get('pdf_text_color', '#1f2937') }}">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-square text-primary"></i>
-                            Fond des en-têtes
-                        </label>
-                        <input type="color" class="form-control form-control-modern"
-                               name="setting_pdf_header_bg_color"
-                               value="{{ \App\Helpers\SettingsHelper::get('pdf_header_bg_color', '#0453cb') }}">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-font text-light"></i>
-                            Texte des en-têtes
-                        </label>
-                        <input type="color" class="form-control form-control-modern"
-                               name="setting_pdf_header_text_color"
-                               value="{{ \App\Helpers\SettingsHelper::get('pdf_header_text_color', '#ffffff') }}">
-                    </div>
-                </div>
             </div>
 
                 </div>
@@ -1282,39 +1478,162 @@ function toggleSectionCheckboxes(sectionId, state) {
     }, 300);
 }
 
-// Fonction pour prévisualiser le logo avant upload
-function previewLogo(input) {
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-        
-        // Vérifier la taille (2MB max)
-        if (file.size > 2 * 1024 * 1024) {
-            alert('Le fichier est trop volumineux (max 2MB)');
-            input.value = '';
-            return;
+// ── Upload logo avec preview ──────────────────────────────────
+function handleLogoUpload(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    if (file.size > 2 * 1024 * 1024) {
+        alert('Le fichier est trop volumineux (max 2 Mo)');
+        input.value = '';
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = document.getElementById('logoPreviewImg');
+        const placeholder = document.getElementById('logoPlaceholder');
+        const badge = document.querySelector('.pdf-logo-badge');
+        if (img) {
+            img.src = e.target.result;
+            img.style.display = '';
         }
-        
-        // Créer une prévisualisation
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            // Trouver ou créer la div de prévisualisation
-            let previewDiv = input.parentNode.querySelector('.logo-preview');
-            if (!previewDiv) {
-                previewDiv = document.createElement('div');
-                previewDiv.className = 'logo-preview mt-2';
-                input.parentNode.insertBefore(previewDiv, input.nextSibling);
+        if (placeholder) placeholder.style.display = 'none';
+        if (!badge) {
+            const b = document.createElement('span');
+            b.className = 'pdf-logo-badge';
+            b.innerHTML = '<i class="fas fa-check-circle"></i> Nouveau logo';
+            document.querySelector('.pdf-logo-current').appendChild(b);
+        } else {
+            badge.innerHTML = '<i class="fas fa-check-circle"></i> Nouveau logo';
+        }
+    };
+    reader.readAsDataURL(file);
+}
+
+// Drag & drop sur la zone logo
+document.addEventListener('DOMContentLoaded', function() {
+    const drop = document.getElementById('logoDrop');
+    if (drop) {
+        drop.addEventListener('dragover', e => { e.preventDefault(); drop.style.borderColor = 'var(--primary)'; });
+        drop.addEventListener('dragleave', () => { drop.style.borderColor = ''; });
+        drop.addEventListener('drop', e => {
+            e.preventDefault();
+            drop.style.borderColor = '';
+            const dt = e.dataTransfer;
+            if (dt && dt.files.length) {
+                const fi = document.getElementById('logoFileInput');
+                // DataTransfer trick to set files on input
+                try {
+                    const dtt = new DataTransfer();
+                    dtt.items.add(dt.files[0]);
+                    fi.files = dtt.files;
+                } catch(err) {}
+                handleLogoUpload({ files: dt.files, value: '' });
             }
-            
-            previewDiv.innerHTML = `
-                <div class="text-center">
-                    <img src="${e.target.result}" alt="Aperçu" style="max-height: 80px;" class="img-thumbnail">
-                    <p class="text-success small"><i class="fas fa-eye"></i> Aperçu - Cliquez sur Sauvegarder pour confirmer</p>
-                </div>
-            `;
-        };
-        reader.readAsDataURL(file);
+        });
+    }
+});
+
+// ── Calcul ratio de contraste WCAG ───────────────────────────
+function hexToRgb(hex) {
+    const r = parseInt(hex.slice(1,3),16)/255;
+    const g = parseInt(hex.slice(3,5),16)/255;
+    const b = parseInt(hex.slice(5,7),16)/255;
+    return [r,g,b];
+}
+function relativeLuminance(r,g,b) {
+    const c = [r,g,b].map(v => v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055,2.4));
+    return 0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2];
+}
+function contrastRatio(hex1, hex2) {
+    const [r1,g1,b1] = hexToRgb(hex1);
+    const [r2,g2,b2] = hexToRgb(hex2);
+    const L1 = relativeLuminance(r1,g1,b1);
+    const L2 = relativeLuminance(r2,g2,b2);
+    const lighter = Math.max(L1,L2);
+    const darker  = Math.min(L1,L2);
+    return (lighter + 0.05) / (darker + 0.05);
+}
+function setContrastBadge(badgeId, ratio, label) {
+    const el = document.getElementById(badgeId);
+    if (!el) return;
+    if (ratio >= 4.5) {
+        el.className = 'pdf-contrast-badge ok';
+        el.innerHTML = `<i class="fas fa-check-circle"></i> Contraste ${ratio.toFixed(1)}:1 — lisible`;
+    } else if (ratio >= 3) {
+        el.className = 'pdf-contrast-badge warn';
+        el.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Contraste ${ratio.toFixed(1)}:1 — passable`;
+    } else {
+        el.className = 'pdf-contrast-badge bad';
+        el.innerHTML = `<i class="fas fa-times-circle"></i> Contraste ${ratio.toFixed(1)}:1 — difficile à lire`;
     }
 }
+
+// ── Mise à jour live preview ──────────────────────────────────
+function updatePreview() {
+    const bg    = document.getElementById('colorHeaderBg')?.value   || '#0453cb';
+    const txt   = document.getElementById('colorHeaderText')?.value || '#ffffff';
+    const acc   = document.getElementById('colorAccent')?.value     || '#0453cb';
+    const body  = document.getElementById('colorBody')?.value       || '#1f2937';
+
+    // Mettre à jour les swatches
+    ['HeaderBg','HeaderText','Accent','Body'].forEach(k => {
+        const s = document.getElementById('swatch'+k);
+        const v = {HeaderBg:bg,HeaderText:txt,Accent:acc,Body:body}[k];
+        if (s) s.style.background = v;
+    });
+
+    // Mettre à jour la preview
+    const header = document.getElementById('prev-header-bg');
+    const headerTxt = document.getElementById('prev-header-text');
+    const divider = document.getElementById('prev-accent');
+    const docTitle = document.querySelector('.prev-doc-title');
+    const prevBody = document.getElementById('prev-body');
+    const tableHead = document.querySelector('.prev-table-head');
+    const tableRow  = document.querySelector('.prev-table-row');
+    const hlBlock   = document.querySelector('.prev-hl-block');
+    const hlLine1   = hlBlock ? hlBlock.querySelectorAll('.prev-line')[0] : null;
+    const hlLine2   = hlBlock ? hlBlock.querySelectorAll('.prev-line')[1] : null;
+
+    if (header)    header.style.background = bg;
+    if (headerTxt) headerTxt.style.color = txt;
+    if (divider)   divider.style.background = acc;
+    if (docTitle)  { docTitle.style.color = acc; docTitle.style.borderBottomColor = acc; }
+    if (prevBody)  prevBody.style.color = body;
+    if (tableHead) { tableHead.style.background = acc; tableHead.style.color = txt; }
+    if (tableRow)  tableRow.style.color = body;
+    if (hlBlock) {
+        hlBlock.style.borderLeftColor = acc;
+        hlBlock.style.background = acc + '12';
+    }
+    if (hlLine1)  hlLine1.style.background = acc + '55';
+    if (hlLine2)  hlLine2.style.background = body + '33';
+
+    // Badges de contraste
+    setContrastBadge('contrastHeaderBg',   contrastRatio(bg,  txt), 'En-tête');
+    setContrastBadge('contrastHeaderText', contrastRatio(txt, bg),  'Texte en-tête');
+    setContrastBadge('contrastAccent',     contrastRatio(acc, '#ffffff'), 'Titre');
+    setContrastBadge('contrastBody',       contrastRatio(body,'#ffffff'), 'Corps');
+
+    // Avertissement global blanc-sur-blanc ou bleu-sur-bleu
+    const warnings = [];
+    if (contrastRatio(bg,txt) < 3)   warnings.push('Fond en-tête / Texte en-tête peu lisible');
+    if (contrastRatio(acc,'#ffffff') < 3) warnings.push('Couleur accent trop claire pour titres blancs');
+    const warn = document.getElementById('globalContrastWarning');
+    const msg  = document.getElementById('globalContrastMsg');
+    if (warn && msg) {
+        if (warnings.length) {
+            warn.style.display = 'flex';
+            msg.textContent = '⚠ ' + warnings.join(' · ');
+        } else {
+            warn.style.display = 'none';
+        }
+    }
+}
+
+// Initialiser la preview et les badges au chargement
+document.addEventListener('DOMContentLoaded', function() {
+    updatePreview();
+});
 
 // Fonction pour tester les rappels
 function testReminders() {
