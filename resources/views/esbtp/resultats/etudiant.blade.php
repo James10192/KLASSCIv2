@@ -38,6 +38,7 @@
             ->get();
 
         // Coefficients existants pour la combinaison
+        // Priorité : année filtrée → si vide, fallback sur les derniers coefficients enregistrés
         if ($coeffAnneeId) {
             $coefficients = \App\Models\ESBTPMatiereCoefficient::where('filiere_id', $coeffFiliere->id)
                 ->where('niveau_etude_id', $coeffNiveau->id)
@@ -45,12 +46,22 @@
                 ->get()
                 ->keyBy('matiere_id');
         }
+
+        // Fallback : si aucun coefficient pour cette année, charger les plus récents (toutes années)
+        if ($coefficients->isEmpty()) {
+            $coefficients = \App\Models\ESBTPMatiereCoefficient::where('filiere_id', $coeffFiliere->id)
+                ->where('niveau_etude_id', $coeffNiveau->id)
+                ->orderByDesc('annee_universitaire_id')
+                ->get()
+                ->unique('matiere_id')
+                ->keyBy('matiere_id');
+        }
     }
 @endphp
 
 @section('content')
 <div class="dashboard-acasi">
-    <div class="main-content">
+    <div class="main-content" id="etudiant-resultats-content">
         <!-- Header Section -->
         <div class="dashboard-header">
             <div class="header-left">
@@ -108,7 +119,7 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Auto-submit form when filters change
@@ -122,38 +133,37 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-    
+
     // Initialize tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
-    
+
     // Smooth scroll for internal links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
             e.preventDefault();
             const target = document.querySelector(this.getAttribute('href'));
             if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         });
     });
-});
-</script>
 
-@if($coeffContext)
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const modalElement = document.getElementById('studentCoeffModal');
+    // Ouverture automatique du modal coefficients :
+    // 1) Via session flash après redirect CoefficientMissingException
+    // 2) Via paramètre URL ?open_coeff_modal=1 (ex: depuis moyennes-preview)
+    var shouldOpenCoeffModal = {{ $coeffContext ? 'true' : 'false' }}
+        || new URLSearchParams(window.location.search).get('open_coeff_modal') === '1';
+
+    if (shouldOpenCoeffModal) {
+        var modalElement = document.getElementById('studentCoeffModal');
         if (modalElement && typeof bootstrap !== 'undefined') {
-            const modalInstance = new bootstrap.Modal(modalElement, { backdrop: 'static', keyboard: false });
+            var modalInstance = new bootstrap.Modal(modalElement, { backdrop: 'static', keyboard: false });
             modalInstance.show();
         }
-    });
-    </script>
-@endif
-@endsection
+    }
+});
+</script>
+@endpush
