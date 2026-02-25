@@ -5631,7 +5631,7 @@ class ESBTPBulletinController extends Controller
     public function previewMoyennes(Request $request)
     {
         // Vérifier les permissions et les rôles
-        if (! auth()->user()->hasRole('superAdmin') && ! auth()->user()->hasRole('secretaire')) {
+        if (! Auth::check() || (! auth()->user()->hasRole('superAdmin') && ! auth()->user()->hasRole('secretaire'))) {
             return redirect()->back()->with('error', 'Vous n\'avez pas les permissions nécessaires pour modifier les moyennes.');
         }
 
@@ -5967,7 +5967,7 @@ class ESBTPBulletinController extends Controller
         ]);
 
         // Vérifier les permissions et les rôles
-        if (! auth()->user()->hasRole('superAdmin') && ! auth()->user()->hasRole('secretaire')) {
+        if (! Auth::check() || (! auth()->user()->hasRole('superAdmin') && ! auth()->user()->hasRole('secretaire'))) {
             return redirect()->back()->with('error', 'Vous n\'avez pas les permissions nécessaires pour modifier les moyennes.');
         }
 
@@ -6216,7 +6216,7 @@ class ESBTPBulletinController extends Controller
     public function deleteMoyenne(Request $request)
     {
         // Vérifier les permissions
-        if (! auth()->user()->hasRole('superAdmin') && ! auth()->user()->hasRole('secretaire')) {
+        if (! Auth::check() || (! auth()->user()->hasRole('superAdmin') && ! auth()->user()->hasRole('secretaire'))) {
             return redirect()->back()->with('error', 'Vous n\'avez pas les permissions nécessaires pour supprimer les moyennes.');
         }
 
