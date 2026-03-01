@@ -114,7 +114,7 @@
         max-width: 60px;
     }
 
-    @media (max-width: 576px) {
+    @@media (max-width: 576px) {
         .step-label { display: none; }
         .step-divider { max-width: 20px; }
     }
@@ -820,7 +820,7 @@
     ============================================ */
     .choices.is-invalid .choices__inner { border-color: var(--kl-danger); }
 
-    @media (max-width: 768px) {
+    @@media (max-width: 768px) {
         .form-section { padding: 18px; }
         .parents-body  { padding: 16px; }
         .parent-card-body { padding: 14px; }
