@@ -557,7 +557,7 @@
         animation: slideDown 0.25s ease;
     }
 
-    @keyframes slideDown {
+    @@keyframes slideDown {
         from { opacity: 0; transform: translateY(-8px); }
         to   { opacity: 1; transform: translateY(0); }
     }
