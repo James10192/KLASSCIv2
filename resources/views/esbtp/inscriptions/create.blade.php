@@ -792,11 +792,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function runDuplicateCheck() {
         if (!duplicateForm || !duplicateCheckUrl) return;
 
-        const nomValue    = nomField ? nomField.value.trim() : '';
+        const nomValue     = nomField     ? nomField.value.trim()     : '';
         const prenomsValue = prenomsField ? prenomsField.value.trim() : '';
 
-        // Déclencher seulement si au moins l'un des champs a 2+ caractères
-        if (nomValue.length < 2 && prenomsValue.length < 2) {
+        // Le nom seul (≥3 chars) suffit pour déclencher la vérification.
+        // Avec seulement le prénom c'est insuffisant (trop de faux positifs).
+        if (nomValue.length < 3) {
             duplicateState.results = [];
             setFieldState(null);
             updateDuplicateUI();
@@ -808,7 +809,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const params = new URLSearchParams();
         params.append('nom', nomValue);
-        params.append('prenoms', prenomsValue);
+        // Prénom optionnel : enrichit le score si renseigné
+        if (prenomsValue.length >= 2) params.append('prenoms', prenomsValue);
         if (dateField && dateField.value) params.append('date_naissance', dateField.value);
         if (sexeField && sexeField.value)  params.append('sexe', sexeField.value);
 
@@ -842,7 +844,13 @@ document.addEventListener('DOMContentLoaded', function() {
             duplicateWarning.style.display = 'block';
             const n = duplicateState.results.length;
             duplicateWarningText.textContent =
-                `Nous avons trouvé ${n} étudiant${n > 1 ? 's' : ''} avec un profil similaire. Vérifiez avant de continuer.`;
+                (function() {
+                    const best = duplicateState.results[0];
+                    const score = Number(best?.score ?? 0);
+                    const conf  = best?.confidence ?? (score >= 75 ? 'probable' : 'possible');
+                    const confLabel = { 'quasi-certain': 'quasi-certaine', 'probable': 'probable', 'possible': 'possible', 'faible': 'faible' }[conf] || 'possible';
+                    return `${n} correspondance${n > 1 ? 's' : ''} détectée${n > 1 ? 's' : ''} — similarité ${confLabel}. Vérifiez avant de continuer.`;
+                })();
             renderDuplicateModal();
         } else {
             duplicateWarning.style.display = 'none';
@@ -879,33 +887,51 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        const confidenceColors = {
+            'quasi-certain': { cls: 'score-high',  icon: 'fa-exclamation-triangle', label: 'Quasi-certain', color: '#dc3545' },
+            'probable':      { cls: 'score-high',  icon: 'fa-exclamation-circle',   label: 'Probable',      color: '#e67e22' },
+            'possible':      { cls: 'score-med',   icon: 'fa-question-circle',       label: 'Possible',      color: '#f39c12' },
+            'faible':        { cls: 'score-low',   icon: 'fa-info-circle',           label: 'Faible',        color: '#6c757d' },
+        };
+
         const cards = duplicateState.results.map(item => {
             const score      = Number(item.score ?? 0);
-            const scoreClass = score >= 80 ? 'score-high' : (score >= 60 ? 'score-med' : 'score-low');
+            const confidence = item.confidence || (score >= 75 ? 'probable' : (score >= 55 ? 'possible' : 'faible'));
+            const conf       = confidenceColors[confidence] || confidenceColors['faible'];
             const initials   = getInitials(item.full_name);
             const matricule  = item.matricule  || 'N/A';
             const date       = item.date_naissance || 'N/A';
             const sexe       = item.sexe === 'M' ? 'Masculin' : (item.sexe === 'F' ? 'Féminin' : 'N/A');
-            const tokens     = Array.isArray(item.matched_tokens) && item.matched_tokens.length
-                ? `<span><i class="fas fa-tag"></i> ${item.matched_tokens.map(t => t.toUpperCase()).join(', ')}</span>`
+            const showUrl    = item.show_url || '#';
+
+            // Détail des champs qui ont matché
+            const breakdown = item.breakdown || {};
+            const matchDetails = [];
+            if (breakdown.nom   > 0) matchDetails.push(`Nom (${breakdown.nom} pts)`);
+            if (breakdown.prenoms > 0) matchDetails.push(`Prénom (${breakdown.prenoms} pts)`);
+            if (breakdown.date  > 0) matchDetails.push(`Date naissance (${breakdown.date} pts)`);
+            const matchSummary = matchDetails.length
+                ? `<span style="color:#555;font-size:.78rem"><i class="fas fa-check-double me-1"></i>${matchDetails.join(' · ')}</span>`
                 : '';
-            const showUrl = item.show_url || '#';
 
             return `
-                <div class="dupe-card ${scoreClass}">
-                    <div class="dupe-avatar">${initials}</div>
+                <div class="dupe-card ${conf.cls}" style="border-left:4px solid ${conf.color}">
+                    <div class="dupe-avatar" style="background:${conf.color}">${initials}</div>
                     <div class="dupe-info">
                         <div class="dupe-name">${item.full_name ?? ''}</div>
                         <div class="dupe-meta">
                             <span><i class="fas fa-id-card"></i> ${matricule}</span>
                             <span><i class="fas fa-calendar"></i> ${date}</span>
                             <span><i class="fas fa-venus-mars"></i> ${sexe}</span>
-                            ${tokens}
                         </div>
+                        ${matchSummary ? `<div class="mt-1">${matchSummary}</div>` : ''}
                         <div class="dupe-score-bar mt-2">
-                            <div class="dupe-score-fill" style="width:${Math.min(score, 100)}%"></div>
+                            <div class="dupe-score-fill" style="width:${Math.min(score, 100)}%;background:${conf.color}"></div>
                         </div>
-                        <div class="dupe-score-label">Similarité : ${Math.round(score)}%</div>
+                        <div class="dupe-score-label">
+                            <i class="fas ${conf.icon} me-1" style="color:${conf.color}"></i>
+                            Doublon ${conf.label.toLowerCase()} — score ${Math.round(score)}/100
+                        </div>
                     </div>
                     <div class="dupe-actions">
                         <button type="button" class="btn-dupe-same mark-duplicate" data-show-url="${showUrl}">
