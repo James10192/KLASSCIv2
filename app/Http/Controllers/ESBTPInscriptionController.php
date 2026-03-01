@@ -30,7 +30,8 @@ use Illuminate\Support\Str;
 
 class ESBTPInscriptionController extends Controller
 {
-    private const DUPLICATE_BLOCKING_SCORE = 80;
+    // Seuil pour afficher l'alerte doublon à l'utilisateur (score ≥ 55 = "possible")
+    private const DUPLICATE_BLOCKING_SCORE = 55;
 
     protected $inscriptionService;
 
@@ -473,7 +474,7 @@ class ESBTPInscriptionController extends Controller
         $duplicates = $detector
             ->find(
                 $validated["nom"],
-                $validated["prenoms"],
+                $validated["prenoms"] ?? '',
                 $validated["date_naissance"] ?? null,
                 $validated["sexe"] ?? null,
                 6,
@@ -499,10 +500,10 @@ class ESBTPInscriptionController extends Controller
     private function validateDuplicateRequest(Request $request): array
     {
         return $request->validate([
-            "nom" => "required|string|max:255",
-            "prenoms" => "required|string|max:255",
+            "nom"            => "required|string|min:2|max:255",
+            "prenoms"        => "nullable|string|max:255",
             "date_naissance" => "nullable|date",
-            "sexe" => "nullable|in:M,F",
+            "sexe"           => "nullable|in:M,F",
         ]);
     }
 
