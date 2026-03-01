@@ -677,7 +677,7 @@
         </form>
 
         <!-- =============================================
-             MODAL DOUBLONS — dans le @section('content')
+             MODAL DOUBLONS
         ============================================== -->
         <div class="modal fade" id="duplicateModal" tabindex="-1" aria-labelledby="duplicateModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg modal-dialog-centered">
