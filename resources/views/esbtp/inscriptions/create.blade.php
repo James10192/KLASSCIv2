@@ -27,33 +27,71 @@
             </div>
         </div>
 
-        <!-- Stepper de progression -->
-        <div class="form-stepper" id="formStepper">
+        <!-- Stepper de progression — indicateur visuel fixed (scroll-driven) -->
+        <nav class="form-stepper" id="formStepper" aria-label="Progression du formulaire">
             <div class="step-item active" data-step="1">
-                <div class="step-circle">1</div>
-                <span class="step-label">Identité</span>
+                <div class="step-node">
+                    <div class="step-circle">
+                        <span class="step-num">1</span>
+                        <i class="fas fa-check step-check"></i>
+                    </div>
+                    <span class="step-label">Identité</span>
+                </div>
+                <div class="step-track" data-track="1">
+                    <div class="step-track-fill"></div>
+                    <div class="step-track-light"></div>
+                </div>
             </div>
-            <div class="step-divider"></div>
             <div class="step-item" data-step="2">
-                <div class="step-circle">2</div>
-                <span class="step-label">Académique</span>
+                <div class="step-node">
+                    <div class="step-circle">
+                        <span class="step-num">2</span>
+                        <i class="fas fa-check step-check"></i>
+                    </div>
+                    <span class="step-label">Académique</span>
+                </div>
+                <div class="step-track" data-track="2">
+                    <div class="step-track-fill"></div>
+                    <div class="step-track-light"></div>
+                </div>
             </div>
-            <div class="step-divider"></div>
             <div class="step-item" data-step="3">
-                <div class="step-circle">3</div>
-                <span class="step-label">Affectation</span>
+                <div class="step-node">
+                    <div class="step-circle">
+                        <span class="step-num">3</span>
+                        <i class="fas fa-check step-check"></i>
+                    </div>
+                    <span class="step-label">Affectation</span>
+                </div>
+                <div class="step-track" data-track="3">
+                    <div class="step-track-fill"></div>
+                    <div class="step-track-light"></div>
+                </div>
             </div>
-            <div class="step-divider"></div>
             <div class="step-item" data-step="4">
-                <div class="step-circle"><i class="fas fa-user-friends" style="font-size:12px"></i></div>
-                <span class="step-label">Parents</span>
+                <div class="step-node">
+                    <div class="step-circle">
+                        <span class="step-num"><i class="fas fa-users" style="font-size:10px"></i></span>
+                        <i class="fas fa-check step-check"></i>
+                    </div>
+                    <span class="step-label">Parents</span>
+                </div>
+                <div class="step-track" data-track="4">
+                    <div class="step-track-fill"></div>
+                    <div class="step-track-light"></div>
+                </div>
             </div>
-            <div class="step-divider"></div>
             <div class="step-item" data-step="5">
-                <div class="step-circle">5</div>
-                <span class="step-label">Frais</span>
+                <div class="step-node">
+                    <div class="step-circle">
+                        <span class="step-num">5</span>
+                        <i class="fas fa-check step-check"></i>
+                    </div>
+                    <span class="step-label">Frais</span>
+                </div>
+                <!-- pas de track après le dernier -->
             </div>
-        </div>
+        </nav>
 
         <form id="inscriptionForm" method="POST" action="{{ route('esbtp.inscriptions.store') }}" enctype="multipart/form-data">
             @csrf
@@ -1544,32 +1582,128 @@ document.addEventListener('DOMContentLoaded', function() {
     updateParentToggleSub();
 
     // =============================================
-    // STEPPER VISUEL (scroll-based)
+    // STEPPER VISUEL — SCROLL-DRIVEN (fixed, vertical)
+    // Algo :
+    //   • Pour chaque nœud i, on mesure top(section i) et top(section i+1)
+    //   • La progression du trait i = clamp((scrollMid - top_i) / (top_{i+1} - top_i), 0, 1)
+    //   • Le nœud i est "done" si scrollMid > top_{i+1}, "active" si scrollMid ∈ [top_i, top_{i+1}]
+    //   • L'accordéon parents modifie top(section-frais) → recalcul complet à chaque event
+    //   • Animation lumière : déclenchée quand --fill passe de 0% à >5% (début du remplissage)
     // =============================================
-    const stepSections = [
-        { step: 1, el: document.getElementById('section-identite') },
-        { step: 2, el: document.getElementById('section-academique') },
-        { step: 3, el: document.getElementById('section-affectation') },
-        { step: 4, el: document.getElementById('section-parents') },
-        { step: 5, el: document.getElementById('section-frais') },
-    ];
+    (function initScrollStepper() {
+        const sectionIds = [
+            'section-identite',
+            'section-academique',
+            'section-affectation',
+            'section-parents',
+            'section-frais',
+        ];
 
-    function updateStepper() {
-        const scrollMid = window.scrollY + window.innerHeight / 2;
-        let active = 1;
-        stepSections.forEach(({ step, el }) => {
-            if (el && el.getBoundingClientRect().top + window.scrollY <= scrollMid) active = step;
-        });
-        document.querySelectorAll('.step-item').forEach(item => {
-            const s = parseInt(item.dataset.step);
-            item.classList.remove('active', 'done');
-            if (s < active) item.classList.add('done');
-            else if (s === active) item.classList.add('active');
-        });
-    }
+        const stepItems  = Array.from(document.querySelectorAll('.step-item[data-step]'))
+                                .sort((a, b) => +a.dataset.step - +b.dataset.step);
+        const trackEls   = Array.from(document.querySelectorAll('.step-track'));  // 4 traits (entre 5 nœuds)
 
-    window.addEventListener('scroll', updateStepper, { passive: true });
-    updateStepper();
+        // Calcule la hauteur réelle de chaque trait (distance entre deux nœuds consécutifs)
+        // et l'injecte en CSS var --track-height pour que le trait s'adapte au contenu
+        function updateTrackHeights() {
+            const circles = stepItems.map(item => item.querySelector('.step-circle'));
+            circles.forEach((circ, i) => {
+                if (i >= circles.length - 1) return;  // pas de trait après le dernier
+                const rectA = circ.getBoundingClientRect();
+                const rectB = circles[i + 1].getBoundingClientRect();
+                // distance centre-à-centre entre deux cercles consécutifs
+                const centerA = rectA.top + rectA.height / 2;
+                const centerB = rectB.top + rectB.height / 2;
+                const h = Math.max(20, Math.round(centerB - centerA - rectA.height / 2 - rectB.height / 2));
+                if (trackEls[i]) trackEls[i].style.setProperty('--track-height', h + 'px');
+            });
+        }
+
+        // Retourne les tops absolus (window.scrollY + getBCR.top) de chaque section
+        function getSectionTops() {
+            return sectionIds.map(id => {
+                const el = document.getElementById(id);
+                if (!el) return 0;
+                return el.getBoundingClientRect().top + window.scrollY;
+            });
+        }
+
+        let rafId = null;
+        let prevFills = new Array(4).fill(0);  // pour détecter début de remplissage → lumière
+
+        function updateStepper() {
+            const tops     = getSectionTops();
+            const scrollMid = window.scrollY + window.innerHeight * 0.42;  // légèrement au-dessus du centre
+
+            // Détermine l'étape active (1-based)
+            let active = 1;
+            tops.forEach((top, i) => {
+                if (scrollMid >= top) active = i + 1;
+            });
+
+            // Met à jour les classes done/active sur les nœuds
+            stepItems.forEach((item, i) => {
+                const step = i + 1;
+                item.classList.remove('active', 'done');
+                if (step < active)       item.classList.add('done');
+                else if (step === active) item.classList.add('active');
+            });
+
+            // Calcule le fill de chaque trait (0–100%)
+            trackEls.forEach((track, i) => {
+                const topStart = tops[i];       // section i   (nœud i)
+                const topEnd   = tops[i + 1];   // section i+1 (nœud i+1)
+
+                let fill = 0;
+                if (topEnd > topStart) {
+                    fill = Math.min(1, Math.max(0, (scrollMid - topStart) / (topEnd - topStart)));
+                } else if (scrollMid >= topStart) {
+                    fill = 1;
+                }
+
+                const fillPct = Math.round(fill * 100);
+                track.querySelector('.step-track-fill').style.setProperty('--fill', fillPct + '%');
+
+                // Déclenche l'animation lumière quand le fill commence à monter (passage 0→>3%)
+                if (fillPct > 3 && prevFills[i] <= 3 && fillPct < 97) {
+                    track.classList.remove('traveling');
+                    // Force reflow pour relancer l'animation CSS
+                    void track.offsetWidth;
+                    track.classList.add('traveling');
+                    // Retire la classe après la durée de l'animation (0.7s)
+                    setTimeout(() => track.classList.remove('traveling'), 720);
+                }
+                prevFills[i] = fillPct;
+            });
+        }
+
+        function onScroll() {
+            if (rafId) return;
+            rafId = requestAnimationFrame(() => {
+                rafId = null;
+                updateStepper();
+            });
+        }
+
+        // Recalcul des hauteurs de traits quand l'accordéon parents s'ouvre/ferme
+        const parentsToggle = document.getElementById('parents-toggle-btn');
+        if (parentsToggle) {
+            parentsToggle.addEventListener('click', () => {
+                // Attendre la fin de la transition (300ms) puis recalculer
+                setTimeout(() => {
+                    updateTrackHeights();
+                    updateStepper();
+                }, 350);
+            });
+        }
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', () => { updateTrackHeights(); updateStepper(); }, { passive: true });
+
+        // Init
+        updateTrackHeights();
+        updateStepper();
+    })();
 
     // =============================================
     // GESTION MATRICULES (inchangée)
