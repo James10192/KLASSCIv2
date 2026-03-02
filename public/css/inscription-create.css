@@ -47,26 +47,26 @@
         100% { box-shadow: 0 0 0 0   rgba(4,83,203,0);    }
     }
 
-    /* Conteneur principal — fixed à droite */
+    /* Conteneur principal — fixed à droite, minimaliste */
     .form-stepper {
         position: fixed;
         top: 50%;
-        right: 20px;
+        right: 12px;
         transform: translateY(-50%);
         z-index: 900;
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 0;
-        padding: 16px 10px;
-        background: rgba(255,255,255,0.92);
+        padding: 12px 8px;
+        background: rgba(255,255,255,0.94);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         border: 1px solid var(--kl-border);
         border-radius: 20px;
         box-shadow: 0 4px 24px rgba(4,83,203,0.10), 0 1px 4px rgba(0,0,0,0.06);
-        /* largeur fixe : cercle + label */
-        width: 88px;
+        /* Largeur minimale : seulement les cercles */
+        width: 48px;
     }
 
     /* Chaque étape = nœud + trait */
@@ -90,14 +90,14 @@
 
     /* Cercle */
     .step-circle {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         background: var(--kl-bg);
         border: 2px solid var(--kl-border);
         color: var(--kl-text-muted);
         font-weight: 700;
-        font-size: 12px;
+        font-size: 11px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -105,6 +105,7 @@
         transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
         position: relative;
         overflow: hidden;
+        cursor: default;
     }
 
     /* Icône check (cachée par défaut) */
@@ -138,21 +139,47 @@
         animation: stepPulse 2s infinite;
     }
 
-    /* Label sous le cercle */
+    /* Label — masqué, accessible via tooltip au survol */
     .step-label {
-        font-size: 9px;
-        font-weight: 700;
-        color: var(--kl-text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        text-align: center;
-        line-height: 1.2;
-        white-space: nowrap;
-        transition: color 0.3s ease;
+        display: none;
     }
 
-    .step-item.active .step-label { color: var(--kl-primary); }
-    .step-item.done .step-label   { color: var(--kl-success); }
+    /* Tooltip à gauche du cercle au survol */
+    .step-node {
+        position: relative;
+    }
+    .step-node::before {
+        content: attr(data-label);
+        position: absolute;
+        right: calc(100% + 10px);
+        top: 50%;
+        transform: translateY(-50%);
+        background: var(--kl-text);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 600;
+        white-space: nowrap;
+        padding: 4px 8px;
+        border-radius: 6px;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.18s ease;
+        letter-spacing: 0.4px;
+    }
+    .step-node::after {
+        content: '';
+        position: absolute;
+        right: calc(100% + 4px);
+        top: 50%;
+        transform: translateY(-50%);
+        border: 5px solid transparent;
+        border-left-color: var(--kl-text);
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.18s ease;
+    }
+    .step-node:hover::before,
+    .step-node:hover::after { opacity: 1; }
 
     /* Trait entre deux nœuds */
     .step-track {
@@ -210,8 +237,8 @@
 
     /* ─── Responsive ─── */
 @media (max-width: 1100px) {
-        .form-stepper { right: 8px; width: 56px; }
-        .step-label   { display: none; }
+        .form-stepper { right: 8px; width: 44px; padding: 10px 6px; }
+        .step-circle  { width: 26px; height: 26px; font-size: 10px; }
     }
 
 @media (max-width: 767px) {
