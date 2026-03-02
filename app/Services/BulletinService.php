@@ -961,11 +961,35 @@ class BulletinService
             return null;
         }
 
-        try {
-            $photoData = file_get_contents($photoPath);
-            $photoMime = mime_content_type($photoPath);
+        // Convertir en JPEG truecolor pour compatibilité DomPDF
+        // DomPDF ne supporte pas les PNG indexés (palette 8-bit)
+        if (! function_exists('imagecreatefromstring')) {
+            $mime = mime_content_type($photoPath) ?: 'image/jpeg';
+            return 'data:'.$mime.';base64,'.base64_encode(file_get_contents($photoPath));
+        }
 
-            return 'data:'.$photoMime.';base64,'.base64_encode($photoData);
+        try {
+            $rawData = file_get_contents($photoPath);
+            $src = @imagecreatefromstring($rawData);
+            if (! $src) {
+                $mime = mime_content_type($photoPath) ?: 'image/jpeg';
+                return 'data:'.$mime.';base64,'.base64_encode($rawData);
+            }
+
+            $w = imagesx($src);
+            $h = imagesy($src);
+            $dst = imagecreatetruecolor($w, $h);
+            $white = imagecolorallocate($dst, 255, 255, 255);
+            imagefill($dst, 0, 0, $white);
+            imagecopy($dst, $src, 0, 0, 0, 0, $w, $h);
+            imagedestroy($src);
+
+            ob_start();
+            imagejpeg($dst, null, 85);
+            $jpegData = ob_get_clean();
+            imagedestroy($dst);
+
+            return 'data:image/jpeg;base64,'.base64_encode($jpegData);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la préparation de la photo étudiant: '.$e->getMessage());
 
