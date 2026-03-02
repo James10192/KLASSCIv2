@@ -63,22 +63,27 @@
             vertical-align: top;
         }
 
-        /* Colonne gauche : logo */
+        /* Colonne gauche : logo — largeur % explicite requise par DomPDF */
         .header-logo-cell {
-            width: 110px;
+            width: 16%;
             padding: 10px 8px 10px 12px;
             vertical-align: middle;
             text-align: center;
             border-right: 1.5px solid #e5e7eb;
         }
         .logo {
-            width: 80px;
-            height: 80px;
-            object-fit: contain;
+            max-width: 80px;
+            max-height: 80px;
+            width: auto;
+            height: auto;
+        }
+        .header-logo-cell img {
+            max-width: none;
         }
 
-        /* Colonne droite : infos école + titre bulletin */
+        /* Colonne droite : infos école + titre bulletin — largeur % explicite requise par DomPDF */
         .header-info-cell {
+            width: 84%;
             padding: 10px 12px 10px 14px;
             vertical-align: top;
         }
