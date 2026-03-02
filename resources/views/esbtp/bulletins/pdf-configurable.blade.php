@@ -62,6 +62,7 @@
             width: 48%;
             text-align: center;
             padding: 0 8px;
+            vertical-align: middle;
         }
         .header-right {
             width: 26%;

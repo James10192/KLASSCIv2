@@ -57,7 +57,7 @@
         width:110px; height:110px; border-radius:50%;
         background:rgba(255,255,255,.08); pointer-events:none;
     }
-    .doc-header-logo img { height:52px; filter:brightness(0) invert(1); }
+    .doc-header-logo img { max-height:60px; max-width:100px; }
     .doc-header-info { flex:1; }
     .doc-school-name {
         font-size:1.1rem; font-weight:800; text-transform:uppercase;

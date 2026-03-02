@@ -10,7 +10,11 @@
     <div class="main-card-body">
         <div class="student-profile">
             <div class="student-avatar">
-                <i class="fas fa-user-circle"></i>
+                @if($etudiant->photo_url)
+                    <img src="{{ $etudiant->photo_url }}" alt="Photo de {{ $etudiant->nom }}" class="student-avatar-img">
+                @else
+                    <i class="fas fa-user-circle"></i>
+                @endif
             </div>
             <div class="student-details">
                 <h3 class="student-name">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</h3>
@@ -63,6 +67,14 @@
     border-radius: 50%;
     color: white;
     font-size: 2.5rem;
+    overflow: hidden;
+}
+
+.student-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
 }
 
 .student-details {
