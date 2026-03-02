@@ -959,9 +959,12 @@ class ESBTPBulletinController extends Controller
             // Préparer la photo étudiant en base64 pour le PDF (conversion JPEG pour DomPDF)
             $data['photoEtudiantBase64'] = null;
             if (!empty($data['etudiant']?->photo)) {
+                $photo = $data['etudiant']->photo;
                 $photoCandidates = [
-                    storage_path('app/public/' . $data['etudiant']->photo),
-                    public_path('storage/' . $data['etudiant']->photo),
+                    storage_path('app/public/' . $photo),
+                    storage_path('app/public/photos/etudiants/' . basename($photo)),
+                    public_path('storage/' . $photo),
+                    public_path('storage/photos/etudiants/' . basename($photo)),
                 ];
                 foreach ($photoCandidates as $photoPath) {
                     if (file_exists($photoPath)) {
@@ -4267,9 +4270,12 @@ class ESBTPBulletinController extends Controller
             // Préparer la photo étudiant en base64 pour la preview (conversion JPEG pour DomPDF)
             $donnees['photoEtudiantBase64'] = null;
             if (!empty($donnees['etudiant']?->photo)) {
+                $photo = $donnees['etudiant']->photo;
                 $photoCandidates = [
-                    storage_path('app/public/' . $donnees['etudiant']->photo),
-                    public_path('storage/' . $donnees['etudiant']->photo),
+                    storage_path('app/public/' . $photo),
+                    storage_path('app/public/photos/etudiants/' . basename($photo)),
+                    public_path('storage/' . $photo),
+                    public_path('storage/photos/etudiants/' . basename($photo)),
                 ];
                 foreach ($photoCandidates as $photoPath) {
                     if (file_exists($photoPath)) {
@@ -4842,9 +4848,12 @@ class ESBTPBulletinController extends Controller
             // Préparer la photo étudiant en base64 pour le PDF (conversion JPEG pour DomPDF)
             $donnees['photoEtudiantBase64'] = null;
             if (!empty($donnees['etudiant']?->photo)) {
+                $photo = $donnees['etudiant']->photo;
                 $photoCandidates = [
-                    storage_path('app/public/' . $donnees['etudiant']->photo),
-                    public_path('storage/' . $donnees['etudiant']->photo),
+                    storage_path('app/public/' . $photo),
+                    storage_path('app/public/photos/etudiants/' . basename($photo)),
+                    public_path('storage/' . $photo),
+                    public_path('storage/photos/etudiants/' . basename($photo)),
                 ];
                 foreach ($photoCandidates as $photoPath) {
                     if (file_exists($photoPath)) {
