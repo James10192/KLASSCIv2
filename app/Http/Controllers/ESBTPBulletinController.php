@@ -956,19 +956,12 @@ class ESBTPBulletinController extends Controller
             // Préparer le logo en base64
             $data['logoBase64'] = $this->prepareLogoBase64($config['school_logo']);
 
-            // Préparer la photo étudiant en base64 pour le PDF
+            // Préparer la photo étudiant en base64 pour le PDF (conversion JPEG pour DomPDF)
             $data['photoEtudiantBase64'] = null;
             if (!empty($data['etudiant']?->photo)) {
-                $photoCandidates = [
-                    storage_path('app/public/photos/etudiants/' . $data['etudiant']->photo),
-                    storage_path('app/public/' . $data['etudiant']->photo),
-                ];
-                foreach ($photoCandidates as $photoPath) {
-                    if (file_exists($photoPath)) {
-                        $mime = mime_content_type($photoPath) ?: 'image/jpeg';
-                        $data['photoEtudiantBase64'] = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($photoPath));
-                        break;
-                    }
+                $photoPath = storage_path('app/public/' . $data['etudiant']->photo);
+                if (file_exists($photoPath)) {
+                    $data['photoEtudiantBase64'] = $this->convertImageToJpegBase64($photoPath);
                 }
             }
 
@@ -4265,19 +4258,12 @@ class ESBTPBulletinController extends Controller
             $logoBase64 = $this->prepareLogoBase64($donnees['settings']['school_logo'] ?? null);
             $donnees['logoBase64'] = $logoBase64;
 
-            // Préparer la photo étudiant en base64 pour la preview
+            // Préparer la photo étudiant en base64 pour la preview (conversion JPEG pour DomPDF)
             $donnees['photoEtudiantBase64'] = null;
             if (!empty($donnees['etudiant']?->photo)) {
-                $photoCandidates = [
-                    storage_path('app/public/photos/etudiants/' . $donnees['etudiant']->photo),
-                    storage_path('app/public/' . $donnees['etudiant']->photo),
-                ];
-                foreach ($photoCandidates as $photoPath) {
-                    if (file_exists($photoPath)) {
-                        $mime = mime_content_type($photoPath) ?: 'image/jpeg';
-                        $donnees['photoEtudiantBase64'] = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($photoPath));
-                        break;
-                    }
+                $photoPath = storage_path('app/public/' . $donnees['etudiant']->photo);
+                if (file_exists($photoPath)) {
+                    $donnees['photoEtudiantBase64'] = $this->convertImageToJpegBase64($photoPath);
                 }
             }
 
@@ -4841,19 +4827,12 @@ class ESBTPBulletinController extends Controller
             $logoBase64 = $this->prepareLogoBase64($config['school_logo']);
             $donnees['logoBase64'] = $logoBase64;
 
-            // Préparer la photo étudiant en base64 pour le PDF
+            // Préparer la photo étudiant en base64 pour le PDF (conversion JPEG pour DomPDF)
             $donnees['photoEtudiantBase64'] = null;
             if (!empty($donnees['etudiant']?->photo)) {
-                $photoCandidates = [
-                    storage_path('app/public/photos/etudiants/' . $donnees['etudiant']->photo),
-                    storage_path('app/public/' . $donnees['etudiant']->photo),
-                ];
-                foreach ($photoCandidates as $photoPath) {
-                    if (file_exists($photoPath)) {
-                        $mime = mime_content_type($photoPath) ?: 'image/jpeg';
-                        $donnees['photoEtudiantBase64'] = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($photoPath));
-                        break;
-                    }
+                $photoPath = storage_path('app/public/' . $donnees['etudiant']->photo);
+                if (file_exists($photoPath)) {
+                    $donnees['photoEtudiantBase64'] = $this->convertImageToJpegBase64($photoPath);
                 }
             }
 
@@ -8131,5 +8110,49 @@ class ESBTPBulletinController extends Controller
         }
 
         return "Coefficient manquant pour {$matiereName}. Configurez les coefficients avant de continuer.";
+    }
+
+    /**
+     * Convertit une image en JPEG base64 compatible DomPDF.
+     * DomPDF ne supporte pas les PNG indexés (palette 8-bit) ni la transparence PNG.
+     * Cette méthode utilise GD pour convertir l'image en truecolor JPEG.
+     */
+    private function convertImageToJpegBase64(string $photoPath): ?string
+    {
+        if (! function_exists('imagecreatefromstring')) {
+            // GD non disponible : fallback sur file_get_contents brut
+            $mime = mime_content_type($photoPath) ?: 'image/jpeg';
+            return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($photoPath));
+        }
+
+        try {
+            $rawData = file_get_contents($photoPath);
+            $src = @imagecreatefromstring($rawData);
+            if (! $src) {
+                // Impossible de lire l'image avec GD : fallback brut
+                $mime = mime_content_type($photoPath) ?: 'image/jpeg';
+                return 'data:' . $mime . ';base64,' . base64_encode($rawData);
+            }
+
+            $w = imagesx($src);
+            $h = imagesy($src);
+
+            // Créer une image truecolor avec fond blanc (pour gérer la transparence PNG)
+            $dst = imagecreatetruecolor($w, $h);
+            $white = imagecolorallocate($dst, 255, 255, 255);
+            imagefill($dst, 0, 0, $white);
+            imagecopy($dst, $src, 0, 0, 0, 0, $w, $h);
+            imagedestroy($src);
+
+            ob_start();
+            imagejpeg($dst, null, 85);
+            $jpegData = ob_get_clean();
+            imagedestroy($dst);
+
+            return 'data:image/jpeg;base64,' . base64_encode($jpegData);
+        } catch (\Exception $e) {
+            \Log::error('Erreur conversion image pour PDF: ' . $e->getMessage());
+            return null;
+        }
     }
 }
