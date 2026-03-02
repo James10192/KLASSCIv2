@@ -1,0 +1,126 @@
+{
+  "skill_name": "dompdf-expert",
+  "iteration": 1,
+  "generated_at": "2026-03-02",
+  "summary": {
+    "with_skill": {
+      "pass_rate": 0.941,
+      "pass_rate_pct": "94.1%",
+      "total_assertions": 17,
+      "passed_assertions": 16,
+      "mean_tokens": 105725,
+      "mean_duration_seconds": 160.5,
+      "mean_duration_ms": 160492
+    },
+    "without_skill": {
+      "pass_rate": 0.882,
+      "pass_rate_pct": "88.2%",
+      "total_assertions": 17,
+      "passed_assertions": 15,
+      "mean_tokens": 100441,
+      "mean_duration_seconds": 179.5,
+      "mean_duration_ms": 179467
+    },
+    "delta": {
+      "pass_rate": "+0.059",
+      "pass_rate_pct": "+5.9%",
+      "tokens": "+5284 (with_skill uses more tokens)",
+      "duration_seconds": "-19.0s (with_skill is faster)"
+    }
+  },
+  "evals": [
+    {
+      "eval_id": 1,
+      "eval_name": "eval-1-pdf-paiements",
+      "prompt": "Créer un export PDF pour liste des paiements avec header logo, tableau, badges statut colorés",
+      "with_skill": {
+        "pass_rate": 1.0,
+        "pass_rate_pct": "100%",
+        "passed": 8,
+        "total": 8,
+        "tokens": 107101,
+        "duration_seconds": 148.3
+      },
+      "without_skill": {
+        "pass_rate": 0.75,
+        "pass_rate_pct": "75%",
+        "passed": 6,
+        "total": 8,
+        "tokens": 95686,
+        "duration_seconds": 160.8
+      },
+      "delta_pass_rate": "+0.25",
+      "key_differences": [
+        "with_skill: DejaVu Sans font (correct for French accents) vs without_skill: Arial",
+        "with_skill: table-based header layout vs without_skill: div-based header (unreliable in DomPDF)",
+        "with_skill: .row-even td/.row-odd td selectors (correct DomPDF fix) vs without_skill: :nth-child (NOT supported in DomPDF)",
+        "with_skill: stat cards section with 4 KPIs vs without_skill: no stat cards",
+        "with_skill: tfoot with total row vs without_skill: no total row"
+      ]
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "eval-2-fix-tr-background",
+      "prompt": "Fixer les background-color sur <tr> qui ne s'affichent pas dans DomPDF",
+      "with_skill": {
+        "pass_rate": 1.0,
+        "pass_rate_pct": "100%",
+        "passed": 3,
+        "total": 3,
+        "tokens": 96987,
+        "duration_seconds": 106.9
+      },
+      "without_skill": {
+        "pass_rate": 1.0,
+        "pass_rate_pct": "100%",
+        "passed": 3,
+        "total": 3,
+        "tokens": 96582,
+        "duration_seconds": 169.9
+      },
+      "delta_pass_rate": "0.0",
+      "key_differences": [
+        "Both correctly identify the tr background bug",
+        "without_skill adds $loop->even Blade trick for :nth-child replacement (bonus insight)",
+        "with_skill concise and focused; without_skill slightly more comprehensive on :nth-child fix",
+        "Non-discriminating eval — both baseline and skill get 100%"
+      ]
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "eval-3-controller-method",
+      "prompt": "Créer exportToPDF() dans ESBTPAttendanceController avec header base64, stats, couleurs KLASSCI",
+      "with_skill": {
+        "pass_rate": 1.0,
+        "pass_rate_pct": "100%",
+        "passed": 6,
+        "total": 6,
+        "tokens": 113087,
+        "duration_seconds": 226.3
+      },
+      "without_skill": {
+        "pass_rate": 1.0,
+        "pass_rate_pct": "100%",
+        "passed": 6,
+        "total": 6,
+        "tokens": 111055,
+        "duration_seconds": 207.7
+      },
+      "delta_pass_rate": "0.0",
+      "key_differences": [
+        "with_skill: isPhpEnabled=false included (security); without_skill: missing this option",
+        "with_skill: Method signature uses type-hinted ESBTPEtudiant model injection vs without_skill: fetches from auth()->user()->etudiant",
+        "with_skill: Comments reference skill sections (§4, §8, §12) for future maintainability",
+        "with_skill: 3 fallback paths for logo; without_skill: 2 fallback paths",
+        "Both: all 6 formal assertions pass"
+      ]
+    }
+  ],
+  "analyst_observations": [
+    "Eval 1 is the most discriminating: with_skill wins 8/8 vs 6/8 for without_skill. The critical failures in without_skill are: (1) Arial font instead of DejaVu Sans — will cause garbled French accents in production PDFs; (2) :nth-child CSS used for row striping — this is a DomPDF limitation that without_skill was unaware of, meaning alternating rows will NOT render.",
+    "Eval 2 is non-discriminating: both achieve 100%. The tr→td background fix is well-documented online. Consider replacing with a harder test (e.g., multi-column layout, @font-face usage, or pixel-perfect preview matching).",
+    "Eval 3 is nearly non-discriminating at the formal assertion level, but qualitative differences exist: with_skill adds isPhpEnabled=false (security hardening) and uses Route Model Binding (better Laravel pattern). Consider adding assertions for isPhpEnabled.",
+    "Speed: with_skill tends to be faster on evals 1 and 2 (148s vs 161s, 107s vs 170s) but slower on eval 3 (226s vs 208s). Token usage is roughly comparable.",
+    "Recommendation: The skill delivers clear value on eval 1 (the realistic PDF creation task). The DomPDF-specific knowledge (DejaVu Sans, :nth-child limitation, table layouts) is genuinely useful and not obvious from general knowledge."
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "eval_id": 1,
+  "run": "with_skill",
+  "assertions": [
+    {
+      "text": "Le template utilise DejaVu Sans comme font principale",
+      "passed": true,
+      "evidence": "Line 12: font-family: DejaVu Sans, Arial, sans-serif; — explicitly declared as first font"
+    },
+    {
+      "text": "Aucun display:flex ou display:grid dans le template",
+      "passed": true,
+      "evidence": "No 'display: flex' or 'display: grid' found anywhere in the file. Layout uses HTML tables exclusively."
+    },
+    {
+      "text": "Utilise des <table> pour le layout (pas de div-based layout)",
+      "passed": true,
+      "evidence": "Multiple <table> elements: header layout table (line 100), stats cards table (line 150), paiements-table (line 184)"
+    },
+    {
+      "text": "N'utilise pas asset() pour les images (utilise public_path ou base64)",
+      "passed": true,
+      "evidence": "No 'asset(' found. Logo uses $logoBase64 variable (line 108): <img src=\"{{ $logoBase64 }}\""
+    },
+    {
+      "text": "Utilise la couleur primaire KLASSCI (#0453cb) ou la variable settings",
+      "passed": true,
+      "evidence": "Line 45: background-color: {{ $settings['header_bg_color'] ?? '#0453cb' }} — uses settings with #0453cb fallback"
+    },
+    {
+      "text": "Les backgrounds des headers de tableau sont appliqués sur td ou via classe td, pas directement sur tr",
+      "passed": true,
+      "evidence": "Line 44: '.paiements-table thead td { background-color: ... }' — correctly targets td. Line 54-55: '.row-even td' and '.row-odd td' selectors. No background on tr elements."
+    },
+    {
+      "text": "Les badges de statut sont colorés (validé=vert, en_attente=orange/jaune, rejeté=rouge)",
+      "passed": true,
+      "evidence": "Lines 80-83: badge-valide=#10b981 (vert), badge-attente=#f59e0b (orange), badge-rejete=#ef4444 (rouge). Three distinct colors with borders."
+    },
+    {
+      "text": "Le template a un bloc header avec logo et titre du document",
+      "passed": true,
+      "evidence": "Lines 99-141: Full header table with 3 columns — logo (left), school name + 'LISTE DES PAIEMENTS' title (center), generated date (right)"
+    }
+  ],
+  "pass_count": 8,
+  "total_count": 8,
+  "pass_rate": 1.0
+}

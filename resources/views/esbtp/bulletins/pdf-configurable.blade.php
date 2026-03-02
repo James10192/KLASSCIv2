@@ -211,17 +211,21 @@
         }
         .center { text-align: center; }
 
-        .section-header {
-            background: {{ $pdfPrimary }};
+        /* DomPDF ne supporte pas background-color sur <tr>.
+           Le background doit toujours être posé sur les <td> enfants. */
+        .section-header td {
+            background-color: {{ $pdfPrimary }};
             color: {{ $pdfHeaderText }};
             font-weight: 700;
             text-align: center;
             padding: 5px 8px;
             font-size: 9.5px;
         }
-        .subject-row:nth-child(even) { background: #f8fafb; }
-        .summary-row {
-            background: #e5e7eb;
+        /* :nth-child n'est pas supporté par DomPDF — on utilise .subject-row-even
+           posée via $loop->even dans le template Blade (voir tbody ci-dessous). */
+        .subject-row-even td { background-color: #f8fafb; }
+        .summary-row td {
+            background-color: #e5e7eb;
             font-weight: 700;
         }
 
@@ -524,7 +528,7 @@
                 @if(($settings['bulletin_show_general_subjects'] ?? '1') == '1')
                     @if(isset($resultatsGeneraux) && $resultatsGeneraux->count() > 0)
                         @foreach($resultatsGeneraux as $resultat)
-                            <tr class="subject-row">
+                            <tr class="subject-row{{ $loop->even ? ' subject-row-even' : '' }}">
                                 <td>{{ $resultat->matiere->name ?? $resultat->matiere->nom ?? 'N/A' }}</td>
                                 @if(($settings['bulletin_show_subject_average'] ?? '1') == '1')<td class="center">{{ number_format($resultat->moyenne, 2) }}</td>@endif
                                 @if(($settings['bulletin_show_coefficient'] ?? '1') == '1')<td class="center">{{ $resultat->coefficient }}</td>@endif
@@ -552,7 +556,7 @@
                 </tr>
                 @if(isset($resultatsTechniques) && $resultatsTechniques->count() > 0)
                     @foreach($resultatsTechniques as $resultat)
-                        <tr class="subject-row">
+                        <tr class="subject-row{{ $loop->even ? ' subject-row-even' : '' }}">
                             <td>{{ $resultat->matiere->name ?? $resultat->matiere->nom ?? 'N/A' }}</td>
                             @if(($settings['bulletin_show_subject_average'] ?? '1') == '1')<td class="center">{{ number_format($resultat->moyenne, 2) }}</td>@endif
                             @if(($settings['bulletin_show_coefficient'] ?? '1') == '1')<td class="center">{{ $resultat->coefficient }}</td>@endif

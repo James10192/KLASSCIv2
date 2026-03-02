@@ -1,0 +1,50 @@
+{
+  "eval_id": 1,
+  "run": "without_skill",
+  "assertions": [
+    {
+      "text": "Le template utilise DejaVu Sans comme font principale",
+      "passed": false,
+      "evidence": "Line 9: font-family: 'Arial', sans-serif; — uses Arial, NOT DejaVu Sans. DejaVu is needed for French accents (é, è, à, ç) in DomPDF."
+    },
+    {
+      "text": "Aucun display:flex ou display:grid dans le template",
+      "passed": true,
+      "evidence": "No 'display: flex' found. However the without_skill version uses CSS classes like 'display: inline-block' which is fine."
+    },
+    {
+      "text": "Utilise des <table> pour le layout (pas de div-based layout)",
+      "passed": false,
+      "evidence": "Header uses a <div class=\"header-section\"> (line 172) instead of a table. The layout is div-based for header, not table-based as recommended for DomPDF."
+    },
+    {
+      "text": "N'utilise pas asset() pour les images (utilise public_path ou base64)",
+      "passed": true,
+      "evidence": "Uses $settings['logo_base64'] (line 175) — base64 approach. No asset() calls found."
+    },
+    {
+      "text": "Utilise la couleur primaire KLASSCI (#0453cb) ou la variable settings",
+      "passed": true,
+      "evidence": "Line 29: background: #0453cb hardcoded in header-section. Line 221: color:#0453cb in td style. Uses KLASSCI primary."
+    },
+    {
+      "text": "Les backgrounds des headers de tableau sont appliqués sur td ou via classe td, pas directement sur tr",
+      "passed": true,
+      "evidence": "Lines 80-92: '.payments-table thead th { background: #0453cb; }' — targets <th> which is acceptable. Lines 105-110: ':nth-child(odd/even) td' selectors correctly target td. Note: uses :nth-child which is NOT supported in DomPDF — this is a bug."
+    },
+    {
+      "text": "Les badges de statut sont colorés (validé=vert, en_attente=orange/jaune, rejeté=rouge)",
+      "passed": true,
+      "evidence": "Lines 126-129: status-valid=#16a34a (vert), status-pending=#f59e0b (orange), status-rejected=#dc2626 (rouge). Three distinct colors."
+    },
+    {
+      "text": "Le template a un bloc header avec logo et titre du document",
+      "passed": true,
+      "evidence": "Lines 172-185: header-section div with logo, school-name, and 'Liste des Paiements' document-title. Div-based not table-based."
+    }
+  ],
+  "pass_count": 6,
+  "total_count": 8,
+  "pass_rate": 0.75,
+  "notes": "Two failures: (1) Uses Arial instead of DejaVu Sans — French accents will not render properly. (2) Header uses div layout instead of table. BONUS BUG: Uses :nth-child(even/odd) CSS which DomPDF does NOT support — the alternating rows will not work."
+}

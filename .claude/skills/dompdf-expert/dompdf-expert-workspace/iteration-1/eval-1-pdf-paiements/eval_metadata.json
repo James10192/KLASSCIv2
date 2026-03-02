@@ -1,0 +1,15 @@
+{
+  "eval_id": 1,
+  "eval_name": "pdf-paiements",
+  "prompt": "Je veux créer un export PDF pour la page /esbtp/paiements (liste des paiements). Le PDF doit ressembler au tableau qu'on voit dans l'interface web : colonnes Étudiant, Montant, Mode, Date, Statut, Catégorie. Avec un header qui affiche le logo de l'école et le titre 'Liste des Paiements'. Les lignes alternent gris clair / blanc. Les badges de statut doivent être colorés (vert=validé, orange=en_attente, rouge=rejeté). Crée le fichier Blade complet.",
+  "assertions": [
+    {"id": "uses-dejavu-font", "text": "Le template utilise DejaVu Sans comme font principale"},
+    {"id": "no-flexbox", "text": "Aucun display:flex ou display:grid dans le template"},
+    {"id": "table-layout", "text": "Utilise des <table> pour le layout"},
+    {"id": "no-asset-helper", "text": "N'utilise pas asset() pour les images"},
+    {"id": "klassci-primary-color", "text": "Utilise la couleur primaire KLASSCI (#0453cb) ou la variable settings"},
+    {"id": "td-background-not-tr", "text": "Background-color sur td (pas tr seul)"},
+    {"id": "status-badges", "text": "Badges de statut colorés (3 couleurs distinctes)"},
+    {"id": "has-header-block", "text": "Bloc header avec logo et titre du document"}
+  ]
+}

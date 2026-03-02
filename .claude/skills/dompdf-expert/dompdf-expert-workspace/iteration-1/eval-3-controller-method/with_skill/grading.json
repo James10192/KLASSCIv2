@@ -1,0 +1,39 @@
+{
+  "eval_id": 3,
+  "run": "with_skill",
+  "assertions": [
+    {
+      "text": "Utilise Barryvdh\\DomPDF\\Facade\\Pdf",
+      "passed": true,
+      "evidence": "Line 74: '$pdf = Pdf::loadView(...)' — uses Pdf facade correctly."
+    },
+    {
+      "text": "Charge les settings PDF via SettingsHelper",
+      "passed": true,
+      "evidence": "Line 15: '$settings = \\App\\Helpers\\SettingsHelper::getPdfSettings();' — correct usage."
+    },
+    {
+      "text": "Configure isRemoteEnabled=false pour la sécurité",
+      "passed": true,
+      "evidence": "Line 94: \"'isRemoteEnabled' => false,\" with security comment."
+    },
+    {
+      "text": "Active isFontSubsettingEnabled pour optimiser la taille",
+      "passed": true,
+      "evidence": "Line 97: \"'isFontSubsettingEnabled' => true,\" with §12 comment."
+    },
+    {
+      "text": "Prépare le logo en base64 ou public_path (pas asset())",
+      "passed": true,
+      "evidence": "Lines 16-18: uses prepareLogoBase64() helper (lines 110-133). No asset() calls. Uses storage_path() and public_path() with file_exists() checks."
+    },
+    {
+      "text": "Retourne un téléchargement PDF avec un nom de fichier approprié",
+      "passed": true,
+      "evidence": "Lines 100-104: filename includes matricule and date. Line 104: 'return $pdf->download($filename);'"
+    }
+  ],
+  "pass_count": 6,
+  "total_count": 6,
+  "pass_rate": 1.0
+}

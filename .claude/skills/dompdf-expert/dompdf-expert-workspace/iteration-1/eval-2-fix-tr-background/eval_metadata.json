@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "eval_name": "fix-tr-background",
+  "prompt": "Dans resources/views/esbtp/bulletins/pdf-configurable.blade.php, les background-color sur les lignes <tr> du tableau de notes ne s'affichent pas dans le PDF généré. Comment corriger ça ? Montre-moi le bon pattern et corrige les lignes concernées.",
+  "assertions": [
+    {"id": "identifies-tr-bug", "text": "Identifie que DomPDF ne supporte pas background-color sur <tr>"},
+    {"id": "provides-td-fix", "text": "La correction cible les éléments <td>"},
+    {"id": "no-flexbox-suggestion", "text": "Ne suggère pas flexbox comme solution"}
+  ]
+}

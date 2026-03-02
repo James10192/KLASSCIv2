@@ -1,0 +1,13 @@
+{
+  "eval_id": 3,
+  "eval_name": "controller-method",
+  "prompt": "Crée une méthode exportToPDF() dans ESBTPAttendanceController pour exporter un rapport d'absences étudiant en PDF. Le PDF doit inclure: header avec logo base64, tableau des absences (date, matière, type, justifiée/non), stats en haut (total absences, justifiées, non justifiées), couleurs KLASSCI. Utilise les patterns standards du projet KLASSCI.",
+  "assertions": [
+    {"id": "uses-pdf-facade", "text": "Utilise Barryvdh\\DomPDF\\Facade\\Pdf"},
+    {"id": "uses-settings-helper", "text": "Charge les settings via SettingsHelper"},
+    {"id": "security-options", "text": "Configure isRemoteEnabled=false"},
+    {"id": "font-subsetting", "text": "Active isFontSubsettingEnabled"},
+    {"id": "base64-logo", "text": "Logo en base64 ou public_path (pas asset())"},
+    {"id": "returns-download", "text": "Retourne ->download()"}
+  ]
+}

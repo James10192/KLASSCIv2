@@ -1,0 +1,25 @@
+{
+  "eval_id": 2,
+  "run": "without_skill",
+  "assertions": [
+    {
+      "text": "Identifie correctement que le problème est background-color sur <tr> dans DomPDF",
+      "passed": true,
+      "evidence": "Line 5: 'DomPDF ne supporte pas background-color appliqué directement sur les éléments <tr>' — correct diagnosis. Also identifies :nth-child as unsupported."
+    },
+    {
+      "text": "La correction cible les éléments <td> (pas <tr>) pour le background",
+      "passed": true,
+      "evidence": "Lines 39-44: '.section-header td', '.subject-row-even td', '.summary-row td' — all target td. Also adds Blade $loop->even pattern to replace :nth-child."
+    },
+    {
+      "text": "Ne suggère pas flexbox comme solution alternative",
+      "passed": true,
+      "evidence": "No mention of 'flex' anywhere. Solution is CSS selector correction + Blade loop variable."
+    }
+  ],
+  "pass_count": 3,
+  "total_count": 3,
+  "pass_rate": 1.0,
+  "notes": "Without skill also achieves 100% on this eval. Additionally provides the $loop->even Blade trick for :nth-child replacement which is a valuable bonus. Both outputs are correct — this eval does not discriminate well."
+}
