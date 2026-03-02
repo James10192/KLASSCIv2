@@ -60,7 +60,7 @@
         .header-table td {
             border: none;
             padding: 0;
-            vertical-align: top;
+            vertical-align: middle;
         }
 
         /* Colonne gauche : logo — largeur % explicite requise par DomPDF */
@@ -71,14 +71,12 @@
             text-align: center;
             border-right: 1.5px solid #e5e7eb;
         }
+        /* width/height fixes (pas max-width/auto) : seule approche fiable DomPDF + browser */
         .logo {
-            max-width: 80px;
-            max-height: 80px;
-            width: auto;
-            height: auto;
-        }
-        .header-logo-cell img {
-            max-width: none;
+            width: 80px;
+            height: 80px;
+            display: block;
+            margin: 0 auto;
         }
 
         /* Colonne droite : infos école + titre bulletin — largeur % explicite requise par DomPDF */
