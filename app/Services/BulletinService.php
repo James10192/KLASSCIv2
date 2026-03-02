@@ -955,9 +955,23 @@ class BulletinService
             return null;
         }
 
-        $photoPath = storage_path('app/public/'.$etudiant->photo);
+        $photo = $etudiant->photo;
+        $photoCandidates = [
+            storage_path('app/public/' . $photo),
+            storage_path('app/public/photos/etudiants/' . basename($photo)),
+            public_path('storage/' . $photo),
+            public_path('storage/photos/etudiants/' . basename($photo)),
+        ];
 
-        if (! file_exists($photoPath)) {
+        $photoPath = null;
+        foreach ($photoCandidates as $candidate) {
+            if (file_exists($candidate)) {
+                $photoPath = $candidate;
+                break;
+            }
+        }
+
+        if (! $photoPath) {
             return null;
         }
 
