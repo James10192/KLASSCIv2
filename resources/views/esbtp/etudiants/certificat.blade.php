@@ -53,10 +53,9 @@
         }
 
         .doc-header-logo img {
-            max-height: 48px;
-            max-width: 90px;
+            max-height: 60px;
+            max-width: 100px;
             margin-bottom: 8px;
-            filter: brightness(0) invert(1);
         }
 
         .doc-school-name {
