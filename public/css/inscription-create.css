@@ -28,85 +28,216 @@
     }
 
     /* ============================================
-       STEPPER DE PROGRESSION
+       STEPPER FIXED — INDICATEUR DE PROGRESSION
+       Vertical, positionné à droite du contenu,
+       animé au scroll (scroll-driven light travel)
     ============================================ */
-    .form-stepper {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0;
-        margin-bottom: 32px;
-        padding: 20px 16px;
-        background: var(--kl-surface);
-        border-radius: var(--kl-radius-lg);
-        border: 1px solid var(--kl-border);
-        box-shadow: var(--kl-shadow);
-        flex-wrap: wrap;
+
+    /* Keyframes lumière qui voyage sur le trait */
+@keyframes lightTravel {
+        0%   { background-position: 0% 0%;   opacity: 0; }
+        10%  { opacity: 1; }
+        90%  { opacity: 1; }
+        100% { background-position: 0% 100%; opacity: 0; }
     }
 
+@keyframes stepPulse {
+        0%   { box-shadow: 0 0 0 0   rgba(4,83,203,0.45); }
+        70%  { box-shadow: 0 0 0 8px rgba(4,83,203,0);    }
+        100% { box-shadow: 0 0 0 0   rgba(4,83,203,0);    }
+    }
+
+    /* Conteneur principal — fixed à droite */
+    .form-stepper {
+        position: fixed;
+        top: 50%;
+        right: 20px;
+        transform: translateY(-50%);
+        z-index: 900;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+        padding: 16px 10px;
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--kl-border);
+        border-radius: 20px;
+        box-shadow: 0 4px 24px rgba(4,83,203,0.10), 0 1px 4px rgba(0,0,0,0.06);
+        /* largeur fixe : cercle + label */
+        width: 88px;
+    }
+
+    /* Chaque étape = nœud + trait */
     .step-item {
         display: flex;
+        flex-direction: column;
         align-items: center;
-        flex: 1;
-        min-width: 0;
+        gap: 0;
+        width: 100%;
     }
 
+    /* Nœud (cercle + label) */
+    .step-node {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        position: relative;
+        z-index: 2;
+    }
+
+    /* Cercle */
     .step-circle {
-        width: 36px;
-        height: 36px;
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
         background: var(--kl-bg);
         border: 2px solid var(--kl-border);
         color: var(--kl-text-muted);
         font-weight: 700;
-        font-size: 13px;
+        font-size: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-        transition: var(--kl-transition);
+        transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, color 0.3s ease;
+        position: relative;
+        overflow: hidden;
     }
 
-    .step-item.active .step-circle {
-        background: var(--kl-primary);
-        border-color: var(--kl-primary);
-        color: white;
-        box-shadow: 0 0 0 4px rgba(4,83,203,0.15);
+    /* Icône check (cachée par défaut) */
+    .step-check {
+        position: absolute;
+        opacity: 0;
+        transform: scale(0.5);
+        transition: opacity 0.25s ease, transform 0.25s ease;
+        font-size: 11px;
     }
 
+    /* Numéro (visible par défaut) */
+    .step-num {
+        transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    /* État DONE : check visible, num caché */
     .step-item.done .step-circle {
         background: var(--kl-success);
         border-color: var(--kl-success);
         color: white;
     }
+    .step-item.done .step-num  { opacity: 0; transform: scale(0.5); }
+    .step-item.done .step-check{ opacity: 1; transform: scale(1);   }
 
+    /* État ACTIVE : bleu + pulse */
+    .step-item.active .step-circle {
+        background: var(--kl-primary);
+        border-color: var(--kl-primary);
+        color: white;
+        animation: stepPulse 2s infinite;
+    }
+
+    /* Label sous le cercle */
     .step-label {
-        font-size: 11px;
-        font-weight: 600;
+        font-size: 9px;
+        font-weight: 700;
         color: var(--kl-text-muted);
-        margin-left: 8px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
         text-transform: uppercase;
-        letter-spacing: 0.4px;
+        letter-spacing: 0.5px;
+        text-align: center;
+        line-height: 1.2;
+        white-space: nowrap;
+        transition: color 0.3s ease;
     }
 
     .step-item.active .step-label { color: var(--kl-primary); }
     .step-item.done .step-label   { color: var(--kl-success); }
 
-    .step-divider {
-        flex: 1;
-        height: 2px;
+    /* Trait entre deux nœuds */
+    .step-track {
+        position: relative;
+        width: 2px;
+        /* hauteur pilotée dynamiquement via JS : --track-height */
+        height: var(--track-height, 40px);
         background: var(--kl-border);
-        margin: 0 8px;
-        min-width: 20px;
-        max-width: 60px;
+        margin: 0;          /* ZÉRO espace — collé directement aux cercles */
+        overflow: hidden;
+        border-radius: 2px;
+        flex-shrink: 0;
     }
 
-@media (max-width: 576px) {
-        .step-label { display: none; }
-        .step-divider { max-width: 20px; }
+    /* Remplissage de progression (0% → 100% de haut en bas) */
+    .step-track-fill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: var(--fill, 0%);        /* piloté par JS */
+        background: var(--kl-primary);
+        border-radius: 2px;
+        transition: height 0.12s linear;
+    }
+
+    .step-item.done .step-track-fill { height: 100%; background: var(--kl-success); }
+
+    /* Lumière animée qui voyage sur le trait quand il est en cours */
+    .step-track-light {
+        position: absolute;
+        top: 0;
+        left: -50%;
+        width: 200%;
+        height: 40px;
+        background: linear-gradient(
+            to bottom,
+            transparent 0%,
+            rgba(255,255,255,0.0) 30%,
+            rgba(255,255,255,0.85) 50%,
+            rgba(255,255,255,0.0) 70%,
+            transparent 100%
+        );
+        background-size: 100% 80px;
+        background-repeat: no-repeat;
+        background-position: 0% -100%;
+        opacity: 0;
+        pointer-events: none;
+        /* animation déclenchée via classe .traveling */
+    }
+
+    .step-track.traveling .step-track-light {
+        animation: lightTravel 0.7s ease forwards;
+    }
+
+    /* ─── Responsive ─── */
+@media (max-width: 1100px) {
+        .form-stepper { right: 8px; width: 56px; }
+        .step-label   { display: none; }
+    }
+
+@media (max-width: 767px) {
+        /* Sur mobile : barre horizontale compacte en haut, sous la navbar */
+        .form-stepper {
+            position: fixed;
+            top: 80px;   /* = --navbar-height */
+            right: auto;
+            left: 0;
+            width: 100%;
+            transform: none;
+            flex-direction: row;
+            border-radius: 0;
+            padding: 8px 16px;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+            border-bottom: 1px solid var(--kl-border);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            z-index: 980;
+        }
+        .step-item      { flex-direction: row; align-items: center; flex: 1; }
+        .step-node      { flex-direction: row; gap: 6px; }
+        .step-track     { width: var(--track-height, 100%); height: 2px; }
+        .step-track-fill{ width: var(--fill, 0%); height: 100%; top: 0; left: 0; }
+        .step-label     { display: none; }
     }
 
     /* ============================================
