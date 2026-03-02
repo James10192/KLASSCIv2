@@ -959,9 +959,15 @@ class ESBTPBulletinController extends Controller
             // Préparer la photo étudiant en base64 pour le PDF (conversion JPEG pour DomPDF)
             $data['photoEtudiantBase64'] = null;
             if (!empty($data['etudiant']?->photo)) {
-                $photoPath = storage_path('app/public/' . $data['etudiant']->photo);
-                if (file_exists($photoPath)) {
-                    $data['photoEtudiantBase64'] = $this->convertImageToJpegBase64($photoPath);
+                $photoCandidates = [
+                    storage_path('app/public/' . $data['etudiant']->photo),
+                    public_path('storage/' . $data['etudiant']->photo),
+                ];
+                foreach ($photoCandidates as $photoPath) {
+                    if (file_exists($photoPath)) {
+                        $data['photoEtudiantBase64'] = $this->convertImageToJpegBase64($photoPath);
+                        break;
+                    }
                 }
             }
 
@@ -4261,9 +4267,15 @@ class ESBTPBulletinController extends Controller
             // Préparer la photo étudiant en base64 pour la preview (conversion JPEG pour DomPDF)
             $donnees['photoEtudiantBase64'] = null;
             if (!empty($donnees['etudiant']?->photo)) {
-                $photoPath = storage_path('app/public/' . $donnees['etudiant']->photo);
-                if (file_exists($photoPath)) {
-                    $donnees['photoEtudiantBase64'] = $this->convertImageToJpegBase64($photoPath);
+                $photoCandidates = [
+                    storage_path('app/public/' . $donnees['etudiant']->photo),
+                    public_path('storage/' . $donnees['etudiant']->photo),
+                ];
+                foreach ($photoCandidates as $photoPath) {
+                    if (file_exists($photoPath)) {
+                        $donnees['photoEtudiantBase64'] = $this->convertImageToJpegBase64($photoPath);
+                        break;
+                    }
                 }
             }
 
@@ -4830,9 +4842,15 @@ class ESBTPBulletinController extends Controller
             // Préparer la photo étudiant en base64 pour le PDF (conversion JPEG pour DomPDF)
             $donnees['photoEtudiantBase64'] = null;
             if (!empty($donnees['etudiant']?->photo)) {
-                $photoPath = storage_path('app/public/' . $donnees['etudiant']->photo);
-                if (file_exists($photoPath)) {
-                    $donnees['photoEtudiantBase64'] = $this->convertImageToJpegBase64($photoPath);
+                $photoCandidates = [
+                    storage_path('app/public/' . $donnees['etudiant']->photo),
+                    public_path('storage/' . $donnees['etudiant']->photo),
+                ];
+                foreach ($photoCandidates as $photoPath) {
+                    if (file_exists($photoPath)) {
+                        $donnees['photoEtudiantBase64'] = $this->convertImageToJpegBase64($photoPath);
+                        break;
+                    }
                 }
             }
 

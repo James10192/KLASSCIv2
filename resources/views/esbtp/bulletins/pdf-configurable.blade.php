@@ -47,7 +47,7 @@
         .header-table td {
             border: none;
             padding: 4px 5px;
-            vertical-align: top;
+            vertical-align: middle;
             word-wrap: break-word;
         }
         .header-left {
