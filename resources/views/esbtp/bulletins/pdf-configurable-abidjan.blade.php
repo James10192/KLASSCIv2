@@ -71,10 +71,11 @@
             text-align: center;
             border-right: 1.5px solid #e5e7eb;
         }
-        /* width/height fixes (pas max-width/auto) : seule approche fiable DomPDF + browser */
+        /* width fixe + height auto = ratio préservé ; max-height = protection logo portrait */
         .logo {
             width: 80px;
-            height: 80px;
+            height: auto;
+            max-height: 80px;
             display: block;
             margin: 0 auto;
         }
