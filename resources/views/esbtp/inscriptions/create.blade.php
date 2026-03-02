@@ -30,12 +30,11 @@
         <!-- Stepper de progression — indicateur visuel fixed (scroll-driven) -->
         <nav class="form-stepper" id="formStepper" aria-label="Progression du formulaire">
             <div class="step-item active" data-step="1">
-                <div class="step-node">
+                <div class="step-node" data-label="Identité">
                     <div class="step-circle">
                         <span class="step-num">1</span>
                         <i class="fas fa-check step-check"></i>
                     </div>
-                    <span class="step-label">Identité</span>
                 </div>
                 <div class="step-track" data-track="1">
                     <div class="step-track-fill"></div>
@@ -43,12 +42,11 @@
                 </div>
             </div>
             <div class="step-item" data-step="2">
-                <div class="step-node">
+                <div class="step-node" data-label="Académique">
                     <div class="step-circle">
                         <span class="step-num">2</span>
                         <i class="fas fa-check step-check"></i>
                     </div>
-                    <span class="step-label">Académique</span>
                 </div>
                 <div class="step-track" data-track="2">
                     <div class="step-track-fill"></div>
@@ -56,12 +54,11 @@
                 </div>
             </div>
             <div class="step-item" data-step="3">
-                <div class="step-node">
+                <div class="step-node" data-label="Affectation">
                     <div class="step-circle">
                         <span class="step-num">3</span>
                         <i class="fas fa-check step-check"></i>
                     </div>
-                    <span class="step-label">Affectation</span>
                 </div>
                 <div class="step-track" data-track="3">
                     <div class="step-track-fill"></div>
@@ -69,12 +66,11 @@
                 </div>
             </div>
             <div class="step-item" data-step="4">
-                <div class="step-node">
+                <div class="step-node" data-label="Parents">
                     <div class="step-circle">
-                        <span class="step-num"><i class="fas fa-users" style="font-size:10px"></i></span>
+                        <span class="step-num">4</span>
                         <i class="fas fa-check step-check"></i>
                     </div>
-                    <span class="step-label">Parents</span>
                 </div>
                 <div class="step-track" data-track="4">
                     <div class="step-track-fill"></div>
@@ -82,12 +78,11 @@
                 </div>
             </div>
             <div class="step-item" data-step="5">
-                <div class="step-node">
+                <div class="step-node" data-label="Frais">
                     <div class="step-circle">
                         <span class="step-num">5</span>
                         <i class="fas fa-check step-check"></i>
                     </div>
-                    <span class="step-label">Frais</span>
                 </div>
                 <!-- pas de track après le dernier -->
             </div>
