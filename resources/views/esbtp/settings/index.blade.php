@@ -433,6 +433,11 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents" type="button" role="tab">
+                    <i class="fas fa-file-alt"></i> Documents
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" id="notifications-tab" data-bs-toggle="tab" data-bs-target="#notifications" type="button" role="tab">
                     <i class="fas fa-bell"></i> Notifications et Rappels
                 </button>
@@ -1210,7 +1215,67 @@
                 </div>
                 <!-- End Tab 3: Configuration Bulletin -->
 
-                <!-- Tab 4: Notifications et Rappels -->
+                <!-- Tab 4: Documents (Certificats & Attestations) -->
+                <div class="tab-pane fade" id="documents" role="tabpanel">
+
+            <!-- Section: Colonnes du Certificat de Scolarité -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon" style="background: linear-gradient(135deg, #0453cb, #5e91de);">
+                        <i class="fas fa-certificate"></i>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Certificat de Scolarité</h3>
+                        <p class="section-description">Colonnes affichées dans le tableau du certificat de scolarité</p>
+                    </div>
+                </div>
+
+                <div class="settings-grid-3">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-chalkboard-teacher text-primary me-1"></i>
+                            Classe suivie
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="certificat_show_classe" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('certificat_show_classe', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                        <small class="text-muted d-block mt-1">Afficher la colonne "Classe suivie"</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-layer-group text-primary me-1"></i>
+                            Niveau d'étude
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="certificat_show_niveau" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('certificat_show_niveau', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                        <small class="text-muted d-block mt-1">Afficher la colonne "Niveau d'étude"</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-code-branch text-primary me-1"></i>
+                            Filière
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="certificat_show_filiere" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('certificat_show_filiere', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                        <small class="text-muted d-block mt-1">Afficher la colonne "Filière"</small>
+                    </div>
+                </div>
+            </div>
+
+                </div>
+                <!-- End Tab 4: Documents -->
+
+                <!-- Tab 5: Notifications et Rappels -->
                 <div class="tab-pane fade" id="notifications" role="tabpanel">
 
                     <!-- Section: Rappels Inscriptions -->

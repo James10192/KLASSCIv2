@@ -142,6 +142,9 @@
         <a href="{{ route('esbtp.etudiants.show', $etudiant->id) }}" class="btn-acasi secondary">
             <i class="fas fa-arrow-left me-1"></i>Retour
         </a>
+        <a href="{{ route('esbtp.etudiants.attestation-frequentation.preview', $etudiant->id) }}" class="btn-acasi info">
+            <i class="fas fa-file-contract me-1"></i>Attestation
+        </a>
         <a href="{{ route('esbtp.etudiants.certificat', $etudiant->id) }}" class="btn-acasi success">
             <i class="fas fa-file-pdf me-1"></i>Générer PDF
         </a>
@@ -192,13 +195,19 @@
             <p>Matricule&nbsp;: <span class="doc-hl">{{ $etudiant->matricule }}</span></p>
             <p>Est régulièrement inscrit(e) sur le registre des effectifs de l'année académique&nbsp;:</p>
 
+            @php
+                $showClasse  = $settings['show_classe']  ?? true;
+                $showNiveau  = $settings['show_niveau']  ?? true;
+                $showFiliere = $settings['show_filiere'] ?? true;
+                $colCount = 2 + ($showClasse ? 1 : 0) + ($showNiveau ? 1 : 0) + ($showFiliere ? 1 : 0);
+            @endphp
             <table class="doc-table">
                 <thead>
                     <tr>
                         <th>Année scolaire</th>
-                        <th>Classe suivie</th>
-                        <th>Niveau d'étude</th>
-                        <th>Filière</th>
+                        @if($showClasse)<th>Classe suivie</th>@endif
+                        @if($showNiveau)<th>Niveau d'étude</th>@endif
+                        @if($showFiliere)<th>Filière</th>@endif
                         <th>Moyenne/20</th>
                     </tr>
                 </thead>
@@ -212,13 +221,13 @@
                                 ? (preg_match('/(\d{4}-\d{4})/', $rawYear, $m) ? $m[1] : $rawYear)
                                 : 'Non renseigné';
                         @endphp</td>
-                        <td>{{ $inscription->classe->name ?? 'Non renseigné' }}</td>
-                        <td>{{ $inscription->niveauEtude->name ?? 'Non renseigné' }}</td>
-                        <td>{{ strtoupper($inscription->filiere->name ?? 'Non renseigné') }}</td>
+                        @if($showClasse)<td>{{ $inscription->classe->name ?? 'Non renseigné' }}</td>@endif
+                        @if($showNiveau)<td>{{ $inscription->niveauEtude->name ?? 'Non renseigné' }}</td>@endif
+                        @if($showFiliere)<td>{{ strtoupper($inscription->filiere->name ?? 'Non renseigné') }}</td>@endif
                         <td>{{ $inscription->moyenne_generale ? number_format($inscription->moyenne_generale, 2) : '—' }}</td>
                     </tr>
                     @empty
-                    <tr><td colspan="5">Aucune inscription trouvée</td></tr>
+                    <tr><td colspan="{{ $colCount }}">Aucune inscription trouvée</td></tr>
                     @endforelse
                 </tbody>
             </table>
