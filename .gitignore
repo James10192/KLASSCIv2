@@ -46,3 +46,6 @@ node_modules/
 
 #Python cache ignore
 /.venv
+
+# Repo admin (cloné localement, non tracké)
+/adminKlassci
