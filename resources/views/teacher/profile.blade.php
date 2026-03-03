@@ -271,9 +271,14 @@ use Illuminate\Support\Facades\Storage;
                         <p class="text-muted mb-1">{{ $teacher->user->email }}</p>
                         <p class="text-muted mb-1">ID: {{ $teacher->employee_id }}</p>
                         <p class="text-muted mb-4">{{ $teacher->user->phone ?? 'Aucun numéro de téléphone' }}</p>
-                        <button type="button" class="btn-acasi primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">
-                            <i class="fas fa-edit"></i> Modifier le profil
-                        </button>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button" class="btn-acasi primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                                <i class="fas fa-edit"></i> Modifier le profil
+                            </button>
+                            <button type="button" class="btn-acasi secondary" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                                <i class="fas fa-lock"></i> Changer le mot de passe
+                            </button>
+                        </div>
                     </div>
                 </div>
                 
@@ -397,6 +402,53 @@ use Illuminate\Support\Facades\Storage;
     </div>
 </div>
 
+<!-- Modal Changement de mot de passe -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ route('teacher.profile.password.update') }}" method="POST">
+                @csrf
+                @method('PUT')
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="changePasswordModalLabel"><i class="fas fa-lock me-2"></i>Changer mon mot de passe</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @if ($errors->hasAny(['current_password', 'password']))
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <ul class="mb-0">
+                                @foreach ($errors->only(['current_password', 'password']) as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+
+                    <div class="mb-3">
+                        <label for="current_password" class="form-label fw-semibold">Mot de passe actuel <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="current_password" name="current_password" required autocomplete="current-password">
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label fw-semibold">Nouveau mot de passe <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="password" name="password" required minlength="8" autocomplete="new-password">
+                        <div class="form-text">Minimum 8 caractères.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password_confirmation" class="form-label fw-semibold">Confirmer le nouveau mot de passe <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="password_confirmation" name="password_confirmation" required minlength="8" autocomplete="new-password">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Modal de modification du profil -->
 <div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -502,10 +554,13 @@ function previewProfilePhoto(event) {
 }
 
 // Rouvrir le modal s'il y a des erreurs de validation
-@if ($errors->any())
+@if ($errors->hasAny(['current_password', 'password']))
     document.addEventListener('DOMContentLoaded', function() {
-        var modal = new bootstrap.Modal(document.getElementById('editProfileModal'));
-        modal.show();
+        new bootstrap.Modal(document.getElementById('changePasswordModal')).show();
+    });
+@elseif ($errors->any())
+    document.addEventListener('DOMContentLoaded', function() {
+        new bootstrap.Modal(document.getElementById('editProfileModal')).show();
     });
 @endif
 </script>

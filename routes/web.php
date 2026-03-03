@@ -215,6 +215,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::post('/dashboard/teacher/close-course/{seance}', [TeacherDashboardController::class, 'closeCourse'])->name('teacher.close-course');
         Route::get('/teacher/profile', [TeacherController::class, 'profile'])->name('teacher.profile');
         Route::put('/teacher/profile', [TeacherController::class, 'updateProfile'])->name('teacher.profile.update');
+        Route::put('/teacher/profile/password', [TeacherController::class, 'updatePassword'])->name('teacher.profile.password.update');
         Route::get('/teacher/select-call-type/{seance}', [App\Http\Controllers\ESBTP\TeacherAttendanceController::class, 'selectCallType'])->name('teacher.select-call-type');
 
         // Routes pour les rapports de séance
@@ -937,6 +938,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/mon-profil', [ESBTPEtudiantController::class, 'profile'])
                 ->name('mon-profil.index')
                 ->middleware(['permission:view_own_profile|view_students']);
+            Route::put('/mon-profil/update', [ESBTPEtudiantController::class, 'updateProfile'])
+                ->name('mon-profil.update');
+            Route::put('/mon-profil/password', [ESBTPEtudiantController::class, 'updatePassword'])
+                ->name('mon-profil.password.update');
 
             Route::get('/mes-notes', [ESBTPNoteController::class, 'studentGrades'])
                 ->name('mes-notes.index')

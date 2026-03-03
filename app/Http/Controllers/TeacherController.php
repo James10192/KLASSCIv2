@@ -478,4 +478,19 @@ class TeacherController extends Controller
                 ->withInput();
         }
     }
+
+    /**
+     * Update the authenticated teacher's password.
+     */
+    public function updatePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'password'         => ['required', 'min:8', 'confirmed'],
+        ]);
+
+        Auth::user()->update(['password' => bcrypt($request->password)]);
+
+        return redirect()->route('teacher.profile')->with('success', 'Mot de passe mis à jour avec succès.');
+    }
 }

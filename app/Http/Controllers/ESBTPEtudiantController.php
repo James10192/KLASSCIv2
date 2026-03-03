@@ -1332,6 +1332,44 @@ class ESBTPEtudiantController extends Controller
     }
 
     /**
+     * Met à jour l'email et le téléphone de l'étudiant connecté.
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = auth()->user();
+
+        $request->validate([
+            'email' => ['required', 'email', 'max:255', \Illuminate\Validation\Rule::unique('users')->ignore($user->id)],
+            'phone' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $user->update([
+            'email'               => $request->email,
+            'phone'               => $request->phone,
+            'email_verified_at'   => $user->email !== $request->email ? null : $user->email_verified_at,
+        ]);
+
+        return redirect()->route('mon-profil.index')->with('success', 'Vos coordonnées ont été mises à jour.');
+    }
+
+    /**
+     * Met à jour le mot de passe de l'étudiant connecté.
+     */
+    public function updatePassword(Request $request)
+    {
+        $user = auth()->user();
+
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'password'         => ['required', 'min:8', 'confirmed'],
+        ]);
+
+        $user->update(['password' => bcrypt($request->password)]);
+
+        return redirect()->route('mon-profil.index')->with('success', 'Mot de passe mis à jour avec succès.');
+    }
+
+    /**
      * Recherche des parents pour le formulaire d'ajout d'étudiant (API pour Select2)
      *
      * @param Request $request

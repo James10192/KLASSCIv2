@@ -404,10 +404,14 @@
                         Informations personnelles et académiques
                     </p>
                 </div>
-                <div class="text-end">
-                    <button type="button" class="btn-edit-profile" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                <div class="text-end d-flex gap-2 flex-wrap justify-content-end">
+                    <button type="button" class="btn-edit-profile" data-bs-toggle="modal" data-bs-target="#editContactModal">
                         <i class="fas fa-pen"></i>
-                        <span>Demander une modification</span>
+                        <span>Modifier mes coordonnées</span>
+                    </button>
+                    <button type="button" class="btn-edit-profile" style="background: linear-gradient(135deg, #475569, #64748b);" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                        <i class="fas fa-lock"></i>
+                        <span>Mot de passe</span>
                     </button>
                 </div>
             </div>
@@ -463,11 +467,11 @@
                 </div>
                 <div class="info-item">
                     <span class="info-label"><i class="fas fa-phone me-1"></i>Téléphone</span>
-                    <span class="info-value">{{ $etudiant->telephone ?: 'Non spécifié' }}</span>
+                    <span class="info-value">{{ auth()->user()->phone ?: ($etudiant->telephone ?: 'Non spécifié') }}</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label"><i class="fas fa-envelope me-1"></i>Email personnel</span>
-                    <span class="info-value">{{ $etudiant->email_personnel ?: 'Non spécifié' }}</span>
+                    <span class="info-label"><i class="fas fa-envelope me-1"></i>Email</span>
+                    <span class="info-value">{{ auth()->user()->email ?: ($etudiant->email_personnel ?: 'Non spécifié') }}</span>
                 </div>
             </div>
         </div>
@@ -534,30 +538,114 @@
     </div>
 </div>
 
-<!-- Modal Demande de Modification -->
-<div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
+<!-- Modal Modifier coordonnées (email + téléphone) -->
+<div class="modal fade" id="editContactModal" tabindex="-1" aria-labelledby="editContactModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editProfileModalLabel">Demander une modification de profil</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Pour demander une modification de vos informations personnelles, veuillez contacter l'administration avec les détails suivants :</p>
-                <ul>
-                    <li>Votre matricule: <strong>{{ $etudiant->matricule }}</strong></li>
-                    <li>Les informations à modifier</li>
-                    <li>Les justificatifs nécessaires (si applicable)</li>
-                </ul>
-                <p class="text-muted mt-3">
-                    <i class="fas fa-info-circle me-1"></i>
-                    L'administration traitera votre demande dans les meilleurs délais.
-                </p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-            </div>
+            <form action="{{ route('mon-profil.update') }}" method="POST">
+                @csrf
+                @method('PUT')
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editContactModalLabel"><i class="fas fa-pen me-2"></i>Mes coordonnées</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @if ($errors->hasAny(['email', 'phone']))
+                        <div class="alert alert-danger alert-dismissible fade show">
+                            <ul class="mb-0">
+                                @foreach ($errors->only(['email', 'phone']) as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+
+                    <p class="text-muted small mb-3">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Les autres informations (nom, classe, filière…) sont gérées par l'administration.
+                    </p>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" id="email" name="email"
+                               value="{{ old('email', auth()->user()->email) }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phone" class="form-label fw-semibold">Téléphone</label>
+                        <input type="text" class="form-control" id="phone" name="phone"
+                               value="{{ old('phone', auth()->user()->phone) }}" placeholder="Ex: +225 07 00 00 00 00">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Enregistrer</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
+<!-- Modal Changement de mot de passe -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ route('mon-profil.password.update') }}" method="POST">
+                @csrf
+                @method('PUT')
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="changePasswordModalLabel"><i class="fas fa-lock me-2"></i>Changer mon mot de passe</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @if ($errors->hasAny(['current_password', 'password']))
+                        <div class="alert alert-danger alert-dismissible fade show">
+                            <ul class="mb-0">
+                                @foreach ($errors->only(['current_password', 'password']) as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    @endif
+
+                    <div class="mb-3">
+                        <label for="current_password" class="form-label fw-semibold">Mot de passe actuel <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="current_password" name="current_password" required autocomplete="current-password">
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label fw-semibold">Nouveau mot de passe <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="password" name="password" required minlength="8" autocomplete="new-password">
+                        <div class="form-text">Minimum 8 caractères.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password_confirmation" class="form-label fw-semibold">Confirmer <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="password_confirmation" name="password_confirmation" required minlength="8" autocomplete="new-password">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+// Rouvrir le bon modal si erreurs de validation
+@if ($errors->hasAny(['current_password', 'password']))
+    document.addEventListener('DOMContentLoaded', function() {
+        new bootstrap.Modal(document.getElementById('changePasswordModal')).show();
+    });
+@elseif ($errors->hasAny(['email', 'phone']))
+    document.addEventListener('DOMContentLoaded', function() {
+        new bootstrap.Modal(document.getElementById('editContactModal')).show();
+    });
+@endif
+</script>
+@endpush
 @endsection
