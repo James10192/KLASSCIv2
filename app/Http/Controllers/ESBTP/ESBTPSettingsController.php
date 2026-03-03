@@ -105,6 +105,29 @@ class ESBTPSettingsController extends Controller
             $errors = [];
 
             // D'abord, traiter toutes les checkboxes (défaut à '0' si décochées)
+            // Ensure certificat column settings exist (create with default=1 if first save)
+            $certificatColumnDefaults = [
+                'certificat_show_classe'  => '1',
+                'certificat_show_niveau'  => '1',
+                'certificat_show_filiere' => '1',
+            ];
+            foreach ($certificatColumnDefaults as $key => $defaultValue) {
+                Setting::firstOrCreate(
+                    ['key' => $key],
+                    [
+                        'value'            => $defaultValue,
+                        'type'             => 'boolean',
+                        'group'            => 'documents',
+                        'category'         => 'documents',
+                        'description'      => 'Colonne certificat de scolarité',
+                        'is_required'      => false,
+                        'default_value'    => $defaultValue,
+                        'validation_rules' => ['nullable', 'in:0,1'],
+                        'sort_order'       => 200,
+                    ]
+                );
+            }
+
             $allCheckboxSettings = Setting::whereIn('key', [
                 'bulletin_show_logo', 'bulletin_show_header', 'bulletin_show_republic_info',
                 'bulletin_show_ministry_info', 'bulletin_show_school_info', 'bulletin_show_cycle_info',
@@ -113,7 +136,8 @@ class ESBTPSettingsController extends Controller
                 'bulletin_show_teachers', 'bulletin_show_absences', 'bulletin_show_statistics',
                 'bulletin_show_signature', 'bulletin_show_attendance_note', 'bulletin_show_council_decision',
                 'bulletin_show_highest_average', 'bulletin_show_lowest_average', 'bulletin_show_class_average',
-                'bulletin_auto_calculate_mention', 'bulletin_show_felicitation', 'bulletin_show_encouragement'
+                'bulletin_auto_calculate_mention', 'bulletin_show_felicitation', 'bulletin_show_encouragement',
+                'certificat_show_classe', 'certificat_show_niveau', 'certificat_show_filiere',
             ])->get();
 
             foreach ($allCheckboxSettings as $setting) {

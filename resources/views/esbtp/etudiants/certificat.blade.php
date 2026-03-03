@@ -10,6 +10,12 @@
         $pdfText        = $pdfSettings['text_color']        ?? '#1f2937';
         $pdfMuted       = '#6b7280';
         $pdfBorder      = '#e5e7eb';
+
+        // Colonnes configurables
+        $showClasse  = $settings['show_classe']  ?? true;
+        $showNiveau  = $settings['show_niveau']  ?? true;
+        $showFiliere = $settings['show_filiere'] ?? true;
+        $colCount    = 2 + ($showClasse ? 1 : 0) + ($showNiveau ? 1 : 0) + ($showFiliere ? 1 : 0);
     @endphp
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Certificat de Scolarité - {{ $etudiant->matricule }}</title>
@@ -17,7 +23,7 @@
         * { box-sizing: border-box; }
 
         body {
-            font-family: "Helvetica", "Arial", sans-serif;
+            font-family: "DejaVu Sans", "Helvetica", "Arial", sans-serif;
             font-size: 12px;
             line-height: 1.55;
             color: {{ $pdfText }};
@@ -43,19 +49,34 @@
         .document-watermark img { max-width: 100%; }
         .document-content { position: relative; z-index: 1; }
 
-        /* En-tête établissement */
-        .doc-header {
-            background-color: {{ $pdfHeaderBg }};
-            color: {{ $pdfHeaderText }};
+        /* ── En-tête établissement — table layout DomPDF-safe (pas de flexbox) ── */
+        .doc-header-table {
+            width: 100%;
+            border-collapse: collapse;
             border-radius: 10px;
-            padding: 18px 22px;
-            text-align: center;
+            background-color: {{ $pdfHeaderBg }};
+            margin-bottom: 0;
         }
 
-        .doc-header-logo img {
-            max-height: 60px;
-            max-width: 100px;
-            margin-bottom: 8px;
+        .header-logo-cell {
+            width: 18%;
+            vertical-align: middle;
+            text-align: center;
+            padding: 16px 8px 16px 14px;
+        }
+
+        .header-logo-cell img {
+            width: 70px;
+            height: auto;
+            max-height: 70px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .header-info-cell {
+            width: 82%;
+            vertical-align: middle;
+            padding: 16px 16px 16px 8px;
         }
 
         .doc-school-name {
@@ -74,7 +95,7 @@
             color: {{ $pdfHeaderText }};
         }
 
-        /* Séparateur */
+        /* ── Séparateur ── */
         .doc-divider {
             height: 3px;
             background-color: {{ $pdfPrimary }};
@@ -82,7 +103,7 @@
             border: none;
         }
 
-        /* Titre document — underline uniquement, pas de fond plein */
+        /* ── Titre document ── */
         .doc-title-wrap {
             text-align: center;
             margin: 0 0 26px;
@@ -99,7 +120,7 @@
             padding-bottom: 5px;
         }
 
-        /* Corps */
+        /* ── Corps ── */
         .doc-body {
             margin: 0 0 20px;
             line-height: 1.7;
@@ -110,14 +131,13 @@
 
         .doc-body p { margin-bottom: 10px; }
 
-        /* Mots mis en valeur */
         .hl {
             font-weight: 700;
             color: {{ $pdfPrimary }};
             text-decoration: underline;
         }
 
-        /* Tableau inscriptions */
+        /* ── Tableau inscriptions ── */
         .doc-table {
             width: 100%;
             border-collapse: collapse;
@@ -146,7 +166,7 @@
             background-color: #f8fafc;
         }
 
-        /* Footer signature */
+        /* ── Footer signature — float layout DomPDF-safe ── */
         .doc-footer {
             margin-top: 36px;
             width: 100%;
@@ -185,7 +205,7 @@
             margin-top: 18px;
         }
 
-        /* Note de bas de page */
+        /* ── Note de bas de page ── */
         .doc-note {
             clear: both;
             margin-top: 28px;
@@ -226,33 +246,45 @@
 
     <div class="document-content">
 
-        {{-- En-tête établissement --}}
-        <div class="doc-header">
-            @if(isset($settings['show_logo']) && $settings['show_logo'] && isset($settings['logo_base64']))
-                <div class="doc-header-logo"><img src="{{ $settings['logo_base64'] }}" alt="Logo"></div>
-            @endif
-            <div class="doc-school-name">{{ $settings['name'] ?? '' }}</div>
-            @if($settings['address'] ?? null)
-                <div class="doc-school-meta">{{ $settings['address'] }}</div>
-            @endif
-            @if(($settings['phone'] ?? null) || ($settings['email'] ?? null))
-                <div class="doc-school-meta">
-                    @if($settings['phone'] ?? null)Tél : {{ $settings['phone'] }}@endif
-                    @if(($settings['phone'] ?? null) && ($settings['email'] ?? null)) – @endif
-                    @if($settings['email'] ?? null)Email : {{ $settings['email'] }}@endif
-                </div>
-            @endif
-        </div>
+        {{-- ── En-tête établissement : table 2 colonnes DomPDF-safe ── --}}
+        <table class="doc-header-table">
+            <tr>
+                {{-- Colonne logo (18%) --}}
+                @if(isset($settings['show_logo']) && $settings['show_logo'] && isset($settings['logo_base64']))
+                <td class="header-logo-cell">
+                    <img src="{{ $settings['logo_base64'] }}" alt="Logo">
+                </td>
+                @endif
+                {{-- Colonne infos école (82% ou 100% si pas de logo) --}}
+                <td class="header-info-cell"
+                    @if(!isset($settings['show_logo']) || !$settings['show_logo'] || !isset($settings['logo_base64']))
+                        style="width:100%; text-align:center;"
+                    @endif
+                >
+                    <div class="doc-school-name">{{ $settings['name'] ?? '' }}</div>
+                    @if($settings['address'] ?? null)
+                        <div class="doc-school-meta">{{ $settings['address'] }}</div>
+                    @endif
+                    @if(($settings['phone'] ?? null) || ($settings['email'] ?? null))
+                        <div class="doc-school-meta">
+                            @if($settings['phone'] ?? null)Tél : {{ $settings['phone'] }}@endif
+                            @if(($settings['phone'] ?? null) && ($settings['email'] ?? null)) – @endif
+                            @if($settings['email'] ?? null)Email : {{ $settings['email'] }}@endif
+                        </div>
+                    @endif
+                </td>
+            </tr>
+        </table>
 
-        {{-- Séparateur --}}
+        {{-- ── Séparateur ── --}}
         <div class="doc-divider"></div>
 
-        {{-- Titre --}}
+        {{-- ── Titre ── --}}
         <div class="doc-title-wrap">
             <span class="doc-title">Certificat de Scolarité</span>
         </div>
 
-        {{-- Corps --}}
+        {{-- ── Corps ── --}}
         <div class="doc-body">
             <p>Je soussigné(e), {{ $settings['director_title'] ?? '' }} de {{ $settings['name'] ?? '' }}, certifie que :</p>
 
@@ -273,9 +305,9 @@
                 <thead>
                     <tr>
                         <th>Année scolaire</th>
-                        <th>Classe suivie</th>
-                        <th>Niveau d'étude</th>
-                        <th>Filière</th>
+                        @if($showClasse)<th>Classe suivie</th>@endif
+                        @if($showNiveau)<th>Niveau d'étude</th>@endif
+                        @if($showFiliere)<th>Filière</th>@endif
                         <th>Moyenne/20</th>
                     </tr>
                 </thead>
@@ -291,9 +323,9 @@
                                     : 'Non renseigné';
                             @endphp
                         </td>
-                        <td>{{ $inscription->classe->name ?? 'Non renseigné' }}</td>
-                        <td>{{ $inscription->niveauEtude->name ?? 'Non renseigné' }}</td>
-                        <td>{{ strtoupper($inscription->filiere->name ?? 'Non renseigné') }}</td>
+                        @if($showClasse)<td>{{ $inscription->classe->name ?? 'Non renseigné' }}</td>@endif
+                        @if($showNiveau)<td>{{ $inscription->niveauEtude->name ?? 'Non renseigné' }}</td>@endif
+                        @if($showFiliere)<td>{{ strtoupper($inscription->filiere->name ?? 'Non renseigné') }}</td>@endif
                         <td>
                             @if($inscription->moyenne_generale)
                                 {{ number_format($inscription->moyenne_generale, 2) }}
@@ -302,7 +334,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="5">Aucune inscription trouvée</td>
+                        <td colspan="{{ $colCount }}">Aucune inscription trouvée</td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -313,7 +345,7 @@
             <p>Ce certificat est délivré à l'intéressé(e) pour servir et valoir ce que de droit.</p>
         </div>
 
-        {{-- Footer signature --}}
+        {{-- ── Footer signature ── --}}
         <div class="doc-footer">
             <div class="doc-footer-date">
                 <p>Fait à {{ $settings['city'] ?? 'Yamoussoukro' }}, le {{ now()->format('d/m/Y') }}</p>
@@ -327,7 +359,7 @@
             <div style="clear:both;"></div>
         </div>
 
-        {{-- Note de bas de page --}}
+        {{-- ── Note de bas de page ── --}}
         <div class="doc-note">
             Ce certificat est un document officiel. Toute falsification constitue un délit passible de poursuites judiciaires.
         </div>

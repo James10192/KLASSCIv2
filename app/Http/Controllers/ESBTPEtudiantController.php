@@ -1560,8 +1560,13 @@ class ESBTPEtudiantController extends Controller
         $logoPath = \App\Helpers\SettingsHelper::get('school_logo');
         $logoBase64 = ($showLogo && $logoPath) ? $this->prepareLogoBase64($logoPath) : null;
 
-        $settings['show_logo'] = $showLogo;
-        $settings['logo_base64'] = $logoBase64;
+        $settings['show_logo']    = $showLogo;
+        $settings['logo_base64']  = $logoBase64;
+
+        // Colonnes configurables du tableau du certificat de scolarité
+        $settings['show_classe']  = \App\Helpers\SettingsHelper::get('certificat_show_classe', '1') == '1';
+        $settings['show_niveau']  = \App\Helpers\SettingsHelper::get('certificat_show_niveau', '1') == '1';
+        $settings['show_filiere'] = \App\Helpers\SettingsHelper::get('certificat_show_filiere', '1') == '1';
 
         return $settings;
     }

@@ -17,7 +17,7 @@
         * { box-sizing: border-box; }
 
         body {
-            font-family: "Helvetica", "Arial", sans-serif;
+            font-family: "DejaVu Sans", "Helvetica", "Arial", sans-serif;
             font-size: 12px;
             line-height: 1.55;
             color: {{ $pdfText }};
@@ -43,19 +43,34 @@
         .document-watermark img { max-width: 100%; }
         .document-content { position: relative; z-index: 1; }
 
-        /* En-tête établissement */
-        .doc-header {
-            background-color: {{ $pdfHeaderBg }};
-            color: {{ $pdfHeaderText }};
+        /* ── En-tête établissement — table layout DomPDF-safe (pas de flexbox) ── */
+        .doc-header-table {
+            width: 100%;
+            border-collapse: collapse;
             border-radius: 10px;
-            padding: 18px 22px;
-            text-align: center;
+            background-color: {{ $pdfHeaderBg }};
+            margin-bottom: 0;
         }
 
-        .doc-header-logo img {
-            max-height: 60px;
-            max-width: 100px;
-            margin-bottom: 8px;
+        .header-logo-cell {
+            width: 18%;
+            vertical-align: middle;
+            text-align: center;
+            padding: 16px 8px 16px 14px;
+        }
+
+        .header-logo-cell img {
+            width: 70px;
+            height: auto;
+            max-height: 70px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .header-info-cell {
+            width: 82%;
+            vertical-align: middle;
+            padding: 16px 16px 16px 8px;
         }
 
         .doc-school-name {
@@ -74,7 +89,7 @@
             color: {{ $pdfHeaderText }};
         }
 
-        /* Séparateur */
+        /* ── Séparateur ── */
         .doc-divider {
             height: 3px;
             background-color: {{ $pdfPrimary }};
@@ -82,7 +97,7 @@
             border: none;
         }
 
-        /* Titre document — underline uniquement */
+        /* ── Titre document ── */
         .doc-title-wrap {
             text-align: center;
             margin: 0 0 26px;
@@ -99,7 +114,7 @@
             padding-bottom: 5px;
         }
 
-        /* Corps */
+        /* ── Corps ── */
         .doc-body {
             margin: 0 0 20px;
             line-height: 1.7;
@@ -110,14 +125,14 @@
 
         .doc-body p { margin-bottom: 10px; }
 
-        /* Mots mis en valeur — couleur accent lisible sur fond blanc */
         .hl {
             font-weight: 700;
             color: {{ $pdfPrimary }};
             text-decoration: underline;
         }
 
-        /* Bloc infos étudiant — fond très clair + bordure gauche colorée */
+        /* ── Bloc infos étudiant — fond clair + bordure gauche colorée ── */
+        /* Utilise display:table (DomPDF-safe) plutôt que flexbox */
         .student-details {
             margin: 16px 0;
             padding: 12px 14px;
@@ -148,7 +163,7 @@
             word-break: break-word;
         }
 
-        /* Options statut/boursier */
+        /* ── Options statut/boursier ── */
         .status-options {
             margin: 14px 0;
             font-style: italic;
@@ -156,7 +171,7 @@
             color: {{ $pdfText }};
         }
 
-        /* Footer signature */
+        /* ── Footer signature — float layout DomPDF-safe ── */
         .doc-footer {
             margin-top: 36px;
             width: 100%;
@@ -204,7 +219,7 @@
             margin-top: 14px;
         }
 
-        /* Note de bas de page */
+        /* ── Note de bas de page ── */
         .doc-note {
             clear: both;
             margin-top: 28px;
@@ -245,39 +260,51 @@
 
     <div class="document-content">
 
-        {{-- En-tête établissement --}}
-        <div class="doc-header">
-            @if(isset($settings['show_logo']) && $settings['show_logo'] && isset($settings['logo_base64']))
-                <div class="doc-header-logo"><img src="{{ $settings['logo_base64'] }}" alt="Logo"></div>
-            @endif
-            <div class="doc-school-name">{{ $settings['name'] ?? '' }}</div>
-            @if($settings['address'] ?? null)
-                <div class="doc-school-meta">{{ $settings['address'] }}</div>
-            @endif
-            @if(($settings['phone'] ?? null) || ($settings['email'] ?? null))
-                <div class="doc-school-meta">
-                    @if($settings['phone'] ?? null)Tél : {{ $settings['phone'] }}@endif
-                    @if(($settings['phone'] ?? null) && ($settings['email'] ?? null)) – @endif
-                    @if($settings['email'] ?? null)Email : {{ $settings['email'] }}@endif
-                </div>
-            @endif
-        </div>
+        {{-- ── En-tête établissement : table 2 colonnes DomPDF-safe ── --}}
+        <table class="doc-header-table">
+            <tr>
+                {{-- Colonne logo (18%) --}}
+                @if(isset($settings['show_logo']) && $settings['show_logo'] && isset($settings['logo_base64']))
+                <td class="header-logo-cell">
+                    <img src="{{ $settings['logo_base64'] }}" alt="Logo">
+                </td>
+                @endif
+                {{-- Colonne infos école (82% ou 100% si pas de logo) --}}
+                <td class="header-info-cell"
+                    @if(!isset($settings['show_logo']) || !$settings['show_logo'] || !isset($settings['logo_base64']))
+                        style="width:100%; text-align:center;"
+                    @endif
+                >
+                    <div class="doc-school-name">{{ $settings['name'] ?? '' }}</div>
+                    @if($settings['address'] ?? null)
+                        <div class="doc-school-meta">{{ $settings['address'] }}</div>
+                    @endif
+                    @if(($settings['phone'] ?? null) || ($settings['email'] ?? null))
+                        <div class="doc-school-meta">
+                            @if($settings['phone'] ?? null)Tél : {{ $settings['phone'] }}@endif
+                            @if(($settings['phone'] ?? null) && ($settings['email'] ?? null)) – @endif
+                            @if($settings['email'] ?? null)Email : {{ $settings['email'] }}@endif
+                        </div>
+                    @endif
+                </td>
+            </tr>
+        </table>
 
-        {{-- Séparateur --}}
+        {{-- ── Séparateur ── --}}
         <div class="doc-divider"></div>
 
-        {{-- Titre --}}
+        {{-- ── Titre ── --}}
         <div class="doc-title-wrap">
             <span class="doc-title">Attestation de Fréquentation</span>
         </div>
 
-        {{-- Corps --}}
+        {{-- ── Corps ── --}}
         <div class="doc-body">
             <p>Je soussigné(e), {{ $settings['director_title'] ?? '' }} de {{ $settings['name'] ?? '' }}, atteste que :</p>
 
             <p>
                 {{ $etudiant->sexe === 'F' ? 'Mme / M. / Mlle' : 'M.' }}
-                <span class="hl">{{ strtoupper($etudiant->nom) }} {{ strtoupper($etudiant->prenom) }}</span>
+                <span class="hl">{{ strtoupper($etudiant->nom) }} {{ strtoupper($etudiant->prenoms) }}</span>
             </p>
 
             @if($etudiant->date_naissance)
@@ -328,7 +355,7 @@
             <p>En foi de quoi, la présente attestation lui est délivrée pour servir et valoir ce que de droit.</p>
         </div>
 
-        {{-- Footer signature --}}
+        {{-- ── Footer signature ── --}}
         <div class="doc-footer">
             <div class="doc-footer-date">
                 <p>Fait à {{ $settings['city'] ?? 'Yamoussoukro' }}, le {{ now()->format('d/m/Y') }}</p>
@@ -344,7 +371,7 @@
 
         <div class="sign-note">*Rayer la mention inutile</div>
 
-        {{-- Note de bas de page --}}
+        {{-- ── Note de bas de page ── --}}
         <div class="doc-note">
             Ce document est un certificat officiel. Toute falsification constitue un délit passible de poursuites judiciaires.
         </div>

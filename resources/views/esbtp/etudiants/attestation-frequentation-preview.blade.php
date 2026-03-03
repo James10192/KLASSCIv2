@@ -161,6 +161,9 @@
         <a href="{{ route('esbtp.etudiants.show', $etudiant->id) }}" class="btn-acasi secondary">
             <i class="fas fa-arrow-left me-1"></i>Retour
         </a>
+        <a href="{{ route('esbtp.etudiants.certificat.preview', $etudiant->id) }}" class="btn-acasi info">
+            <i class="fas fa-certificate me-1"></i>Certificat
+        </a>
         <a href="{{ route('esbtp.etudiants.attestation-frequentation', $etudiant->id) }}" class="btn-acasi success">
             <i class="fas fa-file-pdf me-1"></i>Générer PDF
         </a>
