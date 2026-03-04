@@ -175,8 +175,14 @@ Route::middleware(['auth'])->group(function () {
     })->name('settings.index');
 });
 
+// Routes contrat expiration (AJAX — pas de middleware contract.expiry pour éviter récursion)
+Route::middleware(['auth'])->prefix('contract-expiry')->name('contract-expiry.')->group(function () {
+    Route::get('/status', [\App\Http\Controllers\ContractExpiryController::class, 'status'])->name('status');
+    Route::post('/dismiss', [\App\Http\Controllers\ContractExpiryController::class, 'dismiss'])->name('dismiss');
+});
+
 // Routes accessibles uniquement après authentification
-Route::middleware(['auth', 'installed', 'force.password.change'])->group(function () {
+Route::middleware(['auth', 'installed', 'force.password.change', 'contract.expiry'])->group(function () {
     // Dashboard - Route principale qui redirige vers le tableau de bord approprié selon le rôle
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 

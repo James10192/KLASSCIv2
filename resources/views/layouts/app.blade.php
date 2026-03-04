@@ -3620,5 +3620,10 @@
     <!-- Scripts additionnels -->
     @stack('scripts')
     @stack('modals')
+
+    {{-- Compte à rebours expiration contrat (affiché max 1x/12h si ≤ 30 jours) --}}
+    @if(auth()->check())
+        @include('components.contract-expiry-modal')
+    @endif
 </body>
 </html>
