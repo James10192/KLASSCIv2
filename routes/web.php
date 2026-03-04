@@ -182,7 +182,7 @@ Route::middleware(['auth'])->prefix('contract-expiry')->name('contract-expiry.')
 });
 
 // Routes accessibles uniquement après authentification
-Route::middleware(['auth', 'installed', 'force.password.change', 'contract.expiry'])->group(function () {
+Route::middleware(['auth', 'installed', 'force.password.change'])->group(function () {
     // Dashboard - Route principale qui redirige vers le tableau de bord approprié selon le rôle
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
