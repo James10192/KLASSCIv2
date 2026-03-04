@@ -81,6 +81,7 @@ class Kernel extends HttpKernel
         'attendance.rate_limit' => \App\Http\Middleware\AttendanceRateLimiter::class,
         'force.password.change' => \App\Http\Middleware\ForcePasswordChange::class,
         'paywall' => \App\Http\Middleware\PaywallMiddleware::class,
+        'contract.expiry' => \App\Http\Middleware\ContractExpiryMiddleware::class,
     ];
 
     /**
