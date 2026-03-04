@@ -55,7 +55,7 @@
         "Bonjour, je souhaite renouveler l'abonnement de {$tenantName} (Plan {$plan}). " .
         ($isExpired ? "Mon contrat a expiré le {$endDate}." : "Mon contrat expire le {$endDate} ({$days} jours restants).")
     );
-    $whatsappUrl = "https://wa.me/2250708080808?text={$whatsappMsg}";
+    $whatsappUrl = "https://wa.me/2250595459843?text={$whatsappMsg}";
 @endphp
 
 {{-- CSS chargé une seule fois --}}
