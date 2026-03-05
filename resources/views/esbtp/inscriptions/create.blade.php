@@ -1364,16 +1364,98 @@ document.addEventListener('DOMContentLoaded', function() {
             configBadge = `<div class="alert-kl alert-kl-warning mb-3" style="font-size:12px;padding:8px 12px;"><i class="fas fa-info-circle"></i><span>Montant par défaut utilisé (non configuré pour cette classe)</span></div>`;
         }
 
+        // ── FRAIS OPTIONNELS : toggle switch + options révélées ────────────────
+        if (!isMandatory) {
+            const baseAmt = parseFloat(defaultAmount) || 0;
+
+            // Radios des options (visibles quand le toggle est ON)
+            let optionRadios = `
+                <div class="form-check mb-2">
+                    <input class="form-check-input frais-option optional-variant" type="radio"
+                           name="frais[${category.id}][variant_id]"
+                           value="default"
+                           id="frais_${category.id}_default">
+                    <label class="form-check-label" for="frais_${category.id}_default">
+                        Montant de base — <strong>${baseAmt.toLocaleString()} FCFA</strong>
+                    </label>
+                </div>`;
+
+            if (options.length > 0) {
+                options.forEach(option => {
+                    const addAmt   = parseFloat(option.additional_amount) || parseFloat(option.amount) || 0;
+                    let totalAmt   = baseAmt + addAmt;
+                    if (isNaN(totalAmt) || totalAmt < 0) totalAmt = baseAmt;
+                    optionRadios += `
+                        <div class="form-check mb-2">
+                            <input class="form-check-input frais-option optional-variant" type="radio"
+                                   name="frais[${category.id}][variant_id]"
+                                   value="${option.id}"
+                                   id="frais_${category.id}_${option.id}">
+                            <label class="form-check-label" for="frais_${category.id}_${option.id}">
+                                ${option.name} — <strong>${totalAmt.toLocaleString()} FCFA</strong>
+                                ${option.description ? `<small class="text-muted d-block">${option.description}</small>` : ''}
+                            </label>
+                        </div>`;
+                });
+            }
+
+            return `
+                <div class="frais-card optional-frais-card" data-category-id="${category.id}">
+                    <!-- Radio "non souscrit" caché — état par défaut -->
+                    <input type="radio" class="frais-option"
+                           name="frais[${category.id}][variant_id]"
+                           value="" id="frais_${category.id}_none"
+                           checked style="display:none;">
+
+                    <!-- En-tête avec toggle -->
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div style="flex:1;min-width:0;">
+                            <h6 class="fw-bold mb-0" style="font-size:14px;">
+                                <i class="fas fa-${icon} me-2" style="color:var(--kl-primary-light);"></i>
+                                ${category.name}
+                            </h6>
+                            ${category.description ? `<p class="text-muted mb-0 mt-1" style="font-size:12px;">${category.description}</p>` : ''}
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                            <span class="badge bg-info" style="font-size:10px;">Optionnel</span>
+                            <div class="form-check form-switch mb-0 d-flex align-items-center gap-1">
+                                <input class="form-check-input optional-frais-toggle" type="checkbox"
+                                       id="toggle_frais_${category.id}"
+                                       data-category-id="${category.id}"
+                                       role="switch"
+                                       style="width:2.5em;height:1.3em;cursor:pointer;margin-top:0;">
+                                <label class="form-check-label small fw-semibold" for="toggle_frais_${category.id}"
+                                       style="cursor:pointer;user-select:none;">
+                                    Souscrire
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Zone options — masquée par défaut, révélée au toggle ON -->
+                    <div class="optional-frais-options mt-3 pt-3"
+                         id="options_frais_${category.id}"
+                         style="display:none;border-top:1px solid rgba(0,0,0,0.08);">
+                        <p class="small text-muted mb-2">
+                            <i class="fas fa-list-ul me-1"></i>
+                            ${options.length > 0 ? 'Choisissez une option :' : 'Montant applicable :'}
+                        </p>
+                        ${optionRadios}
+                    </div>
+                </div>`;
+        }
+
+        // ── FRAIS OBLIGATOIRES : comportement existant ──────────────────────────
         let optionsHTML = '';
 
-        if (isMandatory || configurationType === 'rule' || configurationType === 'variant' || configurationType === 'configuration') {
+        if (configurationType === 'rule' || configurationType === 'variant' || configurationType === 'configuration' || isMandatory) {
             optionsHTML += `
                 <div class="form-check mb-2">
                     <input class="form-check-input frais-option" type="radio"
                            name="frais[${category.id}][variant_id]"
                            value="default"
                            id="frais_${category.id}_default"
-                           ${isMandatory ? 'checked' : ''}>
+                           checked>
                     <label class="form-check-label" for="frais_${category.id}_default">
                         ${configurationType === 'variant' ? 'Tarif configuré pour cette classe' :
                           configurationType === 'rule' ? 'Tarif configuré' :
@@ -1406,20 +1488,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        if (!isMandatory) {
-            optionsHTML += `
-                <div class="form-check mb-2">
-                    <input class="form-check-input frais-option" type="radio"
-                           name="frais[${category.id}][variant_id]"
-                           value=""
-                           id="frais_${category.id}_none"
-                           checked>
-                    <label class="form-check-label" for="frais_${category.id}_none">
-                        <em>Ne pas souscrire à ce service</em>
-                    </label>
-                </div>`;
-        }
-
         return `
             <div class="frais-card ${!isConfigured ? 'border-warning' : ''}">
                 <div class="d-flex justify-content-between align-items-start mb-2">
@@ -1429,9 +1497,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         ${!isConfigured ? '<i class="fas fa-exclamation-triangle text-warning ms-1" title="Pas d\'options configurées"></i>' : ''}
                     </h6>
                     <div class="d-flex gap-1">
-                        ${isMandatory
-                            ? '<span class="badge bg-danger" style="font-size:10px;">Obligatoire</span>'
-                            : '<span class="badge bg-info" style="font-size:10px;">Optionnel</span>'}
+                        <span class="badge bg-danger" style="font-size:10px;">Obligatoire</span>
                         <span class="badge bg-secondary" style="font-size:10px;">${categoryType.charAt(0).toUpperCase() + categoryType.slice(1)}</span>
                     </div>
                 </div>
@@ -1485,6 +1551,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.addEventListener('change', function(e) {
         if (e.target.classList.contains('frais-option')) updateResumeFrais();
+
+        // Toggle souscription frais optionnel
+        if (e.target.classList.contains('optional-frais-toggle')) {
+            const categoryId = e.target.dataset.categoryId;
+            const optionsDiv = document.getElementById('options_frais_' + categoryId);
+            const noneRadio  = document.getElementById('frais_' + categoryId + '_none');
+            const variants   = document.querySelectorAll('input[name="frais[' + categoryId + '][variant_id]"].optional-variant');
+
+            if (e.target.checked) {
+                if (optionsDiv) optionsDiv.style.display = 'block';
+                if (variants.length > 0) variants[0].checked = true;
+                if (noneRadio) noneRadio.checked = false;
+            } else {
+                if (optionsDiv) optionsDiv.style.display = 'none';
+                variants.forEach(v => v.checked = false);
+                if (noneRadio) noneRadio.checked = true;
+            }
+            updateResumeFrais();
+        }
     });
 
     // =============================================

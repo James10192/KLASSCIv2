@@ -1078,6 +1078,7 @@ class ESBTPInscriptionController extends Controller
         )
             ->active()
             ->ordered()
+            ->with(['options' => fn($q) => $q->where('is_active', true)->orderBy('sort_order')])
             ->get();
 
         // Récupérer les souscriptions actives pour cette inscription

@@ -1876,24 +1876,44 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                             <div class="row g-3">
                                 @foreach($availableOptionalCategories as $category)
                                     <div class="col-md-6">
-                                        <div class="optional-fee-card">
-                                            <div class="optional-fee-icon">
-                                                <i class="{{ $category->icon ?? 'fas fa-concierge-bell' }}"></i>
+                                        <div class="optional-fee-card" style="flex-direction:column;align-items:stretch;gap:0.75rem;">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <div class="optional-fee-icon" style="flex-shrink:0;">
+                                                    <i class="{{ $category->icon ?? 'fas fa-concierge-bell' }}"></i>
+                                                </div>
+                                                <div class="optional-fee-body" style="flex:1;min-width:0;">
+                                                    <div class="optional-fee-name">{{ $category->name }}</div>
+                                                    @if($category->description)
+                                                        <div class="optional-fee-desc" title="{{ $category->description }}">{{ $category->description }}</div>
+                                                    @endif
+                                                    @if($category->options->count() > 0)
+                                                        <div class="mt-1">
+                                                            @foreach($category->options->take(3) as $opt)
+                                                                <span class="badge bg-light text-dark border me-1" style="font-size:10px;">{{ $opt->name }}</span>
+                                                            @endforeach
+                                                            @if($category->options->count() > 3)
+                                                                <span class="text-muted" style="font-size:10px;">+{{ $category->options->count() - 3 }} options</span>
+                                                            @endif
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                                <div class="optional-fee-price" style="flex-shrink:0;text-align:right;">
+                                                    <span class="badge-optionnel">Optionnel</span>
+                                                    <strong>{{ number_format($category->default_amount, 0, ',', ' ') }}<small> FCFA</small></strong>
+                                                </div>
                                             </div>
-                                            <div class="optional-fee-body">
-                                                <div class="optional-fee-name">{{ $category->name }}</div>
-                                                @if($category->description)
-                                                    <div class="optional-fee-desc" title="{{ $category->description }}">{{ $category->description }}</div>
-                                                @endif
-                                            </div>
-                                            <div class="optional-fee-price">
-                                                <span class="badge-optionnel">Optionnel</span>
-                                                <strong>{{ number_format($category->default_amount, 0, ',', ' ') }}<small> FCFA</small></strong>
-                                            </div>
+                                            @can('inscriptions.edit')
+                                            <button type="button"
+                                                    class="btn btn-sm btn-outline-primary w-100"
+                                                    onclick="openSubscribeModal({{ $category->id }}, '{{ addslashes($category->name) }}', {{ $category->default_amount }}, {{ $category->options->map(fn($o) => ['id' => $o->id, 'name' => $o->name, 'additional_amount' => (float)$o->additional_amount, 'description' => $o->description]) ->values()->toJson() }})">
+                                                <i class="fas fa-plus-circle me-1"></i>Souscrire l'étudiant
+                                            </button>
+                                            @endcan
                                         </div>
                                     </div>
                                 @endforeach
                             </div>
+
                         </div>
                     </div>
                     @endif
@@ -2803,11 +2823,13 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="optional_category_id" class="form-label">Frais optionnel <span class="text-danger">*</span></label>
-                                <select class="form-select" id="optional_category_id" name="category_id" required>
+                                <select class="form-select" id="optional_category_id" name="frais_category_id" required>
                                     <option value="">Sélectionnez un frais</option>
                                     @if(isset($availableOptionalCategories))
                                         @foreach($availableOptionalCategories as $category)
-                                            <option value="{{ $category->id }}" data-default-amount="{{ $category->default_amount }}">
+                                            <option value="{{ $category->id }}"
+                                                    data-default-amount="{{ $category->default_amount }}"
+                                                    data-options="{{ json_encode($category->options->map(fn($o) => ['id' => $o->id, 'name' => $o->name, 'additional_amount' => (float)$o->additional_amount, 'description' => $o->description])->values()) }}">
                                                 {{ $category->name }} - {{ number_format($category->default_amount, 0, ',', ' ') }} FCFA
                                             </option>
                                         @endforeach
@@ -2818,10 +2840,19 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="subscription_amount" class="form-label">Montant <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="subscription_amount" name="amount" min="0" step="0.01" required readonly>
+                                <input type="number" class="form-control" id="subscription_amount" name="amount" min="0" step="1" required>
+                                <small class="text-muted" id="subscription_amount_hint"></small>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Zone options dynamique (affichée si la catégorie a des options) -->
+                    <div id="subscription_options_zone" class="mb-3" style="display:none;">
+                        <label class="form-label">Option <span class="text-danger">*</span></label>
+                        <div id="subscription_options_list"></div>
+                        <small class="text-muted">Le montant se met à jour automatiquement selon l'option choisie.</small>
+                    </div>
+
                     <div class="mb-3">
                         <label for="subscription_notes" class="form-label">Notes</label>
                         <textarea class="form-control" id="subscription_notes" name="notes" rows="3" placeholder="Commentaires sur la souscription..."></textarea>
@@ -3914,20 +3945,89 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
             });
         }
 
-        // Auto-remplir le montant pour la souscription
-        const optionalCategorySelect = document.getElementById('optional_category_id');
+        // ── Souscription frais optionnel : gestion modal ──────────────────────
+        const optionalCategorySelect  = document.getElementById('optional_category_id');
         const subscriptionAmountInput = document.getElementById('subscription_amount');
-        
-        if (optionalCategorySelect && subscriptionAmountInput) {
-            optionalCategorySelect.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                const defaultAmount = selectedOption.getAttribute('data-default-amount');
-                if (defaultAmount) {
+        const subscriptionOptionsZone = document.getElementById('subscription_options_zone');
+        const subscriptionOptionsList = document.getElementById('subscription_options_list');
+        const subscriptionAmountHint  = document.getElementById('subscription_amount_hint');
+
+        function renderSubscriptionOptions(options, defaultAmount) {
+            if (!subscriptionOptionsList || !subscriptionOptionsZone) return;
+
+            if (!options || options.length === 0) {
+                subscriptionOptionsZone.style.display = 'none';
+                if (subscriptionAmountInput) {
                     subscriptionAmountInput.value = defaultAmount;
-                    debugLog('💰 Montant souscription auto-rempli:', defaultAmount);
+                    subscriptionAmountInput.readOnly = false;
                 }
+                if (subscriptionAmountHint) subscriptionAmountHint.textContent = 'Montant par défaut pré-rempli. Vous pouvez l\'ajuster.';
+                return;
+            }
+
+            subscriptionOptionsZone.style.display = 'block';
+            if (subscriptionAmountHint) subscriptionAmountHint.textContent = '';
+
+            let html = '';
+            // Default amount option
+            html += `<div class="form-check mb-2">
+                <input class="form-check-input subscription-option-radio" type="radio"
+                       name="subscription_option" value="default"
+                       id="subs_opt_default" data-amount="${defaultAmount}" checked>
+                <label class="form-check-label" for="subs_opt_default">
+                    Montant de base — <strong>${parseFloat(defaultAmount).toLocaleString('fr-FR')} FCFA</strong>
+                </label>
+            </div>`;
+            options.forEach((opt, idx) => {
+                const total = parseFloat(defaultAmount) + parseFloat(opt.additional_amount || 0);
+                html += `<div class="form-check mb-2">
+                    <input class="form-check-input subscription-option-radio" type="radio"
+                           name="subscription_option" value="${opt.id}"
+                           id="subs_opt_${opt.id}" data-amount="${total}">
+                    <label class="form-check-label" for="subs_opt_${opt.id}">
+                        ${opt.name} — <strong>${total.toLocaleString('fr-FR')} FCFA</strong>
+                        ${opt.description ? `<small class="text-muted d-block">${opt.description}</small>` : ''}
+                    </label>
+                </div>`;
+            });
+            subscriptionOptionsList.innerHTML = html;
+
+            // Set initial amount from checked option
+            if (subscriptionAmountInput) subscriptionAmountInput.value = defaultAmount;
+            subscriptionAmountInput.readOnly = true;
+
+            // On option change → update amount
+            subscriptionOptionsList.querySelectorAll('.subscription-option-radio').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (subscriptionAmountInput) subscriptionAmountInput.value = this.dataset.amount;
+                });
             });
         }
+
+        if (optionalCategorySelect) {
+            optionalCategorySelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const defaultAmount  = parseFloat(selectedOption.getAttribute('data-default-amount')) || 0;
+                let   options        = [];
+                try { options = JSON.parse(selectedOption.getAttribute('data-options') || '[]'); } catch(e) {}
+                renderSubscriptionOptions(options, defaultAmount);
+            });
+        }
+
+        // Ouvrir le modal depuis un bouton de carte — pré-sélectionne la catégorie
+        window.openSubscribeModal = function(categoryId, categoryName, defaultAmount, options) {
+            if (!optionalCategorySelect) return;
+            // Sélectionner la catégorie correspondante
+            for (let i = 0; i < optionalCategorySelect.options.length; i++) {
+                if (parseInt(optionalCategorySelect.options[i].value) === parseInt(categoryId)) {
+                    optionalCategorySelect.selectedIndex = i;
+                    break;
+                }
+            }
+            renderSubscriptionOptions(options, defaultAmount);
+            const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('subscriptionModal'));
+            modal.show();
+        };
 
         // Fonction pour préparer le modal de paiement de reliquat
         window.prepareReliquatPaymentModal = function(reliquatId, montantRestant, nomFrais) {
