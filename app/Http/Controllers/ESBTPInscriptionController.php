@@ -1078,7 +1078,7 @@ class ESBTPInscriptionController extends Controller
         )
             ->active()
             ->ordered()
-            ->with(['options' => fn($q) => $q->where('is_active', true)->orderBy('sort_order')])
+            ->with(['options' => fn($q) => $q->where('esbtp_frais_options.is_active', true)->orderBy('esbtp_frais_options.sort_order')])
             ->get();
 
         // Récupérer les souscriptions actives pour cette inscription

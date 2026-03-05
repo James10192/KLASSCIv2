@@ -235,31 +235,112 @@ body.modal-open * {
 }
 .oc-form-control:focus { border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,0.08); }
 
-/* Assignment type selector (modal) */
-.oc-assign-type-grid {
+/* ── Assignation Modal — Redesign complet ── */
+.am-type-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-    margin-bottom: 16px;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 0;
 }
-.oc-assign-type-option {
+.am-type-card {
     position: relative;
     border: 2px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 12px 14px;
+    border-radius: 12px;
+    padding: 14px 14px 12px;
     cursor: pointer;
     transition: all 0.18s;
-    display: flex; align-items: center; gap: 8px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    user-select: none;
 }
-.oc-assign-type-option input[type="radio"] { display: none; }
-.oc-assign-type-option:hover { border-color: #bfdbfe; background: #eff6ff; }
-.oc-assign-type-option:has(input:checked) {
-    border-color: #0453cb;
-    background: #eff6ff;
-    color: #0453cb;
+.am-type-card input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+.am-type-card .am-type-icon {
+    width: 36px; height: 36px;
+    border-radius: 9px;
+    background: #f1f5f9;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: #64748b;
+    transition: all 0.18s; margin-bottom: 4px;
 }
-.oc-assign-type-option i { font-size: 16px; flex-shrink: 0; }
-.oc-assign-type-option span { font-size: 12px; font-weight: 600; }
+.am-type-card .am-type-title { font-size: 13px; font-weight: 700; color: #1e293b; transition: color .18s; }
+.am-type-card .am-type-desc  { font-size: 11px; color: #94a3b8; line-height: 1.35; margin: 0; }
+.am-type-card .am-check {
+    position: absolute; top: 10px; right: 10px;
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid #e5e7eb; background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; color: transparent; transition: all 0.18s;
+}
+.am-type-card:hover { border-color: #93c5fd; background: #f8faff; }
+.am-type-card:hover .am-type-icon { background: #dbeafe; color: #0453cb; }
+.am-type-card.am-selected { border-color: #0453cb; background: #eff6ff; }
+.am-type-card.am-selected .am-type-icon { background: #0453cb; color: #fff; }
+.am-type-card.am-selected .am-type-title { color: #0453cb; }
+.am-type-card.am-selected .am-check { border-color: #0453cb; background: #0453cb; color: #fff; }
+
+/* Sections filières / niveaux */
+.am-section {
+    background: #f8fafc;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-top: 14px;
+    display: none;
+}
+.am-section.am-show { display: block; }
+.am-section-label {
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: #64748b; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+}
+/* Chips cliquables */
+.am-chips-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.am-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 6px 13px;
+    border-radius: 20px;
+    border: 1.5px solid #e2e8f0;
+    background: #fff;
+    font-size: 12px; font-weight: 600; color: #475569;
+    cursor: pointer; transition: all 0.15s;
+    user-select: none;
+}
+.am-chip input[type="checkbox"] { display: none; }
+.am-chip .am-chip-check { font-size: 9px; display: none; }
+.am-chip:hover { border-color: #93c5fd; color: #0453cb; background: #eff6ff; }
+.am-chip.am-chip-selected { border-color: #0453cb; background: #0453cb; color: #fff; }
+.am-chip.am-chip-selected .am-chip-check { display: inline; }
+
+/* Assignations actuelles */
+.am-assignments-area {
+    background: #f8fafc;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px 14px;
+    min-height: 52px;
+    display: flex; flex-wrap: wrap; align-content: flex-start; gap: 6px;
+}
+.am-assign-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 8px 5px 11px;
+    border-radius: 20px;
+    background: #d1fae5; border: 1px solid rgba(16,185,129,.25); color: #065f46;
+    font-size: 11px; font-weight: 600;
+}
+.am-assign-tag button {
+    background: none; border: none; padding: 0; margin: 0;
+    color: #065f46; font-size: 10px; cursor: pointer;
+    line-height: 1; opacity: 0.65; transition: opacity 0.15s;
+    display: flex; align-items: center;
+}
+.am-assign-tag button:hover { opacity: 1; }
+.am-empty-msg { color: #94a3b8; font-size: 12px; font-style: italic; }
+
+@media (max-width: 480px) { .am-type-grid { grid-template-columns: 1fr; } }
 
 @media (max-width: 768px) {
     .oc-kpi-grid { grid-template-columns: 1fr; }
@@ -548,78 +629,105 @@ body.modal-open * {
 <div class="modal fade" id="assignmentsModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content oc-modal-content">
-            <div class="oc-modal-header">
-                <h5>
-                    <i class="fas fa-users me-2" style="color:#059669;"></i>
-                    Assignations — <span id="assignmentOptionName" style="color:#0453cb;"></span>
-                </h5>
+            {{-- Header --}}
+            <div class="oc-modal-header d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <div style="width:36px;height:36px;border-radius:10px;background:#ecfdf5;display:flex;align-items:center;justify-content:center;color:#059669;font-size:16px;flex-shrink:0;">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div>
+                        <div style="font-size:15px;font-weight:700;color:#1e293b;line-height:1.2;">Assignations</div>
+                        <div style="font-size:12px;color:#0453cb;font-weight:600;" id="assignmentOptionName"></div>
+                    </div>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
+
             <div class="oc-modal-body">
-                <input type="hidden" id="assignmentOptionId" name="option_id">
+                <input type="hidden" id="assignmentOptionId">
 
-                {{-- Type d'assignation --}}
-                <div class="oc-form-group">
-                    <label>Type d'assignation</label>
-                    <div class="oc-assign-type-grid">
-                        <label class="oc-assign-type-option">
+                {{-- ① Type d'assignation --}}
+                <div style="margin-bottom:20px;">
+                    <div style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">
+                        Type d'assignation
+                    </div>
+                    <div class="am-type-grid">
+                        <label class="am-type-card" id="am-card-all">
                             <input type="radio" name="modal_assignment_type" value="all">
-                            <i class="fas fa-globe-africa"></i>
-                            <span>Tous les étudiants</span>
+                            <span class="am-check"><i class="fas fa-check"></i></span>
+                            <div class="am-type-icon"><i class="fas fa-users"></i></div>
+                            <div class="am-type-title">Tous les étudiants</div>
+                            <p class="am-type-desc">Option visible pour l'ensemble des étudiants</p>
                         </label>
-                        <label class="oc-assign-type-option">
+                        <label class="am-type-card" id="am-card-filiere">
                             <input type="radio" name="modal_assignment_type" value="filiere">
-                            <i class="fas fa-sitemap"></i>
-                            <span>Par filière</span>
+                            <span class="am-check"><i class="fas fa-check"></i></span>
+                            <div class="am-type-icon"><i class="fas fa-sitemap"></i></div>
+                            <div class="am-type-title">Par filière</div>
+                            <p class="am-type-desc">Restreindre à une ou plusieurs filières</p>
                         </label>
-                        <label class="oc-assign-type-option">
+                        <label class="am-type-card" id="am-card-niveau">
                             <input type="radio" name="modal_assignment_type" value="niveau">
-                            <i class="fas fa-layer-group"></i>
-                            <span>Par niveau</span>
+                            <span class="am-check"><i class="fas fa-check"></i></span>
+                            <div class="am-type-icon"><i class="fas fa-layer-group"></i></div>
+                            <div class="am-type-title">Par niveau</div>
+                            <p class="am-type-desc">Restreindre à un ou plusieurs niveaux</p>
                         </label>
-                        <label class="oc-assign-type-option">
+                        <label class="am-type-card" id="am-card-classe">
                             <input type="radio" name="modal_assignment_type" value="classe">
-                            <i class="fas fa-school"></i>
-                            <span>Par classe</span>
+                            <span class="am-check"><i class="fas fa-check"></i></span>
+                            <div class="am-type-icon"><i class="fas fa-school"></i></div>
+                            <div class="am-type-title">Par classe</div>
+                            <p class="am-type-desc">Combinaison filière + niveau (classe précise)</p>
                         </label>
                     </div>
                 </div>
 
-                {{-- Détails filières / niveaux --}}
-                <div id="modal_assignment_details" style="display:none;" class="oc-form-group">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label>Filières</label>
-                            <select multiple class="oc-form-control" id="modal_filieres" style="height:120px;">
-                                @php $filieres = \App\Models\ESBTPFiliere::where('is_active', true)->get(); @endphp
-                                @foreach($filieres as $filiere)
-                                    <option value="{{ $filiere->id }}">{{ $filiere->name }}</option>
-                                @endforeach
-                            </select>
-                            <small style="color:#94a3b8;font-size:11px;">Ctrl+clic pour multi-sélection</small>
-                        </div>
-                        <div class="col-md-6">
-                            <label>Niveaux d'étude</label>
-                            <select multiple class="oc-form-control" id="modal_niveaux" style="height:120px;">
-                                @php $niveaux = \App\Models\ESBTPNiveauEtude::where('is_active', true)->get(); @endphp
-                                @foreach($niveaux as $niveau)
-                                    <option value="{{ $niveau->id }}">{{ $niveau->name }}</option>
-                                @endforeach
-                            </select>
-                            <small style="color:#94a3b8;font-size:11px;">Ctrl+clic pour multi-sélection</small>
-                        </div>
+                {{-- ② Chips filières --}}
+                <div id="am-section-filieres" class="am-section">
+                    <div class="am-section-label">
+                        <i class="fas fa-sitemap"></i>Choisir les filières
+                    </div>
+                    <div class="am-chips-grid" id="am-chips-filieres">
+                        @php $filieresList = \App\Models\ESBTPFiliere::where('is_active', true)->orderBy('name')->get(); @endphp
+                        @foreach($filieresList as $filiere)
+                        <label class="am-chip">
+                            <input type="checkbox" class="am-chip-input filiere-chip" value="{{ $filiere->id }}">
+                            <i class="fas fa-check am-chip-check"></i>
+                            {{ $filiere->name }}
+                        </label>
+                        @endforeach
                     </div>
                 </div>
 
-                {{-- Assignations actuelles --}}
-                <div class="oc-form-group" style="margin-bottom:0;">
-                    <label><i class="fas fa-list me-1"></i>Assignations actuelles</label>
-                    <div id="assignmentsList"
-                         style="min-height:48px;background:#f8fafc;border:1.5px solid #e5e7eb;border-radius:8px;padding:12px;">
-                        {{-- chargé dynamiquement --}}
+                {{-- ③ Chips niveaux --}}
+                <div id="am-section-niveaux" class="am-section">
+                    <div class="am-section-label">
+                        <i class="fas fa-layer-group"></i>Choisir les niveaux
+                    </div>
+                    <div class="am-chips-grid" id="am-chips-niveaux">
+                        @php $niveauxList = \App\Models\ESBTPNiveauEtude::where('is_active', true)->orderBy('name')->get(); @endphp
+                        @foreach($niveauxList as $niveau)
+                        <label class="am-chip">
+                            <input type="checkbox" class="am-chip-input niveau-chip" value="{{ $niveau->id }}">
+                            <i class="fas fa-check am-chip-check"></i>
+                            {{ $niveau->name }}
+                        </label>
+                        @endforeach
+                    </div>
+                </div>
+
+                {{-- ④ Assignations actuelles --}}
+                <div style="margin-top:20px;">
+                    <div style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                        <i class="fas fa-bookmark" style="color:#059669;"></i>Assignations actuelles
+                    </div>
+                    <div id="assignmentsList" class="am-assignments-area">
+                        <span class="am-empty-msg">Aucune assignation configurée</span>
                     </div>
                 </div>
             </div>
+
             <div class="oc-modal-footer d-flex align-items-center justify-content-between">
                 <button type="button" class="btn-acasi danger" onclick="clearAllAssignments()"
                         id="clearAssignmentsBtn" style="display:none;">
@@ -651,32 +759,53 @@ function toggleAddForm(categoryId) {
 
 document.addEventListener('DOMContentLoaded', function() {
 
-    // Gérer l'affichage des détails d'assignation dans la modal
+    // ── Gestion des cartes de type d'assignation ──────────────────────────
+    function applyAssignTypeUI(type) {
+        // Mettre à jour l'état visuel des cartes
+        document.querySelectorAll('.am-type-card').forEach(card => {
+            card.classList.toggle('am-selected', card.querySelector('input[type="radio"]').value === type);
+        });
+        // Afficher/masquer les sections chips
+        const secF = document.getElementById('am-section-filieres');
+        const secN = document.getElementById('am-section-niveaux');
+        secF.classList.toggle('am-show', type === 'filiere' || type === 'classe');
+        secN.classList.toggle('am-show', type === 'niveau'  || type === 'classe');
+    }
+
     document.querySelectorAll('input[name="modal_assignment_type"]').forEach(radio => {
         radio.addEventListener('change', function() {
-            const detailsDiv = document.getElementById('modal_assignment_details');
-            
-            if (this.value === 'all') {
-                detailsDiv.style.display = 'none';
-            } else {
-                detailsDiv.style.display = 'block';
-                
-                // Gérer la visibilité des select selon le type
-                const filieresSelect = document.getElementById('modal_filieres');
-                const niveauxSelect = document.getElementById('modal_niveaux');
-                
-                if (this.value === 'filiere') {
-                    filieresSelect.parentElement.parentElement.style.display = 'block';
-                    niveauxSelect.parentElement.parentElement.style.display = 'none';
-                } else if (this.value === 'niveau') {
-                    filieresSelect.parentElement.parentElement.style.display = 'none';
-                    niveauxSelect.parentElement.parentElement.style.display = 'block';
-                } else if (this.value === 'classe') {
-                    filieresSelect.parentElement.parentElement.style.display = 'block';
-                    niveauxSelect.parentElement.parentElement.style.display = 'block';
-                }
-            }
+            // Réinitialiser les chips
+            document.querySelectorAll('.am-chip-input').forEach(cb => {
+                cb.checked = false;
+                cb.closest('.am-chip').classList.remove('am-chip-selected');
+            });
+            applyAssignTypeUI(this.value);
         });
+    });
+
+    // ── Chips cliquables ──────────────────────────────────────────────────
+    document.querySelectorAll('.am-chip').forEach(chip => {
+        chip.addEventListener('click', function(e) {
+            e.preventDefault();
+            const input = this.querySelector('.am-chip-input');
+            input.checked = !input.checked;
+            this.classList.toggle('am-chip-selected', input.checked);
+        });
+    });
+
+    // ── Reset modal à l'ouverture ─────────────────────────────────────────
+    document.getElementById('assignmentsModal').addEventListener('show.bs.modal', function() {
+        // Décocher tous les radios et cartes
+        document.querySelectorAll('input[name="modal_assignment_type"]').forEach(r => r.checked = false);
+        document.querySelectorAll('.am-type-card').forEach(c => c.classList.remove('am-selected'));
+        // Décocher tous les chips
+        document.querySelectorAll('.am-chip-input').forEach(cb => {
+            cb.checked = false;
+            cb.closest('.am-chip').classList.remove('am-chip-selected');
+        });
+        // Masquer les sections chips
+        document.getElementById('am-section-filieres').classList.remove('am-show');
+        document.getElementById('am-section-niveaux').classList.remove('am-show');
     });
 
     // Gérer la soumission du formulaire d'édition d'option
@@ -761,37 +890,29 @@ function manageAssignments(optionId, optionName) {
 function loadCurrentAssignments(optionId) {
     const assignmentsList = document.getElementById('assignmentsList');
     const clearBtn = document.getElementById('clearAssignmentsBtn');
-    
-    assignmentsList.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Chargement...</div>';
-    
+
+    assignmentsList.innerHTML = '<span style="color:#94a3b8;font-size:12px;"><i class="fas fa-spinner fa-spin me-1"></i>Chargement…</span>';
+
     fetch(`{{ url('esbtp/frais/options') }}/${optionId}/assignments`)
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
             if (data.success && data.assignments.length > 0) {
-                let html = '<div style="display: flex; flex-wrap: wrap; gap: var(--space-xs);">';
-                
-                data.assignments.forEach(assignment => {
-                    html += `
-                        <span class="assignment-badge success" style="position: relative; padding-right: 25px;">
-                            ${assignment.display_label}
-                            <button type="button" onclick="removeAssignment(${assignment.id})" style="position: absolute; right: 5px; top: 2px; background: none; border: none; color: #065f46; font-size: 10px;">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </span>
-                    `;
+                assignmentsList.innerHTML = '';
+                data.assignments.forEach(a => {
+                    const tag = document.createElement('span');
+                    tag.className = 'am-assign-tag';
+                    tag.innerHTML = `${a.display_label}<button type="button" onclick="removeAssignment(${a.id})" title="Supprimer"><i class="fas fa-times"></i></button>`;
+                    assignmentsList.appendChild(tag);
                 });
-                
-                html += '</div>';
-                assignmentsList.innerHTML = html;
-                clearBtn.style.display = 'inline-block';
+                clearBtn.style.display = 'inline-flex';
             } else {
-                assignmentsList.innerHTML = '<div style="color: var(--text-muted); font-style: italic; text-align: center; padding: var(--space-sm);">Aucune assignation configurée</div>';
+                assignmentsList.innerHTML = '<span class="am-empty-msg">Aucune assignation configurée</span>';
                 clearBtn.style.display = 'none';
             }
         })
-        .catch(error => {
-            debugError('Erreur:', error);
-            assignmentsList.innerHTML = '<div class="text-danger">Erreur lors du chargement des assignations</div>';
+        .catch(err => {
+            debugError('Erreur:', err);
+            assignmentsList.innerHTML = '<span style="color:#dc2626;font-size:12px;"><i class="fas fa-exclamation-circle me-1"></i>Erreur de chargement</span>';
             clearBtn.style.display = 'none';
         });
 }
@@ -829,31 +950,33 @@ function removeAssignment(assignmentId) {
 function clearAllAssignments() {
     if (confirm('Supprimer toutes les assignations de cette option ?')) {
         const optionId = document.getElementById('assignmentOptionId').value;
-        
+
         fetch(`{{ url('esbtp/frais/options') }}/${optionId}/assignments`, {
             method: 'DELETE',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             }
         })
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
             if (data.success) {
                 loadCurrentAssignments(optionId);
                 refreshOptionAssignments(optionId);
-                // Réinitialiser le formulaire
-                document.querySelectorAll('input[name="modal_assignment_type"]').forEach(radio => radio.checked = false);
-                document.getElementById('modal_assignment_details').style.display = 'none';
-                
+                // Réinitialiser cartes + chips
+                document.querySelectorAll('input[name="modal_assignment_type"]').forEach(r => r.checked = false);
+                document.querySelectorAll('.am-type-card').forEach(c => c.classList.remove('am-selected'));
+                document.querySelectorAll('.am-chip-input').forEach(cb => {
+                    cb.checked = false;
+                    cb.closest('.am-chip').classList.remove('am-chip-selected');
+                });
+                document.getElementById('am-section-filieres').classList.remove('am-show');
+                document.getElementById('am-section-niveaux').classList.remove('am-show');
                 showSuccessMessage(data.message || 'Toutes les assignations ont été supprimées !');
             } else {
                 alert('Erreur lors de la suppression: ' + (data.message || 'Erreur inconnue'));
             }
         })
-        .catch(error => {
-            debugError('Erreur:', error);
-            alert('Erreur de connexion');
-        });
+        .catch(err => { debugError(err); alert('Erreur de connexion'); });
     }
 }
 
@@ -861,66 +984,51 @@ function clearAllAssignments() {
 function saveOptionAssignment() {
     const optionId = document.getElementById('assignmentOptionId').value;
     const assignmentType = document.querySelector('input[name="modal_assignment_type"]:checked');
-    
+
     if (!assignmentType) {
         alert('Veuillez sélectionner un type d\'assignation');
         return;
     }
-    
-    let data = {
+
+    let payload = {
         option_id: optionId,
         assignment_type: assignmentType.value,
         _token: document.querySelector('meta[name="csrf-token"]').content
     };
-    
+
     if (assignmentType.value !== 'all') {
-        const filieresSelect = document.getElementById('modal_filieres');
-        const niveauxSelect = document.getElementById('modal_niveaux');
-        
         if (assignmentType.value === 'filiere' || assignmentType.value === 'classe') {
-            data.filieres = Array.from(filieresSelect.selectedOptions).map(option => option.value);
-            if (data.filieres.length === 0) {
+            payload.filieres = Array.from(document.querySelectorAll('.filiere-chip:checked')).map(cb => cb.value);
+            if (payload.filieres.length === 0) {
                 alert('Veuillez sélectionner au moins une filière');
                 return;
             }
         }
-        
         if (assignmentType.value === 'niveau' || assignmentType.value === 'classe') {
-            data.niveaux = Array.from(niveauxSelect.selectedOptions).map(option => option.value);
-            if (data.niveaux.length === 0) {
+            payload.niveaux = Array.from(document.querySelectorAll('.niveau-chip:checked')).map(cb => cb.value);
+            if (payload.niveaux.length === 0) {
                 alert('Veuillez sélectionner au moins un niveau');
                 return;
             }
         }
     }
-    
+
     fetch('{{ url("esbtp/frais/options/assignments") }}', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': data._token
-        },
-        body: JSON.stringify(data)
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': payload._token },
+        body: JSON.stringify(payload)
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
         if (data.success) {
-            // Fermer le modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('assignmentsModal'));
-            modal.hide();
-            
-            // Rafraîchir seulement l'option concernée
+            bootstrap.Modal.getInstance(document.getElementById('assignmentsModal')).hide();
             refreshOptionAssignments(optionId);
-            
             showSuccessMessage(data.message || 'Assignations sauvegardées avec succès !');
         } else {
             alert('Erreur : ' + (data.message || 'Impossible de sauvegarder'));
         }
     })
-    .catch(error => {
-        debugError('Erreur:', error);
-        alert('Erreur de connexion');
-    });
+    .catch(err => { debugError(err); alert('Erreur de connexion'); });
 }
 
 // Fonction helper pour afficher les messages de succès
