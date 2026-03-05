@@ -65,6 +65,19 @@ class ESBTPFraisConfiguration extends Model
     ];
 
     /**
+     * Boot
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($model) {
+            if (empty($model->effective_date)) {
+                $model->effective_date = now()->toDateString();
+            }
+        });
+    }
+
+    /**
      * Relations
      */
     public function fraisCategory()
