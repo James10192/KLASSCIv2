@@ -3166,6 +3166,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
     </div>
 </div>
 
+@push('scripts')
 <script>
     // ========================================
     // FALLBACK DEBUGLOG - Au cas où debug-helper.js n'est pas chargé
@@ -4507,6 +4508,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
         }
     };
 </script>
+@endpush
 
 <!-- Les styles z-index pour les modals sont gérés par modal-force-fix.css -->
 
