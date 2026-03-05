@@ -74,6 +74,9 @@ class ESBTPFraisConfiguration extends Model
             if (empty($model->effective_date)) {
                 $model->effective_date = now()->toDateString();
             }
+            if (empty($model->created_by)) {
+                $model->created_by = auth()->id();
+            }
         });
     }
 
