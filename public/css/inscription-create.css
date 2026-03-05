@@ -973,3 +973,303 @@
         .parents-body  { padding: 16px; }
         .parent-card-body { padding: 14px; }
     }
+
+    /* ============================================
+       FRAIS OPTIONNELS — DESIGN REPENSÉ
+    ============================================ */
+
+    /* State: souscrit */
+    .optional-frais-card.is-subscribed {
+        border-color: var(--kl-primary);
+        background: linear-gradient(160deg, var(--kl-primary-bg) 0%, #ffffff 60%);
+        box-shadow: 0 4px 20px rgba(4, 83, 203, 0.10);
+    }
+
+    /* Barre d'accentuation gauche quand souscrit */
+    .optional-frais-card.is-subscribed::before {
+        content: '';
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        width: 4px;
+        background: linear-gradient(to bottom, var(--kl-primary), var(--kl-primary-light));
+        border-radius: 4px 0 0 4px;
+    }
+
+    /* Header de la card */
+    .optional-card-header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        justify-content: space-between;
+    }
+
+    /* Zone icône + texte */
+    .optional-card-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .optional-card-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 11px;
+        background: var(--kl-primary-bg);
+        color: var(--kl-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 17px;
+        flex-shrink: 0;
+        transition: background 0.25s, color 0.25s;
+    }
+    .is-subscribed .optional-card-icon {
+        background: var(--kl-primary);
+        color: #fff;
+    }
+
+    .optional-card-text h6 {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--kl-text);
+        margin: 0 0 3px;
+        line-height: 1.3;
+    }
+    .optional-card-text p {
+        font-size: 12px;
+        color: var(--kl-text-muted);
+        margin: 0 0 5px;
+        line-height: 1.4;
+    }
+    .optional-price-hint {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--kl-primary);
+        background: var(--kl-primary-bg);
+        padding: 2px 9px;
+        border-radius: 20px;
+        border: 1px solid var(--kl-primary-border);
+    }
+
+    /* Zone contrôles (droite du header) */
+    .optional-card-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    /* Badge "Optionnel" */
+    .badge-optional-pill {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        color: #6d28d9;
+        background: #ede9fe;
+        border: 1px solid #c4b5fd;
+        padding: 3px 9px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    /* Bouton Souscrire */
+    .btn-opt-subscribe {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #fff;
+        color: var(--kl-primary);
+        border: 1.5px solid var(--kl-primary);
+        border-radius: 20px;
+        padding: 6px 15px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .btn-opt-subscribe:hover {
+        background: var(--kl-primary);
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(4, 83, 203, 0.28);
+        transform: translateY(-1px);
+    }
+
+    /* État "Souscrit" — visible quand actif */
+    .opt-subscribed-state {
+        align-items: center;
+        gap: 7px;
+    }
+    .opt-subscribed-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: #d1fae5;
+        color: #065f46;
+        border: 1.5px solid rgba(16, 185, 129, 0.30);
+        border-radius: 20px;
+        padding: 5px 12px;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .btn-opt-unsubscribe {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 1.5px solid var(--kl-border);
+        background: #fff;
+        color: var(--kl-text-muted);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+    .btn-opt-unsubscribe:hover {
+        border-color: var(--kl-danger);
+        color: var(--kl-danger);
+        background: var(--kl-danger-bg);
+    }
+
+    /* Zone options (révélée après souscription) */
+    .optional-frais-options {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px dashed var(--kl-primary-border);
+    }
+
+    /* Label section options */
+    .optional-options-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--kl-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .optional-options-label::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--kl-border);
+    }
+
+    /* Grille d'options */
+    .frais-option-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 10px;
+    }
+
+    /* Carte option individuelle */
+    .frais-option-card {
+        position: relative;
+        border: 2px solid var(--kl-border);
+        border-radius: 12px;
+        padding: 16px 12px 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+        background: #fff;
+        display: block;
+        margin: 0;
+    }
+    .frais-option-card:hover {
+        border-color: var(--kl-primary-border);
+        background: var(--kl-primary-bg);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 14px rgba(4, 83, 203, 0.10);
+    }
+    .frais-option-card.selected {
+        border-color: var(--kl-primary);
+        background: var(--kl-primary-bg);
+        box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.12);
+    }
+
+    /* Checkmark badge */
+    .frais-option-check {
+        position: absolute;
+        top: -9px;
+        right: -9px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--kl-border);
+        color: transparent;
+        border: 2px solid #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 800;
+        transition: all 0.2s;
+    }
+    .frais-option-card.selected .frais-option-check {
+        background: var(--kl-primary);
+        color: #fff;
+    }
+
+    .frais-option-name {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--kl-text);
+        margin-bottom: 8px;
+        line-height: 1.3;
+    }
+    .frais-option-price {
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--kl-primary);
+        line-height: 1;
+        margin-bottom: 2px;
+    }
+    .frais-option-unit {
+        font-size: 10px;
+        color: var(--kl-text-muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        margin-bottom: 6px;
+    }
+    .frais-option-desc {
+        font-size: 10px;
+        color: var(--kl-text-muted);
+        line-height: 1.4;
+        display: block;
+    }
+
+    /* Montant unique (quand pas d'options) */
+    .frais-single-amount {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: #fff;
+        border: 1.5px solid var(--kl-primary-border);
+        border-radius: 10px;
+        padding: 11px 16px;
+        font-size: 13px;
+    }
+    .frais-single-amount i { color: var(--kl-primary); }
+    .frais-single-amount span { color: var(--kl-text-muted); }
+    .frais-single-amount strong {
+        color: var(--kl-primary);
+        font-size: 15px;
+        font-weight: 800;
+    }
+
+    @media (max-width: 576px) {
+        .frais-option-grid { grid-template-columns: repeat(2, 1fr); }
+        .optional-card-header { flex-wrap: wrap; gap: 10px; }
+        .badge-optional-pill { display: none; }
+        .optional-card-controls { width: 100%; justify-content: flex-end; }
+    }

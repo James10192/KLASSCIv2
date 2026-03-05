@@ -5,190 +5,268 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-.option-card {
-    border: 2px solid transparent;
-    transition: all 0.3s ease;
-    position: relative;
+/* =====================================================
+   OPTIONAL-CONFIG — Design System KLASSCI
+   ===================================================== */
+
+/* Couleurs par type de frais */
+.oc-type-transport { --oc-color: #0ea5e9; --oc-bg: #f0f9ff; --oc-border: #bae6fd; }
+.oc-type-cantine   { --oc-color: #10b981; --oc-bg: #f0fdf4; --oc-border: #a7f3d0; }
+.oc-type-service   { --oc-color: #8b5cf6; --oc-bg: #f5f3ff; --oc-border: #c4b5fd; }
+.oc-type-autre     { --oc-color: #f59e0b; --oc-bg: #fffbeb; --oc-border: #fde68a; }
+
+/* ── KPI grid ── */
+.oc-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+}
+.oc-kpi-card {
+    background: #fff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: box-shadow 0.2s;
+}
+.oc-kpi-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+.oc-kpi-icon {
+    width: 44px; height: 44px;
+    border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px; flex-shrink: 0;
+}
+.oc-kpi-num  { font-size: 26px; font-weight: 800; color: #1e293b; line-height: 1; margin-bottom: 4px; }
+.oc-kpi-lbl  { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4px; }
+
+/* ── Category card ── */
+.oc-category-card {
+    background: #fff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 14px;
     overflow: hidden;
+    margin-bottom: 20px;
+    transition: box-shadow 0.2s;
+}
+.oc-category-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.07); }
+
+/* Card header */
+.oc-card-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #f1f5f9;
+}
+.oc-card-icon {
+    width: 50px; height: 50px;
+    border-radius: 13px;
+    background: var(--oc-bg);
+    color: var(--oc-color);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 21px; flex-shrink: 0;
+}
+.oc-card-meta  { flex: 1; min-width: 0; }
+.oc-card-meta h3 { font-size: 16px; font-weight: 700; color: #1e293b; margin: 0 0 5px; }
+.oc-card-meta p  { font-size: 12px; color: #94a3b8; margin: 0; }
+.oc-type-badge {
+    display: inline-block;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--oc-color);
+    background: var(--oc-bg);
+    border: 1px solid var(--oc-border);
+    padding: 3px 9px; border-radius: 20px;
+}
+.oc-status-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 700;
+    padding: 4px 11px; border-radius: 20px;
+}
+.oc-status-pill.active   { background: #d1fae5; color: #065f46; border: 1.5px solid rgba(16,185,129,0.25); }
+.oc-status-pill.inactive { background: #f3f4f6; color: #9ca3af; border: 1.5px solid #e5e7eb; }
+
+/* Options body */
+.oc-options-body { padding: 0 24px; }
+.oc-options-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 0 8px;
+}
+.oc-options-section-label {
+    font-size: 11px; font-weight: 700; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+.oc-options-counter {
+    font-size: 11px; color: #94a3b8;
+    background: #f8fafc; padding: 2px 9px;
+    border-radius: 10px; border: 1px solid #e5e7eb;
+    font-weight: 600;
 }
 
-.option-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
-    opacity: 0;
-    transition: opacity 0.3s ease;
+/* Option row */
+.oc-option-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 0;
+    border-bottom: 1px solid #f1f5f9;
 }
-
-.option-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-elevated);
-    border-color: rgba(59, 130, 246, 0.3);
+.oc-option-row:last-child { border-bottom: none; }
+.oc-option-info { flex: 1; min-width: 0; }
+.oc-option-name { font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 3px; }
+.oc-option-desc { font-size: 12px; color: #94a3b8; margin-bottom: 5px; }
+.oc-option-assignments { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.oc-assign-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 10px;
+    background: #d1fae5; color: #065f46;
+    border: 1px solid rgba(16,185,129,0.2);
 }
-
-.option-card:hover::before {
-    opacity: 1;
+.oc-assign-tag.empty { background: #f3f4f6; color: #9ca3af; border-color: #e5e7eb; }
+.oc-option-price {
+    font-size: 15px; font-weight: 800; color: #0453cb;
+    white-space: nowrap; text-align: right; min-width: 120px;
 }
-
-.option-item {
-    background: var(--surface);
-    border: 1px solid #e5e7eb;
-    border-radius: var(--radius-small);
-    padding: var(--space-md);
-    margin-bottom: var(--space-sm);
-    transition: all 0.2s ease;
+.oc-option-price small { display: block; font-size: 10px; font-weight: 500; color: #94a3b8; }
+.oc-option-actions { display: flex; gap: 5px; flex-shrink: 0; }
+.oc-btn-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px; border: 1.5px solid #e5e7eb;
+    background: #fff; color: #94a3b8;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12px; cursor: pointer; transition: all 0.18s;
 }
+.oc-btn-icon:hover        { border-color: #bae6fd; color: #0ea5e9; background: #f0f9ff; }
+.oc-btn-icon.oc-edit:hover   { border-color: #bfdbfe; color: #0453cb; background: #eff6ff; }
+.oc-btn-icon.oc-assign:hover { border-color: #a7f3d0; color: #059669; background: #ecfdf5; }
+.oc-btn-icon.oc-delete:hover { border-color: #fca5a5; color: #dc2626; background: #fef2f2; }
 
-.option-item:hover {
-    background: rgba(59, 130, 246, 0.05);
-    border-color: var(--accent-blue);
+/* Empty state */
+.oc-options-empty {
+    text-align: center; padding: 28px 16px;
+    color: #94a3b8;
 }
+.oc-options-empty i { font-size: 28px; margin-bottom: 10px; opacity: 0.4; display: block; }
+.oc-options-empty p  { font-size: 13px; margin: 0 0 4px; font-weight: 500; }
+.oc-options-empty small { font-size: 12px; }
 
-.option-price {
-    font-weight: 700;
-    color: var(--primary);
-    font-size: var(--text-large);
+/* Add-option zone */
+.oc-add-zone {
+    border-top: 1px solid #f1f5f9;
+    padding: 0 24px 22px;
 }
-
-.add-option-form {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.02));
-    border: 2px dashed var(--accent-blue);
-    border-radius: var(--radius-medium);
-    padding: var(--space-lg);
-    margin-top: var(--space-md);
+.oc-add-trigger {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 14px 0 0;
+    font-size: 13px; font-weight: 700; color: #0453cb;
+    cursor: pointer; background: none; border: none; outline: none;
+    transition: opacity 0.15s;
 }
+.oc-add-trigger:hover { opacity: 0.7; }
+.oc-add-form {
+    display: none;
+    margin-top: 14px;
+    background: #eff6ff;
+    border: 1.5px dashed #bfdbfe;
+    border-radius: 10px;
+    padding: 18px;
+}
+.oc-add-form.open { display: block; }
+.oc-add-form label {
+    font-size: 12px; font-weight: 600; color: #374151;
+    margin-bottom: 5px; display: block;
+}
+.oc-add-form .form-control {
+    border: 1.5px solid #e5e7eb; border-radius: 8px;
+    padding: 8px 12px; font-size: 13px;
+    background: #fff; width: 100%;
+    transition: border-color 0.15s; outline: none;
+}
+.oc-add-form .form-control:focus {
+    border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4,83,203,0.08);
+}
+.oc-add-form .row { margin: 0 -6px; }
+.oc-add-form .col-md-4 { padding: 0 6px; }
 
-/* === CORRECTION SPÉCIFIQUE MODALS FRAIS OPTIONNELS === */
-
-/* Forcer tous les modals de cette page au premier plan */
-#assignModal.modal,
-#editModal.modal,
-#deleteModal.modal,
-#addFeeModal.modal {
+/* Modal backdrop fix */
+#editOptionModal.modal,
+#assignmentsModal.modal {
     z-index: 9999 !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
 }
-
-#assignModal .modal-dialog,
-#editModal .modal-dialog,
-#deleteModal .modal-dialog,
-#addFeeModal .modal-dialog {
-    z-index: 10000 !important;
-    position: relative !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-}
-
-#assignModal .modal-content,
-#editModal .modal-content,
-#deleteModal .modal-content,
-#addFeeModal .modal-content {
-    z-index: 10001 !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    background: white !important;
-    border: none !important;
-    border-radius: 12px !important;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3) !important;
-}
-
-/* Désactiver animations sur modals show */
-#assignModal.modal.fade .modal-dialog,
-#editModal.modal.fade .modal-dialog,
-#deleteModal.modal.fade .modal-dialog,
-#addFeeModal.modal.fade .modal-dialog {
-    transition: none !important;
-    transform: none !important;
-}
-
-/* États d'affichage forcés */
-#assignModal.modal.show,
-#editModal.modal.show,
-#deleteModal.modal.show,
-#addFeeModal.modal.show {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-/* Anti-curseur erratique quand modals ouverts */
-body.modal-open * {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-}
-
-/* Empêcher mouvements de curseur */
-body.modal-open .btn,
-body.modal-open .card,
-body.modal-open .form-control {
-    animation: none !important;
-    transition: none !important;
-}
-
-body.modal-open .btn:hover,
-body.modal-open .card:hover {
-    transform: none !important;
-}
-
-/* Backdrop spécifique */
 .modal-backdrop {
     z-index: 1040 !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
 }
+body.modal-open * {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
 
-/* Style pour les badges d'assignation */
+/* Assignment badges (modal & page) */
 .assignment-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 500;
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 8px; border-radius: 12px;
+    font-size: 11px; font-weight: 500;
 }
+.assignment-badge.success  { background: rgba(16,185,129,.1); color: #065f46; border: 1px solid rgba(16,185,129,.2); }
+.assignment-badge.secondary { background: rgba(107,114,128,.1); color: #374151; border: 1px solid rgba(107,114,128,.2); }
 
-.assignment-badge.success {
-    background: rgba(16, 185, 129, 0.1);
-    color: #065f46;
-    border: 1px solid rgba(16, 185, 129, 0.2);
+/* Modal styles */
+.oc-modal-content { border-radius: 14px !important; border: none !important; box-shadow: 0 20px 40px rgba(0,0,0,0.18) !important; }
+.oc-modal-header {
+    border-bottom: 1px solid #f1f5f9;
+    padding: 18px 22px 14px;
 }
-
-.assignment-badge.secondary {
-    background: rgba(107, 114, 128, 0.1);
-    color: #374151;
-    border: 1px solid rgba(107, 114, 128, 0.2);
+.oc-modal-header h5 { font-size: 15px; font-weight: 700; color: #1e293b; margin: 0; }
+.oc-modal-body { padding: 20px 22px; }
+.oc-modal-footer { border-top: 1px solid #f1f5f9; padding: 14px 22px; }
+.oc-form-group { margin-bottom: 16px; }
+.oc-form-group label { font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; display: block; }
+.oc-form-control {
+    border: 1.5px solid #e5e7eb; border-radius: 8px;
+    padding: 9px 13px; font-size: 13px; width: 100%;
+    background: #fff; outline: none; transition: border-color 0.15s;
 }
+.oc-form-control:focus { border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,0.08); }
 
-/* Style pour les boutons de fermeture des modals */
-.modal-header .btn-close {
-    background: transparent url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23000'%3e%3cpath d='m.235 1.027 1.027-.235 6.738 6.738 6.738-6.738 1.027.235-.235 1.027L8.792 8.792l6.738 6.738-.235 1.027-1.027-.235L7.53 9.584.792 16.322l-1.027-.235.235-1.027L6.738 8.322.235 1.027z'/%3e%3c/svg%3e") center/1em auto no-repeat;
-    border: 0;
-    border-radius: 0.375rem;
-    opacity: 0.8;
-    padding: 0.375rem;
-    width: 1.5em;
-    height: 1.5em;
-    color: #000;
-    background-size: 0.75em;
+/* Assignment type selector (modal) */
+.oc-assign-type-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
 }
-
-.modal-header .btn-close:hover,
-.modal-header .btn-close:focus {
-    opacity: 1;
-    background-color: rgba(0, 0, 0, 0.1);
-    transform: scale(1.1);
-    transition: all 0.2s ease;
+.oc-assign-type-option {
+    position: relative;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.18s;
+    display: flex; align-items: center; gap: 8px;
 }
+.oc-assign-type-option input[type="radio"] { display: none; }
+.oc-assign-type-option:hover { border-color: #bfdbfe; background: #eff6ff; }
+.oc-assign-type-option:has(input:checked) {
+    border-color: #0453cb;
+    background: #eff6ff;
+    color: #0453cb;
+}
+.oc-assign-type-option i { font-size: 16px; flex-shrink: 0; }
+.oc-assign-type-option span { font-size: 12px; font-weight: 600; }
 
-.modal-header .btn-close:focus {
-    outline: 2px solid var(--accent-blue);
-    outline-offset: 2px;
+@media (max-width: 768px) {
+    .oc-kpi-grid { grid-template-columns: 1fr; }
+    .oc-card-head { flex-wrap: wrap; }
+    .oc-option-row { flex-wrap: wrap; gap: 8px; }
+    .oc-option-price { min-width: auto; text-align: left; }
+    .oc-assign-type-grid { grid-template-columns: 1fr; }
 }
 </style>
 @endpush
@@ -196,11 +274,12 @@ body.modal-open .card:hover {
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header moderne -->
+
+        {{-- ── Header ──────────────────────────────────────────────────── --}}
         <div class="dashboard-header">
             <div class="header-left">
-                <h1>Configuration des Frais Optionnels</h1>
-                <p class="header-subtitle">Gestion des options de transport, cantine et autres services</p>
+                <h1>Frais Optionnels</h1>
+                <p class="header-subtitle">Configuration des services à la carte : transport, cantine, activités…</p>
             </div>
             <div class="header-actions">
                 <a href="{{ route('esbtp.frais.configure') }}" class="btn-acasi secondary">
@@ -212,394 +291,252 @@ body.modal-open .card:hover {
             </div>
         </div>
 
-        <!-- Messages d'état -->
+        {{-- ── Flash success ────────────────────────────────────────────── --}}
         @if(session('success'))
-            <div class="card-moderne" style="background: rgba(16, 185, 129, 0.1); border-left: 4px solid var(--success); margin-bottom: var(--space-lg);">
-                <div style="padding: var(--space-md);">
-                    <div class="color-success font-semibold">
-                        <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-                    </div>
-                </div>
+            <div class="alert-kl alert-kl-success mb-4" style="border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:10px;border:1px solid rgba(16,185,129,.25);">
+                <i class="fas fa-check-circle" style="font-size:16px;"></i>
+                <span style="font-weight:600;">{{ session('success') }}</span>
             </div>
         @endif
 
-        <!-- Section statistiques -->
-        <div class="soldes-section">
-            <div class="soldes-grid">
-                <div class="card-moderne solde-card">
-                    <div class="solde-title">
-                        <i class="fas fa-sliders-h me-2"></i>Frais Optionnels
-                    </div>
-                    <div class="solde-amount">{{ $stats['total_optional'] }}</div>
-                    <div class="solde-subtitle">Catégories configurées</div>
+        {{-- ── KPI row ──────────────────────────────────────────────────── --}}
+        <div class="oc-kpi-grid">
+            <div class="oc-kpi-card">
+                <div class="oc-kpi-icon" style="background:#eff6ff;color:#0453cb;">
+                    <i class="fas fa-sliders-h"></i>
                 </div>
-                
-                <div class="card-moderne solde-card">
-                    <div class="solde-title">
-                        <i class="fas fa-bus me-2"></i>Transport
-                    </div>
-                    <div class="solde-amount">{{ $stats['transport_stops'] }}</div>
-                    <div class="solde-subtitle">Arrêts configurés</div>
+                <div>
+                    <div class="oc-kpi-num">{{ $stats['total_optional'] }}</div>
+                    <div class="oc-kpi-lbl">Catégories optionnelles</div>
                 </div>
-                
-                <div class="card-moderne solde-card">
-                    <div class="solde-title">
-                        <i class="fas fa-utensils me-2"></i>Cantine
-                    </div>
-                    <div class="solde-amount">{{ $stats['cantine_menus'] }}</div>
-                    <div class="solde-subtitle">Menus configurés</div>
+            </div>
+            <div class="oc-kpi-card">
+                <div class="oc-kpi-icon" style="background:#f0f9ff;color:#0ea5e9;">
+                    <i class="fas fa-bus"></i>
+                </div>
+                <div>
+                    <div class="oc-kpi-num">{{ $stats['transport_stops'] }}</div>
+                    <div class="oc-kpi-lbl">Arrêts transport</div>
+                </div>
+            </div>
+            <div class="oc-kpi-card">
+                <div class="oc-kpi-icon" style="background:#f0fdf4;color:#10b981;">
+                    <i class="fas fa-utensils"></i>
+                </div>
+                <div>
+                    <div class="oc-kpi-num">{{ $stats['cantine_menus'] }}</div>
+                    <div class="oc-kpi-lbl">Menus cantine</div>
                 </div>
             </div>
         </div>
 
-        <!-- Guide d'utilisation -->
-        <div class="card-moderne" style="margin-bottom: var(--space-lg); padding: var(--space-lg);">
-            <div class="section-title">
-                <i class="fas fa-info-circle me-2"></i>Guide de Configuration
-            </div>
-            <div style="color: var(--text-primary); font-size: var(--text-normal); line-height: 1.6; margin-top: var(--space-md);">
-                <div class="mb-sm"><strong>Frais optionnels :</strong> ne dépendent pas de la classe (filière + niveau)</div>
-                <div class="mb-sm">• <strong>Transport :</strong> configurez les différents arrêts avec leurs tarifs</div>
-                <div class="mb-sm">• <strong>Cantine :</strong> configurez les menus disponibles et leurs prix</div>
-                <div>• <strong>Autres services :</strong> activités extrascolaires, équipements, etc.</div>
-            </div>
-        </div>
-
-        <!-- Liste des catégories optionnelles -->
+        {{-- ── Categories list ─────────────────────────────────────────── --}}
         @if($optionalCategories->count() > 0)
-            <div style="display: flex; flex-direction: column; gap: var(--space-lg);">
-                @foreach($optionalCategories as $category)
-                    <div class="card-moderne option-card animate-slide-up">
-                        <div style="padding: var(--space-lg);">
-                            <!-- Header avec icône -->
-                            <div style="display: flex; align-items: center; margin-bottom: var(--space-lg);">
-                                <div style="width: 50px; height: 50px; background: linear-gradient(135deg, var(--accent-blue), var(--primary)); border-radius: var(--radius-circle); display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; margin-right: var(--space-md);">
-                                    @if($category->icon)
-                                        <i class="{{ $category->icon }}"></i>
-                                    @elseif($category->category_type == 'transport')
-                                        <i class="fas fa-bus"></i>
-                                    @elseif($category->category_type == 'cantine')
-                                        <i class="fas fa-utensils"></i>
-                                    @else
-                                        <i class="fas fa-concierge-bell"></i>
-                                    @endif
-                                </div>
-                                <div style="flex: 1;">
-                                    <div class="resultat-title" style="color: var(--primary);">
-                                        {{ $category->name }}
-                                    </div>
-                                    @php
-                                        $typeColors = ['transport' => '#0ea5e9', 'cantine' => '#10b981', 'autre' => '#f59e0b'];
-                                        $typeColor = $typeColors[$category->category_type] ?? '#64748b';
-                                    @endphp
-                                    <span style="display: inline-block; font-size: 0.72rem; padding: 2px 10px; border-radius: 20px; background: {{ $typeColor }}20; color: {{ $typeColor }}; border: 1px solid {{ $typeColor }}40; font-weight: 500; margin-top: 3px;">
-                                        {{ ucfirst($category->category_type ?? 'autre') }}
-                                    </span>
-                                </div>
-                                <div style="text-align: right;">
-                                    <span class="badge {{ $category->is_active ? 'success' : 'secondary' }}">
-                                        {{ $category->is_active ? 'Actif' : 'Inactif' }}
-                                    </span>
-                                </div>
-                            </div>
+            @foreach($optionalCategories as $category)
+                @php
+                    $typeClass = match($category->category_type) {
+                        'transport' => 'oc-type-transport',
+                        'cantine'   => 'oc-type-cantine',
+                        'service'   => 'oc-type-service',
+                        default     => 'oc-type-autre',
+                    };
+                    $typeIcon = match($category->category_type) {
+                        'transport' => 'fas fa-bus',
+                        'cantine'   => 'fas fa-utensils',
+                        'service'   => 'fas fa-concierge-bell',
+                        default     => $category->icon ?? 'fas fa-puzzle-piece',
+                    };
+                    if ($category->icon) $typeIcon = $category->icon;
+                @endphp
 
-                            <!-- Description -->
+                <div class="oc-category-card {{ $typeClass }}">
+
+                    {{-- Card header --}}
+                    <div class="oc-card-head">
+                        <div class="oc-card-icon">
+                            <i class="{{ $typeIcon }}"></i>
+                        </div>
+                        <div class="oc-card-meta">
+                            <h3>{{ $category->name }}</h3>
                             @if($category->description)
-                                <div style="margin-bottom: var(--space-md); color: var(--text-secondary);">
-                                    {{ $category->description }}
-                                </div>
+                                <p>{{ $category->description }}</p>
                             @endif
-
-                            <!-- Options existantes avec assignations -->
-                            <div style="margin-bottom: var(--space-lg);">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
-                                    <div style="font-weight: 600; color: var(--text-primary);">
-                                        Options configurées ({{ $category->options->count() }})
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleOptionsView({{ $category->id }})">
-                                        <i class="fas fa-eye" id="view-icon-{{ $category->id }}"></i>
-                                        <span id="view-text-{{ $category->id }}">Vue détaillée</span>
-                                    </button>
-                                </div>
-                                
-                                @if($category->options->count() > 0)
-                                    <!-- Vue simple (par défaut) -->
-                                    <div id="simple-view-{{ $category->id }}" class="options-view">
-                                        @foreach($category->options as $option)
-                                            <div class="option-item" data-option-id="{{ $option->id }}">
-                                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                                    <div style="flex: 1;">
-                                                        <div style="font-weight: 600; color: var(--text-primary);">
-                                                            {{ $option->name }}
-                                                        </div>
-                                                        @if($option->description)
-                                                            <div style="font-size: var(--text-small); color: var(--text-secondary);">
-                                                                {{ $option->description }}
-                                                            </div>
-                                                        @endif
-                                                        <!-- Badges d'assignation -->
-                                                        <div style="margin-top: var(--space-xs);" id="assignment-badges-{{ $option->id }}">
-                                                            @php
-                                                                $assignments = $option->assignments ?? collect();
-                                                                $assignmentCount = $assignments->count();
-                                                            @endphp
-                                                            
-                                                            @if($assignmentCount > 0)
-                                                                @foreach($assignments as $assignment)
-                                                                    <span class="assignment-badge success" style="margin-right: var(--space-xs); margin-bottom: var(--space-xs);">
-                                                                        <i class="fas fa-users"></i>{{ $assignment->display_label }}
-                                                                    </span>
-                                                                @endforeach
-                                                            @else
-                                                                <span class="assignment-badge secondary">
-                                                                    <i class="fas fa-users"></i>Non assigné
-                                                                </span>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                    <div class="option-price">
-                                                        {{ number_format($option->additional_amount, 0, ',', ' ') }} F CFA
-                                                    </div>
-                                                    <div style="margin-left: var(--space-md); display: flex; gap: var(--space-xs);">
-                                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="editOption({{ $option->id }}, '{{ $option->name }}', {{ $option->additional_amount }}, '{{ $option->description ?? '' }}')" title="Modifier">
-                                                            <i class="fas fa-edit"></i>
-                                                        </button>
-                                                        <button type="button" class="btn btn-sm btn-outline-info" onclick="manageAssignments({{ $option->id }}, '{{ $option->name }}')" title="Gérer assignations">
-                                                            <i class="fas fa-users"></i>
-                                                        </button>
-                                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteOption({{ $option->id }})" title="Supprimer">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-
-                                    <!-- Vue détaillée -->
-                                    <div id="detailed-view-{{ $category->id }}" class="options-view" style="display: none;">
-                                        @foreach($category->options as $option)
-                                            <div class="option-card-detailed" data-option-id="{{ $option->id }}" style="background: white; border: 1px solid #e5e7eb; border-radius: var(--radius-medium); padding: var(--space-md); margin-bottom: var(--space-md); box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-md);">
-                                                    <div style="flex: 1;">
-                                                        <h4 style="margin: 0; color: var(--primary); font-size: var(--text-large);">
-                                                            {{ $option->name }}
-                                                        </h4>
-                                                        @if($option->description)
-                                                            <p style="margin: var(--space-xs) 0 0 0; color: var(--text-secondary); font-size: var(--text-small);">
-                                                                {{ $option->description }}
-                                                            </p>
-                                                        @endif
-                                                    </div>
-                                                    <div style="text-align: right;">
-                                                        <div style="font-size: var(--text-xl); font-weight: 700; color: var(--primary); margin-bottom: var(--space-xs);">
-                                                            {{ number_format($option->additional_amount, 0, ',', ' ') }} F CFA
-                                                        </div>
-                                                        <div style="display: flex; gap: var(--space-xs);">
-                                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="editOption({{ $option->id }}, '{{ $option->name }}', {{ $option->additional_amount }}, '{{ $option->description ?? '' }}')">
-                                                                <i class="fas fa-edit"></i>
-                                                            </button>
-                                                            <button type="button" class="btn btn-sm btn-outline-info" onclick="manageAssignments({{ $option->id }}, '{{ $option->name }}')">
-                                                                <i class="fas fa-users"></i>
-                                                            </button>
-                                                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteOption({{ $option->id }})">
-                                                                <i class="fas fa-trash"></i>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <!-- Section détaillée des assignations -->
-                                                <div style="margin-top: var(--space-md); padding-top: var(--space-md); border-top: 1px solid #e5e7eb;">
-                                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm);">
-                                                        <h6 style="margin: 0; color: var(--text-primary); font-size: var(--text-normal);">
-                                                            <i class="fas fa-users me-2"></i>Assignations Détaillées
-                                                        </h6>
-                                                        <button type="button" class="btn btn-sm btn-primary" onclick="manageAssignments({{ $option->id }}, '{{ $option->name }}')">
-                                                            <i class="fas fa-cog"></i> Gérer
-                                                        </button>
-                                                    </div>
-                                                    
-                                                    @php
-                                                        $assignments = $option->assignments ?? collect();
-                                                    @endphp
-                                                    
-                                                    @if($assignments->count() > 0)
-                                                        <div style="display: flex; flex-wrap: wrap; gap: var(--space-xs);">
-                                                            @foreach($assignments as $assignment)
-                                                                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-small); padding: var(--space-sm); margin-bottom: var(--space-xs);">
-                                                                    <div style="font-weight: 600; color: #065f46; font-size: var(--text-small);">
-                                                                        {{ $assignment->display_label }}
-                                                                    </div>
-                                                                    @if($assignment->assignment_type !== 'all')
-                                                                        <div style="font-size: 11px; color: #064e3b; margin-top: 2px;">
-                                                                            Type: {{ ucfirst($assignment->assignment_type) }}
-                                                                        </div>
-                                                                    @endif
-                                                                </div>
-                                                            @endforeach
-                                                        </div>
-                                                        
-                                                        <!-- Statistiques -->
-                                                        <div style="margin-top: var(--space-sm); padding: var(--space-sm); background: rgba(59, 130, 246, 0.05); border-radius: var(--radius-small);">
-                                                            <div style="font-size: var(--text-small); color: var(--text-secondary);">
-                                                                <strong>{{ $assignments->count() }}</strong> assignation(s) active(s)
-                                                                • Dernière mise à jour: {{ $assignments->max('updated_at')?->format('d/m/Y H:i') ?: 'N/A' }}
-                                                            </div>
-                                                        </div>
-                                                    @else
-                                                        <div style="text-align: center; padding: var(--space-md); background: rgba(107, 114, 128, 0.05); border: 2px dashed #d1d5db; border-radius: var(--radius-small);">
-                                                            <div style="color: var(--text-muted); font-style: italic;">
-                                                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                                                Aucune assignation configurée
-                                                            </div>
-                                                            <div style="font-size: var(--text-small); color: var(--text-muted); margin-top: var(--space-xs);">
-                                                                Cette option n'est assignée à aucune filière ou niveau
-                                                            </div>
-                                                        </div>
-                                                    @endif
-                                                </div>
-
-                                                <!-- Informations supplémentaires -->
-                                                <div style="margin-top: var(--space-md); padding-top: var(--space-md); border-top: 1px solid #e5e7eb;">
-                                                    <h6 style="margin: 0 0 var(--space-sm) 0; color: var(--text-primary); font-size: var(--text-normal);">
-                                                        <i class="fas fa-info-circle me-2"></i>Informations Complémentaires
-                                                    </h6>
-                                                    <div class="row">
-                                                        <div class="col-md-6">
-                                                            <div style="margin-bottom: var(--space-sm);">
-                                                                <strong style="color: var(--text-primary);">ID Option:</strong>
-                                                                <span style="color: var(--text-secondary);">#{{ $option->id }}</span>
-                                                            </div>
-                                                            <div style="margin-bottom: var(--space-sm);">
-                                                                <strong style="color: var(--text-primary);">Statut:</strong>
-                                                                <span class="badge {{ $option->is_active ? 'success' : 'secondary' }}">
-                                                                    {{ $option->is_active ? 'Actif' : 'Inactif' }}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-6">
-                                                            <div style="margin-bottom: var(--space-sm);">
-                                                                <strong style="color: var(--text-primary);">Créé le:</strong>
-                                                                <span style="color: var(--text-secondary);">{{ $option->created_at?->format('d/m/Y H:i') ?: 'N/A' }}</span>
-                                                            </div>
-                                                            <div style="margin-bottom: var(--space-sm);">
-                                                                <strong style="color: var(--text-primary);">Modifié le:</strong>
-                                                                <span style="color: var(--text-secondary);">{{ $option->updated_at?->format('d/m/Y H:i') ?: 'N/A' }}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                @else
-                                    <div style="text-align: center; padding: var(--space-lg); color: var(--text-muted);">
-                                        <i class="fas fa-plus-circle fa-2x" style="margin-bottom: var(--space-sm);"></i>
-                                        <p>Aucune option configurée</p>
-                                        <small>Ajoutez des options comme les arrêts de transport ou les menus de cantine</small>
-                                    </div>
-                                @endif
-                            </div>
-
-
-                            <!-- Formulaire d'ajout d'option -->
-                            <div class="add-option-form">
-                                <div style="font-weight: 600; color: var(--accent-blue); margin-bottom: var(--space-md);">
-                                    <i class="fas fa-plus me-2"></i>Ajouter une option
-                                </div>
-                                <form method="POST" action="{{ route('esbtp.frais.variants.store') }}">
-                                    @csrf
-                                    <input type="hidden" name="category_id" value="{{ $category->id }}">
-                                    
-                                    <div class="row">
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label style="font-weight: 600; color: var(--text-primary);">Nom</label>
-                                                <input type="text" name="name" class="form-control" placeholder="Ex: Arrêt Centre-ville" required>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label style="font-weight: 600; color: var(--text-primary);">Prix (F CFA)</label>
-                                                <input type="number" name="additional_amount" class="form-control" placeholder="15000" required>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div class="form-group">
-                                                <label style="font-weight: 600; color: var(--text-primary);">Action</label>
-                                                <button type="submit" class="btn-acasi primary" style="width: 100%;">
-                                                    <i class="fas fa-plus me-1"></i>Ajouter
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="form-group" style="margin-top: var(--space-sm);">
-                                        <label style="font-weight: 600; color: var(--text-primary);">Description (optionnel)</label>
-                                        <input type="text" name="description" class="form-control" placeholder="Description de l'option">
-                                    </div>
-                                </form>
+                            <div class="mt-1">
+                                <span class="oc-type-badge">{{ ucfirst($category->category_type ?? 'autre') }}</span>
                             </div>
                         </div>
+                        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                            <span class="oc-status-pill {{ $category->is_active ? 'active' : 'inactive' }}">
+                                <i class="fas fa-circle" style="font-size:7px;"></i>
+                                {{ $category->is_active ? 'Actif' : 'Inactif' }}
+                            </span>
+                        </div>
                     </div>
-                @endforeach
-            </div>
+
+                    {{-- Options list --}}
+                    <div class="oc-options-body">
+                        <div class="oc-options-header">
+                            <span class="oc-options-section-label">
+                                <i class="fas fa-layer-group me-1"></i>Formules disponibles
+                            </span>
+                            <span class="oc-options-counter">{{ $category->options->count() }}</span>
+                        </div>
+
+                        @if($category->options->count() > 0)
+                            @foreach($category->options as $option)
+                                @php
+                                    $assignments = $option->assignments ?? collect();
+                                @endphp
+                                <div class="oc-option-row" data-option-id="{{ $option->id }}">
+                                    <div class="oc-option-info">
+                                        <div class="oc-option-name">{{ $option->name }}</div>
+                                        @if($option->description)
+                                            <div class="oc-option-desc">{{ $option->description }}</div>
+                                        @endif
+                                        {{-- Assignment badges — id préservé pour refreshOptionAssignments() JS --}}
+                                        <div class="oc-option-assignments" id="assignment-badges-{{ $option->id }}">
+                                            @if($assignments->count() > 0)
+                                                @foreach($assignments as $assignment)
+                                                    <span class="oc-assign-tag">
+                                                        <i class="fas fa-users"></i>{{ $assignment->display_label }}
+                                                    </span>
+                                                @endforeach
+                                            @else
+                                                <span class="oc-assign-tag empty">
+                                                    <i class="fas fa-minus"></i>Non assigné
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="oc-option-price">
+                                        {{ number_format($option->additional_amount, 0, ',', ' ') }}
+                                        <small>F CFA / an</small>
+                                    </div>
+                                    <div class="oc-option-actions">
+                                        <button type="button"
+                                                class="oc-btn-icon oc-edit"
+                                                onclick="editOption({{ $option->id }}, '{{ addslashes($option->name) }}', {{ $option->additional_amount }}, '{{ addslashes($option->description ?? '') }}')"
+                                                title="Modifier">
+                                            <i class="fas fa-pencil-alt"></i>
+                                        </button>
+                                        <button type="button"
+                                                class="oc-btn-icon oc-assign"
+                                                onclick="manageAssignments({{ $option->id }}, '{{ addslashes($option->name) }}')"
+                                                title="Gérer les assignations">
+                                            <i class="fas fa-users"></i>
+                                        </button>
+                                        <button type="button"
+                                                class="oc-btn-icon oc-delete"
+                                                onclick="deleteOption({{ $option->id }})"
+                                                title="Supprimer">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            @endforeach
+                        @else
+                            <div class="oc-options-empty">
+                                <i class="fas fa-inbox"></i>
+                                <p>Aucune formule configurée</p>
+                                <small>Utilisez le bouton ci-dessous pour ajouter votre première formule.</small>
+                            </div>
+                        @endif
+                    </div>
+
+                    {{-- Add-option zone --}}
+                    <div class="oc-add-zone">
+                        <button type="button"
+                                class="oc-add-trigger"
+                                onclick="toggleAddForm({{ $category->id }})">
+                            <i class="fas fa-plus-circle"></i>
+                            Ajouter une formule
+                        </button>
+                        <div class="oc-add-form" id="add-form-{{ $category->id }}">
+                            <form method="POST" action="{{ route('esbtp.frais.variants.store') }}">
+                                @csrf
+                                <input type="hidden" name="category_id" value="{{ $category->id }}">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="oc-add-form form-group mb-0" style="background:none;border:none;padding:0;margin-bottom:0;">
+                                            <label>Nom de la formule *</label>
+                                            <input type="text" name="name" class="form-control"
+                                                   placeholder="Ex : Arrêt Centre-ville" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="oc-add-form form-group mb-0" style="background:none;border:none;padding:0;margin-bottom:0;">
+                                            <label>Montant (F CFA) *</label>
+                                            <input type="number" name="additional_amount" class="form-control"
+                                                   placeholder="15 000" min="0" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 d-flex align-items-end">
+                                        <button type="submit" class="btn-acasi primary" style="width:100%;">
+                                            <i class="fas fa-plus"></i>Ajouter
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="oc-add-form form-group mt-2" style="background:none;border:none;padding:0;">
+                                    <label>Description <span style="font-weight:400;color:#94a3b8;">(optionnel)</span></label>
+                                    <input type="text" name="description" class="form-control"
+                                           placeholder="Brève description de la formule">
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>{{-- /.oc-category-card --}}
+            @endforeach
+
         @else
-            <div class="card-moderne" style="padding: var(--space-xl);">
-                <div class="empty-state">
-                    <i class="fas fa-sliders-h"></i>
-                    <p>Aucune catégorie optionnelle trouvée</p>
-                    <div style="font-size: var(--text-small); color: var(--text-muted); margin-top: var(--space-sm);">
-                        Créez d'abord des catégories de frais optionnels dans la gestion des catégories
-                    </div>
-                    <a href="{{ route('esbtp.frais.create') }}" class="btn-acasi primary" style="margin-top: var(--space-md);">
-                        <i class="fas fa-plus"></i>Créer une Catégorie
-                    </a>
+            {{-- Empty state global --}}
+            <div style="background:#fff;border:1.5px solid #e5e7eb;border-radius:14px;padding:56px 24px;text-align:center;">
+                <div style="width:64px;height:64px;border-radius:16px;background:#f1f5f9;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;">
+                    <i class="fas fa-sliders-h" style="font-size:26px;color:#94a3b8;"></i>
                 </div>
+                <h3 style="font-size:17px;font-weight:700;color:#1e293b;margin:0 0 8px;">Aucune catégorie optionnelle</h3>
+                <p style="font-size:13px;color:#94a3b8;margin:0 0 20px;max-width:380px;margin-inline:auto;">
+                    Créez d'abord des catégories de frais optionnels (transport, cantine…) depuis la gestion des catégories.
+                </p>
+                <a href="{{ route('esbtp.frais.create') }}" class="btn-acasi primary">
+                    <i class="fas fa-plus"></i>Créer une catégorie
+                </a>
             </div>
         @endif
 
-    </div>
-</div>
+    </div>{{-- /.main-content --}}
+</div>{{-- /.dashboard-acasi --}}
 
-<!-- Modal de modification d'option -->
+{{-- ── Modal : modifier une option ────────────────────────────────────── --}}
 <div class="modal fade" id="editOptionModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content modal-moderne">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-edit me-2"></i>
-                    Modifier l'option
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-content oc-modal-content">
+            <div class="oc-modal-header">
+                <h5><i class="fas fa-pencil-alt me-2" style="color:#0453cb;"></i>Modifier la formule</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="editOptionForm">
-                <div class="modal-body">
+                <div class="oc-modal-body">
                     <input type="hidden" id="editOptionId" name="option_id">
-                    
-                    <div class="form-group-moderne">
-                        <label for="editOptionName" class="form-label-moderne">Nom de l'option</label>
-                        <input type="text" class="form-input-moderne" id="editOptionName" name="name" required>
+                    <div class="oc-form-group">
+                        <label for="editOptionName">Nom de la formule</label>
+                        <input type="text" class="oc-form-control" id="editOptionName" name="name" required>
                     </div>
-                    
-                    <div class="form-group-moderne">
-                        <label for="editOptionDescription" class="form-label-moderne">Description</label>
-                        <textarea class="form-textarea-moderne" id="editOptionDescription" name="description" rows="2"></textarea>
+                    <div class="oc-form-group">
+                        <label for="editOptionDescription">Description <span style="font-weight:400;color:#94a3b8;">(optionnel)</span></label>
+                        <textarea class="oc-form-control" id="editOptionDescription" name="description" rows="2"></textarea>
                     </div>
-                    
-                    <div class="form-group-moderne">
-                        <label for="editOptionAmount" class="form-label-moderne">Montant (F CFA)</label>
-                        <input type="number" class="form-input-moderne" id="editOptionAmount" name="additional_amount" min="0" required>
+                    <div class="oc-form-group" style="margin-bottom:0;">
+                        <label for="editOptionAmount">Montant (F CFA)</label>
+                        <input type="number" class="oc-form-control" id="editOptionAmount" name="additional_amount" min="0" required>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="oc-modal-footer d-flex justify-content-end gap-2">
                     <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">
                         <i class="fas fa-times"></i>Annuler
                     </button>
                     <button type="submit" class="btn-acasi primary">
-                        <i class="fas fa-save"></i>Sauvegarder
+                        <i class="fas fa-save"></i>Enregistrer
                     </button>
                 </div>
             </form>
@@ -607,97 +544,95 @@ body.modal-open .card:hover {
     </div>
 </div>
 
-<!-- Modal de gestion des assignations -->
+{{-- ── Modal : gérer les assignations ─────────────────────────────────── --}}
 <div class="modal fade" id="assignmentsModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content modal-moderne">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-users me-2"></i>
-                    Gérer les assignations - <span id="assignmentOptionName"></span>
+        <div class="modal-content oc-modal-content">
+            <div class="oc-modal-header">
+                <h5>
+                    <i class="fas fa-users me-2" style="color:#059669;"></i>
+                    Assignations — <span id="assignmentOptionName" style="color:#0453cb;"></span>
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="oc-modal-body">
                 <input type="hidden" id="assignmentOptionId" name="option_id">
-                
-                <!-- Type d'assignation -->
-                <div style="margin-bottom: var(--space-lg);">
-                    <label style="font-weight: 600; color: var(--text-primary); display: block; margin-bottom: var(--space-sm);">Type d'assignation</label>
-                    <div style="display: flex; gap: var(--space-md); flex-wrap: wrap;">
-                        <label style="display: flex; align-items: center; gap: var(--space-xs);">
+
+                {{-- Type d'assignation --}}
+                <div class="oc-form-group">
+                    <label>Type d'assignation</label>
+                    <div class="oc-assign-type-grid">
+                        <label class="oc-assign-type-option">
                             <input type="radio" name="modal_assignment_type" value="all">
+                            <i class="fas fa-globe-africa"></i>
                             <span>Tous les étudiants</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: var(--space-xs);">
+                        <label class="oc-assign-type-option">
                             <input type="radio" name="modal_assignment_type" value="filiere">
+                            <i class="fas fa-sitemap"></i>
                             <span>Par filière</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: var(--space-xs);">
+                        <label class="oc-assign-type-option">
                             <input type="radio" name="modal_assignment_type" value="niveau">
+                            <i class="fas fa-layer-group"></i>
                             <span>Par niveau</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: var(--space-xs);">
+                        <label class="oc-assign-type-option">
                             <input type="radio" name="modal_assignment_type" value="classe">
-                            <span>Par classe (filière + niveau)</span>
+                            <i class="fas fa-school"></i>
+                            <span>Par classe</span>
                         </label>
                     </div>
                 </div>
 
-                <!-- Détails d'assignation -->
-                <div id="modal_assignment_details" style="display: none;">
-                    <div class="row">
+                {{-- Détails filières / niveaux --}}
+                <div id="modal_assignment_details" style="display:none;" class="oc-form-group">
+                    <div class="row g-3">
                         <div class="col-md-6">
-                            <div class="form-group">
-                                <label style="font-weight: 600; color: var(--text-primary);">Filières</label>
-                                <select multiple class="form-control" id="modal_filieres" style="height: 120px;">
-                                    @php
-                                        $filieres = \App\Models\ESBTPFiliere::where('is_active', true)->get();
-                                    @endphp
-                                    @foreach($filieres as $filiere)
-                                        <option value="{{ $filiere->id }}">{{ $filiere->name }}</option>
-                                    @endforeach
-                                </select>
-                                <small class="text-muted">Maintenez Ctrl pour sélectionner plusieurs filières</small>
-                            </div>
+                            <label>Filières</label>
+                            <select multiple class="oc-form-control" id="modal_filieres" style="height:120px;">
+                                @php $filieres = \App\Models\ESBTPFiliere::where('is_active', true)->get(); @endphp
+                                @foreach($filieres as $filiere)
+                                    <option value="{{ $filiere->id }}">{{ $filiere->name }}</option>
+                                @endforeach
+                            </select>
+                            <small style="color:#94a3b8;font-size:11px;">Ctrl+clic pour multi-sélection</small>
                         </div>
                         <div class="col-md-6">
-                            <div class="form-group">
-                                <label style="font-weight: 600; color: var(--text-primary);">Niveaux d'étude</label>
-                                <select multiple class="form-control" id="modal_niveaux" style="height: 120px;">
-                                    @php
-                                        $niveaux = \App\Models\ESBTPNiveauEtude::where('is_active', true)->get();
-                                    @endphp
-                                    @foreach($niveaux as $niveau)
-                                        <option value="{{ $niveau->id }}">{{ $niveau->name }}</option>
-                                    @endforeach
-                                </select>
-                                <small class="text-muted">Maintenez Ctrl pour sélectionner plusieurs niveaux</small>
-                            </div>
+                            <label>Niveaux d'étude</label>
+                            <select multiple class="oc-form-control" id="modal_niveaux" style="height:120px;">
+                                @php $niveaux = \App\Models\ESBTPNiveauEtude::where('is_active', true)->get(); @endphp
+                                @foreach($niveaux as $niveau)
+                                    <option value="{{ $niveau->id }}">{{ $niveau->name }}</option>
+                                @endforeach
+                            </select>
+                            <small style="color:#94a3b8;font-size:11px;">Ctrl+clic pour multi-sélection</small>
                         </div>
                     </div>
                 </div>
 
-                <!-- Assignations actuelles -->
-                <div id="currentAssignments" style="margin-top: var(--space-lg);">
-                    <h6 style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-sm);">
-                        <i class="fas fa-list me-2"></i>Assignations actuelles
-                    </h6>
-                    <div id="assignmentsList">
-                        <!-- Contenu chargé dynamiquement -->
+                {{-- Assignations actuelles --}}
+                <div class="oc-form-group" style="margin-bottom:0;">
+                    <label><i class="fas fa-list me-1"></i>Assignations actuelles</label>
+                    <div id="assignmentsList"
+                         style="min-height:48px;background:#f8fafc;border:1.5px solid #e5e7eb;border-radius:8px;padding:12px;">
+                        {{-- chargé dynamiquement --}}
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times"></i>Fermer
+            <div class="oc-modal-footer d-flex align-items-center justify-content-between">
+                <button type="button" class="btn-acasi danger" onclick="clearAllAssignments()"
+                        id="clearAssignmentsBtn" style="display:none;">
+                    <i class="fas fa-trash"></i>Tout supprimer
                 </button>
-                <button type="button" class="btn-acasi danger" onclick="clearAllAssignments()" id="clearAssignmentsBtn" style="display: none;">
-                    <i class="fas fa-trash"></i>Supprimer toutes
-                </button>
-                <button type="button" class="btn-acasi primary" onclick="saveOptionAssignment()">
-                    <i class="fas fa-save"></i>Sauvegarder les assignations
-                </button>
+                <div class="d-flex gap-2 ms-auto">
+                    <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i>Fermer
+                    </button>
+                    <button type="button" class="btn-acasi primary" onclick="saveOptionAssignment()">
+                        <i class="fas fa-save"></i>Sauvegarder
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -707,6 +642,13 @@ body.modal-open .card:hover {
 
 @push('scripts')
 <script>
+// Afficher/masquer le formulaire d'ajout d'une formule
+function toggleAddForm(categoryId) {
+    const form = document.getElementById('add-form-' + categoryId);
+    if (!form) return;
+    form.classList.toggle('open');
+}
+
 document.addEventListener('DOMContentLoaded', function() {
 
     // Gérer l'affichage des détails d'assignation dans la modal
