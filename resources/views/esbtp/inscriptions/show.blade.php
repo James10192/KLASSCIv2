@@ -2995,8 +2995,6 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
     </div>
 </div>
 
-@endsection
-
 <!-- ── Modal : Désabonner d'un frais optionnel ──────────────────────────── -->
 <div class="modal fade" id="unsubscribeModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width:460px;">
@@ -4511,3 +4509,5 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
 </script>
 
 <!-- Les styles z-index pour les modals sont gérés par modal-force-fix.css -->
+
+@endsection
