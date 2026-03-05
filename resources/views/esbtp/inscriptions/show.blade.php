@@ -1463,6 +1463,13 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                                                 <i class="fas fa-edit"></i>
                                                             </button>
                                                         @endif
+                                                        @if(!$item['is_mandatory'] && $item['subscription'])
+                                                            @can('inscriptions.edit')
+                                                                <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#unsubscribeModal" onclick="prepareUnsubscribeModal({{ $item['category']->id }}, {{ json_encode($item['category']->name) }}, {{ $item['subscription']->amount }}, {{ $item['total_paye'] }})" title="Désabonner l'étudiant de ce frais optionnel">
+                                                                    <i class="fas fa-user-minus"></i>
+                                                                </button>
+                                                            @endcan
+                                                        @endif
                                                         @if(!$item['is_configured'])
                                                             @can('frais.configure')
                                                                 <a href="{{ route('esbtp.frais.configure') }}?filiere_id={{ $inscription->filiere_id }}&niveau_id={{ $inscription->niveau_id }}" class="btn btn-sm btn-warning" title="Configurer ce frais">
@@ -1716,6 +1723,13 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                                     <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editSubscriptionModal" onclick="prepareEditSubscriptionModal({{ $item['subscription']->id }}, {{ json_encode($item['category']->name) }}, {{ $item['subscription']->amount }})" title="Modifier le montant">
                                                         <i class="fas fa-edit me-1"></i>Modifier
                                                     </button>
+                                                @endif
+                                                @if(!$item['is_mandatory'] && $item['subscription'])
+                                                    @can('inscriptions.edit')
+                                                        <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#unsubscribeModal" onclick="prepareUnsubscribeModal({{ $item['category']->id }}, {{ json_encode($item['category']->name) }}, {{ $item['subscription']->amount }}, {{ $item['total_paye'] }})" title="Désabonner">
+                                                            <i class="fas fa-user-minus me-1"></i>Désabonner
+                                                        </button>
+                                                    @endcan
                                                 @endif
                                                 @if($item['solde'] < 0)
                                                     @can('paiements.edit')
@@ -2982,6 +2996,69 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
 </div>
 
 @endsection
+
+<!-- ── Modal : Désabonner d'un frais optionnel ──────────────────────────── -->
+<div class="modal fade" id="unsubscribeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:460px;">
+        <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 20px 50px rgba(0,0,0,0.18);overflow:hidden;">
+
+            {{-- Header --}}
+            <div class="modal-header border-0 pb-0" style="padding:24px 24px 16px;">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:44px;height:44px;border-radius:12px;background:#fef2f2;display:flex;align-items:center;justify-content:center;color:#dc2626;font-size:20px;flex-shrink:0;">
+                        <i class="fas fa-user-minus"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0" style="font-size:16px;font-weight:700;color:#1e293b;">Désabonner l'étudiant</h5>
+                        <p class="mb-0 mt-1" style="font-size:12px;color:#64748b;" id="unsubscribeModalSubtitle">Frais optionnel</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <form method="POST" action="{{ route('esbtp.inscriptions.unsubscribe-optional-fee', $inscription->id) }}">
+                @csrf
+                <input type="hidden" name="frais_category_id" id="unsubscribeCategoryId">
+
+                <div class="modal-body" style="padding:16px 24px 8px;">
+
+                    {{-- Résumé frais --}}
+                    <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:16px;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">Frais concerné</div>
+                                <div style="font-size:14px;font-weight:700;color:#1e293b;" id="unsubscribeCategoryName">—</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">Montant souscrit</div>
+                                <div style="font-size:16px;font-weight:800;color:#0453cb;" id="unsubscribeMontant">—</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Alerte contextuelle (injectée par JS) --}}
+                    <div id="unsubscribeAlert"></div>
+
+                    <p style="font-size:13px;color:#475569;line-height:1.5;margin-bottom:0;">
+                        Voulez-vous retirer cet étudiant de ce frais optionnel ?
+                        L'étudiant n'apparaîtra plus dans la liste des souscripteurs.
+                    </p>
+                </div>
+
+                <div class="modal-footer border-0" style="padding:16px 24px 24px;gap:10px;">
+                    <button type="button" class="btn btn-light fw-600" data-bs-dismiss="modal"
+                            style="border-radius:10px;padding:9px 20px;font-weight:600;font-size:13px;">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                    <button type="submit" class="btn btn-danger fw-600"
+                            style="border-radius:10px;padding:9px 20px;font-weight:700;font-size:13px;">
+                        <i class="fas fa-user-minus me-1"></i>Désabonner
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <!-- Modal d'édition de souscription (SuperAdmin) -->
 <div class="modal fade" id="editSubscriptionModal" tabindex="-1" aria-labelledby="editSubscriptionModalLabel" aria-hidden="true">
@@ -4399,6 +4476,38 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
             });
         }
     });
+
+    // ── Désabonnement frais optionnel ─────────────────────────────────────
+    window.prepareUnsubscribeModal = function(categoryId, categoryName, montantSouscrit, montantPaye) {
+        document.getElementById('unsubscribeCategoryId').value  = categoryId;
+        document.getElementById('unsubscribeCategoryName').textContent = categoryName;
+        document.getElementById('unsubscribeModalSubtitle').textContent = 'Frais optionnel — ' + categoryName;
+        document.getElementById('unsubscribeMontant').textContent =
+            new Intl.NumberFormat('fr-FR').format(montantSouscrit) + ' FCFA';
+
+        const alertEl = document.getElementById('unsubscribeAlert');
+        if (montantPaye > 0) {
+            alertEl.innerHTML = `
+                <div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px;">
+                    <i class="fas fa-exclamation-triangle" style="color:#dc2626;font-size:15px;margin-top:1px;flex-shrink:0;"></i>
+                    <div>
+                        <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:3px;">Paiements enregistrés</div>
+                        <div style="font-size:12px;color:#7f1d1d;line-height:1.45;">
+                            ${new Intl.NumberFormat('fr-FR').format(montantPaye)} FCFA déjà payés pour ce frais.
+                            Le désabonnement n'annule <strong>pas</strong> les paiements existants.
+                        </div>
+                    </div>
+                </div>`;
+        } else {
+            alertEl.innerHTML = `
+                <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+                    <i class="fas fa-check-circle" style="color:#16a34a;font-size:15px;flex-shrink:0;"></i>
+                    <div style="font-size:12px;color:#14532d;line-height:1.45;">
+                        Aucun paiement enregistré pour ce frais. Le désabonnement est sans risque.
+                    </div>
+                </div>`;
+        }
+    };
 </script>
 
 <!-- Les styles z-index pour les modals sont gérés par modal-force-fix.css -->
