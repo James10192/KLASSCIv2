@@ -1383,6 +1383,7 @@ document.addEventListener('DOMContentLoaded', function() {
                            name="frais[${category.id}][variant_id]"
                            value="default"
                            id="frais_${category.id}_default"
+                           data-amount="${baseAmt}"
                            style="display:none;">
                     <div class="optional-options-label">Montant applicable</div>
                     <div class="frais-single-amount">
@@ -1403,6 +1404,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                    name="frais[${category.id}][variant_id]"
                                    value="${option.id}"
                                    id="frais_${category.id}_${option.id}"
+                                   data-amount="${totalAmt}"
                                    style="display:none;">
                             <div class="frais-option-check"><i class="fas fa-check"></i></div>
                             <div class="frais-option-name">${option.name}</div>
@@ -1475,6 +1477,7 @@ document.addEventListener('DOMContentLoaded', function() {
                            name="frais[${category.id}][variant_id]"
                            value="default"
                            id="frais_${category.id}_default"
+                           data-amount="${parseFloat(defaultAmount) || 0}"
                            checked>
                     <label class="form-check-label" for="frais_${category.id}_default">
                         ${configurationType === 'variant' ? 'Tarif configuré pour cette classe' :
@@ -1499,7 +1502,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         <input class="form-check-input frais-option" type="radio"
                                name="frais[${category.id}][variant_id]"
                                value="${option.id}"
-                               id="frais_${category.id}_${option.id}">
+                               id="frais_${category.id}_${option.id}"
+                               data-amount="${totalAmount}">
                         <label class="form-check-label" for="frais_${category.id}_${option.id}">
                             ${option.name} — <strong>${totalAmount.toLocaleString()} FCFA</strong>
                             ${option.description ? `<small class="text-muted d-block">${option.description}</small>` : ''}
@@ -1537,6 +1541,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         selectedOptions.forEach(option => {
             if (!option.value || option.value === '') return;
+
+            // Lire le montant depuis data-amount (présent sur tous les radios)
+            const amount = parseInt(option.dataset.amount) || 0;
+            if (amount <= 0) return;
+
+            // Lire le nom de la catégorie depuis le .frais-card parent
             const fraisCard = option.closest('.frais-card');
             let categoryName = 'Frais';
             if (fraisCard) {
@@ -1546,16 +1556,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     categoryName = text.split('\n')[0].trim() || categoryName;
                 }
             }
-            const label = option.closest('.form-check')?.querySelector('label')?.textContent || '';
-            const match = label.match(/(\d+(?:[.,\s]\d{3})*)/);
-            if (match) {
-                const amount = parseInt(match[1].replace(/[.,\s]/g, '')) || 0;
-                totalAmount += amount;
-                resumeHTML += `<div class="d-flex justify-content-between mb-1" style="font-size:13px;">
+
+            totalAmount += amount;
+            resumeHTML += `<div class="d-flex justify-content-between mb-1" style="font-size:13px;">
                     <span>${categoryName}</span>
                     <span class="fw-bold">${amount.toLocaleString()} FCFA</span>
                 </div>`;
-            }
         });
 
         if (resumeHTML) {

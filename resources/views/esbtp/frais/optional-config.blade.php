@@ -457,14 +457,14 @@ body.modal-open * {
                                 <input type="hidden" name="category_id" value="{{ $category->id }}">
                                 <div class="row">
                                     <div class="col-md-4">
-                                        <div class="oc-add-form form-group mb-0" style="background:none;border:none;padding:0;margin-bottom:0;">
+                                        <div class="form-group mb-0">
                                             <label>Nom de la formule *</label>
                                             <input type="text" name="name" class="form-control"
                                                    placeholder="Ex : Arrêt Centre-ville" required>
                                         </div>
                                     </div>
                                     <div class="col-md-4">
-                                        <div class="oc-add-form form-group mb-0" style="background:none;border:none;padding:0;margin-bottom:0;">
+                                        <div class="form-group mb-0">
                                             <label>Montant (F CFA) *</label>
                                             <input type="number" name="additional_amount" class="form-control"
                                                    placeholder="15 000" min="0" required>
@@ -476,7 +476,7 @@ body.modal-open * {
                                         </button>
                                     </div>
                                 </div>
-                                <div class="oc-add-form form-group mt-2" style="background:none;border:none;padding:0;">
+                                <div class="form-group mt-2">
                                     <label>Description <span style="font-weight:400;color:#94a3b8;">(optionnel)</span></label>
                                     <input type="text" name="description" class="form-control"
                                            placeholder="Brève description de la formule">
