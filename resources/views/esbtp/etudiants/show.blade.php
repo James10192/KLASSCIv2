@@ -461,9 +461,9 @@
             <p class="hero-sub">
                 @php $inscA = $etudiant->inscriptions->firstWhere('status', 'active') ?? $etudiant->inscriptions->first(); @endphp
                 @if($inscA && $inscA->classe)
-                    {{ $inscA->classe->nom }}
-                    @if($inscA->classe->filiere) · {{ $inscA->classe->filiere->nom }} @endif
-                    @if($inscA->classe->niveau) · {{ $inscA->classe->niveau->nom }} @endif
+                    {{ $inscA->classe->name }}
+                    @if($inscA->classe->filiere) · {{ $inscA->classe->filiere->name }} @endif
+                    @if($inscA->classe->niveau) · {{ $inscA->classe->niveau->name ?? $inscA->classe->niveau->nom ?? '' }} @endif
                 @else
                     Étudiant
                 @endif
@@ -720,11 +720,11 @@
             </div>
             <div class="info-row">
                 <span class="info-lbl">Classe actuelle</span>
-                <span class="info-val">{{ $inscA?->classe?->nom ?? '—' }}</span>
+                <span class="info-val">{{ $inscA?->classe?->name ?? '—' }}</span>
             </div>
             <div class="info-row">
                 <span class="info-lbl">Filière</span>
-                <span class="info-val">{{ $inscA?->classe?->filiere?->nom ?? '—' }}</span>
+                <span class="info-val">{{ $inscA?->classe?->filiere?->name ?? '—' }}</span>
             </div>
             <div class="info-row">
                 <span class="info-lbl">Email</span>
@@ -774,8 +774,8 @@
                 </span>
             </div>
             <div class="insc-meta">
-                @if($insc->classe) <span><i class="fas fa-chalkboard"></i> {{ $insc->classe->nom }}</span> @endif
-                @if($insc->classe?->filiere) <span><i class="fas fa-project-diagram"></i> {{ $insc->classe->filiere->nom }}</span> @endif
+                @if($insc->classe) <span><i class="fas fa-chalkboard"></i> {{ $insc->classe->name }}</span> @endif
+                @if($insc->classe?->filiere) <span><i class="fas fa-project-diagram"></i> {{ $insc->classe->filiere->name }}</span> @endif
                 <span><i class="fas fa-calendar-alt"></i> {{ $insc->created_at?->format('d/m/Y') ?? '—' }}</span>
             </div>
             <div class="insc-actions">
