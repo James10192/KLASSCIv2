@@ -401,7 +401,8 @@ class ESBTPEtudiantController extends Controller
                 $q->with('etudiants'); // Pour afficher les autres étudiants du même parent
             },
             'inscriptions' => function($q) {
-                $q->with(['filiere', 'niveauEtude', 'classe', 'anneeUniversitaire', 'paiements'])
+                $q->with(['filiere', 'niveauEtude', 'anneeUniversitaire', 'paiements',
+                          'classe' => fn($cq) => $cq->with(['filiere', 'niveauEtude'])])
                   ->orderBy('created_at', 'desc');
             },
             'paiements' => function($q) {
