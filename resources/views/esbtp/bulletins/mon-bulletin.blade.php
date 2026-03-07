@@ -253,7 +253,7 @@
                 <div class="text-end">
                     <div class="badge" style="background: rgba(255, 255, 255, 0.2); color: white; padding: var(--space-sm) var(--space-md); border-radius: var(--radius-medium); font-size: var(--text-sm);">
                         <i class="fas fa-calendar me-2"></i>
-                        Année {{ date('Y') }}-{{ date('Y')+1 }}
+                        Année {{ $anneeCourante->annee_debut ?? ($anneeCourante->name ?? date('Y')) }}-{{ $anneeCourante->annee_fin ?? (isset($anneeCourante->annee_debut) ? $anneeCourante->annee_debut + 1 : date('Y')+1) }}
                     </div>
                 </div>
             </div>
@@ -312,7 +312,13 @@
                             <div>
                                 <div class="bulletin-title">
                                     <i class="fas fa-calendar-alt text-primary me-2"></i>
-                                    {{ $bulletin->anneeUniversitaire->annee_debut ?? '' }}-{{ $bulletin->anneeUniversitaire->annee_fin ?? '' }}
+                                    @if($bulletin->anneeUniversitaire && ($bulletin->anneeUniversitaire->annee_debut || $bulletin->anneeUniversitaire->annee_fin))
+                                        {{ $bulletin->anneeUniversitaire->annee_debut ?? '' }}-{{ $bulletin->anneeUniversitaire->annee_fin ?? '' }}
+                                    @elseif($bulletin->anneeUniversitaire && $bulletin->anneeUniversitaire->name)
+                                        {{ $bulletin->anneeUniversitaire->name }}
+                                    @else
+                                        Année non définie
+                                    @endif
                                 </div>
                                 <div class="bulletin-subtitle">
                                     @if($bulletin->periode == 'semestre1')

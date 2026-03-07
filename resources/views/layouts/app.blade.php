@@ -196,8 +196,9 @@
         .custom-dropdown {
             min-width: 360px !important;
             max-width: 380px !important;
+            max-height: min(520px, calc(100vh - 100px)) !important;
             border: 1px solid rgba(99, 102, 241, 0.08) !important;
-            box-shadow: 
+            box-shadow:
                 0 20px 25px -5px rgba(0, 0, 0, 0.1),
                 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
             border-radius: 20px !important;
@@ -206,6 +207,33 @@
             background: rgba(255, 255, 255, 0.98) !important;
             backdrop-filter: blur(20px) !important;
             overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+
+        #notifications-list,
+        #messages-list {
+            max-height: 320px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
+        }
+
+        #notifications-list::-webkit-scrollbar,
+        #messages-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #notifications-list::-webkit-scrollbar-track,
+        #messages-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #notifications-list::-webkit-scrollbar-thumb,
+        #messages-list::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.3);
+            border-radius: 4px;
         }
 
         .custom-dropdown::before {
