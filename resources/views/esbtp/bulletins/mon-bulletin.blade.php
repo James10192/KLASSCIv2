@@ -20,8 +20,7 @@
 
 /* ---- Layout ---- */
 .bulletins-page .main-content {
-    max-width: 860px;
-    margin: 0 auto;
+    max-width: 100%;
 }
 
 /* ---- Hero header ---- */
