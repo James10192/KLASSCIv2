@@ -459,7 +459,7 @@
         <div class="hero-text">
             <h1 class="hero-name">{{ strtoupper($etudiant->nom) }} {{ $etudiant->prenoms }}</h1>
             <p class="hero-sub">
-                @php $inscA = $etudiant->inscriptions->firstWhere('statut', 'actif') ?? $etudiant->inscriptions->first(); @endphp
+                @php $inscA = $etudiant->inscriptions->firstWhere('status', 'active') ?? $etudiant->inscriptions->first(); @endphp
                 @if($inscA && $inscA->classe)
                     {{ $inscA->classe->nom }}
                     @if($inscA->classe->filiere) · {{ $inscA->classe->filiere->nom }} @endif
@@ -523,7 +523,7 @@
 
         // taux presence depuis les absences de l'étudiant
         $tauxPresence = null;
-        $inscActive = $etudiant->inscriptions->firstWhere('statut', 'actif') ?? $etudiant->inscriptions->first();
+        $inscActive = $etudiant->inscriptions->firstWhere('status', 'active') ?? $etudiant->inscriptions->first();
         if ($inscActive && $inscActive->anneeUniversitaire) {
             $anneeId = $inscActive->anneeUniversitaire->id;
             $attStats = \App\Models\ESBTPAttendance::where('etudiant_id', $etudiant->id)
@@ -761,16 +761,16 @@
                 <i class="fas fa-plus"></i> Nouvelle
             </a>
         </div>
-        @foreach($etudiant->inscriptions->sortByDesc(fn($i) => $i->annee_universitaire ?? '') as $insc)
+        @foreach($etudiant->inscriptions->sortByDesc(fn($i) => $i->anneeUniversitaire?->libelle ?? '') as $insc)
         @php
-            $statInsc = $insc->statut ?? 'pending';
-            $anneeLabel = $insc->annee_universitaire ?? ($insc->anneeAcademique?->libelle ?? 'N/A');
+            $statInsc = $insc->status ?? 'pending';
+            $anneeLabel = $insc->anneeUniversitaire?->libelle ?? 'N/A';
         @endphp
         <div class="insc-card">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
                 <div class="insc-year">{{ $anneeLabel }}</div>
-                <span class="status-chip {{ $statInsc === 'actif' ? 'actif' : ($statInsc === 'validé' ? 'actif' : 'inactif') }}">
-                    {{ ucfirst($statInsc) }}
+                <span class="status-chip {{ in_array($statInsc, ['active', 'actif', 'validé']) ? 'actif' : 'inactif' }}">
+                    {{ $statInsc === 'active' ? 'Active' : ucfirst($statInsc) }}
                 </span>
             </div>
             <div class="insc-meta">
@@ -1028,7 +1028,7 @@
         $allPaiements = collect();
         foreach($etudiant->inscriptions as $insc) {
             foreach($insc->paiements ?? [] as $pai) {
-                $pai->_annee = $insc->annee_universitaire ?? ($insc->anneeAcademique?->libelle ?? 'N/A');
+                $pai->_annee = $insc->anneeUniversitaire?->libelle ?? 'N/A';
                 $allPaiements->push($pai);
             }
         }
