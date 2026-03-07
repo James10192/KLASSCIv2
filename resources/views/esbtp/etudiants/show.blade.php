@@ -488,7 +488,7 @@
         <div style="position:absolute; top:16px; right:16px; z-index:10">
             <span style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,.15); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.3); color:#fff; font-size:.78rem; font-weight:700; padding:6px 14px; border-radius:20px; letter-spacing:.02em;">
                 <i class="fas fa-calendar-alt"></i>
-                {{ $inscA->anneeUniversitaire->libelle ?? $inscA->anneeUniversitaire->name ?? 'N/A' }}
+                {{ $inscA->anneeUniversitaire->name ?? 'N/A' }}
             </span>
         </div>
         @endif
@@ -761,10 +761,10 @@
                 <i class="fas fa-plus"></i> Nouvelle
             </a>
         </div>
-        @foreach($etudiant->inscriptions->sortByDesc(fn($i) => $i->anneeUniversitaire?->libelle ?? '') as $insc)
+        @foreach($etudiant->inscriptions->sortByDesc(fn($i) => $i->anneeUniversitaire?->name ?? '') as $insc)
         @php
             $statInsc = $insc->status ?? 'pending';
-            $anneeLabel = $insc->anneeUniversitaire?->libelle ?? 'N/A';
+            $anneeLabel = $insc->anneeUniversitaire?->name ?? 'N/A';
         @endphp
         <div class="insc-card">
             <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
@@ -803,8 +803,8 @@
     @if($inscriptionsTriees->count())
         @foreach($inscriptionsTriees as $inscAc)
         @php
-            $anneeLabel = optional($inscAc->anneeUniversitaire)->libelle ?? optional($inscAc->anneeUniversitaire)->name ?? 'Année N/A';
-            $classeLabel = optional($inscAc->classe)->nom;
+            $anneeLabel = optional($inscAc->anneeUniversitaire)->name ?? 'Année N/A';
+            $classeLabel = optional($inscAc->classe)->name;
             $bulletinsAc = \App\Models\ESBTPBulletin::where('etudiant_id', $etudiant->id)
                 ->where('annee_universitaire_id', optional($inscAc->anneeUniversitaire)->id)
                 ->orderBy('periode')
@@ -921,7 +921,7 @@
         @foreach($inscriptionsPresences as $inscPres)
         @php
             $anneePresId = optional($inscPres->anneeUniversitaire)->id;
-            $anneePresLabel = optional($inscPres->anneeUniversitaire)->libelle ?? optional($inscPres->anneeUniversitaire)->name ?? 'Année N/A';
+            $anneePresLabel = optional($inscPres->anneeUniversitaire)->name ?? 'Année N/A';
             $attRow = $anneePresId
                 ? \App\Models\ESBTPAttendance::where('etudiant_id', $etudiant->id)
                     ->where('annee_universitaire_id', $anneePresId)
@@ -1028,7 +1028,7 @@
         $allPaiements = collect();
         foreach($etudiant->inscriptions as $insc) {
             foreach($insc->paiements ?? [] as $pai) {
-                $pai->_annee = $insc->anneeUniversitaire?->libelle ?? 'N/A';
+                $pai->_annee = $insc->anneeUniversitaire?->name ?? 'N/A';
                 $allPaiements->push($pai);
             }
         }
