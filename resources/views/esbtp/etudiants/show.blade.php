@@ -480,11 +480,18 @@
                 @if($etudiant->nationalite)
                     <span class="hero-pill"><i class="fas fa-flag"></i> {{ $etudiant->nationalite }}</span>
                 @endif
-                @if($inscA)
-                    <span class="hero-pill amber"><i class="fas fa-calendar"></i> {{ $inscA->annee_universitaire ?? ($inscA->anneeAcademique->libelle ?? 'N/A') }}</span>
-                @endif
             </div>
         </div>
+
+        {{-- Année courante — top-right --}}
+        @if($inscA && $inscA->anneeUniversitaire)
+        <div style="position:absolute; top:16px; right:16px; z-index:10">
+            <span style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,.15); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.3); color:#fff; font-size:.78rem; font-weight:700; padding:6px 14px; border-radius:20px; letter-spacing:.02em;">
+                <i class="fas fa-calendar-alt"></i>
+                {{ $inscA->anneeUniversitaire->libelle ?? $inscA->anneeUniversitaire->name ?? 'N/A' }}
+            </span>
+        </div>
+        @endif
 
         {{-- Actions --}}
         <div class="hero-actions">
@@ -514,11 +521,18 @@
         $totalAbsences   = $etudiant->absences->count();
         $nbInscriptions  = $etudiant->inscriptions->count();
 
-        // taux presence depuis dossier si disponible
+        // taux presence depuis les absences de l'étudiant
         $tauxPresence = null;
-        if(isset($dossier['presences']['annees']) && count($dossier['presences']['annees'])) {
-            $first = reset($dossier['presences']['annees']);
-            $tauxPresence = $first['taux_presence'] ?? null;
+        $inscActive = $etudiant->inscriptions->firstWhere('statut', 'actif') ?? $etudiant->inscriptions->first();
+        if ($inscActive && $inscActive->anneeUniversitaire) {
+            $anneeId = $inscActive->anneeUniversitaire->id;
+            $attStats = \App\Models\ESBTPAttendance::where('etudiant_id', $etudiant->id)
+                ->where('annee_universitaire_id', $anneeId)
+                ->selectRaw("COUNT(*) as total, SUM(CASE WHEN statut='present' THEN 1 ELSE 0 END) as nb_pres, SUM(CASE WHEN statut IN ('retard','late') THEN 1 ELSE 0 END) as nb_ret")
+                ->first();
+            if ($attStats && $attStats->total > 0) {
+                $tauxPresence = round((($attStats->nb_pres + $attStats->nb_ret) / $attStats->total) * 100, 1);
+            }
         }
     @endphp
     <div class="hero-kpi-strip">
@@ -586,34 +600,21 @@
 
     {{-- KPI Cards --}}
     @php
-        // Calcul KPI globaux depuis $dossier
+        // Calcul KPI globaux depuis les vraies variables
         $kpiMoyenneGen = null;
-        $kpiTauxPres   = null;
-        $kpiAbsTotal   = 0;
-        $kpiPaiTotal   = 0;
+        $kpiTauxPres   = $tauxPresence;
+        $kpiAbsTotal   = $etudiant->absences->count();
+        $kpiPaiTotal   = $statistiques['paiements_valides'] ?? 0;
         $kpiPaiDu      = 0;
 
-        if(isset($dossier['academique']['annees'])) {
-            $allMoys = [];
-            foreach($dossier['academique']['annees'] as $annee) {
-                foreach($annee['semestres'] ?? [] as $sem) {
-                    if($sem['moyenne_generale'] !== null) $allMoys[] = $sem['moyenne_generale'];
-                }
+        // Moyenne depuis bulletins de l'inscription active
+        $allMoys = [];
+        foreach($etudiant->inscriptions as $inscIt) {
+            foreach($inscIt->bulletins ?? [] as $bul) {
+                if($bul->moyenne_generale !== null) $allMoys[] = $bul->moyenne_generale;
             }
-            if(count($allMoys)) $kpiMoyenneGen = round(array_sum($allMoys)/count($allMoys),2);
         }
-        if(isset($dossier['presences']['annees'])) {
-            $allTaux = [];
-            foreach($dossier['presences']['annees'] as $an) {
-                if($an['taux_presence'] !== null) $allTaux[] = $an['taux_presence'];
-                $kpiAbsTotal += ($an['nb_absences'] ?? 0) + ($an['nb_absences_just'] ?? 0);
-            }
-            if(count($allTaux)) $kpiTauxPres = round(array_sum($allTaux)/count($allTaux),1);
-        }
-        if(isset($dossier['financier'])) {
-            $kpiPaiTotal = $dossier['financier']['total_paye'] ?? 0;
-            $kpiPaiDu    = $dossier['financier']['total_restant'] ?? 0;
-        }
+        if(count($allMoys)) $kpiMoyenneGen = round(array_sum($allMoys)/count($allMoys), 2);
     @endphp
 
     <div class="kpi-grid">
@@ -796,32 +797,43 @@
 
 {{-- ─── TAB: ACADÉMIQUE ────────────────────────────────────────── --}}
 <div class="tab-panel" id="tab-academique">
-    @if(isset($dossier['academique']['annees']) && count($dossier['academique']['annees']))
-        @foreach($dossier['academique']['annees'] as $anneeKey => $anneeData)
+    @php
+        $inscriptionsTriees = $etudiant->inscriptions->sortByDesc(fn($i) => optional($i->anneeUniversitaire)->start_date);
+    @endphp
+    @if($inscriptionsTriees->count())
+        @foreach($inscriptionsTriees as $inscAc)
+        @php
+            $anneeLabel = optional($inscAc->anneeUniversitaire)->libelle ?? optional($inscAc->anneeUniversitaire)->name ?? 'Année N/A';
+            $classeLabel = optional($inscAc->classe)->nom;
+            $bulletinsAc = \App\Models\ESBTPBulletin::where('etudiant_id', $etudiant->id)
+                ->where('annee_universitaire_id', optional($inscAc->anneeUniversitaire)->id)
+                ->orderBy('periode')
+                ->get();
+        @endphp
         <div class="s-card">
             <div class="s-card-header">
                 <div class="s-card-title">
                     <div class="s-card-title-icon"><i class="fas fa-calendar-alt"></i></div>
-                    {{ $anneeData['libelle'] ?? $anneeKey }}
-                    @if($anneeData['classe'] ?? null)
-                        <span style="font-size:.78rem; font-weight:500; color:var(--k-muted)">— {{ $anneeData['classe'] }}</span>
+                    {{ $anneeLabel }}
+                    @if($classeLabel)
+                        <span style="font-size:.78rem; font-weight:500; color:var(--k-muted)">— {{ $classeLabel }}</span>
                     @endif
                 </div>
-                @if(($anneeData['moyenne_annuelle'] ?? null) !== null)
-                    @php $ma = $anneeData['moyenne_annuelle']; @endphp
+                @if($bulletinsAc->avg('moyenne_generale') !== null)
+                    @php $ma = round($bulletinsAc->avg('moyenne_generale'), 2); @endphp
                     <span class="sem-score {{ $ma >= 12 ? 'green' : ($ma >= 10 ? 'amber' : 'red') }}">
                         {{ number_format($ma, 2) }}/20
                     </span>
                 @endif
             </div>
 
-            @if(!empty($anneeData['semestres']))
+            @if($bulletinsAc->count())
                 <div class="semestre-grid">
-                @foreach($anneeData['semestres'] as $semKey => $sem)
-                @php $mg = $sem['moyenne_generale'] ?? null; @endphp
+                @foreach($bulletinsAc as $bul)
+                @php $mg = $bul->moyenne_generale; @endphp
                 <div class="sem-card">
                     <div class="sem-card-head">
-                        <span class="sem-card-name">{{ $sem['libelle'] ?? $semKey }}</span>
+                        <span class="sem-card-name">{{ ucfirst(str_replace('semestre', 'Semestre ', $bul->periode)) }}</span>
                         @if($mg !== null)
                             <span class="sem-score {{ $mg >= 12 ? 'green' : ($mg >= 10 ? 'amber' : 'red') }}">
                                 {{ number_format($mg, 2) }}
@@ -829,24 +841,64 @@
                         @endif
                     </div>
                     <div class="sem-card-body">
-                        @if(!empty($sem['matieres']))
-                            @foreach($sem['matieres'] as $mat)
-                            @php $n = $mat['note'] ?? $mat['moyenne'] ?? null; @endphp
+                        @if($bul->rang)
                             <div class="mat-row">
-                                <span class="mat-name">{{ $mat['nom'] ?? $mat['matiere'] ?? '—' }}</span>
-                                @if(isset($mat['coefficient'])) <span class="mat-coeff">Coeff. {{ $mat['coefficient'] }}</span> @endif
+                                <span class="mat-name" style="font-weight:600">Rang</span>
+                                <span class="mat-note good">{{ $bul->rang }}</span>
+                            </div>
+                        @endif
+                        @if($bul->mention)
+                            <div class="mat-row">
+                                <span class="mat-name" style="font-weight:600">Mention</span>
+                                <span class="mat-coeff">{{ $bul->mention }}</span>
+                            </div>
+                        @endif
+                        <div class="mat-row" style="margin-top:8px">
+                            <a href="{{ route('esbtp.bulletins.download', $bul) }}" class="insc-btn pdf" style="font-size:.75rem; padding:4px 10px" target="_blank">
+                                <i class="fas fa-file-pdf"></i> Bulletin PDF
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+                </div>
+            @else
+                {{-- Pas de bulletin calculé — afficher les résultats bruts si dispo --}}
+                @php
+                    $resultatsAc = \App\Models\ESBTPResultat::where('etudiant_id', $etudiant->id)
+                        ->whereHas('evaluation', fn($q) => $q->where('annee_universitaire_id', optional($inscAc->anneeUniversitaire)->id))
+                        ->with(['matiere', 'evaluation'])
+                        ->get()
+                        ->groupBy(fn($r) => $r->evaluation->semestre ?? 'N/A');
+                @endphp
+                @if($resultatsAc->count())
+                    <div class="semestre-grid">
+                    @foreach($resultatsAc as $semNum => $resultsSem)
+                    <div class="sem-card">
+                        <div class="sem-card-head">
+                            <span class="sem-card-name">Semestre {{ $semNum }}</span>
+                            @php $mgR = round($resultsSem->avg('moyenne'), 2); @endphp
+                            @if($mgR)
+                                <span class="sem-score {{ $mgR >= 12 ? 'green' : ($mgR >= 10 ? 'amber' : 'red') }}">{{ number_format($mgR, 2) }}</span>
+                            @endif
+                        </div>
+                        <div class="sem-card-body">
+                            @foreach($resultsSem as $res)
+                            @php $n = $res->moyenne; @endphp
+                            <div class="mat-row">
+                                <span class="mat-name">{{ optional($res->matiere)->nom ?? '—' }}</span>
                                 <span class="mat-note {{ ($n !== null && $n >= 12) ? 'good' : (($n !== null && $n >= 10) ? 'mid' : 'bad') }}">
                                     {{ $n !== null ? number_format($n, 2) : '—' }}
                                 </span>
                             </div>
                             @endforeach
-                        @else
-                            <p style="font-size:.82rem; color:var(--k-muted); text-align:center; padding:12px 0; margin:0">Aucune matière</p>
-                        @endif
+                        </div>
                     </div>
-                </div>
-                @endforeach
-                </div>
+                    @endforeach
+                    </div>
+                @else
+                    <p style="font-size:.82rem; color:var(--k-muted); text-align:center; padding:16px 0; margin:0">Aucune note enregistrée pour cette année</p>
+                @endif
             @endif
         </div>
         @endforeach
@@ -862,15 +914,26 @@
 
 {{-- ─── TAB: PRÉSENCES ─────────────────────────────────────────── --}}
 <div class="tab-panel" id="tab-presences">
-    @if(isset($dossier['presences']['annees']) && count($dossier['presences']['annees']))
-        @foreach($dossier['presences']['annees'] as $anneeKey => $an)
+    @php
+        $inscriptionsPresences = $etudiant->inscriptions->sortByDesc(fn($i) => optional($i->anneeUniversitaire)->start_date);
+    @endphp
+    @if($inscriptionsPresences->count())
+        @foreach($inscriptionsPresences as $inscPres)
         @php
-            $total  = $an['total']             ?? 0;
-            $pres   = $an['nb_presences']      ?? 0;
-            $retard = $an['nb_retards']        ?? 0;
-            $abs    = $an['nb_absences']       ?? 0;
-            $just   = $an['nb_absences_just']  ?? 0;
-            $taux   = $an['taux_presence']     ?? null;
+            $anneePresId = optional($inscPres->anneeUniversitaire)->id;
+            $anneePresLabel = optional($inscPres->anneeUniversitaire)->libelle ?? optional($inscPres->anneeUniversitaire)->name ?? 'Année N/A';
+            $attRow = $anneePresId
+                ? \App\Models\ESBTPAttendance::where('etudiant_id', $etudiant->id)
+                    ->where('annee_universitaire_id', $anneePresId)
+                    ->selectRaw("COUNT(*) as total, SUM(CASE WHEN statut='present' THEN 1 ELSE 0 END) as nb_presences, SUM(CASE WHEN statut='absent' THEN 1 ELSE 0 END) as nb_absences, SUM(CASE WHEN statut='excuse' THEN 1 ELSE 0 END) as nb_absences_just, SUM(CASE WHEN statut IN ('retard','late') THEN 1 ELSE 0 END) as nb_retards")
+                    ->first()
+                : null;
+            $total  = (int)($attRow->total ?? 0);
+            $pres   = (int)($attRow->nb_presences ?? 0);
+            $retard = (int)($attRow->nb_retards ?? 0);
+            $abs    = (int)($attRow->nb_absences ?? 0);
+            $just   = (int)($attRow->nb_absences_just ?? 0);
+            $taux   = $total > 0 ? round(($pres + $retard) / $total * 100, 1) : null;
 
             // Donut: rayon 18, circum = 2π*18 ≈ 113.1
             $r = 18; $circum = round(2*3.14159*$r, 1);
@@ -882,7 +945,7 @@
             <div class="presence-year-head" onclick="this.closest('.presence-year').classList.toggle('open')">
                 <span class="py-label">
                     <i class="fas fa-calendar-alt" style="color:var(--k-blue)"></i>
-                    {{ $an['libelle'] ?? $anneeKey }}
+                    {{ $anneePresLabel }}
                 </span>
                 <div style="display:flex;align-items:center;gap:20px">
                     <div class="py-stats">
@@ -973,8 +1036,13 @@
     @endphp
 
     {{-- Financial summary --}}
-    @if(isset($dossier['financier']))
-    @php $fin = $dossier['financier']; @endphp
+    @php
+        $finTotalPaye   = $statistiques['paiements_valides'] ?? 0;
+        $finEnAttente   = $statistiques['paiements_en_attente'] ?? 0;
+        $finNbPaiements = $statistiques['nombre_paiements'] ?? $allPaiements->count();
+        $finReliquats   = $statistiques['total_reliquats_entrants'] ?? 0;
+        $finTotal       = $finTotalPaye + $finEnAttente;
+    @endphp
     <div class="kpi-grid" style="margin-bottom:20px">
         <div class="kpi-card">
             <div class="kpi-ring">
@@ -982,28 +1050,44 @@
                     <circle class="ring-bg" cx="26" cy="26" r="22"/>
                     <circle class="ring-fg" cx="26" cy="26" r="22" stroke="#10b981"
                         stroke-dasharray="{{ round(2*3.14159*22,1) }}"
-                        stroke-dashoffset="{{ round(2*3.14159*22 * (1 - min(1, ($fin['total_paye'] ?? 0)/(max(1,($fin['total_paye']??0)+($fin['total_restant']??0))))),1) }}"/>
+                        stroke-dashoffset="{{ round(2*3.14159*22 * (1 - min(1, $finTotalPaye / max(1, $finTotal))), 1) }}"/>
                 </svg>
                 <span class="ring-icon" style="color:#10b981"><i class="fas fa-check" style="font-size:.7rem"></i></span>
             </div>
             <div class="kpi-body">
-                <div class="kpi-val" style="color:#10b981">{{ number_format($fin['total_paye'] ?? 0, 0, ',', ' ') }}</div>
-                <div class="kpi-lbl">Total payé (FCFA)</div>
+                <div class="kpi-val" style="color:#10b981">{{ number_format($finTotalPaye, 0, ',', ' ') }}</div>
+                <div class="kpi-lbl">Total validé (FCFA)</div>
             </div>
         </div>
-        @if(($fin['total_restant'] ?? 0) > 0)
+        @if($finEnAttente > 0)
+        <div class="kpi-card">
+            <div class="kpi-ring">
+                <svg viewBox="0 0 52 52">
+                    <circle class="ring-bg" cx="26" cy="26" r="22"/>
+                    <circle class="ring-fg" cx="26" cy="26" r="22" stroke="#f59e0b"
+                        stroke-dasharray="{{ round(2*3.14159*22,1) }}" stroke-dashoffset="{{ round(2*3.14159*22*.35,1) }}"/>
+                </svg>
+                <span class="ring-icon" style="color:#f59e0b"><i class="fas fa-clock" style="font-size:.7rem"></i></span>
+            </div>
+            <div class="kpi-body">
+                <div class="kpi-val" style="color:#f59e0b">{{ number_format($finEnAttente, 0, ',', ' ') }}</div>
+                <div class="kpi-lbl">En attente (FCFA)</div>
+            </div>
+        </div>
+        @endif
+        @if($finReliquats > 0)
         <div class="kpi-card">
             <div class="kpi-ring">
                 <svg viewBox="0 0 52 52">
                     <circle class="ring-bg" cx="26" cy="26" r="22"/>
                     <circle class="ring-fg" cx="26" cy="26" r="22" stroke="#ef4444"
-                        stroke-dasharray="{{ round(2*3.14159*22,1) }}" stroke-dashoffset="{{ round(2*3.14159*22*.35,1) }}"/>
+                        stroke-dasharray="{{ round(2*3.14159*22,1) }}" stroke-dashoffset="{{ round(2*3.14159*22*.5,1) }}"/>
                 </svg>
                 <span class="ring-icon" style="color:#ef4444"><i class="fas fa-exclamation" style="font-size:.8rem"></i></span>
             </div>
             <div class="kpi-body">
-                <div class="kpi-val" style="color:#ef4444">{{ number_format($fin['total_restant'], 0, ',', ' ') }}</div>
-                <div class="kpi-lbl">Restant dû (FCFA)</div>
+                <div class="kpi-val" style="color:#ef4444">{{ number_format($finReliquats, 0, ',', ' ') }}</div>
+                <div class="kpi-lbl">Reliquats (FCFA)</div>
             </div>
         </div>
         @endif
@@ -1017,12 +1101,11 @@
                 <span class="ring-icon" style="color:var(--k-blue)"><i class="fas fa-list" style="font-size:.7rem"></i></span>
             </div>
             <div class="kpi-body">
-                <div class="kpi-val" style="color:var(--k-blue)">{{ $allPaiements->count() }}</div>
+                <div class="kpi-val" style="color:var(--k-blue)">{{ $finNbPaiements }}</div>
                 <div class="kpi-lbl">Transactions</div>
             </div>
         </div>
     </div>
-    @endif
 
     {{-- Payment timeline --}}
     <div class="s-card">
