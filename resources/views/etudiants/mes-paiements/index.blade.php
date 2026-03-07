@@ -606,6 +606,7 @@
                                             <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
                                                 <button type="button"
                                                     class="action-btn btn-info"
+                                                    title="Voir les détails"
                                                     data-bs-toggle="modal"
                                                     data-bs-target="#paiementDetailModal"
                                                     data-paiement-id="{{ $paiement->id }}"
@@ -618,14 +619,13 @@
                                                     data-observations="{{ $paiement->observations ?? '' }}"
                                                     data-numero-recu="{{ $paiement->numero_recu ?? 'N/A' }}">
                                                     <i class="fas fa-eye"></i>
-                                                    Détails
                                                 </button>
                                                 @if($paiement->status === 'validé')
                                                     <a href="{{ route('esbtp.paiements.recu', $paiement->id) }}"
                                                        class="action-btn btn-success"
-                                                       target="_blank">
+                                                       target="_blank"
+                                                       title="Télécharger PDF">
                                                         <i class="fas fa-download"></i>
-                                                        PDF
                                                     </a>
                                                 @endif
                                             </div>

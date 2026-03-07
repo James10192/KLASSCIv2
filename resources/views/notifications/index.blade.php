@@ -395,9 +395,9 @@
 
                                                 if (!$primaryLine) {
                                                     $safeMessage = strip_tags($notification->message ?? '', '<i><strong><em><b><br>');
-                                                    $primaryLine = trim(preg_split('/(Statut:|Étape:|Paiement:|Cliquez)/i', $safeMessage)[0] ?? '');
+                                                    $primaryLine = trim(preg_split('/(Statut:|Étape:|Paiement:|Référence:|Numéro de reçu:|Cliquez)/i', $safeMessage)[0] ?? '');
 
-                                                    if (preg_match_all('/(<i[^>]*>.*?<\\/i>\\s*)?(Statut:|Étape:|Paiement:)\\s*([^<|]*)/i', $safeMessage, $matches, PREG_SET_ORDER)) {
+                                                    if (preg_match_all('/(<i[^>]*>.*?<\\/i>\\s*)?(Statut:|Étape:|Paiement:|Référence:|Numéro de reçu:)\\s*([^<|\\n]*)/iu', $safeMessage, $matches, PREG_SET_ORDER)) {
                                                         foreach ($matches as $match) {
                                                             $labels[] = trim($match[0]);
                                                         }
@@ -459,6 +459,12 @@
                                                                     } elseif (Str::contains($valueLower, ['rejet', 'refus'])) {
                                                                         $pillClass = 'meta-danger';
                                                                     }
+                                                                } elseif (Str::lower($key) === 'référence' || Str::lower($key) === 'reference') {
+                                                                    $icon = 'fas fa-hashtag';
+                                                                    $pillClass = 'meta-info';
+                                                                } elseif (Str::contains(Str::lower($key), ['numéro de reçu', 'numero de recu', 'numéro reçu'])) {
+                                                                    $icon = 'fas fa-receipt';
+                                                                    $pillClass = 'meta-primary';
                                                                 }
                                                             @endphp
                                                             <span class="notification-meta-pill {{ $pillClass }}">
