@@ -207,8 +207,11 @@
             background: rgba(255, 255, 255, 0.98) !important;
             backdrop-filter: blur(20px) !important;
             overflow: hidden !important;
-            display: flex !important;
             flex-direction: column !important;
+        }
+
+        .custom-dropdown.show {
+            display: flex !important;
         }
 
         #notifications-list,
