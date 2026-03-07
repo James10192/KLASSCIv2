@@ -1313,7 +1313,7 @@
 </div>{{-- /fiche-page --}}
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
 (function () {
     // Tab switching
@@ -1339,4 +1339,4 @@
     }
 })();
 </script>
-@endsection
+@endpush
