@@ -2,11 +2,11 @@
 
 @section('title', 'Gestion du Personnel - KLASSCI')
 
-@section('styles')
+@push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
     .personnel-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--primary, #0453cb) 0%, var(--secondary, #5e91de) 100%);
         color: white;
         padding: var(--space-xl);
         border-radius: var(--radius-large);
@@ -407,7 +407,7 @@
         }
     }
 </style>
-@endsection
+@endpush
 
 @section('content')
 <div class="dashboard-acasi">

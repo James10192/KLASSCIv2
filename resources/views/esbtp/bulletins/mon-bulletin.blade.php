@@ -394,7 +394,7 @@
                         </div>
 
                         <div class="bulletin-actions">
-                            <a href="{{ route('mon-bulletin.show', $bulletin->id) }}" class="btn btn-primary">
+                            <a href="{{ route('esbtp.mon-bulletin.show', $bulletin->id) }}" class="btn btn-primary">
                                 <i class="fas fa-eye me-2"></i>Consulter
                             </a>
                             <a href="{{ route('esbtp.bulletins.download', $bulletin->id) }}" class="btn btn-success">

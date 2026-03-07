@@ -542,7 +542,7 @@
 <div class="modal fade" id="editContactModal" tabindex="-1" aria-labelledby="editContactModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form action="{{ route('mon-profil.update') }}" method="POST">
+            <form action="{{ route('esbtp.mon-profil.update') }}" method="POST">
                 @csrf
                 @method('PUT')
 
@@ -591,7 +591,7 @@
 <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form action="{{ route('mon-profil.password.update') }}" method="POST">
+            <form action="{{ route('esbtp.mon-profil.password.update') }}" method="POST">
                 @csrf
                 @method('PUT')
 

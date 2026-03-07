@@ -234,6 +234,53 @@
         box-shadow: 0 4px 8px rgba(var(--primary-rgb), 0.3);
     }
 
+    .action-btn.btn-info {
+        background: linear-gradient(135deg, #17a2b8, #0d6efd);
+        color: #fff;
+    }
+
+    .action-btn.btn-info:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
+    }
+
+    .action-btn.btn-success {
+        background: linear-gradient(135deg, #28c76f, #22a65e);
+        color: #fff;
+    }
+
+    .action-btn.btn-success:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(40, 199, 111, 0.3);
+    }
+
+    /* Modal paiement detail */
+    .paiement-detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.6rem 0;
+        border-bottom: 1px solid var(--border, #eee);
+    }
+
+    .paiement-detail-row:last-child {
+        border-bottom: none;
+    }
+
+    .paiement-detail-label {
+        font-size: var(--text-sm);
+        color: var(--text-secondary);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+
+    .paiement-detail-value {
+        font-weight: 600;
+        color: var(--text-primary);
+        text-align: right;
+    }
+
     /* ================================
        EMPTY STATE
        ================================ */
@@ -556,18 +603,32 @@
 
                                         <!-- Actions -->
                                         <td>
-                                            @if($paiement->status === 'validé')
-                                                <a href="{{ route('esbtp.paiements.show', $paiement->id) }}"
-                                                   class="action-btn btn-primary"
-                                                   target="_blank">
-                                                    <i class="fas fa-file-pdf"></i>
-                                                    Voir le reçu
-                                                </a>
-                                            @else
-                                                <span style="color: var(--text-muted); font-size: var(--text-sm); font-style: italic;">
-                                                    -
-                                                </span>
-                                            @endif
+                                            <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                                                <button type="button"
+                                                    class="action-btn btn-info"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#paiementDetailModal"
+                                                    data-paiement-id="{{ $paiement->id }}"
+                                                    data-date="{{ \Carbon\Carbon::parse($paiement->date_paiement)->format('d/m/Y') }}"
+                                                    data-montant="{{ number_format($paiement->montant, 0, ',', ' ') }}"
+                                                    data-mode="{{ $paiement->mode_paiement }}"
+                                                    data-reference="{{ $paiement->reference_paiement ?? 'N/A' }}"
+                                                    data-motif="{{ $paiement->motif ?? 'N/A' }}"
+                                                    data-status="{{ $paiement->status }}"
+                                                    data-observations="{{ $paiement->observations ?? '' }}"
+                                                    data-numero-recu="{{ $paiement->numero_recu ?? 'N/A' }}">
+                                                    <i class="fas fa-eye"></i>
+                                                    Détails
+                                                </button>
+                                                @if($paiement->status === 'validé')
+                                                    <a href="{{ route('esbtp.paiements.recu', $paiement->id) }}"
+                                                       class="action-btn btn-success"
+                                                       target="_blank">
+                                                        <i class="fas fa-download"></i>
+                                                        PDF
+                                                    </a>
+                                                @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -580,4 +641,126 @@
         </div>
     </div>
 </div>
+<!-- Modal Détails Paiement -->
+<div class="modal fade" id="paiementDetailModal" tabindex="-1" aria-labelledby="paiementDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: var(--radius-large); border: none; box-shadow: 0 20px 60px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border-radius: var(--radius-large) var(--radius-large) 0 0; border: none; padding: 1.25rem 1.5rem;">
+                <h5 class="modal-title" id="paiementDetailModalLabel" style="font-weight: 700; margin: 0;">
+                    <i class="fas fa-receipt me-2"></i>
+                    Détails du paiement
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem;">
+                <div id="modal-paiement-numero" style="text-align: center; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 2px solid var(--border, #eee);">
+                    <div style="font-size: var(--text-sm); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.25rem;">Numéro de reçu</div>
+                    <div id="modal-numero-recu" style="font-family: monospace; font-size: 1.1rem; font-weight: 700; color: var(--primary); background: var(--surface, #f8f9fa); padding: 0.4rem 1rem; border-radius: var(--radius-medium); display: inline-block;"></div>
+                </div>
+
+                <div class="paiement-detail-row">
+                    <span class="paiement-detail-label">Date</span>
+                    <span class="paiement-detail-value" id="modal-date"></span>
+                </div>
+                <div class="paiement-detail-row">
+                    <span class="paiement-detail-label">Montant</span>
+                    <span class="paiement-detail-value" id="modal-montant" style="font-size: 1.2rem; color: var(--primary);"></span>
+                </div>
+                <div class="paiement-detail-row">
+                    <span class="paiement-detail-label">Mode de paiement</span>
+                    <span class="paiement-detail-value" id="modal-mode"></span>
+                </div>
+                <div class="paiement-detail-row">
+                    <span class="paiement-detail-label">Référence</span>
+                    <span class="paiement-detail-value" id="modal-reference" style="font-family: monospace;"></span>
+                </div>
+                <div class="paiement-detail-row">
+                    <span class="paiement-detail-label">Motif</span>
+                    <span class="paiement-detail-value" id="modal-motif"></span>
+                </div>
+                <div class="paiement-detail-row">
+                    <span class="paiement-detail-label">Statut</span>
+                    <span id="modal-status"></span>
+                </div>
+                <div id="modal-observations-row" class="paiement-detail-row" style="display: none;">
+                    <span class="paiement-detail-label">Observations</span>
+                    <span class="paiement-detail-value" id="modal-observations" style="text-align: right; max-width: 60%;"></span>
+                </div>
+            </div>
+            <div class="modal-footer" style="border: none; padding: 1rem 1.5rem 1.5rem; gap: 0.75rem;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Fermer
+                </button>
+                <a id="modal-pdf-link" href="#" class="btn btn-success" target="_blank" style="display: none;">
+                    <i class="fas fa-download me-1"></i> Télécharger PDF
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const pdfRouteBase = "{{ rtrim(route('esbtp.paiements.recu', ['paiement' => '__ID__']), '') }}";
+
+    const modal = document.getElementById('paiementDetailModal');
+    if (!modal) return;
+
+    modal.addEventListener('show.bs.modal', function (event) {
+        const btn = event.relatedTarget;
+        if (!btn) return;
+
+        const modeRaw = btn.getAttribute('data-mode') || '';
+        const modeLabels = {
+            'especes': 'Espèces',
+            'cheque': 'Chèque',
+            'virement': 'Virement bancaire',
+            'carte': 'Carte bancaire',
+            'mobile_money': 'Mobile Money',
+            'Espèces': 'Espèces',
+            'Chèque': 'Chèque',
+            'Virement bancaire': 'Virement bancaire',
+            'Mobile Money': 'Mobile Money',
+        };
+        const modeLabel = modeLabels[modeRaw] || modeRaw;
+
+        const status = btn.getAttribute('data-status') || '';
+        const statusLabels = {
+            'validé': '<span class="status-badge status-valide"><i class="fas fa-check-circle"></i> Validé</span>',
+            'en_attente': '<span class="status-badge status-en-attente"><i class="fas fa-clock"></i> En attente</span>',
+            'rejeté': '<span class="status-badge status-rejete"><i class="fas fa-times-circle"></i> Rejeté</span>',
+        };
+
+        const paiementId = btn.getAttribute('data-paiement-id');
+        const observations = btn.getAttribute('data-observations') || '';
+
+        modal.querySelector('#modal-numero-recu').textContent = btn.getAttribute('data-numero-recu') || 'N/A';
+        modal.querySelector('#modal-date').textContent = btn.getAttribute('data-date') || 'N/A';
+        modal.querySelector('#modal-montant').textContent = (btn.getAttribute('data-montant') || '0') + ' FCFA';
+        modal.querySelector('#modal-mode').textContent = modeLabel;
+        modal.querySelector('#modal-reference').textContent = btn.getAttribute('data-reference') || 'N/A';
+        modal.querySelector('#modal-motif').textContent = btn.getAttribute('data-motif') || 'N/A';
+        modal.querySelector('#modal-status').innerHTML = statusLabels[status] || ('<span class="status-badge">' + status + '</span>');
+
+        const obsRow = modal.querySelector('#modal-observations-row');
+        if (observations && observations.trim() !== '') {
+            modal.querySelector('#modal-observations').textContent = observations;
+            obsRow.style.display = 'flex';
+        } else {
+            obsRow.style.display = 'none';
+        }
+
+        const pdfLink = modal.querySelector('#modal-pdf-link');
+        if (status === 'validé') {
+            pdfLink.href = pdfRouteBase.replace('__ID__', paiementId);
+            pdfLink.style.display = 'inline-flex';
+        } else {
+            pdfLink.style.display = 'none';
+        }
+    });
+});
+</script>
+@endpush
