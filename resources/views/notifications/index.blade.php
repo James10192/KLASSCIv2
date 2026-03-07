@@ -398,7 +398,7 @@
                                                     $safeMessage = strip_tags($notification->message ?? '');
                                                     $primaryLine = trim(preg_split('/(Statut:|Étape:|Paiement:|Référence:|Numéro de reçu:|Cliquez)/i', $safeMessage)[0] ?? '');
 
-                                                    if (preg_match_all('/(Statut:|Étape:|Paiement:|Référence:|Numéro de reçu:)\s*([^|\n]*)/iu', $safeMessage, $matches, PREG_SET_ORDER)) {
+                                                    if (preg_match_all('/(Statut:|Étape:|Paiement:|Référence:|Numéro de reçu:)\s*((?:(?!Statut:|Étape:|Paiement:|Référence:|Numéro de reçu:|Cliquez)[^|\n])*)/iu', $safeMessage, $matches, PREG_SET_ORDER)) {
                                                         foreach ($matches as $match) {
                                                             $labels[] = trim($match[0]);
                                                         }
