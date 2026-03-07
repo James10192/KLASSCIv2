@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Services\FuzzyNameMatcher;
+use App\Services\EtudiantDossierService;
 use PDF;
 
 class ESBTPStudentController extends Controller
@@ -341,25 +342,21 @@ class ESBTPStudentController extends Controller
         return redirect()->route('esbtp.etudiants.index')->with('success', 'Étudiant créé avec succès.');
     }
 
-    public function show(ESBTPEtudiant $etudiant)
+    public function show(ESBTPEtudiant $etudiant, EtudiantDossierService $dossierService)
     {
-        // Charger les relations nécessaires
         $etudiant->load([
             'user',
-            'parents',
-            'inscriptions' => function($q) {
-                $q->with(['filiere', 'niveau', 'classe', 'anneeUniversitaire'])
-                  ->orderBy('date_inscription', 'desc');
-            },
-            'inscriptions.paiements' => function($q) {
-                $q->orderBy('date_paiement', 'desc');
-            }
+            'parents' => fn($q) => $q->with('etudiants'),
+            'inscriptions' => fn($q) => $q->with(['filiere', 'niveauEtude', 'classe', 'anneeUniversitaire'])
+                                          ->orderByDesc('created_at'),
+            'paiements' => fn($q) => $q->with(['fraisCategory', 'validatedBy'])
+                                       ->orderByDesc('date_paiement'),
         ]);
 
-        // Récupérer l'année universitaire courante pour le lien de réinscription
-        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $dossier       = $dossierService->buildDossier($etudiant);
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        return view('esbtp.etudiants.show', compact('etudiant', 'anneeCourante'));
+        return view('esbtp.etudiants.show', compact('etudiant', 'dossier', 'anneeCourante'));
     }
 
     public function edit(Request $request, ESBTPEtudiant $etudiant)
