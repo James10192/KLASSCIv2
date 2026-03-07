@@ -1,1258 +1,1259 @@
 @extends('layouts.app')
 
-@section('title', $etudiant->nom . ' ' . $etudiant->prenoms . ' — Fiche étudiant — KLASSCI')
+@section('title', $etudiant->nom_complet . ' — Fiche étudiant — KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-/* ======================================================
-   FICHE ÉTUDIANT — DESIGN SYSTEM KLASSCI
-====================================================== */
+/* ===================================================================
+   FICHE ÉTUDIANT PREMIUM — KLASSCI Design System 2025
+   Tokens, hero glassmorphism, tabs animés, rings SVG, payment timeline
+=================================================================== */
 
+/* ── Tokens ──────────────────────────────────────────────────────── */
 :root {
-    --klassci-blue: #0453cb;
-    --klassci-blue-light: #5e91de;
-    --klassci-gradient: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
-    --surface: #f8fafc;
-    --card-radius: 14px;
-    --tab-height: 52px;
+    --k-blue:      #0453cb;
+    --k-blue-2:    #5e91de;
+    --k-surface:   #f4f7fb;
+    --k-card:      #ffffff;
+    --k-border:    #e2e8f0;
+    --k-text:      #1e293b;
+    --k-muted:     #64748b;
+    --k-success:   #10b981;
+    --k-warning:   #f59e0b;
+    --k-danger:    #ef4444;
+    --k-radius:    12px;
+    --k-radius-lg: 20px;
+    --k-shadow:    0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+    --k-shadow-lg: 0 8px 32px rgba(4,83,203,.12);
 }
 
-.fiche-etudiant { background: var(--surface); min-height: 100vh; }
+/* ── Page shell ──────────────────────────────────────────────────── */
+.fiche-page { background: var(--k-surface); min-height: 100vh; }
 
-/* ---- Hero ---- */
+/* ── HERO ────────────────────────────────────────────────────────── */
 .fiche-hero {
-    background: var(--klassci-gradient);
-    color: #fff;
-    padding: 28px 32px 0;
-    border-radius: 0 0 24px 24px;
-}
-.fiche-hero .hero-content { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
-.fiche-hero .hero-avatar {
-    width: 96px; height: 96px; border-radius: 50%;
-    border: 4px solid rgba(255,255,255,0.6);
-    object-fit: cover; flex-shrink: 0;
-    background: rgba(255,255,255,0.15);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 2.8rem; color: rgba(255,255,255,0.8);
+    position: relative;
+    background: linear-gradient(135deg, var(--k-blue) 0%, var(--k-blue-2) 100%);
+    padding: 0 0 0;
     overflow: hidden;
 }
-.fiche-hero .hero-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.fiche-hero .hero-info { flex: 1; min-width: 200px; padding-bottom: 20px; }
-.fiche-hero .hero-name { font-size: 1.65rem; font-weight: 700; margin: 0 0 4px; }
-.fiche-hero .hero-sub { font-size: 0.9rem; opacity: 0.85; margin: 0 0 10px; }
-.fiche-hero .hero-badges { display: flex; gap: 8px; flex-wrap: wrap; }
-.fiche-hero .hero-badge {
-    font-size: 0.75rem; padding: 3px 10px; border-radius: 20px;
-    background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.35);
+/* SVG dot-pattern texture */
+.fiche-hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='1.5' fill='rgba(255,255,255,0.12)'/%3E%3C/svg%3E");
+    pointer-events: none;
 }
-.fiche-hero .hero-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; padding-bottom: 20px; margin-left: auto; }
+/* glass strip bottom */
+.fiche-hero::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 48px;
+    background: linear-gradient(to top, var(--k-surface) 0%, transparent 100%);
+}
+
+.hero-inner {
+    position: relative; z-index: 1;
+    max-width: 1280px; margin: 0 auto;
+    padding: 32px 32px 0;
+    display: flex; align-items: flex-end; gap: 28px; flex-wrap: wrap;
+}
+
+/* Avatar */
+.hero-avatar {
+    width: 108px; height: 108px; flex-shrink: 0;
+    border-radius: 50%;
+    border: 4px solid rgba(255,255,255,.55);
+    background: rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.6rem; font-weight: 700; color: rgba(255,255,255,.9);
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,.18);
+    backdrop-filter: blur(4px);
+    margin-bottom: -20px;
+}
+.hero-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Text block */
+.hero-text { flex: 1; min-width: 200px; padding-bottom: 24px; color: #fff; }
+.hero-name { font-size: 1.75rem; font-weight: 800; letter-spacing: -.02em; margin: 0 0 4px; line-height: 1.2; }
+.hero-sub  { font-size: .9rem; opacity: .82; margin: 0 0 12px; }
+.hero-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.hero-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(255,255,255,.18); backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,.3);
+    color: #fff; font-size: .78rem; font-weight: 600;
+    padding: 4px 12px; border-radius: 20px;
+    white-space: nowrap;
+}
+.hero-pill.green  { background: rgba(16,185,129,.25); border-color: rgba(16,185,129,.4); }
+.hero-pill.amber  { background: rgba(245,158,11,.25); border-color: rgba(245,158,11,.4); }
+.hero-pill.red    { background: rgba(239,68,68,.25);  border-color: rgba(239,68,68,.4); }
+
+/* Actions in hero */
+.hero-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-bottom: 24px; }
 .hero-btn {
     display: inline-flex; align-items: center; gap: 6px;
-    padding: 8px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 600;
-    text-decoration: none; border: none; cursor: pointer; transition: all 0.2s;
+    padding: 9px 18px; border-radius: 8px; font-size: .82rem; font-weight: 600;
+    text-decoration: none; cursor: pointer; border: none; transition: all .18s;
+    white-space: nowrap;
 }
-.hero-btn-white { background: #fff; color: var(--klassci-blue); }
-.hero-btn-white:hover { background: #f0f4ff; color: var(--klassci-blue); }
-.hero-btn-ghost { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.4); }
-.hero-btn-ghost:hover { background: rgba(255,255,255,0.25); color: #fff; }
-.hero-btn-danger { background: rgba(220,53,69,0.85); color: #fff; }
-.hero-btn-danger:hover { background: #dc3545; color:#fff; }
+.hero-btn.primary { background: rgba(255,255,255,.95); color: var(--k-blue); }
+.hero-btn.primary:hover { background: #fff; color: var(--k-blue); box-shadow: 0 4px 16px rgba(0,0,0,.15); }
+.hero-btn.ghost { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.35); }
+.hero-btn.ghost:hover { background: rgba(255,255,255,.25); }
+.hero-btn.danger { background: rgba(239,68,68,.2); color: #fff; border: 1px solid rgba(239,68,68,.4); }
+.hero-btn.danger:hover { background: rgba(239,68,68,.35); }
 
-/* ---- KPI strip ---- */
-.kpi-strip {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 12px; margin: 20px 0;
+/* ── Mini KPI Strip (inside hero, above tabs) ────────────────────── */
+.hero-kpi-strip {
+    position: relative; z-index: 1;
+    max-width: 1280px; margin: 0 auto;
+    display: flex; gap: 0;
+    border-top: 1px solid rgba(255,255,255,.15);
+    margin-top: 4px;
 }
-.kpi-card {
-    background: #fff; border-radius: var(--card-radius);
-    padding: 16px 18px; box-shadow: 0 1px 6px rgba(0,0,0,0.06);
-    border-left: 4px solid transparent; display: flex; align-items: center; gap: 14px;
+.hero-kpi {
+    flex: 1; padding: 14px 20px;
+    display: flex; align-items: center; gap: 12px;
+    border-right: 1px solid rgba(255,255,255,.1);
+    color: #fff;
 }
-.kpi-card.kpi-blue  { border-color: var(--klassci-blue); }
-.kpi-card.kpi-green { border-color: #10b981; }
-.kpi-card.kpi-amber { border-color: #f59e0b; }
-.kpi-card.kpi-red   { border-color: #ef4444; }
-.kpi-card .kpi-icon { font-size: 1.6rem; opacity: 0.75; }
-.kpi-card .kpi-label { font-size: 0.72rem; color: #64748b; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
-.kpi-card .kpi-value { font-size: 1.25rem; font-weight: 700; color: #1e293b; line-height: 1.1; }
-.kpi-card .kpi-sub   { font-size: 0.72rem; color: #94a3b8; margin-top: 2px; }
+.hero-kpi:last-child { border-right: none; }
+.hero-kpi-icon { font-size: 1rem; opacity: .7; }
+.hero-kpi-val { font-size: 1.1rem; font-weight: 700; line-height: 1; }
+.hero-kpi-lbl { font-size: .7rem; opacity: .7; letter-spacing: .04em; text-transform: uppercase; margin-top: 2px; }
 
-/* ---- Tabs ---- */
-.fiche-tabs-wrapper { background: #fff; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin: 0 -32px; }
-.fiche-tabs { display: flex; overflow-x: auto; scrollbar-width: none; border-bottom: 2px solid #e2e8f0; }
+/* ── Tab Bar ─────────────────────────────────────────────────────── */
+.fiche-tabs-wrap {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--k-card);
+    box-shadow: 0 1px 0 var(--k-border);
+}
+.fiche-tabs {
+    max-width: 1280px; margin: 0 auto;
+    display: flex; overflow-x: auto; gap: 0;
+    scrollbar-width: none;
+    padding: 0 24px;
+}
 .fiche-tabs::-webkit-scrollbar { display: none; }
 .fiche-tab {
-    flex-shrink: 0; padding: 0 22px; height: var(--tab-height); display: flex; align-items: center; gap: 8px;
-    font-size: 0.875rem; font-weight: 600; color: #64748b; cursor: pointer;
-    border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s; white-space: nowrap;
-    background: none; border-top: none; border-left: none; border-right: none;
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 0 20px; height: 52px;
+    font-size: .84rem; font-weight: 600; color: var(--k-muted);
+    background: none; border: none; cursor: pointer;
+    position: relative; transition: color .2s;
+    text-decoration: none; white-space: nowrap;
 }
-.fiche-tab:hover { color: var(--klassci-blue); }
-.fiche-tab.active { color: var(--klassci-blue); border-bottom-color: var(--klassci-blue); }
+.fiche-tab::after {
+    content: '';
+    position: absolute; bottom: 0; left: 12px; right: 12px; height: 3px;
+    background: var(--k-blue); border-radius: 3px 3px 0 0;
+    transform: scaleX(0); transform-origin: center;
+    transition: transform .28s cubic-bezier(.34,1.56,.64,1);
+}
+.fiche-tab:hover { color: var(--k-blue); }
+.fiche-tab.active { color: var(--k-blue); }
+.fiche-tab.active::after { transform: scaleX(1); }
 .fiche-tab .tab-badge {
-    min-width: 18px; height: 18px; border-radius: 9px; background: var(--klassci-blue);
-    color: #fff; font-size: 0.68rem; padding: 0 5px; display: flex; align-items: center; justify-content: center;
+    background: var(--k-danger); color: #fff;
+    font-size: .67rem; font-weight: 700; min-width: 18px; height: 18px;
+    padding: 0 5px; border-radius: 9px;
+    display: inline-flex; align-items: center; justify-content: center;
 }
 
-/* ---- Panes ---- */
-.fiche-pane { display: none; }
-.fiche-pane.active { display: block; }
+/* ── Content area ────────────────────────────────────────────────── */
+.fiche-content { max-width: 1280px; margin: 0 auto; padding: 28px 24px 60px; }
 
-/* ---- Section card ---- */
-.section-card {
-    background: #fff; border-radius: var(--card-radius);
-    box-shadow: 0 1px 6px rgba(0,0,0,0.06); margin-bottom: 20px; overflow: hidden;
+/* Tab panels */
+.tab-panel { display: none; animation: fadeUp .24s ease; }
+.tab-panel.active { display: block; }
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
-.section-card-header {
-    padding: 16px 24px; border-bottom: 1px solid #f1f5f9;
+
+/* ── Section card ────────────────────────────────────────────────── */
+.s-card {
+    background: var(--k-card); border: 1px solid var(--k-border);
+    border-radius: var(--k-radius-lg); padding: 24px;
+    box-shadow: var(--k-shadow); margin-bottom: 20px;
+}
+.s-card-header {
     display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px; gap: 12px; flex-wrap: wrap;
 }
-.section-card-title { font-size: 0.95rem; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px; }
-.section-card-title i { color: var(--klassci-blue); }
-.section-card-body { padding: 20px 24px; }
-
-/* ---- Semestres ---- */
-.semestre-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-@media (max-width: 640px) { .semestre-grid { grid-template-columns: 1fr; } }
-.semestre-card { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
-.semestre-card-header {
-    padding: 12px 16px; background: var(--klassci-gradient); color: #fff;
-    display: flex; justify-content: space-between; align-items: center;
+.s-card-title {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 1rem; font-weight: 700; color: var(--k-text);
 }
-.semestre-title { font-weight: 700; font-size: 0.88rem; }
-.semestre-moy { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; }
-.semestre-moy-label { font-size: 0.7rem; opacity: 0.85; }
-.semestre-body { padding: 14px 16px; }
-.semestre-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
-.semestre-meta-item { font-size: 0.78rem; color: #64748b; display: flex; align-items: center; gap: 4px; }
-
-/* Mention badges */
-.badge-mention { font-size: 0.72rem; padding: 3px 9px; border-radius: 6px; font-weight: 600; }
-.badge-tres-bien  { background: #d1fae5; color: #065f46; }
-.badge-bien       { background: #dbeafe; color: #1e40af; }
-.badge-assez-bien { background: #e0e7ff; color: #3730a3; }
-.badge-passable   { background: #fef3c7; color: #92400e; }
-.badge-insuffisant{ background: #fee2e2; color: #991b1b; }
-.badge-na         { background: #f1f5f9; color: #64748b; }
-
-/* Notes table */
-.notes-table { width: 100%; font-size: 0.8rem; border-collapse: collapse; }
-.notes-table th { padding: 5px 8px; background: #f8fafc; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0; text-align: left; }
-.notes-table td { padding: 5px 8px; border-bottom: 1px solid #f1f5f9; color: #334155; }
-.notes-table tr:last-child td { border-bottom: none; }
-
-/* ---- Présences ---- */
-.presence-annee { display: grid; grid-template-columns: 200px 1fr; gap: 20px; align-items: center; padding: 16px 0; border-bottom: 1px solid #f1f5f9; }
-.presence-annee:last-child { border-bottom: none; }
-.presence-label { font-size: 0.85rem; font-weight: 600; color: #1e293b; }
-.presence-year-sub { font-size: 0.75rem; color: #94a3b8; }
-.presence-stats { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
-.presence-stat { font-size: 0.78rem; color: #64748b; }
-.progress-track { height: 10px; background: #f1f5f9; border-radius: 5px; overflow: hidden; }
-.progress-fill { height: 100%; border-radius: 5px; transition: width 0.6s ease; }
-@media (max-width: 640px) { .presence-annee { grid-template-columns: 1fr; } }
-
-/* ---- Paiements ---- */
-.paiement-row { display: grid; grid-template-columns: auto 1fr auto auto; gap: 12px 20px; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
-.paiement-row:last-child { border-bottom: none; }
-.paiement-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; }
-.paiement-icon.valide  { background: #d1fae5; color: #065f46; }
-.paiement-icon.attente { background: #fef3c7; color: #92400e; }
-.paiement-icon.rejete  { background: #fee2e2; color: #991b1b; }
-.paiement-motif { font-size: 0.85rem; font-weight: 600; color: #1e293b; }
-.paiement-ref   { font-size: 0.75rem; color: #94a3b8; }
-.paiement-date  { font-size: 0.78rem; color: #64748b; white-space: nowrap; }
-.paiement-montant { font-size: 0.9rem; font-weight: 700; color: var(--klassci-blue); white-space: nowrap; text-align: right; }
-@media (max-width: 640px) {
-    .paiement-row { grid-template-columns: auto 1fr; }
-    .paiement-date, .paiement-montant { grid-column: 2; }
-    .paiement-montant { text-align: left; }
+.s-card-title-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--k-blue) 0%, var(--k-blue-2) 100%);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: .8rem; flex-shrink: 0;
 }
 
-/* ---- Infos perso ---- */
-.info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px 24px; }
-.info-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em; color: #94a3b8; margin-bottom: 3px; }
-.info-value { font-size: 0.9rem; font-weight: 600; color: #1e293b; }
-.info-value.empty { color: #cbd5e1; font-weight: 400; font-style: italic; }
+/* ── KPI cards with SVG progress rings ──────────────────────────── */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.kpi-card {
+    background: var(--k-card); border: 1px solid var(--k-border);
+    border-radius: var(--k-radius); padding: 20px 18px;
+    display: flex; align-items: center; gap: 16px;
+    box-shadow: var(--k-shadow);
+    transition: box-shadow .2s, transform .2s;
+}
+.kpi-card:hover { box-shadow: var(--k-shadow-lg); transform: translateY(-2px); }
+.kpi-ring { flex-shrink: 0; position: relative; width: 52px; height: 52px; }
+.kpi-ring svg { width: 52px; height: 52px; transform: rotate(-90deg); }
+.kpi-ring .ring-bg { fill: none; stroke: var(--k-border); stroke-width: 4; }
+.kpi-ring .ring-fg { fill: none; stroke-width: 4; stroke-linecap: round;
+    transition: stroke-dashoffset .6s cubic-bezier(.4,0,.2,1); }
+.kpi-ring .ring-icon {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .95rem;
+}
+.kpi-body { flex: 1; min-width: 0; }
+.kpi-val { font-size: 1.45rem; font-weight: 800; color: var(--k-text); line-height: 1; }
+.kpi-lbl { font-size: .72rem; color: var(--k-muted); font-weight: 500; margin-top: 3px; text-transform: uppercase; letter-spacing: .04em; }
 
-/* ---- Parents ---- */
-.parent-card { border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 10px; overflow: hidden; }
-.parent-card-header { padding: 12px 16px; background: #f8fafc; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; }
-.parent-card-header:hover { background: #f0f4ff; }
-.parent-card-body { padding: 16px; display: none; }
-.parent-card.open .parent-card-body { display: block; }
-.parent-card.open .parent-chevron { transform: rotate(180deg); }
-.parent-chevron { transition: transform 0.2s; color: #94a3b8; }
+/* ── Info grid ───────────────────────────────────────────────────── */
+.info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.info-row {
+    display: flex; flex-direction: column; gap: 3px;
+    padding: 14px 16px; background: var(--k-surface);
+    border-radius: 10px; border: 1px solid var(--k-border);
+}
+.info-lbl { font-size: .71rem; font-weight: 600; color: var(--k-muted); text-transform: uppercase; letter-spacing: .05em; }
+.info-val { font-size: .9rem; font-weight: 600; color: var(--k-text); word-break: break-word; }
+.info-val a { color: var(--k-blue); text-decoration: none; }
+.info-val a:hover { text-decoration: underline; }
+.info-val.mono { font-family: 'Courier New', monospace; font-size: .88rem; letter-spacing: .03em; }
+.info-val.empty { color: var(--k-muted); font-weight: 400; font-style: italic; }
 
-/* ---- Empty state ---- */
-.empty-state { text-align: center; padding: 48px 20px; color: #94a3b8; }
-.empty-state i { font-size: 2.5rem; margin-bottom: 12px; display: block; opacity: 0.5; }
-.empty-state p { font-size: 0.9rem; margin: 0; }
+/* ── Semestre cards ──────────────────────────────────────────────── */
+.semestre-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.sem-card {
+    background: var(--k-card); border: 1px solid var(--k-border);
+    border-radius: var(--k-radius); overflow: hidden;
+    box-shadow: var(--k-shadow);
+}
+.sem-card-head {
+    padding: 16px 18px; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--k-border);
+    background: linear-gradient(135deg, rgba(4,83,203,.04) 0%, rgba(94,145,222,.04) 100%);
+}
+.sem-card-name { font-size: .88rem; font-weight: 700; color: var(--k-text); }
+.sem-score {
+    font-size: 1.4rem; font-weight: 800; line-height: 1;
+    padding: 4px 12px; border-radius: 8px;
+}
+.sem-score.green { color: var(--k-success); background: rgba(16,185,129,.1); }
+.sem-score.amber { color: #d97706; background: rgba(245,158,11,.1); }
+.sem-score.red   { color: var(--k-danger); background: rgba(239,68,68,.1); }
+.sem-card-body { padding: 14px 18px; }
+.mat-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--k-border); }
+.mat-row:last-child { border-bottom: none; }
+.mat-name { font-size: .83rem; color: var(--k-text); font-weight: 500; flex: 1; min-width: 0; }
+.mat-coeff { font-size: .72rem; color: var(--k-muted); margin-right: 10px; }
+.mat-note { font-size: .88rem; font-weight: 700; min-width: 36px; text-align: right; }
+.mat-note.good   { color: var(--k-success); }
+.mat-note.mid    { color: #d97706; }
+.mat-note.bad    { color: var(--k-danger); }
 
-/* ---- Responsive ---- */
+/* ── Presence year rows ──────────────────────────────────────────── */
+.presence-year {
+    background: var(--k-card); border: 1px solid var(--k-border);
+    border-radius: var(--k-radius); margin-bottom: 16px;
+    overflow: hidden; box-shadow: var(--k-shadow);
+}
+.presence-year-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; cursor: pointer;
+    background: linear-gradient(135deg, rgba(4,83,203,.03) 0%, rgba(94,145,222,.03) 100%);
+    border-bottom: 1px solid var(--k-border);
+    transition: background .2s;
+}
+.presence-year-head:hover { background: rgba(4,83,203,.06); }
+.py-label { font-size: .9rem; font-weight: 700; color: var(--k-text); display: flex; align-items: center; gap: 10px; }
+.py-stats { display: flex; align-items: center; gap: 20px; }
+.py-stat { text-align: center; }
+.py-stat-val { font-size: 1rem; font-weight: 700; color: var(--k-text); line-height: 1; }
+.py-stat-lbl { font-size: .67rem; color: var(--k-muted); text-transform: uppercase; letter-spacing: .04em; }
+.py-stat-val.green { color: var(--k-success); }
+.py-stat-val.amber { color: #d97706; }
+.py-stat-val.red   { color: var(--k-danger); }
+/* Inline donut SVG for presence year */
+.py-donut { flex-shrink: 0; }
+
+.presence-year-body { padding: 16px 20px; }
+.presence-bars { display: flex; flex-direction: column; gap: 10px; }
+.pbar-row { display: flex; align-items: center; gap: 12px; }
+.pbar-lbl { font-size: .78rem; color: var(--k-muted); font-weight: 600; min-width: 80px; }
+.pbar-track { flex: 1; height: 8px; background: var(--k-border); border-radius: 4px; overflow: hidden; }
+.pbar-fill { height: 100%; border-radius: 4px; transition: width .6s cubic-bezier(.4,0,.2,1); }
+.pbar-fill.green { background: var(--k-success); }
+.pbar-fill.amber { background: var(--k-warning); }
+.pbar-fill.red   { background: var(--k-danger); }
+.pbar-fill.blue  { background: var(--k-blue-2); }
+.pbar-val { font-size: .78rem; font-weight: 700; color: var(--k-text); min-width: 32px; text-align: right; }
+
+/* ── Payment timeline ────────────────────────────────────────────── */
+.pmt-timeline { display: flex; flex-direction: column; gap: 0; }
+.pmt-item {
+    display: flex; align-items: flex-start; gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--k-border);
+}
+.pmt-item:last-child { border-bottom: none; }
+/* Dot */
+.pmt-dot-wrap { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; padding-top: 2px; }
+.pmt-dot {
+    width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+    border: 2px solid;
+}
+.pmt-dot.valide  { background: var(--k-success); border-color: var(--k-success); }
+.pmt-dot.attente { background: var(--k-warning); border-color: var(--k-warning); }
+.pmt-dot.rejete  { background: var(--k-danger); border-color: var(--k-danger); }
+.pmt-line { flex: 1; width: 2px; background: var(--k-border); min-height: 24px; margin-top: 4px; }
+/* Body */
+.pmt-body { flex: 1; min-width: 0; }
+.pmt-motif { font-size: .88rem; font-weight: 700; color: var(--k-text); }
+.pmt-meta  { font-size: .76rem; color: var(--k-muted); margin-top: 2px; display: flex; gap: 12px; flex-wrap: wrap; }
+.pmt-meta span { display: inline-flex; align-items: center; gap: 4px; }
+/* Right side */
+.pmt-right { text-align: right; flex-shrink: 0; }
+.pmt-amount { font-size: 1rem; font-weight: 800; color: var(--k-text); }
+.pmt-badge {
+    display: inline-block; margin-top: 4px;
+    font-size: .69rem; font-weight: 700; padding: 2px 9px; border-radius: 10px; text-transform: uppercase; letter-spacing: .04em;
+}
+.pmt-badge.valide  { background: rgba(16,185,129,.12); color: #059669; }
+.pmt-badge.attente { background: rgba(245,158,11,.12);  color: #d97706; }
+.pmt-badge.rejete  { background: rgba(239,68,68,.12);   color: #dc2626; }
+.pmt-actions { margin-top: 6px; display: flex; gap: 6px; justify-content: flex-end; }
+.pmt-act-btn {
+    font-size: .73rem; font-weight: 600; padding: 4px 10px; border-radius: 6px;
+    text-decoration: none; transition: all .15s;
+    display: inline-flex; align-items: center; gap: 4px;
+}
+.pmt-act-btn.view  { background: rgba(4,83,203,.1); color: var(--k-blue); }
+.pmt-act-btn.view:hover { background: var(--k-blue); color: #fff; }
+.pmt-act-btn.del   { background: rgba(239,68,68,.1); color: var(--k-danger); }
+.pmt-act-btn.del:hover { background: var(--k-danger); color: #fff; }
+
+/* ── Parent accordion ────────────────────────────────────────────── */
+.parent-item {
+    border: 1px solid var(--k-border); border-radius: var(--k-radius);
+    overflow: hidden; margin-bottom: 12px;
+}
+.parent-head {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px; cursor: pointer;
+    background: var(--k-surface); transition: background .15s;
+}
+.parent-head:hover { background: rgba(4,83,203,.05); }
+.parent-avatar-initials {
+    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--k-blue) 0%, var(--k-blue-2) 100%);
+    display: flex; align-items: center; justify-content: center;
+    font-size: .85rem; font-weight: 700; color: #fff;
+}
+.parent-head-info { flex: 1; min-width: 0; }
+.parent-name { font-size: .9rem; font-weight: 700; color: var(--k-text); }
+.parent-lien { font-size: .76rem; color: var(--k-muted); }
+.parent-toggle { color: var(--k-muted); transition: transform .2s; }
+.parent-item.open .parent-toggle { transform: rotate(180deg); }
+.parent-body { padding: 0 18px; max-height: 0; overflow: hidden; transition: max-height .3s ease, padding .3s ease; }
+.parent-item.open .parent-body { max-height: 300px; padding: 14px 18px; }
+.parent-detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+
+/* ── Status badge ────────────────────────────────────────────────── */
+.status-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 12px; border-radius: 20px;
+    font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+}
+.status-chip.actif    { background: rgba(16,185,129,.12);  color: #059669; }
+.status-chip.inactif  { background: rgba(100,116,139,.12); color: var(--k-muted); }
+.status-chip.abandon  { background: rgba(239,68,68,.12);   color: #dc2626; }
+.status-chip::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+/* ── Empty state ─────────────────────────────────────────────────── */
+.empty-state {
+    text-align: center; padding: 48px 24px; color: var(--k-muted);
+}
+.empty-state i { font-size: 2.4rem; opacity: .35; margin-bottom: 12px; display: block; }
+.empty-state p { font-size: .88rem; }
+
+/* ── Inscription card ────────────────────────────────────────────── */
+.insc-card {
+    background: var(--k-card); border: 1px solid var(--k-border);
+    border-left: 4px solid var(--k-blue);
+    border-radius: var(--k-radius); padding: 18px 20px;
+    margin-bottom: 14px; box-shadow: var(--k-shadow);
+}
+.insc-card:hover { box-shadow: var(--k-shadow-lg); }
+.insc-year { font-size: 1rem; font-weight: 800; color: var(--k-blue); }
+.insc-meta { font-size: .82rem; color: var(--k-muted); margin: 6px 0 12px; display: flex; gap: 16px; flex-wrap: wrap; }
+.insc-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.insc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.insc-btn {
+    font-size: .79rem; font-weight: 600; padding: 6px 14px; border-radius: 7px;
+    text-decoration: none; transition: all .15s;
+    display: inline-flex; align-items: center; gap: 6px; border: none; cursor: pointer;
+}
+.insc-btn.view   { background: rgba(4,83,203,.08); color: var(--k-blue); }
+.insc-btn.view:hover { background: var(--k-blue); color: #fff; }
+.insc-btn.pdf    { background: rgba(239,68,68,.08); color: var(--k-danger); }
+.insc-btn.pdf:hover  { background: var(--k-danger); color: #fff; }
+.insc-btn.edit   { background: rgba(245,158,11,.08); color: #d97706; }
+.insc-btn.edit:hover { background: var(--k-warning); color: #fff; }
+
+/* ── Responsive ──────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-    .fiche-hero { padding: 20px 16px 0; }
-    .fiche-hero .hero-name { font-size: 1.3rem; }
-    .fiche-tabs-wrapper { margin: 0 -16px; }
-    .section-card-body { padding: 14px 16px; }
-    .section-card-header { padding: 12px 16px; }
+    .hero-inner { padding: 24px 16px 0; gap: 16px; }
+    .hero-name  { font-size: 1.35rem; }
+    .hero-kpi   { padding: 10px 14px; }
+    .hero-kpi-val { font-size: .95rem; }
+    .hero-kpi-lbl { font-size: .62rem; }
+    .fiche-content { padding: 20px 16px 48px; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .info-grid { grid-template-columns: 1fr; }
+    .semestre-grid { grid-template-columns: 1fr; }
+    .py-stats { gap: 12px; }
+    .hero-actions { padding-bottom: 16px; }
+}
+@media (max-width: 480px) {
+    .hero-kpi-strip { display: none; }
+    .hero-avatar { width: 80px; height: 80px; font-size: 2rem; }
+    .fiche-tab { padding: 0 14px; font-size: .78rem; }
+    .kpi-grid { grid-template-columns: 1fr; }
 }
 </style>
 @endsection
 
 @section('content')
-<div class="fiche-etudiant">
+<div class="fiche-page">
 
-    {{-- ============================================================
-         HERO HEADER
-    ============================================================ --}}
-    <div class="fiche-hero">
-        <div class="hero-content">
+{{-- ════════════════════════════════════════════════════════════════
+     HERO
+════════════════════════════════════════════════════════════════ --}}
+<div class="fiche-hero">
+    <div class="hero-inner">
+        {{-- Avatar --}}
+        <div class="hero-avatar">
+            @if($etudiant->photo)
+                <img src="{{ asset('storage/photos/etudiants/' . $etudiant->photo) }}"
+                     alt="{{ $etudiant->nom_complet }}"
+                     onerror="this.parentElement.innerHTML='<i class=\'fas fa-user-graduate\'></i>'">
+            @else
+                {{ strtoupper(substr($etudiant->prenoms ?? 'E', 0, 1)) }}{{ strtoupper(substr($etudiant->nom, 0, 1)) }}
+            @endif
+        </div>
 
-            {{-- Avatar --}}
-            <div class="hero-avatar">
-                @if($etudiant->photo_url)
-                    <img src="{{ $etudiant->photo_url }}" alt="Photo">
+        {{-- Text --}}
+        <div class="hero-text">
+            <h1 class="hero-name">{{ strtoupper($etudiant->nom) }} {{ $etudiant->prenoms }}</h1>
+            <p class="hero-sub">
+                @php $inscA = $etudiant->inscriptions->firstWhere('statut', 'actif') ?? $etudiant->inscriptions->first(); @endphp
+                @if($inscA && $inscA->classe)
+                    {{ $inscA->classe->nom }}
+                    @if($inscA->classe->filiere) · {{ $inscA->classe->filiere->nom }} @endif
+                    @if($inscA->classe->niveau) · {{ $inscA->classe->niveau->nom }} @endif
                 @else
-                    <i class="fas fa-user"></i>
+                    Étudiant
+                @endif
+            </p>
+            <div class="hero-pills">
+                <span class="hero-pill"><i class="fas fa-id-card"></i> {{ $etudiant->matricule ?? 'Non attribué' }}</span>
+                @if($etudiant->statut === 'actif')
+                    <span class="hero-pill green"><i class="fas fa-circle" style="font-size:.5rem"></i> Actif</span>
+                @elseif($etudiant->statut === 'inactif')
+                    <span class="hero-pill"><i class="fas fa-circle" style="font-size:.5rem"></i> Inactif</span>
+                @elseif($etudiant->statut === 'abandon')
+                    <span class="hero-pill red"><i class="fas fa-circle" style="font-size:.5rem"></i> Abandon</span>
+                @endif
+                @if($etudiant->nationalite)
+                    <span class="hero-pill"><i class="fas fa-flag"></i> {{ $etudiant->nationalite }}</span>
+                @endif
+                @if($inscA)
+                    <span class="hero-pill amber"><i class="fas fa-calendar"></i> {{ $inscA->annee_universitaire ?? ($inscA->anneeAcademique->libelle ?? 'N/A') }}</span>
                 @endif
             </div>
+        </div>
 
-            {{-- Infos --}}
-            <div class="hero-info">
-                <h1 class="hero-name">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</h1>
-                <p class="hero-sub">Matricule : <strong>{{ $etudiant->matricule }}</strong></p>
-                <div class="hero-badges">
-                    <span class="hero-badge">
-                        <i class="fas fa-circle me-1" style="font-size:0.5rem; color:{{ $etudiant->statut === 'actif' ? '#4ade80' : '#f87171' }}"></i>
-                        {{ ucfirst($etudiant->statut ?? 'Inconnu') }}
-                    </span>
-                    @php $inscActive = $dossier['financier']['inscription_active']; @endphp
-                    @if($inscActive)
-                        @if($inscActive->filiere)
-                            <span class="hero-badge"><i class="fas fa-layer-group me-1"></i>{{ $inscActive->filiere->name }}</span>
-                        @endif
-                        @if($inscActive->niveauEtude)
-                            <span class="hero-badge"><i class="fas fa-graduation-cap me-1"></i>{{ $inscActive->niveauEtude->name }}</span>
-                        @endif
-                        @if($inscActive->classe)
-                            <span class="hero-badge"><i class="fas fa-door-open me-1"></i>{{ $inscActive->classe->name }}</span>
-                        @endif
-                    @endif
-                    @if($etudiant->date_naissance)
-                        <span class="hero-badge"><i class="fas fa-birthday-cake me-1"></i>{{ $etudiant->age }} ans</span>
-                    @endif
-                </div>
-            </div>
-
-            {{-- Actions --}}
-            <div class="hero-actions">
-                @can('edit_students')
-                <a href="{{ route('esbtp.etudiants.edit', $etudiant->id) }}" class="hero-btn hero-btn-white">
-                    <i class="fas fa-edit"></i><span class="d-none d-sm-inline">Modifier</span>
-                </a>
-                @endcan
-                <div class="dropdown">
-                    <button class="hero-btn hero-btn-ghost dropdown-toggle" data-bs-toggle="dropdown">
-                        <i class="fas fa-file-alt"></i><span class="d-none d-md-inline ms-1">Documents</span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="{{ route('esbtp.etudiants.certificat.preview', $etudiant->id) }}">
-                            <i class="fas fa-eye me-2"></i>Prévisualiser Certificat
-                        </a></li>
-                        <li><a class="dropdown-item" href="{{ route('esbtp.etudiants.certificat', $etudiant->id) }}" target="_blank">
-                            <i class="fas fa-download me-2"></i>Télécharger Certificat
-                        </a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{{ route('esbtp.etudiants.attestation-frequentation.preview', $etudiant->id) }}">
-                            <i class="fas fa-eye me-2"></i>Prévisualiser Attestation
-                        </a></li>
-                        <li><a class="dropdown-item" href="{{ route('esbtp.etudiants.attestation-frequentation', $etudiant->id) }}" target="_blank">
-                            <i class="fas fa-download me-2"></i>Télécharger Attestation
-                        </a></li>
-                    </ul>
-                </div>
-                <a href="{{ route('esbtp.paiements.create') }}?etudiant={{ $etudiant->id }}" class="hero-btn hero-btn-ghost">
-                    <i class="fas fa-plus"></i><span class="d-none d-lg-inline ms-1">Paiement</span>
-                </a>
-                @can('delete_students')
-                <button class="hero-btn hero-btn-danger" data-bs-toggle="modal" data-bs-target="#deleteStudentModal">
+        {{-- Actions --}}
+        <div class="hero-actions">
+            @can('update', $etudiant)
+            <a href="{{ route('esbtp.etudiants.edit', $etudiant) }}" class="hero-btn primary">
+                <i class="fas fa-edit"></i> <span class="d-none d-sm-inline">Modifier</span>
+            </a>
+            @endcan
+            <a href="{{ route('esbtp.etudiants.index') }}" class="hero-btn ghost">
+                <i class="fas fa-arrow-left"></i> <span class="d-none d-sm-inline">Retour</span>
+            </a>
+            @can('delete', $etudiant)
+            <form action="{{ route('esbtp.etudiants.destroy', $etudiant) }}" method="POST" style="margin:0"
+                  onsubmit="return confirm('Supprimer définitivement {{ addslashes($etudiant->nom_complet) }} ?')">
+                @csrf @method('DELETE')
+                <button type="submit" class="hero-btn danger">
                     <i class="fas fa-trash"></i>
                 </button>
-                @endcan
-                <a href="{{ route('esbtp.etudiants.index') }}" class="hero-btn hero-btn-ghost">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
+            </form>
+            @endcan
+        </div>
+    </div>
+
+    {{-- KPI Strip --}}
+    @php
+        $totalPaiements  = $etudiant->inscriptions->sum(fn($i) => $i->paiements->where('status','validé')->sum('montant'));
+        $totalAbsences   = $etudiant->absences->count();
+        $nbInscriptions  = $etudiant->inscriptions->count();
+
+        // taux presence depuis dossier si disponible
+        $tauxPresence = null;
+        if(isset($dossier['presences']['annees']) && count($dossier['presences']['annees'])) {
+            $first = reset($dossier['presences']['annees']);
+            $tauxPresence = $first['taux_presence'] ?? null;
+        }
+    @endphp
+    <div class="hero-kpi-strip">
+        <div class="hero-kpi">
+            <i class="fas fa-file-alt hero-kpi-icon"></i>
+            <div>
+                <div class="hero-kpi-val">{{ $nbInscriptions }}</div>
+                <div class="hero-kpi-lbl">Inscriptions</div>
             </div>
         </div>
-
-        {{-- Tabs ancrés au bas du hero --}}
-        <div class="fiche-tabs-wrapper mt-3">
-            <div class="fiche-tabs" id="ficheTabs">
-                <button class="fiche-tab active" data-pane="pane-overview">
-                    <i class="fas fa-th-large"></i> Vue d'ensemble
-                </button>
-                <button class="fiche-tab" data-pane="pane-academique">
-                    <i class="fas fa-graduation-cap"></i> Parcours académique
-                    @if(count($dossier['academique']) > 0)
-                        <span class="tab-badge">{{ count($dossier['academique']) }}</span>
-                    @endif
-                </button>
-                <button class="fiche-tab" data-pane="pane-presences">
-                    <i class="fas fa-calendar-check"></i> Présences
-                </button>
-                <button class="fiche-tab" data-pane="pane-finances">
-                    <i class="fas fa-wallet"></i> Finances
-                    @if($dossier['financier']['nombre_paiements'] > 0)
-                        <span class="tab-badge">{{ $dossier['financier']['nombre_paiements'] }}</span>
-                    @endif
-                </button>
-                <button class="fiche-tab" data-pane="pane-infos">
-                    <i class="fas fa-user-circle"></i> Profil
-                </button>
+        <div class="hero-kpi">
+            <i class="fas fa-percentage hero-kpi-icon"></i>
+            <div>
+                <div class="hero-kpi-val">{{ $tauxPresence !== null ? $tauxPresence . '%' : '—' }}</div>
+                <div class="hero-kpi-lbl">Présence</div>
             </div>
         </div>
-    </div>{{-- /fiche-hero --}}
-
-    {{-- ============================================================
-         CONTENU
-    ============================================================ --}}
-    <div class="container-fluid px-3 px-md-4 py-4">
-
-        {{-- Flash messages --}}
-        @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
-            <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-            @if(session('new_password'))
-                <hr class="my-1">
-                <p class="mb-0 small">Nouveau mot de passe : <code>{{ session('new_password') }}</code></p>
-            @endif
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="hero-kpi">
+            <i class="fas fa-user-times hero-kpi-icon"></i>
+            <div>
+                <div class="hero-kpi-val">{{ $totalAbsences }}</div>
+                <div class="hero-kpi-lbl">Absences</div>
+            </div>
         </div>
-        @endif
-        @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
-            <i class="fas fa-times-circle me-2"></i>{{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="hero-kpi">
+            <i class="fas fa-coins hero-kpi-icon"></i>
+            <div>
+                <div class="hero-kpi-val">{{ number_format($totalPaiements, 0, ',', ' ') }}</div>
+                <div class="hero-kpi-lbl">Payé (FCFA)</div>
+            </div>
         </div>
-        @endif
+    </div>
+</div>{{-- /hero --}}
 
-        {{-- ===========================================================
-             TAB 1 : VUE D'ENSEMBLE
-        =========================================================== --}}
-        <div class="fiche-pane active" id="pane-overview">
-            @php
-                $fin = $dossier['financier'];
-                $anneeAcadCourante = $dossier['academique'][0] ?? null;
-                $moyenneCourante = null;
-                if ($anneeAcadCourante) {
-                    $moyS1 = $anneeAcadCourante['semestres']['semestre1']['moyenne'] ?? null;
-                    $moyS2 = $anneeAcadCourante['semestres']['semestre2']['moyenne'] ?? null;
-                    $vals  = array_filter([$moyS1, $moyS2], fn($v) => $v !== null);
-                    $moyenneCourante = count($vals) > 0 ? round(array_sum($vals) / count($vals), 2) : null;
+{{-- ════════════════════════════════════════════════════════════════
+     TAB BAR
+════════════════════════════════════════════════════════════════ --}}
+<div class="fiche-tabs-wrap">
+    <div class="fiche-tabs" role="tablist">
+        <button class="fiche-tab active" data-tab="overview"   role="tab">
+            <i class="fas fa-th-large"></i> Vue d'ensemble
+        </button>
+        <button class="fiche-tab" data-tab="academique" role="tab">
+            <i class="fas fa-graduation-cap"></i> Académique
+        </button>
+        <button class="fiche-tab" data-tab="presences"  role="tab">
+            <i class="fas fa-calendar-check"></i> Présences
+        </button>
+        <button class="fiche-tab" data-tab="finances"   role="tab">
+            <i class="fas fa-wallet"></i> Finances
+        </button>
+        <button class="fiche-tab" data-tab="profil"     role="tab">
+            <i class="fas fa-user-circle"></i> Profil
+        </button>
+    </div>
+</div>
+
+{{-- ════════════════════════════════════════════════════════════════
+     CONTENT
+════════════════════════════════════════════════════════════════ --}}
+<div class="fiche-content">
+
+{{-- ─── TAB: VUE D'ENSEMBLE ─────────────────────────────────────── --}}
+<div class="tab-panel active" id="tab-overview">
+
+    {{-- KPI Cards --}}
+    @php
+        // Calcul KPI globaux depuis $dossier
+        $kpiMoyenneGen = null;
+        $kpiTauxPres   = null;
+        $kpiAbsTotal   = 0;
+        $kpiPaiTotal   = 0;
+        $kpiPaiDu      = 0;
+
+        if(isset($dossier['academique']['annees'])) {
+            $allMoys = [];
+            foreach($dossier['academique']['annees'] as $annee) {
+                foreach($annee['semestres'] ?? [] as $sem) {
+                    if($sem['moyenne_generale'] !== null) $allMoys[] = $sem['moyenne_generale'];
                 }
-                $tauxCourant = $dossier['presences'][0]['taux_presence'] ?? null;
-            @endphp
+            }
+            if(count($allMoys)) $kpiMoyenneGen = round(array_sum($allMoys)/count($allMoys),2);
+        }
+        if(isset($dossier['presences']['annees'])) {
+            $allTaux = [];
+            foreach($dossier['presences']['annees'] as $an) {
+                if($an['taux_presence'] !== null) $allTaux[] = $an['taux_presence'];
+                $kpiAbsTotal += ($an['nb_absences'] ?? 0) + ($an['nb_absences_just'] ?? 0);
+            }
+            if(count($allTaux)) $kpiTauxPres = round(array_sum($allTaux)/count($allTaux),1);
+        }
+        if(isset($dossier['financier'])) {
+            $kpiPaiTotal = $dossier['financier']['total_paye'] ?? 0;
+            $kpiPaiDu    = $dossier['financier']['total_restant'] ?? 0;
+        }
+    @endphp
 
-            {{-- KPI Cards --}}
-            <div class="kpi-strip">
-                <div class="kpi-card kpi-blue">
-                    <div class="kpi-icon"><i class="fas fa-star" style="color:var(--klassci-blue)"></i></div>
-                    <div>
-                        <div class="kpi-label">Moyenne générale</div>
-                        <div class="kpi-value">{{ $moyenneCourante !== null ? number_format($moyenneCourante, 2) . '/20' : 'N/A' }}</div>
-                        <div class="kpi-sub">Année en cours</div>
-                    </div>
-                </div>
-                <div class="kpi-card kpi-green">
-                    <div class="kpi-icon"><i class="fas fa-calendar-check" style="color:#10b981"></i></div>
-                    <div>
-                        <div class="kpi-label">Taux de présence</div>
-                        <div class="kpi-value">{{ $tauxCourant !== null ? $tauxCourant . '%' : 'N/A' }}</div>
-                        <div class="kpi-sub">Année en cours</div>
-                    </div>
-                </div>
-                <div class="kpi-card kpi-green">
-                    <div class="kpi-icon"><i class="fas fa-check-circle" style="color:#10b981"></i></div>
-                    <div>
-                        <div class="kpi-label">Paiements validés</div>
-                        <div class="kpi-value">{{ number_format($fin['paiements_valides'], 0, ',', ' ') }}</div>
-                        <div class="kpi-sub">FCFA</div>
-                    </div>
-                </div>
-                @if($fin['paiements_en_attente'] > 0)
-                <div class="kpi-card kpi-amber">
-                    <div class="kpi-icon"><i class="fas fa-clock" style="color:#f59e0b"></i></div>
-                    <div>
-                        <div class="kpi-label">En attente</div>
-                        <div class="kpi-value">{{ number_format($fin['paiements_en_attente'], 0, ',', ' ') }}</div>
-                        <div class="kpi-sub">FCFA</div>
-                    </div>
-                </div>
-                @endif
-                @if($fin['total_reliquats_entrants'] > 0)
-                <div class="kpi-card kpi-red">
-                    <div class="kpi-icon"><i class="fas fa-exclamation-triangle" style="color:#ef4444"></i></div>
-                    <div>
-                        <div class="kpi-label">Reliquats à payer</div>
-                        <div class="kpi-value">{{ number_format($fin['total_reliquats_entrants'], 0, ',', ' ') }}</div>
-                        <div class="kpi-sub">FCFA</div>
-                    </div>
-                </div>
-                @endif
-                <div class="kpi-card kpi-blue">
-                    <div class="kpi-icon"><i class="fas fa-graduation-cap" style="color:var(--klassci-blue)"></i></div>
-                    <div>
-                        <div class="kpi-label">Inscriptions</div>
-                        <div class="kpi-value">{{ $etudiant->inscriptions->count() }}</div>
-                        <div class="kpi-sub">années</div>
-                    </div>
-                </div>
+    <div class="kpi-grid">
+        {{-- Moyenne --}}
+        @php $m = $kpiMoyenneGen; $mc = $m >= 12 ? '#10b981' : ($m >= 10 ? '#f59e0b' : '#ef4444'); $mpct = min(100, ($m/20)*100); @endphp
+        <div class="kpi-card">
+            <div class="kpi-ring">
+                <svg viewBox="0 0 52 52">
+                    <circle class="ring-bg" cx="26" cy="26" r="22"/>
+                    <circle class="ring-fg" cx="26" cy="26" r="22"
+                        stroke="{{ $mc }}"
+                        stroke-dasharray="{{ round(2*3.14159*22,1) }}"
+                        stroke-dashoffset="{{ round(2*3.14159*22 * (1 - $mpct/100),1) }}"/>
+                </svg>
+                <span class="ring-icon" style="color:{{ $mc }}"><i class="fas fa-star" style="font-size:.75rem"></i></span>
             </div>
-
-            <div class="row g-4">
-                {{-- Résultats année courante --}}
-                <div class="col-12 col-lg-7">
-                    <div class="section-card">
-                        <div class="section-card-header">
-                            <span class="section-card-title"><i class="fas fa-chart-line"></i> Résultats de l'année en cours</span>
-                            <button class="btn btn-link btn-sm p-0" style="font-size:0.78rem;" onclick="switchTab('pane-academique')">Voir tout →</button>
-                        </div>
-                        <div class="section-card-body">
-                            @if($anneeAcadCourante)
-                                @php $insc = $anneeAcadCourante['inscription']; @endphp
-                                <div class="mb-3" style="font-size:0.82rem; color:#64748b;">
-                                    <strong style="color:#1e293b">{{ optional($anneeAcadCourante['annee'])->name ?? 'N/A' }}</strong>
-                                    @if($insc->classe) — {{ $insc->classe->name }} @endif
-                                    @if($insc->filiere) · {{ $insc->filiere->name }} @endif
-                                </div>
-                                <div class="semestre-grid">
-                                    @foreach(['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2'] as $semKey => $semLabel)
-                                        @php $sem = $anneeAcadCourante['semestres'][$semKey]; @endphp
-                                        <div class="semestre-card">
-                                            <div class="semestre-card-header">
-                                                <span class="semestre-title">{{ $semLabel }}</span>
-                                                <div class="text-end">
-                                                    <div class="semestre-moy">{{ $sem['moyenne'] !== null ? number_format($sem['moyenne'], 2) : '—' }}</div>
-                                                    <div class="semestre-moy-label">/20</div>
-                                                </div>
-                                            </div>
-                                            <div class="semestre-body">
-                                                <div class="semestre-meta">
-                                                    @if($sem['mention'])
-                                                        @php
-                                                            $bc = match(true) {
-                                                                str_contains($sem['mention'], 'Tres')       => 'badge-tres-bien',
-                                                                str_contains($sem['mention'], 'Bien') && !str_contains($sem['mention'], 'Assez') => 'badge-bien',
-                                                                str_contains($sem['mention'], 'Assez')      => 'badge-assez-bien',
-                                                                str_contains($sem['mention'], 'Passable')   => 'badge-passable',
-                                                                str_contains($sem['mention'], 'Insuffisant')=> 'badge-insuffisant',
-                                                                default => 'badge-na',
-                                                            };
-                                                        @endphp
-                                                        <span class="badge-mention {{ $bc }}">{{ $sem['mention'] }}</span>
-                                                    @endif
-                                                    @if($sem['rang'])
-                                                        <span class="semestre-meta-item">
-                                                            <i class="fas fa-trophy text-warning"></i>
-                                                            {{ $sem['rang'] }}{{ $sem['rang'] == 1 ? 'er' : 'ème' }}
-                                                            @if($sem['bulletin'] && $sem['bulletin']->effectif_classe)
-                                                                / {{ $sem['bulletin']->effectif_classe }}
-                                                            @endif
-                                                        </span>
-                                                    @endif
-                                                    @if($sem['bulletin'])
-                                                        <a href="{{ route('esbtp.bulletins.show', $sem['bulletin']->id) }}" class="semestre-meta-item" style="color:var(--klassci-blue); text-decoration:none;">
-                                                            <i class="fas fa-file-pdf"></i> Bulletin
-                                                        </a>
-                                                    @endif
-                                                </div>
-                                                @if($sem['notes']->isNotEmpty())
-                                                    <table class="notes-table">
-                                                        <thead><tr><th>Matière</th><th class="text-end">Moy.</th><th class="text-end">Coef.</th></tr></thead>
-                                                        <tbody>
-                                                            @foreach($sem['notes']->take(5) as $noteItem)
-                                                            <tr>
-                                                                <td>{{ optional($noteItem['matiere'])->name ?? 'N/A' }}</td>
-                                                                <td class="text-end" style="font-weight:700; color:{{ ($noteItem['moyenne'] ?? 0) >= 10 ? 'var(--klassci-blue)' : '#ef4444' }}">{{ number_format($noteItem['moyenne'] ?? 0, 2) }}</td>
-                                                                <td class="text-end" style="color:#94a3b8;">{{ $noteItem['coefficient'] }}</td>
-                                                            </tr>
-                                                            @endforeach
-                                                            @if($sem['notes']->count() > 5)
-                                                            <tr><td colspan="3" class="text-center" style="font-size:0.75rem; color:#94a3b8; padding-top:4px;">
-                                                                +{{ $sem['notes']->count() - 5 }} matière(s) —
-                                                                <a href="#" onclick="switchTab('pane-academique'); return false;" style="color:var(--klassci-blue)">voir tout</a>
-                                                            </td></tr>
-                                                            @endif
-                                                        </tbody>
-                                                    </table>
-                                                @elseif($sem['moyenne'] === null)
-                                                    <p style="font-size:0.8rem; color:#94a3b8; margin:0;">Aucune note saisie</p>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @else
-                                <div class="empty-state">
-                                    <i class="fas fa-chart-line"></i>
-                                    <p>Aucun résultat académique disponible.</p>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Inscription active + derniers paiements --}}
-                <div class="col-12 col-lg-5">
-                    @if($fin['inscription_active'])
-                    <div class="section-card mb-4">
-                        <div class="section-card-header">
-                            <span class="section-card-title"><i class="fas fa-id-card"></i> Inscription active</span>
-                            <a href="{{ route('esbtp.inscriptions.show', $fin['inscription_active']->id) }}" style="font-size:0.78rem; color:var(--klassci-blue);">Détails →</a>
-                        </div>
-                        <div class="section-card-body">
-                            <div class="info-grid" style="grid-template-columns: 1fr 1fr;">
-                                @php $ia = $fin['inscription_active']; @endphp
-                                <div class="info-item">
-                                    <div class="info-label">Filière</div>
-                                    <div class="info-value">{{ optional($ia->filiere)->name ?? '—' }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Niveau</div>
-                                    <div class="info-value">{{ optional($ia->niveauEtude)->name ?? '—' }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Classe</div>
-                                    <div class="info-value">{{ optional($ia->classe)->name ?? 'Non assigné' }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Année</div>
-                                    <div class="info-value">{{ optional($ia->anneeUniversitaire)->name ?? '—' }}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    @endif
-
-                    <div class="section-card">
-                        <div class="section-card-header">
-                            <span class="section-card-title"><i class="fas fa-receipt"></i> Derniers paiements</span>
-                            <button class="btn btn-link btn-sm p-0" style="font-size:0.78rem;" onclick="switchTab('pane-finances')">Voir tout →</button>
-                        </div>
-                        <div class="section-card-body" style="padding-top:8px; padding-bottom:8px;">
-                            @forelse($etudiant->paiements->take(5) as $paiement)
-                                @php $st = $paiement->status ?? 'en_attente'; @endphp
-                                <div class="paiement-row">
-                                    <div class="paiement-icon {{ $st === 'validé' ? 'valide' : ($st === 'rejeté' ? 'rejete' : 'attente') }}">
-                                        <i class="fas fa-{{ $st === 'validé' ? 'check' : ($st === 'rejeté' ? 'times' : 'clock') }}"></i>
-                                    </div>
-                                    <div>
-                                        <div class="paiement-motif">{{ Str::limit($paiement->motif ?: 'Paiement', 30) }}</div>
-                                        <div class="paiement-ref">{{ $paiement->numero_recu ?: ($paiement->reference_paiement ?: 'N/A') }}</div>
-                                    </div>
-                                    <div class="paiement-date">{{ optional($paiement->date_paiement)->format('d/m/Y') ?? 'N/A' }}</div>
-                                    <div class="paiement-montant">{{ number_format($paiement->montant, 0, ',', ' ') }} F</div>
-                                </div>
-                            @empty
-                                <div class="empty-state" style="padding:24px;"><p>Aucun paiement.</p></div>
-                            @endforelse
-                        </div>
-                    </div>
-                </div>
+            <div class="kpi-body">
+                <div class="kpi-val" style="color:{{ $mc }}">{{ $m !== null ? number_format($m,2) : '—' }}<small style="font-size:.6em;font-weight:500">/20</small></div>
+                <div class="kpi-lbl">Moy. générale</div>
             </div>
         </div>
 
-        {{-- ===========================================================
-             TAB 2 : PARCOURS ACADÉMIQUE
-        =========================================================== --}}
-        <div class="fiche-pane" id="pane-academique">
-            @if(count($dossier['academique']) === 0)
-                <div class="section-card">
-                    <div class="section-card-body">
-                        <div class="empty-state">
-                            <i class="fas fa-graduation-cap"></i>
-                            <p>Aucun historique académique disponible.</p>
-                        </div>
-                    </div>
+        {{-- Présence --}}
+        @php $p = $kpiTauxPres; $pc = $p >= 80 ? '#10b981' : ($p >= 60 ? '#f59e0b' : '#ef4444'); @endphp
+        <div class="kpi-card">
+            <div class="kpi-ring">
+                <svg viewBox="0 0 52 52">
+                    <circle class="ring-bg" cx="26" cy="26" r="22"/>
+                    <circle class="ring-fg" cx="26" cy="26" r="22"
+                        stroke="{{ $pc }}"
+                        stroke-dasharray="{{ round(2*3.14159*22,1) }}"
+                        stroke-dashoffset="{{ round(2*3.14159*22 * (1 - ($p ?? 0)/100),1) }}"/>
+                </svg>
+                <span class="ring-icon" style="color:{{ $pc }}"><i class="fas fa-user-check" style="font-size:.75rem"></i></span>
+            </div>
+            <div class="kpi-body">
+                <div class="kpi-val" style="color:{{ $pc }}">{{ $p !== null ? $p . '%' : '—' }}</div>
+                <div class="kpi-lbl">Taux présence</div>
+            </div>
+        </div>
+
+        {{-- Absences --}}
+        @php $ac = $kpiAbsTotal > 20 ? '#ef4444' : ($kpiAbsTotal > 10 ? '#f59e0b' : '#10b981'); $apct = min(100, $kpiAbsTotal * 2); @endphp
+        <div class="kpi-card">
+            <div class="kpi-ring">
+                <svg viewBox="0 0 52 52">
+                    <circle class="ring-bg" cx="26" cy="26" r="22"/>
+                    <circle class="ring-fg" cx="26" cy="26" r="22"
+                        stroke="{{ $ac }}"
+                        stroke-dasharray="{{ round(2*3.14159*22,1) }}"
+                        stroke-dashoffset="{{ round(2*3.14159*22 * (1 - $apct/100),1) }}"/>
+                </svg>
+                <span class="ring-icon" style="color:{{ $ac }}"><i class="fas fa-calendar-times" style="font-size:.75rem"></i></span>
+            </div>
+            <div class="kpi-body">
+                <div class="kpi-val" style="color:{{ $ac }}">{{ $kpiAbsTotal }}</div>
+                <div class="kpi-lbl">Absences totales</div>
+            </div>
+        </div>
+
+        {{-- Paiements --}}
+        @php
+            $totalDu2 = $kpiPaiTotal + $kpiPaiDu;
+            $ppct = $totalDu2 > 0 ? min(100, round($kpiPaiTotal/$totalDu2*100)) : 0;
+            $payc = $ppct >= 80 ? '#10b981' : ($ppct >= 50 ? '#f59e0b' : '#ef4444');
+        @endphp
+        <div class="kpi-card">
+            <div class="kpi-ring">
+                <svg viewBox="0 0 52 52">
+                    <circle class="ring-bg" cx="26" cy="26" r="22"/>
+                    <circle class="ring-fg" cx="26" cy="26" r="22"
+                        stroke="{{ $payc }}"
+                        stroke-dasharray="{{ round(2*3.14159*22,1) }}"
+                        stroke-dashoffset="{{ round(2*3.14159*22 * (1 - $ppct/100),1) }}"/>
+                </svg>
+                <span class="ring-icon" style="color:{{ $payc }}"><i class="fas fa-coins" style="font-size:.75rem"></i></span>
+            </div>
+            <div class="kpi-body">
+                <div class="kpi-val" style="color:{{ $payc }}">{{ $ppct }}%</div>
+                <div class="kpi-lbl">Paiements réglés</div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Quick info --}}
+    <div class="s-card">
+        <div class="s-card-header">
+            <div class="s-card-title">
+                <div class="s-card-title-icon"><i class="fas fa-info-circle"></i></div>
+                Informations rapides
+            </div>
+        </div>
+        <div class="info-grid">
+            <div class="info-row">
+                <span class="info-lbl">Matricule</span>
+                <span class="info-val mono">{{ $etudiant->matricule ?? '—' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-lbl">Statut</span>
+                <span class="info-val">
+                    <span class="status-chip {{ $etudiant->statut }}">{{ ucfirst($etudiant->statut) }}</span>
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-lbl">Classe actuelle</span>
+                <span class="info-val">{{ $inscA?->classe?->nom ?? '—' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-lbl">Filière</span>
+                <span class="info-val">{{ $inscA?->classe?->filiere?->nom ?? '—' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-lbl">Email</span>
+                <span class="info-val">
+                    @if($etudiant->email_personnel)
+                        <a href="mailto:{{ $etudiant->email_personnel }}">{{ $etudiant->email_personnel }}</a>
+                    @else
+                        <span class="empty">Non renseigné</span>
+                    @endif
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-lbl">Téléphone</span>
+                <span class="info-val">
+                    @if($etudiant->telephone)
+                        <a href="tel:{{ $etudiant->telephone }}">{{ $etudiant->telephone }}</a>
+                    @else
+                        <span class="empty">Non renseigné</span>
+                    @endif
+                </span>
+            </div>
+        </div>
+    </div>
+
+    {{-- Inscriptions rapides --}}
+    @if($etudiant->inscriptions->count())
+    <div class="s-card">
+        <div class="s-card-header">
+            <div class="s-card-title">
+                <div class="s-card-title-icon"><i class="fas fa-file-signature"></i></div>
+                Inscriptions ({{ $etudiant->inscriptions->count() }})
+            </div>
+            <a href="{{ route('esbtp.inscriptions.create', ['etudiant_id' => $etudiant->id]) }}" class="insc-btn view">
+                <i class="fas fa-plus"></i> Nouvelle
+            </a>
+        </div>
+        @foreach($etudiant->inscriptions->sortByDesc(fn($i) => $i->annee_universitaire ?? '') as $insc)
+        @php
+            $statInsc = $insc->statut ?? 'pending';
+            $anneeLabel = $insc->annee_universitaire ?? ($insc->anneeAcademique?->libelle ?? 'N/A');
+        @endphp
+        <div class="insc-card">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                <div class="insc-year">{{ $anneeLabel }}</div>
+                <span class="status-chip {{ $statInsc === 'actif' ? 'actif' : ($statInsc === 'validé' ? 'actif' : 'inactif') }}">
+                    {{ ucfirst($statInsc) }}
+                </span>
+            </div>
+            <div class="insc-meta">
+                @if($insc->classe) <span><i class="fas fa-chalkboard"></i> {{ $insc->classe->nom }}</span> @endif
+                @if($insc->classe?->filiere) <span><i class="fas fa-project-diagram"></i> {{ $insc->classe->filiere->nom }}</span> @endif
+                <span><i class="fas fa-calendar-alt"></i> {{ $insc->created_at?->format('d/m/Y') ?? '—' }}</span>
+            </div>
+            <div class="insc-actions">
+                <a href="{{ route('esbtp.inscriptions.show', $insc) }}" class="insc-btn view">
+                    <i class="fas fa-eye"></i> Voir
+                </a>
+                @can('update', $insc)
+                <a href="{{ route('esbtp.inscriptions.edit', $insc) }}" class="insc-btn edit">
+                    <i class="fas fa-edit"></i> Modifier
+                </a>
+                @endcan
+            </div>
+        </div>
+        @endforeach
+    </div>
+    @endif
+
+</div>{{-- /tab-overview --}}
+
+{{-- ─── TAB: ACADÉMIQUE ────────────────────────────────────────── --}}
+<div class="tab-panel" id="tab-academique">
+    @if(isset($dossier['academique']['annees']) && count($dossier['academique']['annees']))
+        @foreach($dossier['academique']['annees'] as $anneeKey => $anneeData)
+        <div class="s-card">
+            <div class="s-card-header">
+                <div class="s-card-title">
+                    <div class="s-card-title-icon"><i class="fas fa-calendar-alt"></i></div>
+                    {{ $anneeData['libelle'] ?? $anneeKey }}
+                    @if($anneeData['classe'] ?? null)
+                        <span style="font-size:.78rem; font-weight:500; color:var(--k-muted)">— {{ $anneeData['classe'] }}</span>
+                    @endif
                 </div>
-            @else
-                @foreach($dossier['academique'] as $anneeData)
-                <div class="section-card">
-                    <div class="section-card-header">
-                        <div>
-                            <span class="section-card-title">
-                                <i class="fas fa-calendar-alt"></i>
-                                {{ optional($anneeData['annee'])->name ?? 'Année N/A' }}
+                @if(($anneeData['moyenne_annuelle'] ?? null) !== null)
+                    @php $ma = $anneeData['moyenne_annuelle']; @endphp
+                    <span class="sem-score {{ $ma >= 12 ? 'green' : ($ma >= 10 ? 'amber' : 'red') }}">
+                        {{ number_format($ma, 2) }}/20
+                    </span>
+                @endif
+            </div>
+
+            @if(!empty($anneeData['semestres']))
+                <div class="semestre-grid">
+                @foreach($anneeData['semestres'] as $semKey => $sem)
+                @php $mg = $sem['moyenne_generale'] ?? null; @endphp
+                <div class="sem-card">
+                    <div class="sem-card-head">
+                        <span class="sem-card-name">{{ $sem['libelle'] ?? $semKey }}</span>
+                        @if($mg !== null)
+                            <span class="sem-score {{ $mg >= 12 ? 'green' : ($mg >= 10 ? 'amber' : 'red') }}">
+                                {{ number_format($mg, 2) }}
                             </span>
-                            @php $insc = $anneeData['inscription']; @endphp
-                            <div style="font-size:0.78rem; color:#64748b; margin-top:3px;">
-                                @if($insc->filiere) {{ $insc->filiere->name }} @endif
-                                @if($insc->niveauEtude) · {{ $insc->niveauEtude->name }} @endif
-                                @if($insc->classe) · <strong>{{ $insc->classe->name }}</strong> @endif
-                            </div>
-                        </div>
-                        <div style="display:flex; gap:8px; align-items:center;">
-                            @php
-                                $statusMap = ['active' => ['bg-success', 'Active'], 'pending' => ['bg-warning', 'En attente'], 'en_attente' => ['bg-warning', 'En attente'], 'annulée' => ['bg-danger', 'Annulée']];
-                                [$badgeCl, $badgeLbl] = $statusMap[$insc->status] ?? ['bg-secondary', $insc->status];
-                            @endphp
-                            <span class="badge {{ $badgeCl }}">{{ $badgeLbl }}</span>
-                            <a href="{{ route('esbtp.inscriptions.show', $insc->id) }}" class="btn btn-sm btn-outline-primary py-1 px-2" style="font-size:0.78rem;">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                        </div>
+                        @endif
                     </div>
-                    <div class="section-card-body">
-                        <div class="semestre-grid">
-                            @foreach(['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2'] as $semKey => $semLabel)
-                                @php $sem = $anneeData['semestres'][$semKey]; @endphp
-                                <div class="semestre-card">
-                                    <div class="semestre-card-header">
-                                        <span class="semestre-title">{{ $semLabel }}</span>
-                                        <div class="text-end">
-                                            <div class="semestre-moy">{{ $sem['moyenne'] !== null ? number_format($sem['moyenne'], 2) : '—' }}</div>
-                                            <div class="semestre-moy-label">/20</div>
-                                        </div>
-                                    </div>
-                                    <div class="semestre-body">
-                                        <div class="semestre-meta">
-                                            @if($sem['mention'])
-                                                @php
-                                                    $bc = match(true) {
-                                                        str_contains($sem['mention'], 'Tres')       => 'badge-tres-bien',
-                                                        str_contains($sem['mention'], 'Bien') && !str_contains($sem['mention'], 'Assez') => 'badge-bien',
-                                                        str_contains($sem['mention'], 'Assez')      => 'badge-assez-bien',
-                                                        str_contains($sem['mention'], 'Passable')   => 'badge-passable',
-                                                        str_contains($sem['mention'], 'Insuffisant')=> 'badge-insuffisant',
-                                                        default => 'badge-na',
-                                                    };
-                                                @endphp
-                                                <span class="badge-mention {{ $bc }}">{{ $sem['mention'] }}</span>
-                                            @endif
-                                            @if($sem['rang'])
-                                                <span class="semestre-meta-item">
-                                                    <i class="fas fa-trophy text-warning"></i>
-                                                    {{ $sem['rang'] }}{{ $sem['rang'] == 1 ? 'er' : 'ème' }}
-                                                    @if($sem['bulletin'] && $sem['bulletin']->effectif_classe)
-                                                        / {{ $sem['bulletin']->effectif_classe }}
-                                                    @endif
-                                                </span>
-                                            @endif
-                                            @if($sem['bulletin'])
-                                                @if($sem['bulletin']->total_absences !== null)
-                                                <span class="semestre-meta-item">
-                                                    <i class="fas fa-calendar-times text-danger"></i>
-                                                    {{ $sem['bulletin']->total_absences }}h abs.
-                                                </span>
-                                                @endif
-                                                <a href="{{ route('esbtp.bulletins.show', $sem['bulletin']->id) }}" class="semestre-meta-item" style="color:var(--klassci-blue); text-decoration:none;">
-                                                    <i class="fas fa-file-pdf"></i> Bulletin PDF
-                                                </a>
-                                            @endif
-                                        </div>
-
-                                        @if($sem['notes']->isNotEmpty())
-                                            <table class="notes-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Matière</th>
-                                                        <th class="text-end">Moy/20</th>
-                                                        <th class="text-end">Coef.</th>
-                                                        <th class="text-end">Pts pond.</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach($sem['notes'] as $noteItem)
-                                                    @php
-                                                        $moy  = $noteItem['moyenne'] ?? 0;
-                                                        $coef = $noteItem['coefficient'] ?? 1;
-                                                    @endphp
-                                                    <tr>
-                                                        <td>{{ optional($noteItem['matiere'])->name ?? 'N/A' }}</td>
-                                                        <td class="text-end" style="font-weight:700; color:{{ $moy >= 10 ? 'var(--klassci-blue)' : '#ef4444' }}">{{ number_format($moy, 2) }}</td>
-                                                        <td class="text-end" style="color:#94a3b8;">{{ $coef }}</td>
-                                                        <td class="text-end" style="color:#475569;">{{ number_format($moy * $coef, 2) }}</td>
-                                                    </tr>
-                                                    @endforeach
-                                                </tbody>
-                                                <tfoot>
-                                                    <tr style="background:#f8fafc;">
-                                                        <td colspan="2" style="font-size:0.75rem; color:#64748b; padding:6px 8px;"><strong>Moyenne générale</strong></td>
-                                                        <td class="text-end" style="font-size:0.75rem; color:#64748b; padding:6px 8px;">{{ $sem['notes']->sum(fn($n) => $n['coefficient']) }}</td>
-                                                        <td class="text-end" style="font-weight:700; color:var(--klassci-blue); padding:6px 8px;">
-                                                            {{ $sem['moyenne'] !== null ? number_format($sem['moyenne'], 2) . '/20' : '—' }}
-                                                        </td>
-                                                    </tr>
-                                                </tfoot>
-                                            </table>
-                                        @elseif($sem['bulletin'])
-                                            <p style="font-size:0.8rem; color:#94a3b8; margin:0;">Bulletin disponible — notes détaillées non disponibles.</p>
-                                        @else
-                                            <p style="font-size:0.8rem; color:#94a3b8; margin:0;">Aucune note saisie pour ce semestre.</p>
-                                        @endif
-                                    </div>
-                                </div>
+                    <div class="sem-card-body">
+                        @if(!empty($sem['matieres']))
+                            @foreach($sem['matieres'] as $mat)
+                            @php $n = $mat['note'] ?? $mat['moyenne'] ?? null; @endphp
+                            <div class="mat-row">
+                                <span class="mat-name">{{ $mat['nom'] ?? $mat['matiere'] ?? '—' }}</span>
+                                @if(isset($mat['coefficient'])) <span class="mat-coeff">Coeff. {{ $mat['coefficient'] }}</span> @endif
+                                <span class="mat-note {{ ($n !== null && $n >= 12) ? 'good' : (($n !== null && $n >= 10) ? 'mid' : 'bad') }}">
+                                    {{ $n !== null ? number_format($n, 2) : '—' }}
+                                </span>
+                            </div>
                             @endforeach
-                        </div>
-
-                        {{-- Récap annuel --}}
-                        @php
-                            $moyS1a = $anneeData['semestres']['semestre1']['moyenne'];
-                            $moyS2a = $anneeData['semestres']['semestre2']['moyenne'];
-                            $valsAnnee = array_filter([$moyS1a, $moyS2a], fn($v) => $v !== null);
-                            $moyAnnuelle = count($valsAnnee) > 0 ? round(array_sum($valsAnnee) / count($valsAnnee), 2) : null;
-                        @endphp
-                        @if($moyAnnuelle !== null)
-                        <div style="margin-top:16px; padding:12px 16px; background:#f0f4ff; border-radius:8px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-                            <span style="font-size:0.85rem; font-weight:600; color:#1e293b;">
-                                <i class="fas fa-calculator me-2" style="color:var(--klassci-blue)"></i>Moyenne annuelle
-                            </span>
-                            <span style="font-size:1.2rem; font-weight:800; color:var(--klassci-blue);">{{ number_format($moyAnnuelle, 2) }} / 20</span>
-                        </div>
+                        @else
+                            <p style="font-size:.82rem; color:var(--k-muted); text-align:center; padding:12px 0; margin:0">Aucune matière</p>
                         @endif
                     </div>
                 </div>
                 @endforeach
-
-                {{-- Carte réinscription --}}
-                @if($anneeCourante && !$etudiant->inscriptions->contains('annee_universitaire_id', $anneeCourante->id))
-                <div class="section-card" style="border: 2px dashed var(--klassci-blue); cursor:pointer;"
-                     onclick="window.location='{{ route('esbtp.reinscription.show', $etudiant->id) }}?annee_academique={{ $anneeCourante->name }}'">
-                    <div class="section-card-body text-center py-4">
-                        <i class="fas fa-plus-circle fa-3x mb-3" style="color:var(--klassci-blue)"></i>
-                        <h6 style="color:var(--klassci-blue); font-weight:700;">Nouvelle Réinscription</h6>
-                        <p class="text-muted mb-0">Réinscrire pour <strong>{{ $anneeCourante->name }}</strong></p>
-                    </div>
                 </div>
-                @endif
             @endif
         </div>
+        @endforeach
+    @else
+        <div class="s-card">
+            <div class="empty-state">
+                <i class="fas fa-graduation-cap"></i>
+                <p>Aucun résultat académique disponible</p>
+            </div>
+        </div>
+    @endif
+</div>{{-- /tab-academique --}}
 
-        {{-- ===========================================================
-             TAB 3 : PRÉSENCES
-        =========================================================== --}}
-        <div class="fiche-pane" id="pane-presences">
-            <div class="section-card">
-                <div class="section-card-header">
-                    <span class="section-card-title"><i class="fas fa-calendar-check"></i> Historique des présences par année</span>
+{{-- ─── TAB: PRÉSENCES ─────────────────────────────────────────── --}}
+<div class="tab-panel" id="tab-presences">
+    @if(isset($dossier['presences']['annees']) && count($dossier['presences']['annees']))
+        @foreach($dossier['presences']['annees'] as $anneeKey => $an)
+        @php
+            $total  = $an['total']             ?? 0;
+            $pres   = $an['nb_presences']      ?? 0;
+            $retard = $an['nb_retards']        ?? 0;
+            $abs    = $an['nb_absences']       ?? 0;
+            $just   = $an['nb_absences_just']  ?? 0;
+            $taux   = $an['taux_presence']     ?? null;
+
+            // Donut: rayon 18, circum = 2π*18 ≈ 113.1
+            $r = 18; $circum = round(2*3.14159*$r, 1);
+            $presRatio = $total > 0 ? ($pres+$retard)/$total : 0;
+            $presOffset = round($circum * (1 - $presRatio), 1);
+            $presColor = ($taux ?? 0) >= 80 ? '#10b981' : (($taux ?? 0) >= 60 ? '#f59e0b' : '#ef4444');
+        @endphp
+        <div class="presence-year">
+            <div class="presence-year-head" onclick="this.closest('.presence-year').classList.toggle('open')">
+                <span class="py-label">
+                    <i class="fas fa-calendar-alt" style="color:var(--k-blue)"></i>
+                    {{ $an['libelle'] ?? $anneeKey }}
+                </span>
+                <div style="display:flex;align-items:center;gap:20px">
+                    <div class="py-stats">
+                        <div class="py-stat">
+                            <div class="py-stat-val green">{{ $pres + $retard }}</div>
+                            <div class="py-stat-lbl">Présents</div>
+                        </div>
+                        <div class="py-stat">
+                            <div class="py-stat-val red">{{ $abs }}</div>
+                            <div class="py-stat-lbl">Absences</div>
+                        </div>
+                        <div class="py-stat">
+                            <div class="py-stat-val amber">{{ $just }}</div>
+                            <div class="py-stat-lbl">Justifiés</div>
+                        </div>
+                        <div class="py-stat">
+                            <div class="py-stat-val {{ ($taux??0) >= 80 ? 'green' : (($taux??0) >= 60 ? 'amber' : 'red') }}">
+                                {{ $taux !== null ? $taux . '%' : '—' }}
+                            </div>
+                            <div class="py-stat-lbl">Taux</div>
+                        </div>
+                    </div>
+                    {{-- Inline donut SVG --}}
+                    <svg class="py-donut" width="44" height="44" viewBox="0 0 44 44" style="transform:rotate(-90deg)">
+                        <circle cx="22" cy="22" r="{{ $r }}" fill="none" stroke="var(--k-border)" stroke-width="4"/>
+                        <circle cx="22" cy="22" r="{{ $r }}" fill="none"
+                            stroke="{{ $presColor }}" stroke-width="4" stroke-linecap="round"
+                            stroke-dasharray="{{ $circum }}" stroke-dashoffset="{{ $presOffset }}"/>
+                    </svg>
+                    <i class="fas fa-chevron-down" style="color:var(--k-muted); font-size:.75rem"></i>
                 </div>
-                <div class="section-card-body">
-                    @if(count($dossier['presences']) === 0)
-                        <div class="empty-state">
-                            <i class="fas fa-calendar-times"></i>
-                            <p>Aucun relevé de présences disponible.</p>
-                        </div>
-                    @else
-                        @foreach($dossier['presences'] as $pres)
-                        <div class="presence-annee">
-                            <div>
-                                <div class="presence-label">{{ optional($pres['annee'])->name ?? 'N/A' }}</div>
-                                @if($pres['total'] > 0)
-                                    <div class="presence-year-sub">{{ $pres['total'] }} séances enregistrées</div>
-                                @endif
-                            </div>
-                            <div>
-                                <div class="presence-stats">
-                                    <div class="presence-stat"><strong style="color:#10b981;">{{ $pres['presences'] }}</strong> présent(s)</div>
-                                    <div class="presence-stat"><strong style="color:#ef4444;">{{ $pres['absences'] }}</strong> absent(s)</div>
-                                    @if($pres['absences_just'] > 0)
-                                    <div class="presence-stat"><strong style="color:#f59e0b;">{{ $pres['absences_just'] }}</strong> justifié(s)</div>
-                                    @endif
-                                    @if($pres['retards'] > 0)
-                                    <div class="presence-stat"><strong style="color:#6366f1;">{{ $pres['retards'] }}</strong> retard(s)</div>
-                                    @endif
-                                    @if($pres['taux_presence'] !== null)
-                                    <div class="presence-stat ms-auto" style="font-weight:700; font-size:0.9rem; color:#1e293b;">{{ $pres['taux_presence'] }}%</div>
-                                    @endif
-                                </div>
-                                @if($pres['taux_presence'] !== null)
-                                <div class="progress-track">
-                                    @php
-                                        $tp = $pres['taux_presence'];
-                                        $gradFill = $tp >= 75 ? 'var(--klassci-gradient)' : ($tp >= 50 ? 'linear-gradient(90deg,#f59e0b,#fbbf24)' : 'linear-gradient(90deg,#ef4444,#f87171)');
-                                    @endphp
-                                    <div class="progress-fill" style="width:{{ min($tp, 100) }}%; background:{{ $gradFill }};"></div>
-                                </div>
-                                @else
-                                <div class="progress-track"><div class="progress-fill" style="width:0%;"></div></div>
-                                @endif
-                            </div>
-                        </div>
-                        @endforeach
+            </div>
+            @if($total > 0)
+            <div class="presence-year-body">
+                <div class="presence-bars">
+                    <div class="pbar-row">
+                        <span class="pbar-lbl">Présences</span>
+                        <div class="pbar-track"><div class="pbar-fill green" style="width:{{ $total > 0 ? round($pres/$total*100) : 0 }}%"></div></div>
+                        <span class="pbar-val" style="color:var(--k-success)">{{ $pres }}</span>
+                    </div>
+                    <div class="pbar-row">
+                        <span class="pbar-lbl">Retards</span>
+                        <div class="pbar-track"><div class="pbar-fill amber" style="width:{{ $total > 0 ? round($retard/$total*100) : 0 }}%"></div></div>
+                        <span class="pbar-val" style="color:#d97706">{{ $retard }}</span>
+                    </div>
+                    <div class="pbar-row">
+                        <span class="pbar-lbl">Absences</span>
+                        <div class="pbar-track"><div class="pbar-fill red" style="width:{{ $total > 0 ? round($abs/$total*100) : 0 }}%"></div></div>
+                        <span class="pbar-val" style="color:var(--k-danger)">{{ $abs }}</span>
+                    </div>
+                    @if($just > 0)
+                    <div class="pbar-row">
+                        <span class="pbar-lbl">Justifiés</span>
+                        <div class="pbar-track"><div class="pbar-fill blue" style="width:{{ $total > 0 ? round($just/$total*100) : 0 }}%"></div></div>
+                        <span class="pbar-val" style="color:var(--k-blue-2)">{{ $just }}</span>
+                    </div>
+                    @endif
+                </div>
+                <p style="font-size:.75rem; color:var(--k-muted); margin-top:12px; margin-bottom:0">
+                    Total séances enregistrées : <strong>{{ $total }}</strong>
+                </p>
+            </div>
+            @endif
+        </div>
+        @endforeach
+    @else
+        <div class="s-card">
+            <div class="empty-state">
+                <i class="fas fa-calendar-check"></i>
+                <p>Aucune donnée de présence disponible</p>
+            </div>
+        </div>
+    @endif
+</div>{{-- /tab-presences --}}
+
+{{-- ─── TAB: FINANCES ──────────────────────────────────────────── --}}
+<div class="tab-panel" id="tab-finances">
+    @php
+        // Collect all paiements across inscriptions
+        $allPaiements = collect();
+        foreach($etudiant->inscriptions as $insc) {
+            foreach($insc->paiements ?? [] as $pai) {
+                $pai->_annee = $insc->annee_universitaire ?? ($insc->anneeAcademique?->libelle ?? 'N/A');
+                $allPaiements->push($pai);
+            }
+        }
+        $allPaiements = $allPaiements->sortByDesc('date_paiement');
+    @endphp
+
+    {{-- Financial summary --}}
+    @if(isset($dossier['financier']))
+    @php $fin = $dossier['financier']; @endphp
+    <div class="kpi-grid" style="margin-bottom:20px">
+        <div class="kpi-card">
+            <div class="kpi-ring">
+                <svg viewBox="0 0 52 52">
+                    <circle class="ring-bg" cx="26" cy="26" r="22"/>
+                    <circle class="ring-fg" cx="26" cy="26" r="22" stroke="#10b981"
+                        stroke-dasharray="{{ round(2*3.14159*22,1) }}"
+                        stroke-dashoffset="{{ round(2*3.14159*22 * (1 - min(1, ($fin['total_paye'] ?? 0)/(max(1,($fin['total_paye']??0)+($fin['total_restant']??0))))),1) }}"/>
+                </svg>
+                <span class="ring-icon" style="color:#10b981"><i class="fas fa-check" style="font-size:.7rem"></i></span>
+            </div>
+            <div class="kpi-body">
+                <div class="kpi-val" style="color:#10b981">{{ number_format($fin['total_paye'] ?? 0, 0, ',', ' ') }}</div>
+                <div class="kpi-lbl">Total payé (FCFA)</div>
+            </div>
+        </div>
+        @if(($fin['total_restant'] ?? 0) > 0)
+        <div class="kpi-card">
+            <div class="kpi-ring">
+                <svg viewBox="0 0 52 52">
+                    <circle class="ring-bg" cx="26" cy="26" r="22"/>
+                    <circle class="ring-fg" cx="26" cy="26" r="22" stroke="#ef4444"
+                        stroke-dasharray="{{ round(2*3.14159*22,1) }}" stroke-dashoffset="{{ round(2*3.14159*22*.35,1) }}"/>
+                </svg>
+                <span class="ring-icon" style="color:#ef4444"><i class="fas fa-exclamation" style="font-size:.8rem"></i></span>
+            </div>
+            <div class="kpi-body">
+                <div class="kpi-val" style="color:#ef4444">{{ number_format($fin['total_restant'], 0, ',', ' ') }}</div>
+                <div class="kpi-lbl">Restant dû (FCFA)</div>
+            </div>
+        </div>
+        @endif
+        <div class="kpi-card">
+            <div class="kpi-ring">
+                <svg viewBox="0 0 52 52">
+                    <circle class="ring-bg" cx="26" cy="26" r="22"/>
+                    <circle class="ring-fg" cx="26" cy="26" r="22" stroke="var(--k-blue)"
+                        stroke-dasharray="{{ round(2*3.14159*22,1) }}" stroke-dashoffset="{{ round(2*3.14159*22*.5,1) }}"/>
+                </svg>
+                <span class="ring-icon" style="color:var(--k-blue)"><i class="fas fa-list" style="font-size:.7rem"></i></span>
+            </div>
+            <div class="kpi-body">
+                <div class="kpi-val" style="color:var(--k-blue)">{{ $allPaiements->count() }}</div>
+                <div class="kpi-lbl">Transactions</div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- Payment timeline --}}
+    <div class="s-card">
+        <div class="s-card-header">
+            <div class="s-card-title">
+                <div class="s-card-title-icon"><i class="fas fa-history"></i></div>
+                Historique des paiements
+            </div>
+        </div>
+
+        @if($allPaiements->count())
+        <div class="pmt-timeline">
+            @foreach($allPaiements as $loop_idx => $pai)
+            @php
+                $status = $pai->status ?? $pai->statut ?? 'en_attente';
+                $statusKey = match(true) {
+                    str_contains(strtolower($status), 'valid') => 'valide',
+                    str_contains(strtolower($status), 'attente') => 'attente',
+                    str_contains(strtolower($status), 'rejet') => 'rejete',
+                    default => 'attente'
+                };
+                $statusLabel = match($statusKey) {
+                    'valide'  => 'Validé',
+                    'attente' => 'En attente',
+                    'rejete'  => 'Rejeté',
+                    default   => ucfirst($status)
+                };
+                $isLast = $loop_idx === $allPaiements->count() - 1;
+            @endphp
+            <div class="pmt-item">
+                <div class="pmt-dot-wrap">
+                    <div class="pmt-dot {{ $statusKey }}"></div>
+                    @if(!$isLast) <div class="pmt-line"></div> @endif
+                </div>
+                <div class="pmt-body">
+                    <div class="pmt-motif">{{ $pai->motif ?? 'Paiement' }}</div>
+                    <div class="pmt-meta">
+                        @if($pai->date_paiement)
+                        <span><i class="fas fa-calendar"></i> {{ \Carbon\Carbon::parse($pai->date_paiement)->format('d/m/Y') }}</span>
+                        @endif
+                        @if($pai->mode_paiement)
+                        <span><i class="fas fa-credit-card"></i> {{ $pai->mode_paiement }}</span>
+                        @endif
+                        @if($pai->numero_recu)
+                        <span><i class="fas fa-receipt"></i> {{ $pai->numero_recu }}</span>
+                        @endif
+                        <span><i class="fas fa-folder"></i> {{ $pai->_annee }}</span>
+                    </div>
+                </div>
+                <div class="pmt-right">
+                    <div class="pmt-amount">{{ number_format($pai->montant, 0, ',', ' ') }} <small style="font-size:.65em;font-weight:500">FCFA</small></div>
+                    <span class="pmt-badge {{ $statusKey }}">{{ $statusLabel }}</span>
+                    <div class="pmt-actions">
+                        @if(isset($pai->inscription_id))
+                        <a href="{{ route('esbtp.paiements.show', $pai) }}" class="pmt-act-btn view">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                        @endif
+                        @can('delete', $pai)
+                        <form action="{{ route('esbtp.paiements.destroy', $pai) }}" method="POST" style="margin:0"
+                              onsubmit="return confirm('Supprimer ce paiement ?')">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="pmt-act-btn del"><i class="fas fa-trash"></i></button>
+                        </form>
+                        @endcan
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @else
+            <div class="empty-state">
+                <i class="fas fa-wallet"></i>
+                <p>Aucun paiement enregistré</p>
+            </div>
+        @endif
+    </div>
+</div>{{-- /tab-finances --}}
+
+{{-- ─── TAB: PROFIL ─────────────────────────────────────────────── --}}
+<div class="tab-panel" id="tab-profil">
+
+    {{-- Infos personnelles --}}
+    <div class="s-card">
+        <div class="s-card-header">
+            <div class="s-card-title">
+                <div class="s-card-title-icon"><i class="fas fa-id-card"></i></div>
+                Informations personnelles
+            </div>
+        </div>
+        <div class="info-grid">
+            <div class="info-row"><span class="info-lbl">Nom</span><span class="info-val">{{ strtoupper($etudiant->nom) }}</span></div>
+            <div class="info-row"><span class="info-lbl">Prénoms</span><span class="info-val">{{ $etudiant->prenoms ?? '—' }}</span></div>
+            <div class="info-row">
+                <span class="info-lbl">Date de naissance</span>
+                <span class="info-val">{{ $etudiant->date_naissance ? \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') : '—' }}{{ $etudiant->age ? ' (' . $etudiant->age . ' ans)' : '' }}</span>
+            </div>
+            <div class="info-row"><span class="info-lbl">Lieu de naissance</span><span class="info-val">{{ $etudiant->lieu_naissance ?? '—' }}</span></div>
+            <div class="info-row"><span class="info-lbl">Nationalité</span><span class="info-val">{{ $etudiant->nationalite ?? '—' }}</span></div>
+            <div class="info-row"><span class="info-lbl">Sexe</span><span class="info-val">{{ $etudiant->sexe === 'M' ? 'Masculin' : ($etudiant->sexe === 'F' ? 'Féminin' : ($etudiant->sexe ?? '—')) }}</span></div>
+            <div class="info-row">
+                <span class="info-lbl">Email personnel</span>
+                <span class="info-val">
+                    @if($etudiant->email_personnel)
+                        <a href="mailto:{{ $etudiant->email_personnel }}">{{ $etudiant->email_personnel }}</a>
+                    @else <span class="empty">Non renseigné</span> @endif
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-lbl">Téléphone</span>
+                <span class="info-val">
+                    @if($etudiant->telephone)
+                        <a href="tel:{{ $etudiant->telephone }}">{{ $etudiant->telephone }}</a>
+                    @else <span class="empty">Non renseigné</span> @endif
+                </span>
+            </div>
+            <div class="info-row"><span class="info-lbl">Adresse</span><span class="info-val">{{ $etudiant->adresse ?? '—' }}</span></div>
+            @if($etudiant->statut === 'abandon')
+            <div class="info-row"><span class="info-lbl">Date abandon</span><span class="info-val">{{ $etudiant->date_abandon ? \Carbon\Carbon::parse($etudiant->date_abandon)->format('d/m/Y') : '—' }}</span></div>
+            <div class="info-row"><span class="info-lbl">Motif abandon</span><span class="info-val">{{ $etudiant->motif_abandon ?? '—' }}</span></div>
+            @endif
+        </div>
+    </div>
+
+    {{-- Compte utilisateur --}}
+    @if($etudiant->user)
+    <div class="s-card">
+        <div class="s-card-header">
+            <div class="s-card-title">
+                <div class="s-card-title-icon"><i class="fas fa-user-lock"></i></div>
+                Compte utilisateur
+            </div>
+        </div>
+        <div class="info-grid">
+            <div class="info-row"><span class="info-lbl">Email connexion</span><span class="info-val"><a href="mailto:{{ $etudiant->user->email }}">{{ $etudiant->user->email }}</a></span></div>
+            <div class="info-row">
+                <span class="info-lbl">Dernière connexion</span>
+                <span class="info-val">{{ $etudiant->user->last_login_at ? \Carbon\Carbon::parse($etudiant->user->last_login_at)->diffForHumans() : '—' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-lbl">Compte créé</span>
+                <span class="info-val">{{ $etudiant->user->created_at?->format('d/m/Y') ?? '—' }}</span>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- Parents / Tuteurs --}}
+    @if($etudiant->parents && $etudiant->parents->count())
+    <div class="s-card">
+        <div class="s-card-header">
+            <div class="s-card-title">
+                <div class="s-card-title-icon"><i class="fas fa-users"></i></div>
+                Parents / Tuteurs ({{ $etudiant->parents->count() }})
+            </div>
+        </div>
+        @foreach($etudiant->parents as $parent)
+        <div class="parent-item" id="parent-{{ $parent->id }}">
+            <div class="parent-head" onclick="document.getElementById('parent-{{ $parent->id }}').classList.toggle('open')">
+                <div class="parent-avatar-initials">
+                    {{ strtoupper(substr($parent->prenoms ?? 'P', 0, 1)) }}{{ strtoupper(substr($parent->nom, 0, 1)) }}
+                </div>
+                <div class="parent-head-info">
+                    <div class="parent-name">{{ strtoupper($parent->nom) }} {{ $parent->prenoms }}</div>
+                    <div class="parent-lien">{{ $parent->lien_parente ?? 'Tuteur' }}{{ $parent->profession ? ' · ' . $parent->profession : '' }}</div>
+                </div>
+                <i class="fas fa-chevron-down parent-toggle"></i>
+            </div>
+            <div class="parent-body">
+                <div class="parent-detail-grid">
+                    @if($parent->telephone)
+                    <div class="info-row">
+                        <span class="info-lbl">Téléphone</span>
+                        <span class="info-val"><a href="tel:{{ $parent->telephone }}">{{ $parent->telephone }}</a></span>
+                    </div>
+                    @endif
+                    @if($parent->email)
+                    <div class="info-row">
+                        <span class="info-lbl">Email</span>
+                        <span class="info-val"><a href="mailto:{{ $parent->email }}">{{ $parent->email }}</a></span>
+                    </div>
+                    @endif
+                    @if($parent->adresse)
+                    <div class="info-row">
+                        <span class="info-lbl">Adresse</span>
+                        <span class="info-val">{{ $parent->adresse }}</span>
+                    </div>
+                    @endif
+                    @if($parent->profession)
+                    <div class="info-row">
+                        <span class="info-lbl">Profession</span>
+                        <span class="info-val">{{ $parent->profession }}</span>
+                    </div>
                     @endif
                 </div>
             </div>
         </div>
-
-        {{-- ===========================================================
-             TAB 4 : FINANCES
-        =========================================================== --}}
-        <div class="fiche-pane" id="pane-finances">
-            @php $fin = $dossier['financier']; @endphp
-
-            <div class="kpi-strip mb-4">
-                <div class="kpi-card kpi-green">
-                    <div class="kpi-icon"><i class="fas fa-check-circle" style="color:#10b981"></i></div>
-                    <div>
-                        <div class="kpi-label">Total validé</div>
-                        <div class="kpi-value">{{ number_format($fin['paiements_valides'], 0, ',', ' ') }}</div>
-                        <div class="kpi-sub">FCFA</div>
-                    </div>
-                </div>
-                @if($fin['paiements_en_attente'] > 0)
-                <div class="kpi-card kpi-amber">
-                    <div class="kpi-icon"><i class="fas fa-hourglass-half" style="color:#f59e0b"></i></div>
-                    <div>
-                        <div class="kpi-label">En attente</div>
-                        <div class="kpi-value">{{ number_format($fin['paiements_en_attente'], 0, ',', ' ') }}</div>
-                        <div class="kpi-sub">FCFA</div>
-                    </div>
-                </div>
-                @endif
-                <div class="kpi-card kpi-blue">
-                    <div class="kpi-icon"><i class="fas fa-list" style="color:var(--klassci-blue)"></i></div>
-                    <div>
-                        <div class="kpi-label">Transactions</div>
-                        <div class="kpi-value">{{ $fin['nombre_paiements'] }}</div>
-                        <div class="kpi-sub">paiements</div>
-                    </div>
-                </div>
-                @if($fin['total_reliquats_entrants'] > 0)
-                <div class="kpi-card kpi-red">
-                    <div class="kpi-icon"><i class="fas fa-exclamation-triangle" style="color:#ef4444"></i></div>
-                    <div>
-                        <div class="kpi-label">Reliquats</div>
-                        <div class="kpi-value">{{ number_format($fin['total_reliquats_entrants'], 0, ',', ' ') }}</div>
-                        <div class="kpi-sub">FCFA à payer</div>
-                    </div>
-                </div>
-                @endif
-            </div>
-
-            <div class="section-card">
-                <div class="section-card-header">
-                    <span class="section-card-title"><i class="fas fa-money-bill-wave"></i> Historique des paiements</span>
-                    <a href="{{ route('esbtp.paiements.create') }}?etudiant={{ $etudiant->id }}" class="hero-btn hero-btn-white" style="background:#f0f4ff; color:var(--klassci-blue); padding:6px 12px; font-size:0.78rem;">
-                        <i class="fas fa-plus me-1"></i>Nouveau paiement
-                    </a>
-                </div>
-                <div class="section-card-body" style="padding-top:8px; padding-bottom:8px;">
-                    @forelse($etudiant->paiements as $paiement)
-                        @php $st = $paiement->status ?? 'en_attente'; @endphp
-                        <div class="paiement-row">
-                            <div class="paiement-icon {{ $st === 'validé' ? 'valide' : ($st === 'rejeté' ? 'rejete' : 'attente') }}">
-                                <i class="fas fa-{{ $st === 'validé' ? 'check' : ($st === 'rejeté' ? 'times' : 'clock') }}"></i>
-                            </div>
-                            <div>
-                                <div class="paiement-motif">{{ $paiement->motif ?: 'Paiement' }}</div>
-                                <div class="paiement-ref">
-                                    {{ $paiement->numero_recu ? 'Reçu #' . $paiement->numero_recu : ($paiement->reference_paiement ?: 'N/A') }}
-                                    @if($paiement->mode_paiement) · {{ $paiement->mode_paiement }} @endif
-                                </div>
-                            </div>
-                            <div class="paiement-date">{{ optional($paiement->date_paiement)->format('d/m/Y') ?? 'N/A' }}</div>
-                            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
-                                <div class="paiement-montant">{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</div>
-                                <div style="display:flex; gap:4px;">
-                                    <a href="{{ route('esbtp.paiements.show', $paiement->id) }}" class="btn btn-sm btn-outline-primary py-1 px-2" style="font-size:0.72rem;">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    @if($paiement->status === 'validé' && $paiement->numero_recu)
-                                    <a href="{{ route('esbtp.paiements.recu', $paiement->id) }}" class="btn btn-sm btn-outline-success py-1 px-2" style="font-size:0.72rem;" target="_blank">
-                                        <i class="fas fa-file-pdf"></i>
-                                    </a>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                    @empty
-                        <div class="empty-state"><i class="fas fa-receipt"></i><p>Aucun paiement enregistré.</p></div>
-                    @endforelse
-                </div>
-            </div>
-
-            {{-- Reliquats entrants --}}
-            @if($fin['reliquats_entrants']->isNotEmpty())
-            <div class="section-card mt-4">
-                <div class="section-card-header">
-                    <span class="section-card-title"><i class="fas fa-exclamation-triangle" style="color:#ef4444"></i> Reliquats à payer</span>
-                    <span class="badge bg-danger">{{ number_format($fin['total_reliquats_entrants'], 0, ',', ' ') }} FCFA</span>
-                </div>
-                <div class="section-card-body" style="padding-top:8px; padding-bottom:8px;">
-                    @foreach($fin['reliquats_entrants'] as $reliquat)
-                    @php $frais = optional(optional($reliquat->fraisSubscription)->fraisCategory); @endphp
-                    <div class="paiement-row">
-                        <div class="paiement-icon rejete"><i class="fas fa-arrow-down"></i></div>
-                        <div>
-                            <div class="paiement-motif">{{ $frais->name ?? 'Reliquat' }}</div>
-                            <div class="paiement-ref">Depuis {{ optional(optional($reliquat->inscriptionSource)->anneeUniversitaire)->name ?? 'N/A' }}</div>
-                        </div>
-                        <div class="paiement-date">
-                            <span class="badge {{ $reliquat->statut === 'actif' ? 'bg-danger' : 'bg-success' }}">{{ ucfirst($reliquat->statut) }}</span>
-                        </div>
-                        <div class="paiement-montant" style="color:#ef4444;">{{ number_format($reliquat->solde_restant, 0, ',', ' ') }} FCFA</div>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-            @endif
-        </div>
-
-        {{-- ===========================================================
-             TAB 5 : PROFIL
-        =========================================================== --}}
-        <div class="fiche-pane" id="pane-infos">
-            <div class="row g-4">
-                <div class="col-12 col-lg-6">
-                    {{-- Informations personnelles --}}
-                    <div class="section-card">
-                        <div class="section-card-header">
-                            <span class="section-card-title"><i class="fas fa-user"></i> Informations personnelles</span>
-                            @can('edit_students')
-                            <a href="{{ route('esbtp.etudiants.edit', $etudiant->id) }}" style="font-size:0.78rem; color:var(--klassci-blue);">
-                                <i class="fas fa-pencil-alt me-1"></i>Modifier
-                            </a>
-                            @endcan
-                        </div>
-                        <div class="section-card-body">
-                            {{-- Photo avec upload --}}
-                            <div class="text-center mb-4">
-                                <div class="position-relative d-inline-block" style="cursor:pointer;" onclick="document.getElementById('photo-upload').click()">
-                                    @if($etudiant->photo_url)
-                                        <img src="{{ $etudiant->photo_url }}" alt="Photo" class="rounded-circle" style="width:100px;height:100px;object-fit:cover;border:3px solid var(--klassci-blue);">
-                                    @else
-                                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width:100px;height:100px;border:3px solid #e2e8f0;">
-                                            <i class="fas fa-user fa-3x text-secondary"></i>
-                                        </div>
-                                    @endif
-                                    <div class="position-absolute bottom-0 end-0 bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width:30px;height:30px;border:2px solid white;">
-                                        <i class="fas fa-camera text-white" style="font-size:0.7rem;"></i>
-                                    </div>
-                                </div>
-                                <input type="file" id="photo-upload" accept="image/*" style="display:none;" onchange="uploadPhoto(this)">
-                            </div>
-
-                            <div class="info-grid">
-                                <div class="info-item">
-                                    <div class="info-label">Nom complet</div>
-                                    <div class="info-value">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Matricule</div>
-                                    <div class="info-value">{{ $etudiant->matricule }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Genre</div>
-                                    <div class="info-value">{{ $etudiant->genre == 'M' ? 'Masculin' : 'Féminin' }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Date de naissance</div>
-                                    <div class="info-value {{ !$etudiant->date_naissance ? 'empty' : '' }}">
-                                        {{ $etudiant->date_naissance ? $etudiant->date_naissance->format('d/m/Y') . ' (' . $etudiant->age . ' ans)' : 'Non renseigné' }}
-                                    </div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Lieu de naissance</div>
-                                    <div class="info-value {{ !$etudiant->lieu_naissance ? 'empty' : '' }}">{{ $etudiant->lieu_naissance ?: 'Non renseigné' }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Nationalité</div>
-                                    <div class="info-value {{ !$etudiant->nationalite ? 'empty' : '' }}">{{ $etudiant->nationalite ?: 'Non renseigné' }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Téléphone</div>
-                                    <div class="info-value {{ !$etudiant->telephone ? 'empty' : '' }}">{{ $etudiant->telephone ?: 'Non renseigné' }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Email</div>
-                                    <div class="info-value {{ !$etudiant->email_personnel ? 'empty' : '' }}">{{ $etudiant->email_personnel ?: 'Non renseigné' }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Ville</div>
-                                    <div class="info-value {{ !$etudiant->ville ? 'empty' : '' }}">{{ $etudiant->ville ?: 'Non renseigné' }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Commune</div>
-                                    <div class="info-value {{ !$etudiant->commune ? 'empty' : '' }}">{{ $etudiant->commune ?: 'Non renseigné' }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Statut</div>
-                                    <div class="info-value">
-                                        <span class="badge {{ $etudiant->statut === 'actif' ? 'bg-success' : 'bg-danger' }}">{{ ucfirst($etudiant->statut ?? 'N/A') }}</span>
-                                    </div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">Date d'admission</div>
-                                    <div class="info-value">{{ $etudiant->created_at?->format('d/m/Y') ?? 'N/A' }}</div>
-                                </div>
-                                @if($etudiant->urgence_contact_nom)
-                                <div class="info-item" style="grid-column: 1 / -1;">
-                                    <div class="info-label">Contact urgence</div>
-                                    <div class="info-value">{{ $etudiant->urgence_contact_nom }} ({{ $etudiant->urgence_contact_relation }}) — {{ $etudiant->urgence_contact_telephone }}</div>
-                                </div>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Compte utilisateur --}}
-                    <div class="section-card mt-4">
-                        <div class="section-card-header">
-                            <span class="section-card-title"><i class="fas fa-user-cog"></i> Compte utilisateur</span>
-                        </div>
-                        <div class="section-card-body">
-                            @if(session('account_created'))
-                            <div class="alert alert-success alert-dismissible fade show">
-                                <strong>Compte créé !</strong> Identifiant : <code>{{ session('new_username') }}</code> — Mot de passe : <code>{{ session('new_password') }}</code>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                            @endif
-                            @if($etudiant->user)
-                                <div class="d-flex align-items-center gap-2 mb-3">
-                                    <span class="badge bg-success">Actif</span>
-                                    <span style="font-size:0.88rem;">{{ $etudiant->user->email }}</span>
-                                </div>
-                                <p style="font-size:0.88rem; margin-bottom:12px;"><strong>Identifiant :</strong> {{ $etudiant->user->username ?: $etudiant->user->email }}</p>
-                                <a href="{{ route('esbtp.etudiants.reset-password', $etudiant->id) }}" class="btn btn-sm btn-outline-secondary w-100" onclick="return confirm('Réinitialiser le mot de passe ?')">
-                                    <i class="fas fa-key me-1"></i>Réinitialiser le mot de passe
-                                </a>
-                            @else
-                                <div class="alert alert-warning mb-3">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>Aucun compte utilisateur associé.
-                                </div>
-                                <button class="btn btn-sm btn-primary w-100" data-bs-toggle="modal" data-bs-target="#createAccountModal">
-                                    <i class="fas fa-user-plus me-1"></i>Créer un compte
-                                </button>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-12 col-lg-6">
-                    {{-- Parents / tuteurs --}}
-                    <div class="section-card">
-                        <div class="section-card-header">
-                            <span class="section-card-title"><i class="fas fa-users"></i> Parents / Tuteurs</span>
-                            <span class="badge bg-secondary">{{ $etudiant->parents->count() }}</span>
-                        </div>
-                        <div class="section-card-body">
-                            @forelse($etudiant->parents as $index => $parent)
-                            <div class="parent-card {{ $index === 0 ? 'open' : '' }}" id="parent-card-{{ $index }}">
-                                <div class="parent-card-header" onclick="toggleParent({{ $index }})">
-                                    <div>
-                                        <strong style="font-size:0.9rem;">{{ $parent->nom }} {{ $parent->prenoms }}</strong>
-                                        <div style="font-size:0.78rem; color:#64748b;">
-                                            {{ $parent->pivot->relation ?? 'N/A' }}
-                                            @if($parent->pivot->is_tuteur)
-                                                <span class="badge bg-primary ms-1" style="font-size:0.65rem;">Tuteur principal</span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                    <i class="fas fa-chevron-down parent-chevron"></i>
-                                </div>
-                                <div class="parent-card-body">
-                                    <div class="info-grid" style="grid-template-columns: 1fr 1fr;">
-                                        <div class="info-item">
-                                            <div class="info-label">Téléphone</div>
-                                            <div class="info-value {{ !$parent->telephone ? 'empty' : '' }}">{{ $parent->telephone ?: '—' }}</div>
-                                        </div>
-                                        <div class="info-item">
-                                            <div class="info-label">Email</div>
-                                            <div class="info-value {{ !$parent->email ? 'empty' : '' }}">{{ $parent->email ?: '—' }}</div>
-                                        </div>
-                                        <div class="info-item">
-                                            <div class="info-label">Profession</div>
-                                            <div class="info-value {{ !$parent->profession ? 'empty' : '' }}">{{ $parent->profession ?: '—' }}</div>
-                                        </div>
-                                        <div class="info-item">
-                                            <div class="info-label">Adresse</div>
-                                            <div class="info-value {{ !$parent->adresse ? 'empty' : '' }}">{{ $parent->adresse ?: '—' }}</div>
-                                        </div>
-                                    </div>
-                                    @php $autresEtudiants = $parent->etudiants->where('id', '!=', $etudiant->id); @endphp
-                                    @if($autresEtudiants->count() > 0)
-                                    <div class="mt-2" style="font-size:0.78rem; color:#64748b;">
-                                        <strong>Autres enfants :</strong>
-                                        @foreach($autresEtudiants as $autre)
-                                            <a href="{{ route('esbtp.etudiants.show', $autre->id) }}" style="color:var(--klassci-blue); margin-left:4px;">{{ $autre->nom }} {{ $autre->prenoms }}</a>@if(!$loop->last),@endif
-                                        @endforeach
-                                    </div>
-                                    @endif
-                                </div>
-                            </div>
-                            @empty
-                                <div class="empty-state">
-                                    <i class="fas fa-user-friends"></i>
-                                    <p>Aucun parent ou tuteur associé.</p>
-                                </div>
-                            @endforelse
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </div>{{-- /container --}}
-</div>{{-- /fiche-etudiant --}}
-
-{{-- ============================================================
-     MODALS
-============================================================ --}}
-
-{{-- Création compte --}}
-@if(!$etudiant->user)
-<div class="modal fade" id="createAccountModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Créer un compte utilisateur</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-info mb-3"><i class="fas fa-info-circle me-2"></i>Un compte étudiant sera créé automatiquement.</div>
-                <ul class="list-unstyled mb-3">
-                    <li class="mb-1"><i class="fas fa-user text-primary me-2"></i>Identifiant basé sur prénom.nom</li>
-                    <li class="mb-1"><i class="fas fa-key text-primary me-2"></i>Mot de passe généré automatiquement</li>
-                    <li><i class="fas fa-id-badge text-primary me-2"></i>Rôle : Étudiant</li>
-                </ul>
-                <div class="alert alert-warning mb-0"><small><i class="fas fa-exclamation-triangle me-1"></i>Le mot de passe sera affiché une seule fois.</small></div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <form action="{{ route('esbtp.etudiants.create-account', $etudiant) }}" method="POST" class="d-inline">
-                    @csrf
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-check me-1"></i>Créer</button>
-                </form>
-            </div>
-        </div>
+        @endforeach
     </div>
-</div>
-@endif
+    @endif
 
-{{-- Suppression étudiant --}}
-@can('delete_students')
-<div class="modal fade" id="deleteStudentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Suppression définitive</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-danger border-0 mb-3">
-                    <strong>ATTENTION</strong> — Cette action supprime définitivement toutes les données. Elle ne peut pas être annulée.
-                </div>
-                <p><strong>{{ $etudiant->nom }} {{ $etudiant->prenoms }}</strong> — Matricule : {{ $etudiant->matricule }}</p>
-                <p class="text-muted small">Seront supprimés : {{ $etudiant->inscriptions->count() }} inscription(s), {{ $etudiant->paiements->count() }} paiement(s), notes, absences, bulletins...</p>
-                <div class="form-check mt-3">
-                    <input class="form-check-input" type="checkbox" id="confirmDeletion">
-                    <label class="form-check-label fw-bold" for="confirmDeletion">Je confirme la suppression définitive.</label>
-                </div>
-                <div class="form-check mt-2">
-                    <input class="form-check-input" type="checkbox" id="keepUserAccount">
-                    <label class="form-check-label" for="keepUserAccount">Conserver le compte utilisateur</label>
-                </div>
-                <div class="text-center d-none py-3" id="deletionProgress">
-                    <div class="spinner-border text-danger"></div>
-                    <p class="mt-2 text-muted">Suppression en cours...</p>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button class="btn btn-danger" id="confirmDeleteBtn" disabled onclick="deleteStudent()">
-                    <i class="fas fa-trash me-1"></i>Supprimer définitivement
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-@endcan
+</div>{{-- /tab-profil --}}
 
+</div>{{-- /fiche-content --}}
+</div>{{-- /fiche-page --}}
 @endsection
 
 @section('scripts')
 <script>
-// ---- Tabs ----
-function switchTab(paneId) {
-    document.querySelectorAll('.fiche-pane').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.fiche-tab').forEach(t => t.classList.remove('active'));
-    const pane = document.getElementById(paneId);
-    const tab  = document.querySelector('[data-pane="' + paneId + '"]');
-    if (pane) pane.classList.add('active');
-    if (tab)  tab.classList.add('active');
-}
+(function () {
+    // Tab switching
+    const tabs   = document.querySelectorAll('.fiche-tab');
+    const panels = document.querySelectorAll('.tab-panel');
 
-document.querySelectorAll('.fiche-tab').forEach(tab => {
-    tab.addEventListener('click', () => switchTab(tab.dataset.pane));
-});
-
-// Hash URL support
-const hashMap = {
-    '#academique': 'pane-academique',
-    '#presences':  'pane-presences',
-    '#finances':   'pane-finances',
-    '#profil':     'pane-infos'
-};
-if (hashMap[location.hash]) switchTab(hashMap[location.hash]);
-
-// ---- Parents accordion ----
-function toggleParent(index) {
-    document.getElementById('parent-card-' + index)?.classList.toggle('open');
-}
-
-// ---- Photo upload ----
-async function uploadPhoto(input) {
-    if (!input.files[0]) return;
-    const formData = new FormData();
-    formData.append('photo', input.files[0]);
-    formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
-    try {
-        const res = await fetch('{{ route("esbtp.etudiants.update-photo", $etudiant->id) }}', { method: 'POST', body: formData });
-        if (res.ok) location.reload();
-        else alert('Erreur lors du téléchargement de la photo.');
-    } catch(e) { alert('Erreur réseau.'); }
-}
-
-// ---- Suppression ----
-document.getElementById('confirmDeletion')?.addEventListener('change', function() {
-    document.getElementById('confirmDeleteBtn').disabled = !this.checked;
-});
-
-async function deleteStudent() {
-    const btn      = document.getElementById('confirmDeleteBtn');
-    const progress = document.getElementById('deletionProgress');
-    const body     = document.querySelector('#deleteStudentModal .modal-body');
-    const keepUser = document.getElementById('keepUserAccount')?.checked || false;
-    btn.disabled = true;
-    body.classList.add('d-none');
-    progress.classList.remove('d-none');
-    try {
-        const res = await fetch('{{ route("esbtp.etudiants.destroy", $etudiant->id) }}', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ keep_user: keepUser })
+    tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            const target = this.dataset.tab;
+            tabs.forEach(t => t.classList.remove('active'));
+            panels.forEach(p => p.classList.remove('active'));
+            this.classList.add('active');
+            const panel = document.getElementById('tab-' + target);
+            if (panel) panel.classList.add('active');
         });
-        if (res.ok) {
-            window.location.href = '{{ route("esbtp.etudiants.index") }}';
-        } else {
-            const data = await res.json();
-            alert(data.message || 'Erreur lors de la suppression.');
-            btn.disabled = false;
-            body.classList.remove('d-none');
-            progress.classList.add('d-none');
-        }
-    } catch(e) {
-        alert('Erreur réseau.');
-        btn.disabled = false;
-        body.classList.remove('d-none');
-        progress.classList.add('d-none');
+    });
+
+    // Handle ?tab=xxx URL param
+    const urlTab = new URLSearchParams(window.location.search).get('tab');
+    if (urlTab) {
+        const t = document.querySelector('[data-tab="' + urlTab + '"]');
+        if (t) t.click();
     }
-}
+})();
 </script>
 @endsection

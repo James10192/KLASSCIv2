@@ -209,15 +209,18 @@ class EtudiantDossierService
                 ->where('annee_universitaire_id', $anneeId)
                 ->selectRaw("
                     COUNT(*) as total,
-                    SUM(CASE WHEN statut = 'present' OR status = 'present' THEN 1 ELSE 0 END) as nb_presences,
-                    SUM(CASE WHEN (statut = 'absent' OR status = 'absent') AND (is_justified = 0 OR is_justified IS NULL) THEN 1 ELSE 0 END) as nb_absences,
-                    SUM(CASE WHEN (statut = 'absent' OR status = 'absent') AND is_justified = 1 THEN 1 ELSE 0 END) as nb_absences_just,
-                    SUM(CASE WHEN statut = 'retard' OR status = 'retard' THEN 1 ELSE 0 END) as nb_retards
+                    SUM(CASE WHEN statut = 'present' THEN 1 ELSE 0 END) as nb_presences,
+                    SUM(CASE WHEN statut = 'absent' THEN 1 ELSE 0 END) as nb_absences,
+                    SUM(CASE WHEN statut = 'excuse' THEN 1 ELSE 0 END) as nb_absences_just,
+                    SUM(CASE WHEN statut IN ('retard', 'late') THEN 1 ELSE 0 END) as nb_retards
                 ")
                 ->first();
 
             $total   = (int) ($attendances->total ?? 0);
             $present = (int) ($attendances->nb_presences ?? 0);
+            $retards = (int) ($attendances->nb_retards ?? 0);
+            // Les retardataires comptent comme présents pour le taux de présence
+            $presentAvecRetards = $present + $retards;
 
             $result[] = [
                 'annee'         => $annee,
@@ -225,8 +228,8 @@ class EtudiantDossierService
                 'presences'     => $present,
                 'absences'      => (int) ($attendances->nb_absences ?? 0),
                 'absences_just' => (int) ($attendances->nb_absences_just ?? 0),
-                'retards'       => (int) ($attendances->nb_retards ?? 0),
-                'taux_presence' => $total > 0 ? round(($present / $total) * 100, 1) : null,
+                'retards'       => $retards,
+                'taux_presence' => $total > 0 ? round(($presentAvecRetards / $total) * 100, 1) : null,
             ];
         }
 
