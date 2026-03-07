@@ -87,37 +87,37 @@
     color: white;
 }
 
-/* ---- Avatar + identity ---- */
-.profile-identity {
-    padding: 0 1.75rem 1.5rem;
-    display: flex;
-    align-items: flex-end;
-    gap: 1.25rem;
-    margin-top: calc(var(--avatar-size) / -2);
+/* ---- Hero body — contient avatar + identity en flex ---- */
+.profile-hero-body {
+    position: relative;
+    padding: 0 1.75rem 1.25rem;
 }
 
+/* ---- Avatar wrap : chevauchement sur la cover ---- */
 .profile-avatar-wrap {
+    margin-top: -55px;
     flex-shrink: 0;
     position: relative;
+    z-index: 2;
 }
 
 .profile-avatar {
-    width: var(--avatar-size);
-    height: var(--avatar-size);
+    width: 110px;
+    height: 110px;
     border-radius: 50%;
     object-fit: cover;
     border: 4px solid white;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
     background: white;
     display: block;
 }
 
 .profile-avatar-placeholder {
-    width: var(--avatar-size);
-    height: var(--avatar-size);
+    width: 110px;
+    height: 110px;
     border-radius: 50%;
     border: 4px solid white;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
     background: linear-gradient(135deg, #0453cb, #1b64d4);
     display: flex;
     align-items: center;
@@ -128,26 +128,61 @@
     letter-spacing: -0.02em;
 }
 
+/* ---- Identity layout ---- */
+.profile-identity {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.25rem;
+    padding-top: 0.75rem;
+}
+
 .profile-identity-info {
     flex: 1;
-    padding-bottom: 0.25rem;
+    padding-top: 0.5rem;
 }
 
 .profile-name {
-    font-size: 1.4rem;
+    font-size: 1.45rem;
     font-weight: 800;
-    color: var(--text-primary);
-    margin: 0 0 0.2rem;
-    letter-spacing: -0.02em;
+    color: #1e293b;
+    margin: 0 0 0.35rem;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
 }
 
-.profile-matricule {
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-    margin: 0 0 0.5rem;
+/* Ligne de meta infos (matricule + classe) */
+.profile-meta {
     display: flex;
     align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.6rem;
+}
+
+.profile-meta-chip {
+    display: inline-flex;
+    align-items: center;
     gap: 0.3rem;
+    background: #f1f5ff;
+    border: 1px solid #dbeafe;
+    border-radius: 6px;
+    padding: 0.18rem 0.55rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #2563eb;
+}
+
+.profile-meta-chip i {
+    font-size: 0.7rem;
+    opacity: 0.8;
+}
+
+.profile-meta-sep {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #cbd5e1;
+    flex-shrink: 0;
 }
 
 .profile-status-badge {
@@ -158,8 +193,8 @@
     color: #059669;
     border: 1px solid rgba(5, 150, 105, 0.2);
     border-radius: 50px;
-    padding: 0.2rem 0.7rem;
-    font-size: 0.75rem;
+    padding: 0.22rem 0.75rem;
+    font-size: 0.73rem;
     font-weight: 700;
 }
 
@@ -366,8 +401,10 @@
     .profile-cover { height: 90px; }
     .profile-cover-actions { top: 0.6rem; right: 0.75rem; }
     .btn-cover-action span { display: none; }
-    .profile-identity { padding: 0 1.25rem 1.25rem; gap: 1rem; }
-    --avatar-size: 88px;
+    .profile-hero-body { padding: 0 1.25rem 1rem; }
+    .profile-avatar-wrap { margin-top: -44px; }
+    .profile-avatar { width: 88px; height: 88px; }
+    .profile-avatar-placeholder { width: 88px; height: 88px; font-size: 1.8rem; }
     .profile-section-body { padding: 1.25rem; }
     .profile-section-header { padding: 0.9rem 1.25rem; }
     .acad-grid { grid-template-columns: 1fr; gap: 0.75rem; }
@@ -377,7 +414,7 @@
 }
 
 @media (max-width: 480px) {
-    .profile-identity { flex-direction: column; align-items: flex-start; margin-top: -44px; }
+    .profile-identity { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
     .profile-name { font-size: 1.2rem; }
     .info-grid { grid-template-columns: 1fr; }
     .acad-grid { grid-template-columns: 1fr; }
@@ -413,27 +450,40 @@
                 </div>
             </div>
 
-            {{-- Avatar + identité --}}
-            <div class="profile-identity">
-                <div class="profile-avatar-wrap">
-                    @if($photoUrl)
-                        <img src="{{ $photoUrl }}" alt="Photo de {{ $etudiant->prenoms }}" class="profile-avatar"
-                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                        <div class="profile-avatar-placeholder" style="display:none;">{{ $initials }}</div>
-                    @else
-                        <div class="profile-avatar-placeholder">{{ $initials }}</div>
-                    @endif
-                </div>
-                <div class="profile-identity-info">
-                    <h2 class="profile-name">{{ $etudiant->prenoms }} {{ $etudiant->nom }}</h2>
-                    <p class="profile-matricule">
-                        <i class="fas fa-id-card"></i>
-                        {{ $etudiant->matricule ?? 'N/A' }}
-                    </p>
-                    <span class="profile-status-badge {{ $isActif ? '' : 'inactive' }}">
-                        <i class="fas fa-{{ $isActif ? 'check-circle' : 'times-circle' }}"></i>
-                        {{ $isActif ? 'Étudiant Actif' : 'Inactif' }}
-                    </span>
+            {{-- Hero body : avatar flottant + identité --}}
+            <div class="profile-hero-body">
+                <div class="profile-identity">
+                    <div class="profile-avatar-wrap">
+                        @if($photoUrl)
+                            <img src="{{ $photoUrl }}" alt="Photo de {{ $etudiant->prenoms }}" class="profile-avatar"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div class="profile-avatar-placeholder" style="display:none;">{{ $initials }}</div>
+                        @else
+                            <div class="profile-avatar-placeholder">{{ $initials }}</div>
+                        @endif
+                    </div>
+                    <div class="profile-identity-info">
+                        <h2 class="profile-name">{{ $etudiant->prenoms }} {{ $etudiant->nom }}</h2>
+                        <div class="profile-meta">
+                            @if($etudiant->matricule)
+                            <span class="profile-meta-chip">
+                                <i class="fas fa-fingerprint"></i>
+                                {{ $etudiant->matricule }}
+                            </span>
+                            @endif
+                            @if(isset($inscription) && $inscription && $inscription->classe)
+                            <span class="profile-meta-sep"></span>
+                            <span class="profile-meta-chip">
+                                <i class="fas fa-users"></i>
+                                {{ $inscription->classe->name }}
+                            </span>
+                            @endif
+                        </div>
+                        <span class="profile-status-badge {{ $isActif ? '' : 'inactive' }}">
+                            <i class="fas fa-{{ $isActif ? 'check-circle' : 'times-circle' }}"></i>
+                            {{ $isActif ? 'Étudiant Actif' : 'Inactif' }}
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
