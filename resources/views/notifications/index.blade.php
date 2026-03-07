@@ -2,81 +2,172 @@
 
 @section('title', 'Notifications')
 
-@section('styles')
+@push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    body {
-        background-color: var(--background);
-    }
-
-    .notification-avatar {
-        width: 54px;
-        height: 54px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(4, 83, 203, 0.12);
-        color: var(--primary);
-        font-size: 1.4rem;
-        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
-    }
-
     .notifications-panel {
         background: #ffffff;
-        border-radius: 20px;
-        border: 1px solid #e7edf5;
-        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+        border-radius: var(--radius-large);
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        box-shadow: 0 4px 20px rgba(15, 23, 42, 0.07);
         overflow: hidden;
     }
 
     .notifications-toolbar {
-        padding: 16px 20px;
-        border-bottom: 1px solid #edf2f7;
-        background: linear-gradient(135deg, rgba(4, 83, 203, 0.06), rgba(4, 83, 203, 0.02));
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        background: rgba(4, 83, 203, 0.03);
         display: flex;
         align-items: center;
         justify-content: space-between;
         flex-wrap: wrap;
-        gap: 12px;
+        gap: 0.75rem;
     }
 
     .notifications-body {
-        padding: 12px 0;
+        padding: 0.75rem 0;
+    }
+
+    .notification-item {
+        padding: 1rem 1.25rem;
+        transition: background 0.15s ease, transform 0.15s ease;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        border-radius: var(--radius-medium);
+        margin: 0.5rem 1rem;
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+        display: block;
+    }
+
+    .notification-item:hover {
+        background: rgba(4, 83, 203, 0.04);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(4, 83, 203, 0.1);
+    }
+
+    .notification-item.unread {
+        background: rgba(4, 83, 203, 0.06);
+        border-left: 3px solid var(--primary);
+    }
+
+    .notification-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+    }
+
+    .notification-row { width: 100%; }
+    .notification-title-row { gap: 0.6rem; }
+
+    /* Message body */
+    .notification-body-block {
+        background: var(--surface, #f8fafc);
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        border-radius: var(--radius-small);
+        padding: 0.6rem 0.875rem;
+        margin-top: 0.4rem;
+    }
+
+    .notification-primary-line {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        line-height: 1.5;
+        margin-bottom: 0.4rem;
+    }
+
+    /* Pills */
+    .notification-meta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-top: 0.25rem;
+    }
+
+    .notification-meta-pill {
+        background: rgba(4, 83, 203, 0.08);
+        color: var(--primary);
+        border: 1px solid rgba(4, 83, 203, 0.2);
+        border-radius: 999px;
+        padding: 0.2rem 0.65rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        white-space: nowrap;
+    }
+
+    .notification-meta-pill.meta-success { background: rgba(16,185,129,0.1); color: #047857; border-color: rgba(16,185,129,0.3); }
+    .notification-meta-pill.meta-warning { background: rgba(245,158,11,0.1); color: #b45309; border-color: rgba(245,158,11,0.3); }
+    .notification-meta-pill.meta-danger  { background: rgba(239,68,68,0.1);  color: #b91c1c; border-color: rgba(239,68,68,0.3); }
+    .notification-meta-pill.meta-info    { background: rgba(59,130,246,0.1); color: #1d4ed8; border-color: rgba(59,130,246,0.3); }
+    .notification-meta-pill.meta-primary { background: rgba(4,83,203,0.1);   color: #1e3a8a; border-color: rgba(4,83,203,0.3); }
+    .notification-meta-pill.meta-secondary { background: rgba(100,116,139,0.1); color: #475569; border-color: rgba(100,116,139,0.3); }
+    .notification-meta-pill.meta-neutral  { background: rgba(148,163,184,0.1); color: #475569; border-color: rgba(148,163,184,0.3); }
+
+    .notification-cta { color: var(--primary); font-weight: 600; font-size: 0.875rem; margin-top: 0.25rem; }
+
+    /* Shortcut cards */
+    .timetable-shortcut-item  { background: rgba(245,158,11,0.06);  border-left: 3px solid #f59e0b; }
+    .evaluation-shortcut-item { background: rgba(4,83,203,0.06);    border-left: 3px solid var(--primary); }
+    .evaluation-grading-shortcut-item { background: rgba(239,68,68,0.06); border-left: 3px solid #ef4444; }
+
+    /* Color helpers */
+    .bg-danger-light  { background: rgba(220,53,69,0.1); }
+    .bg-warning-light { background: rgba(255,193,7,0.1); }
+    .bg-success-light { background: rgba(40,167,69,0.1); }
+    .bg-info-light    { background: rgba(23,162,184,0.1); }
+
+    /* Empty state */
+    .empty-state-icon {
+        width: 80px; height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--surface), #e9ecef);
+        display: inline-flex; align-items: center; justify-content: center;
+    }
+
+    /* Responsive */
+    @media (max-width: 576px) {
+        .notification-item { margin: 0.5rem 0.5rem; padding: 0.875rem 1rem; }
+        .notifications-toolbar { padding: 0.75rem 1rem; }
     }
 </style>
-@endsection
+@endpush
 
 @section('content')
 <div class="dashboard-acasi">
-    <div class="main-content" style="padding: 1.5rem; max-width: 100%; overflow-x: hidden;">
-        <div class="dashboard-header mb-4">
-            <div class="header-left">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="notification-avatar">
-                        <i class="fas fa-bell"></i>
-                    </div>
-                    <div>
-                        <h1 class="mb-1">
-                            @if(auth()->user()->hasRole('coordinateur'))
-                                Notifications - Coordination
-                            @else
-                                Notifications
-                            @endif
-                        </h1>
+    <div class="main-content">
+        <!-- Header KLASSCI -->
+        <div class="student-header">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <h1>
+                        <i class="fas fa-bell me-3"></i>
                         @if(auth()->user()->hasRole('coordinateur'))
-                            <p class="header-subtitle">Suivi des activités d'émargement et d'appel</p>
+                            Notifications — Coordination
                         @else
-                            <p class="header-subtitle">Restez informé des événements récents</p>
+                            Mes Notifications
                         @endif
+                    </h1>
+                    <p class="header-subtitle">
+                        @if(auth()->user()->hasRole('coordinateur'))
+                            Suivi des activités d'émargement et d'appel
+                        @else
+                            Restez informé des événements récents
+                        @endif
+                    </p>
+                </div>
+                <div class="text-end">
+                    <div class="badge" style="background: rgba(255,255,255,0.2); color: white; padding: var(--space-sm) var(--space-md); border-radius: var(--radius-medium); font-size: var(--text-sm);">
+                        <i class="fas fa-calendar me-2"></i>
+                        {{ now()->format('d/m/Y') }}
                     </div>
                 </div>
-            </div>
-            <div class="header-actions">
-                <span class="badge rounded-pill bg-light text-dark">
-                    <i class="fas fa-calendar me-1"></i>
-                    {{ now()->format('d/m/Y') }}
-                </span>
             </div>
         </div>
 
@@ -320,9 +411,9 @@
                                                     $cta = $notification->display_cta;
                                                 }
                                             @endphp
-                                            <div class="notification-lines">
+                                            <div class="notification-body-block">
                                                 @if($primaryLine !== '')
-                                                    <div class="notification-line">{!! $primaryLine !!}</div>
+                                                    <div class="notification-primary-line">{!! $primaryLine !!}</div>
                                                 @endif
                                                 @if(!empty($labels))
                                                     <div class="notification-meta-row">
@@ -380,7 +471,7 @@
                                                 @if($cta)
                                                     <div class="notification-cta">{!! $cta !!}</div>
                                                 @endif
-                                            </div>
+                                            </div>{{-- .notification-body-block --}}
                                             <div class="d-flex align-items-center mt-2">
                                                 <small class="text-muted">{{ $notification->created_at->diffForHumans() }}</small>
                                                 @if($notification->sender)
@@ -441,175 +532,6 @@
     </div>
 </div>
 @endsection
-
-@push('styles')
-<style>
-.notification-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-}
-.notification-message {
-    color: #495057;
-    margin-bottom: 0;
-    white-space: normal;
-    word-break: break-word;
-}
-.notification-item {
-    padding: 15px;
-    transition: all 0.2s ease;
-    border: 1px solid #eef2f7;
-    border-radius: 14px;
-    margin: 12px 16px;
-    background: #fff;
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-    display: block;
-}
-.notification-row {
-    width: 100%;
-}
-.notifications-panel .list-group-item {
-    width: 100%;
-}
-.notifications-panel .notification-item {
-    width: 100%;
-}
-.notification-lines {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 10px 12px;
-    border-radius: 12px;
-    background: #f8fafc;
-    border: 1px solid #eef2f7;
-}
-.notification-line {
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
-    color: #475569;
-    font-size: 0.92rem;
-    line-height: 1.45;
-}
-.notification-line i {
-    color: var(--primary);
-}
-.notification-item .badge.bg-warning {
-    border-radius: 999px;
-    padding: 4px 10px;
-    font-weight: 600;
-}
-.notification-title-row {
-    gap: 10px;
-}
-.notification-meta-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-.notification-meta-pill {
-    background: #eef2ff;
-    color: #1e3a8a;
-    border: 1px solid #c7d2fe;
-    border-radius: 999px;
-    padding: 4px 10px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-.notification-cta {
-    color: #1e293b;
-    font-weight: 600;
-}
-.notification-meta-pill.meta-success {
-    background: rgba(16, 185, 129, 0.12);
-    color: #047857;
-    border-color: rgba(16, 185, 129, 0.4);
-}
-.notification-meta-pill.meta-warning {
-    background: rgba(245, 158, 11, 0.12);
-    color: #b45309;
-    border-color: rgba(245, 158, 11, 0.4);
-}
-.notification-meta-pill.meta-danger {
-    background: rgba(239, 68, 68, 0.12);
-    color: #b91c1c;
-    border-color: rgba(239, 68, 68, 0.4);
-}
-.notification-meta-pill.meta-info {
-    background: rgba(59, 130, 246, 0.12);
-    color: #1d4ed8;
-    border-color: rgba(59, 130, 246, 0.4);
-}
-.notification-meta-pill.meta-primary {
-    background: rgba(4, 83, 203, 0.12);
-    color: #1e3a8a;
-    border-color: rgba(4, 83, 203, 0.4);
-}
-.notification-meta-pill.meta-secondary {
-    background: rgba(100, 116, 139, 0.12);
-    color: #475569;
-    border-color: rgba(100, 116, 139, 0.4);
-}
-.notification-meta-pill.meta-neutral {
-    background: rgba(148, 163, 184, 0.14);
-    color: #475569;
-    border-color: rgba(148, 163, 184, 0.4);
-}
-.notification-item:hover {
-    background-color: rgba(59, 130, 246, 0.06);
-    transform: translateY(-1px);
-}
-.notification-item.unread {
-    background-color: rgba(242, 148, 0, 0.1);
-    border-left: 3px solid #f29400;
-}
-.timetable-shortcut-item {
-    background: rgba(245, 158, 11, 0.08);
-    border-left: 3px solid #f59e0b;
-}
-.evaluation-shortcut-item {
-    background: rgba(59, 130, 246, 0.08);
-    border-left: 3px solid #3b82f6;
-}
-.evaluation-grading-shortcut-item {
-    background: rgba(239, 68, 68, 0.08);
-    border-left: 3px solid #ef4444;
-}
-.list-group.list-group-flush {
-    padding-bottom: 12px;
-}
-.empty-state {
-    padding: 20px;
-    border-radius: 50%;
-    background-color: #f8f9fa;
-    width: 80px;
-    height: 80px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto;
-}
-.bg-danger-light {
-    background-color: rgba(220, 53, 69, 0.1);
-}
-.bg-warning-light {
-    background-color: rgba(255, 193, 7, 0.1);
-}
-.bg-success-light {
-    background-color: rgba(40, 167, 69, 0.1);
-}
-.bg-info-light {
-    background-color: rgba(23, 162, 184, 0.1);
-}
-</style>
-@endpush
 
 @push('scripts')
 <script>
