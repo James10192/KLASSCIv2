@@ -179,7 +179,7 @@
         var btn = event.relatedTarget;
         if (!btn) return;
 
-        var bulletinId = btn.getAttribute('data-bulletin-id');
+        var etudiantId = btn.getAttribute('data-etudiant-id');
         var classeId   = btn.getAttribute('data-classe-id');
         var anneeId    = btn.getAttribute('data-annee-id');
         var action     = btn.getAttribute('data-action'); // 'show' or 'pdf'
@@ -188,20 +188,20 @@
         var btnS2 = document.getElementById('btnBulletinS2');
 
         if (action === 'show') {
-            // Route: esbtp.bulletins.show → /esbtp/bulletins/{id}
-            var baseUrl = '{{ url("/esbtp/bulletins") }}/' + bulletinId;
-            btnS1.href = baseUrl + '?periode=semestre_1';
-            btnS2.href = baseUrl + '?periode=semestre_2';
+            // Route: esbtp.resultats.etudiant.preview → /esbtp/resultats/etudiant/{id}/preview
+            var baseUrl = '{{ url("/esbtp/resultats/etudiant") }}/' + etudiantId + '/preview';
+            btnS1.href = baseUrl + '?classe_id=' + classeId + '&annee_universitaire_id=' + anneeId + '&periode=semestre1';
+            btnS2.href = baseUrl + '?classe_id=' + classeId + '&annee_universitaire_id=' + anneeId + '&periode=semestre2';
             btnS1.target = '';
             btnS2.target = '';
         } else {
-            // Route: esbtp.bulletins.pdf-params → /esbtp-special/bulletins-pdf?bulletin=X&...
+            // Route: esbtp.bulletins.pdf-params → /esbtp-special/bulletins-pdf?bulletin={etudiant_id}&...
             var baseUrl = '{{ url("/esbtp-special/bulletins-pdf") }}'
-                + '?bulletin=' + bulletinId
+                + '?bulletin=' + etudiantId
                 + '&classe_id=' + classeId
                 + '&annee_universitaire_id=' + anneeId;
-            btnS1.href = baseUrl + '&periode=semestre_1';
-            btnS2.href = baseUrl + '&periode=semestre_2';
+            btnS1.href = baseUrl + '&periode=semestre1';
+            btnS2.href = baseUrl + '&periode=semestre2';
             btnS1.target = '_blank';
             btnS2.target = '_blank';
         }
