@@ -87,12 +87,30 @@
                 <i class="fas fa-chart-line"></i>
             </a>
             @if(isset($bulletins[$etudiant->id]))
-                <a href="{{ route('esbtp.bulletins.show', $bulletins[$etudiant->id]) }}" class="btn btn-sm btn-secondary" title="Voir bulletin">
+                <button type="button"
+                        class="btn btn-sm btn-secondary btn-bulletin-periode"
+                        title="Voir bulletin"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalChoixPeriodeBulletin"
+                        data-etudiant-id="{{ $etudiant->id }}"
+                        data-bulletin-id="{{ $bulletins[$etudiant->id] }}"
+                        data-classe-id="{{ $actualClasseId }}"
+                        data-annee-id="{{ $annee_id }}"
+                        data-action="show">
                     <i class="fas fa-file-alt"></i>
-                </a>
-                <a href="{{ route('esbtp.bulletins.pdf-params', ['bulletin' => $etudiant->id, 'classe_id' => $actualClasseId, 'periode' => request('semestre'), 'annee_universitaire_id' => $annee_id]) }}" class="btn btn-sm btn-danger" target="_blank" title="Télécharger PDF">
+                </button>
+                <button type="button"
+                        class="btn btn-sm btn-danger btn-bulletin-periode"
+                        title="Télécharger PDF"
+                        data-bs-toggle="modal"
+                        data-bs-target="#modalChoixPeriodeBulletin"
+                        data-etudiant-id="{{ $etudiant->id }}"
+                        data-bulletin-id="{{ $bulletins[$etudiant->id] }}"
+                        data-classe-id="{{ $actualClasseId }}"
+                        data-annee-id="{{ $annee_id }}"
+                        data-action="pdf">
                     <i class="fas fa-file-pdf"></i>
-                </a>
+                </button>
             @else
                 <button class="btn btn-sm btn-outline-secondary" disabled title="Bulletin non généré">
                     <i class="fas fa-exclamation-triangle"></i>

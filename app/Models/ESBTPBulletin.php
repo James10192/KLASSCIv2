@@ -288,6 +288,9 @@ class ESBTPBulletin extends Model
 
     public function getAbsencesJustifieesAttribute()
     {
+        if (!$this->etudiant || !$this->classe_id) {
+            return 0;
+        }
         return $this->etudiant->absences()
             ->where('justified', true)
             ->whereHas('matiere', function ($query) {
@@ -300,6 +303,9 @@ class ESBTPBulletin extends Model
 
     public function getAbsencesNonJustifieesAttribute()
     {
+        if (!$this->etudiant || !$this->classe_id) {
+            return 0;
+        }
         return $this->etudiant->absences()
             ->where('justified', false)
             ->whereHas('matiere', function ($query) {
