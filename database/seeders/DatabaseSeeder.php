@@ -6,7 +6,6 @@ use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use App\Models\ESBTPDepartment;
-use App\Models\ESBTPCategorieDepense;
 
 class DatabaseSeeder extends Seeder
 {
@@ -41,9 +40,6 @@ class DatabaseSeeder extends Seeder
         //     ESBTPBulletinSeeder::class,
         //     ESBTPBulletinDetailsSeeder::class,   // Migration des données bulletin vers le nouveau format
         // ]);
-
-        // Add the expense categories directly
-        $this->createBasicExpenseCategories();
 
         // Add test users with different roles (only if seeders exist)
         if (app()->environment('local', 'development', 'testing')) {
@@ -83,21 +79,6 @@ class DatabaseSeeder extends Seeder
         // Assigner toutes les permissions au superAdmin
         $superAdmin->syncPermissions($permissions);
         $admin->givePermissionTo(['manage_students', 'manage_classes', 'view_dashboard']);
-    }
-    
-    private function createBasicExpenseCategories(): void
-    {
-        $this->command->info('💰 Création des catégories de dépenses...');
-        
-        $categories = [
-            ['nom' => 'Frais de scolarité', 'code' => 'SCOLARITE', 'description' => 'Frais de scolarité annuels'],
-            ['nom' => 'Frais d\'inscription', 'code' => 'INSCRIPTION', 'description' => 'Frais d\'inscription annuels'],
-            ['nom' => 'Frais d\'examen', 'code' => 'EXAMEN', 'description' => 'Frais liés aux examens'],
-        ];
-        
-        foreach ($categories as $category) {
-            ESBTPCategorieDepense::firstOrCreate(['nom' => $category['nom']], $category);
-        }
     }
     
     private function createBasicDepartments(): void
