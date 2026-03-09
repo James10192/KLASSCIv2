@@ -2183,6 +2183,10 @@ class ESBTPPaiementController extends Controller
      */
     public function exportStudentsPdf(Request $request, string $statut)
     {
+        // Augmenter les limites pour les gros exports (1000+ étudiants)
+        ini_set('memory_limit', '512M');
+        set_time_limit(120);
+
         $categoryId = $request->input('category_id');
         if (!$categoryId) {
             abort(400, 'category_id requis');
@@ -2269,7 +2273,7 @@ class ESBTPPaiementController extends Controller
             compact('etudiants', 'category', 'statutLabel', 'schoolInfo', 'pdfSettings', 'stats')
         )->setPaper('a4', 'portrait')
          ->setOptions([
-             'dpi'                     => 150,
+             'dpi'                     => 96,
              'defaultFont'             => 'DejaVu Sans',
              'isRemoteEnabled'         => false,
              'isHtml5ParserEnabled'    => true,
