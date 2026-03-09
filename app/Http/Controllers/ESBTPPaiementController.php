@@ -1270,6 +1270,11 @@ class ESBTPPaiementController extends Controller
      */
     public function suiviCategoriesRefresh(Request $request)
     {
+        // Si accès direct (non-AJAX), rediriger vers la page principale avec les mêmes filtres
+        if (!$request->ajax() && !$request->wantsJson()) {
+            return redirect()->route('esbtp.paiements.suivi-categories', $request->query());
+        }
+
         // Récupérer les paramètres de filtrage
         $filiereId = $request->input('filiere_id');
         $niveauId = $request->input('niveau_id');
