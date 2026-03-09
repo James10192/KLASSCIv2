@@ -9,7 +9,7 @@
 
         @page {
             size: A4 portrait;
-            margin: 12mm 10mm 12mm 10mm;
+            margin: 18mm 15mm 18mm 15mm;
         }
 
         body {
