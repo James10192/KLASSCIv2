@@ -83,23 +83,17 @@
             color-adjust: exact;
         }
 
-        .row-num-table {
-            width: 20px;
-            margin: 0 auto;
-            border-collapse: collapse;
-        }
-
-        .row-num-table td {
-            width: 20px;
-            height: 20px;
+        .row-num {
+            width: 18px;
+            height: 18px;
             background-color: {{ $pdfSettings['primary_color'] ?? '#0453cb' }};
             color: #ffffff;
             border-radius: 50%;
             text-align: center;
-            vertical-align: middle;
-            font-size: 8px;
+            line-height: 18px;
+            font-size: 7.5px;
             font-weight: bold;
-            padding: 0;
+            margin: 0 auto;
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
         }
@@ -387,7 +381,7 @@
             @endphp
             <tr>
                 <td class="text-center">
-                    <table class="row-num-table"><tr><td>{{ $i + 1 }}</td></tr></table>
+                    <div class="row-num">{{ $i + 1 }}</div>
                 </td>
                 <td>
                     <span class="student-matricule">{{ $etudiant?->matricule ?? 'N/A' }}</span>
