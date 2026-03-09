@@ -1388,82 +1388,224 @@ class ESBTPComptabiliteController extends Controller
         $filiereId = $request->get('filiere');
         $classeId = $request->get('classe');
 
-        $feeQuery = \App\Models\ESBTP\Fee::query();
-        if ($anneeId) $feeQuery->where('academic_year_id', $anneeId);
-        if ($filiereId) $feeQuery->whereHas('class', function($q) use ($filiereId) { $q->where('filiere_id', $filiereId); });
-        if ($classeId) $feeQuery->where('class_id', $classeId);
-
-        $totalDue = (clone $feeQuery)->pending()->sum('amount');
-        $totalPaid = (clone $feeQuery)->paid()->sum('amount');
-        $totalOverdue = (clone $feeQuery)->overdue()->sum('amount');
-        $countPaid = (clone $feeQuery)->paid()->count();
-        $countPartiallyPaid = (clone $feeQuery)->partiallyPaid()->count();
-        $countOverdue = (clone $feeQuery)->overdue()->count();
-        $countDue = (clone $feeQuery)->due()->count();
-
-        // Préparer les données pour le graph (encaissements par mois)
-        $labelsMois = [];
-        $dataEncaissements = [];
+        // Déterminer l'année active
         if ($anneeId) {
             $annee = $annees->where('id', $anneeId)->first();
         } else {
-            $annee = $annees->first(); // Par défaut, la plus récente
-        }
-        if ($annee) {
-            $debut = \Carbon\Carbon::parse($annee->date_debut);
-            $fin = \Carbon\Carbon::parse($annee->date_fin);
-            for ($date = $debut->copy(); $date->lte($fin); $date->addMonth()) {
-                $labelsMois[] = $date->translatedFormat('M Y');
-                $paymentQuery = \App\Models\ESBTP\Payment::completed();
-                $paymentQuery->whereMonth('payment_date', $date->month)
-                    ->whereYear('payment_date', $date->year);
-                if ($anneeId) $paymentQuery->where('academic_year_id', $anneeId);
-                if ($filiereId) $paymentQuery->whereHas('fee.class', function($q) use ($filiereId) { $q->where('filiere_id', $filiereId); });
-                if ($classeId) $paymentQuery->whereHas('fee', function($q) use ($classeId) { $q->where('class_id', $classeId); });
-                $dataEncaissements[] = $paymentQuery->sum('amount');
-            }
+            $annee = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first()
+                ?? $annees->first();
         }
 
-        // Préparer les données pour le graph (dépenses par mois)
+        // Stats paiements via ESBTPPaiement (système actif)
+        $paiementsQuery = \App\Models\ESBTPPaiement::query()->whereNull('deleted_at');
+
+        if ($anneeId) {
+            $paiementsQuery->whereHas('inscription', fn($q) => $q->where('annee_universitaire_id', $anneeId));
+        }
+        if ($filiereId) {
+            $paiementsQuery->whereHas('inscription.classe', fn($q) => $q->where('filiere_id', $filiereId));
+        }
+        if ($classeId) {
+            $paiementsQuery->whereHas('inscription', fn($q) => $q->where('classe_id', $classeId));
+        }
+
+        $totalPaid = (clone $paiementsQuery)->whereIn('status', ['validé'])->sum('montant');
+
+        // Stats frais souscriptions
+        $subscriptionsQuery = \App\Models\ESBTPFraisSubscription::query();
+        if ($anneeId) {
+            $subscriptionsQuery->whereHas('inscription', fn($q) => $q->where('annee_universitaire_id', $anneeId));
+        }
+        if ($filiereId) {
+            $subscriptionsQuery->whereHas('inscription.classe', fn($q) => $q->where('filiere_id', $filiereId));
+        }
+        if ($classeId) {
+            $subscriptionsQuery->whereHas('inscription', fn($q) => $q->where('classe_id', $classeId));
+        }
+
+        $totalDue = (clone $subscriptionsQuery)->sum('amount');
+        $totalOverdue = max(0, $totalDue - $totalPaid);
+
+        // Nombre paiements en attente / validés
+        $countPaid = (clone $paiementsQuery)->where('status', 'validé')->count();
+        $countPartiallyPaid = (clone $paiementsQuery)->where('status', 'en_attente')->count();
+        $countOverdue = \App\Models\ESBTPInscription::query()
+            ->when($anneeId, fn($q) => $q->where('annee_universitaire_id', $anneeId))
+            ->when($filiereId, fn($q) => $q->whereHas('classe', fn($q2) => $q2->where('filiere_id', $filiereId)))
+            ->when($classeId, fn($q) => $q->where('classe_id', $classeId))
+            ->whereHas('fraisSubscriptions', fn($q) => $q->where('amount', '>', 0))
+            ->count();
+        $countDue = (clone $subscriptionsQuery)->count();
+
+        // Dépenses (module supprimé — valeurs à zéro)
+        $statsDepenses = ['total' => 0, 'mensuel' => 0, 'salaires' => 0, 'fournitures' => 0];
+
+        // Graphique encaissements par mois
+        $labelsMois = [];
+        $dataEncaissements = [];
         $labelsMoisDepenses = [];
         $dataDepensesMensuelles = [];
-        if ($annee) {
+
+        if ($annee && isset($annee->date_debut)) {
             $debut = \Carbon\Carbon::parse($annee->date_debut);
-            $fin = \Carbon\Carbon::parse($annee->date_fin);
+            $fin = \Carbon\Carbon::parse($annee->date_fin ?? now());
             for ($date = $debut->copy(); $date->lte($fin); $date->addMonth()) {
+                $labelsMois[] = $date->translatedFormat('M Y');
                 $labelsMoisDepenses[] = $date->translatedFormat('M Y');
-                $depenseQuery = \App\Models\ESBTPDepense::whereBetween('date_depense', [$date->copy()->startOfMonth(), $date->copy()->endOfMonth()])->where('status', 'validée');
-                if ($filiereId) $depenseQuery->where('filiere_id', $filiereId);
-                if ($classeId) $depenseQuery->where('classe_id', $classeId);
-                $dataDepensesMensuelles[] = $depenseQuery->sum('montant');
+                $moisPaiements = \App\Models\ESBTPPaiement::where('status', 'validé')
+                    ->whereNull('deleted_at')
+                    ->whereMonth('date_paiement', $date->month)
+                    ->whereYear('date_paiement', $date->year)
+                    ->when($anneeId, fn($q) => $q->whereHas('inscription', fn($q2) => $q2->where('annee_universitaire_id', $anneeId)))
+                    ->when($filiereId, fn($q) => $q->whereHas('inscription.classe', fn($q2) => $q2->where('filiere_id', $filiereId)))
+                    ->when($classeId, fn($q) => $q->whereHas('inscription', fn($q2) => $q2->where('classe_id', $classeId)))
+                    ->sum('montant');
+                $dataEncaissements[] = $moisPaiements;
+                $dataDepensesMensuelles[] = 0; // module supprimé
             }
         }
 
-        // Agrégats dépenses (centralisation)
-        $statsDepenses = [
-            'total' => 0,
-            'mensuel' => 0,
-            'salaires' => 0,
-            'fournitures' => 0
-        ];
-        if ($annee) {
-            $dateDebut = \Carbon\Carbon::parse($annee->date_debut);
-            $dateFin = \Carbon\Carbon::parse($annee->date_fin);
-            $depenseQuery = \App\Models\ESBTPDepense::whereBetween('date_depense', [$dateDebut, $dateFin])->where('status', 'validée');
-            if ($filiereId) $depenseQuery->where('filiere_id', $filiereId);
-            if ($classeId) $depenseQuery->where('classe_id', $classeId);
-            $statsDepenses['total'] = $depenseQuery->sum('montant');
-            $statsDepenses['mensuel'] = (clone $depenseQuery)->whereMonth('date_depense', now()->month)->whereYear('date_depense', now()->year)->sum('montant');
-            // Salaires et fournitures peuvent être affinés si besoin
-        }
+        // Aging buckets — étudiants avec impayés par ancienneté d'inscription
+        $agingBuckets = $this->getImpayesAging($anneeId, $filiereId, $classeId);
+
+        // Paiements récents en attente de validation
+        $paiementsEnAttente = \App\Models\ESBTPPaiement::with(['inscription.etudiant', 'fraisCategory'])
+            ->where('status', 'en_attente')
+            ->whereNull('deleted_at')
+            ->when($anneeId, fn($q) => $q->whereHas('inscription', fn($q2) => $q2->where('annee_universitaire_id', $anneeId)))
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
 
         return view('esbtp.comptabilite.dashboard', compact(
             'totalDue', 'totalPaid', 'totalOverdue',
             'countPaid', 'countPartiallyPaid', 'countOverdue', 'countDue',
-            'annees', 'filieres', 'classes',
+            'annees', 'filieres', 'classes', 'annee',
             'labelsMois', 'dataEncaissements',
             'statsDepenses',
-            'labelsMoisDepenses', 'dataDepensesMensuelles'
+            'labelsMoisDepenses', 'dataDepensesMensuelles',
+            'agingBuckets', 'paiementsEnAttente'
+        ));
+    }
+
+    /**
+     * Calcule les impayés par ancienneté (aging buckets)
+     */
+    private function getImpayesAging($anneeId = null, $filiereId = null, $classeId = null): array
+    {
+        // Récupérer les inscriptions avec solde restant
+        $inscriptions = \App\Models\ESBTPInscription::with(['etudiant', 'fraisSubscriptions', 'paiements' => fn($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at')])
+            ->when($anneeId, fn($q) => $q->where('annee_universitaire_id', $anneeId))
+            ->when($filiereId, fn($q) => $q->whereHas('classe', fn($q2) => $q2->where('filiere_id', $filiereId)))
+            ->when($classeId, fn($q) => $q->where('classe_id', $classeId))
+            ->get();
+
+        $buckets = [
+            '0-30'  => ['count' => 0, 'amount' => 0, 'students' => []],
+            '31-60' => ['count' => 0, 'amount' => 0, 'students' => []],
+            '61-90' => ['count' => 0, 'amount' => 0, 'students' => []],
+            '90+'   => ['count' => 0, 'amount' => 0, 'students' => []],
+        ];
+
+        foreach ($inscriptions as $inscription) {
+            $totalDu = $inscription->fraisSubscriptions->sum('amount');
+            $totalPaye = $inscription->paiements->sum('montant');
+            $soldeRestant = max(0, $totalDu - $totalPaye);
+
+            if ($soldeRestant <= 0) continue;
+
+            // Ancienneté basée sur la date de création de l'inscription
+            $joursDepuis = $inscription->created_at->diffInDays(now());
+
+            $etudiantData = [
+                'id' => $inscription->etudiant->id ?? null,
+                'inscription_id' => $inscription->id,
+                'nom' => $inscription->etudiant->nom_complet ?? 'N/A',
+                'solde' => $soldeRestant,
+                'jours' => $joursDepuis,
+            ];
+
+            if ($joursDepuis <= 30) {
+                $buckets['0-30']['count']++;
+                $buckets['0-30']['amount'] += $soldeRestant;
+                if (count($buckets['0-30']['students']) < 5) $buckets['0-30']['students'][] = $etudiantData;
+            } elseif ($joursDepuis <= 60) {
+                $buckets['31-60']['count']++;
+                $buckets['31-60']['amount'] += $soldeRestant;
+                if (count($buckets['31-60']['students']) < 5) $buckets['31-60']['students'][] = $etudiantData;
+            } elseif ($joursDepuis <= 90) {
+                $buckets['61-90']['count']++;
+                $buckets['61-90']['amount'] += $soldeRestant;
+                if (count($buckets['61-90']['students']) < 5) $buckets['61-90']['students'][] = $etudiantData;
+            } else {
+                $buckets['90+']['count']++;
+                $buckets['90+']['amount'] += $soldeRestant;
+                if (count($buckets['90+']['students']) < 5) $buckets['90+']['students'][] = $etudiantData;
+            }
+        }
+
+        return $buckets;
+    }
+
+    /**
+     * Fiche relance pour un étudiant spécifique
+     */
+    public function relanceEtudiant(\App\Models\ESBTPInscription $inscription)
+    {
+        $inscription->load(['etudiant.parents', 'classe', 'anneeUniversitaire', 'fraisSubscriptions', 'paiements' => function ($q) {
+            $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at');
+        }]);
+
+        $etudiant = $inscription->etudiant;
+        if (!$etudiant) {
+            abort(404, 'Étudiant introuvable.');
+        }
+
+        // Calculs financiers
+        $totalDu = $inscription->fraisSubscriptions->sum('amount');
+        $totalPaye = $inscription->paiements->sum('montant');
+        $soldeRestant = max(0, $totalDu - $totalPaye);
+        $pourcentagePaye = $totalDu > 0 ? min(100, round($totalPaye / $totalDu * 100)) : 0;
+
+        // Frais par catégorie
+        $fraisImpayés = $inscription->fraisSubscriptions->map(function ($sub) use ($inscription) {
+            $paye = $inscription->paiements
+                ->where('frais_category_id', $sub->frais_category_id)
+                ->sum('montant');
+            return [
+                'name'   => optional($sub->fraisCategory)->name ?? 'Frais',
+                'amount' => $sub->amount,
+                'paye'   => $paye,
+            ];
+        })->filter(fn($f) => $f['amount'] > 0)->values();
+
+        // Niveau de risque selon le solde restant à payer
+        if ($soldeRestant <= 0) {
+            $riskLevel = 'low'; $riskLabel = 'À jour'; $riskColor = '#10b981';
+        } elseif ($totalDu > 0 && ($soldeRestant / $totalDu) <= 0.25) {
+            $riskLevel = 'medium'; $riskLabel = 'Partiel'; $riskColor = '#5e91de';
+        } elseif ($totalPaye > 0) {
+            $riskLevel = 'high'; $riskLabel = 'En retard'; $riskColor = '#0453cb';
+        } else {
+            $riskLevel = 'critical'; $riskLabel = 'Impayé'; $riskColor = '#1e293b';
+        }
+
+        // Historique relances
+        try {
+            $historique = \App\Models\Notification::where('notifiable_id', $etudiant->user_id ?? 0)
+                ->where('notifiable_type', \App\Models\User::class)
+                ->latest()
+                ->limit(20)
+                ->get();
+        } catch (\Exception $e) {
+            $historique = collect();
+        }
+
+        return view('esbtp.comptabilite.relances.etudiant', compact(
+            'inscription', 'etudiant',
+            'totalDu', 'totalPaye', 'soldeRestant', 'pourcentagePaye',
+            'fraisImpayés', 'historique',
+            'riskLevel', 'riskLabel', 'riskColor'
         ));
     }
 

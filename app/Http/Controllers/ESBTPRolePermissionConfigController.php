@@ -22,13 +22,14 @@ class ESBTPRolePermissionConfigController extends Controller
         $allowedRoles = [
             'superAdmin',
             'secretaire',
+            'comptable',
             'coordinateur',
-            'etudiant',
             'enseignant',
+            'etudiant',
         ];
         $roles = Role::with('permissions')
             ->whereIn('name', $allowedRoles)
-            ->orderByRaw("FIELD(name, 'superAdmin', 'secretaire', 'coordinateur', 'enseignant', 'etudiant')")
+            ->orderByRaw("FIELD(name, 'superAdmin', 'secretaire', 'comptable', 'coordinateur', 'enseignant', 'etudiant')")
             ->get();
         $permissions = Permission::orderBy('name')->get();
         $groupedPermissions = $permissions->groupBy(function ($permission) {

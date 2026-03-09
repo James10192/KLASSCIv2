@@ -63,19 +63,35 @@ class ESBTPPersonnelUnifiedController extends Controller
             // Si le rôle n'existe pas, garder une collection vide
             $secretaires = collect();
         }
-            
+
+        // Récupérer les comptables
+        $comptables = collect();
+        try {
+            if (Role::where('name', 'comptable')->exists()) {
+                $comptables = User::role('comptable')
+                    ->with(['roles'])
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get();
+            }
+        } catch (\Exception $e) {
+            $comptables = collect();
+        }
+
         // Calculer les statistiques
         $stats = [
             'coordinateurs' => $coordinateurs->count(),
             'enseignants' => $enseignants->count(),
             'secretaires' => $secretaires->count(),
-            'total' => $coordinateurs->count() + $enseignants->count() + $secretaires->count(),
+            'comptables' => $comptables->count(),
+            'total' => $coordinateurs->count() + $enseignants->count() + $secretaires->count() + $comptables->count(),
         ];
-        
+
         return view('esbtp.personnel.unified-index', compact(
             'coordinateurs',
-            'enseignants', 
+            'enseignants',
             'secretaires',
+            'comptables',
             'stats',
             'isCoordinateur'
         ));
@@ -150,11 +166,11 @@ class ESBTPPersonnelUnifiedController extends Controller
                 try {
                     if (Role::where('name', 'secretaire')->exists()) {
                         $query = User::role('secretaire')->with(['roles']);
-                        
+
                         if ($status) {
                             $query->where('is_active', $status === 'active');
                         }
-                        
+
                         if ($search) {
                             $query->where(function($q) use ($search) {
                                 $q->where('name', 'like', "%{$search}%")
@@ -162,7 +178,33 @@ class ESBTPPersonnelUnifiedController extends Controller
                                   ->orWhere('telephone', 'like', "%{$search}%");
                             });
                         }
-                        
+
+                        $data = $query->orderBy('name')->get();
+                    }
+                } catch (\Exception $e) {
+                    $data = collect();
+                }
+                break;
+
+            case 'comptable':
+                $data = collect();
+                try {
+                    if (Role::where('name', 'comptable')->exists()) {
+                        $query = User::role('comptable')->with(['roles']);
+
+                        if ($status) {
+                            $query->where('is_active', $status === 'active');
+                        }
+
+                        if ($search) {
+                            $query->where(function($q) use ($search) {
+                                $q->where('name', 'like', "%{$search}%")
+                                  ->orWhere('email', 'like', "%{$search}%")
+                                  ->orWhere('telephone', 'like', "%{$search}%")
+                                  ->orWhere('department', 'like', "%{$search}%");
+                            });
+                        }
+
                         $data = $query->orderBy('name')->get();
                     }
                 } catch (\Exception $e) {
@@ -198,9 +240,9 @@ class ESBTPPersonnelUnifiedController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
             'telephone' => 'nullable|string|max:20',
-            'type' => 'required|in:coordinateur,enseignant,secretaire',
+            'type' => 'required|in:coordinateur,enseignant,secretaire,comptable',
         ];
-        
+
         // Règles spécifiques selon le type
         if ($type === 'coordinateur') {
             $rules['specialite'] = 'nullable|string|max:255';
@@ -209,6 +251,8 @@ class ESBTPPersonnelUnifiedController extends Controller
             $rules['qualification'] = 'nullable|string|max:255';
         } elseif ($type === 'secretaire') {
             $rules['service'] = 'nullable|string|max:255';
+        } elseif ($type === 'comptable') {
+            $rules['department'] = 'nullable|string|max:255';
         }
         
         $validated = $request->validate($rules);
@@ -223,6 +267,7 @@ class ESBTPPersonnelUnifiedController extends Controller
                 'telephone' => $validated['telephone'] ?? null,
                 'specialite' => $validated['specialite'] ?? null,
                 'service' => $validated['service'] ?? null,
+                'department' => $validated['department'] ?? null,
                 'is_active' => true,
                 'email_verified_at' => now(),
             ]);
@@ -293,6 +338,8 @@ class ESBTPPersonnelUnifiedController extends Controller
             $rules['qualification'] = 'nullable|string|max:255';
         } elseif ($type === 'secretaire') {
             $rules['service'] = 'nullable|string|max:255';
+        } elseif ($type === 'comptable') {
+            $rules['department'] = 'nullable|string|max:255';
         }
 
         $validated = $request->validate($rules);
@@ -306,12 +353,14 @@ class ESBTPPersonnelUnifiedController extends Controller
                 'telephone' => $validated['telephone'] ?? null,
                 'is_active' => $validated['is_active'],
             ];
-            
+
             // Champs spécifiques selon le type
             if ($type === 'coordinateur') {
                 $updateData['specialite'] = $validated['specialite'] ?? null;
             } elseif ($type === 'secretaire') {
                 $updateData['service'] = $validated['service'] ?? null;
+            } elseif ($type === 'comptable') {
+                $updateData['department'] = $validated['department'] ?? null;
             }
 
             // Si un nouveau mot de passe est fourni
