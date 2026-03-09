@@ -36,7 +36,7 @@
     position: relative;
     background: linear-gradient(135deg, var(--k-blue) 0%, var(--k-blue-2) 100%);
     padding: 0 0 0;
-    overflow: hidden;
+    /* overflow: hidden retiré — coupait le dropdown Bootstrap */
 }
 /* SVG dot-pattern texture */
 .fiche-hero::before {
@@ -44,6 +44,8 @@
     position: absolute; inset: 0;
     background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='1.5' fill='rgba(255,255,255,0.12)'/%3E%3C/svg%3E");
     pointer-events: none;
+    overflow: hidden;
+    border-radius: inherit;
 }
 /* glass strip bottom */
 .fiche-hero::after {
@@ -53,7 +55,7 @@
 }
 
 .hero-inner {
-    position: relative; z-index: 1;
+    position: relative; z-index: 200; /* au-dessus de .fiche-tabs-wrap (z-index:100) pour que le dropdown ne soit pas masqué */
     max-width: 1280px; margin: 0 auto;
     padding: 32px 32px 28px;
     display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
@@ -1248,10 +1250,17 @@
 {{-- ════════════════════════════════════════════════════════════════
      HERO
 ════════════════════════════════════════════════════════════════ --}}
+@php
+    $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+    $inscCourante = $anneeCourante
+        ? $etudiant->inscriptions->first(fn($i) => $i->annee_universitaire_id === $anneeCourante->id)
+        : null;
+    // Vrai "actif" = statut actif ET inscrit pour l'année courante
+    $estInscritCetteAnnee = $inscCourante !== null;
+@endphp
 <div class="fiche-hero">
     <div class="hero-inner">
         {{-- Avatar avec badge statut --}}
-        @php $inscA = $etudiant->inscriptions->firstWhere('status', 'active') ?? $etudiant->inscriptions->first(); @endphp
         <div class="hero-avatar-wrap">
             <div class="hero-avatar">
                 @if($etudiant->photo)
@@ -1262,28 +1271,35 @@
                     {{ strtoupper(substr($etudiant->prenoms ?? 'E', 0, 1)) }}{{ strtoupper(substr($etudiant->nom, 0, 1)) }}
                 @endif
             </div>
-            <span class="hero-avatar-status {{ $etudiant->statut ?? 'inactif' }}" title="{{ ucfirst($etudiant->statut ?? 'inconnu') }}"></span>
+            {{-- Badge rond : vert seulement si inscrit cette année, sinon gris --}}
+            <span class="hero-avatar-status {{ $estInscritCetteAnnee ? 'actif' : 'inactif' }}"
+                  title="{{ $estInscritCetteAnnee ? 'Inscrit ' . ($anneeCourante->name ?? '') : 'Non inscrit pour l\'année en cours' }}"></span>
         </div>
 
         {{-- Text --}}
         <div class="hero-text">
             <h1 class="hero-name">{{ strtoupper($etudiant->nom) }} {{ $etudiant->prenoms }}</h1>
             <p class="hero-sub">
-                @if($inscA && $inscA->classe)
-                    {{ $inscA->classe->name }}
-                    @if($inscA->classe->filiere) · {{ $inscA->classe->filiere->name }} @endif
-                    @if($inscA->classe->niveau) · {{ $inscA->classe->niveau->name ?? $inscA->classe->niveau->nom ?? '' }} @endif
+                @if($inscCourante && $inscCourante->classe)
+                    {{ $inscCourante->classe->name }}
+                    @if($inscCourante->classe->filiere) · {{ $inscCourante->classe->filiere->name }} @endif
+                    @if($inscCourante->classe->niveau) · {{ $inscCourante->classe->niveau->name ?? $inscCourante->classe->niveau->nom ?? '' }} @endif
+                @elseif($anneeCourante)
+                    <span style="color:rgba(255,255,255,0.75); font-style:italic;">Non réinscrit pour {{ $anneeCourante->name }}</span>
                 @else
                     Étudiant
                 @endif
             </p>
             <div class="hero-pills">
                 <span class="hero-pill"><i class="fas fa-id-card"></i> {{ $etudiant->matricule ?? 'Non attribué' }}</span>
-                @if($etudiant->statut === 'actif')
-                    <span class="hero-pill green"><i class="fas fa-circle" style="font-size:.45rem"></i> Actif</span>
-                @elseif($etudiant->statut === 'inactif')
-                    <span class="hero-pill"><i class="fas fa-circle" style="font-size:.45rem"></i> Inactif</span>
-                @elseif($etudiant->statut === 'abandon')
+                @if($estInscritCetteAnnee)
+                    <span class="hero-pill green"><i class="fas fa-circle" style="font-size:.45rem"></i> Inscrit {{ $anneeCourante->name ?? '' }}</span>
+                @else
+                    <span class="hero-pill" style="background:rgba(255,255,255,0.15); color:#fff; border-color:rgba(255,255,255,0.4);">
+                        <i class="fas fa-exclamation-circle" style="font-size:.7rem; color:#fbbf24;"></i> Non réinscrit {{ $anneeCourante ? $anneeCourante->name : '' }}
+                    </span>
+                @endif
+                @if($etudiant->statut === 'abandon')
                     <span class="hero-pill red"><i class="fas fa-circle" style="font-size:.45rem"></i> Abandon</span>
                 @endif
                 @if($etudiant->nationalite)
@@ -1293,12 +1309,6 @@
         </div>
 
         {{-- Actions --}}
-        @php
-            $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
-            $inscCourante = $anneeCourante
-                ? $etudiant->inscriptions->first(fn($i) => $i->annee_universitaire_id === $anneeCourante->id)
-                : null;
-        @endphp
         <div class="hero-actions">
             @if($anneeCourante)
                 <span class="hero-pill year"><i class="fas fa-calendar-alt"></i> {{ $anneeCourante->name }}</span>
@@ -1309,6 +1319,58 @@
                     <i class="fas fa-edit"></i> <span class="d-none d-sm-inline">Modifier</span>
                 </a>
                 @endcan
+
+                {{-- Dropdown Documents — visible dès qu'il y a au moins une inscription --}}
+                @if($etudiant->inscriptions->isNotEmpty())
+                <div class="dropdown">
+                    <button class="hero-btn ghost dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false"
+                            style="gap:6px;">
+                        <i class="fas fa-file-alt"></i>
+                        <span class="d-none d-sm-inline">Documents</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" style="min-width:230px;">
+                        <li><h6 class="dropdown-header" style="font-size:.72rem; letter-spacing:.04em;">CERTIFICAT DE SCOLARITÉ</h6></li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('esbtp.etudiants.certificat.preview', $etudiant) }}" target="_blank">
+                                <i class="fas fa-eye fa-fw me-2 text-muted"></i>Prévisualiser
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('esbtp.etudiants.certificat', $etudiant) }}" target="_blank">
+                                <i class="fas fa-download fa-fw me-2 text-muted"></i>Télécharger PDF
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header" style="font-size:.72rem; letter-spacing:.04em;">ATTESTATION DE FRÉQUENTATION</h6></li>
+                        <li>
+                            @if($estInscritCetteAnnee)
+                            <a class="dropdown-item" href="{{ route('esbtp.etudiants.attestation-frequentation.preview', $etudiant) }}" target="_blank">
+                                <i class="fas fa-eye fa-fw me-2 text-muted"></i>Prévisualiser
+                            </a>
+                            @else
+                            <a class="dropdown-item" href="#"
+                               onclick="openAttestationConfirm(event, '{{ route('esbtp.etudiants.attestation-frequentation.preview', $etudiant) }}')">
+                                <i class="fas fa-eye fa-fw me-2 text-muted"></i>Prévisualiser
+                            </a>
+                            @endif
+                        </li>
+                        <li>
+                            @if($estInscritCetteAnnee)
+                            <a class="dropdown-item" href="{{ route('esbtp.etudiants.attestation-frequentation', $etudiant) }}" target="_blank">
+                                <i class="fas fa-download fa-fw me-2 text-muted"></i>Télécharger PDF
+                            </a>
+                            @else
+                            <a class="dropdown-item" href="#"
+                               onclick="openAttestationConfirm(event, '{{ route('esbtp.etudiants.attestation-frequentation', $etudiant) }}')">
+                                <i class="fas fa-download fa-fw me-2 text-muted"></i>Télécharger PDF
+                            </a>
+                            @endif
+                        </li>
+                    </ul>
+                </div>
+                @endif
+
                 <a href="{{ route('esbtp.etudiants.index') }}" class="hero-btn ghost">
                     <i class="fas fa-arrow-left"></i> <span class="d-none d-sm-inline">Retour</span>
                 </a>
@@ -1327,15 +1389,17 @@
 
     {{-- KPI Strip --}}
     @php
-        $totalPaiements  = $etudiant->inscriptions->sum(fn($i) => $i->paiements->where('status','validé')->sum('montant'));
-        $totalAbsences   = $etudiant->absences->count();
+        // KPI Hero : uniquement l'année courante — si pas inscrit, tout à zéro/nul
+        $totalPaiements  = $inscCourante
+            ? $inscCourante->paiements->where('status','validé')->sum('montant')
+            : null; // null = non inscrit cette année
+        $totalAbsences   = null; // calculé après $tauxPresence (dépend de $inscCourante)
         $nbInscriptions  = $etudiant->inscriptions->count();
 
-        // taux presence depuis les absences de l'étudiant
+        // taux presence depuis les absences de l'étudiant (année courante uniquement)
         $tauxPresence = null;
-        $inscActive = $etudiant->inscriptions->firstWhere('status', 'active') ?? $etudiant->inscriptions->first();
-        if ($inscActive && $inscActive->anneeUniversitaire) {
-            $anneeId = $inscActive->anneeUniversitaire->id;
+        if ($inscCourante && $inscCourante->anneeUniversitaire) {
+            $anneeId = $inscCourante->anneeUniversitaire->id;
             $attStats = \App\Models\ESBTPAttendance::finalOnly()
                 ->where('etudiant_id', $etudiant->id)
                 ->where('annee_universitaire_id', $anneeId)
@@ -1344,6 +1408,15 @@
             if ($attStats && $attStats->total > 0) {
                 $tauxPresence = round((($attStats->nb_pres + $attStats->nb_ret) / $attStats->total) * 100, 1);
             }
+        }
+
+        // Absences de l'année courante uniquement
+        if ($inscCourante && $inscCourante->anneeUniversitaire) {
+            $totalAbsences = \App\Models\ESBTPAttendance::finalOnly()
+                ->where('etudiant_id', $etudiant->id)
+                ->where('annee_universitaire_id', $inscCourante->anneeUniversitaire->id)
+                ->where('statut', 'absent')
+                ->count();
         }
     @endphp
     <div class="hero-kpi-strip">
@@ -1364,14 +1437,14 @@
         <div class="hero-kpi">
             <i class="fas fa-user-times hero-kpi-icon"></i>
             <div>
-                <div class="hero-kpi-val">{{ $totalAbsences }}</div>
+                <div class="hero-kpi-val">{{ $totalAbsences !== null ? $totalAbsences : '—' }}</div>
                 <div class="hero-kpi-lbl">Absences</div>
             </div>
         </div>
         <div class="hero-kpi">
             <i class="fas fa-coins hero-kpi-icon"></i>
             <div>
-                <div class="hero-kpi-val">{{ number_format($totalPaiements, 0, ',', ' ') }}</div>
+                <div class="hero-kpi-val">{{ $totalPaiements !== null ? number_format($totalPaiements, 0, ',', ' ') : '—' }}</div>
                 <div class="hero-kpi-lbl">Payé (FCFA)</div>
             </div>
         </div>
@@ -1409,31 +1482,53 @@
 {{-- ─── TAB: VUE D'ENSEMBLE ─────────────────────────────────────── --}}
 <div class="tab-panel active" id="tab-overview">
 
+    {{-- Bannière : étudiant non inscrit pour l'année courante --}}
+    @if($anneeCourante && !$inscCourante)
+    <div style="
+        background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
+        border: 1.5px solid #ffc107;
+        border-left: 5px solid #e65100;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+    ">
+        <div style="flex-shrink:0; width:36px; height:36px; background:#e65100; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+            <i class="fas fa-exclamation-triangle" style="color:#fff; font-size:.9rem;"></i>
+        </div>
+        <div>
+            <div style="font-weight:700; color:#b45309; font-size:.95rem; margin-bottom:4px;">
+                Cet étudiant n'est pas réinscrit pour l'année {{ $anneeCourante->name }}
+            </div>
+            <div style="color:#92400e; font-size:.85rem; line-height:1.5;">
+                Les indicateurs ci-dessous ne sont pas disponibles pour l'année en cours.
+                Pour afficher les données académiques, financières et de présence, veuillez d'abord réinscrire cet étudiant.
+            </div>
+            <a href="{{ route('esbtp.reinscription.show', $etudiant) }}"
+               style="display:inline-flex; align-items:center; gap:6px; margin-top:10px; padding:6px 14px; background:#e65100; color:#fff; border-radius:6px; font-size:.82rem; font-weight:600; text-decoration:none;">
+                <i class="fas fa-redo"></i> Réinscrire pour {{ $anneeCourante->name }}
+            </a>
+        </div>
+    </div>
+    @endif
+
     {{-- KPI Cards --}}
     @php
-        // Calcul KPI globaux depuis les vraies variables
+        // Calcul KPI globaux : uniquement depuis l'inscription courante
         $kpiMoyenneGen     = null;
-        $kpiMoyenneIsLive  = false; // true = depuis résultats bruts (bulletin non généré)
-        $kpiTauxPres       = $tauxPresence;
-        $kpiAbsTotal       = $etudiant->absences->count();
+        $kpiMoyenneIsLive  = false;
+        $kpiTauxPres       = $tauxPresence; // déjà filtré par $inscCourante
+        // Absences : uniquement année courante
+        $kpiAbsTotal       = $totalAbsences; // null si pas inscrit cette année
 
-        // Inscription de référence : prioriser is_current=true, sinon active, sinon la plus récente
-        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        $kpiInscActive = null;
-        if ($anneeCourante) {
-            $kpiInscActive = $etudiant->inscriptions
-                ->where('annee_universitaire_id', $anneeCourante->id)
-                ->first();
-        }
-        if (!$kpiInscActive) {
-            $kpiInscActive = $inscription_active
-                ?? $etudiant->inscriptions->where('status', 'active')->first()
-                ?? $etudiant->inscriptions->sortByDesc('created_at')->first();
-        }
+        // Inscription de référence : année courante uniquement
+        $kpiInscActive = $inscCourante ?? null;
 
         $kpiPaiTotal = $kpiInscActive
             ? $kpiInscActive->paiements->where('status', 'validé')->sum('montant')
-            : 0;
+            : null; // null = pas inscrit cette année
         $kpiPaiDu = 0;
 
         // Moyenne : 1) chercher bulletins officiels de l'inscription de référence
@@ -1472,7 +1567,11 @@
 
     <div class="kpi-grid">
         {{-- Moyenne --}}
-        @php $m = $kpiMoyenneGen; $mc = $m >= 12 ? '#10b981' : ($m >= 10 ? '#f59e0b' : '#ef4444'); $mpct = min(100, ($m/20)*100); @endphp
+        @php
+            $m    = $kpiMoyenneGen;
+            $mc   = $m !== null ? ($m >= 12 ? '#10b981' : ($m >= 10 ? '#f59e0b' : '#ef4444')) : '#94a3b8';
+            $mpct = $m !== null ? min(100, ($m/20)*100) : 0;
+        @endphp
         <div class="kpi-card">
             <div class="kpi-ring">
                 <svg viewBox="0 0 52 52">
@@ -1485,7 +1584,9 @@
                 <span class="ring-icon" style="color:{{ $mc }}"><i class="fas fa-star" style="font-size:.75rem"></i></span>
             </div>
             <div class="kpi-body">
-                <div class="kpi-val" style="color:{{ $mc }}">{{ $m !== null ? number_format($m,2) : '—' }}<small style="font-size:.6em;font-weight:500">/20</small></div>
+                <div class="kpi-val" style="color:{{ $mc }}">
+                    {{ $m !== null ? number_format($m,2) : '—' }}<small style="font-size:.6em;font-weight:500">/20</small>
+                </div>
                 <div class="kpi-lbl">Moy. générale</div>
                 @if($kpiMoyenneIsLive && $m !== null)
                     <div style="font-size:.62rem; color:#f59e0b; margin-top:4px; display:flex; align-items:center; gap:3px; line-height:1.3;">
@@ -1496,7 +1597,10 @@
         </div>
 
         {{-- Présence --}}
-        @php $p = $kpiTauxPres; $pc = $p >= 80 ? '#10b981' : ($p >= 60 ? '#f59e0b' : '#ef4444'); @endphp
+        @php
+            $p  = $kpiTauxPres;
+            $pc = $p !== null ? ($p >= 80 ? '#10b981' : ($p >= 60 ? '#f59e0b' : '#ef4444')) : '#94a3b8';
+        @endphp
         <div class="kpi-card">
             <div class="kpi-ring">
                 <svg viewBox="0 0 52 52">
@@ -1515,7 +1619,10 @@
         </div>
 
         {{-- Absences --}}
-        @php $ac = $kpiAbsTotal > 20 ? '#ef4444' : ($kpiAbsTotal > 10 ? '#f59e0b' : '#10b981'); $apct = min(100, $kpiAbsTotal * 2); @endphp
+        @php
+            $ac   = $kpiAbsTotal !== null ? ($kpiAbsTotal > 20 ? '#ef4444' : ($kpiAbsTotal > 10 ? '#f59e0b' : '#10b981')) : '#94a3b8';
+            $apct = $kpiAbsTotal !== null ? min(100, $kpiAbsTotal * 2) : 0;
+        @endphp
         <div class="kpi-card">
             <div class="kpi-ring">
                 <svg viewBox="0 0 52 52">
@@ -1528,16 +1635,18 @@
                 <span class="ring-icon" style="color:{{ $ac }}"><i class="fas fa-calendar-times" style="font-size:.75rem"></i></span>
             </div>
             <div class="kpi-body">
-                <div class="kpi-val" style="color:{{ $ac }}">{{ $kpiAbsTotal }}</div>
+                <div class="kpi-val" style="color:{{ $ac }}">{{ $kpiAbsTotal !== null ? $kpiAbsTotal : '—' }}</div>
                 <div class="kpi-lbl">Absences totales</div>
             </div>
         </div>
 
         {{-- Paiements --}}
         @php
-            $totalDu2 = $kpiPaiTotal + $kpiPaiDu;
-            $ppct = $totalDu2 > 0 ? min(100, round($kpiPaiTotal/$totalDu2*100)) : 0;
-            $payc = $ppct >= 80 ? '#10b981' : ($ppct >= 50 ? '#f59e0b' : '#ef4444');
+            $kpiPaiTotalSafe = $kpiPaiTotal ?? 0;
+            $totalDu2 = $kpiPaiTotalSafe + ($kpiPaiDu ?? 0);
+            $ppct  = ($kpiPaiTotal !== null && $totalDu2 > 0) ? min(100, round($kpiPaiTotalSafe / $totalDu2 * 100)) : null;
+            $payc  = $ppct !== null ? ($ppct >= 80 ? '#10b981' : ($ppct >= 50 ? '#f59e0b' : '#ef4444')) : '#94a3b8';
+            $ppctVal = $ppct ?? 0;
         @endphp
         <div class="kpi-card">
             <div class="kpi-ring">
@@ -1546,12 +1655,12 @@
                     <circle class="ring-fg" cx="26" cy="26" r="22"
                         stroke="{{ $payc }}"
                         stroke-dasharray="{{ round(2*3.14159*22,1) }}"
-                        stroke-dashoffset="{{ round(2*3.14159*22 * (1 - $ppct/100),1) }}"/>
+                        stroke-dashoffset="{{ round(2*3.14159*22 * (1 - $ppctVal/100),1) }}"/>
                 </svg>
                 <span class="ring-icon" style="color:{{ $payc }}"><i class="fas fa-coins" style="font-size:.75rem"></i></span>
             </div>
             <div class="kpi-body">
-                <div class="kpi-val" style="color:{{ $payc }}">{{ $ppct }}%</div>
+                <div class="kpi-val" style="color:{{ $payc }}">{{ $ppct !== null ? $ppct . '%' : '—' }}</div>
                 <div class="kpi-lbl">Paiements réglés</div>
             </div>
         </div>
@@ -1578,11 +1687,11 @@
             </div>
             <div class="info-row">
                 <span class="info-lbl">Classe actuelle</span>
-                <span class="info-val">{{ $inscA?->classe?->name ?? '—' }}</span>
+                <span class="info-val">{{ $kpiInscActive?->classe?->name ?? '—' }}</span>
             </div>
             <div class="info-row">
                 <span class="info-lbl">Filière</span>
-                <span class="info-val">{{ $inscA?->classe?->filiere?->name ?? '—' }}</span>
+                <span class="info-val">{{ $kpiInscActive?->classe?->filiere?->name ?? '—' }}</span>
             </div>
             <div class="info-row">
                 <span class="info-lbl">Email</span>
@@ -1607,24 +1716,26 @@
         </div>
     </div>
 
-    {{-- Inscription année courante --}}
-    @if($kpiInscActive)
+    {{-- Toutes les inscriptions de l'étudiant --}}
     @php
-        $insc = $kpiInscActive;
-        $statInsc = $insc->status ?? 'pending';
-        $anneeLabel = $insc->anneeUniversitaire?->name ?? 'N/A';
-        $inscAccent = in_array($statInsc, ['active', 'actif', 'validé']) ? 'actif' : ($statInsc === 'abandon' ? 'abandon' : 'inactif');
-        $wfStep = $insc->workflow_step ?? null;
-        $affStatus = $insc->affectation_status ?? 'non_affecté';
+        $toutesInscs = $etudiant->inscriptions->sortByDesc(fn($i) => optional($i->anneeUniversitaire)->start_date ?? $i->created_at);
     @endphp
     <div class="s-card">
         <div class="s-card-header">
             <div class="s-card-title">
                 <div class="s-card-title-icon"><i class="fas fa-file-signature"></i></div>
-                Inscription en cours
+                Inscriptions
             </div>
         </div>
         <div class="insc-grid">
+        @forelse($toutesInscs as $insc)
+        @php
+            $statInsc = $insc->status ?? 'pending';
+            $anneeLabel = $insc->anneeUniversitaire?->name ?? 'N/A';
+            $inscAccent = in_array($statInsc, ['active', 'actif', 'validé']) ? 'actif' : ($statInsc === 'abandon' ? 'abandon' : 'inactif');
+            $wfStep = $insc->workflow_step ?? null;
+            $affStatus = $insc->affectation_status ?? 'non_affecté';
+        @endphp
         <div class="insc-card">
             <div class="insc-card-accent {{ $inscAccent }}"></div>
             <div class="insc-card-inner">
@@ -1700,6 +1811,9 @@
                 </div>
             </div>
         </div>
+        @empty
+        <div style="padding:24px;color:var(--k-gray);font-size:.9rem;">Aucune inscription enregistrée.</div>
+        @endforelse
         {{-- CTA Réinscription si pas encore inscrit pour l'année courante --}}
         @if($anneeCourante && !$inscCourante)
         <a href="{{ route('esbtp.reinscription.show', $etudiant) }}" class="insc-card insc-cta-card">
@@ -1716,29 +1830,6 @@
         @endif
         </div>{{-- /grid --}}
     </div>
-    @elseif($anneeCourante && !$inscCourante)
-    <div class="s-card">
-        <div class="s-card-header">
-            <div class="s-card-title">
-                <div class="s-card-title-icon"><i class="fas fa-file-signature"></i></div>
-                Inscription en cours
-            </div>
-        </div>
-        <div class="insc-grid">
-        <a href="{{ route('esbtp.reinscription.show', $etudiant) }}" class="insc-card insc-cta-card">
-            <div class="insc-card-accent inactif"></div>
-            <div class="insc-card-inner" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;text-align:center;">
-                <div class="insc-cta-icon"><i class="fas fa-plus"></i></div>
-                <div>
-                    <div class="insc-cta-title">Réinscrire pour {{ $anneeCourante->name }}</div>
-                    <div class="insc-cta-sub">Cet étudiant n'est pas encore inscrit pour l'année en cours</div>
-                </div>
-                <i class="fas fa-arrow-right" style="color:var(--k-blue); opacity:.6;"></i>
-            </div>
-        </a>
-        </div>{{-- /grid --}}
-    </div>
-    @endif
 
 </div>{{-- /tab-overview --}}
 
@@ -2223,15 +2314,18 @@
 
     @endif {{-- fin @else acadIsNotCurrentYear --}}
 
-    {{-- ══ ANNÉES PRÉCÉDENTES ══════════════════════════════════════ --}}
+    {{-- ══ AUTRES ANNÉES ══════════════════════════════════════ --}}
     @php
-        /* Si l'année courante n'a pas de données, TOUTES les inscriptions vont en "précédentes" */
-        $acadInscsPrec = $acadIsNotCurrentYear ? $acadInscs : $acadAutres;
+        /* Si l'année courante n'a pas de données, toutes les inscriptions vont ici
+           mais on exclut quand même l'inscription de l'année courante (sans données) */
+        $acadInscsPrec = $acadIsNotCurrentYear
+            ? $acadInscs->filter(fn($i) => $anneeCourante ? $i->annee_universitaire_id !== $anneeCourante->id : true)
+            : $acadAutres;
     @endphp
     @if($acadInscsPrec->count())
     <div class="acad-arch-sep">
         <div class="acad-arch-sep-line"></div>
-        <span class="acad-arch-sep-label"><i class="fas fa-history" style="margin-right:4px;"></i>Années précédentes</span>
+        <span class="acad-arch-sep-label"><i class="fas fa-history" style="margin-right:4px;"></i>Autres années</span>
         <div class="acad-arch-sep-line"></div>
     </div>
 
@@ -2543,7 +2637,7 @@
         @if($presInscCourante)
         <div style="display:flex; align-items:center; gap:10px; margin:8px 0 12px; opacity:.6;">
             <div style="flex:1; height:1px; background:var(--k-border);"></div>
-            <span style="font-size:.72rem; font-weight:600; color:var(--k-muted); white-space:nowrap; letter-spacing:.04em;"><i class="fas fa-history" style="margin-right:4px;"></i>ANNÉES PRÉCÉDENTES</span>
+            <span style="font-size:.72rem; font-weight:600; color:var(--k-muted); white-space:nowrap; letter-spacing:.04em;"><i class="fas fa-history" style="margin-right:4px;"></i>AUTRES ANNÉES</span>
             <div style="flex:1; height:1px; background:var(--k-border);"></div>
         </div>
         @endif
@@ -3001,7 +3095,7 @@
     @if($finAutresInscs->count())
     <div class="fin-autres-header">
         <i class="fas fa-archive"></i>
-        Années précédentes ({{ $finAutresInscs->count() }})
+        Autres années ({{ $finAutresInscs->count() }})
     </div>
 
     @foreach($finAutresInscs as $autreInsc)
@@ -3283,6 +3377,55 @@
 
 </div>{{-- /fiche-content --}}
 </div>{{-- /fiche-page --}}
+
+{{-- Modal confirmation attestation (étudiant non réinscrit cette année) --}}
+<div class="modal fade" id="attestationConfirmModal" tabindex="-1" aria-labelledby="attestationConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title d-flex align-items-center gap-2" id="attestationConfirmModalLabel">
+                    <i class="fas fa-exclamation-triangle text-warning"></i>
+                    Étudiant non réinscrit cette année
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body pt-2">
+                <p class="mb-1">
+                    Cet étudiant ne s'est pas réinscrit pour
+                    <strong>{{ $anneeCourante->name ?? "l'année en cours" }}</strong>.
+                </p>
+                <p class="text-muted" style="font-size:.9rem;">
+                    La dernière inscription disponible sera utilisée pour générer ce document.
+                    Voulez-vous continuer quand même ?
+                </p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="attestationConfirmBtn">
+                    <i class="fas fa-check me-1"></i>Continuer quand même
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(function () {
+    var _attestationUrl = null;
+    window.openAttestationConfirm = function (e, url) {
+        e.preventDefault();
+        _attestationUrl = url;
+        var modal = new bootstrap.Modal(document.getElementById('attestationConfirmModal'));
+        modal.show();
+    };
+    document.getElementById('attestationConfirmBtn').addEventListener('click', function () {
+        if (_attestationUrl) {
+            window.open(_attestationUrl, '_blank');
+        }
+        bootstrap.Modal.getInstance(document.getElementById('attestationConfirmModal')).hide();
+    });
+})();
+</script>
+
 @endsection
 
 @push('scripts')
