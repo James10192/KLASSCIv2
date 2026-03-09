@@ -5,6 +5,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Suivi Paiements – {{ $category->name ?? '' }} – {{ $statutLabel ?? '' }}</title>
     <style>
+        /* ── Reset ── */
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         @page {
@@ -18,6 +19,22 @@
             color: {{ $pdfSettings['text_color'] ?? '#1f2937' }};
             line-height: 1.4;
             background: #ffffff;
+            padding: 8px;
+        }
+
+        .container {
+            max-width: 100%;
+            background: white;
+            padding: 10px;
+        }
+
+        /* ── Header ── */
+        .header-section {
+            border-radius: 6px;
+            margin-bottom: 12px;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+            overflow: hidden;
         }
 
         /* ── Table data ── */
@@ -25,13 +42,13 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 9px;
-            margin-bottom: 10px;
+            margin-bottom: 14px;
         }
 
         .students-table thead td {
             background-color: {{ $pdfSettings['primary_color'] ?? '#0453cb' }};
             color: #ffffff;
-            padding: 6px 6px;
+            padding: 7px 7px;
             font-weight: bold;
             font-size: 8.5px;
             text-transform: uppercase;
@@ -46,8 +63,12 @@
             color-adjust: exact;
         }
 
+        .students-table tbody tr:nth-child(odd) td {
+            background-color: #ffffff;
+        }
+
         .students-table tbody td {
-            padding: 5px 6px;
+            padding: 6px 7px;
             border-bottom: 1px solid #e5e7eb;
             vertical-align: middle;
         }
@@ -55,41 +76,75 @@
         .students-table tfoot td {
             background-color: #eff6ff;
             font-weight: bold;
-            padding: 7px 6px;
+            padding: 8px 7px;
             border-top: 2px solid {{ $pdfSettings['primary_color'] ?? '#0453cb' }};
             font-size: 9px;
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
         }
 
-        /* Row number — same pattern as liste-complete-pdf.blade.php (works in DomPDF) */
-        .student-number {
-            background: {{ $pdfSettings['primary_color'] ?? '#0453cb' }};
-            color: white;
-            padding: 2px 4px;
+        .row-num {
+            width: 18px;
+            height: 18px;
+            background-color: {{ $pdfSettings['primary_color'] ?? '#0453cb' }};
+            color: #ffffff;
             border-radius: 50%;
-            font-weight: bold;
-            font-size: 8px;
-            min-width: 16px;
-            display: inline-block;
             text-align: center;
+            line-height: 18px;
+            font-size: 7.5px;
+            font-weight: bold;
+            margin: 0 auto;
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
         }
 
         .student-matricule {
             font-family: 'Courier New', monospace;
+            background: #f3f4f6;
+            padding: 2px 3px;
+            border-radius: 2px;
             font-size: 8px;
             color: #374151;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
         }
 
-        /* ── Utilities ── */
-        .text-right  { text-align: right; }
-        .text-center { text-align: center; }
+        /* ── Badges ── */
+        .statut-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 9px;
+            font-weight: bold;
+        }
+
+        .badge-non-payes {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+
+        .badge-en-retard {
+            background-color: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+        }
+
+        .badge-a-jour {
+            background-color: #d1fae5;
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+        }
+
+        /* ── Footer ── */
+        .footer-section {
+            margin-top: 12px;
+        }
 
         .summary-card {
             background: #f8f9fa;
             border: 1px solid #e5e7eb;
+            border-radius: 4px;
             padding: 9px;
         }
 
@@ -105,6 +160,7 @@
         .info-card {
             background: #f8f9fa;
             border: 1px solid #e5e7eb;
+            border-radius: 4px;
             padding: 9px;
         }
 
@@ -118,6 +174,27 @@
             font-size: 9px;
             font-weight: 600;
             color: #374151;
+        }
+
+        .generation-info {
+            text-align: center;
+            font-size: 8px;
+            color: #6b7280;
+            margin-top: 10px;
+            padding-top: 6px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        /* ── Utilities ── */
+        .text-right  { text-align: right; }
+        .text-center { text-align: center; }
+
+        /* ── Print optimizations ── */
+        @media print {
+            body { background: white; padding: 4px; }
+            .container { padding: 8px; }
+            .header-section { margin-bottom: 10px; }
+            .footer-section { margin-top: 10px; }
         }
     </style>
     @include('pdf.partials.theme')
@@ -134,13 +211,8 @@
     $schoolEmail   = $schoolInfo['email']   ?? '';
     $schoolLogo    = $schoolInfo['logo']    ?? '';
 
-    // Chunk support: variables passées par le controller pour les gros exports
-    $isFirstChunk = $isFirstChunk ?? true;
-    $isLastChunk  = $isLastChunk ?? true;
-    $rowOffset    = $rowOffset ?? 0;
-
     $logoBase64 = null;
-    if ($isFirstChunk && $schoolLogo) {
+    if ($schoolLogo) {
         $paths = [
             storage_path('app/public/' . $schoolLogo),
             public_path('storage/' . $schoolLogo),
@@ -162,235 +234,287 @@
     $soldeTotal  = $montantDu - $montantPaye;
 
     $statut     = $stats['statut'] ?? '';
+    $badgeClass = match($statut) {
+        'non_payes' => 'badge-non-payes',
+        'en_retard' => 'badge-en-retard',
+        'a_jour'    => 'badge-a-jour',
+        default     => 'badge-en-retard',
+    };
 @endphp
 
-{{-- ── HEADER + KPI — Only on first chunk ── --}}
-@if($isFirstChunk)
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 12px;">
-    <tr>
-        <td width="18%" style="background-color: {{ $headerBg }}; padding: 14px 10px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.25); -webkit-print-color-adjust: exact; color-adjust: exact;">
-            @if($logoBase64)
-                <img src="{{ $logoBase64 }}"
-                     style="max-height: 55px; max-width: 100px; filter: brightness(0) invert(1);"
-                     alt="Logo">
-            @else
-                <span style="font-size: 30px; font-weight: 900; color: {{ $headerText }}; opacity: 0.4; letter-spacing: -2px;">K</span>
-            @endif
-        </td>
-        <td width="82%" style="background-color: {{ $headerBg }}; padding: 12px 16px; vertical-align: middle; -webkit-print-color-adjust: exact; color-adjust: exact;">
-            <span style="font-size: 15px; font-weight: 700; color: {{ $headerText }};">{{ strtoupper($schoolName) }}</span>
-            @if($schoolAddress || $schoolPhone || $schoolEmail)
-            <br><span style="font-size: 8.5px; color: {{ $headerText }}; opacity: 0.85;">@if($schoolAddress){{ $schoolAddress }}@endif @if($schoolPhone)@if($schoolAddress) | @endif Tel: {{ $schoolPhone }}@endif @if($schoolEmail)@if($schoolAddress || $schoolPhone) | @endif Email: {{ $schoolEmail }}@endif</span>
-            @endif
-            <br><span style="font-size: 1px; color: {{ $headerBg }};">.</span>
-            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-top: 1px solid rgba(255,255,255,0.35); margin-top: 4px; padding-top: 4px;">
-                <tr>
-                    <td style="font-size: 12px; font-weight: 700; color: {{ $headerText }}; padding-top: 5px;">SUIVI DES PAIEMENTS</td>
-                </tr>
-                <tr>
-                    <td>
+<div class="container">
+
+    {{-- ── HEADER SECTION — Logo | Infos école + Titre document ── --}}
+    <div class="header-section">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+            <tr>
+                {{-- Logo --}}
+                <td width="18%" style="background-color: {{ $headerBg }}; padding: 14px 10px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.25);">
+                    @if($logoBase64)
+                        <img src="{{ $logoBase64 }}"
+                             style="max-height: 55px; max-width: 100px; filter: brightness(0) invert(1);"
+                             alt="Logo">
+                    @else
+                        <div style="font-size: 30px; font-weight: 900; color: {{ $headerText }}; opacity: 0.4; letter-spacing: -2px;">K</div>
+                    @endif
+                </td>
+
+                {{-- Nom + coordonnées + titre document --}}
+                <td width="82%" style="background-color: {{ $headerBg }}; padding: 12px 16px; vertical-align: middle;">
+                    {{-- Nom établissement --}}
+                    <div style="font-size: 15px; font-weight: 700; color: {{ $headerText }}; margin-bottom: 2px;">
+                        {{ strtoupper($schoolName) }}
+                    </div>
+
+                    {{-- Adresse | Tél | Email --}}
+                    @if($schoolAddress || $schoolPhone || $schoolEmail)
+                    <div style="font-size: 8.5px; color: {{ $headerText }}; opacity: 0.85; margin-bottom: 8px;">
+                        @if($schoolAddress){{ $schoolAddress }}@endif
+                        @if($schoolPhone)
+                            @if($schoolAddress) &nbsp;|&nbsp; @endif
+                            Tél: {{ $schoolPhone }}
+                        @endif
+                        @if($schoolEmail)
+                            @if($schoolAddress || $schoolPhone) &nbsp;|&nbsp; @endif
+                            Email: {{ $schoolEmail }}
+                        @endif
+                    </div>
+                    @endif
+
+                    {{-- Séparateur + titre document + sous-infos --}}
+                    <div style="border-top: 1px solid rgba(255,255,255,0.35); padding-top: 7px;">
+                        <div style="font-size: 12px; font-weight: 700; color: {{ $headerText }}; letter-spacing: 0.5px; margin-bottom: 5px;">
+                            SUIVI DES PAIEMENTS
+                        </div>
                         <table width="100%" border="0" cellspacing="0" cellpadding="0">
                             <tr>
                                 <td width="33%" style="font-size: 9px; color: {{ $headerText }};">
-                                    <span style="opacity: 0.75;">Catégorie :</span> <strong>{{ $category->name ?? 'N/A' }}</strong>
+                                    <span style="color: {{ $headerText }}; opacity: 0.75;">Catégorie :</span>
+                                    <strong style="color: {{ $headerText }};">{{ $category->name ?? 'N/A' }}</strong>
                                 </td>
                                 <td width="33%" style="font-size: 9px; color: {{ $headerText }}; text-align: center;">
-                                    <span style="opacity: 0.75;">Statut :</span> <strong>{{ $statutLabel }}</strong>
+                                    <span style="color: {{ $headerText }}; opacity: 0.75;">Statut :</span>
+                                    <strong style="color: {{ $headerText }};">{{ $statutLabel }}</strong>
                                 </td>
                                 <td width="34%" style="font-size: 9px; color: {{ $headerText }}; text-align: right;">
-                                    <span style="opacity: 0.75;">Date :</span> <strong>{{ now()->format('d/m/Y') }}</strong>
+                                    <span style="color: {{ $headerText }}; opacity: 0.75;">Date :</span>
+                                    <strong style="color: {{ $headerText }};">{{ now()->format('d/m/Y') }}</strong>
                                 </td>
                             </tr>
                         </table>
-                    </td>
-                </tr>
-            </table>
-        </td>
-    </tr>
-</table>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
 
-{{-- KPI --}}
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 12px;">
-    <tr>
-        <td width="25%" style="background-color: {{ $primaryColor }}; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25); -webkit-print-color-adjust: exact; color-adjust: exact;">
-            <span style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8;">TOTAL ÉTUDIANTS</span><br>
-            <span style="font-size: 18px; font-weight: 700; color: white;">{{ $total }}</span><br>
-            <span style="font-size: 7px; color: white; opacity: 0.65;">{{ $statutLabel }}</span>
-        </td>
-        <td width="25%" style="background-color: {{ $primaryColor }}; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25); -webkit-print-color-adjust: exact; color-adjust: exact;">
-            <span style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8;">MONTANT DÛ</span><br>
-            <span style="font-size: 11px; font-weight: 700; color: white;">{{ number_format($montantDu, 0, ',', ' ') }} F</span><br>
-            <span style="font-size: 7px; color: white; opacity: 0.65;">Total attendu</span>
-        </td>
-        <td width="25%" style="background-color: {{ $primaryColor }}; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25); -webkit-print-color-adjust: exact; color-adjust: exact;">
-            <span style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8;">MONTANT PAYÉ</span><br>
-            <span style="font-size: 11px; font-weight: 700; color: white;">{{ number_format($montantPaye, 0, ',', ' ') }} F</span><br>
-            <span style="font-size: 7px; color: white; opacity: 0.65;">Total reçu</span>
-        </td>
-        <td width="25%" style="background-color: {{ $primaryColor }}; padding: 9px 8px; text-align: center; vertical-align: middle; -webkit-print-color-adjust: exact; color-adjust: exact;">
-            <span style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8;">RECOUVREMENT</span><br>
-            <span style="font-size: 18px; font-weight: 700; color: white;">{{ $taux }}%</span><br>
-            <span style="font-size: 7px; color: white; opacity: 0.65;">Taux de paiement</span>
-        </td>
-    </tr>
-</table>
+    {{-- ── KPI SECTION — 4 cellules uniformes fond bleu ── --}}
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 12px;">
+        <tr>
+            {{-- Total étudiants --}}
+            <td width="25%" style="background-color: {{ $primaryColor }}; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25); -webkit-print-color-adjust: exact; color-adjust: exact;">
+                <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">TOTAL ÉTUDIANTS</div>
+                <div style="font-size: 18px; font-weight: 700; color: white; line-height: 1.1; margin-bottom: 4px;">{{ $total }}</div>
+                <div style="font-size: 7px; color: white; opacity: 0.65;">{{ $statutLabel }}</div>
+            </td>
+            {{-- Montant dû --}}
+            <td width="25%" style="background-color: {{ $primaryColor }}; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25); -webkit-print-color-adjust: exact; color-adjust: exact;">
+                <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">MONTANT DÛ</div>
+                <div style="font-size: 11px; font-weight: 700; color: white; line-height: 1.25; margin-bottom: 4px;">{{ number_format($montantDu, 0, ',', ' ') }} F</div>
+                <div style="font-size: 7px; color: white; opacity: 0.65;">Total attendu</div>
+            </td>
+            {{-- Montant payé --}}
+            <td width="25%" style="background-color: {{ $primaryColor }}; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25); -webkit-print-color-adjust: exact; color-adjust: exact;">
+                <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">MONTANT PAYÉ</div>
+                <div style="font-size: 11px; font-weight: 700; color: white; line-height: 1.25; margin-bottom: 4px;">{{ number_format($montantPaye, 0, ',', ' ') }} F</div>
+                <div style="font-size: 7px; color: white; opacity: 0.65;">Total reçu</div>
+            </td>
+            {{-- Taux recouvrement --}}
+            <td width="25%" style="background-color: {{ $primaryColor }}; padding: 9px 8px; text-align: center; vertical-align: middle; -webkit-print-color-adjust: exact; color-adjust: exact;">
+                <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">RECOUVREMENT</div>
+                <div style="font-size: 18px; font-weight: 700; color: white; line-height: 1.1; margin-bottom: 4px;">{{ $taux }}%</div>
+                <div style="font-size: 7px; color: white; opacity: 0.65;">Taux de paiement</div>
+            </td>
+        </tr>
+    </table>
 
-{{-- Filtres actifs --}}
-@if(!empty($stats['filiere_name']) || !empty($stats['niveau_name']))
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 10px;">
-    <tr>
-        <td style="background-color: #f0f9ff; border-left: 3px solid {{ $primaryColor }}; padding: 6px 10px; font-size: 9px; color: #1e40af; -webkit-print-color-adjust: exact; color-adjust: exact;">
-            <strong>Filtres :</strong>
-            @if(!empty($stats['filiere_name']))
-                Filière : <strong>{{ $stats['filiere_name'] }}</strong>
-            @endif
-            @if(!empty($stats['niveau_name']))
-                @if(!empty($stats['filiere_name'])) — @endif
-                Niveau : <strong>{{ $stats['niveau_name'] }}</strong>
-            @endif
-        </td>
-    </tr>
-</table>
-@endif
-@else
-{{-- Non-first chunk: light continuation header --}}
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 8px;">
-    <tr>
-        <td style="font-size: 9px; color: #6b7280; padding: 4px 0; border-bottom: 1px solid #e5e7eb;">
-            {{ $category->name ?? '' }} — {{ $statutLabel }} — <strong>{{ $total }}</strong> étudiants (suite)
-        </td>
-    </tr>
-</table>
-@endif
-
-{{-- ── TABLE DES ÉTUDIANTS ── --}}
-<table class="students-table">
-    <thead>
+    {{-- ── Filtres actifs (si filière ou niveau spécifié) ── --}}
+    @if(!empty($stats['filiere_name']) || !empty($stats['niveau_name']))
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 10px;">
         <tr>
-            <td class="text-center" style="width: 26px;">N°</td>
-            <td style="width: 72px;">Matricule</td>
-            <td>Nom & Prénom(s)</td>
-            <td style="width: 80px;">Classe</td>
-            <td style="width: 60px;">Filière</td>
-            <td class="text-right" style="width: 80px;">Montant Dû</td>
-            <td class="text-right" style="width: 72px;">Payé</td>
-            <td class="text-right" style="width: 72px;">Solde</td>
-            <td class="text-center" style="width: 34px;">%</td>
-        </tr>
-    </thead>
-    <tbody>
-        @forelse($etudiants as $i => $item)
-        @php
-            $inscription = $item['inscription'];
-            $etudiant    = $inscription->etudiant ?? null;
-            $pct         = $item['pourcentage'] ?? 0;
-            $pctColor    = $pct >= 100 ? '#059669' : ($pct > 0 ? '#d97706' : '#dc2626');
-            $rowNum      = $rowOffset + $i + 1;
-        @endphp
-        <tr>
-            <td class="text-center">
-                <span class="student-number">{{ $rowNum }}</span>
-            </td>
-            <td>
-                <span class="student-matricule">{{ $etudiant?->matricule ?? 'N/A' }}</span>
-            </td>
-            <td style="font-weight: bold; font-size: 9px;">
-                {{ $etudiant ? strtoupper($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '') : '—' }}
-            </td>
-            <td style="font-size: 8.5px; color: #374151;">
-                {{ $inscription->classe->name ?? ($inscription->niveauEtude->name ?? '—') }}
-            </td>
-            <td style="font-size: 8.5px; color: #374151;">
-                {{ $inscription->filiere->name ?? '—' }}
-            </td>
-            <td class="text-right" style="font-size: 8.5px;">
-                {{ number_format($item['montant_attendu'] ?? 0, 0, ',', ' ') }}
-            </td>
-            <td class="text-right" style="font-size: 8.5px; color: #059669; font-weight: bold;">
-                {{ number_format($item['montant_paye'] ?? 0, 0, ',', ' ') }}
-            </td>
-            <td class="text-right" style="font-size: 8.5px; font-weight: bold; color: {{ ($item['solde'] ?? 0) > 0 ? '#dc2626' : '#059669' }};">
-                {{ number_format($item['solde'] ?? 0, 0, ',', ' ') }}
-            </td>
-            <td class="text-center" style="font-weight: bold; font-size: 8.5px; color: {{ $pctColor }};">
-                {{ $pct }}%
+            <td style="background-color: #f0f9ff; border-left: 3px solid {{ $primaryColor }}; padding: 6px 10px; font-size: 9px; color: #1e40af; border-radius: 3px; -webkit-print-color-adjust: exact; color-adjust: exact;">
+                <strong>Filtres :</strong>
+                @if(!empty($stats['filiere_name']))
+                    Filière : <strong>{{ $stats['filiere_name'] }}</strong>
+                @endif
+                @if(!empty($stats['niveau_name']))
+                    @if(!empty($stats['filiere_name'])) — @endif
+                    Niveau : <strong>{{ $stats['niveau_name'] }}</strong>
+                @endif
             </td>
         </tr>
-        @empty
-        <tr>
-            <td colspan="9" style="text-align: center; color: #9ca3af; font-style: italic; padding: 28px; font-size: 10px;">
-                Aucun étudiant dans cette liste.
-            </td>
-        </tr>
-        @endforelse
-    </tbody>
-    @if($isLastChunk && $etudiants->count() > 0)
-    <tfoot>
-        <tr>
-            <td colspan="5" style="text-align: right;">TOTAUX</td>
-            <td class="text-right">{{ number_format($montantDu, 0, ',', ' ') }}</td>
-            <td class="text-right" style="color: #059669;">{{ number_format($montantPaye, 0, ',', ' ') }}</td>
-            <td class="text-right" style="color: {{ $soldeTotal > 0 ? '#dc2626' : '#059669' }};">{{ number_format($soldeTotal, 0, ',', ' ') }}</td>
-            <td class="text-center">{{ $taux }}%</td>
-        </tr>
-    </tfoot>
+    </table>
     @endif
-</table>
 
-{{-- ── FOOTER — Only on last chunk ── --}}
-@if($isLastChunk && $etudiants->count() > 0)
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-top: 12px;">
-    <tr>
-        <td width="48%" style="vertical-align: top; padding-right: 6px;">
-            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background: #f8f9fa; border: 1px solid #e5e7eb;">
-                <tr>
-                    <td colspan="2" style="padding: 8px 9px 4px; font-size: 10px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.2px;">Résumé financier</td>
-                </tr>
-                <tr>
-                    <td width="50%" style="text-align: center; padding: 6px;">
-                        <span style="font-size: 13px; font-weight: bold; color: {{ $primaryColor }};">{{ number_format($montantDu, 0, ',', ' ') }}</span><br>
-                        <span style="font-size: 8px; color: #6b7280;">Montant total dû (FCFA)</span>
-                    </td>
-                    <td width="50%" style="text-align: center; padding: 6px;">
-                        <span style="font-size: 13px; font-weight: bold; color: #059669;">{{ number_format($montantPaye, 0, ',', ' ') }}</span><br>
-                        <span style="font-size: 8px; color: #6b7280;">Montant total payé (FCFA)</span>
-                    </td>
-                </tr>
-                <tr>
-                    <td style="text-align: center; padding: 6px;">
-                        <span style="font-size: 13px; font-weight: bold; color: {{ $soldeTotal > 0 ? '#dc2626' : '#059669' }};">{{ number_format($soldeTotal, 0, ',', ' ') }}</span><br>
-                        <span style="font-size: 8px; color: #6b7280;">Solde restant (FCFA)</span>
-                    </td>
-                    <td style="text-align: center; padding: 6px;">
-                        <span style="font-size: 13px; font-weight: bold; color: {{ $taux >= 80 ? '#059669' : ($taux >= 50 ? '#d97706' : '#dc2626') }};">{{ $taux }}%</span><br>
-                        <span style="font-size: 8px; color: #6b7280;">Taux de recouvrement</span>
-                    </td>
-                </tr>
-            </table>
-        </td>
-        <td width="4%"></td>
-        <td width="48%" style="vertical-align: top; padding-left: 6px;">
-            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background: #f8f9fa; border: 1px solid #e5e7eb;">
-                <tr>
-                    <td style="padding: 8px 9px 4px; font-size: 10px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.2px;">Informations document</td>
-                </tr>
-                <tr><td style="padding: 4px 9px;"><span class="info-label">Généré le :</span> <span class="info-value">{{ now()->format('d/m/Y à H:i') }}</span></td></tr>
-                <tr><td style="padding: 4px 9px;"><span class="info-label">Par :</span> <span class="info-value">{{ auth()->user()->name ?? 'Système' }}</span></td></tr>
-                <tr><td style="padding: 4px 9px;"><span class="info-label">Établissement :</span> <span class="info-value">{{ $schoolName }}</span></td></tr>
-                <tr><td style="padding: 4px 9px 8px;"><span class="info-label">Catégorie :</span> <span class="info-value">{{ $category->name ?? '—' }}</span></td></tr>
-            </table>
-        </td>
-    </tr>
-</table>
+    {{-- ── TABLE DES ÉTUDIANTS ── --}}
+    <table class="students-table">
+        <thead>
+            <tr>
+                <td class="text-center" style="width: 26px;">N°</td>
+                <td style="width: 72px;">Matricule</td>
+                <td>Nom & Prénom(s)</td>
+                <td style="width: 80px;">Classe</td>
+                <td style="width: 60px;">Filière</td>
+                <td class="text-right" style="width: 80px;">Montant Dû</td>
+                <td class="text-right" style="width: 72px;">Payé</td>
+                <td class="text-right" style="width: 72px;">Solde</td>
+                <td class="text-center" style="width: 34px;">%</td>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($etudiants as $i => $item)
+            @php
+                $inscription = $item['inscription'];
+                $etudiant    = $inscription->etudiant ?? null;
+                $pct         = $item['pourcentage'] ?? 0;
+                $pctColor    = $pct >= 100 ? '#059669' : ($pct > 0 ? '#d97706' : '#dc2626');
+            @endphp
+            <tr>
+                <td class="text-center">
+                    <div class="row-num">{{ $i + 1 }}</div>
+                </td>
+                <td>
+                    <span class="student-matricule">{{ $etudiant?->matricule ?? 'N/A' }}</span>
+                </td>
+                <td style="font-weight: bold; font-size: 9px; text-align: left;">
+                    {{ $etudiant ? strtoupper($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '') : '—' }}
+                </td>
+                <td style="font-size: 8.5px; color: #374151;">
+                    {{ $inscription->classe->name ?? ($inscription->niveauEtude->name ?? '—') }}
+                </td>
+                <td style="font-size: 8.5px; color: #374151;">
+                    {{ $inscription->filiere->name ?? '—' }}
+                </td>
+                <td class="text-right" style="font-size: 8.5px;">
+                    {{ number_format($item['montant_attendu'] ?? 0, 0, ',', ' ') }}
+                </td>
+                <td class="text-right" style="font-size: 8.5px; color: #059669; font-weight: bold;">
+                    {{ number_format($item['montant_paye'] ?? 0, 0, ',', ' ') }}
+                </td>
+                <td class="text-right"
+                    style="font-size: 8.5px; font-weight: bold;
+                           color: {{ ($item['solde'] ?? 0) > 0 ? '#dc2626' : '#059669' }};">
+                    {{ number_format($item['solde'] ?? 0, 0, ',', ' ') }}
+                </td>
+                <td class="text-center" style="font-weight: bold; font-size: 8.5px; color: {{ $pctColor }};">
+                    {{ $pct }}%
+                </td>
+            </tr>
+            @empty
+            <tr>
+                <td colspan="9"
+                    style="text-align: center; color: #9ca3af; font-style: italic; padding: 28px; font-size: 10px;">
+                    Aucun étudiant dans cette liste.
+                </td>
+            </tr>
+            @endforelse
+        </tbody>
+        @if($etudiants->count() > 0)
+        <tfoot>
+            <tr>
+                <td colspan="5" style="text-align: right;">TOTAUX</td>
+                <td class="text-right">{{ number_format($montantDu, 0, ',', ' ') }}</td>
+                <td class="text-right" style="color: #059669;">
+                    {{ number_format($montantPaye, 0, ',', ' ') }}
+                </td>
+                <td class="text-right" style="color: {{ $soldeTotal > 0 ? '#dc2626' : '#059669' }};">
+                    {{ number_format($soldeTotal, 0, ',', ' ') }}
+                </td>
+                <td class="text-center">{{ $taux }}%</td>
+            </tr>
+        </tfoot>
+        @endif
+    </table>
 
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-top: 10px; border-top: 1px solid #e5e7eb; padding-top: 6px;">
-    <tr>
-        <td style="text-align: center; font-size: 8px; color: #6b7280;">
-            <strong>Document généré automatiquement le {{ now()->format('d/m/Y à H:i') }}</strong> — {{ $schoolName }} — Système de Gestion KLASSCI
-        </td>
-    </tr>
-</table>
-@endif
+    {{-- ── FOOTER SECTION — 2 colonnes : Résumé | Infos document ── --}}
+    @if($etudiants->count() > 0)
+    <div class="footer-section">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+            <tr>
+                {{-- Résumé financier --}}
+                <td width="48%" style="vertical-align: top; padding-right: 6px;">
+                    <div class="summary-card">
+                        <div class="summary-title">Résumé financier</div>
+                        <table width="100%" border="0" cellspacing="0" cellpadding="3">
+                            <tr>
+                                <td width="50%" style="text-align: center; vertical-align: top;">
+                                    <div style="font-size: 13px; font-weight: bold; color: {{ $primaryColor }};">{{ number_format($montantDu, 0, ',', ' ') }}</div>
+                                    <div style="font-size: 8px; color: #6b7280;">Montant total dû (FCFA)</div>
+                                </td>
+                                <td width="50%" style="text-align: center; vertical-align: top;">
+                                    <div style="font-size: 13px; font-weight: bold; color: #059669;">{{ number_format($montantPaye, 0, ',', ' ') }}</div>
+                                    <div style="font-size: 8px; color: #6b7280;">Montant total payé (FCFA)</div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: center; vertical-align: top; padding-top: 6px;">
+                                    <div style="font-size: 13px; font-weight: bold; color: {{ $soldeTotal > 0 ? '#dc2626' : '#059669' }};">{{ number_format($soldeTotal, 0, ',', ' ') }}</div>
+                                    <div style="font-size: 8px; color: #6b7280;">Solde restant (FCFA)</div>
+                                </td>
+                                <td style="text-align: center; vertical-align: top; padding-top: 6px;">
+                                    <div style="font-size: 13px; font-weight: bold; color: {{ $taux >= 80 ? '#059669' : ($taux >= 50 ? '#d97706' : '#dc2626') }};">{{ $taux }}%</div>
+                                    <div style="font-size: 8px; color: #6b7280;">Taux de recouvrement</div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </td>
+
+                {{-- Infos document --}}
+                <td width="4%"></td>
+                <td width="48%" style="vertical-align: top; padding-left: 6px;">
+                    <div class="info-card">
+                        <div class="summary-title">Informations document</div>
+                        <table width="100%" border="0" cellspacing="0" cellpadding="2">
+                            <tr>
+                                <td>
+                                    <div class="info-label">Document généré le :</div>
+                                    <div class="info-value">{{ now()->format('d/m/Y à H:i') }}</div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding-top: 4px;">
+                                    <div class="info-label">Par :</div>
+                                    <div class="info-value">{{ auth()->user()->name ?? 'Système' }}</div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding-top: 4px;">
+                                    <div class="info-label">Établissement :</div>
+                                    <div class="info-value">{{ $schoolName }}</div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding-top: 4px;">
+                                    <div class="info-label">Catégorie :</div>
+                                    <div class="info-value">{{ $category->name ?? '—' }}</div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+    @endif
+
+    {{-- ── GENERATION INFO ── --}}
+    <div class="generation-info">
+        <strong>Document généré automatiquement le {{ now()->format('d/m/Y à H:i') }}</strong><br>
+        {{ $schoolName }} — Système de Gestion KLASSCI
+    </div>
+
+</div>
 
 </body>
 </html>
