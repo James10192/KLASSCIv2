@@ -24,6 +24,7 @@
         "maatwebsite/excel": "^3.1",
         "mpdf/mpdf": "^8.2",
         "owen-it/laravel-auditing": "^13.0",
+        "setasign/fpdi": "^2.6",
         "spatie/browsershot": "^5.0",
         "spatie/laravel-permission": "^5.0"
     },
