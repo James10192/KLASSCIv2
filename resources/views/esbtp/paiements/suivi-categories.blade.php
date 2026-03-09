@@ -756,50 +756,21 @@
             }
         }
 
-        // Variable globale pour la recherche active
-        let currentSearchQuery = '';
-
-        function loadStudentsByStatut(statut, categoryId, targetPane, resetPage) {
+        function loadStudentsByStatut(statut, categoryId, targetPane) {
             const container = targetPane.querySelector('.students-list-container');
-
-            // Si resetPage demandé (ex: nouvelle recherche), repartir de 0
-            if (resetPage) {
-                targetPane.setAttribute('data-current-page', '0');
-                targetPane.setAttribute('data-loaded', 'false');
-            }
-
             const currentPage = parseInt(targetPane.getAttribute('data-current-page') || '0');
             const nextPage = currentPage + 1;
 
-            // Construire l'URL avec les filtres actuels + recherche
+            // Construire l'URL avec les filtres actuels
             const urlParams = new URLSearchParams(window.location.search);
-            const params = {
+            const url = `/esbtp/paiements/suivi-categories/load/${statut}?` + new URLSearchParams({
                 category_id: categoryId,
                 page: nextPage,
                 per_page: 20,
                 filiere_id: urlParams.get('filiere_id') || '',
                 niveau_id: urlParams.get('niveau_id') || '',
                 annee_id: urlParams.get('annee_id') || ''
-            };
-
-            // Ajouter le paramètre de recherche si présent
-            if (currentSearchQuery) {
-                params.search = currentSearchQuery;
-            }
-
-            const url = `/esbtp/paiements/suivi-categories/load/${statut}?` + new URLSearchParams(params).toString();
-
-            // Afficher un indicateur de chargement si première page
-            if (nextPage === 1) {
-                container.innerHTML = `
-                    <div class="text-center" style="padding: 40px 0;">
-                        <div class="spinner-border text-primary" role="status" style="width: 2rem; height: 2rem;">
-                            <span class="visually-hidden">Chargement...</span>
-                        </div>
-                        <p style="margin-top: 12px; color: #6b7280; font-size: 13px;">Chargement...</p>
-                    </div>
-                `;
-            }
+            }).toString();
 
             fetch(url, {
                 method: 'GET',
@@ -823,35 +794,13 @@
                     // Pages suivantes : ajouter à la fin
                     const tempDiv = document.createElement('div');
                     tempDiv.innerHTML = data.html;
-                    const list = container.querySelector('.students-list');
-                    if (list) {
-                        list.appendChild(...tempDiv.children);
-                    }
+                    container.querySelector('.students-list').appendChild(...tempDiv.children);
                 }
 
                 // Mettre à jour l'état
                 targetPane.setAttribute('data-loaded', 'true');
                 targetPane.setAttribute('data-current-page', data.current_page);
                 targetPane.setAttribute('data-has-more', data.has_more);
-
-                // Mettre à jour le compteur de recherche
-                const searchCountEl = document.getElementById('suivi-search-count');
-                const searchCountValueEl = document.getElementById('suivi-search-count-value');
-                if (currentSearchQuery && searchCountEl && searchCountValueEl) {
-                    searchCountValueEl.textContent = data.total;
-                    searchCountEl.style.display = 'inline';
-                } else if (searchCountEl) {
-                    searchCountEl.style.display = 'none';
-                }
-
-                // Mettre à jour le nombre dans l'onglet actif
-                const activeTab = document.querySelector('.students-tabs a.active[data-statut]');
-                if (activeTab && currentSearchQuery) {
-                    const countSpan = activeTab.querySelector('.student-count');
-                    if (countSpan) {
-                        countSpan.textContent = data.total;
-                    }
-                }
 
                 // Ajouter bouton "Charger plus" si nécessaire
                 if (data.has_more) {
@@ -896,65 +845,6 @@
         // Initialiser après le premier chargement
         initStudentTabsLazyLoading();
 
-        // ===== BARRE DE RECHERCHE — debounce 300ms =====
-        function initSearchHandler() {
-            const searchInput = document.getElementById('suivi-search-input');
-            const searchClear = document.getElementById('suivi-search-clear');
-            const searchCount = document.getElementById('suivi-search-count');
-
-            if (!searchInput) return;
-
-            let searchTimeout = null;
-
-            searchInput.addEventListener('input', function() {
-                const query = this.value.trim();
-
-                // Afficher/masquer le bouton clear
-                if (searchClear) {
-                    searchClear.style.display = query ? 'block' : 'none';
-                }
-
-                // Debounce 300ms
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    currentSearchQuery = query;
-
-                    // Recharger l'onglet actif avec le filtre de recherche
-                    const activeTab = document.querySelector('.students-tabs a.active[data-statut]');
-                    if (activeTab) {
-                        const statut = activeTab.getAttribute('data-statut');
-                        const categoryId = activeTab.getAttribute('data-category-id');
-                        const targetId = activeTab.getAttribute('href');
-                        const targetPane = document.querySelector(targetId);
-
-                        if (targetPane) {
-                            loadStudentsByStatut(statut, categoryId, targetPane, true);
-                        }
-                    }
-
-                    // Marquer les autres onglets comme non chargés pour forcer le rechargement
-                    document.querySelectorAll('.students-tabs a[data-statut]:not(.active)').forEach(tab => {
-                        const tabTargetId = tab.getAttribute('href');
-                        const tabPane = document.querySelector(tabTargetId);
-                        if (tabPane) {
-                            tabPane.setAttribute('data-loaded', 'false');
-                            tabPane.setAttribute('data-current-page', '0');
-                        }
-                    });
-                }, 300);
-            });
-
-            // Bouton clear
-            if (searchClear) {
-                searchClear.addEventListener('click', function() {
-                    searchInput.value = '';
-                    searchInput.dispatchEvent(new Event('input'));
-                    searchInput.focus();
-                });
-            }
-        }
-        initSearchHandler();
-
         // Réinitialiser après chaque refresh AJAX
         const originalFetchSuiviData = fetchSuiviData;
         fetchSuiviData = function(url, options = {}) {
@@ -962,9 +852,6 @@
                 // Attendre que le DOM soit mis à jour
                 setTimeout(() => {
                     initStudentTabsLazyLoading();
-                    initSearchHandler();
-                    // Reset la recherche lors d'un changement de catégorie
-                    currentSearchQuery = '';
                 }, 100);
             });
         };
@@ -1099,11 +986,6 @@ $(function() {
             page: page,
             per_page: 20
         };
-
-        // Ajouter la recherche si active (variable partagée avec le système vanilla JS)
-        if (typeof currentSearchQuery !== 'undefined' && currentSearchQuery) {
-            params.search = currentSearchQuery;
-        }
 
         debugLog(`📡 DEBUG PAIEMENTS: AJAX vers ${ajaxUrl} avec params:`, params);
 
