@@ -224,7 +224,7 @@
                         @if($showClasse)<td>{{ $inscription->classe->name ?? 'Non renseigné' }}</td>@endif
                         @if($showNiveau)<td>{{ $inscription->niveauEtude->name ?? 'Non renseigné' }}</td>@endif
                         @if($showFiliere)<td>{{ strtoupper($inscription->filiere->name ?? 'Non renseigné') }}</td>@endif
-                        <td>{{ $inscription->moyenne_generale ? number_format($inscription->moyenne_generale, 2) : '—' }}</td>
+                        <td>{{ $inscription->moyenne_generale_calculee !== null ? number_format($inscription->moyenne_generale_calculee, 2) : '—' }}</td>
                     </tr>
                     @empty
                     <tr><td colspan="{{ $colCount }}">Aucune inscription trouvée</td></tr>

@@ -108,12 +108,30 @@
                                 <i class="fas fa-chart-line"></i>
                             </a>
                             @if(isset($bulletins[$etudiant->id]))
-                                <a href="{{ route('esbtp.bulletins.show', $bulletins[$etudiant->id]) }}" class="btn btn-sm btn-secondary" title="Voir bulletin">
+                                <button type="button"
+                                        class="btn btn-sm btn-secondary btn-bulletin-periode"
+                                        title="Voir bulletin"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalChoixPeriodeBulletin"
+                                        data-etudiant-id="{{ $etudiant->id }}"
+                                        data-bulletin-id="{{ $bulletins[$etudiant->id] }}"
+                                        data-classe-id="{{ $actualClasseId }}"
+                                        data-annee-id="{{ $annee_id }}"
+                                        data-action="show">
                                     <i class="fas fa-file-alt"></i>
-                                </a>
-                                <a href="{{ route('esbtp.bulletins.pdf-params', ['bulletin' => $etudiant->id, 'classe_id' => $actualClasseId, 'periode' => request('semestre'), 'annee_universitaire_id' => $annee_id]) }}" class="btn btn-sm btn-danger" target="_blank" title="Télécharger PDF">
+                                </button>
+                                <button type="button"
+                                        class="btn btn-sm btn-danger btn-bulletin-periode"
+                                        title="Télécharger PDF"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalChoixPeriodeBulletin"
+                                        data-etudiant-id="{{ $etudiant->id }}"
+                                        data-bulletin-id="{{ $bulletins[$etudiant->id] }}"
+                                        data-classe-id="{{ $actualClasseId }}"
+                                        data-annee-id="{{ $annee_id }}"
+                                        data-action="pdf">
                                     <i class="fas fa-file-pdf"></i>
-                                </a>
+                                </button>
                             @else
                                 <button class="btn btn-sm btn-outline-secondary" disabled title="Bulletin non généré">
                                     <i class="fas fa-exclamation-triangle"></i>
@@ -126,3 +144,67 @@
         </tbody>
     </table>
 </div>
+
+{{-- Modal choix de période pour bulletin --}}
+<div class="modal fade" id="modalChoixPeriodeBulletin" tabindex="-1" aria-labelledby="modalChoixPeriodeBulletinLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalChoixPeriodeBulletinLabel">
+                    <i class="fas fa-calendar-alt me-2"></i>Choisir la période
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p class="text-muted mb-3">Sélectionnez le semestre pour ce bulletin :</p>
+                <div class="d-grid gap-2">
+                    <a href="#" id="btnBulletinS1" class="btn btn-outline-primary">
+                        <i class="fas fa-calendar me-2"></i>Semestre 1
+                    </a>
+                    <a href="#" id="btnBulletinS2" class="btn btn-outline-primary">
+                        <i class="fas fa-calendar me-2"></i>Semestre 2
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var modal = document.getElementById('modalChoixPeriodeBulletin');
+    if (!modal) return;
+
+    modal.addEventListener('show.bs.modal', function(event) {
+        var btn = event.relatedTarget;
+        if (!btn) return;
+
+        var etudiantId = btn.getAttribute('data-etudiant-id');
+        var classeId   = btn.getAttribute('data-classe-id');
+        var anneeId    = btn.getAttribute('data-annee-id');
+        var action     = btn.getAttribute('data-action'); // 'show' or 'pdf'
+
+        var btnS1 = document.getElementById('btnBulletinS1');
+        var btnS2 = document.getElementById('btnBulletinS2');
+
+        if (action === 'show') {
+            // Route: esbtp.resultats.etudiant.preview → /esbtp/resultats/etudiant/{id}/preview
+            var baseUrl = '{{ url("/esbtp/resultats/etudiant") }}/' + etudiantId + '/preview';
+            btnS1.href = baseUrl + '?classe_id=' + classeId + '&annee_universitaire_id=' + anneeId + '&periode=semestre1';
+            btnS2.href = baseUrl + '?classe_id=' + classeId + '&annee_universitaire_id=' + anneeId + '&periode=semestre2';
+            btnS1.target = '';
+            btnS2.target = '';
+        } else {
+            // Route: esbtp.bulletins.pdf-params → /esbtp-special/bulletins-pdf?bulletin={etudiant_id}&...
+            var baseUrl = '{{ url("/esbtp-special/bulletins-pdf") }}'
+                + '?bulletin=' + etudiantId
+                + '&classe_id=' + classeId
+                + '&annee_universitaire_id=' + anneeId;
+            btnS1.href = baseUrl + '&periode=semestre1';
+            btnS2.href = baseUrl + '&periode=semestre2';
+            btnS1.target = '_blank';
+            btnS2.target = '_blank';
+        }
+    });
+})();
+</script>
