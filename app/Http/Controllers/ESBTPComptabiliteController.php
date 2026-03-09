@@ -1610,6 +1610,98 @@ class ESBTPComptabiliteController extends Controller
     }
 
     /**
+     * Liste des relances — étudiants avec soldes impayés
+     */
+    public function gestionRelances(Request $request)
+    {
+        $search       = $request->input('search', '');
+        $riskFilter   = $request->input('risk', '');
+        $filiereId    = $request->input('filiere_id', '');
+        $classeId     = $request->input('classe_id', '');
+        $anneeId      = $request->input('annee_id', '');
+        $perPage      = (int) $request->input('per_page', 25);
+
+        // Année universitaire : paramètre ou active
+        $anneeActive = \App\Models\ESBTPAnneeUniversitaire::where('is_active', true)->first();
+        $anneeId     = $anneeId ?: optional($anneeActive)->id;
+
+        // Query de base : inscriptions actives avec solde potentiel non nul
+        $query = \App\Models\ESBTPInscription::with([
+            'etudiant',
+            'classe.filiere',
+            'anneeUniversitaire',
+            'fraisSubscriptions',
+            'paiements' => fn ($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at'),
+        ])
+        ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
+        ->when($classeId, fn ($q) => $q->where('classe_id', $classeId))
+        ->when($filiereId, fn ($q) => $q->whereHas('classe', fn ($c) => $c->where('filiere_id', $filiereId)))
+        ->when($search, fn ($q) => $q->whereHas('etudiant', fn ($e) => $e->where('nom', 'like', "%$search%")->orWhere('prenoms', 'like', "%$search%")->orWhere('matricule', 'like', "%$search%")))
+        ->latest('created_at');
+
+        // Calculer risk levels en PHP (après fetch)
+        $allInscriptions = $query->get();
+
+        $rows = $allInscriptions->map(function ($inscription) {
+            $totalDu      = $inscription->fraisSubscriptions->sum('amount');
+            $totalPaye    = $inscription->paiements->sum('montant');
+            $soldeRestant = max(0, $totalDu - $totalPaye);
+            $pourcentage  = $totalDu > 0 ? min(100, round($totalPaye / $totalDu * 100)) : 100;
+
+            if ($soldeRestant <= 0) {
+                $risk = 'low'; $riskLabel = 'À jour';
+            } elseif ($totalDu > 0 && ($soldeRestant / $totalDu) <= 0.25) {
+                $risk = 'medium'; $riskLabel = 'Partiel';
+            } elseif ($totalPaye > 0) {
+                $risk = 'high'; $riskLabel = 'En retard';
+            } else {
+                $risk = 'critical'; $riskLabel = 'Impayé';
+            }
+
+            return (object) compact('inscription', 'totalDu', 'totalPaye', 'soldeRestant', 'pourcentage', 'risk', 'riskLabel');
+        });
+
+        // Filtrer par risque si demandé
+        if ($riskFilter) {
+            $rows = $rows->filter(fn ($r) => $r->risk === $riskFilter);
+        }
+
+        // Exclure les étudiants entièrement à jour (si on veut n'afficher que les impayés)
+        $rowsWithDebt = $rows->filter(fn ($r) => $r->soldeRestant > 0);
+
+        // KPIs globaux
+        $kpis = [
+            'total_impaye'     => $rowsWithDebt->sum(fn ($r) => $r->soldeRestant),
+            'count_critical'   => $rows->where('risk', 'critical')->count(),
+            'count_high'       => $rows->where('risk', 'high')->count(),
+            'count_medium'     => $rows->where('risk', 'medium')->count(),
+            'count_low'        => $rows->where('risk', 'low')->count(),
+            'total_etudiants'  => $rows->count(),
+        ];
+
+        // Pagination manuelle
+        $page       = (int) $request->input('page', 1);
+        $offset     = ($page - 1) * $perPage;
+        $paginated  = new \Illuminate\Pagination\LengthAwarePaginator(
+            $rowsWithDebt->slice($offset, $perPage)->values(),
+            $rowsWithDebt->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        // Données filtres
+        $filieres = \App\Models\ESBTPFiliere::orderBy('name')->get();
+        $classes  = \App\Models\ESBTPClasse::when($filiereId, fn ($q) => $q->where('filiere_id', $filiereId))->orderBy('name')->get();
+        $annees   = \App\Models\ESBTPAnneeUniversitaire::orderByDesc('annee_debut')->get();
+
+        return view('esbtp.comptabilite.relances.index', compact(
+            'paginated', 'kpis', 'filieres', 'classes', 'annees',
+            'search', 'riskFilter', 'filiereId', 'classeId', 'anneeId', 'perPage', 'anneeActive'
+        ));
+    }
+
+    /**
      * Configuration des relances
      */
     public function configurationRelances()
