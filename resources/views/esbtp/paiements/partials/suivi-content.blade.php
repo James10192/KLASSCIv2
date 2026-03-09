@@ -235,6 +235,29 @@
                                 <p style="margin-top: 16px; color: #6b7280; font-weight: 500;">Chargement des étudiants...</p>
                             </div>
                         </div>
+                        {{-- Barre d'export --}}
+                        <div class="suivi-export-bar d-flex justify-content-between align-items-center"
+                             style="padding: 10px 16px; margin-top: 8px; background: #fff8f8; border: 1px solid #fecaca; border-radius: 8px;">
+                            <div style="font-size: 13px; color: #991b1b; font-weight: 500;">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                <strong>{{ $detailsCategorie['etudiants_non_payes']->count() }}</strong> étudiant(s) sans paiement
+                            </div>
+                            <div class="d-flex gap-2">
+                                <span style="font-size: 12px; color: #6b7280; margin-right: 4px; align-self: center;">Exporter :</span>
+                                <button class="btn btn-sm btn-suivi-export"
+                                        data-statut="non_payes"
+                                        data-category-id="{{ $detailsCategorie['category']->id }}"
+                                        style="background: #10b981; color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 500; cursor: pointer;">
+                                    <i class="fas fa-file-excel me-1"></i>Excel
+                                </button>
+                                <button class="btn btn-sm btn-suivi-export-pdf"
+                                        data-statut="non_payes"
+                                        data-category-id="{{ $detailsCategorie['category']->id }}"
+                                        style="background: #dc2626; color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 500; cursor: pointer;">
+                                    <i class="fas fa-file-pdf me-1"></i>PDF
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     {{-- Onglet Paiements partiels --}}
@@ -247,6 +270,29 @@
                                 <p style="margin-top: 16px; color: #6b7280; font-weight: 500;">Chargement des étudiants...</p>
                             </div>
                         </div>
+                        {{-- Barre d'export --}}
+                        <div class="suivi-export-bar d-flex justify-content-between align-items-center"
+                             style="padding: 10px 16px; margin-top: 8px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px;">
+                            <div style="font-size: 13px; color: #92400e; font-weight: 500;">
+                                <i class="fas fa-clock me-1"></i>
+                                <strong>{{ $detailsCategorie['etudiants_en_retard']->count() }}</strong> étudiant(s) en paiement partiel
+                            </div>
+                            <div class="d-flex gap-2">
+                                <span style="font-size: 12px; color: #6b7280; margin-right: 4px; align-self: center;">Exporter :</span>
+                                <button class="btn btn-sm btn-suivi-export"
+                                        data-statut="en_retard"
+                                        data-category-id="{{ $detailsCategorie['category']->id }}"
+                                        style="background: #10b981; color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 500; cursor: pointer;">
+                                    <i class="fas fa-file-excel me-1"></i>Excel
+                                </button>
+                                <button class="btn btn-sm btn-suivi-export-pdf"
+                                        data-statut="en_retard"
+                                        data-category-id="{{ $detailsCategorie['category']->id }}"
+                                        style="background: #d97706; color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 500; cursor: pointer;">
+                                    <i class="fas fa-file-pdf me-1"></i>PDF
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     {{-- Onglet À jour --}}
@@ -257,6 +303,29 @@
                                     <span class="visually-hidden">Chargement...</span>
                                 </div>
                                 <p style="margin-top: 16px; color: #6b7280; font-weight: 500;">Chargement des étudiants...</p>
+                            </div>
+                        </div>
+                        {{-- Barre d'export --}}
+                        <div class="suivi-export-bar d-flex justify-content-between align-items-center"
+                             style="padding: 10px 16px; margin-top: 8px; background: #f0fdf4; border: 1px solid #6ee7b7; border-radius: 8px;">
+                            <div style="font-size: 13px; color: #065f46; font-weight: 500;">
+                                <i class="fas fa-check-circle me-1"></i>
+                                <strong>{{ $detailsCategorie['etudiants_a_jour']->count() }}</strong> étudiant(s) à jour
+                            </div>
+                            <div class="d-flex gap-2">
+                                <span style="font-size: 12px; color: #6b7280; margin-right: 4px; align-self: center;">Exporter :</span>
+                                <button class="btn btn-sm btn-suivi-export"
+                                        data-statut="a_jour"
+                                        data-category-id="{{ $detailsCategorie['category']->id }}"
+                                        style="background: #10b981; color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 500; cursor: pointer;">
+                                    <i class="fas fa-file-excel me-1"></i>Excel
+                                </button>
+                                <button class="btn btn-sm btn-suivi-export-pdf"
+                                        data-statut="a_jour"
+                                        data-category-id="{{ $detailsCategorie['category']->id }}"
+                                        style="background: #0453cb; color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 500; cursor: pointer;">
+                                    <i class="fas fa-file-pdf me-1"></i>PDF
+                                </button>
                             </div>
                         </div>
                     </div>

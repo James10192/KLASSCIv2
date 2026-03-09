@@ -2072,6 +2072,207 @@ class ESBTPPaiementController extends Controller
     }
 
     /**
+     * Export Excel — liste étudiants par statut de paiement (suivi-categories)
+     */
+    public function exportStudentsExcel(Request $request, string $statut)
+    {
+        $categoryId = $request->input('category_id');
+        if (!$categoryId) {
+            abort(400, 'category_id requis');
+        }
+
+        $category = \App\Models\ESBTPFraisCategory::find($categoryId);
+        if (!$category) {
+            abort(404, 'Catégorie introuvable');
+        }
+
+        $filiereId = $request->input('filiere_id');
+        $niveauId  = $request->input('niveau_id');
+        $anneeId   = $request->input('annee_id');
+
+        if (!$anneeId) {
+            $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $anneeId = $anneeEnCours ? $anneeEnCours->id : null;
+        }
+
+        $inscriptionsQuery = \App\Models\ESBTPInscription::with([
+            'etudiant', 'filiere', 'niveauEtude', 'anneeUniversitaire', 'classe'
+        ])->whereIn('status', ['active', 'en_attente', 'validée']);
+
+        if ($anneeId)   $inscriptionsQuery->where('annee_universitaire_id', $anneeId);
+        if ($filiereId) $inscriptionsQuery->where('filiere_id', $filiereId);
+        if ($niveauId)  $inscriptionsQuery->where('niveau_id', $niveauId);
+
+        $inscriptions   = $inscriptionsQuery->get();
+        $inscriptionIds = $inscriptions->pluck('id')->toArray();
+
+        $configurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
+            ->where('frais_category_id', $categoryId)->get()
+            ->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
+
+        $subscriptions = \App\Models\ESBTPFraisSubscription::where('is_active', true)
+            ->whereIn('inscription_id', $inscriptionIds)
+            ->where('frais_category_id', $categoryId)->get()
+            ->groupBy('inscription_id');
+
+        $paiements = ESBTPPaiement::where('status', 'validé')
+            ->whereIn('inscription_id', $inscriptionIds)
+            ->where('frais_category_id', $categoryId)
+            ->where(fn($q) => $q->where('type_paiement', '!=', 'reliquat')->orWhereNull('type_paiement'))
+            ->get()
+            ->groupBy(fn($p) => $p->inscription_id . '_' . $p->frais_category_id);
+
+        $details = $this->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements);
+
+        $etudiants = match($statut) {
+            'non_payes' => $details['etudiants_non_payes'],
+            'en_retard' => $details['etudiants_en_retard'],
+            'a_jour'    => $details['etudiants_a_jour'],
+            default     => collect(),
+        };
+
+        $statutLabel = match($statut) {
+            'non_payes' => 'Aucun paiement',
+            'en_retard' => 'Paiements partiels',
+            'a_jour'    => 'À jour',
+            default     => ucfirst($statut),
+        };
+
+        $montantDu   = $etudiants->sum(fn($e) => $e['montant_attendu'] ?? 0);
+        $montantPaye = $etudiants->sum(fn($e) => $e['montant_paye'] ?? 0);
+
+        $stats = [
+            'total'             => $etudiants->count(),
+            'montant_total_du'  => $montantDu,
+            'montant_total_paye'=> $montantPaye,
+        ];
+
+        $filiere = $filiereId ? \App\Models\ESBTPFiliere::find($filiereId) : null;
+        $niveau  = $niveauId  ? \App\Models\ESBTPNiveauEtude::find($niveauId) : null;
+
+        $filters  = [
+            'filiere' => $filiere?->name,
+            'niveau'  => $niveau?->name,
+        ];
+
+        $settings = array_merge(
+            \App\Helpers\SettingsHelper::getSchoolInfo(),
+            ['primary_color' => \App\Helpers\SettingsHelper::getPdfSettings()['primary_color'] ?? '#0453cb']
+        );
+
+        $filename = 'suivi-' . $statut . '-' . ($category->name ? \Illuminate\Support\Str::slug($category->name) . '-' : '') . now()->format('Ymd') . '.xlsx';
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\SuiviPaiementsExport($etudiants, $category, $statutLabel, $stats, $filters, $settings),
+            $filename
+        );
+    }
+
+    /**
+     * Export PDF — liste étudiants par statut de paiement (suivi-categories)
+     */
+    public function exportStudentsPdf(Request $request, string $statut)
+    {
+        $categoryId = $request->input('category_id');
+        if (!$categoryId) {
+            abort(400, 'category_id requis');
+        }
+
+        $category = \App\Models\ESBTPFraisCategory::find($categoryId);
+        if (!$category) {
+            abort(404, 'Catégorie introuvable');
+        }
+
+        $filiereId = $request->input('filiere_id');
+        $niveauId  = $request->input('niveau_id');
+        $anneeId   = $request->input('annee_id');
+
+        if (!$anneeId) {
+            $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $anneeId = $anneeEnCours ? $anneeEnCours->id : null;
+        }
+
+        $inscriptionsQuery = \App\Models\ESBTPInscription::with([
+            'etudiant', 'filiere', 'niveauEtude', 'anneeUniversitaire', 'classe'
+        ])->whereIn('status', ['active', 'en_attente', 'validée']);
+
+        if ($anneeId)   $inscriptionsQuery->where('annee_universitaire_id', $anneeId);
+        if ($filiereId) $inscriptionsQuery->where('filiere_id', $filiereId);
+        if ($niveauId)  $inscriptionsQuery->where('niveau_id', $niveauId);
+
+        $inscriptions   = $inscriptionsQuery->get();
+        $inscriptionIds = $inscriptions->pluck('id')->toArray();
+
+        $configurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
+            ->where('frais_category_id', $categoryId)->get()
+            ->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
+
+        $subscriptions = \App\Models\ESBTPFraisSubscription::where('is_active', true)
+            ->whereIn('inscription_id', $inscriptionIds)
+            ->where('frais_category_id', $categoryId)->get()
+            ->groupBy('inscription_id');
+
+        $paiements = ESBTPPaiement::where('status', 'validé')
+            ->whereIn('inscription_id', $inscriptionIds)
+            ->where('frais_category_id', $categoryId)
+            ->where(fn($q) => $q->where('type_paiement', '!=', 'reliquat')->orWhereNull('type_paiement'))
+            ->get()
+            ->groupBy(fn($p) => $p->inscription_id . '_' . $p->frais_category_id);
+
+        $details = $this->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements);
+
+        $etudiants = match($statut) {
+            'non_payes' => $details['etudiants_non_payes'],
+            'en_retard' => $details['etudiants_en_retard'],
+            'a_jour'    => $details['etudiants_a_jour'],
+            default     => collect(),
+        };
+
+        $statutLabel = match($statut) {
+            'non_payes' => 'Aucun paiement',
+            'en_retard' => 'Paiements partiels',
+            'a_jour'    => 'À jour',
+            default     => ucfirst($statut),
+        };
+
+        $montantDu   = $etudiants->sum(fn($e) => $e['montant_attendu'] ?? 0);
+        $montantPaye = $etudiants->sum(fn($e) => $e['montant_paye'] ?? 0);
+
+        $filiere = $filiereId ? \App\Models\ESBTPFiliere::find($filiereId) : null;
+        $niveau  = $niveauId  ? \App\Models\ESBTPNiveauEtude::find($niveauId) : null;
+
+        $stats = [
+            'total'              => $etudiants->count(),
+            'montant_total_du'   => $montantDu,
+            'montant_total_paye' => $montantPaye,
+            'taux_recouvrement'  => $montantDu > 0 ? round(($montantPaye / $montantDu) * 100, 1) : 0,
+            'statut'             => $statut,
+            'filiere_name'       => $filiere?->name,
+            'niveau_name'        => $niveau?->name,
+        ];
+
+        $schoolInfo  = \App\Helpers\SettingsHelper::getSchoolInfo();
+        $pdfSettings = \App\Helpers\SettingsHelper::getPdfSettings();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'esbtp.paiements.pdf.suivi-liste-etudiants',
+            compact('etudiants', 'category', 'statutLabel', 'schoolInfo', 'pdfSettings', 'stats')
+        )->setPaper('a4', 'portrait')
+         ->setOptions([
+             'dpi'                     => 150,
+             'defaultFont'             => 'DejaVu Sans',
+             'isRemoteEnabled'         => false,
+             'isHtml5ParserEnabled'    => true,
+             'isPhpEnabled'            => false,
+             'isFontSubsettingEnabled' => true,
+         ]);
+
+        $filename = 'suivi-' . $statut . '-' . (\Illuminate\Support\Str::slug($category->name ?? $statut)) . '-' . now()->format('Ymd') . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    /**
      * Payer un reliquat
      */
     public function payReliquat(Request $request)
