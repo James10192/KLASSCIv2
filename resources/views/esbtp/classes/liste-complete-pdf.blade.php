@@ -257,27 +257,33 @@
     </style>
 </head>
 <body>
+    @php
+        $pdfCfg    = \App\Helpers\SettingsHelper::getPdfSettings();
+        $hdrBg     = $pdfCfg['header_bg_color']   ?? $pdfCfg['primary_color'] ?? '#0453cb';
+        $hdrText   = $pdfCfg['header_text_color']  ?? '#ffffff';
+        $primary   = $pdfCfg['primary_color']      ?? '#0453cb';
+    @endphp
     <div class="container">
         <!-- Header Section — 2 colonnes : Logo | Infos école + Titre document -->
         <div class="header-section">
             <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
                     <!-- Colonne gauche : Logo -->
-                    <td width="18%" style="background-color: #0453cb; padding: 14px 10px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.25);">
+                    <td width="18%" style="background-color: {{ $hdrBg }}; padding: 14px 10px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.25);">
                         @if($etablissement['logo'] && file_exists(storage_path('app/public/' . $etablissement['logo'])))
                             <img src="data:image/{{ pathinfo($etablissement['logo'], PATHINFO_EXTENSION) }};base64,{{ base64_encode(file_get_contents(storage_path('app/public/' . $etablissement['logo']))) }}"
                                  style="max-height: 55px; max-width: 100px; filter: brightness(0) invert(1);" alt="Logo">
                         @else
-                            <div style="font-size: 30px; font-weight: 900; color: white; opacity: 0.4; letter-spacing: -2px;">K</div>
+                            <div style="font-size: 30px; font-weight: 900; color: {{ $hdrText }}; opacity: 0.4; letter-spacing: -2px;">K</div>
                         @endif
                     </td>
                     <!-- Colonne droite : Nom école + contact + titre document -->
-                    <td width="82%" style="background-color: #0453cb; padding: 12px 16px; vertical-align: middle;">
+                    <td width="82%" style="background-color: {{ $hdrBg }}; padding: 12px 16px; vertical-align: middle;">
                         <!-- Nom établissement -->
-                        <div style="font-size: 15px; font-weight: 700; color: white; margin-bottom: 2px;">{{ $etablissement['nom'] ?? 'KLASSCI' }}</div>
+                        <div style="font-size: 15px; font-weight: 700; color: {{ $hdrText }}; margin-bottom: 2px;">{{ $etablissement['nom'] ?? 'KLASSCI' }}</div>
                         <!-- Adresse | Tél | Email -->
                         @if($etablissement['adresse'] || $etablissement['telephone'] || $etablissement['email'])
-                        <div style="font-size: 8.5px; color: white; opacity: 0.85; margin-bottom: 8px;">
+                        <div style="font-size: 8.5px; color: {{ $hdrText }}; opacity: 0.85; margin-bottom: 8px;">
                             @if($etablissement['adresse']){{ $etablissement['adresse'] }}@endif
                             @if($etablissement['telephone'])
                                 @if($etablissement['adresse']) &nbsp;|&nbsp; @endif
@@ -291,20 +297,20 @@
                         @endif
                         <!-- Séparateur + titre document + infos classe -->
                         <div style="border-top: 1px solid rgba(255,255,255,0.35); padding-top: 7px;">
-                            <div style="font-size: 12px; font-weight: 700; color: white; letter-spacing: 0.5px; margin-bottom: 5px;">LISTE COMPLÈTE DES ÉTUDIANTS</div>
+                            <div style="font-size: 12px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.5px; margin-bottom: 5px;">LISTE COMPLÈTE DES ÉTUDIANTS</div>
                             <table width="100%" border="0" cellspacing="0" cellpadding="0">
                                 <tr>
-                                    <td width="33%" style="font-size: 9px; color: white;">
-                                        <span style="color: white; opacity: 0.75;">Classe :</span>
-                                        <strong style="color: white;">{{ $classe->name }}</strong>
+                                    <td width="33%" style="font-size: 9px; color: {{ $hdrText }};">
+                                        <span style="color: {{ $hdrText }}; opacity: 0.75;">Classe :</span>
+                                        <strong style="color: {{ $hdrText }};">{{ $classe->name }}</strong>
                                     </td>
-                                    <td width="33%" style="font-size: 9px; color: white; text-align: center;">
-                                        <span style="color: white; opacity: 0.75;">Date :</span>
-                                        <strong style="color: white;">{{ now()->format('d/m/Y') }}</strong>
+                                    <td width="33%" style="font-size: 9px; color: {{ $hdrText }}; text-align: center;">
+                                        <span style="color: {{ $hdrText }}; opacity: 0.75;">Date :</span>
+                                        <strong style="color: {{ $hdrText }};">{{ now()->format('d/m/Y') }}</strong>
                                     </td>
-                                    <td width="34%" style="font-size: 9px; color: white; text-align: right;">
-                                        <span style="color: white; opacity: 0.75;">Code :</span>
-                                        <strong style="color: white;">{{ $classe->code ?? 'N/A' }}</strong>
+                                    <td width="34%" style="font-size: 9px; color: {{ $hdrText }}; text-align: right;">
+                                        <span style="color: {{ $hdrText }}; opacity: 0.75;">Code :</span>
+                                        <strong style="color: {{ $hdrText }};">{{ $classe->code ?? 'N/A' }}</strong>
                                     </td>
                                 </tr>
                             </table>
@@ -318,25 +324,25 @@
         <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 12px;">
             <tr>
                 <!-- TOTAL -->
-                <td width="25%" style="background-color: #0453cb; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
+                <td width="25%" style="background-color: {{ $primary }}; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
                     <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">TOTAL</div>
                     <div style="font-size: 18px; font-weight: 700; color: white; line-height: 1.1; margin-bottom: 4px;">{{ $etudiants->count() }}</div>
                     <div style="font-size: 7px; color: white; opacity: 0.65;">Étudiants</div>
                 </td>
                 <!-- FILIÈRE -->
-                <td width="25%" style="background-color: #0453cb; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
+                <td width="25%" style="background-color: {{ $primary }}; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
                     <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">FILIÈRE</div>
                     <div style="font-size: 10px; font-weight: 700; color: white; line-height: 1.25; margin-bottom: 4px;">{{ $classe->filiere->name ?? 'N/A' }}</div>
                     <div style="font-size: 7px; color: white; opacity: 0.65;">Spécialisation</div>
                 </td>
                 <!-- NIVEAU -->
-                <td width="25%" style="background-color: #0453cb; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
+                <td width="25%" style="background-color: {{ $primary }}; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
                     <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">NIVEAU</div>
                     <div style="font-size: 10px; font-weight: 700; color: white; line-height: 1.25; margin-bottom: 4px;">{{ $classe->niveau->name ?? 'N/A' }}</div>
                     <div style="font-size: 7px; color: white; opacity: 0.65;">Année d'études</div>
                 </td>
                 <!-- RÉPARTITION -->
-                <td width="25%" style="background-color: #0453cb; padding: 9px 8px; text-align: center; vertical-align: middle;">
+                <td width="25%" style="background-color: {{ $primary }}; padding: 9px 8px; text-align: center; vertical-align: middle;">
                     <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">RÉPARTITION</div>
                     <div style="font-size: 13px; font-weight: 700; color: white; line-height: 1.25; margin-bottom: 4px;">{{ $etudiants->where('genre', 'M')->count() }}H / {{ $etudiants->where('genre', 'F')->count() }}F</div>
                     <div style="font-size: 7px; color: white; opacity: 0.65;">Hommes / Femmes</div>
