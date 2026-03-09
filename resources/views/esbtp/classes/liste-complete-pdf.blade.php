@@ -7,12 +7,12 @@
     <title>Liste complète - {{ $classe->name }}</title>
     <style>
         body {
-            font-family: 'Arial', sans-serif;
-            font-size: 8px;
+            font-family: DejaVu Sans, Arial, sans-serif;
+            font-size: 10px;
             margin: 0;
             padding: 8px;
             color: #333;
-            line-height: 1.2;
+            line-height: 1.3;
             background: white;
         }
 
@@ -26,7 +26,7 @@
         .header-section {
             background: #007bff;
             color: white;
-            padding: 12px;
+            padding: 15px;
             border-radius: 6px;
             text-align: center;
             margin-bottom: 12px;
@@ -42,13 +42,13 @@
         }
 
         .school-name {
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 700;
             margin-bottom: 3px;
         }
 
         .school-info {
-            font-size: 6px;
+            font-size: 9px;
             margin-bottom: 6px;
             opacity: 0.9;
         }
@@ -61,7 +61,7 @@
         }
 
         .document-title {
-            font-size: 9px;
+            font-size: 12px;
             font-weight: 600;
             margin-bottom: 4px;
         }
@@ -69,7 +69,7 @@
         .class-info-grid {
             display: table;
             width: 100%;
-            font-size: 7px;
+            font-size: 10px;
         }
 
         .class-info-row {
@@ -105,12 +105,12 @@
         .kpi-card {
             display: table-cell;
             width: 25%;
-            padding: 3px;
+            padding: 5px 4px;
             text-align: center;
             background: #f8f9fa;
             border: 1px solid #e9ecef;
             vertical-align: top;
-            font-size: 6px;
+            font-size: 9px;
         }
 
         .kpi-card:first-child {
@@ -122,24 +122,24 @@
         }
 
         .kpi-title {
-            font-size: 5px;
+            font-size: 8px;
             font-weight: 600;
             color: #6b7280;
             text-transform: uppercase;
             letter-spacing: 0.1px;
-            margin-bottom: 1px;
+            margin-bottom: 2px;
         }
 
         .kpi-value {
-            font-size: 8px;
+            font-size: 13px;
             font-weight: bold;
             color: #007bff;
-            margin-bottom: 1px;
-            line-height: 1.1;
+            margin-bottom: 2px;
+            line-height: 1.2;
         }
 
         .kpi-desc {
-            font-size: 4px;
+            font-size: 7px;
             color: #9ca3af;
         }
 
@@ -151,7 +151,7 @@
             background: white;
             border-radius: 4px;
             overflow: hidden;
-            font-size: 7px;
+            font-size: 9px;
         }
 
         .students-table th {
@@ -160,19 +160,19 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.2px;
-            font-size: 6px;
-            padding: 4px 2px;
+            font-size: 9px;
+            padding: 6px 4px;
             text-align: center;
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
         }
 
         .students-table td {
-            padding: 3px 2px;
+            padding: 5px 4px;
             border-bottom: 1px solid #e5e7eb;
             text-align: center;
             vertical-align: middle;
-            font-size: 6px;
+            font-size: 9px;
         }
 
         .students-table tbody tr:nth-child(even) {
@@ -182,20 +182,20 @@
         .student-number {
             background: #007bff;
             color: white;
-            padding: 1px 3px;
+            padding: 2px 4px;
             border-radius: 50%;
             font-weight: bold;
-            font-size: 6px;
-            min-width: 12px;
+            font-size: 9px;
+            min-width: 16px;
             display: inline-block;
         }
 
         .student-matricule {
             font-family: 'Courier New', monospace;
             background: #f3f4f6;
-            padding: 1px 2px;
+            padding: 2px 3px;
             border-radius: 2px;
-            font-size: 5px;
+            font-size: 8px;
             color: #374151;
         }
 
@@ -206,13 +206,13 @@
 
         .student-name {
             font-weight: 600;
-            font-size: 6px;
+            font-size: 9px;
             color: #1f2937;
-            line-height: 1.2;
+            line-height: 1.3;
         }
 
         .student-gender {
-            font-size: 5px;
+            font-size: 8px;
             color: #6b7280;
             margin-top: 1px;
         }
@@ -220,11 +220,11 @@
         .genre-badge {
             background: #007bff;
             color: white;
-            padding: 1px 3px;
+            padding: 2px 4px;
             border-radius: 50%;
             font-weight: bold;
-            font-size: 5px;
-            min-width: 12px;
+            font-size: 8px;
+            min-width: 16px;
             display: inline-block;
         }
 
@@ -250,11 +250,11 @@
             background: #f8f9fa;
             border: 1px solid #e5e7eb;
             border-radius: 4px;
-            padding: 6px;
+            padding: 9px;
         }
 
         .summary-title {
-            font-size: 7px;
+            font-size: 10px;
             font-weight: 600;
             color: #374151;
             margin-bottom: 4px;
@@ -279,13 +279,13 @@
         }
 
         .summary-value {
-            font-size: 8px;
+            font-size: 11px;
             font-weight: bold;
             color: #007bff;
         }
 
         .summary-label {
-            font-size: 5px;
+            font-size: 8px;
             color: #6b7280;
             margin-top: 1px;
         }
@@ -294,22 +294,22 @@
             background: #f8f9fa;
             border: 1px solid #e5e7eb;
             border-radius: 4px;
-            padding: 6px;
+            padding: 9px;
             margin-left: 3px;
         }
 
         .info-field {
-            margin-bottom: 4px;
+            margin-bottom: 5px;
         }
 
         .info-label {
-            font-size: 5px;
+            font-size: 8px;
             color: #6b7280;
             margin-bottom: 1px;
         }
 
         .info-value {
-            font-size: 6px;
+            font-size: 9px;
             font-weight: 600;
             color: #374151;
         }
@@ -317,7 +317,7 @@
         /* Informations de génération */
         .generation-info {
             text-align: center;
-            font-size: 5px;
+            font-size: 8px;
             color: #6b7280;
             margin-top: 10px;
             padding-top: 6px;
@@ -342,23 +342,23 @@
             body {
                 background: white;
                 padding: 4px;
-                font-size: 7px;
+                font-size: 10px;
             }
 
             .container {
-                padding: 6px;
+                padding: 8px;
             }
 
             .header-section {
-                margin-bottom: 8px;
+                margin-bottom: 10px;
             }
 
             .kpi-section {
-                margin-bottom: 8px;
+                margin-bottom: 10px;
             }
 
             .footer-section {
-                margin-top: 8px;
+                margin-top: 10px;
             }
         }
 
@@ -419,17 +419,17 @@
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-title">Filiere</div>
-                    <div class="kpi-value" style="font-size: 6px; line-height: 1.1;">{{ $classe->filiere->name ?? 'N/A' }}</div>
+                    <div class="kpi-value" style="font-size: 9px; line-height: 1.2;">{{ $classe->filiere->name ?? 'N/A' }}</div>
                     <div class="kpi-desc">Specialisation</div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-title">Niveau</div>
-                    <div class="kpi-value" style="font-size: 6px; line-height: 1.1;">{{ $classe->niveau->name ?? 'N/A' }}</div>
+                    <div class="kpi-value" style="font-size: 9px; line-height: 1.2;">{{ $classe->niveau->name ?? 'N/A' }}</div>
                     <div class="kpi-desc">Annee d'etudes</div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-title">Repartition</div>
-                    <div class="kpi-value" style="font-size: 6px; line-height: 1.1;">{{ $etudiants->where('genre', 'M')->count() }}H/{{ $etudiants->where('genre', 'F')->count() }}F</div>
+                    <div class="kpi-value" style="font-size: 9px; line-height: 1.2;">{{ $etudiants->where('genre', 'M')->count() }}H/{{ $etudiants->where('genre', 'F')->count() }}F</div>
                     <div class="kpi-desc">Hommes/Femmes</div>
                 </div>
             </div>
@@ -471,10 +471,10 @@
                         <td>
                             {{ $etudiant->telephone ?? 'Non renseigne' }}
                         </td>
-                        <td style="font-size: 5px;">
+                        <td style="font-size: 8px;">
                             {{ $etudiant->email ?? 'Non renseigne' }}
                         </td>
-                        <td style="font-size: 5px;">
+                        <td style="font-size: 8px;">
                             {{ $etudiant->adresse ?? 'Non renseigne' }}
                         </td>
                     </tr>
