@@ -179,6 +179,26 @@
                 </div>
             </div>
 
+            {{-- Barre de recherche intelligente --}}
+            <div class="suivi-search-container" style="margin-bottom: 16px; position: relative;">
+                <div style="display: flex; align-items: center; gap: 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 16px;">
+                    <i class="fas fa-search" style="color: #9ca3af; font-size: 14px;"></i>
+                    <input type="text"
+                           id="suivi-search-input"
+                           class="suivi-search-field"
+                           placeholder="Rechercher par nom, prénom ou matricule..."
+                           data-category-id="{{ $detailsCategorie['category']->id }}"
+                           style="border: none; background: transparent; outline: none; flex: 1; font-size: 14px; color: #1f2937; font-weight: 400;"
+                    >
+                    <span id="suivi-search-count" style="font-size: 12px; color: #6b7280; white-space: nowrap; display: none;">
+                        <i class="fas fa-filter me-1"></i><span id="suivi-search-count-value">0</span> résultat(s)
+                    </span>
+                    <button type="button" id="suivi-search-clear" style="display: none; border: none; background: #e5e7eb; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; color: #6b7280; font-size: 12px; padding: 0; line-height: 24px; text-align: center;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
             {{-- Navigation par onglets avec lazy loading --}}
             <div class="student-tabs-container">
                 <ul class="nav nav-tabs students-tabs" id="myTab_{{ $detailsCategorie['category']->id }}" role="tablist" style="border: none; display: flex; gap: var(--space-md);">
