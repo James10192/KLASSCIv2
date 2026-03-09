@@ -1553,13 +1553,35 @@
                 : collect();
 
             if ($kpiResultats->count()) {
-                $kpiSp = 0; $kpiSc = 0;
-                foreach ($kpiResultats as $kr) {
-                    $c = $kr->coefficient ?? 1;
-                    $kpiSp += $kr->moyenne * $c;
-                    $kpiSc += $c;
+                // Pondération S1/S2 depuis les settings (même logique que les bulletins)
+                $_kpiPoidS1 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester1_weight', 1));
+                $_kpiPoidS2 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester2_weight', 1));
+                if ($_kpiPoidS1 + $_kpiPoidS2 <= 0) { $_kpiPoidS1 = 1; $_kpiPoidS2 = 1; }
+
+                $_kpiCalcSem = function($group) {
+                    $sp = 0; $sc = 0;
+                    foreach ($group as $_r) {
+                        $c = $_r->coefficient ?? 1;
+                        $sp += $_r->moyenne * $c;
+                        $sc += $c;
+                    }
+                    return $sc > 0 ? $sp / $sc : null;
+                };
+
+                $_kpiS1 = $_kpiCalcSem($kpiResultats->where('periode', 'semestre1'));
+                $_kpiS2 = $_kpiCalcSem($kpiResultats->where('periode', 'semestre2'));
+
+                if ($_kpiS1 !== null && $_kpiS2 !== null) {
+                    $_kpiTot = $_kpiPoidS1 + $_kpiPoidS2;
+                    $kpiMoyenneGen = round(($_kpiS1 * $_kpiPoidS1 + $_kpiS2 * $_kpiPoidS2) / $_kpiTot, 2);
+                } elseif ($_kpiS1 !== null) {
+                    $kpiMoyenneGen = round($_kpiS1, 2);
+                } elseif ($_kpiS2 !== null) {
+                    $kpiMoyenneGen = round($_kpiS2, 2);
+                } else {
+                    // Fallback toutes périodes confondues si periode non renseignée
+                    $kpiMoyenneGen = $_kpiCalcSem($kpiResultats) !== null ? round($_kpiCalcSem($kpiResultats), 2) : null;
                 }
-                $kpiMoyenneGen    = $kpiSc > 0 ? round($kpiSp / $kpiSc, 2) : null;
                 $kpiMoyenneIsLive = true; // Signaler que c'est provisoire
             }
         }
@@ -1873,17 +1895,33 @@
         $acadMg      = $acadMgFromBul ? round($acadMgFromBul, 2) : null;
         $acadRang    = $acadLastBul->rang;
         $acadMention = $acadLastBul->mention;
-        /* Si bulletins ont moyenne_generale=0/null, fallback aux résultats bruts */
+        /* Si bulletins ont moyenne_generale=0/null, fallback aux résultats bruts avec pondération S1/S2 */
         if ($acadMg === null) {
             $acadAllNotesForKpi = $acadResultatsRef->whereNotNull('moyenne');
             if ($acadAllNotesForKpi->count()) {
-                $sommePoints = 0; $sommeCoeffs = 0;
-                foreach ($acadAllNotesForKpi as $_r) {
-                    $coef = $_r->coefficient ?? 1;
-                    $sommePoints += $_r->moyenne * $coef;
-                    $sommeCoeffs += $coef;
+                $_fbPoidS1 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester1_weight', 1));
+                $_fbPoidS2 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester2_weight', 1));
+                if ($_fbPoidS1 + $_fbPoidS2 <= 0) { $_fbPoidS1 = 1; $_fbPoidS2 = 1; }
+
+                $_fbCalcSem = function($group) {
+                    $sp = 0; $sc = 0;
+                    foreach ($group as $_r) { $c = $_r->coefficient ?? 1; $sp += $_r->moyenne * $c; $sc += $c; }
+                    return $sc > 0 ? $sp / $sc : null;
+                };
+
+                $_fbS1 = $_fbCalcSem($acadAllNotesForKpi->where('periode', 'semestre1'));
+                $_fbS2 = $_fbCalcSem($acadAllNotesForKpi->where('periode', 'semestre2'));
+
+                if ($_fbS1 !== null && $_fbS2 !== null) {
+                    $_fbTot = $_fbPoidS1 + $_fbPoidS2;
+                    $acadMg = round(($_fbS1 * $_fbPoidS1 + $_fbS2 * $_fbPoidS2) / $_fbTot, 2);
+                } elseif ($_fbS1 !== null) {
+                    $acadMg = round($_fbS1, 2);
+                } elseif ($_fbS2 !== null) {
+                    $acadMg = round($_fbS2, 2);
+                } else {
+                    $acadMg = $_fbCalcSem($acadAllNotesForKpi) !== null ? round($_fbCalcSem($acadAllNotesForKpi), 2) : null;
                 }
-                $acadMg = $sommeCoeffs > 0 ? round($sommePoints / $sommeCoeffs, 2) : null;
             }
             if (!$acadMention && $acadMg !== null) {
                 $acadMention = match(true) {
@@ -1896,16 +1934,39 @@
             }
         }
     } else {
-        /* Cas sans bulletins : calculer moyenne pondérée depuis ESBTPResultat */
+        /* Cas sans bulletins : calculer moyenne pondérée depuis ESBTPResultat avec pondération S1/S2 */
         $acadAllNotesForKpi = $acadResultatsRef->whereNotNull('moyenne');
         if ($acadAllNotesForKpi->count()) {
-            $sommePoints = 0; $sommeCoeffs = 0;
-            foreach ($acadAllNotesForKpi as $_r) {
-                $coef = $_r->coefficient ?? 1;
-                $sommePoints += $_r->moyenne * $coef;
-                $sommeCoeffs += $coef;
+            // Pondération S1/S2 depuis les settings (même logique que les bulletins)
+            $_acadPoidS1 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester1_weight', 1));
+            $_acadPoidS2 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester2_weight', 1));
+            if ($_acadPoidS1 + $_acadPoidS2 <= 0) { $_acadPoidS1 = 1; $_acadPoidS2 = 1; }
+
+            $_acadCalcSem = function($group) {
+                $sp = 0; $sc = 0;
+                foreach ($group as $_r) {
+                    $c = $_r->coefficient ?? 1;
+                    $sp += $_r->moyenne * $c;
+                    $sc += $c;
+                }
+                return $sc > 0 ? $sp / $sc : null;
+            };
+
+            $_acadS1 = $_acadCalcSem($acadAllNotesForKpi->where('periode', 'semestre1'));
+            $_acadS2 = $_acadCalcSem($acadAllNotesForKpi->where('periode', 'semestre2'));
+
+            if ($_acadS1 !== null && $_acadS2 !== null) {
+                $_acadTot = $_acadPoidS1 + $_acadPoidS2;
+                $acadMg = round(($_acadS1 * $_acadPoidS1 + $_acadS2 * $_acadPoidS2) / $_acadTot, 2);
+            } elseif ($_acadS1 !== null) {
+                $acadMg = round($_acadS1, 2);
+            } elseif ($_acadS2 !== null) {
+                $acadMg = round($_acadS2, 2);
+            } else {
+                // Fallback toutes périodes confondues si periode non renseignée
+                $acadMg = $_acadCalcSem($acadAllNotesForKpi) !== null ? round($_acadCalcSem($acadAllNotesForKpi), 2) : null;
             }
-            $acadMg = $sommeCoeffs > 0 ? round($sommePoints / $sommeCoeffs, 2) : null;
+
             /* Mention calculée depuis la moyenne */
             $acadMention = match(true) {
                 $acadMg === null => null,
@@ -1918,7 +1979,66 @@
         } else {
             $acadMg = null; $acadMention = null;
         }
-        $acadRang = null; /* Rang non calculable sans bulletin officiel */
+
+        /* Classement : calculer le rang parmi les co-inscrits de la même classe/année */
+        $acadRang = null;
+        if ($acadMg !== null && $acadRef) {
+            // Récupérer tous les étudiants inscrits dans la même classe la même année
+            $_classeId = $acadRef->classe_id;
+            $_anneeId  = $acadRef->annee_universitaire_id;
+
+            if ($_classeId && $_anneeId) {
+                // Co-inscrits (même classe, même année, actifs, sauf cet étudiant)
+                $_coInscrits = \App\Models\ESBTPInscription::where('classe_id', $_classeId)
+                    ->where('annee_universitaire_id', $_anneeId)
+                    ->pluck('etudiant_id')
+                    ->unique();
+
+                if ($_coInscrits->count() > 1) {
+                    // Calculer la moyenne pondérée de chaque co-inscrit avec la même formule
+                    $_moyennes = [];
+                    $_resultatsClasse = \App\Models\ESBTPResultat::whereIn('etudiant_id', $_coInscrits)
+                        ->where('annee_universitaire_id', $_anneeId)
+                        ->whereNotNull('moyenne')
+                        ->get()
+                        ->groupBy('etudiant_id');
+
+                    foreach ($_coInscrits as $_eid) {
+                        $_rows = $_resultatsClasse->get($_eid, collect());
+                        if ($_rows->isEmpty()) continue;
+
+                        $_s1 = $_acadCalcSem($_rows->where('periode', 'semestre1'));
+                        $_s2 = $_acadCalcSem($_rows->where('periode', 'semestre2'));
+
+                        if ($_s1 !== null && $_s2 !== null) {
+                            $_tot = $_acadPoidS1 + $_acadPoidS2;
+                            $_moy = ($_s1 * $_acadPoidS1 + $_s2 * $_acadPoidS2) / $_tot;
+                        } elseif ($_s1 !== null) {
+                            $_moy = $_s1;
+                        } elseif ($_s2 !== null) {
+                            $_moy = $_s2;
+                        } else {
+                            $_moy = $_acadCalcSem($_rows);
+                        }
+
+                        if ($_moy !== null) {
+                            $_moyennes[$_eid] = $_moy;
+                        }
+                    }
+
+                    // Trier par moyenne décroissante et trouver la position de cet étudiant
+                    arsort($_moyennes);
+                    $_rang = 1;
+                    foreach ($_moyennes as $_eid => $_moy) {
+                        if ($_eid == $etudiant->id) {
+                            $acadRang = $_rang . '/' . count($_moyennes);
+                            break;
+                        }
+                        $_rang++;
+                    }
+                }
+            }
+        }
     }
 
     $acadAnnee  = optional($acadRef?->anneeUniversitaire)->name ?? '—';
@@ -2349,13 +2469,28 @@
         if ($autreBulsValides->count()) {
             $autreMg = round($autreBulsValides->avg('moyenne_generale'), 2);
         } elseif ($autreResultatsBruts->whereNotNull('moyenne')->count()) {
-            $_sp = 0; $_sc = 0;
-            foreach ($autreResultatsBruts->whereNotNull('moyenne') as $_ar) {
-                $_coef = $_ar->coefficient ?? $_ar->matiere?->coefficient ?? 1;
-                $_sp += $_ar->moyenne * $_coef;
-                $_sc += $_coef;
+            /* Pondération S1/S2 depuis settings (cohérence avec bulletins) */
+            $_aPoidS1 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester1_weight', 1));
+            $_aPoidS2 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester2_weight', 1));
+            if ($_aPoidS1 + $_aPoidS2 <= 0) { $_aPoidS1 = 1; $_aPoidS2 = 1; }
+
+            $_aCalcSem = function($group) {
+                $_sp = 0; $_sc = 0;
+                foreach ($group as $_r) { $_c = $_r->coefficient ?? $_r->matiere?->coefficient ?? 1; $_sp += $_r->moyenne * $_c; $_sc += $_c; }
+                return $_sc > 0 ? $_sp / $_sc : null;
+            };
+            $_aS1 = $_aCalcSem($autreResultatsBruts->whereNotNull('moyenne')->where('periode', 'semestre1'));
+            $_aS2 = $_aCalcSem($autreResultatsBruts->whereNotNull('moyenne')->where('periode', 'semestre2'));
+
+            if ($_aS1 !== null && $_aS2 !== null) {
+                $autreMg = round(($_aS1 * $_aPoidS1 + $_aS2 * $_aPoidS2) / ($_aPoidS1 + $_aPoidS2), 2);
+            } elseif ($_aS1 !== null) {
+                $autreMg = round($_aS1, 2);
+            } elseif ($_aS2 !== null) {
+                $autreMg = round($_aS2, 2);
+            } else {
+                $autreMg = ($_r2 = $_aCalcSem($autreResultatsBruts->whereNotNull('moyenne'))) !== null ? round($_r2, 2) : null;
             }
-            $autreMg = $_sc > 0 ? round($_sp / $_sc, 2) : null;
         } else {
             $autreMg = null;
         }
@@ -2433,7 +2568,12 @@
                             @if($abMg !== null)
                                 <span style="font-size:.8rem; font-weight:700; color:{{ $abMgCls }};">{{ number_format($abMg, 2) }}/20</span>
                             @endif
-                            <a href="{{ route('esbtp.bulletins.download', $ab) }}" class="acad-arch-pdf-link" target="_blank">
+                            @php
+                                $_abClasseId = $autreInsc->classe_id;
+                                $_abAnneeId = optional($autreInsc->anneeUniversitaire)->id;
+                            @endphp
+                            <a href="{{ route('esbtp.bulletins.pdf-params', ['bulletin' => $ab->id, 'classe_id' => $_abClasseId, 'periode' => $ab->periode, 'annee_universitaire_id' => $_abAnneeId]) }}"
+                               class="acad-arch-pdf-link" target="_blank" title="Télécharger le bulletin PDF">
                                 <i class="fas fa-file-pdf"></i> PDF
                             </a>
                         </div>
