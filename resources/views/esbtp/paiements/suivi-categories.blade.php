@@ -565,6 +565,7 @@
 
                 // Re-bind category card clicks after content update
                 bindCategoryCardClicks();
+                bindExportButtons();
             }
 
             // Update URL if needed
@@ -587,6 +588,52 @@
             metricsContainer.style.pointerEvents = 'auto';
             contentContainer.style.opacity = '1';
             contentContainer.style.pointerEvents = 'auto';
+        });
+    }
+
+    // Bind export buttons (Excel + PDF) for each tab
+    function bindExportButtons() {
+        const form = document.getElementById('suivi-filter-form');
+
+        function getFormFilters() {
+            if (!form) return {};
+            const data = new FormData(form);
+            const params = {};
+            for (const [key, value] of data.entries()) {
+                if (value) params[key] = value;
+            }
+            return params;
+        }
+
+        // Excel export buttons
+        document.querySelectorAll('.btn-suivi-export').forEach(btn => {
+            // Remove old listeners by cloning
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const statut = this.dataset.statut;
+                const categoryId = this.dataset.categoryId;
+                const filters = getFormFilters();
+                const params = new URLSearchParams({ ...filters, category_id: categoryId });
+                window.location.href = '{{ route("esbtp.paiements.suivi-categories.export.excel", ["statut" => "__STATUT__"]) }}'.replace('__STATUT__', statut) + '?' + params.toString();
+            });
+        });
+
+        // PDF export buttons
+        document.querySelectorAll('.btn-suivi-export-pdf').forEach(btn => {
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+
+            newBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const statut = this.dataset.statut;
+                const categoryId = this.dataset.categoryId;
+                const filters = getFormFilters();
+                const params = new URLSearchParams({ ...filters, category_id: categoryId });
+                window.location.href = '{{ route("esbtp.paiements.suivi-categories.export.pdf", ["statut" => "__STATUT__"]) }}'.replace('__STATUT__', statut) + '?' + params.toString();
+            });
         });
     }
 
@@ -633,8 +680,9 @@
             });
         });
 
-        // Initial binding of category cards
+        // Initial binding of category cards and export buttons
         bindCategoryCardClicks();
+        bindExportButtons();
 
         // Handle browser back/forward buttons
         window.addEventListener('popstate', function(event) {

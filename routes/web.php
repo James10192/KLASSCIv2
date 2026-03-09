@@ -786,6 +786,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/paiements/suivi-categories', [App\Http\Controllers\ESBTPPaiementController::class, 'suiviCategories'])->name('paiements.suivi-categories');
             Route::get('/paiements/suivi-categories/refresh', [App\Http\Controllers\ESBTPPaiementController::class, 'suiviCategoriesRefresh'])->name('paiements.suivi-categories.refresh');
             Route::get('/paiements/suivi-categories/load/{statut}', [App\Http\Controllers\ESBTPPaiementController::class, 'loadStudentsByStatut'])->name('paiements.suivi-categories.load');
+            Route::get('/paiements/suivi-categories/export/{statut}/excel', [App\Http\Controllers\ESBTPPaiementController::class, 'exportStudentsExcel'])->name('paiements.suivi-categories.export.excel');
+            Route::get('/paiements/suivi-categories/export/{statut}/pdf', [App\Http\Controllers\ESBTPPaiementController::class, 'exportStudentsPdf'])->name('paiements.suivi-categories.export.pdf');
             Route::get('/paiements/create', [App\Http\Controllers\ESBTPPaiementController::class, 'create'])->name('paiements.create');
             Route::post('/paiements', [App\Http\Controllers\ESBTPPaiementController::class, 'store'])->name('paiements.store');
             Route::get('/paiements/{paiement}', [App\Http\Controllers\ESBTPPaiementController::class, 'show'])->name('paiements.show');
