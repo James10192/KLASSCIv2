@@ -2033,6 +2033,26 @@ class ESBTPPaiementController extends Controller
                 break;
         }
 
+        // Filtre de recherche texte (nom, prénom, matricule)
+        $search = $request->input('search');
+        if ($search && trim($search) !== '') {
+            $searchLower = mb_strtolower(trim($search));
+            $etudiants = $etudiants->filter(function ($item) use ($searchLower) {
+                $etudiant = $item['inscription']->etudiant ?? null;
+                if (!$etudiant) return false;
+
+                $nom = mb_strtolower($etudiant->nom ?? '');
+                $prenoms = mb_strtolower($etudiant->prenoms ?? '');
+                $matricule = mb_strtolower($etudiant->matricule ?? '');
+
+                return str_contains($nom, $searchLower)
+                    || str_contains($prenoms, $searchLower)
+                    || str_contains($matricule, $searchLower)
+                    || str_contains($nom . ' ' . $prenoms, $searchLower)
+                    || str_contains($prenoms . ' ' . $nom, $searchLower);
+            })->values();
+        }
+
         // Paginer les résultats
         $total = $etudiants->count();
         $offset = ($page - 1) * $perPage;
@@ -2180,12 +2200,15 @@ class ESBTPPaiementController extends Controller
 
     /**
      * Export PDF — liste étudiants par statut de paiement (suivi-categories)
+     *
+     * Pour 1000+ étudiants, utilise une stratégie de chunk+merge avec FPDI :
+     * chaque chunk de 200 lignes est rendu comme un PDF séparé puis fusionné.
+     * Cela évite le crash mémoire de DomPDF qui charge tout le HTML d'un coup.
      */
     public function exportStudentsPdf(Request $request, string $statut)
     {
-        // Augmenter les limites pour les gros exports (1000+ étudiants)
         ini_set('memory_limit', '512M');
-        set_time_limit(120);
+        set_time_limit(300);
 
         $categoryId = $request->input('category_id');
         if (!$categoryId) {
@@ -2268,22 +2291,91 @@ class ESBTPPaiementController extends Controller
         $schoolInfo  = \App\Helpers\SettingsHelper::getSchoolInfo();
         $pdfSettings = \App\Helpers\SettingsHelper::getPdfSettings();
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
-            'esbtp.paiements.pdf.suivi-liste-etudiants',
-            compact('etudiants', 'category', 'statutLabel', 'schoolInfo', 'pdfSettings', 'stats')
-        )->setPaper('a4', 'portrait')
-         ->setOptions([
-             'dpi'                     => 96,
-             'defaultFont'             => 'DejaVu Sans',
-             'isRemoteEnabled'         => false,
-             'isHtml5ParserEnabled'    => true,
-             'isPhpEnabled'            => false,
-             'isFontSubsettingEnabled' => true,
-         ]);
-
         $filename = 'suivi-' . $statut . '-' . (\Illuminate\Support\Str::slug($category->name ?? $statut)) . '-' . now()->format('Ymd') . '.pdf';
 
-        return $pdf->download($filename);
+        $pdfOptions = [
+            'dpi'                     => 72,
+            'defaultFont'             => 'DejaVu Sans',
+            'isRemoteEnabled'         => false,
+            'isHtml5ParserEnabled'    => true,
+            'isPhpEnabled'            => false,
+            'isFontSubsettingEnabled' => true,
+        ];
+
+        $chunkSize = 200;
+
+        // Pour les petits exports (< 500), rendu direct sans FPDI
+        if ($etudiants->count() <= 500) {
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+                'esbtp.paiements.pdf.suivi-liste-etudiants',
+                compact('etudiants', 'category', 'statutLabel', 'schoolInfo', 'pdfSettings', 'stats')
+            )->setPaper('a4', 'portrait')->setOptions($pdfOptions);
+
+            return $pdf->download($filename);
+        }
+
+        // Pour les gros exports (500+), chunk + merge avec FPDI
+        $tempDir = storage_path('app/temp');
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+
+        $chunks = $etudiants->chunk($chunkSize);
+        $tempFiles = [];
+        $totalChunks = $chunks->count();
+
+        foreach ($chunks as $chunkIndex => $chunk) {
+            $isFirstChunk = ($chunkIndex === 0);
+            $isLastChunk  = ($chunkIndex === $totalChunks - 1);
+            $rowOffset    = $chunkIndex * $chunkSize;
+
+            $chunkPdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+                'esbtp.paiements.pdf.suivi-liste-etudiants',
+                [
+                    'etudiants'    => $chunk,
+                    'category'     => $category,
+                    'statutLabel'  => $statutLabel,
+                    'schoolInfo'   => $schoolInfo,
+                    'pdfSettings'  => $pdfSettings,
+                    'stats'        => $stats,
+                    'isFirstChunk' => $isFirstChunk,
+                    'isLastChunk'  => $isLastChunk,
+                    'rowOffset'    => $rowOffset,
+                    'chunkIndex'   => $chunkIndex,
+                ]
+            )->setPaper('a4', 'portrait')->setOptions($pdfOptions);
+
+            $tempPath = $tempDir . '/suivi_chunk_' . uniqid() . '_' . $chunkIndex . '.pdf';
+            file_put_contents($tempPath, $chunkPdf->output());
+            $tempFiles[] = $tempPath;
+
+            // Libérer la mémoire entre chaque chunk
+            unset($chunkPdf);
+        }
+
+        // Fusionner tous les chunks avec FPDI
+        $merger = new \setasign\Fpdi\Fpdi();
+        foreach ($tempFiles as $file) {
+            $pageCount = $merger->setSourceFile($file);
+            for ($p = 1; $p <= $pageCount; $p++) {
+                $tpl = $merger->importPage($p);
+                $size = $merger->getTemplateSize($tpl);
+                $merger->AddPage($size['orientation'], [$size['width'], $size['height']]);
+                $merger->useTemplate($tpl);
+            }
+        }
+
+        $finalPath = $tempDir . '/suivi_final_' . uniqid() . '.pdf';
+        $merger->Output('F', $finalPath);
+        unset($merger);
+
+        // Nettoyer les fichiers temporaires de chunks
+        foreach ($tempFiles as $file) {
+            @unlink($file);
+        }
+
+        // Retourner le PDF fusionné et nettoyer après envoi
+        return response()->download($finalPath, $filename)->deleteFileAfterSend(true);
     }
 
     /**
