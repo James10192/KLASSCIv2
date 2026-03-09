@@ -1,63 +1,82 @@
-# Plan - Fix notes.index : absent toggle + backdrop
+# Plan: Amélioration PDF Suivi Paiements par Catégorie
 
-## Diagnostic des 3 bugs
+## Ce que j'ai compris
 
-### Bug 1 & 2 : Erreur 422 + input bloqué au décocher "absent"
+### Problème 1 : Pretty-print au refresh
+La route `/esbtp/paiements/suivi-categories/refresh` (`ESBTPPaiementController@suiviCategoriesRefresh`) retourne du **JSON** (ligne 1365). Quand on accède directement à cette URL dans le navigateur (refresh), le navigateur affiche le JSON brut en pretty-print. C'est un endpoint AJAX, pas une page HTML.
 
-**Séquence problématique :**
-1. Cocher "absent" → `toggleAbsence()` → input disabled, `saveNote()` envoie `note:0, is_absent:'on'` → `store()` crée la note (OK)
-2. Décocher "absent" → `toggleAbsence()` → input enabled, `val('')`, puis `saveNote()` envoie `note:'', is_absent:''`
-3. Validation Laravel : `required_unless:is_absent,on` → note est vide ET is_absent n'est pas 'on' → **422**
-4. Alerte générique "Erreur lors de la sauvegarde des notes"
+### Problème 2 : Le PDF prend toute la feuille
+Le PDF actuel (`resources/views/esbtp/paiements/pdf/suivi-liste-etudiants.blade.php`) a des marges `@page` de 18mm/15mm, mais le contenu (tables) s'étend sur 100% de la largeur disponible sans aucune marge intérieure ou containeur limitant. Cela donne un effet "bord-à-bord" peu professionnel.
 
-**Causes profondes :**
-- `store()` ne fait qu'un INSERT (pas UPSERT) et retourne des redirects (pas JSON)
-- `toggleAbsence()` auto-sauvegarde avec note vide lors du décocher
-- `saveNote()` ne gère pas correctement les réponses d'erreur 422
+### Problème 3 : Design pas premium
+Le template actuel est fonctionnel mais basique. Le header est un simple bandeau plat, les KPI sont des boîtes simples, la table manque de raffinement. Il faut un design premium inspiré de `liste-complete-pdf.blade.php`.
 
-### Bug 3 : Backdrop reste après fermeture du modal
-
-**Cause :** `#classSelectionModal` n'a pas de handler `hidden.bs.modal` pour nettoyer les backdrops. Bootstrap les retire normalement mais le code existant pour `evaluationCreateModal` peut interférer.
+### Problème 4 : Couleurs et school info
+Le template utilise déjà `$pdfSettings` et `$schoolInfo` depuis le controller, mais certaines couleurs sont hardcodées et le design du header pourrait mieux mettre en valeur les infos de l'établissement.
 
 ---
 
-## Fichiers à modifier (3 fichiers)
+## Ce que je vais faire
 
-### 1. `app/Http/Controllers/ESBTPNoteController.php`
-Ajouter méthode `saveNoteAjax()` :
-- Retourne toujours du JSON (`response()->json()`)
-- Logique UPSERT : si note existe → UPDATE, sinon → CREATE
-- Validation adaptée : `note` nullable (peut être 0 ou valeur réelle)
-- Respecte les permissions coordinateur
+### 1. Fix Pretty-print (route refresh)
+**Fichier** : `app/Http/Controllers/ESBTPPaiementController.php` (~ligne 1271)
 
-### 2. `routes/web.php`
-Ajouter avant le `Route::resource('notes', ...)` :
-```php
-Route::post('notes/save-ajax', [ESBTPNoteController::class, 'saveNoteAjax'])
-    ->name('esbtp.notes.save-ajax');
-```
-(avant le resource pour éviter le conflit de routes)
+Ajouter une détection : si la requête n'est PAS AJAX (`!$request->ajax() && !$request->wantsJson()`), rediriger vers la page principale `suiviCategories` avec les mêmes paramètres de filtre.
 
-### 3. `resources/views/esbtp/notes/index.blade.php`
-Trois corrections JS :
+### 2. Refonte complète du template PDF
+**Fichier** : `resources/views/esbtp/paiements/pdf/suivi-liste-etudiants.blade.php`
 
-**a) `saveNote()` :**
-- Changer l'URL vers `esbtp.notes.save-ajax`
-- Garder la guard : si non-absent ET note vide → ne pas sauvegarder
-- Améliorer le handler d'erreur pour afficher le message JSON
+Redesign complet inspiré de `liste-complete-pdf.blade.php` avec :
 
-**b) `toggleAbsence()` :**
-- Quand cochage (isAbsent=true) : comportement actuel conservé + auto-save
-- Quand décochage (isAbsent=false) : réactiver l'input, vider la valeur, **NE PAS auto-sauvegarder** (attendre la saisie d'une vraie note). L'input reçoit un placeholder visuel.
+**a) Marges et containeur — LA VRAIE CAUSE du "content prend toute la page"**
+- `@page` margins augmentées à 20mm top/bottom, 15mm left/right (standards ISO pour A4 professionnel — actuellement 18mm/15mm ce qui est trop serré)
+- Un `<div class="container">` avec `padding: 10px` pour créer de l'espace intérieur supplémentaire
+- Le vrai problème : la combinaison de marges `@page` insuffisantes + absence de padding intérieur + tables pleine largeur donne l'impression "bord-à-bord"
 
-**c) Handler `hidden.bs.modal` pour `#classSelectionModal` :**
-```javascript
-$('#classSelectionModal').on('hidden.bs.modal', function() {
-    setTimeout(() => {
-        document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
-        document.body.classList.remove('modal-open');
-        document.body.style.overflow = '';
-        document.body.style.paddingRight = '';
-    }, 150);
-});
-```
+**b) Header premium (inspiré liste-complete-pdf)**
+- Layout 2 colonnes : Logo à gauche (18%) | Infos école + titre document à droite (82%)
+- Fond `header_bg_color` dynamique depuis settings
+- Nom établissement en gras 15px
+- Coordonnées (adresse | tél | email) en 8.5px avec opacité 0.85
+- Séparateur horizontal semi-transparent
+- Titre document "SUIVI DES PAIEMENTS" en 12px bold
+- Sous-infos : Catégorie, Statut, Date sur une ligne
+
+**c) KPI Cards premium**
+- 4 cellules sur fond `primary_color` (comme liste-complete-pdf)
+- Label uppercase 7.5px en blanc opacité 0.8
+- Valeur en gros (18px pour chiffres, 11px pour montants) blanc bold
+- Sous-label explicatif 7px blanc opacité 0.65
+
+**d) Table des étudiants**
+- Header `primary_color` avec texte blanc, uppercase, letter-spacing
+- Alternance de couleurs (zebra striping) appliquée sur `td` (pas `tr` — bug DomPDF)
+- Numéros dans des badges circulaires `primary_color`
+- Montants colorés (vert pour payé, rouge pour solde)
+- Footer avec totaux sur fond bleu clair `#eff6ff`
+- Police 9px pour le contenu, 8.5px pour le header
+
+**e) Footer premium**
+- Section 2 colonnes : Résumé filtres à gauche, Infos document à droite
+- Cards avec fond `#f8f9fa` et bordure `#e5e7eb`
+- Ligne de génération centrée en bas avec border-top
+
+**f) Couleurs dynamiques depuis settings**
+- Toutes les couleurs lues depuis `$pdfSettings` (primary, header_bg, header_text, text_color)
+- `@include('pdf.partials.theme')` conservé
+- `$schoolInfo` bien récupéré pour : nom, adresse, téléphone, email, logo
+
+### 3. Ce qui NE changera PAS
+- Le controller `exportStudentsPdf()` : les données passées restent identiques
+- Les routes PDF : aucun changement
+- Les variables Blade attendues : `$etudiants`, `$category`, `$statutLabel`, `$schoolInfo`, `$pdfSettings`, `$stats`
+
+---
+
+## Risques & points d'attention
+
+1. **DomPDF limitations** : Pas de flexbox/grid, tout en `<table>`. Le template actuel utilise déjà des tables — on reste sur cette approche.
+2. **Couleurs sur `<tr>` vs `<td>`** : DomPDF ne supporte pas `background-color` sur `<tr>`. On applique toujours sur `<td>`.
+3. **Logo base64** : Le template actuel gère déjà la conversion — on conserve la même logique.
+4. **Pretty-print fix** : La redirection ne casse pas le fonctionnement AJAX car les appels AJAX passent toujours par `XMLHttpRequest` (détecté par `$request->ajax()`).
+5. **Aucune migration DB** ni changement de route PDF nécessaire.
