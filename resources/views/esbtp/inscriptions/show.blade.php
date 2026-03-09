@@ -4281,31 +4281,35 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
             isSubmitting = true;
             debugLog(`🔒 ${formSelector} - Bouton cliqué, verrouillage immédiat`);
 
-            // Sauvegarder le texte original
+            // Sauvegarder le texte original (pour restauration si la validation échoue)
             originalButtonText = $submitBtn.html();
 
-            // Désactiver le bouton IMMÉDIATEMENT (avant même le submit)
+            // NE PAS désactiver le bouton ici : désactiver le bouton dans le click handler
+            // empêche Chrome de déclencher l'événement submit du formulaire.
+            // La désactivation se fait dans le handler submit ci-dessous.
+        });
+
+        // Handler de soumission : désactive le bouton APRÈS que le navigateur a décidé de soumettre
+        $form.off('submit').on('submit', function(e) {
+            const $submitBtn = $(this).find('button[type="submit"]');
             $submitBtn.prop('disabled', true);
             $submitBtn.html('<i class="fas fa-spinner fa-spin me-2"></i>Traitement en cours...');
             $submitBtn.addClass('disabled');
-
-            // Désactiver aussi le bouton de fermeture du modal
             $modal.find('[data-bs-dismiss="modal"]').prop('disabled', true);
-        });
-
-        // Handler de soumission (sécurité supplémentaire)
-        $form.off('submit').on('submit', function(e) {
-            // Si déjà en cours de soumission, bloquer (ne devrait jamais arriver grâce au click handler)
-            if (isSubmitting) {
-                // Double vérification au cas où
-                const $submitBtn = $(this).find('button[type="submit"]');
-                if (!$submitBtn.prop('disabled')) {
-                    $submitBtn.prop('disabled', true);
-                }
-            }
-
             // Laisser le formulaire se soumettre normalement
             return true;
+        });
+
+        // Exposer une fonction de reset pour les handlers natifs qui bloquent la soumission
+        // (ex: validation montant échouée → l'utilisateur peut corriger et réessayer)
+        $form.data('resetSubmitting', function() {
+            isSubmitting = false;
+            const $submitBtn = $form.find('button[type="submit"]');
+            $submitBtn.prop('disabled', false);
+            if (originalButtonText) $submitBtn.html(originalButtonText);
+            $submitBtn.removeClass('disabled');
+            $modal.find('[data-bs-dismiss="modal"]').prop('disabled', false);
+            debugLog(`🔓 ${formSelector} - Soumission annulée par validation, reset effectué`);
         });
 
         // Réinitialiser quand le modal est fermé (au cas où l'utilisateur ferme sans soumettre)
@@ -4381,6 +4385,8 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                 if (!window.isSubscribedToCategory) {
                     console.log('  ❌ BLOCAGE: Étudiant non souscrit');
                     e.preventDefault();
+                    const resetFn = $('#paymentForm').data('resetSubmitting');
+                    if (resetFn) resetFn();
                     alert(`❌ Impossible de soumettre ce paiement.\n\nL'étudiant n'est pas souscrit à la catégorie de frais sélectionnée.\n\nVeuillez d'abord inscrire l'étudiant à cette catégorie de frais dans la gestion des frais.`);
                     feeCategorySelect.focus();
                     return false;
@@ -4394,6 +4400,8 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                 if (categoryId && montantSaisi > montantMax) {
                     console.log('  ❌ BLOCAGE: Montant dépasse le maximum');
                     e.preventDefault();
+                    const resetFn = $('#paymentForm').data('resetSubmitting');
+                    if (resetFn) resetFn();
                     alert(`❌ Le montant saisi (${montantSaisi.toLocaleString('fr-FR')} FCFA) dépasse le montant maximum autorisé (${montantMax.toLocaleString('fr-FR')} FCFA).\n\nVeuillez ajuster le montant.`);
                     montantInput.focus();
                     return false;
@@ -4468,6 +4476,8 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
 
                 if (montantSaisi > montantMax && montantMax !== Infinity) {
                     e.preventDefault();
+                    const resetFn = $('#reliquatPaymentForm').data('resetSubmitting');
+                    if (resetFn) resetFn();
                     alert(`Le montant saisi (${montantSaisi.toLocaleString('fr-FR')} FCFA) dépasse le solde restant du reliquat (${montantMax.toLocaleString('fr-FR')} FCFA).`);
                     reliquatMontantInput.focus();
                     return false;

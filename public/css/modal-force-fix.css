@@ -294,7 +294,7 @@ body.modal-open {
     transition: none !important;
     transform: none !important;
     animation: none !important;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2) !important; /* Garder shadow fixe */
+    /* box-shadow intentionnellement absent : laisser la valeur statique héritée de .modal-content */
 }
 
 /* Empêcher les hover effects sur les boutons dans les modales */
@@ -354,7 +354,8 @@ body.modal-open .modal *:active {
     transition: none !important;
     /* transform: none retiré pour permettre le centrage des icônes */
     animation: none !important;
-    box-shadow: inherit !important;
+    /* box-shadow supprimé : "inherit" propageait le shadow du parent (modal-body/footer)
+       sur les enfants au hover, donnant un effet visuellement laid */
 }
 
 /* EXCEPTION: Autoriser transform sur les icônes pour le centrage vertical */
@@ -372,5 +373,5 @@ body.modal-open .course-item:hover {
     transition: none !important;
     transform: none !important;
     animation: none !important;
-    box-shadow: inherit !important;
+    /* box-shadow supprimé : inutile car pointer-events: none désactive déjà le hover sur ces éléments */
 }
