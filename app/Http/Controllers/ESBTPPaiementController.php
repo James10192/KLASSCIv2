@@ -2155,10 +2155,15 @@ class ESBTPPaiementController extends Controller
             'niveau'  => $niveau?->name,
         ];
 
-        $settings = array_merge(
-            \App\Helpers\SettingsHelper::getSchoolInfo(),
-            ['primary_color' => \App\Helpers\SettingsHelper::getPdfSettings()['primary_color'] ?? '#0453cb']
-        );
+        $schoolInfo = \App\Helpers\SettingsHelper::getSchoolInfo();
+        $settings = [
+            'school_name'    => $schoolInfo['name'],
+            'school_address' => $schoolInfo['address'],
+            'school_phone'   => $schoolInfo['phone'] ?: $schoolInfo['mobile'],
+            'school_email'   => $schoolInfo['email'],
+            'school_city'    => $schoolInfo['city'],
+            'primary_color'  => \App\Helpers\SettingsHelper::getPdfSettings()['primary_color'] ?? '#0453cb',
+        ];
 
         $filename = 'suivi-' . $statut . '-' . ($category->name ? \Illuminate\Support\Str::slug($category->name) . '-' : '') . now()->format('Ymd') . '.xlsx';
 

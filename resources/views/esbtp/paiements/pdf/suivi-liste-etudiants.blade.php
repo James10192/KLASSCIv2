@@ -9,62 +9,58 @@
 
         @page {
             size: A4 portrait;
-            margin: 18mm 15mm 18mm 15mm;
+            margin: {{ $pdfSettings['margin_top'] ?? 18 }}mm
+                    {{ $pdfSettings['margin_right'] ?? 15 }}mm
+                    {{ $pdfSettings['margin_bottom'] ?? 18 }}mm
+                    {{ $pdfSettings['margin_left'] ?? 15 }}mm;
         }
 
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
             font-size: 10px;
-            color: #1f2937;
-            line-height: 1.3;
+            color: {{ $pdfSettings['text_color'] ?? '#1f2937' }};
+            line-height: 1.4;
             background: #ffffff;
         }
 
         /* ── Header ── */
-        .header-section {
-            background-color: #0453cb;
-            color: #ffffff;
-            padding: 8px 10px 6px;
-            border-radius: 4px;
-            margin-bottom: 6px;
+        .header-table td {
+            background-color: {{ $pdfSettings['header_bg_color'] ?? '#0453cb' }};
+            padding: 12px 14px 10px;
             -webkit-print-color-adjust: exact;
         }
 
-        .header-logo {
-            max-height: 32px;
-            max-width: 80px;
-            filter: brightness(0) invert(1);
-        }
-
         .school-name {
-            font-size: 13px;
+            font-size: 15px;
             font-weight: bold;
-            margin-bottom: 1px;
+            letter-spacing: 0.5px;
+            color: {{ $pdfSettings['header_text_color'] ?? '#ffffff' }};
+            margin-bottom: 3px;
         }
 
         .school-info {
-            font-size: 8px;
-            opacity: 0.9;
+            font-size: 8.5px;
+            opacity: 0.88;
+            color: {{ $pdfSettings['header_text_color'] ?? '#ffffff' }};
         }
 
         /* ── Title band ── */
-        .title-band {
-            margin-bottom: 6px;
-        }
-
         .title-band td {
             background-color: #e8edfd;
-            border-left: 4px solid #0453cb;
-            padding: 5px 10px;
-            border-radius: 0 3px 3px 0;
-            font-size: 11px;
+            border-left: 4px solid {{ $pdfSettings['primary_color'] ?? '#0453cb' }};
+            padding: 7px 12px;
+            -webkit-print-color-adjust: exact;
+        }
+
+        .title-text {
+            font-size: 11.5px;
             font-weight: bold;
             color: #0f172a;
         }
 
         .statut-badge {
             display: inline-block;
-            padding: 2px 8px;
+            padding: 3px 10px;
             border-radius: 10px;
             font-size: 9px;
             font-weight: bold;
@@ -89,41 +85,22 @@
         }
 
         /* ── KPI cards ── */
-        .kpi-section {
-            margin-bottom: 8px;
-        }
-
-        .kpi-section td {
-            vertical-align: top;
-            padding: 0 3px;
-        }
-
-        .kpi-section td:first-child { padding-left: 0; }
-        .kpi-section td:last-child  { padding-right: 0; }
-
-        .kpi-card {
-            border: 1px solid #e5e7eb;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .kpi-card-header {
-            background-color: #f8fafc;
-            padding: 4px 8px;
-            font-size: 8px;
-            color: #6b7280;
+        .kpi-header td {
+            background-color: #f1f5f9;
+            padding: 6px 10px;
+            font-size: 7.5px;
+            color: #64748b;
             text-transform: uppercase;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.4px;
             font-weight: bold;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e2e8f0;
             -webkit-print-color-adjust: exact;
         }
 
-        .kpi-card-value {
-            padding: 5px 8px;
-            font-size: 13px;
+        .kpi-value td {
+            padding: 8px 10px 9px;
+            font-size: 14px;
             font-weight: bold;
-            color: #0453cb;
         }
 
         /* ── Table ── */
@@ -131,16 +108,15 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 9px;
-            margin-bottom: 10px;
+            margin-bottom: 14px;
         }
 
         .students-table thead td {
-            background-color: #0453cb;
+            background-color: {{ $pdfSettings['primary_color'] ?? '#0453cb' }};
             color: #ffffff;
-            padding: 5px 6px;
+            padding: 7px 7px;
             font-weight: bold;
             font-size: 8.5px;
-            border-bottom: 2px solid #0343ab;
             -webkit-print-color-adjust: exact;
         }
 
@@ -149,8 +125,12 @@
             -webkit-print-color-adjust: exact;
         }
 
+        .students-table tbody tr:nth-child(odd) td {
+            background-color: #ffffff;
+        }
+
         .students-table tbody td {
-            padding: 4px 6px;
+            padding: 6px 7px;
             border-bottom: 1px solid #e5e7eb;
             vertical-align: middle;
         }
@@ -158,19 +138,20 @@
         .students-table tfoot td {
             background-color: #eff6ff;
             font-weight: bold;
-            padding: 5px 6px;
-            border-top: 2px solid #0453cb;
+            padding: 7px 7px;
+            border-top: 2px solid {{ $pdfSettings['primary_color'] ?? '#0453cb' }};
             font-size: 9px;
             -webkit-print-color-adjust: exact;
         }
 
         .row-num {
-            width: 22px;
-            background-color: #0453cb;
+            width: 20px;
+            height: 20px;
+            background-color: {{ $pdfSettings['primary_color'] ?? '#0453cb' }};
             color: #ffffff;
-            border-radius: 10px;
+            border-radius: 50%;
             text-align: center;
-            padding: 1px 4px;
+            line-height: 20px;
             font-size: 8px;
             font-weight: bold;
             display: inline-block;
@@ -180,23 +161,12 @@
         .text-right  { text-align: right; }
         .text-center { text-align: center; }
 
-        /* ── Empty state ── */
-        .empty-state td {
-            text-align: center;
-            color: #9ca3af;
-            font-style: italic;
-            padding: 20px;
-            font-size: 10px;
-        }
-
         /* ── Footer ── */
-        .pdf-footer {
-            margin-top: 10px;
-            padding-top: 6px;
-            border-top: 1px solid #e5e7eb;
-            text-align: center;
+        .pdf-footer td {
+            padding-top: 8px;
+            border-top: 1px solid #e2e8f0;
             font-size: 8px;
-            color: #9ca3af;
+            color: #94a3b8;
         }
     </style>
     @include('pdf.partials.theme')
@@ -204,14 +174,14 @@
 <body>
 
 @php
-    $primaryColor   = $pdfSettings['primary_color']   ?? '#0453cb';
-    $headerBg       = $pdfSettings['header_bg_color'] ?? $primaryColor;
-    $headerText     = $pdfSettings['header_text_color'] ?? '#ffffff';
-    $schoolName     = $schoolInfo['name']    ?? config('app.name');
-    $schoolAddress  = $schoolInfo['address'] ?? '';
-    $schoolPhone    = $schoolInfo['phone']   ?? '';
-    $schoolEmail    = $schoolInfo['email']   ?? '';
-    $schoolLogo     = $schoolInfo['logo']    ?? '';
+    $primaryColor  = $pdfSettings['primary_color']    ?? '#0453cb';
+    $headerBg      = $pdfSettings['header_bg_color']  ?? $primaryColor;
+    $headerText    = $pdfSettings['header_text_color'] ?? '#ffffff';
+    $schoolName    = $schoolInfo['name']    ?? config('app.name');
+    $schoolAddress = $schoolInfo['address'] ?? '';
+    $schoolPhone   = $schoolInfo['phone']   ?? $schoolInfo['mobile'] ?? '';
+    $schoolEmail   = $schoolInfo['email']   ?? '';
+    $schoolLogo    = $schoolInfo['logo']    ?? '';
 
     $logoBase64 = null;
     if ($schoolLogo) {
@@ -222,57 +192,61 @@
         ];
         foreach ($paths as $p) {
             if (file_exists($p)) {
-                $mime = mime_content_type($p);
+                $mime       = mime_content_type($p);
                 $logoBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($p));
                 break;
             }
         }
     }
 
-    $total        = $stats['total']              ?? $etudiants->count();
-    $montantDu    = $stats['montant_total_du']   ?? $etudiants->sum(fn($e) => $e['montant_attendu'] ?? 0);
-    $montantPaye  = $stats['montant_total_paye'] ?? $etudiants->sum(fn($e) => $e['montant_paye'] ?? 0);
-    $taux         = $stats['taux_recouvrement']  ?? ($montantDu > 0 ? round(($montantPaye / $montantDu) * 100, 1) : 0);
-    $soldeTotal   = $montantDu - $montantPaye;
+    $total       = $stats['total']              ?? $etudiants->count();
+    $montantDu   = $stats['montant_total_du']   ?? $etudiants->sum(fn($e) => $e['montant_attendu'] ?? 0);
+    $montantPaye = $stats['montant_total_paye'] ?? $etudiants->sum(fn($e) => $e['montant_paye'] ?? 0);
+    $taux        = $stats['taux_recouvrement']  ?? ($montantDu > 0 ? round(($montantPaye / $montantDu) * 100, 1) : 0);
+    $soldeTotal  = $montantDu - $montantPaye;
 
-    // Badge CSS class based on statut
-    $statut = $stats['statut'] ?? '';
+    $statut     = $stats['statut'] ?? '';
     $badgeClass = match($statut) {
         'non_payes' => 'badge-non-payes',
         'en_retard' => 'badge-en-retard',
         'a_jour'    => 'badge-a-jour',
         default     => 'badge-en-retard',
     };
+
+    $contactParts = array_filter([
+        $schoolAddress ?: null,
+        $schoolPhone   ? 'Tél : ' . $schoolPhone : null,
+        $schoolEmail   ?: null,
+    ]);
 @endphp
 
 {{-- ── HEADER ── --}}
-<table width="100%" border="0" cellspacing="0" cellpadding="0"
-       style="background-color: {{ $headerBg }}; border-radius: 4px; margin-bottom: 6px; -webkit-print-color-adjust: exact;">
+<table class="header-table" width="100%" border="0" cellspacing="0" cellpadding="0"
+       style="border-radius: 6px; margin-bottom: 10px; overflow: hidden;">
     <tr>
         {{-- Logo --}}
-        <td width="15%" style="padding: 8px 6px 6px 10px; vertical-align: middle;">
+        <td width="14%" style="text-align: left; vertical-align: middle;
+                                background-color: {{ $headerBg }}; padding: 12px 8px 10px 14px;">
             @if($logoBase64)
                 <img src="{{ $logoBase64 }}"
-                     style="max-height: 36px; max-width: 90px; filter: brightness(0) invert(1);"
+                     style="max-height: 40px; max-width: 90px; filter: brightness(0) invert(1);"
                      alt="Logo">
             @endif
         </td>
 
-        {{-- School name & info --}}
-        <td width="70%" style="padding: 8px 6px 6px; text-align: center; vertical-align: middle;">
-            <div style="font-size: 14px; font-weight: bold; color: {{ $headerText }}; margin-bottom: 2px;">
-                {{ strtoupper($schoolName) }}
-            </div>
-            @if($schoolAddress || $schoolPhone || $schoolEmail)
-            <div style="font-size: 8px; color: {{ $headerText }}; opacity: 0.9;">
-                {{ implode(' • ', array_filter([$schoolAddress, $schoolPhone ? 'Tél : '.$schoolPhone : null, $schoolEmail])) }}
-            </div>
+        {{-- Nom + coordonnées --}}
+        <td width="72%" style="text-align: center; vertical-align: middle;
+                                background-color: {{ $headerBg }}; padding: 12px 6px 10px;">
+            <div class="school-name">{{ strtoupper($schoolName) }}</div>
+            @if(!empty($contactParts))
+                <div class="school-info">{{ implode(' • ', $contactParts) }}</div>
             @endif
         </td>
 
         {{-- Date --}}
-        <td width="15%" style="padding: 8px 10px 6px 6px; text-align: right; vertical-align: top;">
-            <div style="font-size: 8px; color: {{ $headerText }}; opacity: 0.85;">
+        <td width="14%" style="text-align: right; vertical-align: top;
+                                background-color: {{ $headerBg }}; padding: 12px 14px 10px 6px;">
+            <div style="font-size: 8.5px; color: {{ $headerText }}; opacity: 0.85;">
                 {{ now()->format('d/m/Y') }}
             </div>
         </td>
@@ -280,24 +254,20 @@
 </table>
 
 {{-- ── TITLE BAND ── --}}
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 7px;">
+<table class="title-band" width="100%" border="0" cellspacing="0" cellpadding="0"
+       style="margin-bottom: 10px; border-radius: 3px;">
     <tr>
-        <td style="background-color: #e8edfd;
-                   border-left: 4px solid {{ $primaryColor }};
-                   padding: 5px 10px;
-                   -webkit-print-color-adjust: exact;">
+        <td>
             <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
                     <td style="vertical-align: middle;">
-                        <span style="font-size: 11px; font-weight: bold; color: #0f172a;">
+                        <span class="title-text">
                             Suivi Paiements —
                             <span style="color: {{ $primaryColor }};">{{ $category->name ?? 'Catégorie' }}</span>
                         </span>
                     </td>
                     <td style="text-align: right; vertical-align: middle;">
-                        <span class="statut-badge {{ $badgeClass }}">
-                            {{ $statutLabel }}
-                        </span>
+                        <span class="statut-badge {{ $badgeClass }}">{{ $statutLabel }}</span>
                     </td>
                 </tr>
             </table>
@@ -306,76 +276,49 @@
 </table>
 
 {{-- ── KPI CARDS ── --}}
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 8px;">
+<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 12px;">
     <tr>
-        <td width="25%" style="padding-right: 4px;">
+        {{-- Total étudiants --}}
+        <td width="25%" style="padding-right: 5px; vertical-align: top;">
             <table width="100%" border="0" cellspacing="0" cellpadding="0"
-                   style="border: 1px solid #e5e7eb; border-radius: 4px;">
-                <tr>
-                    <td style="background-color: #f8fafc; padding: 4px 8px;
-                               font-size: 8px; color: #6b7280; text-transform: uppercase;
-                               font-weight: bold; border-bottom: 1px solid #e5e7eb;
-                               -webkit-print-color-adjust: exact;">
-                        TOTAL ÉTUDIANTS
-                    </td>
-                </tr>
-                <tr>
-                    <td style="padding: 5px 8px; font-size: 15px; font-weight: bold; color: {{ $primaryColor }};">
-                        {{ $total }}
-                    </td>
+                   style="border: 1px solid #e5e7eb; border-radius: 5px; overflow: hidden;">
+                <tr class="kpi-header"><td>TOTAL ÉTUDIANTS</td></tr>
+                <tr class="kpi-value">
+                    <td style="color: {{ $primaryColor }};">{{ $total }}</td>
                 </tr>
             </table>
         </td>
-        <td width="25%" style="padding: 0 4px;">
+        {{-- Montant dû --}}
+        <td width="25%" style="padding: 0 5px; vertical-align: top;">
             <table width="100%" border="0" cellspacing="0" cellpadding="0"
-                   style="border: 1px solid #e5e7eb; border-radius: 4px;">
-                <tr>
-                    <td style="background-color: #f8fafc; padding: 4px 8px;
-                               font-size: 8px; color: #6b7280; text-transform: uppercase;
-                               font-weight: bold; border-bottom: 1px solid #e5e7eb;
-                               -webkit-print-color-adjust: exact;">
-                        MONTANT DÛ
-                    </td>
-                </tr>
-                <tr>
-                    <td style="padding: 5px 8px; font-size: 11px; font-weight: bold; color: #0f172a;">
+                   style="border: 1px solid #e5e7eb; border-radius: 5px; overflow: hidden;">
+                <tr class="kpi-header"><td>MONTANT DÛ</td></tr>
+                <tr class="kpi-value">
+                    <td style="color: #0f172a; font-size: 11px;">
                         {{ number_format($montantDu, 0, ',', ' ') }} FCFA
                     </td>
                 </tr>
             </table>
         </td>
-        <td width="25%" style="padding: 0 4px;">
+        {{-- Montant payé --}}
+        <td width="25%" style="padding: 0 5px; vertical-align: top;">
             <table width="100%" border="0" cellspacing="0" cellpadding="0"
-                   style="border: 1px solid #e5e7eb; border-radius: 4px;">
-                <tr>
-                    <td style="background-color: #f8fafc; padding: 4px 8px;
-                               font-size: 8px; color: #6b7280; text-transform: uppercase;
-                               font-weight: bold; border-bottom: 1px solid #e5e7eb;
-                               -webkit-print-color-adjust: exact;">
-                        MONTANT PAYÉ
-                    </td>
-                </tr>
-                <tr>
-                    <td style="padding: 5px 8px; font-size: 11px; font-weight: bold; color: #059669;">
+                   style="border: 1px solid #e5e7eb; border-radius: 5px; overflow: hidden;">
+                <tr class="kpi-header"><td>MONTANT PAYÉ</td></tr>
+                <tr class="kpi-value">
+                    <td style="color: #059669; font-size: 11px;">
                         {{ number_format($montantPaye, 0, ',', ' ') }} FCFA
                     </td>
                 </tr>
             </table>
         </td>
-        <td width="25%" style="padding-left: 4px;">
+        {{-- Taux recouvrement --}}
+        <td width="25%" style="padding-left: 5px; vertical-align: top;">
             <table width="100%" border="0" cellspacing="0" cellpadding="0"
-                   style="border: 1px solid #e5e7eb; border-radius: 4px;">
-                <tr>
-                    <td style="background-color: #f8fafc; padding: 4px 8px;
-                               font-size: 8px; color: #6b7280; text-transform: uppercase;
-                               font-weight: bold; border-bottom: 1px solid #e5e7eb;
-                               -webkit-print-color-adjust: exact;">
-                        TAUX RECOUVREMENT
-                    </td>
-                </tr>
-                <tr>
-                    <td style="padding: 5px 8px; font-size: 15px; font-weight: bold;
-                               color: {{ $taux >= 80 ? '#059669' : ($taux >= 50 ? '#d97706' : '#dc2626') }};">
+                   style="border: 1px solid #e5e7eb; border-radius: 5px; overflow: hidden;">
+                <tr class="kpi-header"><td>TAUX RECOUVREMENT</td></tr>
+                <tr class="kpi-value">
+                    <td style="color: {{ $taux >= 80 ? '#059669' : ($taux >= 50 ? '#d97706' : '#dc2626') }};">
                         {{ $taux }}%
                     </td>
                 </tr>
@@ -388,15 +331,15 @@
 <table class="students-table">
     <thead>
         <tr>
-            <td class="text-center" style="width: 28px;">N°</td>
-            <td style="width: 70px;">Matricule</td>
+            <td class="text-center" style="width: 26px;">N°</td>
+            <td style="width: 72px;">Matricule</td>
             <td>Nom & Prénom(s)</td>
-            <td style="width: 80px;">Classe</td>
-            <td style="width: 60px;">Filière</td>
-            <td class="text-right" style="width: 80px;">Montant Dû</td>
-            <td class="text-right" style="width: 80px;">Payé</td>
-            <td class="text-right" style="width: 80px;">Solde</td>
-            <td class="text-center" style="width: 36px;">%</td>
+            <td style="width: 82px;">Classe</td>
+            <td style="width: 62px;">Filière</td>
+            <td class="text-right" style="width: 82px;">Montant Dû</td>
+            <td class="text-right" style="width: 72px;">Payé</td>
+            <td class="text-right" style="width: 72px;">Solde</td>
+            <td class="text-center" style="width: 34px;">%</td>
         </tr>
     </thead>
     <tbody>
@@ -429,7 +372,9 @@
             <td class="text-right" style="font-size: 8.5px; color: #059669; font-weight: bold;">
                 {{ number_format($item['montant_paye'] ?? 0, 0, ',', ' ') }}
             </td>
-            <td class="text-right" style="font-size: 8.5px; color: {{ ($item['solde'] ?? 0) > 0 ? '#dc2626' : '#059669' }}; font-weight: bold;">
+            <td class="text-right"
+                style="font-size: 8.5px; font-weight: bold;
+                       color: {{ ($item['solde'] ?? 0) > 0 ? '#dc2626' : '#059669' }};">
                 {{ number_format($item['solde'] ?? 0, 0, ',', ' ') }}
             </td>
             <td class="text-center" style="font-weight: bold; font-size: 8.5px; color: {{ $pctColor }};">
@@ -437,8 +382,9 @@
             </td>
         </tr>
         @empty
-        <tr class="empty-state">
-            <td colspan="9" style="text-align: center; color: #9ca3af; font-style: italic; padding: 20px; font-size: 10px;">
+        <tr>
+            <td colspan="9"
+                style="text-align: center; color: #9ca3af; font-style: italic; padding: 28px; font-size: 10px;">
                 Aucun étudiant dans cette liste.
             </td>
         </tr>
@@ -447,41 +393,25 @@
     @if($etudiants->count() > 0)
     <tfoot>
         <tr>
-            <td colspan="5" style="text-align: right; font-size: 9px; background-color: #eff6ff; padding: 5px 6px;
-                                    border-top: 2px solid #0453cb; font-weight: bold; -webkit-print-color-adjust: exact;">
-                TOTAUX
-            </td>
-            <td class="text-right" style="background-color: #eff6ff; padding: 5px 6px;
-                                          border-top: 2px solid #0453cb; font-weight: bold; font-size: 9px;
-                                          -webkit-print-color-adjust: exact;">
-                {{ number_format($montantDu, 0, ',', ' ') }}
-            </td>
-            <td class="text-right" style="background-color: #eff6ff; padding: 5px 6px;
-                                          border-top: 2px solid #0453cb; font-weight: bold; font-size: 9px;
-                                          color: #059669; -webkit-print-color-adjust: exact;">
+            <td colspan="5" style="text-align: right;">TOTAUX</td>
+            <td class="text-right">{{ number_format($montantDu, 0, ',', ' ') }}</td>
+            <td class="text-right" style="color: #059669;">
                 {{ number_format($montantPaye, 0, ',', ' ') }}
             </td>
-            <td class="text-right" style="background-color: #eff6ff; padding: 5px 6px;
-                                          border-top: 2px solid #0453cb; font-weight: bold; font-size: 9px;
-                                          color: {{ $soldeTotal > 0 ? '#dc2626' : '#059669' }};
-                                          -webkit-print-color-adjust: exact;">
+            <td class="text-right" style="color: {{ $soldeTotal > 0 ? '#dc2626' : '#059669' }};">
                 {{ number_format($soldeTotal, 0, ',', ' ') }}
             </td>
-            <td class="text-center" style="background-color: #eff6ff; padding: 5px 6px;
-                                           border-top: 2px solid #0453cb; font-weight: bold; font-size: 9px;
-                                           -webkit-print-color-adjust: exact;">
-                {{ $taux }}%
-            </td>
+            <td class="text-center">{{ $taux }}%</td>
         </tr>
     </tfoot>
     @endif
 </table>
 
 {{-- ── FOOTER ── --}}
-<table width="100%" border="0" cellspacing="0" cellpadding="0"
-       style="margin-top: 8px; padding-top: 6px; border-top: 1px solid #e5e7eb;">
+<table class="pdf-footer" width="100%" border="0" cellspacing="0" cellpadding="0"
+       style="margin-top: 12px;">
     <tr>
-        <td style="font-size: 8px; color: #9ca3af;">
+        <td style="padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 8px; color: #94a3b8;">
             Catégorie : <strong>{{ $category->name ?? '—' }}</strong>
             @if(!empty($stats['filiere_name']))
                 — Filière : <strong>{{ $stats['filiere_name'] }}</strong>
@@ -490,9 +420,9 @@
                 — Niveau : <strong>{{ $stats['niveau_name'] }}</strong>
             @endif
         </td>
-        <td style="text-align: right; font-size: 8px; color: #9ca3af;">
-            Généré le {{ now()->format('d/m/Y à H:i') }}
-            — {{ $schoolName }}
+        <td style="padding-top: 8px; border-top: 1px solid #e2e8f0; text-align: right;
+                   font-size: 8px; color: #94a3b8;">
+            Généré le {{ now()->format('d/m/Y à H:i') }} — {{ $schoolName }}
         </td>
     </tr>
 </table>

@@ -143,8 +143,12 @@ class SuiviPaiementsExport implements FromCollection, WithHeadings, WithMapping,
         $sheet->getRowDimension(1)->setRowHeight(26);
 
         // Row 2 : coordonnées
-        $contactParts = array_filter([
+        $addressParts = array_filter([
             $this->settings['school_address'] ?? null,
+            $this->settings['school_city'] ?? null,
+        ]);
+        $contactParts = array_filter([
+            !empty($addressParts) ? implode(', ', $addressParts) : null,
             isset($this->settings['school_phone']) && $this->settings['school_phone'] ? 'Tél : ' . $this->settings['school_phone'] : null,
             isset($this->settings['school_email']) && $this->settings['school_email'] ? 'Email : ' . $this->settings['school_email'] : null,
         ]);
