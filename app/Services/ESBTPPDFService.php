@@ -492,14 +492,18 @@ class ESBTPPDFService
             return $pdf;
         }
 
+        // Browsershot::margins() attend des float (ex: 10.0), pas des strings (ex: '10mm')
+        // On extrait la valeur numérique en supprimant toute unité CSS éventuelle
+        $toFloat = fn($v) => (float) preg_replace('/[^0-9.]/', '', (string) $v);
+
         return \Spatie\Browsershot\Browsershot::html($html)
             ->format($options['format'])
             ->landscape($options['landscape'])
             ->margins(
-                $options['margin']['top'],
-                $options['margin']['right'],
-                $options['margin']['bottom'],
-                $options['margin']['left']
+                $toFloat($options['margin']['top']),
+                $toFloat($options['margin']['right']),
+                $toFloat($options['margin']['bottom']),
+                $toFloat($options['margin']['left'])
             )
             ->waitUntilNetworkIdle()
             ->pdf();

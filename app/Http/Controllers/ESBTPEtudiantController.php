@@ -1488,6 +1488,9 @@ class ESBTPEtudiantController extends Controller
             return back()->with('error', 'Aucune inscription trouvée pour cet étudiant.');
         }
 
+        // Calculer la moyenne générale pondérée (S1/S2) pour chaque inscription
+        $inscriptions = $this->attachMoyenneCalculee($inscriptions, $etudiant->id);
+
         // Récupérer les paramètres de l'école
         $settings = $this->getCertificateDisplaySettings();
 
@@ -1525,6 +1528,9 @@ class ESBTPEtudiantController extends Controller
                 return back()->with('error', 'Aucune inscription trouvée pour cet étudiant.');
             }
 
+            // Calculer la moyenne générale pondérée (S1/S2) pour chaque inscription
+            $inscriptions = $this->attachMoyenneCalculee($inscriptions, $etudiant->id);
+
             // Récupérer les paramètres de l'école
             $settings = $this->getCertificateDisplaySettings();
 
@@ -1560,8 +1566,74 @@ class ESBTPEtudiantController extends Controller
     }
 
     /**
+     * Attache la moyenne générale calculée (pondération S1/S2) à chaque inscription.
+     * Priorité : bulletin officiel > fallback ESBTPResultat avec pondération settings.
+     */
+    private function attachMoyenneCalculee($inscriptions, int $etudiantId)
+    {
+        $poidS1 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester1_weight', 1));
+        $poidS2 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester2_weight', 1));
+        if ($poidS1 + $poidS2 <= 0) { $poidS1 = 1; $poidS2 = 1; }
+
+        $calcSem = function ($resultats, $periode) {
+            $sp = 0; $sc = 0;
+            foreach ($resultats->where('periode', $periode) as $r) {
+                $c = $r->coefficient ?? 1;
+                $sp += $r->moyenne * $c;
+                $sc += $c;
+            }
+            return $sc > 0 ? $sp / $sc : null;
+        };
+
+        foreach ($inscriptions as $inscription) {
+            $anneeId = optional($inscription->anneeUniversitaire)->id;
+            $mg = null;
+
+            // 1. Bulletins officiels
+            if ($anneeId) {
+                $buls = \App\Models\ESBTPBulletin::where('etudiant_id', $etudiantId)
+                    ->where('annee_universitaire_id', $anneeId)
+                    ->where('moyenne_generale', '>', 0)
+                    ->get();
+                if ($buls->count()) {
+                    $mg = round($buls->avg('moyenne_generale'), 2);
+                }
+            }
+
+            // 2. Fallback : résultats bruts avec pondération S1/S2
+            if ($mg === null && $anneeId) {
+                $resultats = \App\Models\ESBTPResultat::where('etudiant_id', $etudiantId)
+                    ->where('annee_universitaire_id', $anneeId)
+                    ->whereNotNull('moyenne')
+                    ->get();
+
+                if ($resultats->count()) {
+                    $mS1 = $calcSem($resultats, 'semestre1');
+                    $mS2 = $calcSem($resultats, 'semestre2');
+
+                    if ($mS1 !== null && $mS2 !== null) {
+                        $mg = round(($mS1 * $poidS1 + $mS2 * $poidS2) / ($poidS1 + $poidS2), 2);
+                    } elseif ($mS1 !== null) {
+                        $mg = round($mS1, 2);
+                    } elseif ($mS2 !== null) {
+                        $mg = round($mS2, 2);
+                    } else {
+                        $sp = 0; $sc = 0;
+                        foreach ($resultats as $r) { $c = $r->coefficient ?? 1; $sp += $r->moyenne * $c; $sc += $c; }
+                        $mg = $sc > 0 ? round($sp / $sc, 2) : null;
+                    }
+                }
+            }
+
+            $inscription->moyenne_generale_calculee = $mg;
+        }
+
+        return $inscriptions;
+    }
+
+    /**
      * Récupère les configurations pour les certificats de scolarité
-     * 
+     *
      * @return array
      */
     public function getCertificatSettings()
