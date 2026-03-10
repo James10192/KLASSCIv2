@@ -387,17 +387,26 @@
                 <h1 class="rel-hero-title">
                     <i class="fas fa-bell-slash" style="margin-right:.5rem;opacity:.8;"></i>
                     Gestion des Relances
+                    @if($anneeActive)
+                        <span style="display:inline-flex;align-items:center;gap:.3rem;background:rgba(16,185,129,.18);color:#10b981;border:1px solid rgba(16,185,129,.35);border-radius:20px;padding:.15rem .65rem;font-size:.6rem;font-weight:600;letter-spacing:.04em;vertical-align:middle;margin-left:.5rem;">
+                            <i class="fas fa-circle" style="font-size:.4rem;"></i>
+                            {{ $anneeActive->name }}
+                        </span>
+                    @endif
                 </h1>
                 <p class="rel-hero-sub">
-                    Étudiants avec soldes impayés &mdash;
-                    @if($anneeActive)
-                        {{ $anneeActive->annee_debut }}&ndash;{{ $anneeActive->annee_fin }}
-                    @else
-                        toutes années
-                    @endif
+                    Étudiants avec soldes impayés &mdash; toutes années filtrables
                 </p>
             </div>
             <div class="rel-hero-actions">
+                @can('comptabilite.reports.export')
+                <a href="{{ route('esbtp.comptabilite.relances.export-excel', request()->query()) }}" class="btn-hero-ghost">
+                    <i class="fas fa-file-excel"></i> Excel
+                </a>
+                <a href="{{ route('esbtp.comptabilite.relances.export-pdf', request()->query()) }}" class="btn-hero-ghost">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </a>
+                @endcan
                 <a href="{{ route('esbtp.comptabilite.relances.config') }}" class="btn-hero-ghost">
                     <i class="fas fa-cog"></i> Configuration
                 </a>
@@ -490,7 +499,7 @@
                 <label class="filter-label">Année</label>
                 <select name="annee_id" class="filter-control">
                     @foreach ($annees as $a)
-                        <option value="{{ $a->id }}" {{ $anneeId == $a->id ? 'selected' : '' }}>{{ $a->annee_debut }}&ndash;{{ $a->annee_fin }}</option>
+                        <option value="{{ $a->id }}" {{ $anneeId == $a->id ? 'selected' : '' }}>{{ $a->name }}@if($a->is_current) (en cours)@endif</option>
                     @endforeach
                 </select>
             </div>

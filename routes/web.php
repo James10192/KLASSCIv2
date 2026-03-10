@@ -1487,6 +1487,10 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
     Route::prefix('relances')->name('relances.')->group(function () {
         Route::get('/', [ESBTPComptabiliteController::class, 'gestionRelances'])->name('index');
         Route::get('/config', [ESBTPComptabiliteController::class, 'configurationRelances'])->name('config');
+        Route::get('/export-excel', [ESBTPComptabiliteController::class, 'exportRelancesExcel'])->name('export-excel')
+            ->middleware(['permission:comptabilite.reports.export']);
+        Route::get('/export-pdf', [ESBTPComptabiliteController::class, 'exportRelancesPdf'])->name('export-pdf')
+            ->middleware(['permission:comptabilite.reports.export']);
         Route::get('/{id}', [ESBTPComptabiliteController::class, 'showRelance'])->name('show')->where('id', '[0-9]+');
 
         // Actions sur les relances
