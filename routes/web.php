@@ -1528,6 +1528,7 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
 
     // Dashboard comptabilité
     Route::get('/dashboard', [ESBTPComptabiliteController::class, 'dashboard'])->name('dashboard');
+    Route::get('/dashboard/data', [ESBTPComptabiliteController::class, 'dashboardData'])->name('dashboard.data');
 });
 
 // Routes pour le système d'émargement
