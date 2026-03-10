@@ -1822,9 +1822,12 @@ class ESBTPComptabiliteController extends Controller
             'configManquante'
         );
 
-        // AJAX request → return only table fragment
+        // AJAX request → return JSON avec table HTML + kpis mis à jour
         if ($request->ajax() || $request->input('ajax') === '1') {
-            return view('esbtp.comptabilite.relances._table', $viewData);
+            return response()->json([
+                'table' => view('esbtp.comptabilite.relances._table', $viewData)->render(),
+                'kpis'  => $kpis,
+            ]);
         }
 
         return view('esbtp.comptabilite.relances.index', $viewData);

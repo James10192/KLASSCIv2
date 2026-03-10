@@ -434,27 +434,27 @@
     <div class="kpi-strip">
         <div class="kpi-card impaye">
             <div class="kpi-label">Total impayé</div>
-            <div class="kpi-value big">{{ number_format($kpis['total_impaye'], 0, ',', ' ') }} <span style="font-size:.65em;font-weight:400;color:var(--rl-muted);">FCFA</span></div>
+            <div class="kpi-value big"><span id="kpi-total-impaye">{{ number_format($kpis['total_impaye'], 0, ',', ' ') }}</span> <span style="font-size:.65em;font-weight:400;color:var(--rl-muted);">FCFA</span></div>
             <i class="fas fa-exclamation-circle kpi-icon"></i>
         </div>
         <div class="kpi-card critical" data-risk="critical" title="Cliquer pour filtrer">
             <div class="kpi-label">Impayés (0% réglé)</div>
-            <div class="kpi-value">{{ $kpis['count_critical'] }}</div>
+            <div class="kpi-value" id="kpi-count-critical">{{ $kpis['count_critical'] }}</div>
             <i class="fas fa-ban kpi-icon"></i>
         </div>
         <div class="kpi-card high" data-risk="high" title="Cliquer pour filtrer">
             <div class="kpi-label">En cours (paiement partiel)</div>
-            <div class="kpi-value">{{ $kpis['count_high'] }}</div>
+            <div class="kpi-value" id="kpi-count-high">{{ $kpis['count_high'] }}</div>
             <i class="fas fa-hourglass-half kpi-icon"></i>
         </div>
         <div class="kpi-card medium" data-risk="medium" title="Cliquer pour filtrer">
             <div class="kpi-label">Presque soldés (≥ 75%)</div>
-            <div class="kpi-value">{{ $kpis['count_medium'] }}</div>
+            <div class="kpi-value" id="kpi-count-medium">{{ $kpis['count_medium'] }}</div>
             <i class="fas fa-tasks kpi-icon"></i>
         </div>
         <div class="kpi-card low">
             <div class="kpi-label">À jour</div>
-            <div class="kpi-value">{{ $kpis['count_low'] }}</div>
+            <div class="kpi-value" id="kpi-count-low">{{ $kpis['count_low'] }}</div>
             <i class="fas fa-check-circle kpi-icon"></i>
         </div>
     </div>
@@ -529,25 +529,25 @@
         <button type="button" class="risk-tab all {{ !$riskFilter ? 'active' : '' }}"
                 data-risk="">
             <i class="fas fa-list"></i>
-            Tous avec dettes <span class="tab-count">({{ $kpis['total_etudiants'] }})</span>
+            Tous avec dettes <span class="tab-count">(<span id="tab-count-all">{{ $kpis['total_etudiants'] }}</span>)</span>
         </button>
         <button type="button" class="risk-tab critical {{ $riskFilter === 'critical' ? 'active' : '' }}"
                 data-risk="critical"
                 title="Aucun paiement effectué — 0% du total réglé">
             <i class="fas fa-ban"></i>
-            Impayés <span class="tab-count">({{ $kpis['count_critical'] }})</span>
+            Impayés <span class="tab-count">(<span id="tab-count-critical">{{ $kpis['count_critical'] }}</span>)</span>
         </button>
         <button type="button" class="risk-tab high {{ $riskFilter === 'high' ? 'active' : '' }}"
                 data-risk="high"
                 title="Paiement commencé mais solde important encore dû (> 25% restant)">
             <i class="fas fa-hourglass-half"></i>
-            En cours <span class="tab-count">({{ $kpis['count_high'] }})</span>
+            En cours <span class="tab-count">(<span id="tab-count-high">{{ $kpis['count_high'] }}</span>)</span>
         </button>
         <button type="button" class="risk-tab medium {{ $riskFilter === 'medium' ? 'active' : '' }}"
                 data-risk="medium"
                 title="Au moins 75% réglé — faible solde restant (≤ 25% du total)">
             <i class="fas fa-tasks"></i>
-            Presque soldés <span class="tab-count">({{ $kpis['count_medium'] }})</span>
+            Presque soldés <span class="tab-count">(<span id="tab-count-medium">{{ $kpis['count_medium'] }}</span>)</span>
         </button>
     </div>
 
@@ -610,11 +610,11 @@
         fetch(url.toString(), {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
-        .then(r => r.text())
-        .then(html => {
+        .then(r => r.json())
+        .then(data => {
             // Replace table content (keep spinner in place)
             const tmp = document.createElement('div');
-            tmp.innerHTML = html;
+            tmp.innerHTML = data.table;
 
             // Remove old table content (everything except the spinner)
             Array.from(tableWrap.children).forEach(child => {
@@ -623,6 +623,21 @@
 
             // Append new content
             Array.from(tmp.childNodes).forEach(node => tableWrap.appendChild(node));
+
+            // Update KPI cards
+            const kpis = data.kpis;
+            if (kpis) {
+                const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+                set('kpi-total-impaye', new Intl.NumberFormat('fr-FR').format(kpis.total_impaye));
+                set('kpi-count-critical', kpis.count_critical);
+                set('kpi-count-high',     kpis.count_high);
+                set('kpi-count-medium',   kpis.count_medium);
+                set('kpi-count-low',      kpis.count_low);
+                set('tab-count-all',      kpis.total_etudiants);
+                set('tab-count-critical', kpis.count_critical);
+                set('tab-count-high',     kpis.count_high);
+                set('tab-count-medium',   kpis.count_medium);
+            }
 
             // Wire pagination links to AJAX too
             wirePaginationLinks();
