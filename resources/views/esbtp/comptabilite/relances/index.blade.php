@@ -343,6 +343,7 @@
 
 @section('content')
 <div class="dashboard-acasi">
+<div class="main-content">
 
     {{-- ── HERO ── --}}
     <div class="rel-hero">
@@ -620,5 +621,6 @@
         @endif
     </div>
 
+</div>
 </div>
 @endsection
