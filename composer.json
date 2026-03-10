@@ -80,6 +80,12 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        },
+        "audit": {
+            "ignore": {
+                "PKSA-2cx9-ynrq-qdk3": "Dépendance indirecte via laravel/framework. league/commonmark non utilisé pour parser du contenu utilisateur. DoS non applicable.",
+                "PKSA-4s4z-t146-6123": "psy/psysh est une dépendance de laravel/tinker, non utilisé en production. Vecteur local non applicable."
+            }
         }
     },
     "minimum-stability": "dev",
