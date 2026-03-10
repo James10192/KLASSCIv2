@@ -21,6 +21,8 @@ class CheckComptabiliteAccess
 
     if (
         !$user->hasRole('superAdmin') &&
+        !$user->hasRole('comptable') &&
+        !$user->hasPermissionTo('comptabilite.access') &&
         !$user->hasPermissionTo('access_comptabilite_module') &&
         !$user->hasPermissionTo('comptabilite.manage')
     ) {
