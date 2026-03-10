@@ -480,8 +480,16 @@
                 <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left me-1"></i><span class="d-none d-sm-inline">Retour</span>
                 </a>
-                <a href="{{ route('esbtp.inscriptions.show', $inscription) }}" class="btn-acasi primary">
-                    <i class="fas fa-file-alt me-1"></i><span class="d-none d-sm-inline">Fiche inscription</span>
+                @php
+                    $anneeHeaderLabel = $inscription->anneeUniversitaire ? ($inscription->anneeUniversitaire->name ?? $inscription->anneeUniversitaire->libelle ?? '') : '';
+                    $anneeIsCurrent = $inscription->anneeUniversitaire && $inscription->anneeUniversitaire->is_current;
+                @endphp
+                <a href="{{ route('esbtp.inscriptions.show', $inscription) }}" class="btn-acasi primary" title="Fiche inscription {{ $anneeHeaderLabel }}">
+                    <i class="fas fa-file-alt me-1"></i>
+                    <span class="d-none d-sm-inline">Fiche inscription</span>
+                    @if($anneeHeaderLabel)
+                    <span class="d-none d-md-inline" style="font-size:.75em;opacity:.85;margin-left:4px;">({{ $anneeHeaderLabel }}{{ $anneeIsCurrent ? ' · en cours' : '' }})</span>
+                    @endif
                 </a>
             </div>
         </div>
@@ -572,6 +580,11 @@
                         @if($inscription->anneeUniversitaire)
                         <span class="hero-meta-item">
                             <i class="fas fa-calendar"></i>{{ $inscription->anneeUniversitaire->name ?? $inscription->anneeUniversitaire->libelle }}
+                            @if($inscription->anneeUniversitaire->is_current)
+                            <span style="display:inline-flex;align-items:center;gap:4px;background:rgba(16,185,129,.18);color:#10b981;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.05em;border:1px solid rgba(16,185,129,.3);">
+                                <i class="fas fa-circle" style="font-size:.45rem;"></i>EN COURS
+                            </span>
+                            @endif
                         </span>
                         @endif
                     </div>
@@ -874,12 +887,55 @@
                         <div class="cta-icon"><i class="fas fa-plus"></i></div>
                         <div>
                             <div class="cta-label">Enregistrer un paiement</div>
-                            <div class="cta-sub">Ouvrir la fiche d'inscription</div>
+                            <div class="cta-sub">
+                                Inscription {{ $inscription->anneeUniversitaire->name ?? $inscription->anneeUniversitaire->libelle ?? '' }}
+                                @if($inscription->anneeUniversitaire && $inscription->anneeUniversitaire->is_current)
+                                <span style="color:#10b981;font-weight:600;">· en cours</span>
+                                @endif
+                            </div>
                         </div>
                         <i class="fas fa-arrow-right ms-auto" style="color:#10b981;"></i>
                     </a>
                     @endif
                 </div>
+
+                {{-- ── Autres inscriptions (navigation multi-années) ────── --}}
+                @if($autresInscriptions->isNotEmpty())
+                <div class="relance-section mt-3">
+                    <div class="section-title" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:10px;">
+                        <i class="fas fa-history me-1"></i>Autres années
+                    </div>
+                    <div class="d-flex flex-column gap-2">
+                        @foreach($autresInscriptions as $autreInscription)
+                        @php
+                            $anneeLabel = $autreInscription->anneeUniversitaire->name ?? $autreInscription->anneeUniversitaire->libelle ?? 'Année inconnue';
+                            $classeLabel = $autreInscription->classe->name ?? $autreInscription->classe->nom ?? '';
+                        @endphp
+                        <a href="{{ route('esbtp.comptabilite.relances.etudiant', $autreInscription) }}"
+                           style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;text-decoration:none;color:#1e293b;transition:all .15s ease;"
+                           onmouseover="this.style.background='#f0f7ff';this.style.borderColor='#0453cb';"
+                           onmouseout="this.style.background='#f8fafc';this.style.borderColor='#e2e8f0';">
+                            @php $autreIsCurrent = $autreInscription->anneeUniversitaire && $autreInscription->anneeUniversitaire->is_current; @endphp
+                            <div style="width:34px;height:34px;border-radius:8px;background:{{ $autreIsCurrent ? 'rgba(16,185,129,.12)' : '#e9ecef' }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-calendar-alt" style="font-size:.8rem;color:{{ $autreIsCurrent ? '#10b981' : '#64748b' }};"></i>
+                            </div>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                    {{ $anneeLabel }}
+                                    @if($autreIsCurrent)
+                                    <span style="font-size:.68rem;color:#10b981;font-weight:700;margin-left:4px;">EN COURS</span>
+                                    @endif
+                                </div>
+                                @if($classeLabel)
+                                <div style="font-size:.75rem;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $classeLabel }}</div>
+                                @endif
+                            </div>
+                            <i class="fas fa-chevron-right" style="font-size:.7rem;color:#94a3b8;flex-shrink:0;"></i>
+                        </a>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
 
             </div>{{-- /sidebar --}}
         </div>{{-- /grid --}}
