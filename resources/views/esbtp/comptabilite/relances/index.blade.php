@@ -407,10 +407,12 @@
         <div class="filters-bar">
 
             {{-- Recherche --}}
-            <div class="filter-group search-wrap" style="flex:2;min-width:200px;">
+            <div class="filter-group" style="flex:2;min-width:200px;">
                 <label class="filter-label">Recherche</label>
-                <i class="fas fa-search search-icon"></i>
-                <input type="text" name="search" class="filter-control" placeholder="Nom, prénom, matricule…" value="{{ $search }}">
+                <div class="search-wrap">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" name="search" class="filter-control" placeholder="Nom, prénom, matricule…" value="{{ $search }}">
+                </div>
             </div>
 
             {{-- Filière --}}
