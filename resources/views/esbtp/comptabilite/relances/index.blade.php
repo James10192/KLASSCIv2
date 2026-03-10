@@ -81,6 +81,7 @@
     position: relative;
     overflow: hidden;
     transition: box-shadow .2s;
+    cursor: pointer;
 }
 .kpi-card:hover { box-shadow: 0 4px 20px rgba(4,83,203,.1); }
 .kpi-card::after {
@@ -183,6 +184,7 @@
     gap: .5rem;
     margin-bottom: 1rem;
     flex-wrap: wrap;
+    align-items: center;
 }
 .risk-tab {
     padding: .4rem .9rem;
@@ -191,19 +193,25 @@
     font-weight: 600;
     cursor: pointer;
     border: none;
+    background: transparent;
     text-decoration: none;
     display: inline-flex; align-items: center; gap: .35rem;
-    transition: opacity .15s, transform .1s;
+    transition: opacity .15s, transform .1s, box-shadow .15s;
+    position: relative;
 }
-.risk-tab:hover { opacity: .85; transform: translateY(-1px); }
-.risk-tab.all      { background: var(--rl-dark); color: #fff; }
-.risk-tab.critical { background: rgba(30,41,59,.1); color: var(--rl-dark); border: 1px solid rgba(30,41,59,.25); }
-.risk-tab.high     { background: rgba(4,83,203,.1); color: var(--rl-primary); border: 1px solid rgba(4,83,203,.25); }
-.risk-tab.medium   { background: rgba(94,145,222,.12); color: #2563eb; border: 1px solid rgba(94,145,222,.3); }
-.risk-tab.active.critical { background: rgba(30,41,59,.2); }
-.risk-tab.active.high     { background: rgba(4,83,203,.18); }
-.risk-tab.active.medium   { background: rgba(94,145,222,.22); }
-.risk-tab.active.all      { box-shadow: 0 0 0 3px rgba(30,41,59,.25); }
+.risk-tab:hover { transform: translateY(-1px); }
+
+/* Inactive state — subtle outline */
+.risk-tab.all      { color: var(--rl-dark);      border: 1.5px solid rgba(30,41,59,.25);    }
+.risk-tab.critical { color: var(--rl-dark);       border: 1.5px solid rgba(30,41,59,.2);     }
+.risk-tab.high     { color: var(--rl-primary);    border: 1.5px solid rgba(4,83,203,.25);    }
+.risk-tab.medium   { color: #2563eb;              border: 1.5px solid rgba(94,145,222,.3);   }
+
+/* Active state — filled */
+.risk-tab.all.active      { background: var(--rl-dark);      color: #fff; border-color: var(--rl-dark);      box-shadow: 0 2px 8px rgba(30,41,59,.3); }
+.risk-tab.critical.active { background: var(--rl-dark);      color: #fff; border-color: var(--rl-dark);      box-shadow: 0 2px 8px rgba(30,41,59,.3); }
+.risk-tab.high.active     { background: var(--rl-primary);   color: #fff; border-color: var(--rl-primary);   box-shadow: 0 2px 8px rgba(4,83,203,.3); }
+.risk-tab.medium.active   { background: var(--rl-secondary); color: #fff; border-color: var(--rl-secondary); box-shadow: 0 2px 8px rgba(94,145,222,.3); }
 
 /* ── TABLE ── */
 .rel-table-wrap {
@@ -211,6 +219,8 @@
     border: 1px solid var(--rl-border);
     border-radius: 12px;
     overflow: hidden;
+    position: relative;
+    min-height: 120px;
 }
 .rel-table {
     width: 100%;
@@ -322,6 +332,31 @@
 }
 .rel-pagination .page-info { font-size: .8rem; color: var(--rl-muted); }
 
+/* ── LOADING OVERLAY ── */
+.rel-loading {
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 12px;
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s;
+}
+.rel-loading.visible { opacity: 1; pointer-events: all; }
+.rel-spinner {
+    width: 28px; height: 28px;
+    border: 3px solid var(--rl-border);
+    border-top-color: var(--rl-primary);
+    border-radius: 50%;
+    animation: rl-spin .6s linear infinite;
+}
+@keyframes rl-spin { to { transform: rotate(360deg); } }
+
 /* ── RESPONSIVE ── */
 @media (max-width: 992px) {
     .rel-table th:nth-child(3),
@@ -373,6 +408,19 @@
         </div>
     </div>
 
+    {{-- ── BANNER CONFIG MANQUANTE ── --}}
+    @if($configManquante)
+    <div style="background:linear-gradient(90deg,#fff8e1 0%,#fffde7 100%);border:1.5px solid #f59e0b;border-radius:12px;padding:.9rem 1.2rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:.6rem;color:#92400e;">
+            <i class="fas fa-exclamation-triangle" style="font-size:1.1rem;"></i>
+            <span style="font-weight:600;font-size:.9rem;">Les délais de relance ne sont pas configurés — les niveaux de risque ne peuvent pas être calculés.</span>
+        </div>
+        <a href="{{ route('esbtp.comptabilite.relances.config') }}" style="background:#0453cb;color:#fff;padding:.45rem 1rem;border-radius:8px;font-size:.82rem;font-weight:600;white-space:nowrap;text-decoration:none;">
+            <i class="fas fa-cog me-1"></i> Configurer maintenant
+        </a>
+    </div>
+    @endif
+
     {{-- ── KPI STRIP ── --}}
     <div class="kpi-strip">
         <div class="kpi-card impaye">
@@ -380,20 +428,20 @@
             <div class="kpi-value big">{{ number_format($kpis['total_impaye'], 0, ',', ' ') }} <span style="font-size:.65em;font-weight:400;color:var(--rl-muted);">FCFA</span></div>
             <i class="fas fa-exclamation-circle kpi-icon"></i>
         </div>
-        <div class="kpi-card critical">
-            <div class="kpi-label">Impayés totaux</div>
+        <div class="kpi-card critical" data-risk="critical" title="Cliquer pour filtrer">
+            <div class="kpi-label">Impayés (0% réglé)</div>
             <div class="kpi-value">{{ $kpis['count_critical'] }}</div>
             <i class="fas fa-ban kpi-icon"></i>
         </div>
-        <div class="kpi-card high">
-            <div class="kpi-label">En retard</div>
+        <div class="kpi-card high" data-risk="high" title="Cliquer pour filtrer">
+            <div class="kpi-label">En cours (paiement partiel)</div>
             <div class="kpi-value">{{ $kpis['count_high'] }}</div>
-            <i class="fas fa-clock kpi-icon"></i>
+            <i class="fas fa-hourglass-half kpi-icon"></i>
         </div>
-        <div class="kpi-card medium">
-            <div class="kpi-label">Partiels</div>
+        <div class="kpi-card medium" data-risk="medium" title="Cliquer pour filtrer">
+            <div class="kpi-label">Presque soldés (≥ 75%)</div>
             <div class="kpi-value">{{ $kpis['count_medium'] }}</div>
-            <i class="fas fa-adjust kpi-icon"></i>
+            <i class="fas fa-tasks kpi-icon"></i>
         </div>
         <div class="kpi-card low">
             <div class="kpi-label">À jour</div>
@@ -403,7 +451,7 @@
     </div>
 
     {{-- ── FILTERS ── --}}
-    <form method="GET" action="{{ route('esbtp.comptabilite.relances.index') }}">
+    <form id="relances-filters-form" method="GET" action="{{ route('esbtp.comptabilite.relances.index') }}">
         <div class="filters-bar">
 
             {{-- Recherche --}}
@@ -411,7 +459,7 @@
                 <label class="filter-label">Recherche</label>
                 <div class="search-wrap">
                     <i class="fas fa-search search-icon"></i>
-                    <input type="text" name="search" class="filter-control" placeholder="Nom, prénom, matricule…" value="{{ $search }}">
+                    <input type="text" name="search" id="filter-search" class="filter-control" placeholder="Nom, prénom, matricule…" value="{{ $search }}">
                 </div>
             </div>
 
@@ -457,172 +505,195 @@
                 </select>
             </div>
 
-            {{-- Preserve risk filter --}}
-            <input type="hidden" name="risk" value="{{ $riskFilter }}">
+            {{-- Champ caché pour le filtre de risque actif --}}
+            <input type="hidden" name="risk" id="risk-hidden" value="{{ $riskFilter }}">
 
             <div style="display:flex;gap:.5rem;align-items:flex-end;">
                 <button type="submit" class="btn-filter"><i class="fas fa-filter"></i> Filtrer</button>
-                <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="btn-filter-ghost"><i class="fas fa-times"></i> Reset</a>
+                <button type="button" id="btn-reset" class="btn-filter-ghost"><i class="fas fa-times"></i> Reset</button>
             </div>
         </div>
     </form>
 
     {{-- ── RISK TABS ── --}}
-    <div class="risk-tabs">
-        @php
-            $qBase = array_filter(request()->query(), fn($k) => $k !== 'risk' && $k !== 'page', ARRAY_FILTER_USE_KEY);
-        @endphp
-        <a href="{{ route('esbtp.comptabilite.relances.index', array_merge($qBase, ['risk' => ''])) }}"
-           class="risk-tab all {{ !$riskFilter ? 'active' : '' }}">
-            <i class="fas fa-list"></i> Tous avec dettes ({{ $kpis['total_etudiants'] }})
-        </a>
-        <a href="{{ route('esbtp.comptabilite.relances.index', array_merge($qBase, ['risk' => 'critical'])) }}"
-           class="risk-tab critical {{ $riskFilter === 'critical' ? 'active' : '' }}">
-            <i class="fas fa-ban"></i> Impayés ({{ $kpis['count_critical'] }})
-        </a>
-        <a href="{{ route('esbtp.comptabilite.relances.index', array_merge($qBase, ['risk' => 'high'])) }}"
-           class="risk-tab high {{ $riskFilter === 'high' ? 'active' : '' }}">
-            <i class="fas fa-clock"></i> En retard ({{ $kpis['count_high'] }})
-        </a>
-        <a href="{{ route('esbtp.comptabilite.relances.index', array_merge($qBase, ['risk' => 'medium'])) }}"
-           class="risk-tab medium {{ $riskFilter === 'medium' ? 'active' : '' }}">
-            <i class="fas fa-adjust"></i> Partiels ({{ $kpis['count_medium'] }})
-        </a>
+    <div class="risk-tabs" id="risk-tabs">
+        <button type="button" class="risk-tab all {{ !$riskFilter ? 'active' : '' }}"
+                data-risk="">
+            <i class="fas fa-list"></i>
+            Tous avec dettes <span class="tab-count">({{ $kpis['total_etudiants'] }})</span>
+        </button>
+        <button type="button" class="risk-tab critical {{ $riskFilter === 'critical' ? 'active' : '' }}"
+                data-risk="critical"
+                title="Aucun paiement effectué — 0% du total réglé">
+            <i class="fas fa-ban"></i>
+            Impayés <span class="tab-count">({{ $kpis['count_critical'] }})</span>
+        </button>
+        <button type="button" class="risk-tab high {{ $riskFilter === 'high' ? 'active' : '' }}"
+                data-risk="high"
+                title="Paiement commencé mais solde important encore dû (> 25% restant)">
+            <i class="fas fa-hourglass-half"></i>
+            En cours <span class="tab-count">({{ $kpis['count_high'] }})</span>
+        </button>
+        <button type="button" class="risk-tab medium {{ $riskFilter === 'medium' ? 'active' : '' }}"
+                data-risk="medium"
+                title="Au moins 75% réglé — faible solde restant (≤ 25% du total)">
+            <i class="fas fa-tasks"></i>
+            Presque soldés <span class="tab-count">({{ $kpis['count_medium'] }})</span>
+        </button>
     </div>
 
-    {{-- ── TABLE ── --}}
-    <div class="rel-table-wrap">
-        @if ($paginated->isEmpty())
-            <div class="empty-state">
-                <div class="empty-icon"><i class="fas fa-check-circle"></i></div>
-                <h5>Aucun impayé trouvé</h5>
-                <p>Tous les étudiants correspondant à vos filtres sont à jour ou aucun résultat pour cette recherche.</p>
-            </div>
-        @else
-            <div style="overflow-x:auto;">
-                <table class="rel-table">
-                    <thead>
-                        <tr>
-                            <th>Étudiant</th>
-                            <th>Classe</th>
-                            <th>Filière</th>
-                            <th>Progression</th>
-                            <th>Total dû</th>
-                            <th>Solde restant</th>
-                            <th>Risque</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($paginated as $row)
-                            @php
-                                $etudiant  = optional($row->inscription->etudiant);
-                                $classe    = optional($row->inscription->classe);
-                                $filiere   = optional($classe->filiere);
-                                $nom       = $etudiant->nom ?? '';
-                                $prenoms   = $etudiant->prenoms ?? '';
-                                $initiales = strtoupper(mb_substr($nom, 0, 1) . mb_substr($prenoms, 0, 1));
-                                $nomComplet = trim("$nom $prenoms") ?: '(sans nom)';
+    {{-- ── TABLE WRAP (cible AJAX) ── --}}
+    <div class="rel-table-wrap" id="relances-table-wrap">
 
-                                $pbClass = match(true) {
-                                    $row->pourcentage >= 100 => 'full',
-                                    $row->pourcentage >= 50  => 'partial',
-                                    $row->pourcentage > 0    => 'low-pay',
-                                    default                   => 'none',
-                                };
-                            @endphp
-                            <tr>
-                                {{-- Étudiant --}}
-                                <td>
-                                    <div class="stud-cell">
-                                        <div class="stud-avatar">{{ $initiales ?: '?' }}</div>
-                                        <div>
-                                            <div class="stud-name">{{ $nomComplet }}</div>
-                                            <div class="stud-matricule">{{ $etudiant->matricule ?? '—' }}</div>
-                                        </div>
-                                    </div>
-                                </td>
+        {{-- Spinner overlay --}}
+        <div class="rel-loading" id="relances-loading">
+            <div class="rel-spinner"></div>
+        </div>
 
-                                {{-- Classe --}}
-                                <td>{{ $classe->name ?? '—' }}</td>
+        @include('esbtp.comptabilite.relances._table')
 
-                                {{-- Filière --}}
-                                <td>{{ $filiere->code ?? $filiere->name ?? '—' }}</td>
-
-                                {{-- Progression --}}
-                                <td>
-                                    <div class="pbar-wrap">
-                                        <div class="pbar-track">
-                                            <div class="pbar-fill {{ $pbClass }}"
-                                                 style="width:{{ max(4, $row->pourcentage) }}%"></div>
-                                        </div>
-                                        <span class="pbar-pct">{{ $row->pourcentage }}%</span>
-                                    </div>
-                                </td>
-
-                                {{-- Total dû --}}
-                                <td class="amount-cell">
-                                    {{ number_format($row->totalDu, 0, ',', ' ') }}
-                                    <span class="amount-unit">FCFA</span>
-                                </td>
-
-                                {{-- Solde restant --}}
-                                <td class="amount-cell amount-red">
-                                    {{ number_format($row->soldeRestant, 0, ',', ' ') }}
-                                    <span class="amount-unit">FCFA</span>
-                                </td>
-
-                                {{-- Risque --}}
-                                <td>
-                                    <span class="rbadge {{ $row->risk }}">
-                                        @if($row->risk === 'critical')
-                                            <i class="fas fa-ban" style="font-size:.65em;"></i>
-                                        @elseif($row->risk === 'high')
-                                            <i class="fas fa-clock" style="font-size:.65em;"></i>
-                                        @elseif($row->risk === 'medium')
-                                            <i class="fas fa-adjust" style="font-size:.65em;"></i>
-                                        @else
-                                            <i class="fas fa-check" style="font-size:.65em;"></i>
-                                        @endif
-                                        {{ $row->riskLabel }}
-                                    </span>
-                                </td>
-
-                                {{-- Actions --}}
-                                <td>
-                                    <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
-                                        <a href="{{ route('esbtp.comptabilite.relances.etudiant', $row->inscription->id) }}"
-                                           class="act-btn primary" title="Voir fiche relance">
-                                            <i class="fas fa-file-invoice-dollar"></i>
-                                            <span class="d-none d-xl-inline">Fiche</span>
-                                        </a>
-                                        <a href="{{ route('esbtp.inscriptions.show', $row->inscription->id) }}"
-                                           class="act-btn ghost" title="Voir inscription">
-                                            <i class="fas fa-external-link-alt"></i>
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-
-            {{-- PAGINATION --}}
-            @if ($paginated->hasPages())
-                <div class="rel-pagination">
-                    <span class="page-info">
-                        {{ $paginated->firstItem() }}–{{ $paginated->lastItem() }}
-                        sur {{ $paginated->total() }} résultat(s)
-                    </span>
-                    <div>
-                        {{ $paginated->appends(request()->query())->links() }}
-                    </div>
-                </div>
-            @endif
-        @endif
     </div>
 
 </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    'use strict';
+
+    const tableWrap  = document.getElementById('relances-table-wrap');
+    const loading    = document.getElementById('relances-loading');
+    const riskHidden = document.getElementById('risk-hidden');
+    const form       = document.getElementById('relances-filters-form');
+    const tabs       = document.querySelectorAll('#risk-tabs .risk-tab');
+    const btnReset   = document.getElementById('btn-reset');
+
+    /* ── helpers ── */
+    function showLoader()  { loading.classList.add('visible'); }
+    function hideLoader()  { loading.classList.remove('visible'); }
+
+    function setActiveTab(risk) {
+        tabs.forEach(btn => btn.classList.remove('active'));
+        tabs.forEach(btn => {
+            if (btn.dataset.risk === risk) btn.classList.add('active');
+        });
+    }
+
+    /**
+     * Fetch table HTML via AJAX and inject into wrapper (below the spinner).
+     * Also updates browser URL so refresh / back button work correctly.
+     */
+    function fetchTable(params) {
+        showLoader();
+
+        const url = new URL('{{ route('esbtp.comptabilite.relances.index') }}', window.location.origin);
+        Object.entries(params).forEach(([k, v]) => {
+            if (v !== null && v !== undefined && v !== '') {
+                url.searchParams.set(k, v);
+            }
+        });
+
+        // Update browser URL (no reload)
+        window.history.pushState({}, '', url.toString());
+
+        fetch(url.toString(), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.text())
+        .then(html => {
+            // Replace table content (keep spinner in place)
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html;
+
+            // Remove old table content (everything except the spinner)
+            Array.from(tableWrap.children).forEach(child => {
+                if (!child.classList.contains('rel-loading')) child.remove();
+            });
+
+            // Append new content
+            Array.from(tmp.childNodes).forEach(node => tableWrap.appendChild(node));
+
+            // Wire pagination links to AJAX too
+            wirePaginationLinks();
+            hideLoader();
+        })
+        .catch(() => hideLoader());
+    }
+
+    function collectFormParams() {
+        const data = new FormData(form);
+        const params = {};
+        for (const [k, v] of data.entries()) params[k] = v;
+        params.risk = riskHidden.value;
+        return params;
+    }
+
+    /* ── Tab click → AJAX ── */
+    tabs.forEach(btn => {
+        btn.addEventListener('click', function () {
+            const risk = this.dataset.risk;
+            riskHidden.value = risk;
+            setActiveTab(risk);
+            const params = collectFormParams();
+            params.page = 1; // reset to first page on tab change
+            fetchTable(params);
+        });
+    });
+
+    /* ── KPI card click → same as tab click ── */
+    document.querySelectorAll('.kpi-card[data-risk]').forEach(card => {
+        card.addEventListener('click', function () {
+            const risk = this.dataset.risk;
+            riskHidden.value = risk;
+            setActiveTab(risk);
+            const params = collectFormParams();
+            params.page = 1;
+            fetchTable(params);
+        });
+    });
+
+    /* ── Form submit → AJAX ── */
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const params = collectFormParams();
+        params.page = 1;
+        fetchTable(params);
+    });
+
+    /* ── Reset button ── */
+    btnReset.addEventListener('click', function () {
+        form.reset();
+        riskHidden.value = '';
+        setActiveTab('');
+        fetchTable({ page: 1 });
+    });
+
+    /* ── Per-page select → auto submit ── */
+    form.querySelector('select[name="per_page"]').addEventListener('change', function () {
+        const params = collectFormParams();
+        params.page = 1;
+        fetchTable(params);
+    });
+
+    /* ── Wire pagination links ── */
+    function wirePaginationLinks() {
+        tableWrap.querySelectorAll('.pagination a[href]').forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                const href = new URL(this.href);
+                const page = href.searchParams.get('page') || 1;
+                const params = collectFormParams();
+                params.page = page;
+                fetchTable(params);
+            });
+        });
+    }
+
+    // Wire initial pagination links
+    wirePaginationLinks();
+
+})();
+</script>
+@endpush

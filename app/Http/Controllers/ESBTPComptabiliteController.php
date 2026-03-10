@@ -1583,9 +1583,9 @@ class ESBTPComptabiliteController extends Controller
         if ($soldeRestant <= 0) {
             $riskLevel = 'low'; $riskLabel = 'À jour'; $riskColor = '#10b981';
         } elseif ($totalDu > 0 && ($soldeRestant / $totalDu) <= 0.25) {
-            $riskLevel = 'medium'; $riskLabel = 'Partiel'; $riskColor = '#5e91de';
+            $riskLevel = 'medium'; $riskLabel = 'Presque soldé'; $riskColor = '#5e91de';
         } elseif ($totalPaye > 0) {
-            $riskLevel = 'high'; $riskLabel = 'En retard'; $riskColor = '#0453cb';
+            $riskLevel = 'high'; $riskLabel = 'En cours'; $riskColor = '#0453cb';
         } else {
             $riskLevel = 'critical'; $riskLabel = 'Impayé'; $riskColor = '#1e293b';
         }
@@ -1622,7 +1622,7 @@ class ESBTPComptabiliteController extends Controller
         $perPage      = (int) $request->input('per_page', 25);
 
         // Année universitaire : paramètre ou active
-        $anneeActive = \App\Models\ESBTPAnneeUniversitaire::where('is_active', true)->first();
+        $anneeActive = \App\Models\ESBTPAnneeUniversitaire::where('est_actif', true)->first();
         $anneeId     = $anneeId ?: optional($anneeActive)->id;
 
         // Query de base : inscriptions actives avec solde potentiel non nul
@@ -1651,9 +1651,9 @@ class ESBTPComptabiliteController extends Controller
             if ($soldeRestant <= 0) {
                 $risk = 'low'; $riskLabel = 'À jour';
             } elseif ($totalDu > 0 && ($soldeRestant / $totalDu) <= 0.25) {
-                $risk = 'medium'; $riskLabel = 'Partiel';
+                $risk = 'medium'; $riskLabel = 'Presque soldé';
             } elseif ($totalPaye > 0) {
-                $risk = 'high'; $riskLabel = 'En retard';
+                $risk = 'high'; $riskLabel = 'En cours';
             } else {
                 $risk = 'critical'; $riskLabel = 'Impayé';
             }
@@ -1695,10 +1695,25 @@ class ESBTPComptabiliteController extends Controller
         $classes  = \App\Models\ESBTPClasse::when($filiereId, fn ($q) => $q->where('filiere_id', $filiereId))->orderBy('name')->get();
         $annees   = \App\Models\ESBTPAnneeUniversitaire::orderByDesc('annee_debut')->get();
 
-        return view('esbtp.comptabilite.relances.index', compact(
+        // Vérifier si les délais sont configurés (requis pour signaler à l'utilisateur)
+        $delaisRows = \DB::table('settings')
+            ->where('group', 'relances')
+            ->whereIn('key', ['relances.delai_niveau_1', 'relances.delai_niveau_2', 'relances.delai_niveau_3'])
+            ->count();
+        $configManquante = $delaisRows < 3;
+
+        $viewData = compact(
             'paginated', 'kpis', 'filieres', 'classes', 'annees',
-            'search', 'riskFilter', 'filiereId', 'classeId', 'anneeId', 'perPage', 'anneeActive'
-        ));
+            'search', 'riskFilter', 'filiereId', 'classeId', 'anneeId', 'perPage', 'anneeActive',
+            'configManquante'
+        );
+
+        // AJAX request → return only table fragment
+        if ($request->ajax() || $request->input('ajax') === '1') {
+            return view('esbtp.comptabilite.relances._table', $viewData);
+        }
+
+        return view('esbtp.comptabilite.relances.index', $viewData);
     }
 
     /**
@@ -1708,19 +1723,24 @@ class ESBTPComptabiliteController extends Controller
     {
         // Récupérer les templates existants depuis la configuration
         $templates = [
-            'email' => [],
-            'sms' => [],
-            'courrier' => []
+            'email'    => [],
+            'sms'      => [],
+            'courrier' => [],
         ];
 
-        // Récupérer les paramètres de relances
+        // Lire les paramètres depuis la BDD (table settings, group=relances)
+        // Aucune valeur hardcodée — si absent → null
+        $rows = \DB::table('settings')
+            ->where('group', 'relances')
+            ->pluck('value', 'key');
+
         $parametres = [
-            'delai_niveau_1' => 30,
-            'delai_niveau_2' => 45,
-            'delai_niveau_3' => 60,
-            'montant_minimum' => 10000,
-            'relances_automatiques' => false,
-            'heure_envoi' => '09:00'
+            'delai_niveau_1'        => isset($rows['relances.delai_niveau_1'])   ? (int) $rows['relances.delai_niveau_1']   : null,
+            'delai_niveau_2'        => isset($rows['relances.delai_niveau_2'])   ? (int) $rows['relances.delai_niveau_2']   : null,
+            'delai_niveau_3'        => isset($rows['relances.delai_niveau_3'])   ? (int) $rows['relances.delai_niveau_3']   : null,
+            'montant_minimum'       => isset($rows['relances.montant_minimum'])  ? (int) $rows['relances.montant_minimum']  : null,
+            'relances_automatiques' => isset($rows['relances.relances_automatiques']) ? (bool) $rows['relances.relances_automatiques'] : false,
+            'heure_envoi'           => $rows['relances.heure_envoi'] ?? null,
         ];
 
         return view('esbtp.comptabilite.relances.config', compact('templates', 'parametres'));
@@ -1860,28 +1880,31 @@ class ESBTPComptabiliteController extends Controller
     public function sauvegarderParametres(Request $request)
     {
         $request->validate([
-            'delai_niveau_1' => 'required|numeric|min:1|max:365',
-            'delai_niveau_2' => 'required|numeric|min:1|max:365',
-            'delai_niveau_3' => 'required|numeric|min:1|max:365',
+            'delai_niveau_1' => 'required|integer|min:1|max:365',
+            'delai_niveau_2' => 'required|integer|min:1|max:365',
+            'delai_niveau_3' => 'required|integer|min:1|max:365',
             'montant_minimum' => 'required|numeric|min:0',
-            'heure_envoi' => 'required|date_format:H:i'
+            'heure_envoi'     => 'required|date_format:H:i',
         ]);
 
-        try {
-            // Logique de sauvegarde des paramètres
-            // À implémenter selon la structure de configuration choisie
+        $parametres = [
+            'relances.delai_niveau_1'        => (string) (int) $request->delai_niveau_1,
+            'relances.delai_niveau_2'        => (string) (int) $request->delai_niveau_2,
+            'relances.delai_niveau_3'        => (string) (int) $request->delai_niveau_3,
+            'relances.montant_minimum'       => (string) (int) $request->montant_minimum,
+            'relances.heure_envoi'           => $request->heure_envoi,
+            'relances.relances_automatiques' => $request->boolean('relances_automatiques') ? '1' : '0',
+        ];
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Paramètres sauvegardés avec succès.'
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la sauvegarde: ' . $e->getMessage()
-            ]);
+        foreach ($parametres as $key => $value) {
+            \DB::table('settings')->updateOrInsert(
+                ['key' => $key],
+                ['value' => $value, 'group' => 'relances', 'updated_at' => now(), 'created_at' => now()]
+            );
         }
+
+        return redirect()->route('esbtp.comptabilite.relances.config')
+            ->with('success', 'Paramètres de relances sauvegardés avec succès.');
     }
 
     /**

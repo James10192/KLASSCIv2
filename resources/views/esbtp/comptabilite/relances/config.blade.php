@@ -4,579 +4,862 @@
 
 @push('styles')
 <style>
-.template-editor {
-    border-radius: 10px;
-    border: 1px solid #e9ecef;
+/* ── HERO ── */
+.cfg-hero {
+    background: linear-gradient(135deg, #0f1e3d 0%, #0453cb 60%, #1a3a6e 100%);
+    padding: 2rem 2.5rem 1.6rem;
+    margin: -1.5rem -1.5rem 2rem;
+    border-radius: 0 0 20px 20px;
+    position: relative;
+    overflow: hidden;
 }
-
-.variable-tag {
-    background: #e3f2fd;
-    color: #1976d2;
-    padding: 2px 8px;
-    border-radius: 15px;
-    font-size: 0.875rem;
-    margin: 2px;
-    cursor: pointer;
-    transition: all 0.3s ease;
+.cfg-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 70% 80% at 85% 50%, rgba(94,145,222,.18) 0%, transparent 70%);
+    pointer-events: none;
 }
-
-.variable-tag:hover {
-    background: #1976d2;
-    color: white;
+.cfg-hero-breadcrumb {
+    font-size: .72rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.5);
+    margin-bottom: .5rem;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
 }
-
-.config-section {
-    background: #f8f9fa;
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 20px;
+.cfg-hero-breadcrumb a { color: rgba(255,255,255,.55); text-decoration: none; }
+.cfg-hero-breadcrumb a:hover { color: #fff; }
+.cfg-hero-title {
+    font-size: 1.55rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 .3rem;
+    letter-spacing: -.01em;
 }
-
-.preview-container {
-    background: white;
-    border: 1px solid #dee2e6;
+.cfg-hero-sub {
+    font-size: .83rem;
+    color: rgba(255,255,255,.6);
+    margin: 0;
+}
+.cfg-hero-back {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.2);
+    color: #fff;
+    font-size: .8rem;
+    font-weight: 500;
+    padding: .45rem 1rem;
     border-radius: 8px;
-    padding: 20px;
-    margin-top: 15px;
+    text-decoration: none;
+    transition: background .2s;
 }
+.cfg-hero-back:hover { background: rgba(255,255,255,.22); color: #fff; }
 
-.template-tabs .nav-link {
-    border-radius: 10px 10px 0 0;
-    border: 1px solid transparent;
-    color: #495057;
+/* ── SECTION CARD ── */
+.cfg-card {
+    background: #fff;
+    border: 1px solid #e8edf5;
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(4,83,203,.07);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
 }
+.cfg-card-header {
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid #e8edf5;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    background: #f8faff;
+}
+.cfg-card-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0453cb, #5e91de);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: .85rem;
+    flex-shrink: 0;
+}
+.cfg-card-title {
+    font-size: .95rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+}
+.cfg-card-body { padding: 1.5rem; }
 
-.template-tabs .nav-link.active {
-    background: white;
-    border-color: #dee2e6 #dee2e6 white;
-    color: #007bff;
+/* ── TEMPLATE TABS ── */
+.cfg-tabs {
+    display: flex;
+    gap: .5rem;
+    border-bottom: 2px solid #e8edf5;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0;
+}
+.cfg-tab-btn {
+    background: none;
+    border: none;
+    padding: .55rem 1rem;
+    font-size: .82rem;
     font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all .2s;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+.cfg-tab-btn:hover { color: #0453cb; }
+.cfg-tab-btn.active { color: #0453cb; border-bottom-color: #0453cb; }
+
+/* ── TEMPLATE LEVEL BADGE ── */
+.lvl-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    padding: .25rem .7rem;
+    border-radius: 20px;
+}
+.lvl-1 { background: rgba(16,185,129,.12); color: #059669; }
+.lvl-2 { background: rgba(4,83,203,.1); color: #0453cb; }
+.lvl-3 { background: rgba(30,41,59,.1); color: #1e293b; }
+
+/* ── TEMPLATE EDITOR ── */
+.tpl-editor {
+    border: 1px solid #e8edf5;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+}
+.tpl-editor-head {
+    background: #f8faff;
+    padding: .75rem 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #e8edf5;
+}
+.tpl-editor-body { padding: 1.1rem; }
+.tpl-preview-btn {
+    background: #fff;
+    border: 1px solid #d1ddf8;
+    color: #0453cb;
+    font-size: .75rem;
+    font-weight: 600;
+    padding: .3rem .75rem;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all .2s;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+.tpl-preview-btn:hover { background: #0453cb; color: #fff; border-color: #0453cb; }
+
+/* ── FORM FIELDS ── */
+.cfg-label {
+    font-size: .78rem;
+    font-weight: 600;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    margin-bottom: .4rem;
+    display: block;
+}
+.cfg-input {
+    border: 1.5px solid #dde5f0;
+    border-radius: 9px;
+    padding: .55rem .85rem;
+    font-size: .88rem;
+    color: #1e293b;
+    width: 100%;
+    transition: border-color .2s, box-shadow .2s;
+    background: #fff;
+}
+.cfg-input:focus {
+    outline: none;
+    border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4,83,203,.1);
+}
+.cfg-input.is-invalid { border-color: #dc3545; }
+.cfg-hint {
+    font-size: .73rem;
+    color: #94a3b8;
+    margin-top: .3rem;
+}
+.invalid-feedback { font-size: .75rem; color: #dc3545; margin-top: .25rem; }
+
+/* ── PARAMS SAVE BTN ── */
+.cfg-save-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #0453cb, #5e91de);
+    border: none;
+    color: #fff;
+    font-weight: 700;
+    font-size: .9rem;
+    padding: .75rem 1.5rem;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: opacity .2s, transform .15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    letter-spacing: .01em;
+}
+.cfg-save-btn:hover { opacity: .92; transform: translateY(-1px); }
+
+/* ── VARIABLES SIDEBAR ── */
+.var-section { margin-bottom: 1.25rem; }
+.var-section-title {
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #94a3b8;
+    margin-bottom: .55rem;
+}
+.var-tag {
+    display: inline-block;
+    background: #eef3ff;
+    color: #0453cb;
+    border: 1px solid #c7d8f8;
+    padding: .2rem .6rem;
+    border-radius: 6px;
+    font-size: .72rem;
+    font-weight: 600;
+    margin: .2rem .15rem;
+    cursor: pointer;
+    font-family: 'SF Mono', 'Monaco', monospace;
+    transition: all .18s;
+    letter-spacing: -.01em;
+}
+.var-tag:hover { background: #0453cb; color: #fff; border-color: #0453cb; }
+
+/* ── TOGGLE ── */
+.cfg-toggle-wrap {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .85rem 1rem;
+    background: #f8faff;
+    border: 1px solid #e8edf5;
+    border-radius: 10px;
+}
+.cfg-toggle-wrap input[type=checkbox] {
+    width: 40px;
+    height: 22px;
+    accent-color: #0453cb;
+    cursor: pointer;
+}
+.cfg-toggle-label {
+    font-size: .85rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+}
+.cfg-toggle-hint {
+    font-size: .73rem;
+    color: #94a3b8;
+    margin-top: .1rem;
+}
+
+/* ── DELAY METER ── */
+.delay-row {
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+    padding: .9rem 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+.delay-row:last-child { border-bottom: none; padding-bottom: 0; }
+.delay-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .72rem;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+.delay-num-1 { background: rgba(16,185,129,.12); color: #059669; }
+.delay-num-2 { background: rgba(4,83,203,.1); color: #0453cb; }
+.delay-num-3 { background: rgba(30,41,59,.1); color: #1e293b; }
+.delay-label {
+    flex: 1;
+    font-size: .82rem;
+    font-weight: 600;
+    color: #475569;
+}
+.delay-input-wrap { position: relative; width: 110px; }
+.delay-input-wrap input {
+    border: 1.5px solid #dde5f0;
+    border-radius: 8px;
+    padding: .45rem .6rem .45rem .7rem;
+    font-size: .85rem;
+    font-weight: 600;
+    color: #1e293b;
+    width: 100%;
+    text-align: center;
+    transition: border-color .2s, box-shadow .2s;
+}
+.delay-input-wrap input:focus {
+    outline: none;
+    border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4,83,203,.1);
+}
+.delay-unit {
+    font-size: .72rem;
+    color: #94a3b8;
+    text-align: center;
+    margin-top: .2rem;
+    font-weight: 500;
+}
+
+/* ── ALERTS ── */
+.cfg-alert-warning {
+    background: linear-gradient(90deg, #fffbeb, #fef9e7);
+    border: 1.5px solid #fbbf24;
+    border-radius: 10px;
+    padding: .85rem 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: .6rem;
+    color: #92400e;
+    font-size: .83rem;
+}
+.cfg-alert-success {
+    background: linear-gradient(90deg, #f0fdf4, #dcfce7);
+    border: 1.5px solid #10b981;
+    border-radius: 10px;
+    padding: .85rem 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: .6rem;
+    color: #065f46;
+    font-size: .83rem;
+}
+
+/* ── MODAL ── */
+.cfg-modal-header {
+    background: linear-gradient(135deg, #0f1e3d, #0453cb);
+    padding: 1.1rem 1.5rem;
+    border: none;
+}
+.cfg-modal-title { color: #fff; font-weight: 700; font-size: 1rem; }
+.cfg-modal-header .btn-close { filter: invert(1) brightness(2); }
+
+/* ── STICKY SIDEBAR ── */
+@media (min-width: 992px) {
+    .cfg-sticky { position: sticky; top: 80px; }
 }
 </style>
 @endpush
 
 @section('content')
-<div class="container-fluid">
-    <!-- En-tête -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
+
+{{-- ── HERO ── --}}
+<div class="cfg-hero">
+    <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+        <div>
+            <div class="cfg-hero-breadcrumb">
+                <a href="{{ route('esbtp.comptabilite.relances.index') }}">Relances</a>
+                <i class="fas fa-chevron-right" style="font-size:.55rem;"></i>
+                Configuration
+            </div>
+            <h1 class="cfg-hero-title">
+                <i class="fas fa-sliders-h me-2" style="font-size:1.2rem;opacity:.8;"></i>
+                Configuration des Relances
+            </h1>
+            <p class="cfg-hero-sub">Paramètres de délais et templates de messages</p>
+        </div>
+        <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="cfg-hero-back">
+            <i class="fas fa-arrow-left"></i> Retour aux relances
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    {{-- ── COL GAUCHE : Templates ── --}}
+    <div class="col-lg-8">
+
+        {{-- Templates de relance --}}
+        <div class="cfg-card">
+            <div class="cfg-card-header">
+                <div class="cfg-card-icon"><i class="fas fa-file-alt"></i></div>
                 <div>
-                    <h1 class="h3 mb-0">
-                        <i class="fas fa-cog text-primary me-2"></i>
-                        Configuration des Relances
-                    </h1>
-                    <p class="text-muted mb-0">Gestion des templates et paramètres de relance</p>
+                    <h5 class="cfg-card-title">Templates de Relance</h5>
+                    <div style="font-size:.75rem;color:#64748b;margin-top:.1rem;">Personnalisez les messages selon le canal et le niveau d'urgence</div>
                 </div>
-                <div>
-                    <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left me-1"></i>
-                        Retour aux relances
-                    </a>
+            </div>
+            <div class="cfg-card-body">
+
+                {{-- Tabs --}}
+                <div class="cfg-tabs" id="templateTabs" role="tablist">
+                    <button class="cfg-tab-btn active" id="tab-email" data-tab="email" type="button">
+                        <i class="fas fa-envelope"></i> Email
+                    </button>
+                    <button class="cfg-tab-btn" id="tab-sms" data-tab="sms" type="button">
+                        <i class="fas fa-sms"></i> SMS
+                    </button>
+                    <button class="cfg-tab-btn" id="tab-courrier" data-tab="courrier" type="button">
+                        <i class="fas fa-file-pdf"></i> Courrier
+                    </button>
                 </div>
+
+                {{-- Email --}}
+                <div id="pane-email">
+                    <form id="formTemplatesEmail">
+                        @foreach([1 => ['1er rappel', 'lvl-1'], 2 => ['2ème rappel', 'lvl-2'], 3 => 'Dernière relance'] as $niveau => $info)
+                            @php
+                                $lbl   = is_array($info) ? $info[0] : $info;
+                                $cls   = is_array($info) ? $info[1] : 'lvl-3';
+                            @endphp
+                            <div class="tpl-editor">
+                                <div class="tpl-editor-head">
+                                    <span class="lvl-badge {{ $cls }}">
+                                        <i class="fas fa-circle" style="font-size:.45rem;"></i>
+                                        Niveau {{ $niveau }} — {{ $lbl }}
+                                    </span>
+                                    <button type="button" class="tpl-preview-btn" onclick="previewTemplate('email', {{ $niveau }})">
+                                        <i class="fas fa-eye"></i> Aperçu
+                                    </button>
+                                </div>
+                                <div class="tpl-editor-body">
+                                    <div class="mb-3">
+                                        <label class="cfg-label" for="email_sujet_{{ $niveau }}">Sujet de l'email</label>
+                                        <input type="text" class="cfg-input" id="email_sujet_{{ $niveau }}"
+                                               name="email_sujet[{{ $niveau }}]"
+                                               value="{{ $templates['email'][$niveau]['sujet'] ?? '' }}"
+                                               placeholder="Ex: Rappel de paiement - ESBTP">
+                                    </div>
+                                    <div>
+                                        <label class="cfg-label" for="email_contenu_{{ $niveau }}">Contenu</label>
+                                        <textarea class="cfg-input" id="email_contenu_{{ $niveau }}"
+                                                  name="email_contenu[{{ $niveau }}]" rows="7"
+                                                  style="resize:vertical;"
+                                                  placeholder="Contenu du template avec variables...">{!! $templates['email'][$niveau]['contenu'] ?? '' !!}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="cfg-save-btn" style="width:auto;padding:.6rem 1.5rem;">
+                                <i class="fas fa-save"></i> Sauvegarder templates Email
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                {{-- SMS --}}
+                <div id="pane-sms" style="display:none;">
+                    <form id="formTemplatesSms">
+                        @foreach([1 => ['1er rappel', 'lvl-1'], 2 => ['2ème rappel', 'lvl-2'], 3 => ['Dernière relance', 'lvl-3']] as $niveau => $info)
+                            <div class="tpl-editor">
+                                <div class="tpl-editor-head">
+                                    <span class="lvl-badge {{ $info[1] }}">
+                                        <i class="fas fa-circle" style="font-size:.45rem;"></i>
+                                        Niveau {{ $niveau }} — {{ $info[0] }}
+                                    </span>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span id="sms_count_{{ $niveau }}" style="font-size:.72rem;color:#94a3b8;">0/160</span>
+                                        <button type="button" class="tpl-preview-btn" onclick="previewTemplate('sms', {{ $niveau }})">
+                                            <i class="fas fa-eye"></i> Aperçu
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="tpl-editor-body">
+                                    <label class="cfg-label" for="sms_contenu_{{ $niveau }}">Message SMS</label>
+                                    <textarea class="cfg-input sms-template" id="sms_contenu_{{ $niveau }}"
+                                              name="sms_contenu[{{ $niveau }}]" rows="4" maxlength="160"
+                                              data-counter="sms_count_{{ $niveau }}"
+                                              style="resize:vertical;"
+                                              placeholder="Message court...">{!! $templates['sms'][$niveau]['contenu'] ?? '' !!}</textarea>
+                                    <div class="cfg-hint">Maximum 160 caractères</div>
+                                </div>
+                            </div>
+                        @endforeach
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="cfg-save-btn" style="width:auto;padding:.6rem 1.5rem;">
+                                <i class="fas fa-save"></i> Sauvegarder templates SMS
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                {{-- Courrier --}}
+                <div id="pane-courrier" style="display:none;">
+                    <form id="formTemplatesCourrier">
+                        @foreach([1 => ['1er rappel', 'lvl-1'], 2 => ['2ème rappel', 'lvl-2'], 3 => ['Dernière relance', 'lvl-3']] as $niveau => $info)
+                            <div class="tpl-editor">
+                                <div class="tpl-editor-head">
+                                    <span class="lvl-badge {{ $info[1] }}">
+                                        <i class="fas fa-circle" style="font-size:.45rem;"></i>
+                                        Niveau {{ $niveau }} — {{ $info[0] }}
+                                    </span>
+                                    <button type="button" class="tpl-preview-btn" onclick="previewTemplate('courrier', {{ $niveau }})">
+                                        <i class="fas fa-eye"></i> Aperçu PDF
+                                    </button>
+                                </div>
+                                <div class="tpl-editor-body">
+                                    <label class="cfg-label" for="courrier_contenu_{{ $niveau }}">Contenu du courrier</label>
+                                    <textarea class="cfg-input" id="courrier_contenu_{{ $niveau }}"
+                                              name="courrier_contenu[{{ $niveau }}]" rows="10"
+                                              style="resize:vertical;"
+                                              placeholder="Contenu avec mise en forme HTML...">{!! $templates['courrier'][$niveau]['contenu'] ?? '' !!}</textarea>
+                                </div>
+                            </div>
+                        @endforeach
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="cfg-save-btn" style="width:auto;padding:.6rem 1.5rem;">
+                                <i class="fas fa-save"></i> Sauvegarder templates Courrier
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
             </div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-lg-8">
-            <!-- Templates de relance -->
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-file-alt me-2"></i>
-                        Templates de Relance
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <!-- Tabs pour les types de templates -->
-                    <ul class="nav nav-tabs template-tabs mb-3" id="templateTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="email-tab" data-bs-toggle="tab" data-bs-target="#email" type="button" role="tab">
-                                <i class="fas fa-envelope me-1"></i>
-                                Templates Email
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="sms-tab" data-bs-toggle="tab" data-bs-target="#sms" type="button" role="tab">
-                                <i class="fas fa-sms me-1"></i>
-                                Templates SMS
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="courrier-tab" data-bs-toggle="tab" data-bs-target="#courrier" type="button" role="tab">
-                                <i class="fas fa-file-pdf me-1"></i>
-                                Templates Courrier
-                            </button>
-                        </li>
-                    </ul>
+    {{-- ── COL DROITE : Variables + Paramètres ── --}}
+    <div class="col-lg-4">
+        <div class="cfg-sticky">
 
-                    <div class="tab-content" id="templateTabsContent">
-                        <!-- Templates Email -->
-                        <div class="tab-pane fade show active" id="email" role="tabpanel">
-                            <form id="formTemplatesEmail">
-                                @foreach([1 => '1er rappel', 2 => '2ème rappel', 3 => 'Dernière relance'] as $niveau => $label)
-                                    <div class="template-editor mb-4">
-                                        <div class="d-flex justify-content-between align-items-center bg-light p-3 border-bottom">
-                                            <h6 class="mb-0">
-                                                <span class="badge bg-{{ $niveau == 1 ? 'success' : ($niveau == 2 ? 'warning' : 'danger') }} me-2">
-                                                    Niveau {{ $niveau }}
-                                                </span>
-                                                {{ $label }}
-                                            </h6>
-                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="previewTemplate('email', {{ $niveau }})">
-                                                <i class="fas fa-eye me-1"></i>
-                                                Aperçu
-                                            </button>
-                                        </div>
-
-                                        <div class="p-3">
-                                            <div class="row mb-3">
-                                                <div class="col-md-12">
-                                                    <label for="email_sujet_{{ $niveau }}" class="form-label">Sujet de l'email</label>
-                                                    <input type="text" class="form-control" id="email_sujet_{{ $niveau }}"
-                                                           name="email_sujet[{{ $niveau }}]"
-                                                           value="{{ $templates['email'][$niveau]['sujet'] ?? '' }}"
-                                                           placeholder="Ex: Rappel de paiement - ESBTP">
-                                                </div>
-                                            </div>
-
-                                            <div class="row">
-                                                <div class="col-md-12">
-                                                    <label for="email_contenu_{{ $niveau }}" class="form-label">Contenu de l'email</label>
-                                                    <textarea class="form-control" id="email_contenu_{{ $niveau }}"
-                                                              name="email_contenu[{{ $niveau }}]" rows="8"
-                                                              placeholder="Contenu du template avec variables...">{!! $templates['email'][$niveau]['contenu'] ?? '' !!}</textarea>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endforeach
-
-                                <div class="text-end">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save me-1"></i>
-                                        Sauvegarder les Templates Email
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-
-                        <!-- Templates SMS -->
-                        <div class="tab-pane fade" id="sms" role="tabpanel">
-                            <form id="formTemplatesSMS">
-                                @foreach([1 => '1er rappel', 2 => '2ème rappel', 3 => 'Dernière relance'] as $niveau => $label)
-                                    <div class="template-editor mb-4">
-                                        <div class="d-flex justify-content-between align-items-center bg-light p-3 border-bottom">
-                                            <h6 class="mb-0">
-                                                <span class="badge bg-{{ $niveau == 1 ? 'success' : ($niveau == 2 ? 'warning' : 'danger') }} me-2">
-                                                    Niveau {{ $niveau }}
-                                                </span>
-                                                {{ $label }}
-                                            </h6>
-                                            <div>
-                                                <small class="text-muted me-3" id="sms_count_{{ $niveau }}">0/160 caractères</small>
-                                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="previewTemplate('sms', {{ $niveau }})">
-                                                    <i class="fas fa-eye me-1"></i>
-                                                    Aperçu
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div class="p-3">
-                                            <label for="sms_contenu_{{ $niveau }}" class="form-label">Message SMS</label>
-                                            <textarea class="form-control sms-template" id="sms_contenu_{{ $niveau }}"
-                                                      name="sms_contenu[{{ $niveau }}]" rows="4" maxlength="160"
-                                                      data-counter="sms_count_{{ $niveau }}"
-                                                      placeholder="Message SMS court avec variables...">{!! $templates['sms'][$niveau]['contenu'] ?? '' !!}</textarea>
-                                            <small class="text-muted">Maximum 160 caractères. Utilisez les variables pour personnaliser.</small>
-                                        </div>
-                                    </div>
-                                @endforeach
-
-                                <div class="text-end">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save me-1"></i>
-                                        Sauvegarder les Templates SMS
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-
-                        <!-- Templates Courrier -->
-                        <div class="tab-pane fade" id="courrier" role="tabpanel">
-                            <form id="formTemplatesCourrier">
-                                @foreach([1 => '1er rappel', 2 => '2ème rappel', 3 => 'Dernière relance'] as $niveau => $label)
-                                    <div class="template-editor mb-4">
-                                        <div class="d-flex justify-content-between align-items-center bg-light p-3 border-bottom">
-                                            <h6 class="mb-0">
-                                                <span class="badge bg-{{ $niveau == 1 ? 'success' : ($niveau == 2 ? 'warning' : 'danger') }} me-2">
-                                                    Niveau {{ $niveau }}
-                                                </span>
-                                                {{ $label }}
-                                            </h6>
-                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="previewTemplate('courrier', {{ $niveau }})">
-                                                <i class="fas fa-eye me-1"></i>
-                                                Aperçu PDF
-                                            </button>
-                                        </div>
-
-                                        <div class="p-3">
-                                            <label for="courrier_contenu_{{ $niveau }}" class="form-label">Contenu du courrier</label>
-                                            <textarea class="form-control" id="courrier_contenu_{{ $niveau }}"
-                                                      name="courrier_contenu[{{ $niveau }}]" rows="12"
-                                                      placeholder="Contenu du courrier avec mise en forme HTML...">{!! $templates['courrier'][$niveau]['contenu'] ?? '' !!}</textarea>
-                                        </div>
-                                    </div>
-                                @endforeach
-
-                                <div class="text-end">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save me-1"></i>
-                                        Sauvegarder les Templates Courrier
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+            {{-- Variables disponibles --}}
+            <div class="cfg-card">
+                <div class="cfg-card-header">
+                    <div class="cfg-card-icon"><i class="fas fa-tags"></i></div>
+                    <div>
+                        <h5 class="cfg-card-title">Variables</h5>
+                        <div style="font-size:.73rem;color:#64748b;margin-top:.1rem;">Clic pour insérer dans le template actif</div>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4">
-            <!-- Variables disponibles -->
-            <div class="card sticky-top">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-tags me-2"></i>
-                        Variables Disponibles
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted mb-3">Cliquez sur une variable pour l'insérer dans le template actif.</p>
-
-                    <div class="mb-3">
-                        <h6 class="fw-bold">Informations Étudiant</h6>
-                        <div class="d-flex flex-wrap">
-                            <span class="variable-tag" onclick="insertVariable('{nom}')">{nom}</span>
-                            <span class="variable-tag" onclick="insertVariable('{prenom}')">{prenom}</span>
-                            <span class="variable-tag" onclick="insertVariable('{nom_complet}')">{nom_complet}</span>
-                            <span class="variable-tag" onclick="insertVariable('{email}')">{email}</span>
-                            <span class="variable-tag" onclick="insertVariable('{telephone}')">{telephone}</span>
-                            <span class="variable-tag" onclick="insertVariable('{numero_etudiant}')">{numero_etudiant}</span>
-                        </div>
+                <div class="cfg-card-body" style="padding:1.1rem 1.2rem;">
+                    <div class="var-section">
+                        <div class="var-section-title">Étudiant</div>
+                        <span class="var-tag" onclick="insertVariable('{nom}')">{nom}</span>
+                        <span class="var-tag" onclick="insertVariable('{prenom}')">{prenom}</span>
+                        <span class="var-tag" onclick="insertVariable('{nom_complet}')">{nom_complet}</span>
+                        <span class="var-tag" onclick="insertVariable('{email}')">{email}</span>
+                        <span class="var-tag" onclick="insertVariable('{telephone}')">{telephone}</span>
+                        <span class="var-tag" onclick="insertVariable('{numero_etudiant}')">{numero_etudiant}</span>
                     </div>
-
-                    <div class="mb-3">
-                        <h6 class="fw-bold">Informations Financières</h6>
-                        <div class="d-flex flex-wrap">
-                            <span class="variable-tag" onclick="insertVariable('{montant_dette}')">{montant_dette}</span>
-                            <span class="variable-tag" onclick="insertVariable('{montant_dette_formatte}')">{montant_dette_formatte}</span>
-                            <span class="variable-tag" onclick="insertVariable('{date_echeance}')">{date_echeance}</span>
-                            <span class="variable-tag" onclick="insertVariable('{jours_retard}')">{jours_retard}</span>
-                        </div>
+                    <div class="var-section">
+                        <div class="var-section-title">Financier</div>
+                        <span class="var-tag" onclick="insertVariable('{montant_dette}')">{montant_dette}</span>
+                        <span class="var-tag" onclick="insertVariable('{montant_dette_formatte}')">{montant_dette_formatte}</span>
+                        <span class="var-tag" onclick="insertVariable('{date_echeance}')">{date_echeance}</span>
+                        <span class="var-tag" onclick="insertVariable('{jours_retard}')">{jours_retard}</span>
                     </div>
-
-                    <div class="mb-3">
-                        <h6 class="fw-bold">Informations Relance</h6>
-                        <div class="d-flex flex-wrap">
-                            <span class="variable-tag" onclick="insertVariable('{niveau_relance}')">{niveau_relance}</span>
-                            <span class="variable-tag" onclick="insertVariable('{type_relance}')">{type_relance}</span>
-                            <span class="variable-tag" onclick="insertVariable('{date_relance}')">{date_relance}</span>
-                        </div>
+                    <div class="var-section">
+                        <div class="var-section-title">Relance</div>
+                        <span class="var-tag" onclick="insertVariable('{niveau_relance}')">{niveau_relance}</span>
+                        <span class="var-tag" onclick="insertVariable('{type_relance}')">{type_relance}</span>
+                        <span class="var-tag" onclick="insertVariable('{date_relance}')">{date_relance}</span>
                     </div>
-
-                    <div class="mb-3">
-                        <h6 class="fw-bold">Informations Établissement</h6>
-                        <div class="d-flex flex-wrap">
-                            <span class="variable-tag" onclick="insertVariable('{nom_ecole}')">{nom_ecole}</span>
-                            <span class="variable-tag" onclick="insertVariable('{adresse_ecole}')">{adresse_ecole}</span>
-                            <span class="variable-tag" onclick="insertVariable('{telephone_ecole}')">{telephone_ecole}</span>
-                            <span class="variable-tag" onclick="insertVariable('{email_ecole}')">{email_ecole}</span>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <h6 class="fw-bold">Dates et Formatage</h6>
-                        <div class="d-flex flex-wrap">
-                            <span class="variable-tag" onclick="insertVariable('{date_aujourdhui}')">{date_aujourdhui}</span>
-                            <span class="variable-tag" onclick="insertVariable('{heure_actuelle}')">{heure_actuelle}</span>
-                            <span class="variable-tag" onclick="insertVariable('{annee_academique}')">{annee_academique}</span>
-                        </div>
+                    <div class="var-section">
+                        <div class="var-section-title">Établissement</div>
+                        <span class="var-tag" onclick="insertVariable('{nom_ecole}')">{nom_ecole}</span>
+                        <span class="var-tag" onclick="insertVariable('{adresse_ecole}')">{adresse_ecole}</span>
+                        <span class="var-tag" onclick="insertVariable('{telephone_ecole}')">{telephone_ecole}</span>
+                        <span class="var-tag" onclick="insertVariable('{email_ecole}')">{email_ecole}</span>
+                        <span class="var-tag" onclick="insertVariable('{date_aujourdhui}')">{date_aujourdhui}</span>
+                        <span class="var-tag" onclick="insertVariable('{annee_academique}')">{annee_academique}</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Paramètres de relance -->
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-sliders-h me-2"></i>
-                        Paramètres de Relance
-                    </h5>
+            {{-- Paramètres de relance --}}
+            <div class="cfg-card">
+                <div class="cfg-card-header">
+                    <div class="cfg-card-icon"><i class="fas fa-sliders-h"></i></div>
+                    <div>
+                        <h5 class="cfg-card-title">Paramètres</h5>
+                        <div style="font-size:.73rem;color:#64748b;margin-top:.1rem;">Délais et règles de déclenchement</div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <form id="formParametres">
-                        <div class="mb-3">
-                            <label for="delai_niveau_1" class="form-label">Délai niveau 1 (jours)</label>
-                            <input type="number" class="form-control" id="delai_niveau_1" name="delai_niveau_1"
-                                   value="{{ $parametres['delai_niveau_1'] ?? 30 }}" min="1" max="365">
-                            <small class="text-muted">Jours de retard avant 1er rappel</small>
-                        </div>
+                <div class="cfg-card-body">
 
-                        <div class="mb-3">
-                            <label for="delai_niveau_2" class="form-label">Délai niveau 2 (jours)</label>
-                            <input type="number" class="form-control" id="delai_niveau_2" name="delai_niveau_2"
-                                   value="{{ $parametres['delai_niveau_2'] ?? 45 }}" min="1" max="365">
-                            <small class="text-muted">Jours de retard avant 2ème rappel</small>
-                        </div>
+                    @php
+                        $nonConfigured = is_null($parametres['delai_niveau_1'])
+                                      && is_null($parametres['delai_niveau_2'])
+                                      && is_null($parametres['delai_niveau_3']);
+                    @endphp
 
-                        <div class="mb-3">
-                            <label for="delai_niveau_3" class="form-label">Délai niveau 3 (jours)</label>
-                            <input type="number" class="form-control" id="delai_niveau_3" name="delai_niveau_3"
-                                   value="{{ $parametres['delai_niveau_3'] ?? 60 }}" min="1" max="365">
-                            <small class="text-muted">Jours de retard avant dernière relance</small>
-                        </div>
+                    @if($nonConfigured)
+                    <div class="cfg-alert-warning">
+                        <i class="fas fa-exclamation-triangle" style="margin-top:.1rem;flex-shrink:0;"></i>
+                        <div>Aucune configuration enregistrée. Renseignez les délais ci-dessous pour activer le système de relances.</div>
+                    </div>
+                    @endif
 
-                        <div class="mb-3">
-                            <label for="montant_minimum" class="form-label">Montant minimum (FCFA)</label>
-                            <input type="number" class="form-control" id="montant_minimum" name="montant_minimum"
-                                   value="{{ $parametres['montant_minimum'] ?? 10000 }}" min="0" step="1000">
-                            <small class="text-muted">Montant minimum pour déclencher une relance</small>
-                        </div>
+                    @if(session('success'))
+                    <div class="cfg-alert-success">
+                        <i class="fas fa-check-circle" style="margin-top:.1rem;flex-shrink:0;"></i>
+                        <div>{{ session('success') }}</div>
+                    </div>
+                    @endif
 
+                    <form method="POST" action="{{ route('esbtp.comptabilite.relances.config.parametres') }}">
+                        @csrf
+
+                        {{-- Délais --}}
                         <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="relances_automatiques"
-                                       name="relances_automatiques" {{ ($parametres['relances_automatiques'] ?? false) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="relances_automatiques">
-                                    Activer les relances automatiques
-                                </label>
+                            <label class="cfg-label">Délais de relance (jours de retard)</label>
+                            <div style="border:1px solid #e8edf5;border-radius:10px;padding:.25rem .85rem;">
+                                @foreach([1 => ['1er rappel', 'delay-num-1', 'delai_niveau_1'], 2 => ['2ème rappel', 'delay-num-2', 'delai_niveau_2'], 3 => ['Dernière relance', 'delay-num-3', 'delai_niveau_3']] as $n => $d)
+                                <div class="delay-row">
+                                    <div class="delay-num {{ $d[1] }}">{{ $n }}</div>
+                                    <div class="delay-label">{{ $d[0] }}</div>
+                                    <div class="delay-input-wrap">
+                                        <input type="number"
+                                               name="{{ $d[2] }}"
+                                               value="{{ old($d[2], $parametres[$d[2]]) }}"
+                                               min="1" max="365"
+                                               placeholder="—"
+                                               class="@error($d[2]) is-invalid @enderror">
+                                        <div class="delay-unit">jours</div>
+                                        @error($d[2])<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    </div>
+                                </div>
+                                @endforeach
                             </div>
-                            <small class="text-muted">Planification automatique des relances selon les délais</small>
+                            <div class="cfg-hint">Nombre de jours de retard avant chaque niveau de relance</div>
                         </div>
 
+                        {{-- Montant minimum --}}
                         <div class="mb-3">
-                            <label for="heure_envoi" class="form-label">Heure d'envoi automatique</label>
-                            <input type="time" class="form-control" id="heure_envoi" name="heure_envoi"
-                                   value="{{ $parametres['heure_envoi'] ?? '09:00' }}">
-                            <small class="text-muted">Heure quotidienne pour l'envoi automatique</small>
+                            <label class="cfg-label" for="montant_minimum">Montant minimum (FCFA)</label>
+                            <input type="number"
+                                   class="cfg-input @error('montant_minimum') is-invalid @enderror"
+                                   id="montant_minimum" name="montant_minimum"
+                                   value="{{ old('montant_minimum', $parametres['montant_minimum']) }}"
+                                   min="0" step="1000"
+                                   placeholder="Ex : 10 000">
+                            <div class="cfg-hint">Seuil minimum pour déclencher une relance</div>
+                            @error('montant_minimum')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
-                        <button type="submit" class="btn btn-success w-100">
-                            <i class="fas fa-save me-1"></i>
-                            Sauvegarder Paramètres
+                        {{-- Toggle relances auto --}}
+                        <div class="mb-3">
+                            <div class="cfg-toggle-wrap">
+                                <input class="form-check-input" type="checkbox" id="relances_automatiques"
+                                       name="relances_automatiques"
+                                       {{ $parametres['relances_automatiques'] ? 'checked' : '' }}>
+                                <div>
+                                    <div class="cfg-toggle-label">Relances automatiques</div>
+                                    <div class="cfg-toggle-hint">Planification auto selon les délais configurés</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Heure d'envoi --}}
+                        <div class="mb-4">
+                            <label class="cfg-label" for="heure_envoi">Heure d'envoi automatique</label>
+                            <input type="time"
+                                   class="cfg-input @error('heure_envoi') is-invalid @enderror"
+                                   id="heure_envoi" name="heure_envoi"
+                                   value="{{ old('heure_envoi', $parametres['heure_envoi'] ?? '') }}">
+                            <div class="cfg-hint">Heure quotidienne pour l'envoi automatique</div>
+                            @error('heure_envoi')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+
+                        <button type="submit" class="cfg-save-btn">
+                            <i class="fas fa-save"></i> Enregistrer les paramètres
                         </button>
                     </form>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
 
-<!-- Modal Aperçu Template -->
+{{-- ── MODAL APERÇU ── --}}
 <div class="modal fade" id="modalApercu" tabindex="-1">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-eye me-2"></i>
-                    Aperçu du Template
+        <div class="modal-content" style="border:none;border-radius:16px;overflow:hidden;">
+            <div class="modal-header cfg-modal-header">
+                <h5 class="modal-title cfg-modal-title">
+                    <i class="fas fa-eye me-2"></i> Aperçu du Template
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close cfg-modal-header" data-bs-dismiss="modal" style="filter:invert(1) brightness(2);"></button>
             </div>
-            <div class="modal-body">
-                <div id="apercu-content">
-                    <!-- Contenu de l'aperçu chargé dynamiquement -->
-                </div>
+            <div class="modal-body" style="padding:1.5rem;">
+                <div id="apercu-content"></div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-                <button type="button" class="btn btn-primary" onclick="envoyerTestTemplate()">
-                    <i class="fas fa-paper-plane me-1"></i>
-                    Envoyer un test
+            <div class="modal-footer" style="border-top:1px solid #e8edf5;padding:.85rem 1.5rem;">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:8px;font-size:.85rem;">Fermer</button>
+                <button type="button" onclick="envoyerTestTemplate()" style="background:linear-gradient(135deg,#0453cb,#5e91de);color:#fff;border:none;border-radius:8px;font-size:.85rem;font-weight:600;padding:.5rem 1.2rem;cursor:pointer;">
+                    <i class="fas fa-paper-plane me-1"></i> Envoyer un test
                 </button>
             </div>
         </div>
     </div>
 </div>
+
 @endsection
 
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Compteur de caractères pour SMS
-    document.querySelectorAll('.sms-template').forEach(textarea => {
-        const counterId = textarea.getAttribute('data-counter');
-        const counter = document.getElementById(counterId);
 
-        function updateCounter() {
-            const length = textarea.value.length;
-            counter.textContent = `${length}/160 caractères`;
-            counter.className = length > 160 ? 'text-danger me-3' : 'text-muted me-3';
-        }
-
-        textarea.addEventListener('input', updateCounter);
-        updateCounter(); // Initial count
-    });
-
-    // Soumission des formulaires
-    ['Email', 'SMS', 'Courrier'].forEach(type => {
-        document.getElementById(`formTemplates${type}`).addEventListener('submit', function(e) {
-            e.preventDefault();
-            sauvegarderTemplates(type.toLowerCase());
+    // ── Tab switching ──
+    document.querySelectorAll('.cfg-tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.cfg-tab-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            const tab = this.getAttribute('data-tab');
+            ['email','sms','courrier'].forEach(t => {
+                document.getElementById('pane-' + t).style.display = (t === tab) ? '' : 'none';
+            });
         });
     });
 
-    document.getElementById('formParametres').addEventListener('submit', function(e) {
-        e.preventDefault();
-        sauvegarderParametres();
+    // ── SMS character counter ──
+    document.querySelectorAll('.sms-template').forEach(textarea => {
+        const counterId = textarea.getAttribute('data-counter');
+        const counter   = document.getElementById(counterId);
+        function updateCounter() {
+            const len = textarea.value.length;
+            counter.textContent = `${len}/160`;
+            counter.style.color = len > 140 ? (len > 160 ? '#dc3545' : '#f59e0b') : '#94a3b8';
+        }
+        textarea.addEventListener('input', updateCounter);
+        updateCounter();
+    });
+
+    // ── Template form submissions ──
+    ['Email', 'Sms', 'Courrier'].forEach(type => {
+        const form = document.getElementById('formTemplates' + type);
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                sauvegarderTemplates(type.toLowerCase());
+            });
+        }
+    });
+
+    // ── Active textarea tracking ──
+    document.addEventListener('focusin', function(e) {
+        if (e.target.tagName === 'TEXTAREA') {
+            currentFocusedTextarea = e.target;
+        }
     });
 });
 
 let currentFocusedTextarea = null;
 
-// Détection du textarea actif pour l'insertion de variables
-document.addEventListener('focusin', function(e) {
-    if (e.target.tagName === 'TEXTAREA') {
-        currentFocusedTextarea = e.target;
-    }
-});
-
 function insertVariable(variable) {
     if (!currentFocusedTextarea) {
-        showAlert('warning', 'Veuillez cliquer dans un champ de texte avant d\'insérer une variable.');
+        showToast('warning', 'Cliquez dans un champ texte avant d\'insérer une variable.');
         return;
     }
-
     const start = currentFocusedTextarea.selectionStart;
-    const end = currentFocusedTextarea.selectionEnd;
-    const text = currentFocusedTextarea.value;
-
+    const end   = currentFocusedTextarea.selectionEnd;
+    const text  = currentFocusedTextarea.value;
     currentFocusedTextarea.value = text.substring(0, start) + variable + text.substring(end);
     currentFocusedTextarea.focus();
-
-    // Repositionner le curseur après la variable insérée
     const newPos = start + variable.length;
     currentFocusedTextarea.setSelectionRange(newPos, newPos);
-
-    // Déclencher l'événement input pour mettre à jour les compteurs
     currentFocusedTextarea.dispatchEvent(new Event('input'));
 }
 
 function sauvegarderTemplates(type) {
-    const form = document.getElementById(`formTemplates${type.charAt(0).toUpperCase() + type.slice(1)}`);
-    const formData = new FormData(form);
-    const submitBtn = form.querySelector('button[type="submit"]');
-
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Sauvegarde...';
-    submitBtn.disabled = true;
+    const key  = 'formTemplates' + type.charAt(0).toUpperCase() + type.slice(1);
+    const form = document.getElementById(key);
+    const btn  = form.querySelector('button[type="submit"]');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Sauvegarde...';
+    btn.disabled  = true;
 
     fetch(`{{ route('esbtp.comptabilite.relances.config.templates') }}`, {
         method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        }
+        body: new FormData(form),
+        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
     })
-    .then(response => response.json())
-    .then(data => {
-        showAlert(data.success ? 'success' : 'error', data.message);
-    })
-    .catch(error => {
-        showAlert('error', 'Erreur lors de la sauvegarde');
-    })
-    .finally(() => {
-        submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Sauvegarder les Templates ' + type.charAt(0).toUpperCase() + type.slice(1);
-        submitBtn.disabled = false;
-    });
-}
-
-function sauvegarderParametres() {
-    const form = document.getElementById('formParametres');
-    const formData = new FormData(form);
-    const submitBtn = form.querySelector('button[type="submit"]');
-
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Sauvegarde...';
-    submitBtn.disabled = true;
-
-    fetch(`{{ route('esbtp.comptabilite.relances.config.parametres') }}`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        showAlert(data.success ? 'success' : 'error', data.message);
-    })
-    .catch(error => {
-        showAlert('error', 'Erreur lors de la sauvegarde');
-    })
-    .finally(() => {
-        submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Sauvegarder Paramètres';
-        submitBtn.disabled = false;
-    });
+    .then(r => r.json())
+    .then(data => showToast(data.success ? 'success' : 'error', data.message))
+    .catch(() => showToast('error', 'Erreur lors de la sauvegarde'))
+    .finally(() => { btn.innerHTML = orig; btn.disabled = false; });
 }
 
 function previewTemplate(type, niveau) {
     const container = document.getElementById('apercu-content');
     const modal = new bootstrap.Modal(document.getElementById('modalApercu'));
-
-    container.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Génération de l\'aperçu...</div>';
+    container.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-primary" style="font-size:1.5rem;"></i></div>';
     modal.show();
 
-    // Récupérer le contenu du template actuel
-    let contenu = '';
+    let contenu = '', sujet = null;
     if (type === 'email') {
-        const sujet = document.getElementById(`email_sujet_${niveau}`).value;
-        contenu = document.getElementById(`email_contenu_${niveau}`).value;
+        sujet   = document.getElementById(`email_sujet_${niveau}`)?.value;
+        contenu = document.getElementById(`email_contenu_${niveau}`)?.value;
     } else if (type === 'sms') {
-        contenu = document.getElementById(`sms_contenu_${niveau}`).value;
+        contenu = document.getElementById(`sms_contenu_${niveau}`)?.value;
     } else if (type === 'courrier') {
-        contenu = document.getElementById(`courrier_contenu_${niveau}`).value;
+        contenu = document.getElementById(`courrier_contenu_${niveau}`)?.value;
     }
 
     fetch(`{{ route('esbtp.comptabilite.relances.config.preview') }}`, {
         method: 'POST',
-        body: JSON.stringify({
-            type: type,
-            niveau: niveau,
-            contenu: contenu,
-            sujet: type === 'email' ? document.getElementById(`email_sujet_${niveau}`).value : null
-        }),
+        body: JSON.stringify({ type, niveau, contenu, sujet }),
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
         }
     })
-    .then(response => response.text())
-    .then(html => {
-        container.innerHTML = html;
-    })
-    .catch(error => {
-        container.innerHTML = '<div class="text-center text-danger">Erreur lors de la génération de l\'aperçu</div>';
-    });
+    .then(r => r.text())
+    .then(html => { container.innerHTML = html; })
+    .catch(() => { container.innerHTML = '<div class="text-center text-danger py-3">Erreur lors de la génération de l\'aperçu</div>'; });
 }
 
 function envoyerTestTemplate() {
-    showAlert('info', 'Fonctionnalité d\'envoi de test en développement...');
+    showToast('info', 'Fonctionnalité d\'envoi de test en développement...');
 }
 
-function showAlert(type, message) {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type === 'success' ? 'success' : (type === 'warning' ? 'warning' : 'danger')} alert-dismissible fade show position-fixed`;
-    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    document.body.appendChild(alertDiv);
-
-    setTimeout(() => {
-        alertDiv.remove();
-    }, 5000);
+function showToast(type, message) {
+    const colors = {
+        success: { bg: '#dcfce7', border: '#10b981', text: '#065f46', icon: 'check-circle' },
+        error:   { bg: '#fee2e2', border: '#dc3545', text: '#7f1d1d', icon: 'times-circle' },
+        warning: { bg: '#fef9e7', border: '#f59e0b', text: '#92400e', icon: 'exclamation-triangle' },
+        info:    { bg: '#eff6ff', border: '#0453cb', text: '#1e3a8a', icon: 'info-circle' },
+    };
+    const c = colors[type] || colors.info;
+    const div = document.createElement('div');
+    div.style.cssText = `position:fixed;top:20px;right:20px;z-index:9999;min-width:300px;max-width:420px;
+        background:${c.bg};border:1.5px solid ${c.border};border-radius:12px;
+        padding:.85rem 1.1rem;display:flex;align-items:flex-start;gap:.6rem;
+        color:${c.text};font-size:.83rem;font-weight:500;
+        box-shadow:0 8px 30px rgba(0,0,0,.12);animation:slideInRight .25s ease;`;
+    div.innerHTML = `<i class="fas fa-${c.icon}" style="margin-top:.15rem;flex-shrink:0;"></i><span>${message}</span>`;
+    document.body.appendChild(div);
+    setTimeout(() => { div.style.opacity = '0'; div.style.transition = 'opacity .3s'; setTimeout(() => div.remove(), 300); }, 4500);
 }
 </script>
+<style>
+@keyframes slideInRight {
+    from { transform: translateX(30px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+}
+</style>
 @endpush
