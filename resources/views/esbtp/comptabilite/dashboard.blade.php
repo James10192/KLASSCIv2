@@ -199,6 +199,14 @@
     color: #e53e3e;
     border-color: rgba(229,62,62,.25);
 }
+.filter-default-hint {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: .67rem; font-weight: 600; color: #94a3b8;
+    margin-top: 4px; line-height: 1;
+    transition: opacity .15s;
+}
+.filter-default-hint i { font-size: .45rem; color: #10b981; }
+.filter-default-hint.hidden { display: none; }
 @media (max-width: 768px) {
     .filters-bar { flex-wrap: wrap; gap: 12px; padding: 14px 16px; }
     .filters-bar-icon { display: none; }
@@ -784,6 +792,12 @@
                     </option>
                     @endforeach
                 </select>
+                @if($anneeActive)
+                <span class="filter-default-hint" id="filter-annee-hint">
+                    <i class="fas fa-circle-dot"></i>
+                    {{ $anneeActive->name ?? $anneeActive->libelle }} par défaut
+                </span>
+                @endif
             </div>
 
             <div class="filters-bar-sep"></div>
@@ -1375,6 +1389,10 @@
         [anneeEl, filiereEl, classeEl].forEach(function(el) {
             if (el) el.classList.toggle('has-value', !!el.value);
         });
+
+        // Show "année en cours par défaut" hint only when no année is selected
+        const anneeHint = document.getElementById('filter-annee-hint');
+        if (anneeHint) anneeHint.classList.toggle('hidden', !!(anneeEl && anneeEl.value));
     }
 
     // ── Init ───────────────────────────────────────────────────────────────
