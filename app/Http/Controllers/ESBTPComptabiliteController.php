@@ -1919,6 +1919,10 @@ class ESBTPComptabiliteController extends Controller
      */
     public function exportRelancesPdf(Request $request)
     {
+        // Pour les gros exports (1000+ étudiants), utilise chunk+merge FPDI
+        ini_set('memory_limit', '512M');
+        set_time_limit(300);
+
         $search     = $request->input('search', '');
         $riskFilter = $request->input('risk', '');
         $filiereId  = $request->input('filiere_id', '');
@@ -1983,19 +1987,101 @@ class ESBTPComptabiliteController extends Controller
 
         // Filtres actifs lisibles pour le header
         $activeFilters = array_filter([
-            $search   ? "Recherche: $search" : null,
-            $filiereId ? ('Filière: ' . (\App\Models\ESBTPFiliere::find($filiereId)->name ?? $filiereId)) : null,
-            $classeId  ? ('Classe: ' . (\App\Models\ESBTPClasse::find($classeId)->name ?? $classeId))    : null,
-            $riskFilter ? ('Risque: ' . ucfirst($riskFilter))                                             : null,
+            $search     ? "Recherche: $search"                                                             : null,
+            $filiereId  ? ('Filière: ' . (\App\Models\ESBTPFiliere::find($filiereId)->name ?? $filiereId)) : null,
+            $classeId   ? ('Classe: '  . (\App\Models\ESBTPClasse::find($classeId)->name  ?? $classeId))   : null,
+            $riskFilter ? ('Risque: '  . ucfirst($riskFilter))                                             : null,
         ]);
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('esbtp.comptabilite.relances.pdf', compact(
-            'relances', 'anneeActive', 'etablissement', 'activeFilters'
-        ))->setPaper('a4', 'landscape');
+        // Stats globales calculées sur TOUTE la collection (pour le header du premier chunk)
+        $globalStats = [
+            'total_impaye' => $relances->sum('solde_restant'),
+            'nb_critical'  => $relances->where('risk_level', 'critical')->count(),
+            'nb_high'      => $relances->where('risk_level', 'high')->count(),
+            'nb_medium'    => $relances->where('risk_level', 'medium')->count(),
+            'nb_low'       => $relances->where('risk_level', 'low')->count(),
+            'nb_total'     => $relances->count(),
+        ];
 
-        $filename = 'relances_' . now()->format('Y-m-d_Hi') . '.pdf';
+        $filename   = 'relances_' . now()->format('Y-m-d_Hi') . '.pdf';
+        $pdfOptions = [
+            'dpi'                     => 72,
+            'defaultFont'             => 'DejaVu Sans',
+            'isRemoteEnabled'         => false,
+            'isHtml5ParserEnabled'    => true,
+            'isPhpEnabled'            => false,
+            'isFontSubsettingEnabled' => true,
+        ];
 
-        return $pdf->download($filename);
+        $chunkSize = 200;
+
+        // Petit export (< 200) → rendu direct sans FPDI
+        if ($relances->count() <= $chunkSize) {
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('esbtp.comptabilite.relances.pdf', array_merge(
+                compact('relances', 'anneeActive', 'etablissement', 'activeFilters'),
+                ['globalStats' => $globalStats, 'isFirstChunk' => true, 'isLastChunk' => true, 'rowOffset' => 0]
+            ))->setPaper('a4', 'landscape')->setOptions($pdfOptions);
+
+            return $pdf->download($filename);
+        }
+
+        // Gros export → chunk + merge FPDI
+        $tempDir = storage_path('app/temp');
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+
+        $chunks      = $relances->chunk($chunkSize);
+        $tempFiles   = [];
+        $totalChunks = $chunks->count();
+
+        foreach ($chunks as $chunkIndex => $chunk) {
+            $isFirstChunk = ($chunkIndex === 0);
+            $isLastChunk  = ($chunkIndex === $totalChunks - 1);
+            $rowOffset    = $chunkIndex * $chunkSize;
+
+            $chunkPdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('esbtp.comptabilite.relances.pdf', [
+                'relances'     => $chunk,
+                'anneeActive'  => $anneeActive,
+                'etablissement'=> $etablissement,
+                'activeFilters'=> $activeFilters,
+                'globalStats'  => $globalStats,
+                'isFirstChunk' => $isFirstChunk,
+                'isLastChunk'  => $isLastChunk,
+                'rowOffset'    => $rowOffset,
+                'chunkIndex'   => $chunkIndex,
+            ])->setPaper('a4', 'landscape')->setOptions($pdfOptions);
+
+            $tempPath = $tempDir . '/relances_chunk_' . uniqid() . '_' . $chunkIndex . '.pdf';
+            file_put_contents($tempPath, $chunkPdf->output());
+            $tempFiles[] = $tempPath;
+
+            unset($chunkPdf);
+        }
+
+        // Fusionner tous les chunks avec FPDI (1:1 sans déformation)
+        $merger = new \setasign\Fpdi\Fpdi();
+        $merger->SetAutoPageBreak(false);
+
+        foreach ($tempFiles as $file) {
+            $pageCount = $merger->setSourceFile($file);
+            for ($p = 1; $p <= $pageCount; $p++) {
+                $tpl  = $merger->importPage($p);
+                $size = $merger->getTemplateSize($tpl);
+                $merger->AddPage($size['orientation'], [$size['width'], $size['height']]);
+                $merger->useTemplate($tpl, 0, 0, $size['width'], $size['height']);
+            }
+        }
+
+        $finalPath = $tempDir . '/relances_final_' . uniqid() . '.pdf';
+        $merger->Output('F', $finalPath);
+        unset($merger);
+
+        foreach ($tempFiles as $file) {
+            @unlink($file);
+        }
+
+        return response()->download($finalPath, $filename)->deleteFileAfterSend(true);
     }
 
     /**

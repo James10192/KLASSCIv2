@@ -230,6 +230,12 @@
 </head>
 <body>
     @php
+        // Support chunk mode : variables injectées par le controller en mode chunk,
+        // ou valeurs par défaut pour un rendu direct (non-chunked)
+        $isFirstChunk = $isFirstChunk ?? true;
+        $isLastChunk  = $isLastChunk  ?? true;
+        $rowOffset    = $rowOffset    ?? 0;
+
         $pdfCfg  = \App\Helpers\SettingsHelper::getPdfSettings();
         $hdrBg   = $pdfCfg['header_bg_color']  ?? $pdfCfg['primary_color'] ?? '#0453cb';
         $hdrText = $pdfCfg['header_text_color'] ?? '#ffffff';
@@ -242,16 +248,20 @@
             'low'      => ['label' => 'Faible',   'class' => 'risk-low'],
         ];
 
-        $totalImpaye = $relances->sum('solde_restant');
-        $nbCritical  = $relances->where('risk_level', 'critical')->count();
-        $nbHigh      = $relances->where('risk_level', 'high')->count();
-        $nbMedium    = $relances->where('risk_level', 'medium')->count();
-        $nbLow       = $relances->where('risk_level', 'low')->count();
+        // Utiliser les stats globales (toute la collection) si disponibles,
+        // sinon calculer depuis le chunk courant (rendu direct)
+        $totalImpaye = $globalStats['total_impaye'] ?? $relances->sum('solde_restant');
+        $nbCritical  = $globalStats['nb_critical']  ?? $relances->where('risk_level', 'critical')->count();
+        $nbHigh      = $globalStats['nb_high']      ?? $relances->where('risk_level', 'high')->count();
+        $nbMedium    = $globalStats['nb_medium']    ?? $relances->where('risk_level', 'medium')->count();
+        $nbLow       = $globalStats['nb_low']       ?? $relances->where('risk_level', 'low')->count();
+        $nbTotal     = $globalStats['nb_total']     ?? $relances->count();
     @endphp
 
     <div class="container">
 
-        {{-- ===== HEADER ===== --}}
+        {{-- ===== HEADER (premier chunk uniquement) ===== --}}
+        @if($isFirstChunk)
         <div class="header-section">
             <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
@@ -334,6 +344,7 @@
                 </td>
             </tr>
         </table>
+        @endif {{-- /isFirstChunk --}}
 
         {{-- ===== TABLE RELANCES ===== --}}
         @if($relances->count() > 0)
@@ -358,9 +369,10 @@
                         $pctPaye  = ($row['total_du'] ?? 0) > 0
                             ? round(($row['total_paye'] / $row['total_du']) * 100)
                             : 0;
+                        $rowNum = $rowOffset + $index + 1;
                     @endphp
                     <tr>
-                        <td><span class="row-number">{{ $index + 1 }}</span></td>
+                        <td><span class="row-number">{{ $rowNum }}</span></td>
                         <td><span class="student-matricule">{{ $row['matricule'] ?? 'N/A' }}</span></td>
                         <td class="name-cell">
                             <div class="student-name">{{ $row['nom'] ?? '' }} {{ $row['prenoms'] ?? '' }}</div>
@@ -376,7 +388,8 @@
                 </tbody>
             </table>
 
-            {{-- ===== FOOTER ===== --}}
+            {{-- ===== FOOTER (dernier chunk uniquement) ===== --}}
+            @if($isLastChunk)
             <div class="footer-section">
                 <div class="footer-left">
                     <div class="summary-card">
@@ -402,7 +415,7 @@
                             </div>
                         </div>
                         <div style="margin-top: 6px; padding-top: 5px; border-top: 1px solid #e5e7eb; font-size: 8px; color: #374151;">
-                            <strong>Total étudiants :</strong> {{ $relances->count() }} &nbsp;|&nbsp;
+                            <strong>Total étudiants :</strong> {{ $nbTotal }} &nbsp;|&nbsp;
                             <strong>Total impayé :</strong> {{ number_format($totalImpaye, 0, ',', ' ') }} FCFA
                         </div>
                     </div>
@@ -429,6 +442,7 @@
                     </div>
                 </div>
             </div>
+            @endif {{-- /isLastChunk --}}
 
         @else
             <div class="empty-state">
@@ -436,10 +450,12 @@
             </div>
         @endif
 
+        @if($isLastChunk)
         <div class="generation-info">
             <strong>Document généré automatiquement le {{ now()->format('d/m/Y à H:i') }}</strong><br>
             {{ $etablissement['nom'] ?? 'KLASSCI' }} — Gestion des Relances
         </div>
+        @endif
     </div>
 </body>
 </html>
