@@ -1,606 +1,708 @@
 @extends('layouts.app')
 
-@section('title', 'Gestion des Relances')
+@section('title', 'Relances Paiements')
 
 @push('styles')
 <style>
-.stats-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    border-radius: 15px;
-    color: white;
-    transition: transform 0.3s ease;
+/* ───────────────────────────────────────────────
+   RELANCES INDEX — KLASSCI Blue Intelligence
+   Palette: #0453cb (primary) · #5e91de (secondary)
+            #1e293b (dark) · #10b981 (success)
+            #64748b (muted) · #f1f5f9 (surface)
+──────────────────────────────────────────────── */
+:root {
+    --rl-primary:    #0453cb;
+    --rl-secondary:  #5e91de;
+    --rl-dark:       #1e293b;
+    --rl-success:    #10b981;
+    --rl-muted:      #64748b;
+    --rl-surface:    #f1f5f9;
+    --rl-white:      #ffffff;
+    --rl-border:     #e2e8f0;
 }
 
-.stats-card:hover {
-    transform: translateY(-5px);
+/* ── HERO HEADER ── */
+.rel-hero {
+    background: linear-gradient(135deg, #0c1a3a 0%, #0453cb 60%, #1a4fa8 100%);
+    position: relative;
+    overflow: hidden;
+    padding: 2rem 2rem 1.5rem;
+    border-radius: 16px;
+    margin-bottom: 1.5rem;
 }
-
-.stats-card.warning {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+.rel-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse 60% 80% at 85% 50%, rgba(94,145,222,.18) 0%, transparent 70%),
+        url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='30' cy='30' r='1' fill='rgba(255,255,255,.04)'/%3E%3C/svg%3E");
+    pointer-events: none;
 }
-
-.stats-card.success {
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+.rel-hero-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    letter-spacing: -.3px;
 }
-
-.stats-card.danger {
-    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+.rel-hero-sub {
+    color: rgba(255,255,255,.65);
+    font-size: .85rem;
+    margin: .25rem 0 0;
 }
-
-.relance-card {
-    border-radius: 10px;
-    border: 1px solid #e9ecef;
-    transition: all 0.3s ease;
-}
-
-.relance-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-}
-
-.badge-niveau {
-    padding: 8px 12px;
-    border-radius: 20px;
-    font-weight: 600;
-}
-
-.btn-action {
-    padding: 6px 12px;
-    border-radius: 20px;
-    border: none;
+.rel-hero-actions { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+.btn-hero-ghost {
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.25);
+    padding: .55rem 1.2rem;
+    border-radius: 8px;
     font-weight: 500;
-    transition: all 0.3s ease;
+    font-size: .85rem;
+    text-decoration: none;
+    transition: background .15s;
+    display: inline-flex; align-items: center; gap: .4rem;
+}
+.btn-hero-ghost:hover { background: rgba(255,255,255,.2); color: #fff; }
+
+/* ── KPI STRIP ── */
+.kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.kpi-card {
+    background: var(--rl-white);
+    border: 1px solid var(--rl-border);
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow .2s;
+    cursor: pointer;
+}
+.kpi-card:hover { box-shadow: 0 4px 20px rgba(4,83,203,.1); }
+.kpi-card::after {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    border-radius: 12px 0 0 12px;
+}
+.kpi-card.impaye::after   { background: var(--rl-primary); }
+.kpi-card.critical::after { background: var(--rl-dark); }
+.kpi-card.high::after     { background: var(--rl-primary); }
+.kpi-card.medium::after   { background: var(--rl-secondary); }
+.kpi-card.low::after      { background: var(--rl-success); }
+.kpi-label {
+    font-size: .72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--rl-muted);
+    margin-bottom: .3rem;
+}
+.kpi-value {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: var(--rl-dark);
+    line-height: 1;
+}
+.kpi-value.big { font-size: 1.05rem; }
+.kpi-icon {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.6rem;
+    opacity: .07;
 }
 
-.btn-action:hover {
-    transform: translateY(-1px);
+/* ── FILTERS BAR ── */
+.filters-bar {
+    background: var(--rl-white);
+    border: 1px solid var(--rl-border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    gap: .75rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
 }
+.filter-group { display: flex; flex-direction: column; gap: .3rem; min-width: 140px; flex: 1; }
+.filter-label { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--rl-muted); }
+.filter-control {
+    border: 1px solid var(--rl-border);
+    border-radius: 8px;
+    padding: .45rem .75rem;
+    font-size: .85rem;
+    color: var(--rl-dark);
+    background: var(--rl-surface);
+    transition: border-color .15s;
+    height: 38px;
+}
+.filter-control:focus { outline: none; border-color: var(--rl-primary); background: #fff; }
+.search-wrap { position: relative; }
+.search-wrap .search-icon { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: var(--rl-muted); font-size: .85rem; pointer-events: none; }
+.search-wrap .filter-control { padding-left: 2.2rem; width: 100%; }
+.btn-filter {
+    background: var(--rl-primary);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: .45rem 1rem;
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+    height: 38px;
+    display: inline-flex; align-items: center; gap: .4rem;
+    transition: opacity .15s;
+    text-decoration: none;
+}
+.btn-filter:hover { opacity: .88; color: #fff; }
+.btn-filter-ghost {
+    background: transparent;
+    color: var(--rl-muted);
+    border: 1px solid var(--rl-border);
+    border-radius: 8px;
+    padding: .45rem .9rem;
+    font-size: .8rem;
+    cursor: pointer;
+    height: 38px;
+    display: inline-flex; align-items: center; gap: .35rem;
+    text-decoration: none;
+    transition: border-color .15s, color .15s;
+}
+.btn-filter-ghost:hover { border-color: var(--rl-primary); color: var(--rl-primary); }
 
-.filter-section {
-    background: #f8f9fa;
+/* ── RISK TABS ── */
+.risk-tabs {
+    display: flex;
+    gap: .5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.risk-tab {
+    padding: .4rem .9rem;
+    border-radius: 20px;
+    font-size: .78rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    text-decoration: none;
+    display: inline-flex; align-items: center; gap: .35rem;
+    transition: opacity .15s, transform .1s, box-shadow .15s;
+    position: relative;
+}
+.risk-tab:hover { transform: translateY(-1px); }
+
+/* Inactive state — subtle outline */
+.risk-tab.all      { color: var(--rl-dark);      border: 1.5px solid rgba(30,41,59,.25);    }
+.risk-tab.critical { color: var(--rl-dark);       border: 1.5px solid rgba(30,41,59,.2);     }
+.risk-tab.high     { color: var(--rl-primary);    border: 1.5px solid rgba(4,83,203,.25);    }
+.risk-tab.medium   { color: #2563eb;              border: 1.5px solid rgba(94,145,222,.3);   }
+
+/* Active state — filled */
+.risk-tab.all.active      { background: var(--rl-dark);      color: #fff; border-color: var(--rl-dark);      box-shadow: 0 2px 8px rgba(30,41,59,.3); }
+.risk-tab.critical.active { background: var(--rl-dark);      color: #fff; border-color: var(--rl-dark);      box-shadow: 0 2px 8px rgba(30,41,59,.3); }
+.risk-tab.high.active     { background: var(--rl-primary);   color: #fff; border-color: var(--rl-primary);   box-shadow: 0 2px 8px rgba(4,83,203,.3); }
+.risk-tab.medium.active   { background: var(--rl-secondary); color: #fff; border-color: var(--rl-secondary); box-shadow: 0 2px 8px rgba(94,145,222,.3); }
+
+/* ── TABLE ── */
+.rel-table-wrap {
+    background: var(--rl-white);
+    border: 1px solid var(--rl-border);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    min-height: 120px;
+}
+.rel-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .85rem;
+}
+.rel-table thead {
+    background: var(--rl-surface);
+    border-bottom: 1px solid var(--rl-border);
+}
+.rel-table th {
+    padding: .75rem 1rem;
+    text-align: left;
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--rl-muted);
+    white-space: nowrap;
+}
+.rel-table td {
+    padding: .85rem 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+.rel-table tr:last-child td { border-bottom: none; }
+.rel-table tbody tr:hover td { background: #f8fafc; }
+
+/* Student cell */
+.stud-cell { display: flex; align-items: center; gap: .75rem; }
+.stud-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--rl-primary), var(--rl-secondary));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: .8rem;
+    flex-shrink: 0;
+}
+.stud-name { font-weight: 600; color: var(--rl-dark); font-size: .88rem; line-height: 1.2; }
+.stud-matricule { font-size: .72rem; color: var(--rl-muted); }
+
+/* Risk badge */
+.rbadge {
+    display: inline-flex; align-items: center; gap: .3rem;
+    padding: .25rem .65rem;
+    border-radius: 20px;
+    font-size: .72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.rbadge.critical { background: rgba(30,41,59,.1); color: var(--rl-dark); border: 1px solid rgba(30,41,59,.2); }
+.rbadge.high     { background: rgba(4,83,203,.1);  color: var(--rl-primary); border: 1px solid rgba(4,83,203,.2); }
+.rbadge.medium   { background: rgba(94,145,222,.12); color: #2563eb; border: 1px solid rgba(94,145,222,.25); }
+.rbadge.low      { background: rgba(16,185,129,.1); color: #059669; border: 1px solid rgba(16,185,129,.2); }
+
+/* Progress bar */
+.pbar-wrap { display: flex; align-items: center; gap: .6rem; min-width: 110px; }
+.pbar-track {
+    flex: 1;
+    height: 5px;
+    background: #e2e8f0;
     border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 20px;
+    overflow: hidden;
+}
+.pbar-fill { height: 100%; border-radius: 10px; transition: width .4s ease; }
+.pbar-fill.full    { background: var(--rl-success); }
+.pbar-fill.partial { background: var(--rl-secondary); }
+.pbar-fill.low-pay { background: var(--rl-primary); }
+.pbar-fill.none    { background: var(--rl-dark); width: 4px !important; }
+.pbar-pct { font-size: .72rem; font-weight: 700; color: var(--rl-muted); white-space: nowrap; min-width: 28px; }
+
+/* Amount cells */
+.amount-cell { font-weight: 600; white-space: nowrap; }
+.amount-unit { font-size: .7em; opacity: .5; }
+.amount-red  { color: var(--rl-primary); }
+
+/* Action buttons */
+.act-btn {
+    display: inline-flex; align-items: center; gap: .3rem;
+    padding: .35rem .75rem;
+    border-radius: 7px;
+    font-size: .75rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+    white-space: nowrap;
+}
+.act-btn:hover { opacity: .85; transform: translateY(-1px); }
+.act-btn.primary { background: var(--rl-primary); color: #fff; }
+.act-btn.ghost   { background: transparent; border: 1px solid var(--rl-border); color: var(--rl-muted); }
+.act-btn.ghost:hover { border-color: var(--rl-primary); color: var(--rl-primary); }
+
+/* ── EMPTY STATE ── */
+.empty-state { text-align: center; padding: 4rem 2rem; color: var(--rl-muted); }
+.empty-state .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: .25; color: var(--rl-success); }
+.empty-state h5 { font-weight: 600; color: var(--rl-dark); margin-bottom: .5rem; }
+.empty-state p { font-size: .85rem; }
+
+/* ── PAGINATION ── */
+.rel-pagination {
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--rl-border);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: .75rem;
+}
+.rel-pagination .page-info { font-size: .8rem; color: var(--rl-muted); }
+
+/* ── LOADING OVERLAY ── */
+.rel-loading {
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 12px;
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s;
+}
+.rel-loading.visible { opacity: 1; pointer-events: all; }
+.rel-spinner {
+    width: 28px; height: 28px;
+    border: 3px solid var(--rl-border);
+    border-top-color: var(--rl-primary);
+    border-radius: 50%;
+    animation: rl-spin .6s linear infinite;
+}
+@keyframes rl-spin { to { transform: rotate(360deg); } }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 992px) {
+    .rel-table th:nth-child(3),
+    .rel-table td:nth-child(3) { display: none; }
+}
+@media (max-width: 768px) {
+    .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+    .rel-table th:nth-child(5),
+    .rel-table td:nth-child(5) { display: none; }
+    .rel-hero-title { font-size: 1.25rem; }
+}
+@media (max-width: 576px) {
+    .filters-bar { flex-direction: column; }
+    .filter-group { min-width: 100%; }
+    .kpi-strip { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
 @endpush
 
 @section('content')
-<div class="container-fluid">
-    <!-- En-tête -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="h3 mb-0">
-                        <i class="fas fa-bell text-primary me-2"></i>
-                        Gestion des Relances
-                    </h1>
-                    <p class="text-muted mb-0">Suivi et gestion des relances de paiement</p>
-                </div>
-                <div>
-                    <a href="{{ route('esbtp.comptabilite.relances.analytics') }}" class="btn btn-info me-2">
-                        <i class="fas fa-chart-line me-1"></i>
-                        Analytics
-                    </a>
-                    <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#modalPlanifierRelances">
-                        <i class="fas fa-calendar-plus me-1"></i>
-                        Planifier Relances
-                    </button>
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalConfigTemplates">
-                        <i class="fas fa-cog me-1"></i>
-                        Configuration
-                    </button>
-                </div>
+<div class="dashboard-acasi">
+<div class="main-content">
+
+    {{-- ── HERO ── --}}
+    <div class="rel-hero">
+        <div style="position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+            <div>
+                <h1 class="rel-hero-title">
+                    <i class="fas fa-bell-slash" style="margin-right:.5rem;opacity:.8;"></i>
+                    Gestion des Relances
+                    @if($anneeActive)
+                        <span style="display:inline-flex;align-items:center;gap:.3rem;background:rgba(16,185,129,.18);color:#10b981;border:1px solid rgba(16,185,129,.35);border-radius:20px;padding:.15rem .65rem;font-size:.6rem;font-weight:600;letter-spacing:.04em;vertical-align:middle;margin-left:.5rem;">
+                            <i class="fas fa-circle" style="font-size:.4rem;"></i>
+                            {{ $anneeActive->name }}
+                        </span>
+                    @endif
+                </h1>
+                <p class="rel-hero-sub">
+                    Étudiants avec soldes impayés &mdash; toutes années filtrables
+                </p>
+            </div>
+            <div class="rel-hero-actions">
+                @can('comptabilite.reports.export')
+                <a href="{{ route('esbtp.comptabilite.relances.export-excel', request()->query()) }}" class="btn-hero-ghost">
+                    <i class="fas fa-file-excel"></i> Excel
+                </a>
+                <a href="{{ route('esbtp.comptabilite.relances.export-pdf', request()->query()) }}" class="btn-hero-ghost">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </a>
+                @endcan
+                <a href="{{ route('esbtp.comptabilite.relances.config') }}" class="btn-hero-ghost">
+                    <i class="fas fa-cog"></i> Configuration
+                </a>
+                <a href="{{ route('esbtp.paiements.index') }}" class="btn-hero-ghost">
+                    <i class="fas fa-list-alt"></i> Tous les paiements
+                </a>
             </div>
         </div>
     </div>
 
-    <!-- Cartes de statistiques -->
-    <div class="row mb-4">
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card stats-card">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <h6 class="mb-0 text-uppercase">Total Relances</h6>
-                            <h3 class="mb-0">{{ number_format($statistiques['total']) }}</h3>
-                        </div>
-                        <div class="fs-1 opacity-75">
-                            <i class="fas fa-bell"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    {{-- ── BANNER CONFIG MANQUANTE ── --}}
+    @if($configManquante)
+    <div style="background:linear-gradient(90deg,#fff8e1 0%,#fffde7 100%);border:1.5px solid #f59e0b;border-radius:12px;padding:.9rem 1.2rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:.6rem;color:#92400e;">
+            <i class="fas fa-exclamation-triangle" style="font-size:1.1rem;"></i>
+            <span style="font-weight:600;font-size:.9rem;">Les délais de relance ne sont pas configurés — les niveaux de risque ne peuvent pas être calculés.</span>
         </div>
+        <a href="{{ route('esbtp.comptabilite.relances.config') }}" style="background:#0453cb;color:#fff;padding:.45rem 1rem;border-radius:8px;font-size:.82rem;font-weight:600;white-space:nowrap;text-decoration:none;">
+            <i class="fas fa-cog me-1"></i> Configurer maintenant
+        </a>
+    </div>
+    @endif
 
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card stats-card warning">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <h6 class="mb-0 text-uppercase">Planifiées</h6>
-                            <h3 class="mb-0">{{ number_format($statistiques['planifiees']) }}</h3>
-                        </div>
-                        <div class="fs-1 opacity-75">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    {{-- ── KPI STRIP ── --}}
+    <div class="kpi-strip">
+        <div class="kpi-card impaye">
+            <div class="kpi-label">Total impayé</div>
+            <div class="kpi-value big">{{ number_format($kpis['total_impaye'], 0, ',', ' ') }} <span style="font-size:.65em;font-weight:400;color:var(--rl-muted);">FCFA</span></div>
+            <i class="fas fa-exclamation-circle kpi-icon"></i>
         </div>
-
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card stats-card success">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <h6 class="mb-0 text-uppercase">Envoyées</h6>
-                            <h3 class="mb-0">{{ number_format($statistiques['envoyees']) }}</h3>
-                        </div>
-                        <div class="fs-1 opacity-75">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="kpi-card critical" data-risk="critical" title="Cliquer pour filtrer">
+            <div class="kpi-label">Impayés (0% réglé)</div>
+            <div class="kpi-value">{{ $kpis['count_critical'] }}</div>
+            <i class="fas fa-ban kpi-icon"></i>
         </div>
-
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="card stats-card danger">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <h6 class="mb-0 text-uppercase">Échecs</h6>
-                            <h3 class="mb-0">{{ number_format($statistiques['echecs']) }}</h3>
-                        </div>
-                        <div class="fs-1 opacity-75">
-                            <i class="fas fa-times-circle"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="kpi-card high" data-risk="high" title="Cliquer pour filtrer">
+            <div class="kpi-label">En cours (paiement partiel)</div>
+            <div class="kpi-value">{{ $kpis['count_high'] }}</div>
+            <i class="fas fa-hourglass-half kpi-icon"></i>
+        </div>
+        <div class="kpi-card medium" data-risk="medium" title="Cliquer pour filtrer">
+            <div class="kpi-label">Presque soldés (≥ 75%)</div>
+            <div class="kpi-value">{{ $kpis['count_medium'] }}</div>
+            <i class="fas fa-tasks kpi-icon"></i>
+        </div>
+        <div class="kpi-card low">
+            <div class="kpi-label">À jour</div>
+            <div class="kpi-value">{{ $kpis['count_low'] }}</div>
+            <i class="fas fa-check-circle kpi-icon"></i>
         </div>
     </div>
 
-    <!-- Section de filtrage -->
-    <div class="filter-section">
-        <form method="GET" id="filterForm">
-            <div class="row align-items-end">
-                <div class="col-md-3">
-                    <label for="statut" class="form-label">Statut</label>
-                    <select class="form-select" name="statut" id="statut">
-                        <option value="">Tous les statuts</option>
-                        <option value="planifiee" {{ request('statut') == 'planifiee' ? 'selected' : '' }}>Planifiée</option>
-                        <option value="envoyee" {{ request('statut') == 'envoyee' ? 'selected' : '' }}>Envoyée</option>
-                        <option value="echec" {{ request('statut') == 'echec' ? 'selected' : '' }}>Échec</option>
-                    </select>
-                </div>
+    {{-- ── FILTERS ── --}}
+    <form id="relances-filters-form" method="GET" action="{{ route('esbtp.comptabilite.relances.index') }}">
+        <div class="filters-bar">
 
-                <div class="col-md-2">
-                    <label for="niveau" class="form-label">Niveau</label>
-                    <select class="form-select" name="niveau" id="niveau">
-                        <option value="">Tous niveaux</option>
-                        <option value="1" {{ request('niveau') == '1' ? 'selected' : '' }}>1er rappel</option>
-                        <option value="2" {{ request('niveau') == '2' ? 'selected' : '' }}>2ème rappel</option>
-                        <option value="3" {{ request('niveau') == '3' ? 'selected' : '' }}>Dernière relance</option>
-                    </select>
-                </div>
-
-                <div class="col-md-2">
-                    <label for="type" class="form-label">Type</label>
-                    <select class="form-select" name="type" id="type">
-                        <option value="">Tous types</option>
-                        <option value="email" {{ request('type') == 'email' ? 'selected' : '' }}>Email</option>
-                        <option value="sms" {{ request('type') == 'sms' ? 'selected' : '' }}>SMS</option>
-                        <option value="courrier" {{ request('type') == 'courrier' ? 'selected' : '' }}>Courrier</option>
-                    </select>
-                </div>
-
-                <div class="col-md-3">
-                    <label for="search" class="form-label">Rechercher</label>
-                    <input type="text" class="form-control" name="search" id="search"
-                           placeholder="Nom étudiant..." value="{{ request('search') }}">
-                </div>
-
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-search me-1"></i>
-                        Filtrer
-                    </button>
+            {{-- Recherche --}}
+            <div class="filter-group" style="flex:2;min-width:200px;">
+                <label class="filter-label">Recherche</label>
+                <div class="search-wrap">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" name="search" id="filter-search" class="filter-control" placeholder="Nom, prénom, matricule…" value="{{ $search }}">
                 </div>
             </div>
-        </form>
+
+            {{-- Filière --}}
+            <div class="filter-group">
+                <label class="filter-label">Filière</label>
+                <select name="filiere_id" class="filter-control">
+                    <option value="">Toutes</option>
+                    @foreach ($filieres as $f)
+                        <option value="{{ $f->id }}" {{ $filiereId == $f->id ? 'selected' : '' }}>{{ $f->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Classe --}}
+            <div class="filter-group">
+                <label class="filter-label">Classe</label>
+                <select name="classe_id" class="filter-control">
+                    <option value="">Toutes</option>
+                    @foreach ($classes as $c)
+                        <option value="{{ $c->id }}" {{ $classeId == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Année --}}
+            <div class="filter-group">
+                <label class="filter-label">Année</label>
+                <select name="annee_id" class="filter-control">
+                    @foreach ($annees as $a)
+                        <option value="{{ $a->id }}" {{ $anneeId == $a->id ? 'selected' : '' }}>{{ $a->name }}@if($a->is_current) (en cours)@endif</option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Par page --}}
+            <div class="filter-group" style="min-width:90px;max-width:110px;">
+                <label class="filter-label">Par page</label>
+                <select name="per_page" class="filter-control">
+                    @foreach ([10, 25, 50, 100] as $pp)
+                        <option value="{{ $pp }}" {{ $perPage == $pp ? 'selected' : '' }}>{{ $pp }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            {{-- Champ caché pour le filtre de risque actif --}}
+            <input type="hidden" name="risk" id="risk-hidden" value="{{ $riskFilter }}">
+
+            <div style="display:flex;gap:.5rem;align-items:flex-end;">
+                <button type="submit" class="btn-filter"><i class="fas fa-filter"></i> Filtrer</button>
+                <button type="button" id="btn-reset" class="btn-filter-ghost"><i class="fas fa-times"></i> Reset</button>
+            </div>
+        </div>
+    </form>
+
+    {{-- ── RISK TABS ── --}}
+    <div class="risk-tabs" id="risk-tabs">
+        <button type="button" class="risk-tab all {{ !$riskFilter ? 'active' : '' }}"
+                data-risk="">
+            <i class="fas fa-list"></i>
+            Tous avec dettes <span class="tab-count">({{ $kpis['total_etudiants'] }})</span>
+        </button>
+        <button type="button" class="risk-tab critical {{ $riskFilter === 'critical' ? 'active' : '' }}"
+                data-risk="critical"
+                title="Aucun paiement effectué — 0% du total réglé">
+            <i class="fas fa-ban"></i>
+            Impayés <span class="tab-count">({{ $kpis['count_critical'] }})</span>
+        </button>
+        <button type="button" class="risk-tab high {{ $riskFilter === 'high' ? 'active' : '' }}"
+                data-risk="high"
+                title="Paiement commencé mais solde important encore dû (> 25% restant)">
+            <i class="fas fa-hourglass-half"></i>
+            En cours <span class="tab-count">({{ $kpis['count_high'] }})</span>
+        </button>
+        <button type="button" class="risk-tab medium {{ $riskFilter === 'medium' ? 'active' : '' }}"
+                data-risk="medium"
+                title="Au moins 75% réglé — faible solde restant (≤ 25% du total)">
+            <i class="fas fa-tasks"></i>
+            Presque soldés <span class="tab-count">({{ $kpis['count_medium'] }})</span>
+        </button>
     </div>
 
-    <!-- Liste des relances -->
-    <div class="card">
-        <div class="card-header">
-            <h5 class="card-title mb-0">
-                <i class="fas fa-list me-2"></i>
-                Liste des Relances ({{ $relances->total() }} résultats)
-            </h5>
+    {{-- ── TABLE WRAP (cible AJAX) ── --}}
+    <div class="rel-table-wrap" id="relances-table-wrap">
+
+        {{-- Spinner overlay --}}
+        <div class="rel-loading" id="relances-loading">
+            <div class="rel-spinner"></div>
         </div>
-        <div class="card-body p-0">
-            @if($relances->count() > 0)
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Étudiant</th>
-                                <th>Type</th>
-                                <th>Niveau</th>
-                                <th>Statut</th>
-                                <th>Date d'envoi</th>
-                                <th>Montant dette</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($relances as $relance)
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="avatar avatar-sm bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center">
-                                                <i class="fas fa-user text-white"></i>
-                                            </div>
-                                            <div>
-                                                <div class="fw-bold">{{ $relance->etudiant->nom ?? 'N/A' }} {{ $relance->etudiant->prenoms ?? '' }}</div>
-                                                <small class="text-muted">{{ $relance->etudiant->email ?? 'Pas d\'email' }}</small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-{{
-                                            $relance->type === 'email' ? 'info' :
-                                            ($relance->type === 'sms' ? 'warning' : 'secondary')
-                                        }}">
-                                            <i class="fas fa-{{
-                                                $relance->type === 'email' ? 'envelope' :
-                                                ($relance->type === 'sms' ? 'sms' : 'file-alt')
-                                            }} me-1"></i>
-                                            {{ $relance->type_formatte }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-niveau bg-{{ $relance->niveau == 1 ? 'success' : ($relance->niveau == 2 ? 'warning' : 'danger') }}">
-                                            {{ $relance->niveau_formatte }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-{{ $relance->statut_class }}">
-                                            <i class="fas fa-{{
-                                                $relance->statut === 'planifiee' ? 'clock' :
-                                                ($relance->statut === 'envoyee' ? 'check' : 'times')
-                                            }} me-1"></i>
-                                            {{ $relance->statut_formatte }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        @if($relance->date_envoi)
-                                            <div>{{ $relance->date_envoi->format('d/m/Y') }}</div>
-                                            <small class="text-muted">{{ $relance->date_envoi->format('H:i') }}</small>
-                                        @else
-                                            <span class="text-muted">Non envoyée</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        @if($relance->facture)
-                                            <strong class="text-danger">{{ number_format($relance->facture->montant_total, 0, ',', ' ') }} FCFA</strong>
-                                        @else
-                                            <span class="text-muted">N/A</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-sm btn-outline-primary"
-                                                    data-bs-toggle="modal" data-bs-target="#modalVoirRelance"
-                                                    onclick="voirRelance({{ $relance->id }})">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
 
-                                            @if($relance->statut === 'echec' || ($relance->statut === 'planifiee' && $relance->est_en_retard))
-                                                <button type="button" class="btn btn-sm btn-outline-success"
-                                                        onclick="renvoyerRelance({{ $relance->id }})">
-                                                    <i class="fas fa-redo"></i>
-                                                </button>
-                                            @endif
+        @include('esbtp.comptabilite.relances._table')
 
-                                            @if($relance->type === 'email' && $relance->statut === 'envoyee')
-                                                <button type="button" class="btn btn-sm btn-outline-info"
-                                                        data-bs-toggle="tooltip" title="Voir statistiques">
-                                                    <i class="fas fa-chart-line"></i>
-                                                </button>
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Pagination -->
-                <div class="d-flex justify-content-between align-items-center p-3">
-                    <div class="text-muted">
-                        Affichage de {{ $relances->firstItem() }} à {{ $relances->lastItem() }}
-                        sur {{ $relances->total() }} résultats
-                    </div>
-                    {{ $relances->withQueryString()->links() }}
-                </div>
-            @else
-                <div class="text-center py-5">
-                    <i class="fas fa-bell-slash fa-3x text-muted mb-3"></i>
-                    <h5 class="text-muted">Aucune relance trouvée</h5>
-                    <p class="text-muted">Aucune relance ne correspond à vos critères de recherche.</p>
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalPlanifierRelances">
-                        <i class="fas fa-plus me-1"></i>
-                        Planifier des relances
-                    </button>
-                </div>
-            @endif
-        </div>
     </div>
+
 </div>
-
-<!-- Modal Planifier Relances -->
-<div class="modal fade" id="modalPlanifierRelances" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-calendar-plus me-2"></i>
-                    Planifier des Relances
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="formPlanifierRelances">
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <label for="critere_dette" class="form-label">Montant dette minimum</label>
-                            <input type="number" class="form-control" id="critere_dette" name="critere_dette"
-                                   value="50000" min="0" step="1000">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="critere_jours" class="form-label">Jours de retard minimum</label>
-                            <input type="number" class="form-control" id="critere_jours" name="critere_jours"
-                                   value="30" min="1" max="365">
-                        </div>
-                    </div>
-
-                    <div class="row mt-3">
-                        <div class="col-md-6">
-                            <label for="type_relance" class="form-label">Type de relance</label>
-                            <select class="form-select" id="type_relance" name="type_relance">
-                                <option value="auto">Automatique (par niveau)</option>
-                                <option value="email">Email uniquement</option>
-                                <option value="sms">SMS uniquement</option>
-                                <option value="courrier">Courrier uniquement</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="date_envoi" class="form-label">Date d'envoi prévue</label>
-                            <input type="datetime-local" class="form-control" id="date_envoi" name="date_envoi"
-                                   value="{{ now()->format('Y-m-d\TH:i') }}">
-                        </div>
-                    </div>
-
-                    <div class="mt-3">
-                        <label class="form-label">Aperçu des étudiants concernés</label>
-                        <div id="apercu_etudiants" class="border rounded p-3 bg-light">
-                            <div class="text-center text-muted">
-                                <i class="fas fa-spinner fa-spin me-1"></i>
-                                Chargement de l'aperçu...
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-calendar-plus me-1"></i>
-                        Planifier les Relances
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal Configuration Templates -->
-<div class="modal fade" id="modalConfigTemplates" tabindex="-1">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-cog me-2"></i>
-                    Configuration des Templates
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="config-templates-content">
-                    <!-- Contenu chargé dynamiquement -->
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal Voir Relance -->
-<div class="modal fade" id="modalVoirRelance" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-eye me-2"></i>
-                    Détails de la Relance
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="details-relance-content">
-                    <!-- Contenu chargé dynamiquement -->
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 @endsection
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Auto-refresh des aperçus lors de changement de critères
-    const critereDette = document.getElementById('critere_dette');
-    const critereJours = document.getElementById('critere_jours');
+(function () {
+    'use strict';
 
-    [critereDette, critereJours].forEach(element => {
-        element.addEventListener('change', debounce(chargerApercuEtudiants, 500));
-    });
+    const tableWrap  = document.getElementById('relances-table-wrap');
+    const loading    = document.getElementById('relances-loading');
+    const riskHidden = document.getElementById('risk-hidden');
+    const form       = document.getElementById('relances-filters-form');
+    const tabs       = document.querySelectorAll('#risk-tabs .risk-tab');
+    const btnReset   = document.getElementById('btn-reset');
 
-    // Chargement initial de l'aperçu
-    chargerApercuEtudiants();
+    /* ── helpers ── */
+    function showLoader()  { loading.classList.add('visible'); }
+    function hideLoader()  { loading.classList.remove('visible'); }
 
-    // Soumission du formulaire de planification
-    document.getElementById('formPlanifierRelances').addEventListener('submit', function(e) {
-        e.preventDefault();
-        planifierRelances();
-    });
-});
-
-function chargerApercuEtudiants() {
-    const dette = document.getElementById('critere_dette').value;
-    const jours = document.getElementById('critere_jours').value;
-    const container = document.getElementById('apercu_etudiants');
-
-    container.innerHTML = '<div class="text-center text-muted"><i class="fas fa-spinner fa-spin me-1"></i>Chargement...</div>';
-
-    fetch(`{{ route('esbtp.comptabilite.relances.apercu') }}?dette=${dette}&jours=${jours}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                container.innerHTML = `
-                    <div class="row">
-                        <div class="col-md-4 text-center">
-                            <h4 class="text-primary">${data.count}</h4>
-                            <small class="text-muted">Étudiants concernés</small>
-                        </div>
-                        <div class="col-md-4 text-center">
-                            <h4 class="text-warning">${data.total_dette} FCFA</h4>
-                            <small class="text-muted">Dette totale</small>
-                        </div>
-                        <div class="col-md-4 text-center">
-                            <h4 class="text-info">${data.moyenne_dette} FCFA</h4>
-                            <small class="text-muted">Dette moyenne</small>
-                        </div>
-                    </div>
-                `;
-            } else {
-                container.innerHTML = '<div class="text-center text-danger">Erreur lors du chargement</div>';
-            }
-        })
-        .catch(error => {
-            container.innerHTML = '<div class="text-center text-danger">Erreur de connexion</div>';
-        });
-}
-
-function planifierRelances() {
-    const form = document.getElementById('formPlanifierRelances');
-    const formData = new FormData(form);
-    const submitBtn = form.querySelector('button[type="submit"]');
-
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Planification...';
-    submitBtn.disabled = true;
-
-    fetch('{{ route("esbtp.comptabilite.relances.planifier") }}', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showAlert('success', data.message);
-            bootstrap.Modal.getInstance(document.getElementById('modalPlanifierRelances')).hide();
-            setTimeout(() => location.reload(), 1000);
-        } else {
-            showAlert('error', data.message);
-        }
-    })
-    .catch(error => {
-        showAlert('error', 'Erreur lors de la planification');
-    })
-    .finally(() => {
-        submitBtn.innerHTML = '<i class="fas fa-calendar-plus me-1"></i>Planifier les Relances';
-        submitBtn.disabled = false;
-    });
-}
-
-function voirRelance(id) {
-    const container = document.getElementById('details-relance-content');
-    container.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Chargement...</div>';
-
-    fetch(`{{ route('esbtp.comptabilite.relances.show', '') }}/${id}`)
-        .then(response => response.text())
-        .then(html => {
-            container.innerHTML = html;
-        })
-        .catch(error => {
-            container.innerHTML = '<div class="text-center text-danger">Erreur lors du chargement</div>';
-        });
-}
-
-function renvoyerRelance(id) {
-    if (confirm('Êtes-vous sûr de vouloir renvoyer cette relance ?')) {
-        fetch(`{{ route('esbtp.comptabilite.relances.renvoyer', '') }}/${id}`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            showAlert(data.success ? 'success' : 'error', data.message);
-            if (data.success) {
-                setTimeout(() => location.reload(), 1000);
-            }
-        })
-        .catch(error => {
-            showAlert('error', 'Erreur lors du renvoi');
+    function setActiveTab(risk) {
+        tabs.forEach(btn => btn.classList.remove('active'));
+        tabs.forEach(btn => {
+            if (btn.dataset.risk === risk) btn.classList.add('active');
         });
     }
-}
 
-function showAlert(type, message) {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
-    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    document.body.appendChild(alertDiv);
+    /**
+     * Fetch table HTML via AJAX and inject into wrapper (below the spinner).
+     * Also updates browser URL so refresh / back button work correctly.
+     */
+    function fetchTable(params) {
+        showLoader();
 
-    setTimeout(() => {
-        alertDiv.remove();
-    }, 5000);
-}
+        const url = new URL('{{ route('esbtp.comptabilite.relances.index') }}', window.location.origin);
+        Object.entries(params).forEach(([k, v]) => {
+            if (v !== null && v !== undefined && v !== '') {
+                url.searchParams.set(k, v);
+            }
+        });
 
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
+        // Update browser URL (no reload)
+        window.history.pushState({}, '', url.toString());
+
+        fetch(url.toString(), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.text())
+        .then(html => {
+            // Replace table content (keep spinner in place)
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html;
+
+            // Remove old table content (everything except the spinner)
+            Array.from(tableWrap.children).forEach(child => {
+                if (!child.classList.contains('rel-loading')) child.remove();
+            });
+
+            // Append new content
+            Array.from(tmp.childNodes).forEach(node => tableWrap.appendChild(node));
+
+            // Wire pagination links to AJAX too
+            wirePaginationLinks();
+            hideLoader();
+        })
+        .catch(() => hideLoader());
+    }
+
+    function collectFormParams() {
+        const data = new FormData(form);
+        const params = {};
+        for (const [k, v] of data.entries()) params[k] = v;
+        params.risk = riskHidden.value;
+        return params;
+    }
+
+    /* ── Tab click → AJAX ── */
+    tabs.forEach(btn => {
+        btn.addEventListener('click', function () {
+            const risk = this.dataset.risk;
+            riskHidden.value = risk;
+            setActiveTab(risk);
+            const params = collectFormParams();
+            params.page = 1; // reset to first page on tab change
+            fetchTable(params);
+        });
+    });
+
+    /* ── KPI card click → same as tab click ── */
+    document.querySelectorAll('.kpi-card[data-risk]').forEach(card => {
+        card.addEventListener('click', function () {
+            const risk = this.dataset.risk;
+            riskHidden.value = risk;
+            setActiveTab(risk);
+            const params = collectFormParams();
+            params.page = 1;
+            fetchTable(params);
+        });
+    });
+
+    /* ── Form submit → AJAX ── */
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const params = collectFormParams();
+        params.page = 1;
+        fetchTable(params);
+    });
+
+    /* ── Reset button ── */
+    btnReset.addEventListener('click', function () {
+        form.reset();
+        riskHidden.value = '';
+        setActiveTab('');
+        fetchTable({ page: 1 });
+    });
+
+    /* ── Per-page select → auto submit ── */
+    form.querySelector('select[name="per_page"]').addEventListener('change', function () {
+        const params = collectFormParams();
+        params.page = 1;
+        fetchTable(params);
+    });
+
+    /* ── Wire pagination links ── */
+    function wirePaginationLinks() {
+        tableWrap.querySelectorAll('.pagination a[href]').forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                const href = new URL(this.href);
+                const page = href.searchParams.get('page') || 1;
+                const params = collectFormParams();
+                params.page = page;
+                fetchTable(params);
+            });
+        });
+    }
+
+    // Wire initial pagination links
+    wirePaginationLinks();
+
+})();
 </script>
 @endpush

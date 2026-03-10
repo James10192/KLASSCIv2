@@ -1388,83 +1388,508 @@ class ESBTPComptabiliteController extends Controller
         $filiereId = $request->get('filiere');
         $classeId = $request->get('classe');
 
-        $feeQuery = \App\Models\ESBTP\Fee::query();
-        if ($anneeId) $feeQuery->where('academic_year_id', $anneeId);
-        if ($filiereId) $feeQuery->whereHas('class', function($q) use ($filiereId) { $q->where('filiere_id', $filiereId); });
-        if ($classeId) $feeQuery->where('class_id', $classeId);
-
-        $totalDue = (clone $feeQuery)->pending()->sum('amount');
-        $totalPaid = (clone $feeQuery)->paid()->sum('amount');
-        $totalOverdue = (clone $feeQuery)->overdue()->sum('amount');
-        $countPaid = (clone $feeQuery)->paid()->count();
-        $countPartiallyPaid = (clone $feeQuery)->partiallyPaid()->count();
-        $countOverdue = (clone $feeQuery)->overdue()->count();
-        $countDue = (clone $feeQuery)->due()->count();
-
-        // Préparer les données pour le graph (encaissements par mois)
-        $labelsMois = [];
-        $dataEncaissements = [];
+        // Déterminer l'année active
         if ($anneeId) {
             $annee = $annees->where('id', $anneeId)->first();
         } else {
-            $annee = $annees->first(); // Par défaut, la plus récente
-        }
-        if ($annee) {
-            $debut = \Carbon\Carbon::parse($annee->date_debut);
-            $fin = \Carbon\Carbon::parse($annee->date_fin);
-            for ($date = $debut->copy(); $date->lte($fin); $date->addMonth()) {
-                $labelsMois[] = $date->translatedFormat('M Y');
-                $paymentQuery = \App\Models\ESBTP\Payment::completed();
-                $paymentQuery->whereMonth('payment_date', $date->month)
-                    ->whereYear('payment_date', $date->year);
-                if ($anneeId) $paymentQuery->where('academic_year_id', $anneeId);
-                if ($filiereId) $paymentQuery->whereHas('fee.class', function($q) use ($filiereId) { $q->where('filiere_id', $filiereId); });
-                if ($classeId) $paymentQuery->whereHas('fee', function($q) use ($classeId) { $q->where('class_id', $classeId); });
-                $dataEncaissements[] = $paymentQuery->sum('amount');
-            }
+            $annee = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first()
+                ?? $annees->first();
         }
 
-        // Préparer les données pour le graph (dépenses par mois)
+        // Stats paiements via ESBTPPaiement (système actif)
+        $paiementsQuery = \App\Models\ESBTPPaiement::query()->whereNull('deleted_at');
+
+        if ($anneeId) {
+            $paiementsQuery->whereHas('inscription', fn($q) => $q->where('annee_universitaire_id', $anneeId));
+        }
+        if ($filiereId) {
+            $paiementsQuery->whereHas('inscription.classe', fn($q) => $q->where('filiere_id', $filiereId));
+        }
+        if ($classeId) {
+            $paiementsQuery->whereHas('inscription', fn($q) => $q->where('classe_id', $classeId));
+        }
+
+        $totalPaid = (clone $paiementsQuery)->whereIn('status', ['validé'])->sum('montant');
+
+        // Stats frais souscriptions
+        $subscriptionsQuery = \App\Models\ESBTPFraisSubscription::query();
+        if ($anneeId) {
+            $subscriptionsQuery->whereHas('inscription', fn($q) => $q->where('annee_universitaire_id', $anneeId));
+        }
+        if ($filiereId) {
+            $subscriptionsQuery->whereHas('inscription.classe', fn($q) => $q->where('filiere_id', $filiereId));
+        }
+        if ($classeId) {
+            $subscriptionsQuery->whereHas('inscription', fn($q) => $q->where('classe_id', $classeId));
+        }
+
+        $totalDue = (clone $subscriptionsQuery)->sum('amount');
+        $totalOverdue = max(0, $totalDue - $totalPaid);
+
+        // Nombre paiements en attente / validés
+        $countPaid = (clone $paiementsQuery)->where('status', 'validé')->count();
+        $countPartiallyPaid = (clone $paiementsQuery)->where('status', 'en_attente')->count();
+        $countOverdue = \App\Models\ESBTPInscription::query()
+            ->when($anneeId, fn($q) => $q->where('annee_universitaire_id', $anneeId))
+            ->when($filiereId, fn($q) => $q->whereHas('classe', fn($q2) => $q2->where('filiere_id', $filiereId)))
+            ->when($classeId, fn($q) => $q->where('classe_id', $classeId))
+            ->whereHas('fraisSubscriptions', fn($q) => $q->where('amount', '>', 0))
+            ->count();
+        $countDue = (clone $subscriptionsQuery)->count();
+
+        // Dépenses (module supprimé — valeurs à zéro)
+        $statsDepenses = ['total' => 0, 'mensuel' => 0, 'salaires' => 0, 'fournitures' => 0];
+
+        // Graphique encaissements par mois
+        $labelsMois = [];
+        $dataEncaissements = [];
         $labelsMoisDepenses = [];
         $dataDepensesMensuelles = [];
-        if ($annee) {
+
+        if ($annee && isset($annee->date_debut)) {
             $debut = \Carbon\Carbon::parse($annee->date_debut);
-            $fin = \Carbon\Carbon::parse($annee->date_fin);
+            $fin = \Carbon\Carbon::parse($annee->date_fin ?? now());
             for ($date = $debut->copy(); $date->lte($fin); $date->addMonth()) {
+                $labelsMois[] = $date->translatedFormat('M Y');
                 $labelsMoisDepenses[] = $date->translatedFormat('M Y');
-                $depenseQuery = \App\Models\ESBTPDepense::whereBetween('date_depense', [$date->copy()->startOfMonth(), $date->copy()->endOfMonth()])->where('status', 'validée');
-                if ($filiereId) $depenseQuery->where('filiere_id', $filiereId);
-                if ($classeId) $depenseQuery->where('classe_id', $classeId);
-                $dataDepensesMensuelles[] = $depenseQuery->sum('montant');
+                $moisPaiements = \App\Models\ESBTPPaiement::where('status', 'validé')
+                    ->whereNull('deleted_at')
+                    ->whereMonth('date_paiement', $date->month)
+                    ->whereYear('date_paiement', $date->year)
+                    ->when($anneeId, fn($q) => $q->whereHas('inscription', fn($q2) => $q2->where('annee_universitaire_id', $anneeId)))
+                    ->when($filiereId, fn($q) => $q->whereHas('inscription.classe', fn($q2) => $q2->where('filiere_id', $filiereId)))
+                    ->when($classeId, fn($q) => $q->whereHas('inscription', fn($q2) => $q2->where('classe_id', $classeId)))
+                    ->sum('montant');
+                $dataEncaissements[] = $moisPaiements;
+                $dataDepensesMensuelles[] = 0; // module supprimé
             }
         }
 
-        // Agrégats dépenses (centralisation)
-        $statsDepenses = [
-            'total' => 0,
-            'mensuel' => 0,
-            'salaires' => 0,
-            'fournitures' => 0
-        ];
-        if ($annee) {
-            $dateDebut = \Carbon\Carbon::parse($annee->date_debut);
-            $dateFin = \Carbon\Carbon::parse($annee->date_fin);
-            $depenseQuery = \App\Models\ESBTPDepense::whereBetween('date_depense', [$dateDebut, $dateFin])->where('status', 'validée');
-            if ($filiereId) $depenseQuery->where('filiere_id', $filiereId);
-            if ($classeId) $depenseQuery->where('classe_id', $classeId);
-            $statsDepenses['total'] = $depenseQuery->sum('montant');
-            $statsDepenses['mensuel'] = (clone $depenseQuery)->whereMonth('date_depense', now()->month)->whereYear('date_depense', now()->year)->sum('montant');
-            // Salaires et fournitures peuvent être affinés si besoin
-        }
+        // Aging buckets — étudiants avec impayés par ancienneté d'inscription
+        $agingBuckets = $this->getImpayesAging($anneeId, $filiereId, $classeId);
+
+        // Paiements récents en attente de validation
+        $paiementsEnAttente = \App\Models\ESBTPPaiement::with(['inscription.etudiant', 'fraisCategory'])
+            ->where('status', 'en_attente')
+            ->whereNull('deleted_at')
+            ->when($anneeId, fn($q) => $q->whereHas('inscription', fn($q2) => $q2->where('annee_universitaire_id', $anneeId)))
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
 
         return view('esbtp.comptabilite.dashboard', compact(
             'totalDue', 'totalPaid', 'totalOverdue',
             'countPaid', 'countPartiallyPaid', 'countOverdue', 'countDue',
-            'annees', 'filieres', 'classes',
+            'annees', 'filieres', 'classes', 'annee',
             'labelsMois', 'dataEncaissements',
             'statsDepenses',
-            'labelsMoisDepenses', 'dataDepensesMensuelles'
+            'labelsMoisDepenses', 'dataDepensesMensuelles',
+            'agingBuckets', 'paiementsEnAttente'
         ));
+    }
+
+    /**
+     * Calcule les impayés par ancienneté (aging buckets)
+     */
+    private function getImpayesAging($anneeId = null, $filiereId = null, $classeId = null): array
+    {
+        // Récupérer les inscriptions avec solde restant
+        $inscriptions = \App\Models\ESBTPInscription::with(['etudiant', 'fraisSubscriptions', 'paiements' => fn($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at')])
+            ->when($anneeId, fn($q) => $q->where('annee_universitaire_id', $anneeId))
+            ->when($filiereId, fn($q) => $q->whereHas('classe', fn($q2) => $q2->where('filiere_id', $filiereId)))
+            ->when($classeId, fn($q) => $q->where('classe_id', $classeId))
+            ->get();
+
+        $buckets = [
+            '0-30'  => ['count' => 0, 'amount' => 0, 'students' => []],
+            '31-60' => ['count' => 0, 'amount' => 0, 'students' => []],
+            '61-90' => ['count' => 0, 'amount' => 0, 'students' => []],
+            '90+'   => ['count' => 0, 'amount' => 0, 'students' => []],
+        ];
+
+        foreach ($inscriptions as $inscription) {
+            $totalDu = $inscription->fraisSubscriptions->sum('amount');
+            $totalPaye = $inscription->paiements->sum('montant');
+            $soldeRestant = max(0, $totalDu - $totalPaye);
+
+            if ($soldeRestant <= 0) continue;
+
+            // Ancienneté basée sur la date de création de l'inscription
+            $joursDepuis = $inscription->created_at->diffInDays(now());
+
+            $etudiantData = [
+                'id' => $inscription->etudiant->id ?? null,
+                'inscription_id' => $inscription->id,
+                'nom' => $inscription->etudiant->nom_complet ?? 'N/A',
+                'solde' => $soldeRestant,
+                'jours' => $joursDepuis,
+            ];
+
+            if ($joursDepuis <= 30) {
+                $buckets['0-30']['count']++;
+                $buckets['0-30']['amount'] += $soldeRestant;
+                if (count($buckets['0-30']['students']) < 5) $buckets['0-30']['students'][] = $etudiantData;
+            } elseif ($joursDepuis <= 60) {
+                $buckets['31-60']['count']++;
+                $buckets['31-60']['amount'] += $soldeRestant;
+                if (count($buckets['31-60']['students']) < 5) $buckets['31-60']['students'][] = $etudiantData;
+            } elseif ($joursDepuis <= 90) {
+                $buckets['61-90']['count']++;
+                $buckets['61-90']['amount'] += $soldeRestant;
+                if (count($buckets['61-90']['students']) < 5) $buckets['61-90']['students'][] = $etudiantData;
+            } else {
+                $buckets['90+']['count']++;
+                $buckets['90+']['amount'] += $soldeRestant;
+                if (count($buckets['90+']['students']) < 5) $buckets['90+']['students'][] = $etudiantData;
+            }
+        }
+
+        return $buckets;
+    }
+
+    /**
+     * Fiche relance pour un étudiant spécifique
+     */
+    public function relanceEtudiant(\App\Models\ESBTPInscription $inscription)
+    {
+        $inscription->load(['etudiant.parents', 'classe', 'anneeUniversitaire', 'fraisSubscriptions', 'paiements' => function ($q) {
+            $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at');
+        }]);
+
+        $etudiant = $inscription->etudiant;
+        if (!$etudiant) {
+            abort(404, 'Étudiant introuvable.');
+        }
+
+        // Calculs financiers
+        $totalDu = $inscription->fraisSubscriptions->sum('amount');
+        $totalPaye = $inscription->paiements->sum('montant');
+        $soldeRestant = max(0, $totalDu - $totalPaye);
+        $pourcentagePaye = $totalDu > 0 ? min(100, round($totalPaye / $totalDu * 100)) : 0;
+
+        // Frais par catégorie
+        $fraisImpayés = $inscription->fraisSubscriptions->map(function ($sub) use ($inscription) {
+            $paye = $inscription->paiements
+                ->where('frais_category_id', $sub->frais_category_id)
+                ->sum('montant');
+            return [
+                'name'   => optional($sub->fraisCategory)->name ?? 'Frais',
+                'amount' => $sub->amount,
+                'paye'   => $paye,
+            ];
+        })->filter(fn($f) => $f['amount'] > 0)->values();
+
+        // Niveau de risque selon le solde restant à payer
+        if ($soldeRestant <= 0) {
+            $riskLevel = 'low'; $riskLabel = 'À jour'; $riskColor = '#10b981';
+        } elseif ($totalDu > 0 && ($soldeRestant / $totalDu) <= 0.25) {
+            $riskLevel = 'medium'; $riskLabel = 'Presque soldé'; $riskColor = '#5e91de';
+        } elseif ($totalPaye > 0) {
+            $riskLevel = 'high'; $riskLabel = 'En cours'; $riskColor = '#0453cb';
+        } else {
+            $riskLevel = 'critical'; $riskLabel = 'Impayé'; $riskColor = '#1e293b';
+        }
+
+        // Autres inscriptions de l'étudiant (pour navigation multi-années)
+        $autresInscriptions = \App\Models\ESBTPInscription::with(['anneeUniversitaire', 'classe'])
+            ->where('etudiant_id', $etudiant->id)
+            ->where('id', '!=', $inscription->id)
+            ->orderByDesc('id')
+            ->get();
+
+        // Historique relances
+        try {
+            $historique = \App\Models\Notification::where('notifiable_id', $etudiant->user_id ?? 0)
+                ->where('notifiable_type', \App\Models\User::class)
+                ->latest()
+                ->limit(20)
+                ->get();
+        } catch (\Exception $e) {
+            $historique = collect();
+        }
+
+        return view('esbtp.comptabilite.relances.etudiant', compact(
+            'inscription', 'etudiant',
+            'totalDu', 'totalPaye', 'soldeRestant', 'pourcentagePaye',
+            'fraisImpayés', 'historique',
+            'riskLevel', 'riskLabel', 'riskColor',
+            'autresInscriptions'
+        ));
+    }
+
+    /**
+     * Liste des relances — étudiants avec soldes impayés
+     */
+    public function gestionRelances(Request $request)
+    {
+        $search       = $request->input('search', '');
+        $riskFilter   = $request->input('risk', '');
+        $filiereId    = $request->input('filiere_id', '');
+        $classeId     = $request->input('classe_id', '');
+        $anneeId      = $request->input('annee_id', '');
+        $perPage      = (int) $request->input('per_page', 25);
+
+        // Année universitaire : paramètre ou active
+        $anneeActive = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeId     = $anneeId ?: optional($anneeActive)->id;
+
+        // Query de base : inscriptions actives avec solde potentiel non nul
+        $query = \App\Models\ESBTPInscription::with([
+            'etudiant',
+            'classe.filiere',
+            'anneeUniversitaire',
+            'fraisSubscriptions',
+            'paiements' => fn ($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at'),
+        ])
+        ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
+        ->when($classeId, fn ($q) => $q->where('classe_id', $classeId))
+        ->when($filiereId, fn ($q) => $q->whereHas('classe', fn ($c) => $c->where('filiere_id', $filiereId)))
+        ->when($search, fn ($q) => $q->whereHas('etudiant', fn ($e) => $e->where('nom', 'like', "%$search%")->orWhere('prenoms', 'like', "%$search%")->orWhere('matricule', 'like', "%$search%")))
+        ->latest('created_at');
+
+        // Calculer risk levels en PHP (après fetch)
+        $allInscriptions = $query->get();
+
+        $rows = $allInscriptions->map(function ($inscription) {
+            $totalDu      = $inscription->fraisSubscriptions->sum('amount');
+            $totalPaye    = $inscription->paiements->sum('montant');
+            $soldeRestant = max(0, $totalDu - $totalPaye);
+            $pourcentage  = $totalDu > 0 ? min(100, round($totalPaye / $totalDu * 100)) : 100;
+
+            if ($soldeRestant <= 0) {
+                $risk = 'low'; $riskLabel = 'À jour';
+            } elseif ($totalDu > 0 && ($soldeRestant / $totalDu) <= 0.25) {
+                $risk = 'medium'; $riskLabel = 'Presque soldé';
+            } elseif ($totalPaye > 0) {
+                $risk = 'high'; $riskLabel = 'En cours';
+            } else {
+                $risk = 'critical'; $riskLabel = 'Impayé';
+            }
+
+            return (object) compact('inscription', 'totalDu', 'totalPaye', 'soldeRestant', 'pourcentage', 'risk', 'riskLabel');
+        });
+
+        // Filtrer par risque si demandé
+        if ($riskFilter) {
+            $rows = $rows->filter(fn ($r) => $r->risk === $riskFilter);
+        }
+
+        // Exclure les étudiants entièrement à jour (si on veut n'afficher que les impayés)
+        $rowsWithDebt = $rows->filter(fn ($r) => $r->soldeRestant > 0);
+
+        // KPIs globaux
+        $kpis = [
+            'total_impaye'     => $rowsWithDebt->sum(fn ($r) => $r->soldeRestant),
+            'count_critical'   => $rows->where('risk', 'critical')->count(),
+            'count_high'       => $rows->where('risk', 'high')->count(),
+            'count_medium'     => $rows->where('risk', 'medium')->count(),
+            'count_low'        => $rows->where('risk', 'low')->count(),
+            'total_etudiants'  => $rows->count(),
+        ];
+
+        // Pagination manuelle
+        $page       = (int) $request->input('page', 1);
+        $offset     = ($page - 1) * $perPage;
+        $paginated  = new \Illuminate\Pagination\LengthAwarePaginator(
+            $rowsWithDebt->slice($offset, $perPage)->values(),
+            $rowsWithDebt->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        // Données filtres
+        $filieres = \App\Models\ESBTPFiliere::orderBy('name')->get();
+        $classes  = \App\Models\ESBTPClasse::when($filiereId, fn ($q) => $q->where('filiere_id', $filiereId))->orderBy('name')->get();
+        $annees   = \App\Models\ESBTPAnneeUniversitaire::orderByDesc('annee_debut')->get();
+
+        // Vérifier si les délais sont configurés (requis pour signaler à l'utilisateur)
+        $delaisRows = \DB::table('settings')
+            ->where('group', 'relances')
+            ->whereIn('key', ['relances.delai_niveau_1', 'relances.delai_niveau_2', 'relances.delai_niveau_3'])
+            ->count();
+        $configManquante = $delaisRows < 3;
+
+        $viewData = compact(
+            'paginated', 'kpis', 'filieres', 'classes', 'annees',
+            'search', 'riskFilter', 'filiereId', 'classeId', 'anneeId', 'perPage', 'anneeActive',
+            'configManquante'
+        );
+
+        // AJAX request → return only table fragment
+        if ($request->ajax() || $request->input('ajax') === '1') {
+            return view('esbtp.comptabilite.relances._table', $viewData);
+        }
+
+        return view('esbtp.comptabilite.relances.index', $viewData);
+    }
+
+    /**
+     * Export Excel des relances (filtres respectés)
+     */
+    public function exportRelancesExcel(Request $request)
+    {
+        $search     = $request->input('search', '');
+        $riskFilter = $request->input('risk', '');
+        $filiereId  = $request->input('filiere_id', '');
+        $classeId   = $request->input('classe_id', '');
+        $anneeId    = $request->input('annee_id', '');
+
+        $anneeActive = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeId     = $anneeId ?: optional($anneeActive)->id;
+
+        $allInscriptions = \App\Models\ESBTPInscription::with([
+            'etudiant', 'classe.filiere', 'anneeUniversitaire', 'fraisSubscriptions',
+            'paiements' => fn ($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at'),
+        ])
+        ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
+        ->when($classeId, fn ($q) => $q->where('classe_id', $classeId))
+        ->when($filiereId, fn ($q) => $q->whereHas('classe', fn ($c) => $c->where('filiere_id', $filiereId)))
+        ->when($search, fn ($q) => $q->whereHas('etudiant', fn ($e) => $e->where('nom', 'like', "%$search%")->orWhere('prenoms', 'like', "%$search%")->orWhere('matricule', 'like', "%$search%")))
+        ->get();
+
+        $rows = $allInscriptions->map(function ($inscription) {
+            $totalDu      = $inscription->fraisSubscriptions->sum('amount');
+            $totalPaye    = $inscription->paiements->sum('montant');
+            $soldeRestant = max(0, $totalDu - $totalPaye);
+
+            if ($soldeRestant <= 0) {
+                $risk = 'low';
+            } elseif ($totalDu > 0 && ($soldeRestant / $totalDu) <= 0.25) {
+                $risk = 'medium';
+            } elseif ($totalPaye > 0) {
+                $risk = 'high';
+            } else {
+                $risk = 'critical';
+            }
+
+            return [
+                'matricule'    => $inscription->etudiant->matricule ?? 'N/A',
+                'nom'          => $inscription->etudiant->nom ?? '',
+                'prenoms'      => $inscription->etudiant->prenoms ?? '',
+                'classe'       => $inscription->classe->name ?? 'N/A',
+                'filiere'      => $inscription->classe->filiere->name ?? 'N/A',
+                'total_du'     => $totalDu,
+                'total_paye'   => $totalPaye,
+                'solde_restant'=> $soldeRestant,
+                'risk_level'   => $risk,
+            ];
+        })->filter(fn ($r) => $r['solde_restant'] > 0);
+
+        if ($riskFilter) {
+            $rows = $rows->filter(fn ($r) => $r['risk_level'] === $riskFilter);
+        }
+
+        $rowsCollection = $rows->values();
+
+        $kpis = [
+            'nb_relances'  => $rowsCollection->count(),
+            'total_impaye' => $rowsCollection->sum('solde_restant'),
+            'nb_critical'  => $rowsCollection->where('risk_level', 'critical')->count(),
+            'nb_high'      => $rowsCollection->where('risk_level', 'high')->count(),
+            'nb_medium'    => $rowsCollection->where('risk_level', 'medium')->count(),
+            'nb_low'       => $rowsCollection->where('risk_level', 'low')->count(),
+        ];
+
+        // Labels lisibles pour filtres info
+        $filters = array_filter([
+            'search'   => $search,
+            'filiere'  => $filiereId ? (\App\Models\ESBTPFiliere::find($filiereId)->name ?? null) : null,
+            'classe'   => $classeId  ? (\App\Models\ESBTPClasse::find($classeId)->name ?? null)  : null,
+            'annee'    => $anneeId   ? (\App\Models\ESBTPAnneeUniversitaire::find($anneeId)->name ?? null) : null,
+            'risk'     => $riskFilter,
+        ]);
+
+        $filename = 'relances_' . now()->format('Y-m-d_Hi') . '.xlsx';
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\RelancesExport($rowsCollection, $kpis, $filters),
+            $filename
+        );
+    }
+
+    /**
+     * Export PDF des relances (filtres respectés)
+     */
+    public function exportRelancesPdf(Request $request)
+    {
+        $search     = $request->input('search', '');
+        $riskFilter = $request->input('risk', '');
+        $filiereId  = $request->input('filiere_id', '');
+        $classeId   = $request->input('classe_id', '');
+        $anneeId    = $request->input('annee_id', '');
+
+        $anneeActive = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeId     = $anneeId ?: optional($anneeActive)->id;
+
+        $allInscriptions = \App\Models\ESBTPInscription::with([
+            'etudiant', 'classe.filiere', 'anneeUniversitaire', 'fraisSubscriptions',
+            'paiements' => fn ($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at'),
+        ])
+        ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
+        ->when($classeId, fn ($q) => $q->where('classe_id', $classeId))
+        ->when($filiereId, fn ($q) => $q->whereHas('classe', fn ($c) => $c->where('filiere_id', $filiereId)))
+        ->when($search, fn ($q) => $q->whereHas('etudiant', fn ($e) => $e->where('nom', 'like', "%$search%")->orWhere('prenoms', 'like', "%$search%")->orWhere('matricule', 'like', "%$search%")))
+        ->get();
+
+        $relances = $allInscriptions->map(function ($inscription) {
+            $totalDu      = $inscription->fraisSubscriptions->sum('amount');
+            $totalPaye    = $inscription->paiements->sum('montant');
+            $soldeRestant = max(0, $totalDu - $totalPaye);
+
+            if ($soldeRestant <= 0) {
+                $risk = 'low';
+            } elseif ($totalDu > 0 && ($soldeRestant / $totalDu) <= 0.25) {
+                $risk = 'medium';
+            } elseif ($totalPaye > 0) {
+                $risk = 'high';
+            } else {
+                $risk = 'critical';
+            }
+
+            return [
+                'matricule'    => $inscription->etudiant->matricule ?? 'N/A',
+                'nom'          => $inscription->etudiant->nom ?? '',
+                'prenoms'      => $inscription->etudiant->prenoms ?? '',
+                'classe'       => $inscription->classe->name ?? 'N/A',
+                'filiere'      => $inscription->classe->filiere->name ?? 'N/A',
+                'total_du'     => $totalDu,
+                'total_paye'   => $totalPaye,
+                'solde_restant'=> $soldeRestant,
+                'risk_level'   => $risk,
+            ];
+        })->filter(fn ($r) => $r['solde_restant'] > 0);
+
+        if ($riskFilter) {
+            $relances = $relances->filter(fn ($r) => $r['risk_level'] === $riskFilter);
+        }
+
+        $relances = $relances->values();
+
+        // Infos établissement depuis settings
+        $etablissement = [
+            'nom'       => \App\Models\Setting::get('school_name', config('app.name')),
+            'adresse'   => \App\Models\Setting::get('school_address', ''),
+            'telephone' => \App\Models\Setting::get('school_phone', ''),
+            'email'     => \App\Models\Setting::get('school_email', ''),
+            'logo'      => \App\Models\Setting::get('school_logo', ''),
+        ];
+
+        // Filtres actifs lisibles pour le header
+        $activeFilters = array_filter([
+            $search   ? "Recherche: $search" : null,
+            $filiereId ? ('Filière: ' . (\App\Models\ESBTPFiliere::find($filiereId)->name ?? $filiereId)) : null,
+            $classeId  ? ('Classe: ' . (\App\Models\ESBTPClasse::find($classeId)->name ?? $classeId))    : null,
+            $riskFilter ? ('Risque: ' . ucfirst($riskFilter))                                             : null,
+        ]);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('esbtp.comptabilite.relances.pdf', compact(
+            'relances', 'anneeActive', 'etablissement', 'activeFilters'
+        ))->setPaper('a4', 'landscape');
+
+        $filename = 'relances_' . now()->format('Y-m-d_Hi') . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     /**
@@ -1474,19 +1899,24 @@ class ESBTPComptabiliteController extends Controller
     {
         // Récupérer les templates existants depuis la configuration
         $templates = [
-            'email' => [],
-            'sms' => [],
-            'courrier' => []
+            'email'    => [],
+            'sms'      => [],
+            'courrier' => [],
         ];
 
-        // Récupérer les paramètres de relances
+        // Lire les paramètres depuis la BDD (table settings, group=relances)
+        // Aucune valeur hardcodée — si absent → null
+        $rows = \DB::table('settings')
+            ->where('group', 'relances')
+            ->pluck('value', 'key');
+
         $parametres = [
-            'delai_niveau_1' => 30,
-            'delai_niveau_2' => 45,
-            'delai_niveau_3' => 60,
-            'montant_minimum' => 10000,
-            'relances_automatiques' => false,
-            'heure_envoi' => '09:00'
+            'delai_niveau_1'        => isset($rows['relances.delai_niveau_1'])   ? (int) $rows['relances.delai_niveau_1']   : null,
+            'delai_niveau_2'        => isset($rows['relances.delai_niveau_2'])   ? (int) $rows['relances.delai_niveau_2']   : null,
+            'delai_niveau_3'        => isset($rows['relances.delai_niveau_3'])   ? (int) $rows['relances.delai_niveau_3']   : null,
+            'montant_minimum'       => isset($rows['relances.montant_minimum'])  ? (int) $rows['relances.montant_minimum']  : null,
+            'relances_automatiques' => isset($rows['relances.relances_automatiques']) ? (bool) $rows['relances.relances_automatiques'] : false,
+            'heure_envoi'           => $rows['relances.heure_envoi'] ?? null,
         ];
 
         return view('esbtp.comptabilite.relances.config', compact('templates', 'parametres'));
@@ -1626,28 +2056,31 @@ class ESBTPComptabiliteController extends Controller
     public function sauvegarderParametres(Request $request)
     {
         $request->validate([
-            'delai_niveau_1' => 'required|numeric|min:1|max:365',
-            'delai_niveau_2' => 'required|numeric|min:1|max:365',
-            'delai_niveau_3' => 'required|numeric|min:1|max:365',
+            'delai_niveau_1' => 'required|integer|min:1|max:365',
+            'delai_niveau_2' => 'required|integer|min:1|max:365',
+            'delai_niveau_3' => 'required|integer|min:1|max:365',
             'montant_minimum' => 'required|numeric|min:0',
-            'heure_envoi' => 'required|date_format:H:i'
+            'heure_envoi'     => 'required|date_format:H:i',
         ]);
 
-        try {
-            // Logique de sauvegarde des paramètres
-            // À implémenter selon la structure de configuration choisie
+        $parametres = [
+            'relances.delai_niveau_1'        => (string) (int) $request->delai_niveau_1,
+            'relances.delai_niveau_2'        => (string) (int) $request->delai_niveau_2,
+            'relances.delai_niveau_3'        => (string) (int) $request->delai_niveau_3,
+            'relances.montant_minimum'       => (string) (int) $request->montant_minimum,
+            'relances.heure_envoi'           => $request->heure_envoi,
+            'relances.relances_automatiques' => $request->boolean('relances_automatiques') ? '1' : '0',
+        ];
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Paramètres sauvegardés avec succès.'
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la sauvegarde: ' . $e->getMessage()
-            ]);
+        foreach ($parametres as $key => $value) {
+            \DB::table('settings')->updateOrInsert(
+                ['key' => $key],
+                ['value' => $value, 'group' => 'relances', 'updated_at' => now(), 'created_at' => now()]
+            );
         }
+
+        return redirect()->route('esbtp.comptabilite.relances.config')
+            ->with('success', 'Paramètres de relances sauvegardés avec succès.');
     }
 
     /**

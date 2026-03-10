@@ -436,6 +436,9 @@
                             <li><a class="dropdown-item" href="{{ route('esbtp.secretaires.create') }}">
                                 <i class="fas fa-user-secretary me-2"></i>Secrétaire
                             </a></li>
+                            <li><a class="dropdown-item" href="{{ route('esbtp.comptables.create') }}">
+                                <i class="fas fa-calculator me-2"></i>Comptable
+                            </a></li>
                         </ul>
                     </div>
                 </div>
@@ -466,6 +469,13 @@
                 </div>
                 <div class="stat-value">{{ $stats['secretaires'] ?? 0 }}</div>
                 <div class="stat-label">Secrétaires</div>
+            </div>
+            <div class="stat-card comptables">
+                <div class="icon">
+                    <i class="fas fa-calculator"></i>
+                </div>
+                <div class="stat-value">{{ $stats['comptables'] ?? 0 }}</div>
+                <div class="stat-label">Comptables</div>
             </div>
             <div class="stat-card total">
                 <div class="icon">
@@ -501,6 +511,13 @@
                     </span>
                     <span class="tab-label">Secrétaires</span>
                     <span class="tab-count">{{ $stats['secretaires'] ?? 0 }} personnes</span>
+                </button>
+                <button class="slider-tab" data-tab="comptables">
+                    <span class="tab-icon">
+                        <i class="fas fa-calculator"></i>
+                    </span>
+                    <span class="tab-label">Comptables</span>
+                    <span class="tab-count">{{ $stats['comptables'] ?? 0 }} personnes</span>
                 </button>
             </div>
 
@@ -843,6 +860,104 @@
                         @endif
                     </div>
                 </div>
+
+                <!-- Panel Comptables -->
+                <div class="slider-panel" id="comptables-panel">
+                    <div class="personnel-actions">
+                        <div class="personnel-search">
+                            <input type="text" class="search-input" placeholder="Rechercher un comptable..."
+                                   id="search-comptables">
+                        </div>
+                        <a href="{{ route('esbtp.comptables.create') }}" class="btn-acasi primary">
+                            <i class="fas fa-plus me-1"></i>Nouveau Comptable
+                        </a>
+                    </div>
+
+                    <div class="personnel-filters">
+                        <label class="form-label">Filtrer par :</label>
+                        <select class="filter-select" id="filter-comptables-status">
+                            <option value="">Tous les statuts</option>
+                            <option value="active">Actifs</option>
+                            <option value="inactive">Inactifs</option>
+                        </select>
+                        <select class="filter-select" id="filter-comptables-department">
+                            <option value="">Tous les départements</option>
+                            <option value="comptabilite">Comptabilité</option>
+                            <option value="finance">Finance</option>
+                            <option value="audit">Audit</option>
+                        </select>
+                    </div>
+
+                    <div id="comptables-list">
+                        @if(isset($comptables) && $comptables->count() > 0)
+                            @foreach($comptables as $comptable)
+                            <div class="personnel-card">
+                                <div class="status-badge {{ $comptable->is_active ? 'active' : 'inactive' }}">
+                                    {{ $comptable->is_active ? 'Actif' : 'Inactif' }}
+                                </div>
+
+                                <div class="d-flex align-items-center">
+                                    <div class="personnel-avatar" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                                        {{ strtoupper(substr($comptable->name, 0, 2)) }}
+                                    </div>
+                                    <div class="personnel-info">
+                                        <div class="personnel-name">{{ $comptable->name }}</div>
+                                        <div class="personnel-details">
+                                            <div class="personnel-detail">
+                                                <i class="fas fa-envelope"></i>
+                                                <span>{{ $comptable->email }}</span>
+                                            </div>
+                                            @if($comptable->telephone)
+                                            <div class="personnel-detail">
+                                                <i class="fas fa-phone"></i>
+                                                <span>{{ $comptable->telephone }}</span>
+                                            </div>
+                                            @endif
+                                            @if($comptable->department)
+                                            <div class="personnel-detail">
+                                                <i class="fas fa-building"></i>
+                                                <span>{{ $comptable->department }}</span>
+                                            </div>
+                                            @endif
+                                        </div>
+                                        <div class="personnel-details">
+                                            <div class="personnel-detail">
+                                                <i class="fas fa-calendar"></i>
+                                                <span>Créé le {{ $comptable->created_at->format('d/m/Y') }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="personnel-actions-group">
+                                        <a href="{{ route('esbtp.comptables.show', $comptable) }}"
+                                           class="btn-acasi secondary btn-sm" title="Voir détails">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        @if($comptable->id !== auth()->id())
+                                        <button type="button"
+                                                class="btn-acasi {{ $comptable->is_active ? 'warning' : 'success' }} btn-sm"
+                                                title="{{ $comptable->is_active ? 'Désactiver' : 'Activer' }}"
+                                                onclick="toggleComptableStatus({{ $comptable->id }})">
+                                            <i class="fas fa-{{ $comptable->is_active ? 'ban' : 'check' }}"></i>
+                                        </button>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        @else
+                            <div class="empty-state">
+                                <div class="icon">
+                                    <i class="fas fa-calculator"></i>
+                                </div>
+                                <h5>Aucun comptable</h5>
+                                <p>Commencez par créer votre premier comptable.</p>
+                                <a href="{{ route('esbtp.comptables.create') }}" class="btn-acasi primary">
+                                    <i class="fas fa-plus me-1"></i>Créer un comptable
+                                </a>
+                            </div>
+                        @endif
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -964,6 +1079,11 @@ $(document).ready(function() {
         const searchTerm = $(this).val().toLowerCase();
         filterPersonnel('secretaires', searchTerm);
     });
+
+    $('#search-comptables').on('input', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        filterPersonnel('comptables', searchTerm);
+    });
     
     // Filtres
     $('.filter-select').change(function() {
@@ -1050,6 +1170,34 @@ function toggleTeacherStatus(teacherId) {
         })
         .catch(error => {
             debugError('Erreur:', error);
+            alert('Une erreur est survenue lors de la mise à jour du statut');
+        });
+    }
+}
+
+function toggleComptableStatus(comptableId) {
+    if (confirm('Êtes-vous sûr de vouloir changer le statut de ce comptable ?')) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        fetch(`/esbtp/comptables/${comptableId}/toggle-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Erreur lors de la mise à jour du statut');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
             alert('Une erreur est survenue lors de la mise à jour du statut');
         });
     }

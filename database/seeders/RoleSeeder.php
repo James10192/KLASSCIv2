@@ -147,5 +147,50 @@ class RoleSeeder extends Seeder
             'manage_own_notes',
             'view_own_students',
         ]);
+
+        // ─────────────────────────────────────────────────────────────────
+        // Rôle COMPTABLE — accès complet à la comptabilité, SANS suppression
+        // Les permissions sont toggleables depuis /esbtp/roles-permissions
+        // ─────────────────────────────────────────────────────────────────
+
+        // Créer d'abord les permissions comptabilité si elles n'existent pas
+        $comptabilitePermissions = [
+            // Accès module comptabilité
+            'access_comptabilite_module',
+            'comptabilite.manage',
+            'comptabilite.dashboard.view',
+            'comptabilite.relances.send',
+            'comptabilite.reports.export',
+            // Paiements (sans delete)
+            'paiements.view',
+            'paiements.create',
+            'paiements.edit',
+            'paiements.validate',
+            // Frais (sans delete)
+            'frais.view',
+            'frais.configure',
+            'frais.create',
+            'frais.edit',
+        ];
+
+        foreach ($comptabilitePermissions as $perm) {
+            Permission::firstOrCreate(['name' => $perm]);
+        }
+
+        $comptable = Role::firstOrCreate(['name' => 'comptable']);
+        $comptable->givePermissionTo(array_merge(
+            $comptabilitePermissions,
+            [
+                // Étudiants & inscriptions (voir + créer, sans supprimer)
+                'view_students',
+                'create_students',
+                'edit_students',
+                // Vue académique de base (pour contextualiser les paiements)
+                'view_filieres',
+                'view_formations',
+                'view_niveaux_etudes',
+                'view_classes',
+            ]
+        ));
     }
 }

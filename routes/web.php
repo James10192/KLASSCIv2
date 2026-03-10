@@ -1380,7 +1380,7 @@ Route::middleware(['auth', 'role:enseignant|coordinateur'])->group(function () {
 });
 
 // Groupe de routes pour la comptabilité
-Route::middleware(['auth', 'permission:access_comptabilite_module'])->prefix('esbtp/comptabilite')->name('esbtp.comptabilite.')->group(function () {
+Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')->name('esbtp.comptabilite.')->group(function () {
     // Dashboard comptabilité
     Route::get('/', [ESBTPComptabiliteController::class, 'index'])->name('index');
 
@@ -1487,6 +1487,10 @@ Route::middleware(['auth', 'permission:access_comptabilite_module'])->prefix('es
     Route::prefix('relances')->name('relances.')->group(function () {
         Route::get('/', [ESBTPComptabiliteController::class, 'gestionRelances'])->name('index');
         Route::get('/config', [ESBTPComptabiliteController::class, 'configurationRelances'])->name('config');
+        Route::get('/export-excel', [ESBTPComptabiliteController::class, 'exportRelancesExcel'])->name('export-excel')
+            ->middleware(['permission:comptabilite.reports.export']);
+        Route::get('/export-pdf', [ESBTPComptabiliteController::class, 'exportRelancesPdf'])->name('export-pdf')
+            ->middleware(['permission:comptabilite.reports.export']);
         Route::get('/{id}', [ESBTPComptabiliteController::class, 'showRelance'])->name('show')->where('id', '[0-9]+');
 
         // Actions sur les relances
@@ -1517,6 +1521,9 @@ Route::middleware(['auth', 'permission:access_comptabilite_module'])->prefix('es
 
         Route::post('/preview-segmentation', [ESBTPComptabiliteController::class, 'previewSegmentation'])->name('preview.segmentation')
             ->middleware(['permission:comptabilite.relances.send']);
+
+        // Fiche relance par étudiant
+        Route::get('/etudiant/{inscription}', [ESBTPComptabiliteController::class, 'relanceEtudiant'])->name('etudiant');
     });
 
     // Dashboard comptabilité
@@ -1854,6 +1861,16 @@ Route::middleware(['auth', 'throttle:security'])->prefix('esbtp/security')->name
 // ... existing code ...
 // Route supprimée: duplicate de esbtp.comptabilite.paiements.recu (définie ligne 1372)
 // ... existing code ...
+
+// Routes pour la gestion des comptables
+Route::middleware(['auth', 'role:superAdmin', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
+    Route::get('/comptables', [\App\Http\Controllers\ESBTPComptableController::class, 'index'])->name('comptables.index');
+    Route::get('/comptables/create', [\App\Http\Controllers\ESBTPComptableController::class, 'create'])->name('comptables.create');
+    Route::post('/comptables', [\App\Http\Controllers\ESBTPComptableController::class, 'store'])->name('comptables.store');
+    Route::get('/comptables/{user}', [\App\Http\Controllers\ESBTPComptableController::class, 'show'])->name('comptables.show');
+    Route::put('/comptables/{user}', [\App\Http\Controllers\ESBTPComptableController::class, 'update'])->name('comptables.update');
+    Route::post('/comptables/{user}/toggle-status', [\App\Http\Controllers\ESBTPComptableController::class, 'toggleStatus'])->name('comptables.toggle-status');
+});
 
 // Routes pour la gestion du personnel avec sliders
 Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {

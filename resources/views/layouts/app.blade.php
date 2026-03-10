@@ -1858,8 +1858,19 @@
                     @endif
 
                     <!-- Accounting Section -->
-                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire')))
+                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('comptable')))
                         <div class="menu-category">Gestion financière</div>
+
+                        {{-- Dashboard Comptabilité (superAdmin + comptable) --}}
+                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('comptable'))
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.comptabilite.dashboard') }}" class="menu-link {{ Request::routeIs('esbtp.comptabilite.dashboard') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-chart-line"></i></div>
+                                <div class="menu-text">Dashboard Comptable</div>
+                            </a>
+                        </div>
+                        @endif
+
                         <div class="menu-accordion">
                             <button class="menu-accordion-btn {{ Request::routeIs('esbtp.comptabilite.*') || Request::routeIs('esbtp.frais.*') || Request::routeIs('esbtp.fee-categories.*') || Request::routeIs('esbtp.payment-categories.*') || Request::routeIs('esbtp.fees.*') || Request::routeIs('esbtp.payments.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-coins"></i></div>
@@ -1883,6 +1894,13 @@
                                     <span class="menu-dot"></span>
                                     <span>Suivi par Catégorie</span>
                                 </a>
+                                {{-- Relances (superAdmin + comptable) --}}
+                                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('comptable'))
+                                <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.relances.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Relances</span>
+                                </a>
+                                @endif
                             </div>
                         </div>
                     @endif

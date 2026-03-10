@@ -220,6 +220,17 @@ try {
         'paywall.view_all_stats',
         'system.technical_access',
         'system.emergency_override',
+
+        // Permissions Comptabilité (rôle comptable)
+        'comptabilite.access',
+        'comptabilite.dashboard.view',
+        'comptabilite.relances.send',
+        'comptabilite.reports.export',
+        'comptabilite.config.manage',
+        'comptabilite.paiements.view',
+        'comptabilite.paiements.validate',
+        'comptabilite.frais.view',
+        'comptabilite.frais.configure',
     ];
 
     echo "Création/vérification des permissions...\n";
@@ -240,6 +251,7 @@ try {
         'parent' => 'Parent',
         'serviceTechnique' => 'Service Technique (African Digit Consulting)',
         'teacher' => 'Teacher (alias de enseignant)',
+        'comptable' => 'Comptable',
     ];
 
     echo "\nCréation/vérification des rôles...\n";
@@ -386,6 +398,45 @@ try {
     ]);
     $serviceTechniqueRole->syncPermissions($serviceTechniquePermissions);
     echo '✓ Service Technique: '.count($serviceTechniquePermissions)." permissions accordées (TOUTES + spéciales)\n";
+
+    // Comptable - Permissions comptabilité
+    $comptableRole = Role::findByName('comptable');
+    $comptablePermissions = [
+        'view_dashboard',
+        'access_admin',
+        // Comptabilité (permissions propres au rôle)
+        'comptabilite.access',
+        'comptabilite.dashboard.view',
+        'comptabilite.relances.send',
+        'comptabilite.reports.export',
+        'comptabilite.config.manage',
+        'comptabilite.paiements.view',
+        'comptabilite.paiements.validate',
+        'comptabilite.frais.view',
+        'comptabilite.frais.configure',
+        // Paiements & frais (permissions partagées)
+        'paiements.view',
+        'paiements.create',
+        'paiements.edit',
+        'paiements.validate',
+        'frais.view',
+        'frais.create',
+        'frais.edit',
+        'frais.configure',
+        // Vue des étudiants et inscriptions (lecture seule)
+        'view_students',
+        'view_inscriptions',
+        'inscriptions.view',
+        'view_payments', 'create_payments', 'edit_payments',
+        'view_comptabilite', 'manage_comptabilite',
+        // Rapports
+        'view_reports', 'generate_reports',
+        // Communication
+        'send_messages', 'receive_messages',
+        'view_annonces',
+    ];
+    $comptableRole->syncPermissions($comptablePermissions);
+    echo '✓ Comptable: '.count($comptablePermissions)." permissions accordées\n";
 
     // Vérifier les utilisateurs sans rôle et leur attribuer un rôle par défaut
     echo "\nVérification des utilisateurs sans rôle...\n";
