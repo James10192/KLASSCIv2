@@ -203,13 +203,20 @@
                     </div>
                 </div>
 
-                <div class="actions-section-premium">
-                    <button type="submit" class="btn-action-premium btn-success">
-                        <i class="fas fa-save"></i> Enregistrer le département
-                    </button>
-                    <a href="{{ route('esbtp.departments.index') }}" class="btn-action-premium btn-outline-warning">
-                        <i class="fas fa-times"></i> Annuler
-                    </a>
+                <!-- Section actions premium refaite -->
+                <div class="dept-form-actions">
+                    <div class="dept-form-actions-info">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Les champs marqués <strong style="color:var(--danger);">*</strong> sont obligatoires</span>
+                    </div>
+                    <div class="dept-form-actions-btns">
+                        <a href="{{ route('esbtp.departments.index') }}" class="dept-btn-cancel">
+                            <i class="fas fa-times"></i> Annuler
+                        </a>
+                        <button type="submit" class="dept-btn-submit">
+                            <i class="fas fa-save"></i> Enregistrer le département
+                        </button>
+                    </div>
                 </div>
             </form>
             </div>
@@ -220,33 +227,116 @@
 
 @push('styles')
 <style>
-.form-control:focus {
-    border-color: var(--primary) !important;
-    box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.1) !important;
-    outline: none !important;
+/* ===== ACTIONS FORMULAIRE DÉPARTEMENT ===== */
+.dept-form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 32px;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #f8faff 0%, #eef3fb 100%);
+    border: 1px solid rgba(4, 83, 203, 0.12);
+    border-radius: 12px;
+    border-left: 4px solid #0453cb;
 }
 
-.form-control:hover {
-    border-color: var(--accent-blue) !important;
+.dept-form-actions-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: #64748b;
 }
 
-.btn-acasi:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: var(--shadow-hover) !important;
+.dept-form-actions-info i {
+    color: #0453cb;
 }
 
-input[type="text"], input[type="email"], textarea {
-    width: 100% !important;
+.dept-form-actions-btns {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
-/* Animation pour les labels */
-label {
-    transition: color 0.2s ease !important;
+/* Bouton Annuler — outline neutre sobre */
+.dept-btn-cancel {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    background: transparent;
+    color: #64748b;
+    border: 2px solid #cbd5e1;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
 }
 
-.form-control:focus + label,
-.form-control:focus ~ label {
-    color: var(--primary) !important;
+.dept-btn-cancel:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #475569;
+    transform: translateY(-1px);
+    text-decoration: none;
+}
+
+/* Bouton Enregistrer — gradient KLASSCI bleu */
+.dept-btn-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 11px 28px;
+    background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 14px rgba(4, 83, 203, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.dept-btn-submit::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.4s ease;
+}
+
+.dept-btn-submit:hover::before { left: 100%; }
+
+.dept-btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(4, 83, 203, 0.4);
+}
+
+.dept-btn-submit:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(4, 83, 203, 0.3);
+}
+
+@media (max-width: 576px) {
+    .dept-form-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .dept-form-actions-btns {
+        flex-direction: column-reverse;
+    }
+    .dept-btn-cancel, .dept-btn-submit {
+        justify-content: center;
+        width: 100%;
+    }
 }
 </style>
 @endpush
@@ -258,22 +348,9 @@ label {
         const name = this.value;
         const code = name
             .toUpperCase()
-            .replace(/[^A-Z0-9]/g, '') // Remove non-alphanumeric characters
-            .substring(0, 10); // Take first 10 characters
+            .replace(/[^A-Z0-9]/g, '')
+            .substring(0, 10);
         document.getElementById('code').value = code;
-    });
-
-    // Focus effects
-    document.querySelectorAll('.form-control').forEach(input => {
-        input.addEventListener('focus', function() {
-            this.style.borderColor = 'var(--primary)';
-            this.style.boxShadow = '0 0 0 2px rgba(30, 58, 138, 0.1)';
-        });
-        
-        input.addEventListener('blur', function() {
-            this.style.borderColor = '#e5e7eb';
-            this.style.boxShadow = 'none';
-        });
     });
 </script>
 @endpush
