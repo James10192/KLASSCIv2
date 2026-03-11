@@ -14,7 +14,7 @@
         <div class="dashboard-header">
             <div class="header-left">
                 <h1><i class="fas fa-plus-circle me-2"></i>Nouveau Département</h1>
-                <p class="header-subtitle">Création d'un nouveau département ESBTP</p>
+                <p class="header-subtitle">Création d'un nouveau département</p>
             </div>
             <div class="header-actions">
                 <a href="{{ route('esbtp.departments.index') }}" class="btn-acasi secondary">

@@ -162,7 +162,7 @@
         <div class="dashboard-header">
             <div class="header-left">
                 <h1><i class="fas fa-building me-2"></i>{{ $department->name }}</h1>
-                <p class="header-subtitle">Détails du département {{ $department->code }} — ESBTP</p>
+                <p class="header-subtitle">Détails du département {{ $department->code }}</p>
                 <div class="mt-2">
                     @if($department->is_active)
                         <span class="dept-status-badge active">
