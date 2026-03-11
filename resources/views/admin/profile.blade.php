@@ -377,6 +377,7 @@
     gap: 24px;
     align-items: start;
 }
+.profile-col-left,
 .profile-col-right {
     display: flex;
     flex-direction: column;
