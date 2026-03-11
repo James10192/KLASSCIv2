@@ -377,6 +377,11 @@
     gap: 24px;
     align-items: start;
 }
+.profile-col-right {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
 @media (max-width: 992px) {
     .profile-layout { grid-template-columns: 1fr; }
 }
