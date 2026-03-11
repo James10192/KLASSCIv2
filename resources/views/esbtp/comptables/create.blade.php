@@ -73,9 +73,9 @@
                             @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div>
-                            <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold">Email</label>
                             <input type="email" name="email" class="form-control @error('email') is-invalid @enderror"
-                                   value="{{ old('email') }}" placeholder="comptable@ecole.ci" required>
+                                   value="{{ old('email') }}" placeholder="comptable@ecole.ci">
                             @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div>
@@ -96,25 +96,15 @@
                         </div>
                     </div>
 
-                    <h5 class="text-success fw-bold mb-3 mt-4"><i class="fas fa-lock me-2"></i>Accès & Sécurité</h5>
-                    <div class="form-grid">
-                        <div>
-                            <label class="form-label fw-semibold">Mot de passe <span class="text-danger">*</span></label>
-                            <input type="password" name="password" class="form-control @error('password') is-invalid @enderror"
-                                   placeholder="Minimum 8 caractères" required>
-                            @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-                        <div>
-                            <label class="form-label fw-semibold">Confirmer le mot de passe <span class="text-danger">*</span></label>
-                            <input type="password" name="password_confirmation" class="form-control"
-                                   placeholder="Répéter le mot de passe" required>
-                        </div>
-                    </div>
-
                     <div class="alert alert-info rounded-3 mt-3">
                         <i class="fas fa-info-circle me-2"></i>
                         Ce compte aura le rôle <strong>comptable</strong> avec accès complet à la comptabilité (paiements, frais, relances, rapports) mais <strong>sans pouvoir supprimer</strong> des données.
                         Les permissions peuvent être ajustées depuis <a href="{{ route('esbtp.roles-permissions.index') }}" class="alert-link">Gestion des Permissions</a>.
+                    </div>
+
+                    <div class="alert alert-success rounded-3 mt-3">
+                        <i class="fas fa-key me-2"></i>
+                        Le <strong>nom d'utilisateur</strong> et le <strong>mot de passe</strong> seront générés automatiquement. Ils vous seront affichés après la création du compte.
                     </div>
 
                     <div class="d-flex justify-content-end gap-3 mt-4">

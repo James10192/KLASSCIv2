@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -10,9 +11,12 @@ use Spatie\Permission\Models\Role;
 
 class ESBTPComptableController extends Controller
 {
-    public function __construct()
+    protected $userService;
+
+    public function __construct(UserService $userService)
     {
         $this->middleware(['auth', 'role:superAdmin']);
+        $this->userService = $userService;
     }
 
     public function index()
@@ -30,30 +34,41 @@ class ESBTPComptableController extends Controller
     {
         $validated = $request->validate([
             'name'       => 'required|string|max:255',
-            'email'      => 'required|email|unique:users,email',
+            'email'      => 'nullable|string|email|max:255|unique:users,email',
             'telephone'  => 'nullable|string|max:20',
             'department' => 'nullable|string|max:100',
-            'password'   => 'required|string|min:8|confirmed',
         ]);
 
         DB::beginTransaction();
         try {
-            $user = User::create([
-                'name'       => $validated['name'],
-                'email'      => $validated['email'],
-                'telephone'  => $validated['telephone'] ?? null,
+            // Créer l'utilisateur avec username et password automatiques
+            $user = $this->userService->createUserWithAutoCredentials([
+                'name' => $validated['name'],
+                'email' => $validated['email'] ?? null,
+                'phone' => $validated['telephone'] ?? null,
+            ], 'comptable');
+
+            // Mettre à jour les champs supplémentaires
+            $user->update([
+                'telephone' => $validated['telephone'] ?? null,
                 'department' => $validated['department'] ?? null,
-                'password'   => Hash::make($validated['password']),
-                'is_active'  => true,
             ]);
 
+            // Assigner le rôle comptable
             $user->assignRole('comptable');
 
             DB::commit();
 
+            // Obtenir les informations de connexion pour affichage
+            $credentials = $this->userService->getCredentialsInfo(
+                $user->username,
+                $this->userService->generateDefaultPassword()
+            );
+
             return redirect()
-                ->route('esbtp.comptables.show', $user)
-                ->with('success', "Comptable {$user->name} créé avec succès.");
+                ->route('esbtp.personnel.unified.index')
+                ->with('success', "Comptable {$user->name} créé avec succès.")
+                ->with('credentials', $credentials);
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()
