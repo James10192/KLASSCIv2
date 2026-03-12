@@ -17,7 +17,7 @@ class AdminProfileController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:superAdmin|secretaire|coordinateur|serviceTechnique');
+        $this->middleware('role:superAdmin|secretaire|coordinateur|serviceTechnique|comptable');
     }
 
     /**
