@@ -842,7 +842,7 @@
         {{-- ── KPI STRIP ── --}}
         <div class="kpi-strip" id="kpi-strip">
             @php
-                $tauxRecouvrement = $totalDue > 0 ? round(($totalPaid / $totalDue) * 100, 1) : 0;
+                $tauxRecouvrement = $totalDue > 0 ? min(100, round(($totalPaid / $totalDue) * 100, 1)) : 0;
             @endphp
             {{-- KPI 1 : Total frais dus --}}
             <div class="kpi-card">
