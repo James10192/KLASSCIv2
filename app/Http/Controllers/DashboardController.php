@@ -93,6 +93,11 @@ class DashboardController extends Controller
             return $this->etudiantDashboard();
         }
 
+        // Vérifier si l'utilisateur est un comptable
+        if ($user->hasRole('comptable')) {
+            return redirect()->route('esbtp.comptabilite.dashboard');
+        }
+
         // Si aucun rôle spécifique n'est trouvé, afficher un tableau de bord générique
         return view('dashboard.index', compact('user'));
     }
