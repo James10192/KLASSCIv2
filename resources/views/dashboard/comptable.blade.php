@@ -124,6 +124,77 @@
             font-size: 1.2rem;
         }
     }
+
+    /* ─── Payment Feed ──────────────────────────────────────────── */
+    .payment-feed { display: flex; flex-direction: column; gap: 0; }
+
+    .payment-item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px 16px; border-bottom: 1px solid rgba(0,0,0,0.05);
+        text-decoration: none; color: var(--text-primary);
+        transition: background 0.15s ease;
+    }
+    .payment-item:last-child { border-bottom: none; }
+    .payment-item:hover { background: rgba(4,83,203,0.03); color: var(--text-primary); }
+
+    .pay-status-bar { width: 3px; min-height: 40px; border-radius: 2px; flex-shrink: 0; align-self: stretch; }
+
+    .pay-avatar {
+        width: 36px; height: 36px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.68rem; font-weight: 700; letter-spacing: 0.3px;
+        flex-shrink: 0; text-transform: uppercase;
+    }
+
+    .pay-info { flex: 1; min-width: 0; }
+    .pay-name { font-size: 0.84rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+    .pay-meta { display: flex; align-items: center; gap: 5px; margin-top: 3px; flex-wrap: wrap; }
+    .pay-ref { font-size: 0.71rem; color: var(--text-secondary); font-family: 'Courier New', monospace; }
+
+    .pay-mode-pill {
+        display: inline-flex; align-items: center; gap: 3px;
+        padding: 1px 7px; border-radius: 10px; font-size: 0.67rem; font-weight: 500;
+        background: rgba(4,83,203,0.07); color: var(--primary); border: 1px solid rgba(4,83,203,0.12);
+    }
+    .pay-status-pill {
+        display: inline-flex; align-items: center; gap: 3px;
+        padding: 1px 7px; border-radius: 10px; font-size: 0.67rem; font-weight: 600;
+    }
+
+    .pay-right { text-align: right; flex-shrink: 0; }
+    .pay-amount { font-size: 0.88rem; font-weight: 700; letter-spacing: -0.3px; line-height: 1.2; }
+    .pay-date { font-size: 0.68rem; color: var(--text-secondary); margin-top: 2px; }
+
+    /* ─── Ranking / Top Impayés ─────────────────────────────────── */
+    .rank-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .rank-item {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 12px; border-radius: var(--radius-small);
+        border: 1px solid var(--border-light); background: #fff;
+        transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+    .rank-item:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.06); border-color: rgba(4,83,203,0.2); }
+
+    .rank-badge {
+        width: 26px; height: 26px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.7rem; font-weight: 800; flex-shrink: 0;
+    }
+    .rank-1 { background: #fef3c7; color: #92400e; border: 1.5px solid #f59e0b; }
+    .rank-2 { background: #f1f5f9; color: #475569; border: 1.5px solid #94a3b8; }
+    .rank-3 { background: #fef2e8; color: #7c2d12; border: 1.5px solid #b45309; }
+    .rank-other { background: rgba(4,83,203,0.06); color: var(--primary); border: 1.5px solid rgba(4,83,203,0.18); }
+
+    .rank-info { flex: 1; min-width: 0; }
+    .rank-name { font-size: 0.82rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+    .rank-matricule { font-size: 0.69rem; color: var(--text-secondary); font-family: 'Courier New', monospace; }
+    .rank-track { height: 3px; background: var(--border-light); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+    .rank-track-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+    .rank-pct { font-size: 0.67rem; color: var(--text-secondary); margin-top: 2px; }
+    .rank-amount { text-align: right; flex-shrink: 0; }
+    .rank-solde { font-size: 0.85rem; font-weight: 700; color: #dc2626; letter-spacing: -0.3px; line-height: 1.2; }
+    .rank-unit { font-size: 0.65rem; color: var(--text-secondary); }
 </style>
 @endsection
 
@@ -254,97 +325,100 @@
         <div class="row g-3">
             {{-- Paiements récents --}}
             <div class="col-lg-8 col-12">
-                <div class="card-moderne">
-                    <div class="p-lg">
-                        <div class="section-title mb-md d-flex justify-content-between align-items-center">
-                            <span><i class="fas fa-money-bill-wave me-2"></i>Paiements récents</span>
-                            <a href="{{ route('esbtp.paiements.index') }}" class="btn btn-sm btn-outline-primary">Voir tout</a>
+                <div class="card-moderne" style="overflow: hidden;">
+                    <div style="padding: var(--space-lg) var(--space-lg) var(--space-md);">
+                        <div class="section-title d-flex justify-content-between align-items-center" style="margin-bottom: 0;">
+                            <span><i class="fas fa-stream me-2"></i>Paiements récents</span>
+                            <a href="{{ route('esbtp.paiements.index') }}" class="btn-acasi secondary" style="font-size: 0.78rem; padding: 4px 12px;">
+                                Voir tout <i class="fas fa-arrow-right ms-1"></i>
+                            </a>
                         </div>
-                        @if($recentPaiements->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-hover align-middle mb-0">
-                                    <thead class="bg-light">
-                                        <tr>
-                                            <th>Référence</th>
-                                            <th>Étudiant</th>
-                                            <th>Montant</th>
-                                            <th>Mode</th>
-                                            <th>Statut</th>
-                                            <th>Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($recentPaiements as $paiement)
-                                            <tr>
-                                                <td>
-                                                    <a href="{{ route('esbtp.paiements.show', $paiement->id) }}" class="text-decoration-none fw-medium">
-                                                        {{ $paiement->numero_recu ?: $paiement->reference_paiement ?: '#' . $paiement->id }}
-                                                    </a>
-                                                </td>
-                                                <td>
-                                                    @if($paiement->etudiant)
-                                                        <div class="fw-medium">{{ $paiement->etudiant->nom }} {{ $paiement->etudiant->prenoms }}</div>
-                                                        <div class="text-muted small">{{ $paiement->etudiant->matricule }}</div>
-                                                    @else
-                                                        <span class="text-muted">-</span>
-                                                    @endif
-                                                </td>
-                                                <td class="fw-semibold">{{ number_format($paiement->montant, 0, ',', ' ') }}</td>
-                                                <td>
-                                                    @if($paiement->mode_paiement)
-                                                        <span class="mode-badge" style="background: rgba(4, 83, 203, 0.08); color: var(--primary);">
-                                                            @if(str_contains($paiement->mode_paiement, 'Esp'))
-                                                                <i class="fas fa-coins"></i>
-                                                            @elseif(str_contains($paiement->mode_paiement, 'Mobile'))
-                                                                <i class="fas fa-mobile-alt"></i>
-                                                            @elseif(str_contains($paiement->mode_paiement, 'Virement'))
-                                                                <i class="fas fa-university"></i>
-                                                            @elseif(str_contains($paiement->mode_paiement, 'Ch'))
-                                                                <i class="fas fa-money-check"></i>
-                                                            @else
-                                                                <i class="fas fa-credit-card"></i>
-                                                            @endif
-                                                            {{ $paiement->mode_paiement }}
-                                                        </span>
-                                                    @else
-                                                        <span class="text-muted">-</span>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    @php
-                                                        $statusColor = match($paiement->status) {
-                                                            'validé' => 'success',
-                                                            'en_attente' => 'warning',
-                                                            'rejeté' => 'danger',
-                                                            default => 'secondary'
-                                                        };
-                                                        $statusLabel = match($paiement->status) {
-                                                            'validé' => 'Validé',
-                                                            'en_attente' => 'En attente',
-                                                            'rejeté' => 'Rejeté',
-                                                            default => $paiement->status
-                                                        };
-                                                    @endphp
-                                                    <span class="badge bg-{{ $statusColor }}-subtle text-{{ $statusColor }} border border-{{ $statusColor }}-subtle">
-                                                        <span class="status-dot bg-{{ $statusColor }} me-1"></span>
-                                                        {{ $statusLabel }}
-                                                    </span>
-                                                </td>
-                                                <td class="text-muted small">
-                                                    {{ $paiement->date_paiement ? \Carbon\Carbon::parse($paiement->date_paiement)->format('d/m/Y') : $paiement->created_at->format('d/m/Y') }}
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @else
-                            <div class="text-center text-muted py-4">
-                                <i class="fas fa-receipt fa-2x mb-2 d-block opacity-50"></i>
-                                Aucun paiement récent
-                            </div>
-                        @endif
+                        <div class="text-muted" style="font-size: 0.75rem; margin-top: 4px;">
+                            {{ $recentPaiements->count() }} derniers enregistrements
+                        </div>
                     </div>
+
+                    @if($recentPaiements->count() > 0)
+                        <div class="payment-feed">
+                            @foreach($recentPaiements as $paiement)
+                                @php
+                                    $statusColor = match($paiement->status) {
+                                        'validé'     => '#10b981',
+                                        'en_attente' => '#f59e0b',
+                                        'rejeté'     => '#ef4444',
+                                        default      => '#94a3b8'
+                                    };
+                                    $statusLabel = match($paiement->status) {
+                                        'validé'     => 'Validé',
+                                        'en_attente' => 'En attente',
+                                        'rejeté'     => 'Rejeté',
+                                        default      => $paiement->status
+                                    };
+                                    $statusBg = match($paiement->status) {
+                                        'validé'     => 'rgba(16,185,129,0.1)',
+                                        'en_attente' => 'rgba(245,158,11,0.1)',
+                                        'rejeté'     => 'rgba(239,68,68,0.1)',
+                                        default      => 'rgba(148,163,184,0.1)'
+                                    };
+                                    $modeIcon = match(true) {
+                                        str_contains($paiement->mode_paiement ?? '', 'Esp')      => 'fa-coins',
+                                        str_contains($paiement->mode_paiement ?? '', 'Mobile')   => 'fa-mobile-alt',
+                                        str_contains($paiement->mode_paiement ?? '', 'Virement') => 'fa-university',
+                                        str_contains($paiement->mode_paiement ?? '', 'Ch')       => 'fa-money-check',
+                                        default => 'fa-credit-card'
+                                    };
+                                    $initials = $paiement->etudiant
+                                        ? mb_strtoupper(mb_substr($paiement->etudiant->nom, 0, 1) . mb_substr($paiement->etudiant->prenoms ?? '', 0, 1))
+                                        : '??';
+                                    $dateAffichee = $paiement->date_paiement
+                                        ? \Carbon\Carbon::parse($paiement->date_paiement)
+                                        : $paiement->created_at;
+                                @endphp
+                                <a href="{{ route('esbtp.paiements.show', $paiement->id) }}" class="payment-item">
+                                    <div class="pay-status-bar" style="background: {{ $statusColor }};"></div>
+                                    <div class="pay-avatar" style="background: {{ $statusBg }}; color: {{ $statusColor }};">
+                                        {{ $initials }}
+                                    </div>
+                                    <div class="pay-info">
+                                        <div class="pay-name">
+                                            @if($paiement->etudiant)
+                                                {{ $paiement->etudiant->nom }} {{ $paiement->etudiant->prenoms }}
+                                            @else
+                                                Étudiant inconnu
+                                            @endif
+                                        </div>
+                                        <div class="pay-meta">
+                                            <span class="pay-ref">{{ $paiement->numero_recu ?: ($paiement->reference_paiement ?: '#'.$paiement->id) }}</span>
+                                            @if($paiement->mode_paiement)
+                                                <span class="pay-mode-pill">
+                                                    <i class="fas {{ $modeIcon }}" style="font-size: 0.6rem;"></i>
+                                                    {{ $paiement->mode_paiement }}
+                                                </span>
+                                            @endif
+                                            <span class="pay-status-pill" style="background: {{ $statusBg }}; color: {{ $statusColor }};">
+                                                {{ $statusLabel }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="pay-right">
+                                        <div class="pay-amount" style="color: {{ $paiement->status === 'rejeté' ? '#94a3b8' : 'var(--text-primary)' }};">
+                                            {{ number_format($paiement->montant, 0, ',', ' ') }}
+                                            <span style="font-size: 0.65rem; font-weight: 500; color: var(--text-secondary);">FCFA</span>
+                                        </div>
+                                        <div class="pay-date">{{ $dateAffichee->diffForHumans() }}</div>
+                                    </div>
+                                </a>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-center text-muted" style="padding: 2.5rem 1rem;">
+                            <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(4,83,203,0.06); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+                                <i class="fas fa-receipt" style="color: var(--primary); opacity: 0.5; font-size: 1.2rem;"></i>
+                            </div>
+                            <div style="font-size: 0.85rem; font-weight: 500;">Aucun paiement pour cette période</div>
+                            <div style="font-size: 0.75rem; margin-top: 4px;">Les paiements de l'année courante s'afficheront ici</div>
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -353,40 +427,48 @@
                 {{-- Top impayés --}}
                 <div class="card-moderne mb-3">
                     <div class="p-lg">
-                        <div class="section-title mb-md">
-                            <i class="fas fa-exclamation-circle me-2" style="color: var(--primary);"></i>Top 5 impayés
+                        <div class="section-title d-flex justify-content-between align-items-center mb-md">
+                            <span><i class="fas fa-trophy me-2" style="color: #f59e0b;"></i>Top 5 impayés</span>
+                            <span class="text-muted" style="font-size: 0.72rem;">solde restant</span>
                         </div>
                         @if($topImpayes->count() > 0)
-                            <div class="list-group list-group-flush">
-                                @foreach($topImpayes as $impaye)
-                                    <div class="list-group-item px-0 border-0">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <div>
-                                                <div class="fw-medium">{{ $impaye->nom }} {{ $impaye->prenoms }}</div>
-                                                <div class="text-muted small">{{ $impaye->matricule }}</div>
+                            <div class="rank-list">
+                                @foreach($topImpayes as $index => $impaye)
+                                    @php
+                                        $rank = $index + 1;
+                                        $rankClass = match($rank) { 1 => 'rank-1', 2 => 'rank-2', 3 => 'rank-3', default => 'rank-other' };
+                                        $pctPaye = $impaye->total_du > 0 ? round(($impaye->total_paye / $impaye->total_du) * 100) : 0;
+                                        $trackColor = $pctPaye >= 75 ? 'var(--success)' : ($pctPaye >= 25 ? 'var(--primary)' : 'var(--warning)');
+                                    @endphp
+                                    <div class="rank-item">
+                                        <div class="rank-badge {{ $rankClass }}">{{ $rank }}</div>
+                                        <div class="rank-info">
+                                            <div class="rank-name">{{ $impaye->nom }} {{ $impaye->prenoms }}</div>
+                                            <div class="rank-matricule">{{ $impaye->matricule }}</div>
+                                            <div class="rank-track">
+                                                <div class="rank-track-fill" style="width: {{ $pctPaye }}%; background: {{ $trackColor }};"></div>
                                             </div>
-                                            <div class="text-end">
-                                                <div class="fw-bold" style="color: var(--primary);">{{ number_format($impaye->solde_restant, 0, ',', ' ') }}</div>
-                                                <div class="text-muted small">FCFA</div>
-                                            </div>
+                                            <div class="rank-pct">{{ $pctPaye }}% payé</div>
                                         </div>
-                                        <div class="progress-bar-custom mt-2">
-                                            @php $pctPaye = $impaye->total_du > 0 ? round(($impaye->total_paye / $impaye->total_du) * 100) : 0; @endphp
-                                            <div class="fill" style="width: {{ $pctPaye }}%; background: {{ $pctPaye >= 75 ? 'var(--success)' : ($pctPaye >= 25 ? 'var(--primary)' : 'var(--warning)') }};"></div>
+                                        <div class="rank-amount">
+                                            <div class="rank-solde">{{ number_format($impaye->solde_restant, 0, ',', ' ') }}</div>
+                                            <div class="rank-unit">FCFA restant</div>
                                         </div>
-                                        <div class="text-muted small mt-1">{{ $pctPaye }}% payé — {{ number_format($impaye->total_paye, 0, ',', ' ') }} / {{ number_format($impaye->total_du, 0, ',', ' ') }}</div>
                                     </div>
                                 @endforeach
                             </div>
                             <div class="mt-3 text-center">
-                                <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="btn btn-sm btn-outline-primary">
+                                <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="btn-acasi warning" style="font-size: 0.78rem; padding: 5px 14px;">
                                     <i class="fas fa-bell me-1"></i>Voir les relances
                                 </a>
                             </div>
                         @else
-                            <div class="text-center text-muted py-3">
-                                <i class="fas fa-check-circle fa-2x mb-2 d-block text-success opacity-50"></i>
-                                Aucun impayé significatif
+                            <div class="text-center text-muted" style="padding: 1.5rem 0;">
+                                <div style="width: 48px; height: 48px; border-radius: 50%; background: rgba(16,185,129,0.08); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
+                                    <i class="fas fa-check-circle" style="color: var(--success); font-size: 1.1rem;"></i>
+                                </div>
+                                <div style="font-size: 0.82rem; font-weight: 500;">Aucun impayé significatif</div>
+                                <div style="font-size: 0.72rem; margin-top: 3px;">Tous les étudiants sont à jour</div>
                             </div>
                         @endif
                     </div>

@@ -635,7 +635,10 @@ class DashboardController extends Controller
         try {
             $paiementsQuery = \App\Models\ESBTPPaiement::query()->whereNull('deleted_at');
             if ($anneeEnCours) {
-                $paiementsQuery->where('annee_universitaire_id', $anneeEnCours->id);
+                // Filtrer via la relation inscription pour garantir la cohérence
+                $paiementsQuery->whereHas('inscription', function ($q) use ($anneeEnCours) {
+                    $q->where('annee_universitaire_id', $anneeEnCours->id);
+                });
             }
 
             // Montants par statut
@@ -643,19 +646,18 @@ class DashboardController extends Controller
             $data['totalEnAttente'] = (clone $paiementsQuery)->where('status', 'en_attente')->sum('montant');
             $data['paiementsEnAttenteCount'] = (clone $paiementsQuery)->where('status', 'en_attente')->count();
 
-            // Total frais dus (somme des souscriptions actives)
-            $subscriptionsQuery = \App\Models\ESBTPFraisSubscription::query();
+            // Total frais dus (souscriptions actives de l'année courante)
+            $subscriptionsQuery = \App\Models\ESBTPFraisSubscription::query()->where('is_active', true);
             if ($anneeEnCours) {
                 $subscriptionsQuery->whereHas('inscription', function ($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id)
-                      ->where('status', 'active');
+                    $q->where('annee_universitaire_id', $anneeEnCours->id);
                 });
             }
             $data['totalFraisDus'] = $subscriptionsQuery->sum('amount');
 
-            // Taux de recouvrement
+            // Taux de recouvrement (plafonné à 100%)
             $data['tauxRecouvrement'] = $data['totalFraisDus'] > 0
-                ? round(($data['totalEncaisse'] / $data['totalFraisDus']) * 100, 1)
+                ? min(round(($data['totalEncaisse'] / $data['totalFraisDus']) * 100, 1), 100)
                 : 0;
 
             $data['montantRestant'] = max(0, $data['totalFraisDus'] - $data['totalEncaisse']);
