@@ -844,10 +844,10 @@
                     searchCountEl.style.display = 'none';
                 }
 
-                // Mettre à jour le nombre dans l'onglet actif
-                const activeTab = document.querySelector('.students-tabs a.active[data-statut]');
-                if (activeTab && currentSearchQuery) {
-                    const countSpan = activeTab.querySelector('.student-count');
+                // Mettre à jour le nombre dans l'onglet correspondant au statut chargé
+                const loadedTab = document.querySelector(`.students-tabs a[data-statut="${statut}"]`);
+                if (loadedTab) {
+                    const countSpan = loadedTab.querySelector('.student-count');
                     if (countSpan) {
                         countSpan.textContent = data.total;
                     }

@@ -1354,7 +1354,7 @@ class ESBTPPaiementController extends Controller
         if ($categoryId) {
             $category = $categories->firstWhere('id', $categoryId);
             if ($category) {
-                $detailsCategorie = $this->analyserCategorieDetaille($category, $inscriptions);
+                $detailsCategorie = $this->analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements);
             }
         }
 
@@ -1378,83 +1378,6 @@ class ESBTPPaiementController extends Controller
             'url' => $request->fullUrl(),
             'last_updated_at' => now()->toIso8601String(),
         ]);
-    }
-
-    /**
-     * Analyser une catégorie en détail
-     */
-    private function analyserCategorieDetaille($category, $inscriptions)
-    {
-        $details = [
-            'category' => $category,
-            'etudiants_a_jour' => collect(),
-            'etudiants_en_retard' => collect(),
-            'etudiants_non_payes' => collect(),
-            'montant_total_attendu' => 0,
-            'montant_total_recu' => 0,
-        ];
-
-        foreach ($inscriptions as $inscription) {
-            // Vérifier si l'étudiant est concerné par ce frais
-            $estConcerne = false;
-            $montantAttendu = 0;
-
-            if ($category->is_mandatory) {
-                // Frais obligatoire : tous les étudiants sont concernés
-                $estConcerne = true;
-                $configuration = \App\Models\ESBTPFraisConfiguration::where('frais_category_id', $category->id)
-                    ->where('filiere_id', $inscription->filiere_id)
-                    ->where('niveau_id', $inscription->niveau_id)
-                    ->where('is_active', true)
-                    ->first();
-                $montantAttendu = $configuration ? $configuration->getMontantByStatus($inscription->affectation_status ?? 'affecté') : $category->default_amount;
-            } else {
-                // Service optionnel : vérifier s'il y a une souscription active
-                $subscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
-                    ->where('frais_category_id', $category->id)
-                    ->where('is_active', true)
-                    ->first();
-                
-                if ($subscription) {
-                    $estConcerne = true;
-                    $montantAttendu = $subscription->amount;
-                }
-            }
-
-            // Traiter seulement les étudiants concernés
-            if ($estConcerne) {
-                $details['montant_total_attendu'] += $montantAttendu;
-
-                // Vérifier les paiements de l'étudiant pour cette catégorie
-                $paiements = ESBTPPaiement::where('inscription_id', $inscription->id)
-                    ->where('frais_category_id', $category->id)
-                    ->where('status', 'validé')
-                    ->get();
-
-                $montantPaye = $paiements->sum('montant');
-                $details['montant_total_recu'] += $montantPaye;
-
-                $statutEtudiant = [
-                    'inscription' => $inscription,
-                    'montant_attendu' => $montantAttendu,
-                    'montant_paye' => $montantPaye,
-                    'solde' => $montantAttendu - $montantPaye,
-                    'pourcentage' => $montantAttendu > 0 ? round(($montantPaye / $montantAttendu) * 100, 1) : 0,
-                    'derniers_paiements' => $paiements->sortByDesc('date_paiement')->take(3),
-                ];
-
-                // Catégoriser l'étudiant
-                if ($montantPaye >= $montantAttendu) {
-                    $details['etudiants_a_jour']->push($statutEtudiant);
-                } elseif ($montantPaye > 0) {
-                    $details['etudiants_en_retard']->push($statutEtudiant);
-                } else {
-                    $details['etudiants_non_payes']->push($statutEtudiant);
-                }
-            }
-        }
-
-        return $details;
     }
 
     /**
