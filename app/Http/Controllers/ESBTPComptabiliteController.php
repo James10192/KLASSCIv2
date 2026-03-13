@@ -1439,7 +1439,7 @@ class ESBTPComptabiliteController extends Controller
             ->when($anneeId, fn($q) => $q->where('annee_universitaire_id', $anneeId))
             ->when($filiereId, fn($q) => $q->whereHas('classe', fn($q2) => $q2->where('filiere_id', $filiereId)))
             ->when($classeId, fn($q) => $q->where('classe_id', $classeId))
-            ->whereHas('fraisSubscriptions', fn($q) => $q->where('amount', '>', 0))
+            ->whereIn('status', ['active', 'en_attente', 'validée'])
             ->count();
         $countDue = (clone $subscriptionsQuery)->count();
 
@@ -1452,9 +1452,9 @@ class ESBTPComptabiliteController extends Controller
         $labelsMoisDepenses = [];
         $dataDepensesMensuelles = [];
 
-        if ($annee && isset($annee->date_debut)) {
-            $debut = \Carbon\Carbon::parse($annee->date_debut);
-            $fin = \Carbon\Carbon::parse($annee->date_fin ?? now());
+        if ($annee && $annee->start_date) {
+            $debut = \Carbon\Carbon::parse($annee->start_date);
+            $fin = \Carbon\Carbon::parse($annee->end_date ?? now());
             for ($date = $debut->copy(); $date->lte($fin); $date->addMonth()) {
                 $labelsMois[] = $date->translatedFormat('M Y');
                 $labelsMoisDepenses[] = $date->translatedFormat('M Y');
@@ -1533,16 +1533,16 @@ class ESBTPComptabiliteController extends Controller
             ->when($anneeId,   fn($q) => $q->where('annee_universitaire_id', $anneeId))
             ->when($filiereId, fn($q) => $q->whereHas('classe', fn($q2) => $q2->where('filiere_id', $filiereId)))
             ->when($classeId,  fn($q) => $q->where('classe_id', $classeId))
-            ->whereHas('fraisSubscriptions', fn($q) => $q->where('amount', '>', 0))
+            ->whereIn('status', ['active', 'en_attente', 'validée'])
             ->count();
         $countDue = (clone $subscriptionsQuery)->count();
 
         // Graphique mensuel
         $labelsMois = [];
         $dataEncaissements = [];
-        if ($annee && isset($annee->date_debut)) {
-            $debut = \Carbon\Carbon::parse($annee->date_debut);
-            $fin   = \Carbon\Carbon::parse($annee->date_fin ?? now());
+        if ($annee && $annee->start_date) {
+            $debut = \Carbon\Carbon::parse($annee->start_date);
+            $fin   = \Carbon\Carbon::parse($annee->end_date ?? now());
             for ($date = $debut->copy(); $date->lte($fin); $date->addMonth()) {
                 $labelsMois[] = $date->translatedFormat('M Y');
                 $dataEncaissements[] = (float) \App\Models\ESBTPPaiement::where('status', 'validé')
