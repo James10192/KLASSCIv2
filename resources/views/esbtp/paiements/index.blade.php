@@ -98,8 +98,9 @@
                     <div style="flex: 1; max-width: 300px;">
                         <label for="annee_academique" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Académique Courante</label>
                         <select name="annee_academique" id="annee_academique" class="year-selector" style="width: 100%; background-color: #f8f9fa; cursor: not-allowed;" disabled>
-                            <option value="{{ date('Y') . '-' . (date('Y') + 1) }}" selected>
-                                {{ date('Y') . '-' . (date('Y') + 1) }} (Année en cours)
+                            @php $anneeNom = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->value('name') ?? (date('Y').'-'.(date('Y')+1)); @endphp
+                            <option value="{{ $anneeNom }}" selected>
+                                {{ $anneeNom }} (Année en cours)
                             </option>
                         </select>
                     </div>

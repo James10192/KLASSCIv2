@@ -358,7 +358,7 @@
                 <div class="text-end">
                     <div class="badge" style="background: rgba(255, 255, 255, 0.2); color: white; padding: var(--space-sm) var(--space-md); border-radius: var(--radius-medium); font-size: var(--text-sm);">
                         <i class="fas fa-calendar me-2"></i>
-                        Année {{ date('Y') }}-{{ date('Y')+1 }}
+                        Année {{ $anneeCourante->name ?? (date('Y').'-'.(date('Y')+1)) }}
                     </div>
                 </div>
             </div>
