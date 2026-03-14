@@ -1511,7 +1511,95 @@
 .dpm-placeholder p { margin: 0; font-size: .95rem; }
 .dpm-placeholder small { font-size: .82rem; color: #94a3b8; }
 
-/* ── Boutons action documents ── */
+/* ══════════════════════════════════════════════════════════════════
+   DOCUMENT CARDS — Archive Raffiné
+══════════════════════════════════════════════════════════════════ */
+.doc-card {
+    position: relative;
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e8edf5;
+    padding: 0;
+    margin-bottom: 10px;
+    transition: box-shadow .22s ease, border-color .22s ease, transform .18s ease;
+    overflow: hidden;
+}
+.doc-card::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: linear-gradient(180deg, var(--k-blue), #5e91de);
+    transform: scaleY(0);
+    transform-origin: center;
+    transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+    border-radius: 3px 0 0 3px;
+}
+.doc-card:hover {
+    box-shadow: 0 6px 24px rgba(4,83,203,.1), 0 2px 8px rgba(0,0,0,.05);
+    border-color: #c7d7f5;
+    transform: translateY(-2px);
+}
+.doc-card:hover::before { transform: scaleY(1); }
+
+.doc-card-inner {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 16px 14px 20px;
+}
+
+/* ── Badge extension ── */
+.doc-ext-badge {
+    width: 46px; height: 46px; border-radius: 12px; flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1px;
+}
+.doc-ext-badge .ext-icon { font-size: .95rem; }
+.doc-ext-badge .ext-label {
+    font-size: .55rem; font-weight: 800; letter-spacing: .04em;
+    line-height: 1;
+}
+.doc-ext-pdf  { background: #fee2e2; color: #dc2626; }
+.doc-ext-doc,
+.doc-ext-docx { background: #dbeafe; color: #2563eb; }
+.doc-ext-xls,
+.doc-ext-xlsx { background: #dcfce7; color: #16a34a; }
+.doc-ext-png, .doc-ext-jpg,
+.doc-ext-jpeg,.doc-ext-gif,
+.doc-ext-webp { background: #ccfbf1; color: #0d9488; }
+.doc-ext-zip,
+.doc-ext-rar  { background: #fef9c3; color: #ca8a04; }
+.doc-ext-txt  { background: #f1f5f9; color: #64748b; }
+.doc-ext-default { background: #eef3ff; color: var(--k-blue); }
+
+/* ── Body ── */
+.doc-card-body { flex: 1; min-width: 0; }
+.doc-card-title {
+    font-size: .93rem; font-weight: 700; color: var(--k-text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 2px; letter-spacing: -.01em;
+}
+.doc-card-desc {
+    font-size: .8rem; color: var(--k-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    margin-bottom: 6px;
+}
+.doc-card-meta {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 0;
+}
+.doc-meta-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: .73rem; color: #94a3b8;
+    padding: 3px 8px; border-radius: 6px;
+    background: #f8fafc; border: 1px solid #e9eff6;
+    white-space: nowrap; max-width: 200px;
+    overflow: hidden; text-overflow: ellipsis;
+}
+.doc-meta-chip i { font-size: .65rem; flex-shrink: 0; }
+.doc-meta-sep {
+    width: 1px; height: 12px; background: #e2e8f0;
+    margin: 0 6px; flex-shrink: 0;
+}
+
+/* ── Action buttons ── */
+.doc-card-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .doc-action-btn {
     width: 34px; height: 34px; border-radius: 9px;
     border: none; display: inline-flex; align-items: center; justify-content: center;
@@ -1519,13 +1607,9 @@
     flex-shrink: 0;
 }
 .doc-action-btn:active { transform: scale(.92); }
-.doc-action-btn.preview {
-    background: #eef3ff; color: var(--k-blue);
-}
+.doc-action-btn.preview { background: #eef3ff; color: var(--k-blue); }
 .doc-action-btn.preview:hover { background: #dce8ff; }
-.doc-action-btn.delete {
-    background: #fef2f2; color: #ef4444;
-}
+.doc-action-btn.delete { background: #fef2f2; color: #ef4444; }
 .doc-action-btn.delete:hover { background: #fee2e2; }
 </style>
 @endsection
@@ -3822,22 +3906,42 @@
     {{-- Liste --}}
     <div id="doc-list">
         @forelse($etudiant->documents as $doc)
-        <div class="s-card mb-2 doc-item" id="doc-item-{{ $doc->id }}" style="padding:1rem 1.25rem;">
-            <div class="d-flex align-items-center gap-3">
-                <div style="width:40px;height:40px;border-radius:10px;background:#eef3ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="fas {{ $doc->getFileIcon() }}" style="color:var(--k-blue);font-size:1.1rem;"></i>
+        @php $ext = strtolower(pathinfo($doc->file_name, PATHINFO_EXTENSION)); @endphp
+        <div class="doc-card doc-item" id="doc-item-{{ $doc->id }}">
+            <div class="doc-card-inner">
+                {{-- Badge extension coloré --}}
+                <div class="doc-ext-badge doc-ext-{{ in_array($ext, ['pdf','doc','docx','xls','xlsx','png','jpg','jpeg','gif','webp','zip','rar','txt']) ? $ext : 'default' }}">
+                    <i class="fas {{ $doc->getFileIcon() }} ext-icon"></i>
+                    <span class="ext-label">{{ strtoupper($ext) ?: 'DOC' }}</span>
                 </div>
-                <div class="flex-grow-1 min-width-0">
-                    <div class="fw-semibold text-truncate" style="color:var(--k-text);">{{ $doc->titre }}</div>
+                {{-- Corps --}}
+                <div class="doc-card-body">
+                    <div class="doc-card-title" title="{{ $doc->titre }}">{{ $doc->titre }}</div>
                     @if($doc->description)
-                        <div class="text-muted" style="font-size:.82rem;">{{ $doc->description }}</div>
+                        <div class="doc-card-desc">{{ $doc->description }}</div>
                     @endif
-                    <div style="font-size:.78rem;color:var(--k-muted);margin-top:2px;">
-                        {{ $doc->file_name }} · {{ $doc->getFormattedFileSize() }} · {{ $doc->created_at->format('d/m/Y') }}
-                        @if($doc->uploadedBy) · <span>{{ $doc->uploadedBy->name }}</span> @endif
+                    <div class="doc-card-meta">
+                        <span class="doc-meta-chip" title="{{ $doc->file_name }}">
+                            <i class="fas fa-paperclip"></i>{{ $doc->file_name }}
+                        </span>
+                        <span class="doc-meta-sep"></span>
+                        <span class="doc-meta-chip">
+                            <i class="fas fa-database"></i>{{ $doc->getFormattedFileSize() }}
+                        </span>
+                        <span class="doc-meta-sep"></span>
+                        <span class="doc-meta-chip">
+                            <i class="fas fa-calendar"></i>{{ $doc->created_at->format('d/m/Y') }}
+                        </span>
+                        @if($doc->uploadedBy)
+                            <span class="doc-meta-sep"></span>
+                            <span class="doc-meta-chip" title="{{ $doc->uploadedBy->name }}">
+                                <i class="fas fa-user"></i>{{ $doc->uploadedBy->name }}
+                            </span>
+                        @endif
                     </div>
                 </div>
-                <div class="d-flex gap-2 flex-shrink-0">
+                {{-- Actions --}}
+                <div class="doc-card-actions">
                     <button class="doc-action-btn preview btn-preview-doc"
                         data-url="{{ $doc->getDownloadUrl() }}"
                         data-force-url="{{ $doc->getForceDownloadUrl() }}"
@@ -3848,7 +3952,8 @@
                         title="Prévisualiser">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="doc-action-btn delete btn-delete-doc" data-id="{{ $doc->id }}"
+                    <button class="doc-action-btn delete btn-delete-doc"
+                        data-id="{{ $doc->id }}"
                         data-url="{{ route('esbtp.etudiants.documents.destroy', [$etudiant->id, $doc->id]) }}"
                         title="Supprimer">
                         <i class="fas fa-trash-alt"></i>
@@ -4260,20 +4365,29 @@
     function prependDoc(doc) {
         const empty = document.getElementById('doc-empty');
         if (empty) empty.remove();
-        const html = `<div class="s-card mb-2 doc-item" id="doc-item-${doc.id}" style="padding:1rem 1.25rem;animation:fadeUp .2s ease;">
-            <div class="d-flex align-items-center gap-3">
-                <div style="width:40px;height:40px;border-radius:10px;background:#eef3ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="fas ${doc.file_icon}" style="color:var(--k-blue);font-size:1.1rem;"></i>
+        const ext = (doc.file_name.split('.').pop() || '').toLowerCase();
+        const extClass = ['pdf','doc','docx','xls','xlsx','png','jpg','jpeg','gif','webp','zip','rar','txt'].includes(ext) ? ext : 'default';
+        const uploaderChip = doc.uploaded_by
+            ? `<span class="doc-meta-sep"></span><span class="doc-meta-chip" title="${escHtml(doc.uploaded_by)}"><i class="fas fa-user"></i>${escHtml(doc.uploaded_by)}</span>` : '';
+        const html = `<div class="doc-card doc-item" id="doc-item-${doc.id}" style="animation:fadeUp .2s ease;">
+            <div class="doc-card-inner">
+                <div class="doc-ext-badge doc-ext-${extClass}">
+                    <i class="fas ${doc.file_icon} ext-icon"></i>
+                    <span class="ext-label">${ext.toUpperCase() || 'DOC'}</span>
                 </div>
-                <div class="flex-grow-1 min-width-0">
-                    <div class="fw-semibold text-truncate" style="color:var(--k-text);">${escHtml(doc.titre)}</div>
-                    ${doc.description ? `<div class="text-muted" style="font-size:.82rem;">${escHtml(doc.description)}</div>` : ''}
-                    <div style="font-size:.78rem;color:var(--k-muted);margin-top:2px;">
-                        ${escHtml(doc.file_name)} · ${doc.file_size} · ${doc.created_at}
-                        ${doc.uploaded_by ? '· ' + escHtml(doc.uploaded_by) : ''}
+                <div class="doc-card-body">
+                    <div class="doc-card-title" title="${escHtml(doc.titre)}">${escHtml(doc.titre)}</div>
+                    ${doc.description ? `<div class="doc-card-desc">${escHtml(doc.description)}</div>` : ''}
+                    <div class="doc-card-meta">
+                        <span class="doc-meta-chip" title="${escHtml(doc.file_name)}"><i class="fas fa-paperclip"></i>${escHtml(doc.file_name)}</span>
+                        <span class="doc-meta-sep"></span>
+                        <span class="doc-meta-chip"><i class="fas fa-database"></i>${doc.file_size}</span>
+                        <span class="doc-meta-sep"></span>
+                        <span class="doc-meta-chip"><i class="fas fa-calendar"></i>${doc.created_at}</span>
+                        ${uploaderChip}
                     </div>
                 </div>
-                <div class="d-flex gap-2 flex-shrink-0">
+                <div class="doc-card-actions">
                     <button class="doc-action-btn preview btn-preview-doc" data-url="${doc.download_url}" data-force-url="${doc.force_download_url}" data-file-type="${doc.file_type}" data-title="${escHtml(doc.titre)}" data-filename="${escHtml(doc.file_name)}" data-size="${doc.file_size}" title="Prévisualiser"><i class="fas fa-eye"></i></button>
                     <button class="doc-action-btn delete btn-delete-doc" data-id="${doc.id}" data-url="${deleteBase}/${doc.id}" title="Supprimer"><i class="fas fa-trash-alt"></i></button>
                 </div>
