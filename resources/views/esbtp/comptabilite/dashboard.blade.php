@@ -219,28 +219,36 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
 .filter-select {
     appearance: none;
     -webkit-appearance: none;
-    background-color: transparent;
-    border: none;
-    border-bottom: 2px solid #e2e8f0;
-    border-radius: 0;
-    padding: 5px 24px 5px 0;
-    font-size: .85rem;
+    background-color: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 8px 32px 8px 12px;
+    font-size: .875rem;
     font-weight: 500;
     color: #1e293b;
     cursor: pointer;
     outline: none;
-    transition: border-color .15s, color .15s;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%2394a3b8' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+    transition: all 0.2s ease;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%234b5563' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 4px center;
+    background-position: right 8px center;
     width: 100%;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
-.filter-select:focus { border-bottom-color: #0453cb; outline: none; }
-.filter-select:hover { border-bottom-color: #5e91de; }
+.filter-select:hover {
+    border-color: #94a3b8;
+    box-shadow: 0 2px 4px rgba(15, 23, 42, 0.08);
+}
+.filter-select:focus {
+    border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1), 0 2px 4px rgba(15, 23, 42, 0.08);
+    outline: none;
+}
 .filter-select.has-value {
-    border-bottom-color: #0453cb;
+    border-color: #0453cb;
     color: #0453cb;
     font-weight: 600;
+    box-shadow: 0 2px 4px rgba(4, 83, 203, 0.08);
 }
 .filters-bar-actions {
     display: flex;
@@ -1021,10 +1029,10 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
 
                     @php
                         $agingConfig = [
-                            '0-30'  => ['label' => '0 – 30 j',  'sublabel' => 'Récent',   'color' => '#10b981', 'bg' => 'rgba(16,185,129,.10)',  'risk' => 'Faible',    'icon' => 'fa-circle-check'],
-                            '31-60' => ['label' => '31 – 60 j', 'sublabel' => 'Modéré',   'color' => '#5e91de', 'bg' => 'rgba(94,145,222,.12)',  'risk' => 'Modéré',    'icon' => 'fa-clock'],
-                            '61-90' => ['label' => '61 – 90 j', 'sublabel' => 'Sérieux',  'color' => '#0453cb', 'bg' => 'rgba(4,83,203,.12)',    'risk' => 'Élevé',     'icon' => 'fa-triangle-exclamation'],
-                            '90+'   => ['label' => '90+ j',     'sublabel' => 'Critique', 'color' => '#1e293b', 'bg' => 'rgba(30,41,59,.12)',    'risk' => 'Critique',  'icon' => 'fa-skull'],
+                            '0-30'  => ['label' => '< 30 j de retard',  'sublabel' => 'Priorité normale',  'color' => '#10b981', 'bg' => 'rgba(16,185,129,.10)',  'risk' => 'Faible',    'icon' => 'fa-circle-check'],
+                            '31-60' => ['label' => '30–60 j de retard', 'sublabel' => 'À relancer',        'color' => '#5e91de', 'bg' => 'rgba(94,145,222,.12)',  'risk' => 'Modéré',    'icon' => 'fa-clock'],
+                            '61-90' => ['label' => '60–90 j de retard', 'sublabel' => 'Relance urgente',   'color' => '#0453cb', 'bg' => 'rgba(4,83,203,.12)',    'risk' => 'Élevé',     'icon' => 'fa-triangle-exclamation'],
+                            '90+'   => ['label' => '> 90 j de retard',  'sublabel' => 'Recouvrement',      'color' => '#1e293b', 'bg' => 'rgba(30,41,59,.12)',    'risk' => 'Critique',  'icon' => 'fa-skull'],
                         ];
                         $agingTotalAmount = array_sum(array_column($agingBuckets, 'amount'));
                         $agingTotalCount  = array_sum(array_column($agingBuckets, 'count'));
@@ -1035,11 +1043,12 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
                         <div>
                             <div class="aging-title">
                                 <i class="fas fa-hourglass-half"></i>
-                                Ancienneté des impayés
+                                Retard de paiement
                             </div>
                             <div class="aging-subtitle">
-                                <span id="aging-total-count">{{ $agingTotalCount }}</span> étudiant{{ $agingTotalCount > 1 ? 's' : '' }} ·
+                                <span id="aging-total-count">{{ $agingTotalCount }}</span> étudiant{{ $agingTotalCount > 1 ? 's' : '' }} en retard ·
                                 <span id="aging-total-amount">{{ number_format($agingTotalAmount, 0, ',', ' ') }}</span>&nbsp;FCFA
+                                <span title="Délai calculé depuis la date d'échéance de chaque catégorie de frais (configurable dans Frais → Configurer)" style="cursor:help;color:#94a3b8;font-size:.8em;"> <i class="fas fa-circle-info"></i></span>
                             </div>
                         </div>
                         <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="aging-cta-btn">
