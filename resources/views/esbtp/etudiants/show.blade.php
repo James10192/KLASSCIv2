@@ -1449,6 +1449,84 @@
 .dum-btn-submit:hover { opacity: .92; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(4,83,203,.4); }
 .dum-btn-submit:active { transform: translateY(0); }
 .dum-btn-submit:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+/* ══════════════════════════════════════════════════════════════════
+   DOCUMENT PREVIEW MODAL
+══════════════════════════════════════════════════════════════════ */
+.dpm-dialog { max-width: 900px; }
+
+.dpm-content {
+    border: none; border-radius: 20px; overflow: hidden;
+    box-shadow: 0 24px 64px rgba(4,83,203,.22), 0 4px 16px rgba(0,0,0,.10);
+}
+
+.dpm-header {
+    position: relative;
+    background: linear-gradient(140deg, #0344a8 0%, #0453cb 45%, #5e91de 100%);
+    padding: 18px 24px;
+    display: flex; align-items: center; gap: 14px;
+    overflow: hidden;
+}
+.dpm-header-bg {
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='16' cy='16' r='1.5' fill='rgba(255,255,255,0.08)'/%3E%3C/svg%3E");
+    pointer-events: none;
+}
+.dpm-file-icon {
+    width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+    background: rgba(255,255,255,.18); backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; color: #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,.15);
+}
+.dpm-dl-btn {
+    margin-left: auto; flex-shrink: 0;
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 16px; border-radius: 10px;
+    background: rgba(255,255,255,.18); border: 1.5px solid rgba(255,255,255,.3);
+    color: #fff; font-size: .85rem; font-weight: 600;
+    text-decoration: none; transition: background .2s;
+    backdrop-filter: blur(4px);
+    position: relative; z-index: 1;
+}
+.dpm-dl-btn:hover { background: rgba(255,255,255,.28); color: #fff; }
+
+.dpm-body {
+    background: #f1f5f9;
+    min-height: 420px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0;
+}
+.dpm-body iframe {
+    display: block; width: 100%; height: 70vh; border: none;
+}
+.dpm-body img {
+    max-width: 100%; max-height: 70vh; display: block;
+    margin: auto; border-radius: 0; object-fit: contain;
+}
+.dpm-placeholder {
+    text-align: center; padding: 60px 32px; color: var(--k-muted);
+}
+.dpm-placeholder i { font-size: 3.5rem; color: #cbd5e1; margin-bottom: 16px; display: block; }
+.dpm-placeholder p { margin: 0; font-size: .95rem; }
+.dpm-placeholder small { font-size: .82rem; color: #94a3b8; }
+
+/* ── Boutons action documents ── */
+.doc-action-btn {
+    width: 34px; height: 34px; border-radius: 9px;
+    border: none; display: inline-flex; align-items: center; justify-content: center;
+    font-size: .82rem; cursor: pointer; transition: background .18s, transform .12s;
+    flex-shrink: 0;
+}
+.doc-action-btn:active { transform: scale(.92); }
+.doc-action-btn.preview {
+    background: #eef3ff; color: var(--k-blue);
+}
+.doc-action-btn.preview:hover { background: #dce8ff; }
+.doc-action-btn.delete {
+    background: #fef2f2; color: #ef4444;
+}
+.doc-action-btn.delete:hover { background: #fee2e2; }
 </style>
 @endsection
 
@@ -3760,10 +3838,17 @@
                     </div>
                 </div>
                 <div class="d-flex gap-2 flex-shrink-0">
-                    <a href="{{ $doc->getDownloadUrl() }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Télécharger">
-                        <i class="fas fa-download"></i>
-                    </a>
-                    <button class="btn btn-sm btn-outline-danger btn-delete-doc" data-id="{{ $doc->id }}"
+                    <button class="doc-action-btn preview btn-preview-doc"
+                        data-url="{{ $doc->getDownloadUrl() }}"
+                        data-force-url="{{ $doc->getForceDownloadUrl() }}"
+                        data-file-type="{{ $doc->file_type }}"
+                        data-title="{{ $doc->titre }}"
+                        data-filename="{{ $doc->file_name }}"
+                        data-size="{{ $doc->getFormattedFileSize() }}"
+                        title="Prévisualiser">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="doc-action-btn delete btn-delete-doc" data-id="{{ $doc->id }}"
                         data-url="{{ route('esbtp.etudiants.documents.destroy', [$etudiant->id, $doc->id]) }}"
                         title="Supprimer">
                         <i class="fas fa-trash-alt"></i>
@@ -3870,6 +3955,37 @@
                     <i class="fas fa-arrow-up-from-bracket" id="doc-upload-icon"></i>
                     <span id="doc-upload-label">Importer</span>
                 </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{{-- Modal preview document --}}
+<div class="modal fade" id="docPreviewModal" tabindex="-1" aria-labelledby="docPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl dpm-dialog">
+        <div class="modal-content dpm-content">
+
+            <div class="dpm-header">
+                <div class="dpm-header-bg"></div>
+                <button type="button" class="dum-close" data-bs-dismiss="modal" aria-label="Fermer">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="dpm-file-icon" id="dpm-file-icon">
+                    <i class="fas fa-file"></i>
+                </div>
+                <div class="dum-header-texts">
+                    <h4 class="dum-header-title" id="docPreviewModalLabel"><span id="dpm-title">Document</span></h4>
+                    <p class="dum-header-sub"><span id="dpm-filename"></span> · <span id="dpm-size"></span></p>
+                </div>
+                <a id="dpm-download-btn" href="#" class="dpm-dl-btn" title="Télécharger">
+                    <i class="fas fa-download"></i>
+                    <span>Télécharger</span>
+                </a>
+            </div>
+
+            <div class="dpm-body" id="dpm-preview-area">
+                {{-- Filled dynamically --}}
             </div>
 
         </div>
@@ -4081,6 +4197,50 @@
         .catch(() => alert('Erreur réseau.'));
     });
 
+    // ── Preview ──
+    const FILE_ICON_MAP = {
+        'application/pdf': 'fa-file-pdf',
+        'image/jpeg': 'fa-file-image', 'image/png': 'fa-file-image', 'image/gif': 'fa-file-image', 'image/webp': 'fa-file-image',
+        'application/msword': 'fa-file-word', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'fa-file-word',
+        'application/vnd.ms-excel': 'fa-file-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'fa-file-excel',
+        'application/zip': 'fa-file-zipper', 'application/x-zip-compressed': 'fa-file-zipper',
+        'text/plain': 'fa-file-lines',
+    };
+    document.getElementById('doc-list').addEventListener('click', function (e) {
+        const btn = e.target.closest('.btn-preview-doc');
+        if (!btn) return;
+
+        const url       = btn.dataset.url;
+        const forceUrl  = btn.dataset.forceUrl;
+        const fileType  = btn.dataset.fileType;
+        const title     = btn.dataset.title;
+        const filename  = btn.dataset.filename;
+        const size      = btn.dataset.size;
+        const icon      = FILE_ICON_MAP[fileType] || 'fa-file';
+
+        document.getElementById('dpm-title').textContent    = title;
+        document.getElementById('dpm-filename').textContent = filename;
+        document.getElementById('dpm-size').textContent     = size;
+        document.getElementById('dpm-file-icon').innerHTML  = `<i class="fas ${icon}"></i>`;
+        document.getElementById('dpm-download-btn').href    = forceUrl;
+
+        const area = document.getElementById('dpm-preview-area');
+        if (fileType === 'application/pdf') {
+            area.innerHTML = `<iframe src="${url}"></iframe>`;
+        } else if (fileType && fileType.startsWith('image/')) {
+            area.innerHTML = `<img src="${url}" alt="${escHtml(filename)}">`;
+        } else {
+            area.innerHTML = `<div class="dpm-placeholder"><i class="fas ${icon}"></i><p>Prévisualisation non disponible pour ce type de fichier.</p><small>${escHtml(filename)}</small></div>`;
+        }
+
+        new bootstrap.Modal(document.getElementById('docPreviewModal')).show();
+    });
+
+    // Reset preview area when modal closes (free iframe memory)
+    document.getElementById('docPreviewModal').addEventListener('hidden.bs.modal', function () {
+        document.getElementById('dpm-preview-area').innerHTML = '';
+    });
+
     function showAlert(msg, type) {
         const el = document.getElementById('doc-upload-alert');
         el.className = 'dum-alert alert-' + type;
@@ -4114,8 +4274,8 @@
                     </div>
                 </div>
                 <div class="d-flex gap-2 flex-shrink-0">
-                    <a href="${doc.download_url}" target="_blank" class="btn btn-sm btn-outline-primary" title="Télécharger"><i class="fas fa-download"></i></a>
-                    <button class="btn btn-sm btn-outline-danger btn-delete-doc" data-id="${doc.id}" data-url="${deleteBase}/${doc.id}" title="Supprimer"><i class="fas fa-trash-alt"></i></button>
+                    <button class="doc-action-btn preview btn-preview-doc" data-url="${doc.download_url}" data-force-url="${doc.force_download_url}" data-file-type="${doc.file_type}" data-title="${escHtml(doc.titre)}" data-filename="${escHtml(doc.file_name)}" data-size="${doc.file_size}" title="Prévisualiser"><i class="fas fa-eye"></i></button>
+                    <button class="doc-action-btn delete btn-delete-doc" data-id="${doc.id}" data-url="${deleteBase}/${doc.id}" title="Supprimer"><i class="fas fa-trash-alt"></i></button>
                 </div>
             </div>
         </div>`;

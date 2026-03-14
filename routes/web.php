@@ -1661,6 +1661,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('esbtp/etudiants/{id}/restore', [ESBTPStudentController::class, 'restore'])->name('esbtp.etudiants.restore');
     Route::post('esbtp/etudiants/{etudiant}/update-photo', [ESBTPEtudiantController::class, 'updatePhoto'])->name('esbtp.etudiants.update-photo');
     Route::post('esbtp/etudiants/{etudiant}/documents', [ESBTPEtudiantController::class, 'storeDocument'])->name('esbtp.etudiants.documents.store');
+    Route::get('esbtp/etudiants/{etudiant}/documents/{document}/download', [ESBTPEtudiantController::class, 'downloadDocument'])->name('esbtp.etudiants.documents.download');
     Route::delete('esbtp/etudiants/{etudiant}/documents/{document}', [ESBTPEtudiantController::class, 'destroyDocument'])->name('esbtp.etudiants.documents.destroy');
 });
 

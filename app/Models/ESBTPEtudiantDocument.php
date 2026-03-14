@@ -35,22 +35,28 @@ class ESBTPEtudiantDocument extends Model
 
     public function getDownloadUrl(): string
     {
-        return Storage::disk('public')->url($this->file_path);
+        return route('esbtp.etudiants.documents.download', [$this->etudiant_id, $this->id]);
+    }
+
+    public function getForceDownloadUrl(): string
+    {
+        return route('esbtp.etudiants.documents.download', [$this->etudiant_id, $this->id, 'force' => 1]);
     }
 
     public function toDocumentArray(): array
     {
         return [
-            'id'           => $this->id,
-            'titre'        => $this->titre,
-            'description'  => $this->description,
-            'file_name'    => $this->file_name,
-            'file_size'    => $this->getFormattedFileSize(),
-            'file_type'    => $this->file_type,
-            'file_icon'    => $this->getFileIcon(),
-            'download_url' => $this->getDownloadUrl(),
-            'uploaded_by'  => $this->uploadedBy?->name,
-            'created_at'   => $this->created_at->format('d/m/Y'),
+            'id'                => $this->id,
+            'titre'             => $this->titre,
+            'description'       => $this->description,
+            'file_name'         => $this->file_name,
+            'file_size'         => $this->getFormattedFileSize(),
+            'file_type'         => $this->file_type,
+            'file_icon'         => $this->getFileIcon(),
+            'download_url'      => $this->getDownloadUrl(),
+            'force_download_url'=> $this->getForceDownloadUrl(),
+            'uploaded_by'       => $this->uploadedBy?->name,
+            'created_at'        => $this->created_at->format('d/m/Y'),
         ];
     }
 

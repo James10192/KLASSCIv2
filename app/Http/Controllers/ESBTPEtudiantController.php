@@ -2314,6 +2314,18 @@ class ESBTPEtudiantController extends Controller
         ]);
     }
 
+    public function downloadDocument(ESBTPEtudiant $etudiant, ESBTPEtudiantDocument $document, Request $request)
+    {
+        abort_if($document->etudiant_id !== $etudiant->id, 403);
+        abort_unless(Storage::disk('public')->exists($document->file_path), 404);
+
+        if ($request->boolean('force')) {
+            return Storage::disk('public')->download($document->file_path, $document->file_name);
+        }
+
+        return Storage::disk('public')->response($document->file_path, $document->file_name);
+    }
+
     public function destroyDocument(ESBTPEtudiant $etudiant, ESBTPEtudiantDocument $document)
     {
         abort_if($document->etudiant_id !== $etudiant->id, 403);
