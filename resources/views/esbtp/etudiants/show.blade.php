@@ -1589,8 +1589,7 @@
     font-size: .73rem; color: #94a3b8;
     padding: 3px 8px; border-radius: 6px;
     background: #f8fafc; border: 1px solid #e9eff6;
-    white-space: nowrap; max-width: 200px;
-    overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .doc-meta-chip i { font-size: .65rem; flex-shrink: 0; }
 .doc-meta-sep {
