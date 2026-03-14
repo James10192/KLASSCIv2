@@ -1792,17 +1792,36 @@ class ESBTPComptabiliteController extends Controller
         $soldeRestant = max(0, $totalDu - $totalPaye);
         $pourcentagePaye = $totalDu > 0 ? min(100, round($totalPaye / $totalDu * 100)) : 0;
 
-        // Frais par catégorie
-        $fraisImpayés = $inscription->fraisSubscriptions->map(function ($sub) use ($inscription) {
+        // Frais par catégorie — même logique que calculerTotalDuParInscription()
+        // Inclut les catégories obligatoires sans subscription (via config/default_amount)
+        $inscriptionSubsDetail = $subsByInscription->get($inscription->id, collect());
+        $fraisDetail = [];
+        foreach ($allCategories as $category) {
+            $sub = $inscriptionSubsDetail->where('frais_category_id', $category->id)->first();
+            if ($category->is_mandatory) {
+                if ($sub) {
+                    $montant = $sub->amount;
+                } else {
+                    $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
+                    $config = $allConfigurations->get($configKey, collect())->first();
+                    $montant = $config
+                        ? $config->getMontantByStatus($inscription->affectation_status ?? 'affecté')
+                        : $category->default_amount;
+                }
+            } else {
+                $montant = $sub ? $sub->amount : 0;
+            }
+            if ($montant <= 0) continue;
             $paye = $inscription->paiements
-                ->where('frais_category_id', $sub->frais_category_id)
+                ->where('frais_category_id', $category->id)
                 ->sum('montant');
-            return [
-                'name'   => optional($sub->fraisCategory)->name ?? 'Frais',
-                'amount' => $sub->amount,
+            $fraisDetail[] = [
+                'name'   => $category->name,
+                'amount' => $montant,
                 'paye'   => $paye,
             ];
-        })->filter(fn($f) => $f['amount'] > 0)->values();
+        }
+        $fraisImpayés = collect($fraisDetail)->values();
 
         // Niveau de risque selon le solde restant à payer
         if ($soldeRestant <= 0) {
