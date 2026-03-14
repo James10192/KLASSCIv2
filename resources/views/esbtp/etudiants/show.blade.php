@@ -1241,6 +1241,200 @@
     .fiche-tab { padding: 0 14px; font-size: .78rem; }
     .kpi-grid { grid-template-columns: 1fr; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   DOCUMENT UPLOAD MODAL — Premium Design
+══════════════════════════════════════════════════════════════════ */
+.doc-upload-modal .modal-dialog { max-width: 460px; }
+
+.dum-content {
+    border: none;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 24px 64px rgba(4,83,203,.22), 0 4px 16px rgba(0,0,0,.10);
+}
+
+/* ── Header ── */
+.dum-header {
+    position: relative;
+    background: linear-gradient(140deg, #0344a8 0%, #0453cb 45%, #5e91de 100%);
+    padding: 36px 28px 28px;
+    text-align: center;
+    overflow: hidden;
+}
+.dum-header-bg {
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='16' cy='16' r='1.5' fill='rgba(255,255,255,0.08)'/%3E%3C/svg%3E");
+    pointer-events: none;
+}
+.dum-close {
+    position: absolute; top: 14px; right: 16px;
+    width: 32px; height: 32px;
+    background: rgba(255,255,255,.15); border: none; border-radius: 50%;
+    color: #fff; font-size: .85rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .2s;
+}
+.dum-close:hover { background: rgba(255,255,255,.28); }
+
+.dum-header-icon {
+    width: 60px; height: 60px; border-radius: 16px;
+    background: rgba(255,255,255,.18);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 14px;
+    font-size: 1.6rem; color: #fff;
+    box-shadow: 0 4px 16px rgba(0,0,0,.15);
+    animation: dum-icon-in .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes dum-icon-in {
+    from { transform: translateY(-12px) scale(.8); opacity: 0; }
+    to   { transform: translateY(0) scale(1);   opacity: 1; }
+}
+.dum-header-title {
+    font-size: 1.12rem; font-weight: 700; color: #fff;
+    margin: 0 0 4px; letter-spacing: -.01em;
+}
+.dum-header-sub {
+    font-size: .8rem; color: rgba(255,255,255,.72);
+    margin: 0; font-weight: 500;
+}
+
+/* ── Body ── */
+.dum-body { padding: 24px 24px 8px; background: #fff; }
+
+.dum-alert {
+    padding: 10px 14px; border-radius: 10px;
+    font-size: .84rem; margin-bottom: 16px;
+    border: none;
+}
+.dum-alert.alert-warning { background: #fffbeb; color: #92400e; border-left: 3px solid #f59e0b; }
+.dum-alert.alert-danger  { background: #fef2f2; color: #991b1b; border-left: 3px solid #ef4444; }
+
+.dum-field {
+    display: flex; gap: 12px; align-items: flex-start;
+    margin-bottom: 16px;
+}
+.dum-field-icon {
+    width: 36px; height: 36px; flex-shrink: 0; margin-top: 2px;
+    background: #f0f5ff; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--k-blue); font-size: .85rem;
+}
+.dum-field-inner { flex: 1; min-width: 0; }
+.dum-label {
+    display: block; font-size: .78rem; font-weight: 600;
+    color: var(--k-muted); margin-bottom: 6px; letter-spacing: .03em; text-transform: uppercase;
+}
+.dum-required { color: var(--k-danger); }
+.dum-optional { font-weight: 400; text-transform: none; letter-spacing: 0; color: #94a3b8; }
+.dum-input {
+    width: 100%; background: #f8fafc; border: 1.5px solid #e2e8f0;
+    border-radius: 10px; padding: 9px 13px;
+    font-size: .9rem; color: var(--k-text);
+    transition: border-color .2s, box-shadow .2s;
+    outline: none; resize: none;
+    font-family: inherit;
+}
+.dum-input:focus {
+    border-color: var(--k-blue);
+    box-shadow: 0 0 0 3px rgba(4,83,203,.1);
+    background: #fff;
+}
+.dum-textarea { min-height: 64px; }
+
+/* ── Drop zone ── */
+.dum-dropzone {
+    position: relative;
+    border: 2px dashed #cbd5e1; border-radius: 14px;
+    background: #f8fafc;
+    cursor: pointer; transition: border-color .2s, background .2s;
+    margin-bottom: 8px;
+    overflow: hidden;
+}
+.dum-dropzone:hover,
+.dum-dropzone.drag-over {
+    border-color: var(--k-blue);
+    background: #eef3ff;
+}
+.dum-dropzone.drag-over { border-style: solid; }
+.dum-file-input {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.dum-dz-idle {
+    padding: 28px 20px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    pointer-events: none;
+}
+.dum-dz-icon {
+    font-size: 2rem; color: #94a3b8;
+    margin-bottom: 6px;
+    transition: transform .3s, color .3s;
+}
+.dum-dropzone:hover .dum-dz-icon,
+.dum-dropzone.drag-over .dum-dz-icon {
+    transform: translateY(-4px); color: var(--k-blue);
+}
+.dum-dz-text { font-size: .9rem; font-weight: 600; color: var(--k-text); margin: 0; }
+.dum-dz-sub  { font-size: .82rem; color: var(--k-muted); margin: 0; }
+.dum-dz-browse { color: var(--k-blue); font-weight: 600; }
+.dum-dz-formats { font-size: .74rem; color: #94a3b8; margin: 6px 0 0; letter-spacing: .02em; }
+
+/* ── File preview ── */
+.dum-dz-preview {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; pointer-events: none;
+}
+.dum-preview-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: #eef3ff; color: var(--k-blue);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; flex-shrink: 0;
+}
+.dum-preview-info {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 2px;
+}
+.dum-preview-name {
+    font-size: .88rem; font-weight: 600; color: var(--k-text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dum-preview-size { font-size: .76rem; color: var(--k-muted); }
+.dum-preview-remove {
+    pointer-events: auto;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #fee2e2; border: none; color: #ef4444;
+    font-size: .75rem; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .2s;
+}
+.dum-preview-remove:hover { background: #fecaca; }
+
+/* ── Footer ── */
+.dum-footer {
+    padding: 16px 24px 24px; background: #fff;
+    display: flex; gap: 10px;
+}
+.dum-btn-cancel {
+    flex: 0 0 auto; padding: 10px 20px;
+    background: #f1f5f9; border: none; border-radius: 10px;
+    font-size: .88rem; font-weight: 600; color: var(--k-muted);
+    cursor: pointer; transition: background .2s;
+}
+.dum-btn-cancel:hover { background: #e2e8f0; }
+.dum-btn-submit {
+    flex: 1;
+    padding: 11px 20px;
+    background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
+    border: none; border-radius: 10px;
+    font-size: .9rem; font-weight: 700; color: #fff;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: opacity .2s, transform .15s, box-shadow .2s;
+    box-shadow: 0 4px 14px rgba(4,83,203,.35);
+}
+.dum-btn-submit:hover { opacity: .92; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(4,83,203,.4); }
+.dum-btn-submit:active { transform: translateY(0); }
+.dum-btn-submit:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 </style>
 @endsection
 
@@ -1470,6 +1664,12 @@
         </button>
         <button class="fiche-tab" data-tab="profil"     role="tab">
             <i class="fas fa-user-circle"></i> Profil
+        </button>
+        <button class="fiche-tab" data-tab="documents" role="tab">
+            <i class="fas fa-folder-open"></i> Documents
+            @if($etudiant->documents->count())
+                <span class="tab-badge">{{ $etudiant->documents->count() }}</span>
+            @endif
         </button>
     </div>
 </div>
@@ -3515,8 +3715,145 @@
 
 </div>{{-- /tab-profil --}}
 
+{{-- ───── Documents ───── --}}
+<div class="tab-panel" id="tab-documents">
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h6 class="mb-0 fw-semibold" style="color:var(--k-text);">
+            <i class="fas fa-folder-open me-2" style="color:var(--k-blue);"></i>Documents de l'étudiant
+        </h6>
+        <button class="btn btn-acasi primary btn-sm" data-bs-toggle="modal" data-bs-target="#docUploadModal">
+            <i class="fas fa-plus me-1"></i>Ajouter un document
+        </button>
+    </div>
+
+    {{-- Liste --}}
+    <div id="doc-list">
+        @forelse($etudiant->documents as $doc)
+        <div class="s-card mb-2 doc-item" id="doc-item-{{ $doc->id }}" style="padding:1rem 1.25rem;">
+            <div class="d-flex align-items-center gap-3">
+                <div style="width:40px;height:40px;border-radius:10px;background:#eef3ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas {{ $doc->getFileIcon() }}" style="color:var(--k-blue);font-size:1.1rem;"></i>
+                </div>
+                <div class="flex-grow-1 min-width-0">
+                    <div class="fw-semibold text-truncate" style="color:var(--k-text);">{{ $doc->titre }}</div>
+                    @if($doc->description)
+                        <div class="text-muted" style="font-size:.82rem;">{{ $doc->description }}</div>
+                    @endif
+                    <div style="font-size:.78rem;color:var(--k-muted);margin-top:2px;">
+                        {{ $doc->file_name }} · {{ $doc->getFormattedFileSize() }} · {{ $doc->created_at->format('d/m/Y') }}
+                        @if($doc->uploadedBy) · <span>{{ $doc->uploadedBy->name }}</span> @endif
+                    </div>
+                </div>
+                <div class="d-flex gap-2 flex-shrink-0">
+                    <a href="{{ $doc->getDownloadUrl() }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Télécharger">
+                        <i class="fas fa-download"></i>
+                    </a>
+                    <button class="btn btn-sm btn-outline-danger btn-delete-doc" data-id="{{ $doc->id }}"
+                        data-url="{{ route('esbtp.etudiants.documents.destroy', [$etudiant->id, $doc->id]) }}"
+                        title="Supprimer">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        @empty
+        <div id="doc-empty" class="s-card text-center py-5" style="color:var(--k-muted);">
+            <i class="fas fa-folder-open fa-2x mb-2 d-block" style="opacity:.4;"></i>
+            Aucun document enregistré pour cet étudiant.
+        </div>
+        @endforelse
+    </div>
+
+</div>{{-- /tab-documents --}}
+
 </div>{{-- /fiche-content --}}
 </div>{{-- /fiche-page --}}
+
+{{-- Modal upload document — Design premium --}}
+<div class="modal fade doc-upload-modal" id="docUploadModal" tabindex="-1" aria-labelledby="docUploadModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content dum-content">
+
+            {{-- Header gradient --}}
+            <div class="dum-header">
+                <div class="dum-header-bg"></div>
+                <button type="button" class="dum-close" data-bs-dismiss="modal" aria-label="Fermer">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="dum-header-icon">
+                    <i class="fas fa-file-arrow-up"></i>
+                </div>
+                <h4 class="dum-header-title" id="docUploadModalLabel">Ajouter un document</h4>
+                <p class="dum-header-sub">{{ $etudiant->prenoms }} {{ $etudiant->nom }}</p>
+            </div>
+
+            {{-- Body --}}
+            <div class="dum-body">
+                <div id="doc-upload-alert" class="dum-alert d-none" role="alert"></div>
+
+                {{-- Titre --}}
+                <div class="dum-field">
+                    <div class="dum-field-icon"><i class="fas fa-tag"></i></div>
+                    <div class="dum-field-inner">
+                        <label for="doc-titre" class="dum-label">Titre du document <span class="dum-required">*</span></label>
+                        <input type="text" class="dum-input" id="doc-titre"
+                               placeholder="Ex : Baccalauréat, Extrait de naissance, CNI…"
+                               maxlength="255" autocomplete="off">
+                    </div>
+                </div>
+
+                {{-- Description --}}
+                <div class="dum-field">
+                    <div class="dum-field-icon"><i class="fas fa-align-left"></i></div>
+                    <div class="dum-field-inner">
+                        <label for="doc-description" class="dum-label">Note <span class="dum-optional">— optionnel</span></label>
+                        <textarea class="dum-input dum-textarea" id="doc-description"
+                                  rows="2" maxlength="1000"
+                                  placeholder="Précision sur ce document…"></textarea>
+                    </div>
+                </div>
+
+                {{-- Drop zone --}}
+                <div class="dum-dropzone" id="doc-dropzone">
+                    <input type="file" class="dum-file-input" id="doc-fichier"
+                           accept=".pdf,.jpg,.jpeg,.png,.docx,.doc">
+                    <div class="dum-dz-idle" id="doc-dz-idle">
+                        <div class="dum-dz-icon">
+                            <i class="fas fa-cloud-arrow-up"></i>
+                        </div>
+                        <p class="dum-dz-text">Glissez un fichier ici</p>
+                        <p class="dum-dz-sub">ou <span class="dum-dz-browse">parcourir</span></p>
+                        <p class="dum-dz-formats">PDF · JPG · PNG · DOCX — max 10 Mo</p>
+                    </div>
+                    <div class="dum-dz-preview d-none" id="doc-dz-preview">
+                        <div class="dum-preview-icon" id="doc-preview-icon">
+                            <i class="fas fa-file-pdf"></i>
+                        </div>
+                        <div class="dum-preview-info">
+                            <span class="dum-preview-name" id="doc-preview-name">document.pdf</span>
+                            <span class="dum-preview-size" id="doc-preview-size">2.4 Mo</span>
+                        </div>
+                        <button type="button" class="dum-preview-remove" id="doc-preview-remove" title="Retirer">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Footer --}}
+            <div class="dum-footer">
+                <button type="button" class="dum-btn-cancel" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="dum-btn-submit" id="doc-upload-btn">
+                    <span id="doc-upload-spinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                    <i class="fas fa-arrow-up-from-bracket" id="doc-upload-icon"></i>
+                    <span id="doc-upload-label">Importer</span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
 
 {{-- Modal confirmation attestation (étudiant non réinscrit cette année) --}}
 <div class="modal fade" id="attestationConfirmModal" tabindex="-1" aria-labelledby="attestationConfirmModalLabel" aria-hidden="true">
@@ -3592,6 +3929,196 @@
         const t = document.querySelector('[data-tab="' + urlTab + '"]');
         if (t) t.click();
     }
+})();
+</script>
+<script>
+(function () {
+    const uploadUrl  = "{{ route('esbtp.etudiants.documents.store', $etudiant->id) }}";
+    const deleteBase = "{{ url('esbtp/etudiants/' . $etudiant->id . '/documents') }}";
+    const csrfToken  = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    // ── Drag & Drop + file preview ──
+    const dropzone   = document.getElementById('doc-dropzone');
+    const fileInput  = document.getElementById('doc-fichier');
+    const dzIdle     = document.getElementById('doc-dz-idle');
+    const dzPreview  = document.getElementById('doc-dz-preview');
+
+    const ICON_MAP = {
+        'pdf': 'fa-file-pdf', 'jpg': 'fa-file-image', 'jpeg': 'fa-file-image',
+        'png': 'fa-file-image', 'docx': 'fa-file-word', 'doc': 'fa-file-word',
+    };
+
+    function formatBytes(b) {
+        if (b < 1024) return b + ' o';
+        if (b < 1048576) return (b/1024).toFixed(0) + ' Ko';
+        return (b/1048576).toFixed(1) + ' Mo';
+    }
+
+    function showFilePreview(file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        document.getElementById('doc-preview-icon').innerHTML =
+            `<i class="fas ${ICON_MAP[ext] || 'fa-file-alt'}"></i>`;
+        document.getElementById('doc-preview-name').textContent = file.name;
+        document.getElementById('doc-preview-size').textContent = formatBytes(file.size);
+        dzIdle.classList.add('d-none');
+        dzPreview.classList.remove('d-none');
+    }
+
+    function clearFilePreview() {
+        fileInput.value = '';
+        dzIdle.classList.remove('d-none');
+        dzPreview.classList.add('d-none');
+    }
+
+    fileInput.addEventListener('change', function () {
+        if (this.files[0]) showFilePreview(this.files[0]);
+    });
+
+    document.getElementById('doc-preview-remove').addEventListener('click', function (e) {
+        e.stopPropagation();
+        clearFilePreview();
+    });
+
+    ['dragover', 'dragenter'].forEach(ev => dropzone.addEventListener(ev, function (e) {
+        e.preventDefault(); dropzone.classList.add('drag-over');
+    }));
+    ['dragleave', 'dragend', 'drop'].forEach(ev => dropzone.addEventListener(ev, function (e) {
+        e.preventDefault(); dropzone.classList.remove('drag-over');
+    }));
+    dropzone.addEventListener('drop', function (e) {
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        fileInput.files = dt.files;
+        showFilePreview(file);
+    });
+
+    // Reset preview when modal closes
+    document.getElementById('docUploadModal').addEventListener('hidden.bs.modal', resetForm);
+
+    // ── Upload ──
+    document.getElementById('doc-upload-btn').addEventListener('click', function () {
+        const titre       = document.getElementById('doc-titre').value.trim();
+        const description = document.getElementById('doc-description').value.trim();
+        const fichier     = fileInput.files[0];
+
+        hideAlert();
+        if (!titre)   { showAlert('Veuillez saisir un titre.', 'warning'); return; }
+        if (!fichier) { showAlert('Veuillez sélectionner un fichier.', 'warning'); return; }
+
+        const btn     = this;
+        const spinner = document.getElementById('doc-upload-spinner');
+        const icon    = document.getElementById('doc-upload-icon');
+        const label   = document.getElementById('doc-upload-label');
+        btn.disabled  = true;
+        spinner.classList.remove('d-none');
+        icon.classList.add('d-none');
+        label.textContent = 'Envoi…';
+
+        const formData = new FormData();
+        formData.append('titre', titre);
+        formData.append('description', description);
+        formData.append('fichier', fichier);
+        formData.append('_token', csrfToken);
+
+        fetch(uploadUrl, { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) { showAlert(data.message || "Erreur lors de l'upload.", 'danger'); return; }
+                bootstrap.Modal.getInstance(document.getElementById('docUploadModal')).hide();
+                prependDoc(data.document);
+                updateBadge(1);
+            })
+            .catch(() => showAlert('Erreur réseau. Veuillez réessayer.', 'danger'))
+            .finally(() => {
+                btn.disabled = false;
+                spinner.classList.add('d-none');
+                icon.classList.remove('d-none');
+                label.textContent = 'Importer';
+            });
+    });
+
+    // ── Delete ──
+    document.getElementById('doc-list').addEventListener('click', function (e) {
+        const btn = e.target.closest('.btn-delete-doc');
+        if (!btn) return;
+        if (!confirm('Supprimer ce document définitivement ?')) return;
+
+        fetch(btn.dataset.url, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) { alert(data.message || 'Erreur suppression.'); return; }
+            const item = document.getElementById('doc-item-' + btn.dataset.id);
+            if (item) { item.style.opacity = '0'; item.style.transform = 'translateX(12px)'; item.style.transition = '.2s'; setTimeout(() => item.remove(), 200); }
+            updateBadge(-1);
+            if (!document.querySelector('#doc-list .doc-item')) showEmpty();
+        })
+        .catch(() => alert('Erreur réseau.'));
+    });
+
+    function showAlert(msg, type) {
+        const el = document.getElementById('doc-upload-alert');
+        el.className = 'dum-alert alert-' + type;
+        el.textContent = msg;
+    }
+    function hideAlert() {
+        document.getElementById('doc-upload-alert').className = 'dum-alert d-none';
+    }
+
+    function resetForm() {
+        document.getElementById('doc-titre').value = '';
+        document.getElementById('doc-description').value = '';
+        clearFilePreview();
+        hideAlert();
+    }
+
+    function prependDoc(doc) {
+        const empty = document.getElementById('doc-empty');
+        if (empty) empty.remove();
+        const html = `<div class="s-card mb-2 doc-item" id="doc-item-${doc.id}" style="padding:1rem 1.25rem;animation:fadeUp .2s ease;">
+            <div class="d-flex align-items-center gap-3">
+                <div style="width:40px;height:40px;border-radius:10px;background:#eef3ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas ${doc.file_icon}" style="color:var(--k-blue);font-size:1.1rem;"></i>
+                </div>
+                <div class="flex-grow-1 min-width-0">
+                    <div class="fw-semibold text-truncate" style="color:var(--k-text);">${escHtml(doc.titre)}</div>
+                    ${doc.description ? `<div class="text-muted" style="font-size:.82rem;">${escHtml(doc.description)}</div>` : ''}
+                    <div style="font-size:.78rem;color:var(--k-muted);margin-top:2px;">
+                        ${escHtml(doc.file_name)} · ${doc.file_size} · ${doc.created_at}
+                        ${doc.uploaded_by ? '· ' + escHtml(doc.uploaded_by) : ''}
+                    </div>
+                </div>
+                <div class="d-flex gap-2 flex-shrink-0">
+                    <a href="${doc.download_url}" target="_blank" class="btn btn-sm btn-outline-primary" title="Télécharger"><i class="fas fa-download"></i></a>
+                    <button class="btn btn-sm btn-outline-danger btn-delete-doc" data-id="${doc.id}" data-url="${deleteBase}/${doc.id}" title="Supprimer"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            </div>
+        </div>`;
+        document.getElementById('doc-list').insertAdjacentHTML('afterbegin', html);
+    }
+
+    function showEmpty() {
+        document.getElementById('doc-list').insertAdjacentHTML('beforeend',
+            '<div id="doc-empty" class="s-card text-center py-5" style="color:var(--k-muted);"><i class="fas fa-folder-open fa-2x mb-2 d-block" style="opacity:.4;"></i>Aucun document enregistré pour cet étudiant.</div>');
+    }
+
+    function updateBadge(delta) {
+        const tab = document.querySelector('[data-tab="documents"]');
+        let badge = tab.querySelector('.tab-badge');
+        const next = (badge ? parseInt(badge.textContent) : 0) + delta;
+        if (next <= 0) { if (badge) badge.remove(); return; }
+        if (!badge) { badge = document.createElement('span'); badge.className = 'tab-badge'; tab.appendChild(badge); }
+        badge.textContent = next;
+    }
+
+    function escHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
 })();
 </script>
 @endpush
