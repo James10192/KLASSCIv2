@@ -1635,14 +1635,64 @@ class ESBTPComptabiliteController extends Controller
         return ['totalDue' => $totalDue, 'countDue' => $countDue];
     }
 
+    /**
+     * Calcule le total dû pour UNE inscription (catégories/configs pré-chargées).
+     * Même logique que calculerTotalDu() mais par inscription individuelle — évite le N+1.
+     */
+    private function calculerTotalDuParInscription($inscription, $categories, $subscriptionsByInscription, $configurations): float
+    {
+        $inscriptionSubs = $subscriptionsByInscription->get($inscription->id, collect());
+        $totalDu = 0;
+
+        foreach ($categories as $category) {
+            $sub = $inscriptionSubs->where('frais_category_id', $category->id)->first();
+            if ($category->is_mandatory) {
+                if ($sub) {
+                    $montant = $sub->amount;
+                } else {
+                    $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
+                    $config = $configurations->get($configKey, collect())->first();
+                    $montant = $config
+                        ? $config->getMontantByStatus($inscription->affectation_status ?? 'affecté')
+                        : $category->default_amount;
+                }
+            } else {
+                $montant = $sub ? $sub->amount : 0;
+            }
+            if ($montant > 0) {
+                $totalDu += $montant;
+            }
+        }
+
+        return (float) $totalDu;
+    }
+
     private function getImpayesAging($anneeId = null, $filiereId = null, $classeId = null): array
     {
-        // Récupérer les inscriptions avec solde restant
-        $inscriptions = \App\Models\ESBTPInscription::with(['etudiant', 'fraisSubscriptions', 'paiements' => fn($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at')])
-            ->when($anneeId, fn($q) => $q->where('annee_universitaire_id', $anneeId))
+        // Pré-charger catégories et configurations pour éviter le N+1
+        $allCategories = \App\Models\ESBTPFraisCategory::where('is_active', true)->get();
+
+        $inscriptions = \App\Models\ESBTPInscription::with([
+            'etudiant',
+            'fraisSubscriptions',
+            'paiements' => fn($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at'),
+        ])
+            ->when($anneeId,   fn($q) => $q->where('annee_universitaire_id', $anneeId))
             ->when($filiereId, fn($q) => $q->whereHas('classe', fn($q2) => $q2->where('filiere_id', $filiereId)))
-            ->when($classeId, fn($q) => $q->where('classe_id', $classeId))
+            ->when($classeId,  fn($q) => $q->where('classe_id', $classeId))
             ->get();
+
+        $inscriptionIds = $inscriptions->pluck('id')->toArray();
+
+        $allSubscriptions = \App\Models\ESBTPFraisSubscription::where('is_active', true)
+            ->whereIn('inscription_id', $inscriptionIds)
+            ->get()
+            ->groupBy('inscription_id');
+
+        $allConfigurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
+            ->whereIn('frais_category_id', $allCategories->pluck('id'))
+            ->get()
+            ->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
 
         $buckets = [
             '0-30'  => ['count' => 0, 'amount' => 0, 'students' => []],
@@ -1652,32 +1702,53 @@ class ESBTPComptabiliteController extends Controller
         ];
 
         foreach ($inscriptions as $inscription) {
-            $totalDu = $inscription->fraisSubscriptions->sum('amount');
-            $totalPaye = $inscription->paiements->sum('montant');
+            // Calcul totalDu aligné avec suivi-catégories (fix bug fraisSubscriptions->sum)
+            $totalDu      = $this->calculerTotalDuParInscription($inscription, $allCategories, $allSubscriptions, $allConfigurations);
+            $totalPaye    = $inscription->paiements->sum('montant');
             $soldeRestant = max(0, $totalDu - $totalPaye);
 
             if ($soldeRestant <= 0) continue;
 
-            // Ancienneté basée sur la date de création de l'inscription
-            $joursDepuis = $inscription->created_at->diffInDays(now());
+            // Ancienneté basée sur l'ÉCHÉANCE de paiement, pas la date d'inscription.
+            // On prend le délai minimum parmi les catégories souscrites (fallback 30j).
+            $inscriptionSubs = $allSubscriptions->get($inscription->id, collect());
+            $minDeadlineDays = 30;
+            if ($inscriptionSubs->isNotEmpty()) {
+                $deadlineDays = $inscriptionSubs->map(function ($sub) use ($allCategories) {
+                    $cat = $allCategories->firstWhere('id', $sub->frais_category_id);
+                    return $cat ? ($cat->payment_deadline_days ?? 30) : 30;
+                })->min();
+                if ($deadlineDays !== null) {
+                    $minDeadlineDays = (int) $deadlineDays;
+                }
+            }
+
+            // Date à partir de laquelle le paiement est en retard
+            $dateEcheance = $inscription->created_at->copy()->addDays($minDeadlineDays);
+
+            // Étudiant pas encore en retard → ne figure pas dans l'aging
+            if ($dateEcheance->isFuture()) continue;
+
+            // Jours de retard depuis l'échéance
+            $joursRetard = (int) $dateEcheance->diffInDays(now());
 
             $etudiantData = [
-                'id' => $inscription->etudiant->id ?? null,
+                'id'             => $inscription->etudiant->id ?? null,
                 'inscription_id' => $inscription->id,
-                'nom' => $inscription->etudiant->nom_complet ?? 'N/A',
-                'solde' => $soldeRestant,
-                'jours' => $joursDepuis,
+                'nom'            => $inscription->etudiant->nom_complet ?? 'N/A',
+                'solde'          => $soldeRestant,
+                'jours'          => $joursRetard,
             ];
 
-            if ($joursDepuis <= 30) {
+            if ($joursRetard <= 30) {
                 $buckets['0-30']['count']++;
                 $buckets['0-30']['amount'] += $soldeRestant;
                 if (count($buckets['0-30']['students']) < 5) $buckets['0-30']['students'][] = $etudiantData;
-            } elseif ($joursDepuis <= 60) {
+            } elseif ($joursRetard <= 60) {
                 $buckets['31-60']['count']++;
                 $buckets['31-60']['amount'] += $soldeRestant;
                 if (count($buckets['31-60']['students']) < 5) $buckets['31-60']['students'][] = $etudiantData;
-            } elseif ($joursDepuis <= 90) {
+            } elseif ($joursRetard <= 90) {
                 $buckets['61-90']['count']++;
                 $buckets['61-90']['amount'] += $soldeRestant;
                 if (count($buckets['61-90']['students']) < 5) $buckets['61-90']['students'][] = $etudiantData;
@@ -1705,8 +1776,18 @@ class ESBTPComptabiliteController extends Controller
             abort(404, 'Étudiant introuvable.');
         }
 
-        // Calculs financiers
-        $totalDu = $inscription->fraisSubscriptions->sum('amount');
+        // Calculs financiers — alignés avec suivi-catégories (fix fraisSubscriptions->sum)
+        $allCategories = \App\Models\ESBTPFraisCategory::where('is_active', true)->get();
+        $subsByInscription = \App\Models\ESBTPFraisSubscription::where('is_active', true)
+            ->where('inscription_id', $inscription->id)
+            ->get()
+            ->groupBy('inscription_id');
+        $allConfigurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
+            ->whereIn('frais_category_id', $allCategories->pluck('id'))
+            ->get()
+            ->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
+
+        $totalDu = $this->calculerTotalDuParInscription($inscription, $allCategories, $subsByInscription, $allConfigurations);
         $totalPaye = $inscription->paiements->sum('montant');
         $soldeRestant = max(0, $totalDu - $totalPaye);
         $pourcentagePaye = $totalDu > 0 ? min(100, round($totalPaye / $totalDu * 100)) : 0;
@@ -1794,8 +1875,21 @@ class ESBTPComptabiliteController extends Controller
         // Calculer risk levels en PHP (après fetch)
         $allInscriptions = $query->get();
 
-        $rows = $allInscriptions->map(function ($inscription) {
-            $totalDu      = $inscription->fraisSubscriptions->sum('amount');
+        // Pré-charger catégories et configurations une seule fois (évite N+1 dans la map)
+        $relCategories = \App\Models\ESBTPFraisCategory::where('is_active', true)->get();
+        $relInscriptionIds = $allInscriptions->pluck('id')->toArray();
+        $relSubscriptions = \App\Models\ESBTPFraisSubscription::where('is_active', true)
+            ->whereIn('inscription_id', $relInscriptionIds)
+            ->get()
+            ->groupBy('inscription_id');
+        $relConfigurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
+            ->whereIn('frais_category_id', $relCategories->pluck('id'))
+            ->get()
+            ->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
+
+        $rows = $allInscriptions->map(function ($inscription) use ($relCategories, $relSubscriptions, $relConfigurations) {
+            // Calcul aligné avec suivi-catégories (fix fraisSubscriptions->sum)
+            $totalDu      = $this->calculerTotalDuParInscription($inscription, $relCategories, $relSubscriptions, $relConfigurations);
             $totalPaye    = $inscription->paiements->sum('montant');
             $soldeRestant = max(0, $totalDu - $totalPaye);
             $pourcentage  = $totalDu > 0 ? min(100, round($totalPaye / $totalDu * 100)) : 100;
@@ -1813,23 +1907,25 @@ class ESBTPComptabiliteController extends Controller
             return (object) compact('inscription', 'totalDu', 'totalPaye', 'soldeRestant', 'pourcentage', 'risk', 'riskLabel');
         });
 
-        // Filtrer par risque si demandé
-        if ($riskFilter) {
-            $rows = $rows->filter(fn ($r) => $r->risk === $riskFilter);
-        }
-
-        // Exclure les étudiants entièrement à jour (si on veut n'afficher que les impayés)
-        $rowsWithDebt = $rows->filter(fn ($r) => $r->soldeRestant > 0);
-
-        // KPIs globaux
+        // KPIs globaux calculés sur TOUTES les lignes (avant filtrage risk)
+        // Les counts des tabs doivent refléter le total réel, pas le filtre actif
+        $allRowsWithDebt = $rows->filter(fn ($r) => $r->soldeRestant > 0);
         $kpis = [
-            'total_impaye'     => $rowsWithDebt->sum(fn ($r) => $r->soldeRestant),
+            'total_impaye'     => $allRowsWithDebt->sum(fn ($r) => $r->soldeRestant),
             'count_critical'   => $rows->where('risk', 'critical')->count(),
             'count_high'       => $rows->where('risk', 'high')->count(),
             'count_medium'     => $rows->where('risk', 'medium')->count(),
             'count_low'        => $rows->where('risk', 'low')->count(),
-            'total_etudiants'  => $rows->count(),
+            'total_etudiants'  => $allRowsWithDebt->count(),
         ];
+
+        // Filtrer par risque pour l'affichage du tableau uniquement
+        if ($riskFilter) {
+            $rows = $rows->filter(fn ($r) => $r->risk === $riskFilter);
+        }
+
+        // Exclure les étudiants à jour pour la liste paginée
+        $rowsWithDebt = $rows->filter(fn ($r) => $r->soldeRestant > 0);
 
         // Pagination manuelle
         $page       = (int) $request->input('page', 1);
@@ -1895,8 +1991,17 @@ class ESBTPComptabiliteController extends Controller
         ->when($search, fn ($q) => $q->whereHas('etudiant', fn ($e) => $e->where('nom', 'like', "%$search%")->orWhere('prenoms', 'like', "%$search%")->orWhere('matricule', 'like', "%$search%")))
         ->get();
 
-        $rows = $allInscriptions->map(function ($inscription) {
-            $totalDu      = $inscription->fraisSubscriptions->sum('amount');
+        // Pré-charger catégories et configurations pour éviter N+1 dans la map
+        $xlsCategories = \App\Models\ESBTPFraisCategory::where('is_active', true)->get();
+        $xlsSubscriptions = \App\Models\ESBTPFraisSubscription::where('is_active', true)
+            ->whereIn('inscription_id', $allInscriptions->pluck('id')->toArray())
+            ->get()->groupBy('inscription_id');
+        $xlsConfigurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
+            ->whereIn('frais_category_id', $xlsCategories->pluck('id'))
+            ->get()->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
+
+        $rows = $allInscriptions->map(function ($inscription) use ($xlsCategories, $xlsSubscriptions, $xlsConfigurations) {
+            $totalDu      = $this->calculerTotalDuParInscription($inscription, $xlsCategories, $xlsSubscriptions, $xlsConfigurations);
             $totalPaye    = $inscription->paiements->sum('montant');
             $soldeRestant = max(0, $totalDu - $totalPaye);
 
@@ -1983,8 +2088,17 @@ class ESBTPComptabiliteController extends Controller
         ->when($search, fn ($q) => $q->whereHas('etudiant', fn ($e) => $e->where('nom', 'like', "%$search%")->orWhere('prenoms', 'like', "%$search%")->orWhere('matricule', 'like', "%$search%")))
         ->get();
 
-        $relances = $allInscriptions->map(function ($inscription) {
-            $totalDu      = $inscription->fraisSubscriptions->sum('amount');
+        // Pré-charger catégories et configurations pour éviter N+1 dans la map
+        $expCategories = \App\Models\ESBTPFraisCategory::where('is_active', true)->get();
+        $expSubscriptions = \App\Models\ESBTPFraisSubscription::where('is_active', true)
+            ->whereIn('inscription_id', $allInscriptions->pluck('id')->toArray())
+            ->get()->groupBy('inscription_id');
+        $expConfigurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
+            ->whereIn('frais_category_id', $expCategories->pluck('id'))
+            ->get()->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
+
+        $relances = $allInscriptions->map(function ($inscription) use ($expCategories, $expSubscriptions, $expConfigurations) {
+            $totalDu      = $this->calculerTotalDuParInscription($inscription, $expCategories, $expSubscriptions, $expConfigurations);
             $totalPaye    = $inscription->paiements->sum('montant');
             $soldeRestant = max(0, $totalDu - $totalPaye);
 
