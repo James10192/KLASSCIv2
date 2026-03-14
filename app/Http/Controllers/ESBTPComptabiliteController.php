@@ -1704,7 +1704,7 @@ class ESBTPComptabiliteController extends Controller
         foreach ($inscriptions as $inscription) {
             // Calcul totalDu aligné avec suivi-catégories (fix bug fraisSubscriptions->sum)
             $totalDu      = $this->calculerTotalDuParInscription($inscription, $allCategories, $allSubscriptions, $allConfigurations);
-            $totalPaye    = $inscription->paiements->sum('montant');
+            $totalPaye    = $inscription->paiements->where('status', 'validé')->sum('montant');
             $soldeRestant = max(0, $totalDu - $totalPaye);
 
             if ($soldeRestant <= 0) continue;
@@ -1907,11 +1907,11 @@ class ESBTPComptabiliteController extends Controller
             ->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
 
         $rows = $allInscriptions->map(function ($inscription) use ($relCategories, $relSubscriptions, $relConfigurations) {
-            // Calcul aligné avec suivi-catégories (fix fraisSubscriptions->sum)
-            $totalDu      = $this->calculerTotalDuParInscription($inscription, $relCategories, $relSubscriptions, $relConfigurations);
-            $totalPaye    = $inscription->paiements->sum('montant');
-            $soldeRestant = max(0, $totalDu - $totalPaye);
-            $pourcentage  = $totalDu > 0 ? min(100, round($totalPaye / $totalDu * 100)) : 100;
+            $totalDu            = $this->calculerTotalDuParInscription($inscription, $relCategories, $relSubscriptions, $relConfigurations);
+            $totalPaye          = $inscription->paiements->where('status', 'validé')->sum('montant');
+            $totalPayeEnAttente = $inscription->paiements->where('status', 'en_attente')->sum('montant');
+            $soldeRestant       = max(0, $totalDu - $totalPaye);
+            $pourcentage        = $totalDu > 0 ? min(100, round($totalPaye / $totalDu * 100)) : 100;
 
             if ($soldeRestant <= 0) {
                 $risk = 'low'; $riskLabel = 'À jour';
@@ -1923,19 +1923,20 @@ class ESBTPComptabiliteController extends Controller
                 $risk = 'critical'; $riskLabel = 'Impayé';
             }
 
-            return (object) compact('inscription', 'totalDu', 'totalPaye', 'soldeRestant', 'pourcentage', 'risk', 'riskLabel');
+            return (object) compact('inscription', 'totalDu', 'totalPaye', 'totalPayeEnAttente', 'soldeRestant', 'pourcentage', 'risk', 'riskLabel');
         });
 
         // KPIs globaux calculés sur TOUTES les lignes (avant filtrage risk)
         // Les counts des tabs doivent refléter le total réel, pas le filtre actif
         $allRowsWithDebt = $rows->filter(fn ($r) => $r->soldeRestant > 0);
         $kpis = [
-            'total_impaye'     => $allRowsWithDebt->sum(fn ($r) => $r->soldeRestant),
-            'count_critical'   => $rows->where('risk', 'critical')->count(),
-            'count_high'       => $rows->where('risk', 'high')->count(),
-            'count_medium'     => $rows->where('risk', 'medium')->count(),
-            'count_low'        => $rows->where('risk', 'low')->count(),
-            'total_etudiants'  => $allRowsWithDebt->count(),
+            'total_impaye'      => $allRowsWithDebt->sum(fn ($r) => $r->soldeRestant),
+            'total_en_attente'  => $rows->sum(fn ($r) => $r->totalPayeEnAttente),
+            'count_critical'    => $rows->where('risk', 'critical')->count(),
+            'count_high'        => $rows->where('risk', 'high')->count(),
+            'count_medium'      => $rows->where('risk', 'medium')->count(),
+            'count_low'         => $rows->where('risk', 'low')->count(),
+            'total_etudiants'   => $allRowsWithDebt->count(),
         ];
 
         // Filtrer par risque pour l'affichage du tableau uniquement
@@ -2021,7 +2022,7 @@ class ESBTPComptabiliteController extends Controller
 
         $rows = $allInscriptions->map(function ($inscription) use ($xlsCategories, $xlsSubscriptions, $xlsConfigurations) {
             $totalDu      = $this->calculerTotalDuParInscription($inscription, $xlsCategories, $xlsSubscriptions, $xlsConfigurations);
-            $totalPaye    = $inscription->paiements->sum('montant');
+            $totalPaye    = $inscription->paiements->where('status', 'validé')->sum('montant');
             $soldeRestant = max(0, $totalDu - $totalPaye);
 
             if ($soldeRestant <= 0) {
@@ -2118,7 +2119,7 @@ class ESBTPComptabiliteController extends Controller
 
         $relances = $allInscriptions->map(function ($inscription) use ($expCategories, $expSubscriptions, $expConfigurations) {
             $totalDu      = $this->calculerTotalDuParInscription($inscription, $expCategories, $expSubscriptions, $expConfigurations);
-            $totalPaye    = $inscription->paiements->sum('montant');
+            $totalPaye    = $inscription->paiements->where('status', 'validé')->sum('montant');
             $soldeRestant = max(0, $totalDu - $totalPaye);
 
             if ($soldeRestant <= 0) {

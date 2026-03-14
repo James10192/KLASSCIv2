@@ -92,6 +92,7 @@
     border-radius: 12px 0 0 12px;
 }
 .kpi-card.impaye::after   { background: var(--rl-primary); }
+.kpi-card.pending::after  { background: #f59e0b; }
 .kpi-card.critical::after { background: var(--rl-dark); }
 .kpi-card.high::after     { background: var(--rl-primary); }
 .kpi-card.medium::after   { background: var(--rl-secondary); }
@@ -111,6 +112,17 @@
     line-height: 1;
 }
 .kpi-value.big { font-size: 1.05rem; }
+.kpi-sub {
+    font-size: .7rem;
+    color: var(--rl-muted);
+    margin-top: .35rem;
+    display: flex;
+    align-items: center;
+    gap: .3rem;
+    line-height: 1.3;
+}
+.kpi-sub.pending-hint { color: #b45309; }
+.kpi-sub.info-hint    { color: #64748b; }
 .kpi-icon {
     position: absolute;
     right: 1rem;
@@ -118,6 +130,22 @@
     transform: translateY(-50%);
     font-size: 1.6rem;
     opacity: .07;
+}
+
+/* ── Pending badge in table ── */
+.pending-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    background: rgba(245,158,11,.1);
+    border: 1px solid rgba(245,158,11,.3);
+    color: #b45309;
+    border-radius: 6px;
+    padding: .18rem .5rem;
+    font-size: .68rem;
+    font-weight: 600;
+    white-space: nowrap;
+    margin-top: .2rem;
 }
 
 /* ── FILTERS BAR ── */
@@ -432,18 +460,49 @@
 
     {{-- ── KPI STRIP ── --}}
     <div class="kpi-strip">
+
+        {{-- Total impayé (validé uniquement) --}}
         <div class="kpi-card impaye">
             <div class="kpi-label">Total impayé</div>
-            <div class="kpi-value big"><span id="kpi-total-impaye">{{ number_format($kpis['total_impaye'], 0, ',', ' ') }}</span> <span style="font-size:.65em;font-weight:400;color:var(--rl-muted);">FCFA</span></div>
+            <div class="kpi-value big">
+                <span id="kpi-total-impaye">{{ number_format($kpis['total_impaye'], 0, ',', ' ') }}</span>
+                <span style="font-size:.65em;font-weight:400;color:var(--rl-muted);">FCFA</span>
+            </div>
+            @if(($kpis['total_en_attente'] ?? 0) > 0)
+            <div class="kpi-sub info-hint">
+                <i class="fas fa-info-circle" style="font-size:.7em;"></i>
+                Paiements validés uniquement
+            </div>
+            @else
+            <div class="kpi-sub info-hint">
+                <i class="fas fa-shield-check" style="font-size:.7em;"></i>
+                Soldes confirmés
+            </div>
+            @endif
             <i class="fas fa-exclamation-circle kpi-icon"></i>
         </div>
+
+        {{-- Paiements en attente de validation --}}
+        <div class="kpi-card pending" title="Paiements enregistrés mais non encore validés par le secrétariat">
+            <div class="kpi-label">En attente de validation</div>
+            <div class="kpi-value big">
+                <span id="kpi-total-en-attente">{{ number_format($kpis['total_en_attente'] ?? 0, 0, ',', ' ') }}</span>
+                <span style="font-size:.65em;font-weight:400;color:var(--rl-muted);">FCFA</span>
+            </div>
+            <div class="kpi-sub pending-hint">
+                <i class="fas fa-clock" style="font-size:.7em;"></i>
+                Non déduits du solde
+            </div>
+            <i class="fas fa-clock kpi-icon" style="color:#f59e0b;"></i>
+        </div>
+
         <div class="kpi-card critical" data-risk="critical" title="Cliquer pour filtrer">
             <div class="kpi-label">Impayés (0% réglé)</div>
             <div class="kpi-value" id="kpi-count-critical">{{ $kpis['count_critical'] }}</div>
             <i class="fas fa-ban kpi-icon"></i>
         </div>
         <div class="kpi-card high" data-risk="high" title="Cliquer pour filtrer">
-            <div class="kpi-label">En cours (paiement partiel)</div>
+            <div class="kpi-label">En cours (partiel)</div>
             <div class="kpi-value" id="kpi-count-high">{{ $kpis['count_high'] }}</div>
             <i class="fas fa-hourglass-half kpi-icon"></i>
         </div>
@@ -627,16 +686,18 @@
             // Update KPI cards
             const kpis = data.kpis;
             if (kpis) {
+                const fmt = v => new Intl.NumberFormat('fr-FR').format(v);
                 const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-                set('kpi-total-impaye', new Intl.NumberFormat('fr-FR').format(kpis.total_impaye));
-                set('kpi-count-critical', kpis.count_critical);
-                set('kpi-count-high',     kpis.count_high);
-                set('kpi-count-medium',   kpis.count_medium);
-                set('kpi-count-low',      kpis.count_low);
-                set('tab-count-all',      kpis.total_etudiants);
-                set('tab-count-critical', kpis.count_critical);
-                set('tab-count-high',     kpis.count_high);
-                set('tab-count-medium',   kpis.count_medium);
+                set('kpi-total-impaye',     fmt(kpis.total_impaye));
+                set('kpi-total-en-attente', fmt(kpis.total_en_attente || 0));
+                set('kpi-count-critical',   kpis.count_critical);
+                set('kpi-count-high',       kpis.count_high);
+                set('kpi-count-medium',     kpis.count_medium);
+                set('kpi-count-low',        kpis.count_low);
+                set('tab-count-all',        kpis.total_etudiants);
+                set('tab-count-critical',   kpis.count_critical);
+                set('tab-count-high',       kpis.count_high);
+                set('tab-count-medium',     kpis.count_medium);
             }
 
             // Wire pagination links to AJAX too

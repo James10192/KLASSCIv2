@@ -73,10 +73,18 @@
                             <span class="amount-unit">FCFA</span>
                         </td>
 
-                        {{-- Solde restant --}}
+                        {{-- Solde restant (basé sur paiements validés) --}}
                         <td class="amount-cell amount-red">
-                            {{ number_format($row->soldeRestant, 0, ',', ' ') }}
-                            <span class="amount-unit">FCFA</span>
+                            <div>
+                                {{ number_format($row->soldeRestant, 0, ',', ' ') }}
+                                <span class="amount-unit">FCFA</span>
+                            </div>
+                            @if(($row->totalPayeEnAttente ?? 0) > 0)
+                            <div class="pending-badge" title="Paiement enregistré mais en attente de validation par le secrétariat">
+                                <i class="fas fa-clock"></i>
+                                {{ number_format($row->totalPayeEnAttente, 0, ',', ' ') }} en attente
+                            </div>
+                            @endif
                         </td>
 
                         {{-- Situation --}}
