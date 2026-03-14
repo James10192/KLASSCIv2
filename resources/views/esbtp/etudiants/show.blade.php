@@ -4301,48 +4301,11 @@
         .catch(() => alert('Erreur réseau.'));
     });
 
-    // ── Preview ──
-    const FILE_ICON_MAP = {
-        'application/pdf': 'fa-file-pdf',
-        'image/jpeg': 'fa-file-image', 'image/png': 'fa-file-image', 'image/gif': 'fa-file-image', 'image/webp': 'fa-file-image',
-        'application/msword': 'fa-file-word', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'fa-file-word',
-        'application/vnd.ms-excel': 'fa-file-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'fa-file-excel',
-        'application/zip': 'fa-file-zipper', 'application/x-zip-compressed': 'fa-file-zipper',
-        'text/plain': 'fa-file-lines',
-    };
+    // ── Preview — ouvre dans un nouvel onglet ──
     document.getElementById('doc-list').addEventListener('click', function (e) {
         const btn = e.target.closest('.btn-preview-doc');
         if (!btn) return;
-
-        const url       = btn.dataset.url;
-        const forceUrl  = btn.dataset.forceUrl;
-        const fileType  = btn.dataset.fileType;
-        const title     = btn.dataset.title;
-        const filename  = btn.dataset.filename;
-        const size      = btn.dataset.size;
-        const icon      = FILE_ICON_MAP[fileType] || 'fa-file';
-
-        document.getElementById('dpm-title').textContent    = title;
-        document.getElementById('dpm-filename').textContent = filename;
-        document.getElementById('dpm-size').textContent     = size;
-        document.getElementById('dpm-file-icon').innerHTML  = `<i class="fas ${icon}"></i>`;
-        document.getElementById('dpm-download-btn').href    = forceUrl;
-
-        const area = document.getElementById('dpm-preview-area');
-        if (fileType === 'application/pdf') {
-            area.innerHTML = `<iframe src="${url}"></iframe>`;
-        } else if (fileType && fileType.startsWith('image/')) {
-            area.innerHTML = `<img src="${url}" alt="${escHtml(filename)}">`;
-        } else {
-            area.innerHTML = `<div class="dpm-placeholder"><i class="fas ${icon}"></i><p>Prévisualisation non disponible pour ce type de fichier.</p><small>${escHtml(filename)}</small></div>`;
-        }
-
-        new bootstrap.Modal(document.getElementById('docPreviewModal')).show();
-    });
-
-    // Reset preview area when modal closes (free iframe memory)
-    document.getElementById('docPreviewModal').addEventListener('hidden.bs.modal', function () {
-        document.getElementById('dpm-preview-area').innerHTML = '';
+        window.open(btn.dataset.url, '_blank');
     });
 
     function showAlert(msg, type) {
