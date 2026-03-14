@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPEtudiantDocument;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -410,6 +411,9 @@ class ESBTPEtudiantController extends Controller
                   ->orderBy('date_paiement', 'desc');
             },
             'absences',
+            'documents' => function($q) {
+                $q->with('uploadedBy')->orderBy('created_at', 'desc');
+            },
         ]);
 
         // Récupérer les reliquats de l'étudiant
@@ -2275,5 +2279,62 @@ class ESBTPEtudiantController extends Controller
                 'message' => 'Erreur lors de la mise à jour de la photo: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    public function storeDocument(Request $request, ESBTPEtudiant $etudiant)
+    {
+        $request->validate([
+            'titre'       => 'required|string|max:255',
+            'description' => 'nullable|string|max:1000',
+            'fichier'     => 'required|file|mimes:pdf,jpg,jpeg,png,docx,doc|max:10240',
+        ]);
+
+        $file = $request->file('fichier');
+        $filename = 'etudiant_' . $etudiant->id . '_' . time() . '_' . \Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('etudiants/' . $etudiant->id . '/documents', $filename, 'public');
+
+        $document = ESBTPEtudiantDocument::create([
+            'etudiant_id' => $etudiant->id,
+            'titre'       => $request->titre,
+            'description' => $request->description,
+            'file_path'   => $path,
+            'file_name'   => $file->getClientOriginalName(),
+            'file_size'   => $file->getSize(),
+            'file_type'   => $file->getMimeType(),
+            'uploaded_by' => Auth::id(),
+        ]);
+
+        $docArray = $document->toDocumentArray();
+        $docArray['uploaded_by'] = Auth::user()?->name;
+
+        return response()->json([
+            'success'  => true,
+            'message'  => 'Document ajouté avec succès.',
+            'document' => $docArray,
+        ]);
+    }
+
+    public function downloadDocument(ESBTPEtudiant $etudiant, ESBTPEtudiantDocument $document, Request $request)
+    {
+        abort_if($document->etudiant_id !== $etudiant->id, 403);
+        abort_unless(Storage::disk('public')->exists($document->file_path), 404);
+
+        if ($request->boolean('force')) {
+            return Storage::disk('public')->download($document->file_path, $document->file_name);
+        }
+
+        return Storage::disk('public')->response($document->file_path, $document->file_name);
+    }
+
+    public function destroyDocument(ESBTPEtudiant $etudiant, ESBTPEtudiantDocument $document)
+    {
+        abort_if($document->etudiant_id !== $etudiant->id, 403);
+
+        $document->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document supprimé.',
+        ]);
     }
 }
