@@ -3,8 +3,96 @@
 @section('title', 'Dashboard Comptabilité')
 
 @section('styles')
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
+
+/* ── Typographie financière ── */
+body, .filters-bar, .kpi-label, .filter-label, .filter-select {
+    font-family: 'DM Sans', sans-serif;
+}
+.kpi-value,
+#kpi-total-due, #kpi-total-paid, #kpi-overdue, #kpi-pending, #kpi-taux {
+    font-family: 'JetBrains Mono', monospace !important;
+    letter-spacing: -.02em;
+}
+
+/* ── Animations d'entrée staggerées ── */
+@keyframes fp-slide-up {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fp-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.dash-hero          { animation: fp-slide-up .45s cubic-bezier(.22,.68,0,1.2) both; }
+.filters-bar        { animation: fp-slide-up .45s cubic-bezier(.22,.68,0,1.2) .08s both; }
+.kpi-strip .kpi-card:nth-child(1) { animation: fp-slide-up .4s cubic-bezier(.22,.68,0,1.2) .12s both; }
+.kpi-strip .kpi-card:nth-child(2) { animation: fp-slide-up .4s cubic-bezier(.22,.68,0,1.2) .19s both; }
+.kpi-strip .kpi-card:nth-child(3) { animation: fp-slide-up .4s cubic-bezier(.22,.68,0,1.2) .26s both; }
+.kpi-strip .kpi-card:nth-child(4) { animation: fp-slide-up .4s cubic-bezier(.22,.68,0,1.2) .33s both; }
+
+/* ── KPI cards — precision touch ── */
+.kpi-card {
+    border-top: 3px solid transparent;
+    transition: box-shadow .2s, transform .2s, border-color .2s;
+}
+.kpi-card:nth-child(1) { border-top-color: #0453cb; }
+.kpi-card:nth-child(2) { border-top-color: #10b981; }
+.kpi-card:nth-child(3) { border-top-color: #ef4444; }
+.kpi-card:nth-child(4) { border-top-color: #3b82f6; }
+.kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.10); }
+
+/* ── Hero — grain overlay + richer orbs ── */
+.dash-hero {
+    background: linear-gradient(135deg, #071828 0%, #0b2a5c 50%, #0f2038 100%);
+}
+.dash-hero::before {
+    width: 280px; height: 280px;
+    background: radial-gradient(circle, rgba(94,145,222,.18) 0%, transparent 70%);
+    top: -80px; right: -80px;
+}
+.dash-hero::after {
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(16,185,129,.12) 0%, transparent 70%);
+    bottom: -60px; left: 25%;
+}
+
+/* ── Chart cards ── */
+.chart-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 24px;
+    box-shadow: 0 1px 12px rgba(0,0,0,.06);
+    border: 1px solid rgba(0,0,0,.05);
+    animation: fp-fade-in .5s ease .4s both;
+}
+
+/* ── Aging bar segments ── */
+.aging-bar-track {
+    display: flex;
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 10px 0;
+    background: #f1f5f9;
+}
+.aging-seg {
+    height: 100%;
+    transition: width .6s cubic-bezier(.22,.68,0,1.2);
+}
+.aging-seg-recent  { background: #10b981; }
+.aging-seg-moderate{ background: #f59e0b; }
+.aging-seg-serious { background: #f97316; }
+.aging-seg-critical{ background: #ef4444; }
+
+/* ── Bottom section fade-in ── */
+.bottom-row { animation: fp-fade-in .5s ease .5s both; }
+
 /* ── Hero premium ── */
 .dash-hero {
     background: linear-gradient(135deg, #0f172a 0%, #0c2460 55%, #1e293b 100%);
@@ -1199,7 +1287,13 @@
 
         if (chartInstance) chartInstance.destroy();
 
-        chartInstance = new Chart(ctx.getContext('2d'), {
+        const canvasCtx = ctx.getContext('2d');
+        const grad = canvasCtx.createLinearGradient(0, 0, 0, ctx.offsetHeight || 240);
+        grad.addColorStop(0, 'rgba(4,83,203,0.22)');
+        grad.addColorStop(0.55, 'rgba(4,83,203,0.07)');
+        grad.addColorStop(1, 'rgba(4,83,203,0.00)');
+
+        chartInstance = new Chart(canvasCtx, {
             type: 'line',
             data: {
                 labels: labels,
@@ -1207,7 +1301,7 @@
                     label: 'Encaissements (FCFA)',
                     data: data,
                     borderColor: '#0453cb',
-                    backgroundColor: 'rgba(4,83,203,0.07)',
+                    backgroundColor: grad,
                     tension: 0.4,
                     fill: true,
                     pointBackgroundColor: '#0453cb',
@@ -1399,6 +1493,45 @@
     document.addEventListener('DOMContentLoaded', function () {
         // Render initial chart with server data
         renderChart(initialData.labels, initialData.datasets);
+
+        // ── Count-up animation on page load ──────────────────────────────
+        (function () {
+            function parseFormatted(str) {
+                // Strip spaces (fr-FR thousands separator) and commas, keep digits and dots
+                return parseFloat((str || '0').replace(/[\s\u00a0]/g, '').replace(',', '.')) || 0;
+            }
+            function animateCountUp(el, duration) {
+                if (!el) return;
+                const rawText = el.textContent.trim();
+                // Only animate numeric-ish content (contains digits)
+                if (!/\d/.test(rawText)) return;
+                const target = parseFormatted(rawText);
+                if (target === 0) return;
+                const start = performance.now();
+                const isPercent = rawText.includes('%');
+                function step(now) {
+                    const elapsed = now - start;
+                    const progress = Math.min(elapsed / duration, 1);
+                    // Ease out cubic
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    const current = target * eased;
+                    if (isPercent) {
+                        el.textContent = current.toFixed(1) + '%';
+                    } else {
+                        el.textContent = new Intl.NumberFormat('fr-FR').format(Math.round(current));
+                    }
+                    if (progress < 1) requestAnimationFrame(step);
+                    else el.textContent = rawText; // restore exact original
+                }
+                requestAnimationFrame(step);
+            }
+            const KPI_IDS = ['kpi-total-due', 'kpi-total-paid', 'kpi-overdue', 'kpi-pending'];
+            KPI_IDS.forEach(function(id, i) {
+                setTimeout(function() {
+                    animateCountUp(document.getElementById(id), 900);
+                }, 120 + i * 80); // stagger slightly after CSS entrance
+            });
+        })();
 
         // Filter change → AJAX
         ['f-annee', 'f-filiere', 'f-classe'].forEach(function(id) {

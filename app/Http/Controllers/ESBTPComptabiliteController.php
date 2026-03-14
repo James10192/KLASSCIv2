@@ -1417,19 +1417,8 @@ class ESBTPComptabiliteController extends Controller
 
         $totalPaid = (clone $paiementsQuery)->whereIn('status', ['validé'])->sum('montant');
 
-        // Stats frais souscriptions
-        $subscriptionsQuery = \App\Models\ESBTPFraisSubscription::query();
-        if ($anneeId) {
-            $subscriptionsQuery->whereHas('inscription', fn($q) => $q->where('annee_universitaire_id', $anneeId));
-        }
-        if ($filiereId) {
-            $subscriptionsQuery->whereHas('inscription.classe', fn($q) => $q->where('filiere_id', $filiereId));
-        }
-        if ($classeId) {
-            $subscriptionsQuery->whereHas('inscription', fn($q) => $q->where('classe_id', $classeId));
-        }
-
-        $totalDue = (clone $subscriptionsQuery)->sum('amount');
+        // Stats frais — calcul cohérent avec suivi-catégories (inscriptions × catégories + fallback config)
+        ['totalDue' => $totalDue, 'countDue' => $countDue] = $this->calculerTotalDu($anneeId, $filiereId, $classeId);
         $totalOverdue = max(0, $totalDue - $totalPaid);
 
         // Nombre paiements en attente / validés
@@ -1441,7 +1430,6 @@ class ESBTPComptabiliteController extends Controller
             ->when($classeId, fn($q) => $q->where('classe_id', $classeId))
             ->whereIn('status', ['active', 'en_attente', 'validée'])
             ->count();
-        $countDue = (clone $subscriptionsQuery)->count();
 
         // Dépenses (module supprimé — valeurs à zéro)
         $statsDepenses = ['total' => 0, 'mensuel' => 0, 'salaires' => 0, 'fournitures' => 0];
@@ -1520,12 +1508,7 @@ class ESBTPComptabiliteController extends Controller
 
         $totalPaid = (clone $paiementsQuery)->where('status', 'validé')->sum('montant');
 
-        $subscriptionsQuery = \App\Models\ESBTPFraisSubscription::query();
-        if ($anneeId)   $subscriptionsQuery->whereHas('inscription', fn($q) => $q->where('annee_universitaire_id', $anneeId));
-        if ($filiereId) $subscriptionsQuery->whereHas('inscription.classe', fn($q) => $q->where('filiere_id', $filiereId));
-        if ($classeId)  $subscriptionsQuery->whereHas('inscription', fn($q) => $q->where('classe_id', $classeId));
-
-        $totalDue     = (clone $subscriptionsQuery)->sum('amount');
+        ['totalDue' => $totalDue, 'countDue' => $countDue] = $this->calculerTotalDu($anneeId, $filiereId, $classeId);
         $totalOverdue = max(0, $totalDue - $totalPaid);
         $countPaid    = (clone $paiementsQuery)->where('status', 'validé')->count();
         $countPartiallyPaid = (clone $paiementsQuery)->where('status', 'en_attente')->count();
@@ -1535,7 +1518,6 @@ class ESBTPComptabiliteController extends Controller
             ->when($classeId,  fn($q) => $q->where('classe_id', $classeId))
             ->whereIn('status', ['active', 'en_attente', 'validée'])
             ->count();
-        $countDue = (clone $subscriptionsQuery)->count();
 
         // Graphique mensuel
         $labelsMois = [];
@@ -1597,6 +1579,62 @@ class ESBTPComptabiliteController extends Controller
     /**
      * Calcule les impayés par ancienneté (aging buckets)
      */
+    /**
+     * Calcule le total dû de manière cohérente avec suivi-catégories :
+     * itère inscriptions actives × catégories, avec fallback config/default pour frais obligatoires.
+     */
+    private function calculerTotalDu($anneeId, $filiereId, $classeId): array
+    {
+        $inscriptions = \App\Models\ESBTPInscription::whereIn('status', ['active', 'en_attente', 'validée'])
+            ->when($anneeId,   fn($q) => $q->where('annee_universitaire_id', $anneeId))
+            ->when($filiereId, fn($q) => $q->whereHas('classe', fn($q2) => $q2->where('filiere_id', $filiereId)))
+            ->when($classeId,  fn($q) => $q->where('classe_id', $classeId))
+            ->get(['id', 'filiere_id', 'niveau_id', 'affectation_status']);
+
+        $inscriptionIds = $inscriptions->pluck('id')->toArray();
+
+        $categories = \App\Models\ESBTPFraisCategory::where('is_active', true)->get();
+
+        $subscriptions = \App\Models\ESBTPFraisSubscription::where('is_active', true)
+            ->whereIn('inscription_id', $inscriptionIds)
+            ->get()
+            ->groupBy('inscription_id');
+
+        $configurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
+            ->whereIn('frais_category_id', $categories->pluck('id'))
+            ->get()
+            ->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
+
+        $totalDue = 0;
+        $countDue = 0;
+
+        foreach ($inscriptions as $inscription) {
+            $inscriptionSubs = $subscriptions->get($inscription->id, collect());
+            foreach ($categories as $category) {
+                $sub = $inscriptionSubs->where('frais_category_id', $category->id)->first();
+                if ($category->is_mandatory) {
+                    if ($sub) {
+                        $montant = $sub->amount;
+                    } else {
+                        $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
+                        $config = $configurations->get($configKey, collect())->first();
+                        $montant = $config
+                            ? $config->getMontantByStatus($inscription->affectation_status ?? 'affecté')
+                            : $category->default_amount;
+                    }
+                } else {
+                    $montant = $sub ? $sub->amount : 0;
+                }
+                if ($montant > 0) {
+                    $totalDue += $montant;
+                    $countDue++;
+                }
+            }
+        }
+
+        return ['totalDue' => $totalDue, 'countDue' => $countDue];
+    }
+
     private function getImpayesAging($anneeId = null, $filiereId = null, $classeId = null): array
     {
         // Récupérer les inscriptions avec solde restant
