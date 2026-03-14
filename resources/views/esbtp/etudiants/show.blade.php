@@ -1245,7 +1245,7 @@
 /* ══════════════════════════════════════════════════════════════════
    DOCUMENT UPLOAD MODAL — Premium Design
 ══════════════════════════════════════════════════════════════════ */
-.doc-upload-modal .modal-dialog { max-width: 460px; }
+.doc-upload-modal .modal-dialog { max-width: 780px; }
 
 .dum-content {
     border: none;
@@ -1258,9 +1258,11 @@
 .dum-header {
     position: relative;
     background: linear-gradient(140deg, #0344a8 0%, #0453cb 45%, #5e91de 100%);
-    padding: 36px 28px 28px;
-    text-align: center;
+    padding: 22px 28px 20px;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: 16px;
 }
 .dum-header-bg {
     position: absolute; inset: 0;
@@ -1278,12 +1280,11 @@
 .dum-close:hover { background: rgba(255,255,255,.28); }
 
 .dum-header-icon {
-    width: 60px; height: 60px; border-radius: 16px;
+    width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0;
     background: rgba(255,255,255,.18);
     backdrop-filter: blur(8px);
     display: flex; align-items: center; justify-content: center;
-    margin: 0 auto 14px;
-    font-size: 1.6rem; color: #fff;
+    font-size: 1.4rem; color: #fff;
     box-shadow: 0 4px 16px rgba(0,0,0,.15);
     animation: dum-icon-in .4s cubic-bezier(.34,1.56,.64,1);
 }
@@ -1291,17 +1292,27 @@
     from { transform: translateY(-12px) scale(.8); opacity: 0; }
     to   { transform: translateY(0) scale(1);   opacity: 1; }
 }
+.dum-header-texts { flex: 1; }
 .dum-header-title {
-    font-size: 1.12rem; font-weight: 700; color: #fff;
-    margin: 0 0 4px; letter-spacing: -.01em;
+    font-size: 1.05rem; font-weight: 700; color: #fff;
+    margin: 0 0 3px; letter-spacing: -.01em;
 }
 .dum-header-sub {
-    font-size: .8rem; color: rgba(255,255,255,.72);
+    font-size: .78rem; color: rgba(255,255,255,.72);
     margin: 0; font-weight: 500;
 }
 
-/* ── Body ── */
-.dum-body { padding: 24px 24px 8px; background: #fff; }
+/* ── Body — layout 2 colonnes paysage ── */
+.dum-body {
+    padding: 20px 24px 16px;
+    background: #fff;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: stretch;
+}
+.dum-body-left { display: flex; flex-direction: column; }
+.dum-body-right { display: flex; flex-direction: column; }
 
 .dum-alert {
     padding: 10px 14px; border-radius: 10px;
@@ -1349,8 +1360,11 @@
     border: 2px dashed #cbd5e1; border-radius: 14px;
     background: #f8fafc;
     cursor: pointer; transition: border-color .2s, background .2s;
-    margin-bottom: 8px;
     overflow: hidden;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 .dum-dropzone:hover,
 .dum-dropzone.drag-over {
@@ -3772,10 +3786,10 @@
 
 {{-- Modal upload document — Design premium --}}
 <div class="modal fade doc-upload-modal" id="docUploadModal" tabindex="-1" aria-labelledby="docUploadModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content dum-content">
 
-            {{-- Header gradient --}}
+            {{-- Header gradient horizontal --}}
             <div class="dum-header">
                 <div class="dum-header-bg"></div>
                 <button type="button" class="dum-close" data-bs-dismiss="modal" aria-label="Fermer">
@@ -3784,59 +3798,66 @@
                 <div class="dum-header-icon">
                     <i class="fas fa-file-arrow-up"></i>
                 </div>
-                <h4 class="dum-header-title" id="docUploadModalLabel">Ajouter un document</h4>
-                <p class="dum-header-sub">{{ $etudiant->prenoms }} {{ $etudiant->nom }}</p>
+                <div class="dum-header-texts">
+                    <h4 class="dum-header-title" id="docUploadModalLabel">Ajouter un document</h4>
+                    <p class="dum-header-sub">{{ $etudiant->prenoms }} {{ $etudiant->nom }}</p>
+                </div>
             </div>
 
-            {{-- Body --}}
+            {{-- Body — 2 colonnes paysage --}}
             <div class="dum-body">
-                <div id="doc-upload-alert" class="dum-alert d-none" role="alert"></div>
+                {{-- Colonne gauche : champs --}}
+                <div class="dum-body-left">
+                    <div id="doc-upload-alert" class="dum-alert d-none" role="alert"></div>
 
-                {{-- Titre --}}
-                <div class="dum-field">
-                    <div class="dum-field-icon"><i class="fas fa-tag"></i></div>
-                    <div class="dum-field-inner">
-                        <label for="doc-titre" class="dum-label">Titre du document <span class="dum-required">*</span></label>
-                        <input type="text" class="dum-input" id="doc-titre"
-                               placeholder="Ex : Baccalauréat, Extrait de naissance, CNI…"
-                               maxlength="255" autocomplete="off">
+                    {{-- Titre --}}
+                    <div class="dum-field">
+                        <div class="dum-field-icon"><i class="fas fa-tag"></i></div>
+                        <div class="dum-field-inner">
+                            <label for="doc-titre" class="dum-label">Titre du document <span class="dum-required">*</span></label>
+                            <input type="text" class="dum-input" id="doc-titre"
+                                   placeholder="Ex : Baccalauréat, Extrait de naissance, CNI…"
+                                   maxlength="255" autocomplete="off">
+                        </div>
+                    </div>
+
+                    {{-- Description --}}
+                    <div class="dum-field" style="flex: 1;">
+                        <div class="dum-field-icon"><i class="fas fa-align-left"></i></div>
+                        <div class="dum-field-inner" style="display:flex; flex-direction:column;">
+                            <label for="doc-description" class="dum-label">Note <span class="dum-optional">— optionnel</span></label>
+                            <textarea class="dum-input dum-textarea" id="doc-description"
+                                      rows="4" maxlength="1000" style="flex:1; resize:none;"
+                                      placeholder="Précision sur ce document…"></textarea>
+                        </div>
                     </div>
                 </div>
 
-                {{-- Description --}}
-                <div class="dum-field">
-                    <div class="dum-field-icon"><i class="fas fa-align-left"></i></div>
-                    <div class="dum-field-inner">
-                        <label for="doc-description" class="dum-label">Note <span class="dum-optional">— optionnel</span></label>
-                        <textarea class="dum-input dum-textarea" id="doc-description"
-                                  rows="2" maxlength="1000"
-                                  placeholder="Précision sur ce document…"></textarea>
-                    </div>
-                </div>
-
-                {{-- Drop zone --}}
-                <div class="dum-dropzone" id="doc-dropzone">
-                    <input type="file" class="dum-file-input" id="doc-fichier"
-                           accept=".pdf,.jpg,.jpeg,.png,.docx,.doc">
-                    <div class="dum-dz-idle" id="doc-dz-idle">
-                        <div class="dum-dz-icon">
-                            <i class="fas fa-cloud-arrow-up"></i>
+                {{-- Colonne droite : drop zone --}}
+                <div class="dum-body-right">
+                    <div class="dum-dropzone" id="doc-dropzone" style="min-height: 200px;">
+                        <input type="file" class="dum-file-input" id="doc-fichier"
+                               accept=".pdf,.jpg,.jpeg,.png,.docx,.doc">
+                        <div class="dum-dz-idle" id="doc-dz-idle">
+                            <div class="dum-dz-icon">
+                                <i class="fas fa-cloud-arrow-up"></i>
+                            </div>
+                            <p class="dum-dz-text">Glissez un fichier ici</p>
+                            <p class="dum-dz-sub">ou <span class="dum-dz-browse">parcourir</span></p>
+                            <p class="dum-dz-formats">PDF · JPG · PNG · DOCX — max 10 Mo</p>
                         </div>
-                        <p class="dum-dz-text">Glissez un fichier ici</p>
-                        <p class="dum-dz-sub">ou <span class="dum-dz-browse">parcourir</span></p>
-                        <p class="dum-dz-formats">PDF · JPG · PNG · DOCX — max 10 Mo</p>
-                    </div>
-                    <div class="dum-dz-preview d-none" id="doc-dz-preview">
-                        <div class="dum-preview-icon" id="doc-preview-icon">
-                            <i class="fas fa-file-pdf"></i>
+                        <div class="dum-dz-preview d-none" id="doc-dz-preview">
+                            <div class="dum-preview-icon" id="doc-preview-icon">
+                                <i class="fas fa-file-pdf"></i>
+                            </div>
+                            <div class="dum-preview-info">
+                                <span class="dum-preview-name" id="doc-preview-name">document.pdf</span>
+                                <span class="dum-preview-size" id="doc-preview-size">2.4 Mo</span>
+                            </div>
+                            <button type="button" class="dum-preview-remove" id="doc-preview-remove" title="Retirer">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
-                        <div class="dum-preview-info">
-                            <span class="dum-preview-name" id="doc-preview-name">document.pdf</span>
-                            <span class="dum-preview-size" id="doc-preview-size">2.4 Mo</span>
-                        </div>
-                        <button type="button" class="dum-preview-remove" id="doc-preview-remove" title="Retirer">
-                            <i class="fas fa-times"></i>
-                        </button>
                     </div>
                 </div>
             </div>
