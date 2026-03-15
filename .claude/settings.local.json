@@ -108,7 +108,9 @@
       "Bash(grep -rn \"etudiants.bulletins\\\\|'etudiants/bulletins\" /c/Users/yabla/Downloads/DEV/KLASSCIv2-issue-146/app/Http/Controllers/ | head -5\ngrep -rn \"etudiants.attendances\\\\|mes-absences\\\\|mes_absences\" /c/Users/yabla/Downloads/DEV/KLASSCIv2-issue-146/app/Http/Controllers/ | head -10)",
       "Bash(grep -rn \"etudiants/bulletins\\\\|etudiants\\\\.bulletins\" /c/Users/yabla/Downloads/DEV/KLASSCIv2-issue-146/app/ | head -5\ngrep -rn \"notes/mes-notes\\\\|notes\\\\.mes-notes\\\\|notes.mes_notes\" /c/Users/yabla/Downloads/DEV/KLASSCIv2-issue-146/app/ | head -5*)",
       "Bash(grep -rn \"mes-notes\\\\|mes_notes\" /c/Users/yabla/Downloads/DEV/KLASSCIv2-issue-146/resources/views/ | grep -v \"blade.php:\" | head -5\ngrep -rn \"include.*mes-notes\\\\|mes-notes\" /c/Users/yabla/Downloads/DEV/KLASSCIv2-issue-146/resources/views/ | grep \"@include\\\\|@extends\" | head -5)",
-      "Skill(create-pr)"
+      "Skill(create-pr)",
+      "Bash(cd \"C:\\\\Users\\\\yabla\\\\Downloads\\\\DEV\\\\KLASSCIv2-issue-146\" && gh pr list --state open)",
+      "mcp__plugin_playwright_playwright__browser_wait_for"
     ],
     "deny": [],
     "ask": [],

@@ -2,575 +2,553 @@
 
 @section('title', 'Gestion des présences')
 
-@section('styles')
+@push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    .attendance-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: var(--space-xl);
-        border-radius: var(--radius-large);
-        margin-bottom: var(--space-xl);
-        position: relative;
-        overflow: hidden;
-        box-shadow: var(--shadow-elevated);
-    }
-    
-    .attendance-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 120px;
-        height: 100%;
-        background: rgba(255,255,255,0.15);
-        transform: skewX(-15deg);
-        transform-origin: top;
-    }
-
-    .page-title {
-        font-size: 1.8rem;
-        font-weight: 700;
-        margin: 0;
-        position: relative;
-        z-index: 1;
-        color: white;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-
-    .page-subtitle {
-        opacity: 0.95;
-        margin: var(--space-sm) 0 0;
-        position: relative;
-        z-index: 1;
-        color: rgba(255,255,255,0.9);
-        font-size: 1rem;
-    }
-
-    .stats-grid {
+    /* ── KPI Cards ────────────────────────────────────────────── */
+    .att-kpi-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         gap: var(--space-lg);
         margin-bottom: var(--space-xl);
     }
 
-    .stat-card {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        border: 1px solid rgba(0,0,0,0.05);
-        transition: all 0.3s ease;
-        cursor: pointer;
-        box-shadow: var(--shadow-card);
+    .att-kpi-card {
+        background: #fff;
+        border-radius: var(--radius-large);
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        border: 1px solid rgba(0,0,0,0.06);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
         position: relative;
         overflow: hidden;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
     }
 
-    .stat-card::before {
+    .att-kpi-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+    }
+
+    .att-kpi-card::after {
         content: '';
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 4px;
-        height: 100%;
-        transition: width 0.3s ease;
+        top: 0; left: 0;
+        width: 100%; height: 4px;
+        border-radius: var(--radius-large) var(--radius-large) 0 0;
     }
 
-    .stat-card:hover {
-        box-shadow: var(--shadow-hover);
-        transform: translateY(-2px);
+    .att-kpi-card.kpi-green::after  { background: #10b981; }
+    .att-kpi-card.kpi-red::after    { background: #e53e3e; }
+    .att-kpi-card.kpi-orange::after { background: #f97316; }
+    .att-kpi-card.kpi-blue::after   { background: #0453cb; }
+
+    .att-kpi-icon {
+        width: 48px; height: 48px;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.25rem; color: #fff;
     }
 
-    .stat-card:hover::before {
-        width: 8px;
-    }
+    .att-kpi-card.kpi-green  .att-kpi-icon { background: #10b981; }
+    .att-kpi-card.kpi-red    .att-kpi-icon { background: #e53e3e; }
+    .att-kpi-card.kpi-orange .att-kpi-icon { background: #f97316; }
+    .att-kpi-card.kpi-blue   .att-kpi-icon { background: #0453cb; }
 
-    .stat-card.present::before { background: var(--success); }
-    .stat-card.absent::before { background: var(--danger); }
-    .stat-card.late::before { background: var(--warning); }
-    .stat-card.excused::before { background: var(--accent-blue); }
-
-    .stat-card .stat-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        margin-bottom: var(--space-md);
-        color: white;
-    }
-
-    .stat-card .stat-number {
-        font-size: 2.2rem;
-        font-weight: bold;
-        margin-bottom: var(--space-sm);
-    }
-
-    .stat-card .stat-label {
+    .att-kpi-label {
+        font-size: 0.78rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.6px;
         color: var(--text-secondary);
-        font-size: 0.9rem;
-        margin: 0;
-        font-weight: 500;
     }
 
-    .stat-card .stat-percentage {
-        font-size: 0.8rem;
-        color: var(--text-muted);
-        margin-top: var(--space-xs);
-    }
-
-    .icon-success { background: var(--success); }
-    .icon-danger { background: var(--danger); }
-    .icon-warning { background: var(--warning); }
-    .icon-info { background: var(--accent-blue); }
-
-    .filters-card, .data-card, .chart-card {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        border: 1px solid rgba(0,0,0,0.05);
-        box-shadow: var(--shadow-card);
-        margin-bottom: var(--space-lg);
-    }
-
-    .chart-container {
-        position: relative;
-        height: 350px;
-        width: 100%;
-        overflow: visible;
-    }
-
-    #attendanceChart {
-        max-height: 320px !important;
-        height: 320px !important;
-        width: 100% !important;
-    }
-
-    .table-modern {
-        border-collapse: separate;
-        border-spacing: 0;
-        border-radius: var(--radius-medium);
-        overflow: hidden;
-        box-shadow: var(--shadow-card);
-    }
-
-    .table-modern thead {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-        color: white;
-    }
-
-    .table-modern thead th {
-        border: none;
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 0.8rem;
-        letter-spacing: 0.5px;
-        padding: var(--space-md);
-    }
-
-    .table-modern tbody tr {
-        transition: all 0.2s ease;
-    }
-
-    .table-modern tbody tr:hover {
-        background: rgba(102, 126, 234, 0.05);
-    }
-
-    .table-modern tbody td {
-        border: none;
-        border-bottom: 1px solid rgba(0,0,0,0.05);
-        padding: var(--space-md);
-        vertical-align: middle;
-    }
-
-    .status-badge {
-        display: inline-block;
-        padding: 0.4rem 0.8rem;
-        font-size: 0.8rem;
-        font-weight: 600;
-        line-height: 1;
-        text-align: center;
-        white-space: nowrap;
-        border-radius: var(--radius-small);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .status-badge.present {
-        background: var(--success);
-        color: white;
-    }
-
-    .status-badge.absent {
-        background: var(--danger);
-        color: white;
-    }
-
-    .status-badge.late {
-        background: var(--warning);
+    .att-kpi-value {
+        font-size: 2.4rem; font-weight: 800; line-height: 1;
         color: var(--text-primary);
     }
 
-    .status-badge.excused {
-        background: var(--accent-blue);
-        color: white;
+    .att-kpi-meta {
+        font-size: 0.8rem; color: var(--text-secondary);
+        display: flex; align-items: center; gap: 0.4rem;
     }
 
-    .action-buttons {
-        display: flex;
-        gap: var(--space-sm);
+    .att-kpi-bar {
+        height: 4px; border-radius: 2px;
+        background: rgba(0,0,0,0.06); overflow: hidden; margin-top: auto;
     }
 
-    .btn-modern {
-        padding: 0.5rem 1rem;
-        border-radius: var(--radius-small);
-        border: none;
-        font-weight: 500;
-        transition: all 0.2s ease;
-        cursor: pointer;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
+    .att-kpi-bar-fill {
+        height: 100%; border-radius: 2px;
+        transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .btn-primary-modern {
-        background: var(--primary);
-        color: white;
+    .att-kpi-card.kpi-green  .att-kpi-bar-fill { background: #10b981; }
+    .att-kpi-card.kpi-red    .att-kpi-bar-fill { background: #e53e3e; }
+    .att-kpi-card.kpi-orange .att-kpi-bar-fill { background: #f97316; }
+    .att-kpi-card.kpi-blue   .att-kpi-bar-fill { background: #0453cb; }
+
+    /* ── Coordinator Section ─────────────────────────────────── */
+    .coord-section {
+        background: #fff;
+        border-radius: var(--radius-large);
+        border: 1px solid rgba(0,0,0,0.06);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        margin-bottom: var(--space-xl);
+        overflow: hidden;
     }
 
-    .btn-primary-modern:hover {
-        background: var(--secondary);
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-hover);
+    .coord-section-header {
+        background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
+        padding: 1.25rem 1.5rem;
+        display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
     }
 
-    .btn-info-modern {
-        background: var(--accent-blue);
-        color: white;
+    .coord-section-title {
+        color: #fff; font-size: 1rem; font-weight: 700; margin: 0; flex: 1;
     }
 
-    .btn-info-modern:hover {
-        background: var(--accent-orange);
-        transform: translateY(-1px);
+    .coord-section-subtitle {
+        color: rgba(255,255,255,0.8); font-size: 0.82rem; margin: 0.2rem 0 0;
     }
 
-    .quick-actions {
+    .coord-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--space-md);
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .coord-kpi-item {
+        background: #f8fafc;
+        border-radius: var(--radius-medium);
+        padding: 1rem 1.25rem;
+        position: relative; overflow: hidden;
+    }
+
+    .coord-kpi-item::before {
+        content: '';
+        position: absolute; left: 0; top: 0; bottom: 0;
+        width: 3px; border-radius: 0 2px 2px 0;
+    }
+
+    .coord-kpi-item.ck-primary::before { background: #0453cb; }
+    .coord-kpi-item.ck-success::before { background: #10b981; }
+    .coord-kpi-item.ck-warning::before { background: #f97316; }
+    .coord-kpi-item.ck-accent::before  { background: #06b6d4; }
+
+    .coord-kpi-num { font-size: 1.8rem; font-weight: 800; line-height: 1.1; }
+    .coord-kpi-item.ck-primary .coord-kpi-num { color: #0453cb; }
+    .coord-kpi-item.ck-success .coord-kpi-num { color: #10b981; }
+    .coord-kpi-item.ck-warning .coord-kpi-num { color: #f97316; }
+    .coord-kpi-item.ck-accent  .coord-kpi-num { color: #06b6d4; }
+
+    .coord-kpi-lbl {
+        font-size: 0.78rem; font-weight: 600; color: var(--text-secondary);
+        text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 0.25rem;
+    }
+
+    .coord-kpi-sub { font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.3rem; }
+
+    .coord-progress {
+        height: 3px; background: rgba(0,0,0,0.08);
+        border-radius: 2px; margin-top: 0.5rem; overflow: hidden;
+    }
+
+    .coord-progress-bar { height: 100%; border-radius: 2px; }
+    .ck-primary .coord-progress-bar { background: #0453cb; }
+    .ck-success .coord-progress-bar { background: #10b981; }
+
+    .coord-alert-row {
+        padding: 1rem 1.5rem;
+        display: flex; flex-direction: column; gap: 0.5rem;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .coord-alert-item {
+        display: flex; align-items: center; gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        border-radius: var(--radius-small); font-size: 0.875rem;
+    }
+
+    .coord-alert-item.ca-warning {
+        background: #fff7ed; border-left: 3px solid #f97316; color: #c2410c;
+    }
+
+    .coord-alert-item.ca-danger {
+        background: #fff1f2; border-left: 3px solid #e53e3e; color: #9b1c1c;
+    }
+
+    .coord-actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: var(--space-md);
+        padding: 1.25rem 1.5rem;
+    }
+
+    .coord-action-btn {
+        display: flex; flex-direction: column; align-items: center;
+        gap: 0.5rem; padding: 1rem;
+        border-radius: var(--radius-medium);
+        border: 1.5px solid rgba(0,0,0,0.08);
+        background: #fff; text-decoration: none;
+        color: var(--text-primary); transition: all 0.25s ease;
+        cursor: pointer; font-family: inherit; font-size: 0.875rem;
+    }
+
+    .coord-action-btn:hover {
+        border-color: #0453cb; background: rgba(4,83,203,0.04);
+        color: #0453cb; transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(4,83,203,0.12); text-decoration: none;
+    }
+
+    .coord-action-btn i { font-size: 1.4rem; color: #0453cb; }
+    .coord-action-btn span { font-weight: 600; }
+    .coord-action-btn small { color: var(--text-secondary); font-size: 0.75rem; }
+
+    /* ── Quick Actions ───────────────────────────────────────── */
+    .att-quick-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: var(--space-md);
         margin-bottom: var(--space-xl);
     }
 
-    .quick-action {
-        background: var(--surface);
-        border: 1px solid rgba(102, 126, 234, 0.2);
-        border-radius: var(--radius-medium);
-        padding: var(--space-md);
-        text-align: center;
-        text-decoration: none;
-        color: var(--text-primary);
-        transition: all 0.3s ease;
-    }
-
-    .quick-action:hover {
-        background: var(--primary);
-        color: white;
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-hover);
-        border-color: var(--primary);
-    }
-
-    .quick-action .action-icon {
-        font-size: 2rem;
-        margin-bottom: var(--space-sm);
-        color: var(--primary);
-        transition: color 0.3s ease;
-    }
-
-    .quick-action:hover .action-icon {
-        color: white;
-    }
-
-    /* Styles pour les statistiques coordinateur */
-    .bg-gradient-primary { background: linear-gradient(45deg, #4e73df, #224abe); }
-    .bg-gradient-success { background: linear-gradient(45deg, #1cc88a, #13855c); }
-    .bg-gradient-warning { background: linear-gradient(45deg, #f6c23e, #dda20a); }
-    .bg-gradient-info { background: linear-gradient(45deg, #36b9cc, #258391); }
-    
-    .text-white-50 { color: rgba(255, 255, 255, 0.7); }
-    .text-white-75 { color: rgba(255, 255, 255, 0.85); }
-
-    .card:hover {
-        transform: translateY(-2px);
-        transition: transform 0.2s ease-in-out;
-    }
-
-    /* Styles pour activités récentes et timeline */
-    .timeline {
-        position: relative;
-        max-height: 400px;
-        overflow-y: auto;
-    }
-
-    .timeline-item {
-        position: relative;
-        padding-left: 30px;
-        margin-bottom: 20px;
-    }
-
-    .timeline-item::before {
-        content: '';
-        position: absolute;
-        left: 8px;
-        top: 0;
-        bottom: -20px;
-        width: 2px;
-        background-color: #e3e6f0;
-    }
-
-    .timeline-icon {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 8px;
-        color: white;
-    }
-
-    .timeline-icon.success { background-color: #28a745; }
-    .timeline-icon.warning { background-color: #ffc107; }
-
-    /* Styles pour la section Présences par Classe optimisée */
-    .classe-stats-container {
-        max-height: 500px;
-        overflow-y: auto;
-        padding-right: 8px;
-        margin-right: -8px;
-    }
-
-    .classe-stats-container::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    .classe-stats-container::-webkit-scrollbar-track {
-        background: #f8f9fa;
-        border-radius: 3px;
-    }
-
-    .classe-stats-container::-webkit-scrollbar-thumb {
-        background: var(--primary);
-        border-radius: 3px;
-        transition: background 0.3s ease;
-    }
-
-    .classe-stats-container::-webkit-scrollbar-thumb:hover {
-        background: var(--secondary);
-    }
-
-    .classe-item {
-        border-radius: var(--radius-small);
-        transition: all 0.3s ease;
-        border: 1px solid transparent;
-        padding: 12px;
-        margin-bottom: 12px;
-        background: rgba(255, 255, 255, 0.7);
-    }
-
-    .classe-item:hover {
-        background: rgba(4, 83, 203, 0.05);
-        border-color: rgba(4, 83, 203, 0.2);
-        transform: translateX(4px);
-        box-shadow: 0 2px 8px rgba(4, 83, 203, 0.1);
-    }
-
-    .classe-item.hidden {
-        display: none !important;
-    }
-
-    .classe-name {
-        color: var(--primary);
-        font-size: 0.95rem;
-    }
-
-    .classe-students {
-        font-size: 0.8rem;
-    }
-
-    .classe-rate {
-        font-size: 0.8rem;
-        font-weight: 600;
-    }
-
-    /* Vue compacte */
-    .view-compact .classe-stats-details {
-        display: none !important;
-    }
-
-    .view-compact .classe-stats-compact {
-        display: block !important;
-    }
-
-    .view-compact .classe-item {
-        margin-bottom: 8px;
-        padding: 8px 12px;
-    }
-
-    .view-compact .classe-name {
-        font-size: 0.9rem;
-        margin-bottom: 0;
-    }
-
-    .view-compact .classe-students {
-        font-size: 0.75rem;
-    }
-
-    /* Boutons de contrôle */
-    .btn-group-sm .btn {
-        padding: 4px 8px;
-        font-size: 0.8rem;
-        border-radius: 4px;
-    }
-
-    .btn-group-sm .btn.active {
-        background-color: var(--primary);
-        border-color: var(--primary);
-        color: white;
-    }
-
-    /* Animation pour les éléments qui apparaissent */
-    .classe-item {
-        animation: slideInUp 0.3s ease-out;
-    }
-
-    @keyframes slideInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    /* Badges compacts */
-    .classe-stats-compact .badge {
-        font-size: 0.7rem;
-        padding: 2px 6px;
-    }
-
-    /* Message de recherche */
-    .no-results {
-        padding: 2rem 1rem;
-    }
-
-    /* Pagination */
-    .classe-pagination {
-        border-top: 1px solid rgba(0, 0, 0, 0.1);
-        padding-top: 12px;
-        margin-top: 16px;
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-        .classe-stats-container {
-            max-height: 400px;
-        }
-        
-        .classe-item {
-            padding: 8px;
-        }
-        
-        .classe-stats-details .col-3 {
-            flex: 0 0 50%;
-            max-width: 50%;
-            margin-bottom: 8px;
-        }
-        
-        .classe-stats-details .row {
-            margin-bottom: 8px;
-        }
-    }
-
-    @media (max-width: 576px) {
-        .classe-stats-container {
-            max-height: 350px;
-        }
-        
-        .classe-stats-details .col-3 {
-            flex: 0 0 100%;
-            max-width: 100%;
-            margin-bottom: 4px;
-        }
-        
-        .classe-stats-details .text-center {
-            text-align: left !important;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-    }
-    .timeline-icon.info { background-color: #17a2b8; }
-    .timeline-icon.danger { background-color: #dc3545; }
-
-    /* Styles pour section coordinateur */
-    .coordinator-section {
-        margin-bottom: var(--space-xl);
+    .att-quick-item {
+        background: #fff;
+        border: 1.5px solid rgba(0,0,0,0.07);
         border-radius: var(--radius-large);
+        padding: 1.25rem 1rem;
+        text-align: center; text-decoration: none;
+        color: var(--text-primary);
+        display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
+        transition: all 0.25s ease;
+    }
+
+    .att-quick-item:hover {
+        border-color: #0453cb; background: #0453cb; color: #fff;
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(4,83,203,0.2); text-decoration: none;
+    }
+
+    .att-quick-icon {
+        width: 52px; height: 52px; border-radius: 14px;
+        background: rgba(4,83,203,0.08);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.4rem; color: #0453cb; transition: all 0.25s ease;
+    }
+
+    .att-quick-item:hover .att-quick-icon { background: rgba(255,255,255,0.2); color: #fff; }
+    .att-quick-title { font-weight: 700; font-size: 0.875rem; }
+    .att-quick-desc  { font-size: 0.75rem; color: var(--text-secondary); transition: color 0.25s; }
+    .att-quick-item:hover .att-quick-desc { color: rgba(255,255,255,0.8); }
+
+    /* ── Chart & Classes Cards ───────────────────────────────── */
+    .att-chart-card, .att-classes-card {
+        background: #fff;
+        border-radius: var(--radius-large);
+        border: 1px solid rgba(0,0,0,0.06);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
         overflow: hidden;
     }
 
-    .coordinator-section .card-header {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-        border: none;
-        padding: var(--space-lg);
+    .att-card-header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 0.5rem;
     }
 
-    .coordinator-actions .btn {
-        transition: all 0.3s ease;
+    .att-card-title {
+        font-size: 0.95rem; font-weight: 700; color: var(--text-primary);
+        display: flex; align-items: center; gap: 0.5rem; margin: 0;
+    }
+
+    .att-card-title i { color: #0453cb; }
+    .att-card-body { padding: 1.25rem 1.5rem; }
+
+    .chart-container-premium { position: relative; height: 300px; }
+
+    /* Classe stats */
+    .classe-stats-container {
+        max-height: 460px; overflow-y: auto; padding-right: 4px;
+    }
+
+    .classe-stats-container::-webkit-scrollbar { width: 4px; }
+    .classe-stats-container::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 2px; }
+    .classe-stats-container::-webkit-scrollbar-thumb { background: #0453cb; border-radius: 2px; }
+
+    .classe-item {
         border-radius: var(--radius-medium);
-        box-shadow: var(--shadow-card);
+        padding: 10px 12px; margin-bottom: 8px;
+        background: #f8fafc; border: 1px solid transparent;
+        transition: all 0.2s ease;
+        animation: slideInUp 0.3s ease-out;
     }
 
-    .coordinator-actions .btn:hover {
-        transform: translateY(-3px);
-        box-shadow: var(--shadow-hover);
+    .classe-item:hover {
+        background: rgba(4,83,203,0.04);
+        border-color: rgba(4,83,203,0.15);
+        transform: translateX(3px);
     }
 
-    .alert-sm {
-        padding: 0.5rem;
+    .classe-item.hidden { display: none !important; }
+
+    .classe-name    { color: #0453cb; font-size: 0.9rem; font-weight: 700; }
+    .classe-students { font-size: 0.75rem; color: var(--text-secondary); }
+
+    .att-rate-badge {
+        font-size: 0.75rem; font-weight: 700;
+        padding: 0.2rem 0.5rem; border-radius: 20px; white-space: nowrap;
+    }
+
+    .att-rate-badge.rate-good   { background: #d1fae5; color: #065f46; }
+    .att-rate-badge.rate-medium { background: #ffedd5; color: #9a3412; }
+    .att-rate-badge.rate-poor   { background: #fee2e2; color: #991b1b; }
+
+    .classe-mini-stats {
+        display: flex; gap: 0.75rem;
+        font-size: 0.75rem; font-weight: 600;
+    }
+
+    .mini-stat-p { color: #10b981; }
+    .mini-stat-a { color: #e53e3e; }
+    .mini-stat-r { color: #f97316; }
+    .mini-stat-e { color: #06b6d4; }
+
+    .seg-bar {
+        height: 5px; border-radius: 3px; overflow: hidden;
+        display: flex; background: #e5e7eb; margin-top: 6px;
+    }
+
+    .seg-bar-p { background: #10b981; }
+    .seg-bar-a { background: #e53e3e; }
+    .seg-bar-r { background: #f97316; }
+    .seg-bar-e { background: #06b6d4; }
+
+    .view-compact .classe-stats-details { display: none !important; }
+    .view-compact .classe-stats-compact { display: flex !important; }
+    .view-compact .classe-item          { padding: 6px 12px; margin-bottom: 4px; }
+    .view-compact .classe-name          { font-size: 0.85rem; }
+
+    @keyframes slideInUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Activities & Summary ────────────────────────────────── */
+    .att-activity-card, .att-summary-card {
+        background: #fff;
+        border-radius: var(--radius-large);
+        border: 1px solid rgba(0,0,0,0.06);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        overflow: hidden;
+    }
+
+    .timeline {
+        position: relative; max-height: 360px;
+        overflow-y: auto; padding: 1rem;
+    }
+
+    .timeline-item { position: relative; padding-left: 32px; margin-bottom: 18px; }
+
+    .timeline-item::before {
+        content: ''; position: absolute;
+        left: 9px; top: 16px; bottom: -18px;
+        width: 2px; background: #e5e7eb;
+    }
+
+    .timeline-item:last-child::before { display: none; }
+
+    .timeline-icon {
+        position: absolute; left: 0; top: 0;
+        width: 18px; height: 18px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 8px; color: #fff;
+    }
+
+    .timeline-icon.success { background: #10b981; }
+    .timeline-icon.warning { background: #f97316; }
+    .timeline-icon.info    { background: #06b6d4; }
+    .timeline-icon.danger  { background: #e53e3e; }
+
+    .summary-row {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0.6rem 0;
+        border-bottom: 1px solid rgba(0,0,0,0.04);
         font-size: 0.875rem;
     }
 
-    /* Responsive adjustments */
+    .summary-row:last-child { border-bottom: none; }
+    .summary-row .lbl { color: var(--text-secondary); }
+    .summary-row .val { font-weight: 700; }
+
+    /* ── Filters ─────────────────────────────────────────────── */
+    .att-filters-card {
+        background: #f8fafc;
+        border-radius: var(--radius-large);
+        border: 1px solid rgba(0,0,0,0.06);
+        padding: 1.25rem 1.5rem;
+        margin-bottom: var(--space-xl);
+    }
+
+    .att-filters-card .form-label {
+        font-size: 0.78rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.4px;
+        color: var(--text-secondary); margin-bottom: 0.3rem;
+    }
+
+    .att-filters-card .form-control,
+    .att-filters-card .form-select {
+        border: 1.5px solid rgba(0,0,0,0.1);
+        border-radius: var(--radius-small);
+        font-size: 0.875rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .att-filters-card .form-control:focus,
+    .att-filters-card .form-select:focus {
+        border-color: #0453cb;
+        box-shadow: 0 0 0 3px rgba(4,83,203,0.1);
+    }
+
+    /* ── Table ───────────────────────────────────────────────── */
+    .att-table-card {
+        background: #fff;
+        border-radius: var(--radius-large);
+        border: 1px solid rgba(0,0,0,0.06);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        overflow: hidden;
+        margin-bottom: var(--space-xl);
+    }
+
+    .att-table { width: 100%; border-collapse: collapse; }
+
+    .att-table thead {
+        background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
+    }
+
+    .att-table thead th {
+        color: rgba(255,255,255,0.92); font-weight: 600;
+        font-size: 0.75rem; text-transform: uppercase;
+        letter-spacing: 0.5px; padding: 0.9rem 1rem;
+        border: none; white-space: nowrap;
+    }
+
+    .att-table tbody td {
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid rgba(0,0,0,0.04);
+        vertical-align: middle; font-size: 0.875rem;
+    }
+
+    .att-table tbody tr:last-child td { border-bottom: none; }
+    .att-table tbody tr:hover { background: rgba(4,83,203,0.025); }
+
+    .att-avatar {
+        width: 36px; height: 36px; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.75rem; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+
+    .att-student-name { font-weight: 600; font-size: 0.875rem; color: var(--text-primary); }
+    .att-student-id   { font-size: 0.75rem; color: var(--text-secondary); }
+
+    .att-class-badge {
+        display: inline-block;
+        background: rgba(4,83,203,0.08); color: #0453cb;
+        padding: 0.2rem 0.55rem; border-radius: 6px;
+        font-size: 0.78rem; font-weight: 600;
+    }
+
+    .att-status-pill {
+        display: inline-flex; align-items: center; gap: 0.3rem;
+        padding: 0.3rem 0.7rem; border-radius: 20px;
+        font-size: 0.75rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.3px;
+    }
+
+    .att-status-pill.sp-present { background: #d1fae5; color: #065f46; }
+    .att-status-pill.sp-absent  { background: #fee2e2; color: #991b1b; }
+    .att-status-pill.sp-retard  { background: #ffedd5; color: #9a3412; }
+    .att-status-pill.sp-excuse  { background: #e0f2fe; color: #0369a1; }
+
+    .att-btn-icon {
+        width: 32px; height: 32px; border-radius: 8px;
+        border: 1.5px solid;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.75rem; transition: all 0.2s ease;
+        cursor: pointer; text-decoration: none; background: #fff;
+    }
+
+    .att-btn-icon.abi-view { border-color: rgba(4,83,203,0.3); color: #0453cb; }
+    .att-btn-icon.abi-view:hover { background: #0453cb; color: #fff; border-color: #0453cb; }
+    .att-btn-icon.abi-edit { border-color: rgba(249,115,22,0.3); color: #f97316; }
+    .att-btn-icon.abi-edit:hover { background: #f97316; color: #fff; border-color: #f97316; }
+
+    .att-empty { padding: 3rem 1rem; text-align: center; color: var(--text-secondary); }
+
+    .att-empty-icon {
+        width: 72px; height: 72px; border-radius: 20px;
+        background: rgba(4,83,203,0.06);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.8rem; color: #0453cb; opacity: 0.5;
+        margin: 0 auto 1rem;
+    }
+
+    /* ── Modal override ──────────────────────────────────────── */
+    .modal-header {
+        background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
+    }
+
+    .modal-header .modal-title { color: #fff; font-weight: 700; }
+    .modal-header .btn-close { filter: invert(1); }
+
+    .detail-dl dt {
+        font-size: 0.78rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.4px;
+        color: var(--text-secondary);
+    }
+
+    .detail-dl dd { font-weight: 600; color: var(--text-primary); margin-bottom: 0.75rem; }
+
+    /* ── Search wrap ─────────────────────────────────────────── */
+    .att-search-wrap { position: relative; }
+
+    .att-search-wrap input {
+        padding-left: 2.25rem; font-size: 0.82rem;
+        border: 1.5px solid rgba(0,0,0,0.1);
+        border-radius: var(--radius-medium);
+    }
+
+    .att-search-wrap input:focus {
+        border-color: #0453cb;
+        box-shadow: 0 0 0 3px rgba(4,83,203,0.1);
+        outline: none;
+    }
+
+    .att-search-icon {
+        position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%);
+        color: var(--text-secondary); font-size: 0.8rem; pointer-events: none;
+    }
+
+    .classe-pagination { border-top: 1px solid rgba(0,0,0,0.06); padding-top: 10px; margin-top: 10px; text-align: center; }
+    .no-results { padding: 2rem; text-align: center; color: var(--text-secondary); }
+
     @media (max-width: 768px) {
-        .coordinator-actions .col-md-3 {
-            margin-bottom: var(--space-md);
-        }
-        
-        .timeline {
-            max-height: 300px;
-        }
-        
-        .stats-grid {
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        }
+        .att-kpi-grid    { grid-template-columns: repeat(2, 1fr); }
+        .att-quick-grid  { grid-template-columns: repeat(2, 1fr); }
+        .coord-kpi-grid  { grid-template-columns: repeat(2, 1fr); }
+        .att-kpi-value   { font-size: 1.8rem; }
     }
 </style>
-@endsection
+@endpush
 
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header Section -->
+
+        {{-- ── Header ──────────────────────────────────────────── --}}
         <div class="dashboard-header">
             <div class="header-left">
                 <h1><i class="fas fa-users-class me-2"></i>Gestion des Présences</h1>
@@ -586,681 +564,594 @@
             </div>
         </div>
 
-        <!-- Statistiques principales -->
-        <div class="kpi-grid mb-4">
-            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
-                <div class="kpi-title" style="color: #000; font-weight: 600;">Présences</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $stats['total_present_with_retards'] ?? 0 }}</div>
-                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
-                    <i class="fas fa-check-circle"></i>
-                    {{ ($stats['total'] ?? 0) > 0 ? round(($stats['total_present_with_retards'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
-                    @if(($stats['retard'] ?? 0) > 0)
-                    <small class="text-muted d-block mt-1">dont {{ $stats['retard'] }} retard(s)</small>
-                    @endif
+        {{-- ── KPI Cards ────────────────────────────────────────── --}}
+        @php
+            $total = $stats['total'] ?? 0;
+            $pPct  = $total > 0 ? round(($stats['total_present_with_retards'] ?? 0) / $total * 100, 1) : 0;
+            $aPct  = $total > 0 ? round(($stats['absent']  ?? 0) / $total * 100, 1) : 0;
+            $rPct  = $total > 0 ? round(($stats['retard']  ?? 0) / $total * 100, 1) : 0;
+            $ePct  = $total > 0 ? round(($stats['excuse']  ?? 0) / $total * 100, 1) : 0;
+        @endphp
+
+        <div class="att-kpi-grid">
+            <div class="att-kpi-card kpi-green">
+                <div class="att-kpi-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="att-kpi-label">Présences</div>
+                <div class="att-kpi-value">{{ $stats['total_present_with_retards'] ?? 0 }}</div>
+                <div class="att-kpi-meta">
+                    <i class="fas fa-percentage" style="font-size:.7rem;"></i>{{ $pPct }}% du total
+                    @if(($stats['retard'] ?? 0) > 0)&nbsp;·&nbsp;<small>dont {{ $stats['retard'] }} retard(s)</small>@endif
                 </div>
+                <div class="att-kpi-bar"><div class="att-kpi-bar-fill" style="width:{{ $pPct }}%"></div></div>
             </div>
 
-            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
-                <div class="kpi-title" style="color: #000; font-weight: 600;">Absences</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $stats['absent'] ?? 0 }}</div>
-                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
-                    <i class="fas fa-times-circle"></i>
-                    {{ ($stats['total'] ?? 0) > 0 ? round(($stats['absent'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
+            <div class="att-kpi-card kpi-red">
+                <div class="att-kpi-icon"><i class="fas fa-times-circle"></i></div>
+                <div class="att-kpi-label">Absences</div>
+                <div class="att-kpi-value">{{ $stats['absent'] ?? 0 }}</div>
+                <div class="att-kpi-meta">
+                    <i class="fas fa-percentage" style="font-size:.7rem;"></i>{{ $aPct }}% du total
                 </div>
+                <div class="att-kpi-bar"><div class="att-kpi-bar-fill" style="width:{{ $aPct }}%"></div></div>
             </div>
 
-            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
-                <div class="kpi-title" style="color: #000; font-weight: 600;">Retards</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $stats['retard'] ?? 0 }}</div>
-                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
-                    <i class="fas fa-clock"></i>
-                    {{ ($stats['total'] ?? 0) > 0 ? round(($stats['retard'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
+            <div class="att-kpi-card kpi-orange">
+                <div class="att-kpi-icon"><i class="fas fa-clock"></i></div>
+                <div class="att-kpi-label">Retards</div>
+                <div class="att-kpi-value">{{ $stats['retard'] ?? 0 }}</div>
+                <div class="att-kpi-meta">
+                    <i class="fas fa-percentage" style="font-size:.7rem;"></i>{{ $rPct }}% du total
                 </div>
+                <div class="att-kpi-bar"><div class="att-kpi-bar-fill" style="width:{{ $rPct }}%"></div></div>
             </div>
 
-            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
-                <div class="kpi-title" style="color: #000; font-weight: 600;">Excusés</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $stats['excuse'] ?? 0 }}</div>
-                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
-                    <i class="fas fa-notes-medical"></i>
-                    {{ ($stats['total'] ?? 0) > 0 ? round(($stats['excuse'] ?? 0) / $stats['total'] * 100, 1) : 0 }}% du total
+            <div class="att-kpi-card kpi-blue">
+                <div class="att-kpi-icon"><i class="fas fa-notes-medical"></i></div>
+                <div class="att-kpi-label">Excusés</div>
+                <div class="att-kpi-value">{{ $stats['excuse'] ?? 0 }}</div>
+                <div class="att-kpi-meta">
+                    <i class="fas fa-percentage" style="font-size:.7rem;"></i>{{ $ePct }}% du total
                 </div>
+                <div class="att-kpi-bar"><div class="att-kpi-bar-fill" style="width:{{ $ePct }}%"></div></div>
             </div>
         </div>
 
+        {{-- ── Section Coordinateur ────────────────────────────── --}}
         @if(auth()->user() && auth()->user()->hasRole('coordinateur') && $coordinatorStats)
-        <!-- Section Coordinateur - Suivi Enseignants -->
-        <div class="main-card mb-4">
-            <div class="main-card-header" style="background: linear-gradient(135deg, rgba(30, 58, 138, 0.1), rgba(30, 64, 175, 0.05));">
-                <div class="main-card-title">
-                    <i class="fas fa-chalkboard-teacher"></i>
-                    Suivi des Émargements Enseignants - Aujourd'hui
+        <div class="coord-section">
+            <div class="coord-section-header">
+                <div>
+                    <p class="coord-section-title">
+                        <i class="fas fa-chalkboard-teacher me-2"></i>Suivi des Émargements Enseignants — Aujourd'hui
+                    </p>
+                    <p class="coord-section-subtitle">Supervision en temps réel de l'activité pédagogique</p>
                 </div>
-                <div class="main-card-subtitle">Supervision en temps réel de l'activité pédagogique</div>
                 @if($unreadNotifications > 0)
-                <div class="ms-auto">
-                    <a href="{{ route('notifications.index') }}" class="btn-acasi warning btn-sm">
-                        <i class="fas fa-bell"></i>{{ $unreadNotifications }} notifications
-                    </a>
-                </div>
+                <a href="{{ route('notifications.index') }}" class="btn-acasi warning btn-sm">
+                    <i class="fas fa-bell"></i>{{ $unreadNotifications }} notifications
+                </a>
                 @endif
             </div>
-            <div class="main-card-body">
-                <div class="kpi-grid">
-                    <!-- Émargements du jour -->
-                    <div class="kpi-card card-moderne bg-primary">
-                        <div class="kpi-title">Émargements</div>
-                        <div class="kpi-value color-primary">{{ $coordinatorStats['teacher_attendances_today'] ?? 0 }}</div>
-                        <div class="kpi-trend">
-                            <i class="fas fa-clipboard-check"></i>
-                            sur {{ $coordinatorStats['scheduled_courses_today'] ?? 0 }} cours
-                        </div>
-                        <div class="progress mt-3" style="height: 6px;">
-                            <div class="progress-bar bg-white" role="progressbar" 
-                                 style="width: {{ $coordinatorStats['teacher_attendance_rate'] ?? 0 }}%">
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- Appels terminés -->
-                    <div class="kpi-card card-moderne bg-success">
-                        <div class="kpi-title">Appels Terminés</div>
-                        <div class="kpi-value color-success">{{ $coordinatorStats['roll_calls_completed_today'] ?? 0 }}</div>
-                        <div class="kpi-trend">
-                            <i class="fas fa-check-double"></i>
-                            {{ $coordinatorStats['students_present_today'] ?? 0 }} présences
-                        </div>
-                        <div class="progress mt-3" style="height: 6px;">
-                            <div class="progress-bar bg-white" role="progressbar"
-                                 style="width: {{ $coordinatorStats['roll_call_completion_rate'] ?? 0 }}%">
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Retards détectés -->
-                    <div class="kpi-card card-moderne bg-warning">
-                        <div class="kpi-title">Retards Détectés</div>
-                        <div class="kpi-value color-warning">{{ $coordinatorStats['delays_today'] ?? 0 }}</div>
-                        <div class="kpi-trend">
-                            <i class="fas fa-clock"></i>
-                            émargements manqués
-                            @if(($coordinatorStats['delays_today'] ?? 0) > 0)
-                                <div class="mt-2">
-                                    <small>⚠️ Attention requise</small>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-
-                    <!-- Cours clôturés -->
-                    <div class="kpi-card card-moderne bg-accent">
-                        <div class="kpi-title">Cours Clôturés</div>
-                        <div class="kpi-value color-accent">{{ $coordinatorStats['courses_closed_today'] ?? 0 }}</div>
-                        <div class="kpi-trend">
-                            <i class="fas fa-check-circle"></i>
-                            séances terminées
-                        </div>
+            <div class="coord-kpi-grid">
+                <div class="coord-kpi-item ck-primary">
+                    <div class="coord-kpi-lbl">Émargements</div>
+                    <div class="coord-kpi-num">{{ $coordinatorStats['teacher_attendances_today'] ?? 0 }}</div>
+                    <div class="coord-kpi-sub">sur {{ $coordinatorStats['scheduled_courses_today'] ?? 0 }} cours prévus</div>
+                    <div class="coord-progress">
+                        <div class="coord-progress-bar" style="width:{{ $coordinatorStats['teacher_attendance_rate'] ?? 0 }}%"></div>
                     </div>
                 </div>
 
-                    <!-- Alertes coordinateur -->
-                    @if(($coordinatorStats['delays_today'] ?? 0) > 0 || ($coordinatorStats['high_absence_classes'] ?? 0) > 0)
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            <div class="alert-section">
-                                <h6 class="text-muted mb-3">🔔 Alertes du jour</h6>
-                                
-                                @if(($coordinatorStats['delays_today'] ?? 0) > 0)
-                                <div class="alert alert-warning border-0 shadow-sm mb-2">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-exclamation-triangle me-2"></i>
-                                        <div>
-                                            <strong>{{ $coordinatorStats['delays_today'] }} retard(s) d'émargement</strong>
-                                            <p class="mb-0 small">Des enseignants n'ont pas émargé à temps</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                @endif
-
-                                @if(($coordinatorStats['high_absence_classes'] ?? 0) > 0)
-                                <div class="alert alert-danger border-0 shadow-sm mb-2">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-users-slash me-2"></i>
-                                        <div>
-                                            <strong>{{ $coordinatorStats['high_absence_classes'] }} classe(s) avec forte absentéisme</strong>
-                                            <p class="mb-0 small">Plus de 30% d'absences détectées</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                    @endif
-
-                    <!-- Actions rapides coordinateur -->
-                    <div class="row mt-4">
-                        <div class="col-12">
-                            <h6 class="text-muted mb-3">🚀 Actions Rapides Coordinateur</h6>
-                            <div class="row coordinator-actions">
-                                <div class="col-md-3 mb-3">
-                                    <a href="{{ route('esbtp.teacher-attendance.report') }}" class="btn btn-outline-primary w-100 h-100 d-flex flex-column justify-content-center p-3">
-                                        <i class="fas fa-chalkboard-teacher fa-2x mb-2"></i>
-                                        <span class="fw-bold">Émargements</span>
-                                        <small class="text-muted">Voir tous les enseignants</small>
-                                    </a>
-                                </div>
-                                <div class="col-md-3 mb-3">
-                                    <a href="{{ route('notifications.index') }}" class="btn btn-outline-info w-100 h-100 d-flex flex-column justify-content-center p-3">
-                                        <i class="fas fa-bell fa-2x mb-2"></i>
-                                        <span class="fw-bold">Notifications</span>
-                                        <small class="text-muted">{{ $unreadNotifications ?? 0 }} non lues</small>
-                                    </a>
-                                </div>
-                                <div class="col-md-3 mb-3">
-                                    <button class="btn btn-outline-warning w-100 h-100 d-flex flex-column justify-content-center p-3" onclick="generateDailyReport()">
-                                        <i class="fas fa-chart-line fa-2x mb-2"></i>
-                                        <span class="fw-bold">Rapport du Jour</span>
-                                        <small class="text-muted">Générer le récap</small>
-                                    </button>
-                                </div>
-                                <div class="col-md-3 mb-3">
-                                    <button class="btn btn-outline-success w-100 h-100 d-flex flex-column justify-content-center p-3" onclick="refreshData()">
-                                        <i class="fas fa-sync-alt fa-2x mb-2"></i>
-                                        <span class="fw-bold">Actualiser</span>
-                                        <small class="text-muted">Données en temps réel</small>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                <div class="coord-kpi-item ck-success">
+                    <div class="coord-kpi-lbl">Appels Terminés</div>
+                    <div class="coord-kpi-num">{{ $coordinatorStats['roll_calls_completed_today'] ?? 0 }}</div>
+                    <div class="coord-kpi-sub">{{ $coordinatorStats['students_present_today'] ?? 0 }} présences enregistrées</div>
+                    <div class="coord-progress">
+                        <div class="coord-progress-bar" style="width:{{ $coordinatorStats['roll_call_completion_rate'] ?? 0 }}%"></div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-    @endif
 
-    <!-- Actions rapides -->
-    <div class="quick-actions">
-        <a href="{{ route('esbtp.attendances.create') }}" class="quick-action">
-            <div class="action-icon">
-                <i class="fas fa-plus-circle"></i>
-            </div>
-            <div class="action-title">Marquer Présences</div>
-            <div class="action-description">Enregistrer les présences</div>
-        </a>
-
-        <a href="{{ route('esbtp.attendances.rapport-form') }}" class="quick-action">
-            <div class="action-icon">
-                <i class="fas fa-chart-bar"></i>
-            </div>
-            <div class="action-title">Générer Rapport</div>
-            <div class="action-description">Analyser les données</div>
-        </a>
-
-        <a href="#" class="quick-action" onclick="exportData()">
-            <div class="action-icon">
-                <i class="fas fa-file-export"></i>
-            </div>
-            <div class="action-title">Exporter Données</div>
-            <div class="action-description">CSV, Excel, PDF</div>
-        </a>
-
-        <a href="#" class="quick-action" onclick="showStatistics()">
-            <div class="action-icon">
-                <i class="fas fa-analytics"></i>
-            </div>
-            <div class="action-title">Statistiques</div>
-            <div class="action-description">Analyse approfondie</div>
-        </a>
-    </div>
-
-    <div class="row">
-        <!-- Graphique des tendances -->
-        <div class="col-lg-8">
-            <div class="chart-card">
-                <h5 class="mb-3">
-                    <i class="fas fa-line-chart me-2 text-primary"></i>
-                    Tendance des 7 Derniers Jours
-                </h5>
-                <div class="chart-container">
-                    <canvas id="attendanceChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Statistiques par classe -->
-        <div class="col-lg-4">
-            <div class="data-card">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="mb-0">
-                        <i class="fas fa-graduation-cap me-2 text-primary"></i>
-                        Présences par Classe
-                    </h5>
-                    <div class="d-flex align-items-center gap-2">
-                        <small class="text-muted">{{ count($classeStats ?? []) }} classes</small>
-                        <div class="btn-group btn-group-sm" role="group">
-                            <button type="button" class="btn btn-outline-secondary" id="compactViewBtn" title="Vue compacte">
-                                <i class="fas fa-th-list"></i>
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary active" id="detailedViewBtn" title="Vue détaillée">
-                                <i class="fas fa-th-large"></i>
-                            </button>
-                        </div>
+                <div class="coord-kpi-item ck-warning">
+                    <div class="coord-kpi-lbl">Retards Détectés</div>
+                    <div class="coord-kpi-num">{{ $coordinatorStats['delays_today'] ?? 0 }}</div>
+                    <div class="coord-kpi-sub">
+                        @if(($coordinatorStats['delays_today'] ?? 0) > 0)
+                            <span style="color:#f97316;">⚠ Attention requise</span>
+                        @else
+                            Aucun retard ce jour
+                        @endif
                     </div>
                 </div>
-                
-                <!-- Recherche/Filtre -->
-                @if(isset($classeStats) && count($classeStats) > 5)
-                <div class="mb-3">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text"><i class="fas fa-search"></i></span>
-                        <input type="text" class="form-control" id="classSearchInput" placeholder="Rechercher une classe...">
-                        <button class="btn btn-outline-secondary" type="button" id="clearSearchBtn">
-                            <i class="fas fa-times"></i>
-                        </button>
+
+                <div class="coord-kpi-item ck-accent">
+                    <div class="coord-kpi-lbl">Cours Clôturés</div>
+                    <div class="coord-kpi-num">{{ $coordinatorStats['courses_closed_today'] ?? 0 }}</div>
+                    <div class="coord-kpi-sub">séances terminées</div>
+                </div>
+            </div>
+
+            @if(($coordinatorStats['delays_today'] ?? 0) > 0 || ($coordinatorStats['high_absence_classes'] ?? 0) > 0)
+            <div class="coord-alert-row">
+                <div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-secondary);margin-bottom:.25rem;">
+                    <i class="fas fa-bell me-1"></i>Alertes du jour
+                </div>
+                @if(($coordinatorStats['delays_today'] ?? 0) > 0)
+                <div class="coord-alert-item ca-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div>
+                        <strong>{{ $coordinatorStats['delays_today'] }} retard(s) d'émargement</strong>
+                        <div style="font-size:.8rem;opacity:.85;">Des enseignants n'ont pas émargé à temps</div>
                     </div>
                 </div>
                 @endif
-                
-                @if(isset($classeStats) && count($classeStats) > 0)
-                    <!-- Container avec scroll -->
-                    <div class="classe-stats-container" id="classeStatsContainer">
-                        <div class="classe-stats-content" id="classeStatsContent">
-                            @foreach($classeStats as $index => $classe)
-                        <div class="classe-item mb-4" data-classe-name="{{ strtolower($classe['name']) }}" data-index="{{ $index }}">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div class="classe-info">
-                                    <h6 class="fw-bold mb-1 classe-name">{{ $classe['name'] }}</h6>
-                                    <small class="text-muted classe-students">{{ $classe['total_students'] }} étudiants</small>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-primary classe-rate">{{ $classe['attendance_rate'] }}%</span>
-                                </div>
-                            </div>
-                            
-                            <!-- Barres de progression pour chaque statut -->
-                            <!-- IMPORTANT: Les retards comptent comme présences (règle métier) mais on affiche aussi le nombre de retards séparément -->
-                            <div class="row g-1 mb-2 classe-stats-details">
-                                <div class="col-3">
-                                    <div class="text-center">
-                                        <div class="fw-bold text-success">{{ $classe['total_present_with_retards'] ?? ($classe['present'] + $classe['retard']) }}</div>
-                                        <small class="text-muted">Présences</small>
-                                    </div>
-                                </div>
-                                <div class="col-3">
-                                    <div class="text-center">
-                                        <div class="fw-bold text-danger">{{ $classe['absent'] }}</div>
-                                        <small class="text-muted">Absences</small>
-                                    </div>
-                                </div>
-                                <div class="col-3">
-                                    <div class="text-center">
-                                        <div class="fw-bold text-warning">{{ $classe['retard'] }}</div>
-                                        <small class="text-muted">Retards</small>
-                                    </div>
-                                </div>
-                                <div class="col-3">
-                                    <div class="text-center">
-                                        <div class="fw-bold text-info">{{ $classe['excuse'] }}</div>
-                                        <small class="text-muted">Excusés</small>
-                                    </div>
-                                </div>
-                            </div>
+                @if(($coordinatorStats['high_absence_classes'] ?? 0) > 0)
+                <div class="coord-alert-item ca-danger">
+                    <i class="fas fa-users-slash"></i>
+                    <div>
+                        <strong>{{ $coordinatorStats['high_absence_classes'] }} classe(s) avec forte absentéisme</strong>
+                        <div style="font-size:.8rem;opacity:.85;">Plus de 30% d'absences détectées</div>
+                    </div>
+                </div>
+                @endif
+            </div>
+            @endif
 
-                            <!-- Vue compacte (cachée par défaut) -->
-                            <div class="classe-stats-compact d-none">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div class="d-flex gap-3">
-                                        <span class="badge bg-success">{{ $classe['total_present_with_retards'] ?? ($classe['present'] + $classe['retard']) }}P</span>
-                                        <span class="badge bg-danger">{{ $classe['absent'] }}A</span>
-                                        <span class="badge bg-info">{{ $classe['excuse'] }}E</span>
-                                    </div>
-                                </div>
-                            </div>
+            <div class="coord-actions-grid">
+                <a href="{{ route('esbtp.teacher-attendance.report') }}" class="coord-action-btn">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <span>Émargements</span>
+                    <small>Voir tous les enseignants</small>
+                </a>
+                <a href="{{ route('notifications.index') }}" class="coord-action-btn">
+                    <i class="fas fa-bell"></i>
+                    <span>Notifications</span>
+                    <small>{{ $unreadNotifications ?? 0 }} non lues</small>
+                </a>
+                <button class="coord-action-btn" onclick="generateDailyReport(event)">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Rapport du Jour</span>
+                    <small>Générer le récap</small>
+                </button>
+                <button class="coord-action-btn" onclick="refreshData()">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>Actualiser</span>
+                    <small>Données en temps réel</small>
+                </button>
+            </div>
+        </div>
+        @endif
 
-                            <!-- Barre de progression globale -->
-                            <div class="progress" style="height: 8px;">
-                                @if($classe['total_attendance'] > 0)
-                                    <div class="progress-bar bg-success" style="width: {{ (($classe['total_present_with_retards'] ?? ($classe['present'] + $classe['retard'])) / $classe['total_attendance']) * 100 }}%"></div>
-                                    <div class="progress-bar bg-info" style="width: {{ ($classe['excuse'] / $classe['total_attendance']) * 100 }}%"></div>
-                                    <div class="progress-bar bg-danger" style="width: {{ ($classe['absent'] / $classe['total_attendance']) * 100 }}%"></div>
-                                @else
-                                    <div class="progress-bar bg-secondary" style="width: 100%"></div>
-                                @endif
+        {{-- ── Quick Actions ────────────────────────────────────── --}}
+        <div class="att-quick-grid">
+            <a href="{{ route('esbtp.attendances.create') }}" class="att-quick-item">
+                <div class="att-quick-icon"><i class="fas fa-plus-circle"></i></div>
+                <div class="att-quick-title">Marquer Présences</div>
+                <div class="att-quick-desc">Enregistrer les présences</div>
+            </a>
+            <a href="{{ route('esbtp.attendances.rapport-form') }}" class="att-quick-item">
+                <div class="att-quick-icon"><i class="fas fa-chart-bar"></i></div>
+                <div class="att-quick-title">Générer Rapport</div>
+                <div class="att-quick-desc">Analyser les données</div>
+            </a>
+            <a href="#" class="att-quick-item" onclick="exportData()">
+                <div class="att-quick-icon"><i class="fas fa-file-export"></i></div>
+                <div class="att-quick-title">Exporter Données</div>
+                <div class="att-quick-desc">CSV, Excel, PDF</div>
+            </a>
+            <a href="#" class="att-quick-item" onclick="showStatistics()">
+                <div class="att-quick-icon"><i class="fas fa-analytics"></i></div>
+                <div class="att-quick-title">Statistiques</div>
+                <div class="att-quick-desc">Analyse approfondie</div>
+            </a>
+        </div>
+
+        {{-- ── Chart + Classes Stats ─────────────────────────────── --}}
+        <div class="row g-3 mb-4">
+            <div class="col-lg-8">
+                <div class="att-chart-card h-100">
+                    <div class="att-card-header">
+                        <h6 class="att-card-title">
+                            <i class="fas fa-chart-line"></i>Tendance des 7 Derniers Jours
+                        </h6>
+                        <div style="display:flex;gap:.75rem;font-size:.75rem;flex-wrap:wrap;color:var(--text-secondary);">
+                            <span style="display:flex;align-items:center;gap:.3rem;"><span style="width:10px;height:3px;background:#10b981;border-radius:2px;display:inline-block;"></span>Présences</span>
+                            <span style="display:flex;align-items:center;gap:.3rem;"><span style="width:10px;height:3px;background:#e53e3e;border-radius:2px;display:inline-block;"></span>Absences</span>
+                            <span style="display:flex;align-items:center;gap:.3rem;"><span style="width:10px;height:3px;background:#f97316;border-radius:2px;display:inline-block;"></span>Retards</span>
+                            <span style="display:flex;align-items:center;gap:.3rem;"><span style="width:10px;height:3px;background:#06b6d4;border-radius:2px;display:inline-block;"></span>Excusés</span>
+                        </div>
+                    </div>
+                    <div class="att-card-body">
+                        <div class="chart-container-premium">
+                            <canvas id="attendanceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="att-classes-card h-100">
+                    <div class="att-card-header">
+                        <h6 class="att-card-title">
+                            <i class="fas fa-graduation-cap"></i>Présences par Classe
+                        </h6>
+                        <div style="display:flex;align-items:center;gap:.5rem;">
+                            <small style="color:var(--text-secondary);">{{ count($classeStats ?? []) }} classes</small>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-secondary" id="compactViewBtn" title="Vue compacte" style="padding:3px 7px;font-size:.75rem;">
+                                    <i class="fas fa-th-list"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary active" id="detailedViewBtn" title="Vue détaillée" style="padding:3px 7px;font-size:.75rem;">
+                                    <i class="fas fa-th-large"></i>
+                                </button>
                             </div>
                         </div>
-                        @endforeach
-                        </div>
-                        
-                        <!-- Pagination si trop de classes -->
-                        @if(count($classeStats) > 10)
-                        <div class="classe-pagination text-center mt-3" id="classePagination">
-                            <button class="btn btn-sm btn-outline-primary" id="loadMoreClassesBtn">
-                                <i class="fas fa-chevron-down me-1"></i>
-                                Voir plus de classes
-                            </button>
+                    </div>
+                    <div class="att-card-body">
+                        @if(isset($classeStats) && count($classeStats) > 5)
+                        <div class="att-search-wrap mb-3">
+                            <i class="fas fa-search att-search-icon"></i>
+                            <input type="text" class="form-control form-control-sm" id="classSearchInput" placeholder="Rechercher une classe... (Ctrl+K)">
                         </div>
                         @endif
-                        
-                        <!-- Message si aucun résultat de recherche -->
-                        <div class="no-results d-none text-center text-muted py-4" id="noSearchResults">
-                            <i class="fas fa-search fa-2x mb-3 opacity-50"></i>
-                            <p>Aucune classe trouvée</p>
-                            <p class="small">Essayez un autre terme de recherche</p>
+
+                        @if(isset($classeStats) && count($classeStats) > 0)
+                        <div class="classe-stats-container" id="classeStatsContainer">
+                            <div class="classe-stats-content" id="classeStatsContent">
+                                @foreach($classeStats as $index => $classe)
+                                @php
+                                    $classTotal = $classe['total_attendance'] ?? 1;
+                                    $classP = $classe['total_present_with_retards'] ?? ($classe['present'] + $classe['retard']);
+                                    $classA = $classe['absent']  ?? 0;
+                                    $classR = $classe['retard']  ?? 0;
+                                    $classE = $classe['excuse']  ?? 0;
+                                    $rate   = $classe['attendance_rate'] ?? 0;
+                                    $rateClass = $rate >= 75 ? 'rate-good' : ($rate >= 50 ? 'rate-medium' : 'rate-poor');
+                                @endphp
+                                <div class="classe-item" data-classe-name="{{ strtolower($classe['name']) }}" data-index="{{ $index }}">
+                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                        <div>
+                                            <div class="classe-name">{{ $classe['name'] }}</div>
+                                            <div class="classe-students">{{ $classe['total_students'] }} étudiants</div>
+                                        </div>
+                                        <span class="att-rate-badge {{ $rateClass }}">{{ $rate }}%</span>
+                                    </div>
+
+                                    <div class="classe-mini-stats classe-stats-details mb-1">
+                                        <span class="mini-stat-p"><i class="fas fa-check me-1"></i>{{ $classP }}</span>
+                                        <span class="mini-stat-a"><i class="fas fa-times me-1"></i>{{ $classA }}</span>
+                                        <span class="mini-stat-r"><i class="fas fa-clock me-1"></i>{{ $classR }}</span>
+                                        <span class="mini-stat-e"><i class="fas fa-file-medical me-1"></i>{{ $classE }}</span>
+                                    </div>
+
+                                    <div class="classe-stats-compact d-none">
+                                        <div style="display:flex;gap:.5rem;font-size:.72rem;">
+                                            <span class="mini-stat-p">{{ $classP }}P</span>
+                                            <span class="mini-stat-a">{{ $classA }}A</span>
+                                            <span class="mini-stat-e">{{ $classE }}E</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="seg-bar">
+                                        @if($classTotal > 0)
+                                            <div class="seg-bar-p" style="width:{{ ($classP / $classTotal) * 100 }}%"></div>
+                                            <div class="seg-bar-r" style="width:{{ ($classR / $classTotal) * 100 }}%"></div>
+                                            <div class="seg-bar-e" style="width:{{ ($classE / $classTotal) * 100 }}%"></div>
+                                            <div class="seg-bar-a" style="width:{{ ($classA / $classTotal) * 100 }}%"></div>
+                                        @endif
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
+
+                            @if(count($classeStats) > 10)
+                            <div class="classe-pagination" id="classePagination">
+                                <button class="btn btn-sm btn-outline-primary" id="loadMoreClassesBtn">
+                                    <i class="fas fa-chevron-down me-1"></i>Voir plus de classes
+                                </button>
+                            </div>
+                            @endif
+
+                            <div class="no-results d-none" id="noSearchResults">
+                                <i class="fas fa-search fa-2x mb-2 d-block" style="opacity:.3;color:#0453cb;"></i>
+                                <p style="font-size:.875rem;">Aucune classe trouvée</p>
+                            </div>
                         </div>
+                        @else
+                        <div class="att-empty">
+                            <div class="att-empty-icon"><i class="fas fa-chart-pie"></i></div>
+                            <p style="font-weight:700;">Aucune donnée de présence</p>
+                            <p style="font-size:.82rem;">Les statistiques apparaîtront une fois les présences enregistrées</p>
+                        </div>
+                        @endif
                     </div>
-                @else
-                    <div class="text-center text-muted py-4">
-                        <i class="fas fa-chart-pie fa-3x mb-3 opacity-50"></i>
-                        <p>Aucune donnée de présence</p>
-                        <p class="small">Les statistiques apparaîtront une fois les présences enregistrées</p>
-                    </div>
-                @endif
+                </div>
             </div>
         </div>
-    </div>
 
-    @if(auth()->user() && auth()->user()->hasRole('coordinateur') && $coordinatorStats)
-    <!-- Activités récentes coordinateur -->
-    <div class="row mb-4">
-        <div class="col-xl-8 col-lg-7 mb-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">📝 Activités Récentes</h5>
-                    <small class="text-muted">Dernières 24h</small>
-                </div>
-                <div class="card-body">
+        {{-- ── Activités & Résumé (Coordinateur) ───────────────── --}}
+        @if(auth()->user() && auth()->user()->hasRole('coordinateur') && $coordinatorStats)
+        <div class="row g-3 mb-4">
+            <div class="col-xl-8">
+                <div class="att-activity-card h-100">
+                    <div class="att-card-header">
+                        <h6 class="att-card-title"><i class="fas fa-history"></i>Activités Récentes</h6>
+                        <small style="color:var(--text-secondary);">Dernières 24h</small>
+                    </div>
                     <div class="timeline" id="recent-activities">
-                        <!-- Les activités seront chargées via JavaScript -->
-                        <div class="text-center py-4">
-                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <div style="text-align:center;padding:2rem;color:var(--text-secondary);">
+                            <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
                                 <span class="visually-hidden">Chargement...</span>
                             </div>
-                            <p class="mt-2 text-muted">Chargement des activités récentes...</p>
+                            Chargement des activités récentes...
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Résumé quotidien -->
-        <div class="col-xl-4 col-lg-5 mb-4">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header bg-white border-0">
-                    <h5 class="mb-0">📊 Résumé du Jour</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-muted">Cours prévus:</span>
-                            <span class="fw-bold">{{ $coordinatorStats['scheduled_courses_today'] ?? 0 }}</span>
+            <div class="col-xl-4">
+                <div class="att-summary-card h-100">
+                    <div class="att-card-header">
+                        <h6 class="att-card-title"><i class="fas fa-calendar-check"></i>Résumé du Jour</h6>
+                    </div>
+                    <div class="att-card-body">
+                        <div class="summary-row">
+                            <span class="lbl">Cours prévus</span>
+                            <span class="val">{{ $coordinatorStats['scheduled_courses_today'] ?? 0 }}</span>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-muted">Émargements:</span>
-                            <span class="fw-bold text-primary">{{ $coordinatorStats['teacher_attendances_today'] ?? 0 }}</span>
+                        <div class="summary-row">
+                            <span class="lbl">Émargements</span>
+                            <span class="val" style="color:#0453cb;">{{ $coordinatorStats['teacher_attendances_today'] ?? 0 }}</span>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-muted">Taux émargement:</span>
-                            <span class="fw-bold text-success">{{ $coordinatorStats['teacher_attendance_rate'] ?? 0 }}%</span>
+                        <div class="summary-row">
+                            <span class="lbl">Taux émargement</span>
+                            <span class="val" style="color:#10b981;">{{ $coordinatorStats['teacher_attendance_rate'] ?? 0 }}%</span>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-muted">Appels terminés:</span>
-                            <span class="fw-bold text-info">{{ $coordinatorStats['roll_calls_completed_today'] ?? 0 }}</span>
+                        <div class="summary-row">
+                            <span class="lbl">Appels terminés</span>
+                            <span class="val" style="color:#06b6d4;">{{ $coordinatorStats['roll_calls_completed_today'] ?? 0 }}</span>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-muted">Présences enregistrées:</span>
-                            <span class="fw-bold text-success">{{ $coordinatorStats['students_present_today'] ?? 0 }}</span>
+                        <div class="summary-row">
+                            <span class="lbl">Présences enregistrées</span>
+                            <span class="val" style="color:#10b981;">{{ $coordinatorStats['students_present_today'] ?? 0 }}</span>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-muted">Cours clôturés:</span>
-                            <span class="fw-bold">{{ $coordinatorStats['courses_closed_today'] ?? 0 }}</span>
+                        <div class="summary-row">
+                            <span class="lbl">Cours clôturés</span>
+                            <span class="val">{{ $coordinatorStats['courses_closed_today'] ?? 0 }}</span>
                         </div>
                         @if(($coordinatorStats['delays_today'] ?? 0) > 0)
-                        <div class="alert alert-warning alert-sm mb-0">
-                            <small><strong>{{ $coordinatorStats['delays_today'] }} retard(s)</strong> détecté(s)</small>
+                        <div style="margin-top:.75rem;padding:.6rem .75rem;background:#fff7ed;border-radius:var(--radius-small);border-left:3px solid #f97316;font-size:.82rem;color:#c2410c;">
+                            <strong>{{ $coordinatorStats['delays_today'] }} retard(s)</strong> détecté(s)
                         </div>
                         @endif
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    @endif
+        @endif
 
-    <!-- Filtres -->
-    <div class="filters-card">
-        <h5 class="mb-3">
-            <i class="fas fa-filter me-2"></i>
-            Filtres de Recherche
-        </h5>
-        <form action="{{ route('esbtp.attendances.index') }}" method="GET">
-            <div class="row g-3">
-                <div class="col-md-2">
-                    <label for="classe_id" class="form-label fw-bold">Classe</label>
-                    <select name="classe_id" id="classe_id" class="form-select">
-                        <option value="">Toutes les classes</option>
-                        @foreach($classes as $classe)
-                            <option value="{{ $classe->id }}" {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
-                                {{ $classe->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="col-md-2">
-                    <label for="matiere_id" class="form-label fw-bold">Matière</label>
-                    <select name="matiere_id" id="matiere_id" class="form-select">
-                        <option value="">Toutes les matières</option>
-                        @foreach($matieres as $matiere)
-                            <option value="{{ $matiere->id }}" {{ request('matiere_id') == $matiere->id ? 'selected' : '' }}>
-                                {{ $matiere->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="col-md-2">
-                    <label for="etudiant_id" class="form-label fw-bold">Étudiant</label>
-                    <select name="etudiant_id" id="etudiant_id" class="form-select">
-                        <option value="">Tous les étudiants</option>
-                        @foreach($etudiants as $etudiant)
-                            <option value="{{ $etudiant->id }}" {{ request('etudiant_id') == $etudiant->id ? 'selected' : '' }}>
-                                {{ $etudiant->nom_complet }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="col-md-2">
-                    <label for="date_debut" class="form-label fw-bold">Date début</label>
-                    <input type="date" class="form-control" id="date_debut" name="date_debut"
-                           value="{{ request('date_debut') }}">
-                </div>
-
-                <div class="col-md-2">
-                    <label for="date_fin" class="form-label fw-bold">Date fin</label>
-                    <input type="date" class="form-control" id="date_fin" name="date_fin"
-                           value="{{ request('date_fin') }}">
-                </div>
-
-                <div class="col-md-2">
-                    <label for="statut" class="form-label fw-bold">Statut</label>
-                    <select name="statut" id="statut" class="form-select">
-                        <option value="">Tous les statuts</option>
-                        <option value="present" {{ request('statut') == 'present' ? 'selected' : '' }}>Présent</option>
-                        <option value="absent" {{ request('statut') == 'absent' ? 'selected' : '' }}>Absent</option>
-                        <option value="retard" {{ request('statut') == 'retard' ? 'selected' : '' }}>Retard</option>
-                        <option value="excuse" {{ request('statut') == 'excuse' ? 'selected' : '' }}>Excusé</option>
-                    </select>
-                </div>
+        {{-- ── Filtres ──────────────────────────────────────────── --}}
+        <div class="att-filters-card">
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;">
+                <i class="fas fa-filter" style="color:#0453cb;"></i>
+                <span style="font-weight:700;font-size:.95rem;color:var(--text-primary);">Filtres de Recherche</span>
             </div>
-
-            <div class="row mt-3">
-                <div class="col-12">
-                    <button type="submit" class="btn-modern btn-primary-modern me-2">
-                        <i class="fas fa-search"></i>
-                        Filtrer
+            <form action="{{ route('esbtp.attendances.index') }}" method="GET">
+                <div class="row g-3">
+                    <div class="col-md-2 col-sm-4 col-6">
+                        <label for="classe_id" class="form-label">Classe</label>
+                        <select name="classe_id" id="classe_id" class="form-select form-select-sm">
+                            <option value="">Toutes les classes</option>
+                            @foreach($classes as $classe)
+                                <option value="{{ $classe->id }}" {{ request('classe_id') == $classe->id ? 'selected' : '' }}>{{ $classe->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2 col-sm-4 col-6">
+                        <label for="matiere_id" class="form-label">Matière</label>
+                        <select name="matiere_id" id="matiere_id" class="form-select form-select-sm">
+                            <option value="">Toutes les matières</option>
+                            @foreach($matieres as $matiere)
+                                <option value="{{ $matiere->id }}" {{ request('matiere_id') == $matiere->id ? 'selected' : '' }}>{{ $matiere->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2 col-sm-4 col-6">
+                        <label for="etudiant_id" class="form-label">Étudiant</label>
+                        <select name="etudiant_id" id="etudiant_id" class="form-select form-select-sm">
+                            <option value="">Tous les étudiants</option>
+                            @foreach($etudiants as $etudiant)
+                                <option value="{{ $etudiant->id }}" {{ request('etudiant_id') == $etudiant->id ? 'selected' : '' }}>{{ $etudiant->nom_complet }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2 col-sm-4 col-6">
+                        <label for="date_debut" class="form-label">Date début</label>
+                        <input type="date" class="form-control form-control-sm" id="date_debut" name="date_debut" value="{{ request('date_debut') }}">
+                    </div>
+                    <div class="col-md-2 col-sm-4 col-6">
+                        <label for="date_fin" class="form-label">Date fin</label>
+                        <input type="date" class="form-control form-control-sm" id="date_fin" name="date_fin" value="{{ request('date_fin') }}">
+                    </div>
+                    <div class="col-md-2 col-sm-4 col-6">
+                        <label for="statut" class="form-label">Statut</label>
+                        <select name="statut" id="statut" class="form-select form-select-sm">
+                            <option value="">Tous les statuts</option>
+                            <option value="present" {{ request('statut') == 'present' ? 'selected' : '' }}>Présent</option>
+                            <option value="absent"  {{ request('statut') == 'absent'  ? 'selected' : '' }}>Absent</option>
+                            <option value="retard"  {{ request('statut') == 'retard'  ? 'selected' : '' }}>Retard</option>
+                            <option value="excuse"  {{ request('statut') == 'excuse'  ? 'selected' : '' }}>Excusé</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:flex;gap:.5rem;margin-top:1rem;">
+                    <button type="submit" class="btn-acasi primary">
+                        <i class="fas fa-search"></i>Filtrer
                     </button>
-                    <a href="{{ route('esbtp.attendances.index') }}" class="btn-modern btn-info-modern">
-                        <i class="fas fa-refresh"></i>
-                        Réinitialiser
+                    <a href="{{ route('esbtp.attendances.index') }}" class="btn-acasi secondary">
+                        <i class="fas fa-redo"></i>Réinitialiser
                     </a>
                 </div>
+            </form>
+        </div>
+
+        {{-- ── Table ────────────────────────────────────────────── --}}
+        <div class="att-table-card">
+            <div class="att-card-header">
+                <h6 class="att-card-title">
+                    <i class="fas fa-table"></i>Liste des Présences
+                </h6>
+                <span style="background:rgba(4,83,203,.08);color:#0453cb;padding:.2rem .6rem;border-radius:20px;font-size:.78rem;font-weight:700;">
+                    {{ $attendances->count() }} enregistrements
+                </span>
             </div>
-        </form>
-    </div>
-
-    <!-- Table des données -->
-    <div class="data-card">
-        <h5 class="mb-3">
-            <i class="fas fa-table me-2"></i>
-            Liste des Présences
-            <span class="badge bg-primary ms-2">{{ $attendances->count() }} enregistrements</span>
-        </h5>
-
-        <div class="table-responsive">
-            <table class="table table-modern">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Étudiant</th>
-                        <th>Classe</th>
-                        <th>Matière</th>
-                        <th>Statut</th>
-                        <th>Enseignant</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($attendances as $attendance)
+            <div class="table-responsive">
+                <table class="att-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Étudiant</th>
+                            <th>Classe</th>
+                            <th>Matière</th>
+                            <th>Statut</th>
+                            <th>Enseignant</th>
+                            <th style="text-align:center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($attendances as $attendance)
+                        @php
+                            $colors   = ['#0453cb','#10b981','#f97316','#06b6d4','#0891b2','#dc6803','#0369a1'];
+                            $avatarBg = $colors[abs(crc32($attendance->etudiant->nom_complet)) % count($colors)];
+                        @endphp
                         <tr>
                             <td>
-                                <div class="fw-bold">{{ $attendance->date->format('d/m/Y') }}</div>
-                                <div class="small text-muted">{{ $attendance->created_at->format('H:i') }}</div>
+                                <div style="font-weight:700;font-size:.875rem;">{{ $attendance->date->format('d/m/Y') }}</div>
+                                <div style="font-size:.75rem;color:var(--text-secondary);">{{ $attendance->created_at->format('H:i') }}</div>
                             </td>
                             <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="avatar-initial rounded-circle bg-primary text-white me-2">
-                                        {{ substr($attendance->etudiant->nom_complet, 0, 2) }}
+                                <div style="display:flex;align-items:center;gap:.6rem;">
+                                    <div class="att-avatar" style="background:{{ $avatarBg }};">
+                                        {{ strtoupper(substr($attendance->etudiant->nom_complet, 0, 2)) }}
                                     </div>
                                     <div>
-                                        <div class="fw-bold">{{ $attendance->etudiant->nom_complet }}</div>
-                                        <div class="small text-muted">#{{ $attendance->etudiant->id }}</div>
+                                        <div class="att-student-name">{{ $attendance->etudiant->nom_complet }}</div>
+                                        <div class="att-student-id">#{{ $attendance->etudiant->id }}</div>
                                     </div>
                                 </div>
                             </td>
                             <td>
-                                <span class="badge bg-light text-dark">
+                                <span class="att-class-badge">
                                     {{ $attendance->classe->name ?? ($attendance->etudiant->classe->name ?? 'N/A') }}
                                 </span>
                             </td>
-                            <td>{{ $attendance->matiere->name ?? ($attendance->seanceCours->matiere->name ?? 'N/A') }}</td>
+                            <td style="color:var(--text-secondary);">
+                                {{ $attendance->matiere->name ?? ($attendance->seanceCours->matiere->name ?? 'N/A') }}
+                            </td>
                             <td>
                                 @if($attendance->statut === 'present')
-                                    <span class="status-badge present">Présent</span>
+                                    <span class="att-status-pill sp-present"><i class="fas fa-check-circle"></i>Présent</span>
                                 @elseif($attendance->statut === 'absent')
-                                    <span class="status-badge absent">Absent</span>
+                                    <span class="att-status-pill sp-absent"><i class="fas fa-times-circle"></i>Absent</span>
                                 @elseif($attendance->statut === 'retard' || $attendance->statut === 'late')
-                                    <span class="status-badge late">Retard</span>
+                                    <span class="att-status-pill sp-retard"><i class="fas fa-clock"></i>Retard</span>
                                 @elseif($attendance->statut === 'excuse')
-                                    <span class="status-badge excused">Excusé</span>
+                                    <span class="att-status-pill sp-excuse"><i class="fas fa-file-medical"></i>Excusé</span>
                                 @else
-                                    <span class="status-badge bg-secondary text-white">{{ ucfirst($attendance->statut) }}</span>
+                                    <span class="att-status-pill" style="background:#f1f5f9;color:var(--text-secondary);">{{ ucfirst($attendance->statut) }}</span>
                                 @endif
                             </td>
-                            <td>
-                                <div class="small">
-                                    {{ $attendance->teacher->user->name ?? 'N/A' }}
-                                </div>
+                            <td style="font-size:.875rem;color:var(--text-secondary);">
+                                {{ $attendance->teacher->user->name ?? 'N/A' }}
                             </td>
                             <td>
-                                <div class="action-buttons">
-                                    <button type="button" class="btn btn-sm btn-outline-primary" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#detailsModal{{ $attendance->id }}">
+                                <div style="display:flex;gap:.4rem;justify-content:center;">
+                                    <button type="button" class="att-btn-icon abi-view"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#detailsModal{{ $attendance->id }}"
+                                            title="Voir détails">
                                         <i class="fas fa-eye"></i>
                                     </button>
-                                    <a href="{{ route('esbtp.attendances.edit', $attendance) }}" 
-                                       class="btn btn-sm btn-outline-warning">
+                                    <a href="{{ route('esbtp.attendances.edit', $attendance) }}"
+                                       class="att-btn-icon abi-edit" title="Modifier">
                                         <i class="fas fa-edit"></i>
                                     </a>
                                 </div>
                             </td>
                         </tr>
-                    @empty
+                        @empty
                         <tr>
-                            <td colspan="7" class="text-center py-5">
-                                <div class="text-muted">
-                                    <i class="fas fa-user-times fa-3x mb-3 opacity-50"></i>
-                                    <h6>Aucune présence enregistrée</h6>
-                                    <p class="mb-0">Commencez par marquer les présences des étudiants</p>
+                            <td colspan="7">
+                                <div class="att-empty">
+                                    <div class="att-empty-icon"><i class="fas fa-user-times"></i></div>
+                                    <p style="font-weight:700;color:var(--text-primary);">Aucune présence enregistrée</p>
+                                    <p style="font-size:.82rem;">Commencez par marquer les présences des étudiants</p>
                                 </div>
                             </td>
                         </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Pagination -->
-        @if($attendances->hasPages())
-            <div class="d-flex justify-content-center mt-4">
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            @if($attendances->hasPages())
+            <div style="display:flex;justify-content:center;padding:1rem 1.5rem;">
                 {{ $attendances->appends(request()->query())->links() }}
             </div>
-        @endif
+            @endif
+        </div>
+
     </div>
 </div>
 
-<!-- Modales de détails -->
+{{-- ── Modales de détails ──────────────────────────────────────── --}}
 @foreach($attendances as $attendance)
-    <div class="modal fade" id="detailsModal{{ $attendance->id }}" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Détails de la Présence</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <dl class="row">
-                        <dt class="col-sm-4">Étudiant</dt>
-                        <dd class="col-sm-8">{{ $attendance->etudiant->nom_complet }}</dd>
+<div class="modal fade" id="detailsModal{{ $attendance->id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-clipboard-check me-2"></i>Détails de la Présence</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <dl class="row detail-dl">
+                    <dt class="col-sm-4">Étudiant</dt>
+                    <dd class="col-sm-8">{{ $attendance->etudiant->nom_complet }}</dd>
 
-                        <dt class="col-sm-4">Classe</dt>
-                        <dd class="col-sm-8">{{ $attendance->classe->name ?? ($attendance->etudiant->classe->name ?? 'N/A') }}</dd>
+                    <dt class="col-sm-4">Classe</dt>
+                    <dd class="col-sm-8">{{ $attendance->classe->name ?? ($attendance->etudiant->classe->name ?? 'N/A') }}</dd>
 
-                        <dt class="col-sm-4">Matière</dt>
-                        <dd class="col-sm-8">{{ $attendance->matiere->name ?? ($attendance->seanceCours->matiere->name ?? 'N/A') }}</dd>
+                    <dt class="col-sm-4">Matière</dt>
+                    <dd class="col-sm-8">{{ $attendance->matiere->name ?? ($attendance->seanceCours->matiere->name ?? 'N/A') }}</dd>
 
-                        <dt class="col-sm-4">Date</dt>
-                        <dd class="col-sm-8">{{ $attendance->date->format('d/m/Y') }}</dd>
+                    <dt class="col-sm-4">Date</dt>
+                    <dd class="col-sm-8">{{ $attendance->date->format('d/m/Y') }}</dd>
 
-                        <dt class="col-sm-4">Statut</dt>
-                        <dd class="col-sm-8">
-                            @if($attendance->statut === 'present')
-                                <span class="status-badge present">Présent</span>
-                            @elseif($attendance->statut === 'absent')
-                                <span class="status-badge absent">Absent</span>
-                            @elseif($attendance->statut === 'retard' || $attendance->statut === 'late')
-                                <span class="status-badge late">Retard</span>
-                            @elseif($attendance->statut === 'excuse')
-                                <span class="status-badge excused">Excusé</span>
-                            @endif
-                        </dd>
+                    <dt class="col-sm-4">Statut</dt>
+                    <dd class="col-sm-8">
+                        @if($attendance->statut === 'present')
+                            <span class="att-status-pill sp-present"><i class="fas fa-check-circle"></i>Présent</span>
+                        @elseif($attendance->statut === 'absent')
+                            <span class="att-status-pill sp-absent"><i class="fas fa-times-circle"></i>Absent</span>
+                        @elseif($attendance->statut === 'retard' || $attendance->statut === 'late')
+                            <span class="att-status-pill sp-retard"><i class="fas fa-clock"></i>Retard</span>
+                        @elseif($attendance->statut === 'excuse')
+                            <span class="att-status-pill sp-excuse"><i class="fas fa-file-medical"></i>Excusé</span>
+                        @endif
+                    </dd>
 
-                        <dt class="col-sm-4">Enseignant</dt>
-                        <dd class="col-sm-8">{{ $attendance->teacher->user->name ?? 'N/A' }}</dd>
+                    <dt class="col-sm-4">Enseignant</dt>
+                    <dd class="col-sm-8">{{ $attendance->teacher->user->name ?? 'N/A' }}</dd>
 
-                        <dt class="col-sm-4">Créé le</dt>
-                        <dd class="col-sm-8">{{ $attendance->created_at->format('d/m/Y H:i') }}</dd>
-                    </dl>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-                </div>
+                    <dt class="col-sm-4">Créé le</dt>
+                    <dd class="col-sm-8">{{ $attendance->created_at->format('d/m/Y H:i') }}</dd>
+                </dl>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">Fermer</button>
             </div>
         </div>
     </div>
+</div>
 @endforeach
 @endsection
 
@@ -1272,370 +1163,209 @@ const ctx = document.getElementById('attendanceChart').getContext('2d');
 const attendanceChart = new Chart(ctx, {
     type: 'line',
     data: {
-        labels: {!! json_encode(array_map(function($date) { 
-            return \Carbon\Carbon::parse($date)->format('d/m'); 
+        labels: {!! json_encode(array_map(function($date) {
+            return \Carbon\Carbon::parse($date)->format('d/m');
         }, array_keys($statsParStatus ?? []))) !!},
         datasets: [{
-            label: 'Présences (incl. retards)',
+            label: 'Présences',
             data: {!! json_encode(array_column($statsParStatus ?? [], 'present_with_retards')) !!},
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-            borderWidth: 3,
-            fill: true,
-            tension: 0.4
+            borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.08)',
+            borderWidth: 2.5, fill: true, tension: 0.4,
+            pointBackgroundColor: '#10b981', pointRadius: 4, pointHoverRadius: 6
         }, {
             label: 'Absences',
             data: {!! json_encode(array_column($statsParStatus ?? [], 'absent')) !!},
-            borderColor: '#ef4444',
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            borderWidth: 3,
-            fill: true,
-            tension: 0.4
+            borderColor: '#e53e3e', backgroundColor: 'rgba(229,62,62,.08)',
+            borderWidth: 2.5, fill: true, tension: 0.4,
+            pointBackgroundColor: '#e53e3e', pointRadius: 4, pointHoverRadius: 6
         }, {
             label: 'Retards',
             data: {!! json_encode(array_column($statsParStatus ?? [], 'retard')) !!},
-            borderColor: '#f59e0b',
-            backgroundColor: 'rgba(245, 158, 11, 0.1)',
-            borderWidth: 3,
-            fill: true,
-            tension: 0.4
+            borderColor: '#f97316', backgroundColor: 'rgba(249,115,22,.08)',
+            borderWidth: 2.5, fill: true, tension: 0.4,
+            pointBackgroundColor: '#f97316', pointRadius: 4, pointHoverRadius: 6
         }, {
             label: 'Excusés',
             data: {!! json_encode(array_column($statsParStatus ?? [], 'excuse')) !!},
-            borderColor: '#06b6d4',
-            backgroundColor: 'rgba(6, 182, 212, 0.1)',
-            borderWidth: 3,
-            fill: true,
-            tension: 0.4
+            borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,.08)',
+            borderWidth: 2.5, fill: true, tension: 0.4,
+            pointBackgroundColor: '#06b6d4', pointRadius: 4, pointHoverRadius: 6
         }]
     },
     options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
         plugins: {
-            legend: {
-                position: 'top',
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: '#1e293b', titleColor: '#fff',
+                bodyColor: 'rgba(255,255,255,.8)', padding: 12, cornerRadius: 8
             }
         },
         scales: {
-            y: {
-                beginAtZero: true,
-                grid: {
-                    color: 'rgba(0,0,0,0.1)'
-                }
-            },
-            x: {
-                grid: {
-                    display: false
-                }
-            }
+            y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,.05)' }, ticks: { font: { size: 11 } } },
+            x: { grid: { display: false }, ticks: { font: { size: 11 } } }
         }
     }
 });
 
-// Fonctions des actions rapides
-function exportData() {
-    alert('Fonction d\'export en cours de développement');
-}
-
-function showStatistics() {
-    alert('Page de statistiques détaillées en cours de développement');
-}
+function exportData()     { alert('Fonction d\'export en cours de développement'); }
+function showStatistics() { alert('Page de statistiques détaillées en cours de développement'); }
 
 @if(auth()->user() && auth()->user()->hasRole('coordinateur') && $coordinatorStats)
-// Fonctions coordinateur
-function refreshData() {
-    location.reload();
-}
+function refreshData() { location.reload(); }
 
-function generateDailyReport() {
-    const loadingBtn = event.target;
-    const originalText = loadingBtn.innerHTML;
-    
-    loadingBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Génération...';
-    loadingBtn.disabled = true;
-    
+function generateDailyReport(event) {
+    const btn = event.target.closest('.coord-action-btn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:1.4rem;color:#0453cb;"></i><span>Génération...</span><small></small>';
+    btn.disabled = true;
+
     fetch('{{ route("coordinateur.daily-report") ?? "#" }}', {
         method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-            date: new Date().toISOString().split('T')[0]
-        })
+        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ date: new Date().toISOString().split('T')[0] })
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
-        if (data.success) {
-            showDailyReportModal(data.report);
-        } else {
-            alert('Erreur lors de la génération du rapport: ' + (data.error || 'Erreur inconnue'));
-        }
+        if (data.success) showDailyReportModal(data.report);
+        else alert('Erreur: ' + (data.error || 'Erreur inconnue'));
     })
-    .catch(error => {
-        debugError('Erreur:', error);
-        alert('Erreur de connexion lors de la génération du rapport');
-    })
-    .finally(() => {
-        loadingBtn.innerHTML = originalText;
-        loadingBtn.disabled = false;
-    });
+    .catch(() => alert('Erreur de connexion'))
+    .finally(() => { btn.innerHTML = orig; btn.disabled = false; });
 }
 
 function showDailyReportModal(report) {
-    // Simple alert pour l'instant
-    alert('Rapport du ' + report.date + ':\n\n' +
-          'Cours prévus: ' + report.summary.cours_prevus + '\n' +
-          'Émargements: ' + report.summary.emargements_effectues + '\n' +
-          'Taux: ' + report.summary.taux_emargement + '\n' +
-          'Appels terminés: ' + report.summary.appels_termines);
+    alert('Rapport du ' + report.date + ':\n\nCours prévus: ' + report.summary.cours_prevus +
+          '\nÉmargements: ' + report.summary.emargements_effectues +
+          '\nTaux: ' + report.summary.taux_emargement +
+          '\nAppels terminés: ' + report.summary.appels_termines);
 }
 
-// Charger les activités récentes
 document.addEventListener('DOMContentLoaded', function() {
     loadRecentActivities();
-    
-    // Actualisation automatique toutes les 5 minutes
-    setInterval(function() {
-        loadRecentActivities();
-    }, 300000);
+    const activitiesTimer = setInterval(loadRecentActivities, 300000);
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) clearInterval(activitiesTimer);
+    });
 });
 
 function loadRecentActivities() {
-    const activitiesContainer = document.getElementById('recent-activities');
-    if (!activitiesContainer) return;
-    
+    const el = document.getElementById('recent-activities');
+    if (!el) return;
+
     fetch('{{ route("coordinateur.recent-activities") ?? "#" }}?limit=10', {
-        method: 'GET',
-        headers: {
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        }
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(data => {
         if (data.success && data.activities) {
-            let html = '';
-            
-            if (data.activities.length === 0) {
-                html = `
-                    <div class="text-center py-4">
-                        <i class="fas fa-history fa-2x text-muted mb-2"></i>
-                        <p class="text-muted">Aucune activité récente</p>
-                    </div>
-                `;
+            if (!data.activities.length) {
+                el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-secondary);"><i class="fas fa-history fa-2x mb-2 d-block" style="opacity:.3;"></i><p style="font-size:.875rem;">Aucune activité récente</p></div>';
             } else {
-                data.activities.forEach(activity => {
-                    html += `
-                        <div class="timeline-item">
-                            <div class="timeline-icon ${activity.type}">
-                                <i class="fas fa-${activity.icon}"></i>
-                            </div>
-                            <div class="timeline-content">
-                                <h6 class="mb-1">${activity.title}</h6>
-                                <p class="text-muted mb-1">${activity.description}</p>
-                                <small class="text-muted">${activity.time}</small>
-                            </div>
+                el.innerHTML = data.activities.map(a => `
+                    <div class="timeline-item">
+                        <div class="timeline-icon ${a.type}"><i class="fas fa-${a.icon}"></i></div>
+                        <div class="timeline-content">
+                            <h6 class="mb-1" style="font-size:.875rem;">${a.title}</h6>
+                            <p class="text-muted mb-1" style="font-size:.8rem;">${a.description}</p>
+                            <small class="text-muted">${a.time}</small>
                         </div>
-                    `;
-                });
+                    </div>`).join('');
             }
-            
-            activitiesContainer.innerHTML = html;
         } else {
-            activitiesContainer.innerHTML = `
-                <div class="text-center py-4 text-danger">
-                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                    <p>Erreur lors du chargement des activités</p>
-                </div>
-            `;
+            el.innerHTML = '<div style="text-align:center;padding:2rem;color:#e53e3e;"><i class="fas fa-exclamation-triangle fa-2x mb-2 d-block"></i><p style="font-size:.875rem;">Erreur de chargement</p></div>';
         }
     })
-    .catch(error => {
-        debugError('Erreur chargement activités:', error);
-        if (activitiesContainer) {
-            activitiesContainer.innerHTML = `
-                <div class="text-center py-4 text-warning">
-                    <i class="fas fa-wifi fa-2x mb-2"></i>
-                    <p>Impossible de charger les activités</p>
-                    <button class="btn btn-sm btn-outline-primary" onclick="loadRecentActivities()">Réessayer</button>
-                </div>
-            `;
-        }
+    .catch(() => {
+        el.innerHTML = '<div style="text-align:center;padding:2rem;color:#f97316;"><i class="fas fa-wifi fa-2x mb-2 d-block"></i><p style="font-size:.875rem;">Impossible de charger les activités</p><button class="btn btn-sm btn-outline-primary mt-2" onclick="loadRecentActivities()">Réessayer</button></div>';
     });
 }
 @endif
 
-// Script pour la gestion optimisée des statistiques par classe
+// Gestion des stats par classe
 document.addEventListener('DOMContentLoaded', function() {
-    // Éléments du DOM
-    const compactViewBtn = document.getElementById('compactViewBtn');
-    const detailedViewBtn = document.getElementById('detailedViewBtn');
-    const classSearchInput = document.getElementById('classSearchInput');
-    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const compactViewBtn       = document.getElementById('compactViewBtn');
+    const detailedViewBtn      = document.getElementById('detailedViewBtn');
+    const classSearchInput     = document.getElementById('classSearchInput');
     const classeStatsContainer = document.getElementById('classeStatsContainer');
-    const classeStatsContent = document.getElementById('classeStatsContent');
-    const loadMoreBtn = document.getElementById('loadMoreClassesBtn');
-    const noSearchResults = document.getElementById('noSearchResults');
+    const classeStatsContent   = document.getElementById('classeStatsContent');
+    const loadMoreBtn          = document.getElementById('loadMoreClassesBtn');
+    const noSearchResults      = document.getElementById('noSearchResults');
 
-    // Variables de configuration
-    let currentView = 'detailed'; // 'detailed' ou 'compact'
-    let visibleItemsCount = 10; // Nombre d'éléments visibles initialement
+    let currentView = 'detailed';
+    let visibleItemsCount = 10;
     let allItems = [];
     let filteredItems = [];
 
-    // Initialisation
     if (classeStatsContent) {
         allItems = Array.from(classeStatsContent.querySelectorAll('.classe-item'));
         filteredItems = [...allItems];
         initializePagination();
     }
 
-    // Gestion des vues (compacte/détaillée)
     if (compactViewBtn && detailedViewBtn) {
-        compactViewBtn.addEventListener('click', function() {
-            switchToCompactView();
-        });
-
-        detailedViewBtn.addEventListener('click', function() {
-            switchToDetailedView();
-        });
+        compactViewBtn.addEventListener('click', switchToCompactView);
+        detailedViewBtn.addEventListener('click', switchToDetailedView);
     }
 
-    // Gestion de la recherche
     if (classSearchInput) {
-        classSearchInput.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase().trim();
-            filterClasses(searchTerm);
-        });
-
-        classSearchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-            }
-        });
+        classSearchInput.addEventListener('input', function() { filterClasses(this.value.toLowerCase().trim()); });
+        classSearchInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') e.preventDefault(); });
     }
 
-    // Bouton de nettoyage de recherche
-    if (clearSearchBtn) {
-        clearSearchBtn.addEventListener('click', function() {
-            classSearchInput.value = '';
-            filterClasses('');
-            classSearchInput.focus();
-        });
-    }
+    if (loadMoreBtn) loadMoreBtn.addEventListener('click', showMoreClasses);
 
-    // Bouton "Voir plus"
-    if (loadMoreBtn) {
-        loadMoreBtn.addEventListener('click', function() {
-            showMoreClasses();
-        });
-    }
-
-    // Fonctions principales
     function switchToCompactView() {
         currentView = 'compact';
-        compactViewBtn.classList.add('active');
-        detailedViewBtn.classList.remove('active');
-        
-        if (classeStatsContainer) {
-            classeStatsContainer.classList.add('view-compact');
-        }
-        
-        // Augmenter le nombre d'éléments visibles en mode compact
+        compactViewBtn.classList.add('active'); detailedViewBtn.classList.remove('active');
+        if (classeStatsContainer) classeStatsContainer.classList.add('view-compact');
         visibleItemsCount = Math.min(20, filteredItems.length);
-        updateVisibility();
-        
-        // Animation douce
-        animateViewChange();
+        updateVisibility(); animateViewChange();
     }
 
     function switchToDetailedView() {
         currentView = 'detailed';
-        detailedViewBtn.classList.add('active');
-        compactViewBtn.classList.remove('active');
-        
-        if (classeStatsContainer) {
-            classeStatsContainer.classList.remove('view-compact');
-        }
-        
-        // Réduire le nombre d'éléments visibles en mode détaillé
+        detailedViewBtn.classList.add('active'); compactViewBtn.classList.remove('active');
+        if (classeStatsContainer) classeStatsContainer.classList.remove('view-compact');
         visibleItemsCount = Math.min(10, filteredItems.length);
-        updateVisibility();
-        
-        // Animation douce
-        animateViewChange();
+        updateVisibility(); animateViewChange();
     }
 
     function filterClasses(searchTerm) {
-        if (!searchTerm) {
-            // Afficher tous les éléments
-            filteredItems = [...allItems];
-            hideNoResults();
-        } else {
-            // Filtrer les éléments
-            filteredItems = allItems.filter(item => {
-                const className = item.dataset.classeName || '';
-                const classeNameElement = item.querySelector('.classe-name');
-                const classText = classeNameElement ? classeNameElement.textContent.toLowerCase() : '';
-                
-                return className.includes(searchTerm) || classText.includes(searchTerm);
-            });
-        }
+        filteredItems = searchTerm
+            ? allItems.filter(item => {
+                const el = item.querySelector('.classe-name');
+                return (item.dataset.classeName || '').includes(searchTerm) ||
+                       (el ? el.textContent.toLowerCase() : '').includes(searchTerm);
+              })
+            : [...allItems];
 
-        // Réinitialiser la pagination
         visibleItemsCount = currentView === 'compact' ? 20 : 10;
         updateVisibility();
-        
-        // Afficher le message "Aucun résultat" si nécessaire
-        if (filteredItems.length === 0 && searchTerm) {
-            showNoResults();
-        } else {
-            hideNoResults();
-        }
 
-        // Scroll vers le haut du conteneur
-        if (classeStatsContainer) {
-            classeStatsContainer.scrollTop = 0;
-        }
+        if (filteredItems.length === 0 && searchTerm) showNoResults();
+        else hideNoResults();
+
+        if (classeStatsContainer) classeStatsContainer.scrollTop = 0;
     }
 
     function showMoreClasses() {
-        const increment = currentView === 'compact' ? 20 : 10;
-        visibleItemsCount = Math.min(visibleItemsCount + increment, filteredItems.length);
+        const inc = currentView === 'compact' ? 20 : 10;
+        visibleItemsCount = Math.min(visibleItemsCount + inc, filteredItems.length);
         updateVisibility();
-
-        // Animation pour les nouveaux éléments
-        const newlyVisibleItems = filteredItems.slice(visibleItemsCount - increment, visibleItemsCount);
-        newlyVisibleItems.forEach((item, index) => {
-            setTimeout(() => {
-                item.style.animation = 'slideInUp 0.3s ease-out';
-            }, index * 50);
+        filteredItems.slice(visibleItemsCount - inc, visibleItemsCount).forEach((item, i) => {
+            setTimeout(() => { item.style.animation = 'slideInUp 0.3s ease-out'; }, i * 50);
         });
     }
 
     function updateVisibility() {
-        // Masquer tous les éléments d'abord
-        allItems.forEach(item => {
-            item.classList.add('hidden');
-        });
-
-        // Afficher les éléments filtrés et visibles
-        const itemsToShow = filteredItems.slice(0, visibleItemsCount);
-        itemsToShow.forEach(item => {
-            item.classList.remove('hidden');
-        });
-
-        // Gérer le bouton "Voir plus"
+        allItems.forEach(item => item.classList.add('hidden'));
+        filteredItems.slice(0, visibleItemsCount).forEach(item => item.classList.remove('hidden'));
         if (loadMoreBtn) {
             if (visibleItemsCount < filteredItems.length) {
                 loadMoreBtn.style.display = 'block';
-                loadMoreBtn.innerHTML = `
-                    <i class="fas fa-chevron-down me-1"></i>
-                    Voir plus (${filteredItems.length - visibleItemsCount} restantes)
-                `;
+                loadMoreBtn.innerHTML = `<i class="fas fa-chevron-down me-1"></i>Voir plus (${filteredItems.length - visibleItemsCount} restantes)`;
             } else {
                 loadMoreBtn.style.display = 'none';
             }
@@ -1648,68 +1378,38 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function showNoResults() {
-        if (noSearchResults) {
-            noSearchResults.classList.remove('d-none');
-        }
-        if (loadMoreBtn) {
-            loadMoreBtn.style.display = 'none';
-        }
+        if (noSearchResults) noSearchResults.classList.remove('d-none');
+        if (loadMoreBtn) loadMoreBtn.style.display = 'none';
     }
 
     function hideNoResults() {
-        if (noSearchResults) {
-            noSearchResults.classList.add('d-none');
-        }
+        if (noSearchResults) noSearchResults.classList.add('d-none');
     }
 
     function animateViewChange() {
-        const visibleItems = filteredItems.slice(0, visibleItemsCount);
-        visibleItems.forEach((item, index) => {
+        filteredItems.slice(0, visibleItemsCount).forEach((item, i) => {
             item.style.animation = 'none';
-            setTimeout(() => {
-                item.style.animation = 'slideInUp 0.3s ease-out';
-            }, index * 20);
+            setTimeout(() => { item.style.animation = 'slideInUp 0.3s ease-out'; }, i * 20);
         });
     }
 
-    // Gestion du redimensionnement de fenêtre
     let resizeTimer;
     window.addEventListener('resize', function() {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
-            // Ajuster le nombre d'éléments visibles selon la taille d'écran
             if (window.innerWidth < 768) {
-                if (currentView === 'detailed') {
-                    visibleItemsCount = Math.min(8, filteredItems.length);
-                } else {
-                    visibleItemsCount = Math.min(15, filteredItems.length);
-                }
+                visibleItemsCount = Math.min(currentView === 'detailed' ? 8 : 15, filteredItems.length);
                 updateVisibility();
             }
         }, 250);
     });
 
-    // Amélioration UX: focus automatique sur la recherche avec Ctrl+K
     document.addEventListener('keydown', function(e) {
         if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
             e.preventDefault();
-            if (classSearchInput) {
-                classSearchInput.focus();
-                classSearchInput.select();
-            }
+            if (classSearchInput) { classSearchInput.focus(); classSearchInput.select(); }
         }
     });
-
-    // Précharger les statistiques au hover pour une meilleure réactivité
-    if (classeStatsContent) {
-        const classeItems = classeStatsContent.querySelectorAll('.classe-item');
-        classeItems.forEach(item => {
-            item.addEventListener('mouseenter', function() {
-                // Petite animation au hover
-                this.style.transition = 'all 0.2s ease';
-            });
-        });
-    }
 });
 </script>
 @endpush
