@@ -316,16 +316,19 @@ class ESBTPBulletinController extends Controller
             $bulletin->save();
 
             // Récupérer toutes les matières de la classe
-            $classe = ESBTPClasse::findOrFail($request->classe_id);
+            $classe = ESBTPClasse::with('matieres')->findOrFail($request->classe_id);
             $matieres = $classe->matieres;
+
+            // Précharger toutes les évaluations pour cette classe et période
+            $allEvaluations = ESBTPEvaluation::where('classe_id', $classe->id)
+                ->where('periode', $request->periode)
+                ->get()
+                ->groupBy('matiere_id');
 
             // Pour chaque matière, calculer la moyenne et créer un résultat
             foreach ($matieres as $matiere) {
-                // Récupérer toutes les évaluations de cette matière pour cette classe
-                $evaluations = $matiere ? $matiere->evaluations()
-                    ->where('classe_id', $classe->id)
-                    ->where('periode', $request->periode)
-                    ->get() : collect();
+                // Récupérer les évaluations de cette matière depuis le cache
+                $evaluations = $allEvaluations->get($matiere->id, collect());
 
                 Log::info('Récupération des évaluations', [
                     'matiere_id' => $matiere->id,
