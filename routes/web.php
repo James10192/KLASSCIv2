@@ -15,7 +15,10 @@ use App\Http\Controllers\ESBTPAnneeUniversitaireController;
 use App\Http\Controllers\ESBTPAnnonceController;
 use App\Http\Controllers\ESBTPAttendanceCodeController;
 use App\Http\Controllers\ESBTPAttendanceController;
+use App\Http\Controllers\ESBTPBulletinConfigController;
 use App\Http\Controllers\ESBTPBulletinController;
+use App\Http\Controllers\ESBTPResultatController;
+use App\Http\Controllers\ESBTPStudentBulletinController;
 use App\Http\Controllers\ESBTPCategoriePaiementController;
 use App\Http\Controllers\ESBTPClasseController;
 use App\Http\Controllers\ESBTPComptabiliteController;
@@ -593,65 +596,65 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware(['permission:view_own_timetable|view_timetables']);
 
             // Routes pour les résultats
-            Route::get('resultats', [ESBTPBulletinController::class, 'resultats'])
+            Route::get('resultats', [ESBTPResultatController::class, 'resultats'])
                 ->name('resultats.index')
                 ->middleware(['permission:view_own_bulletin|view_bulletins']);
-            Route::get('resultats/classes', [ESBTPBulletinController::class, 'resultatsClasses'])
+            Route::get('resultats/classes', [ESBTPResultatController::class, 'resultatsClasses'])
                 ->name('resultats.classes')
                 ->middleware(['permission:view_own_bulletin|view_bulletins']);
-            Route::get('resultats/classe/{classe}', [ESBTPBulletinController::class, 'resultatClasse'])
+            Route::get('resultats/classe/{classe}', [ESBTPResultatController::class, 'resultatClasse'])
                 ->name('resultats.classe')
                 ->middleware(['permission:view_own_bulletin|view_bulletins']);
-            Route::get('resultats/etudiant/{etudiant}', [ESBTPBulletinController::class, 'resultatEtudiant'])
+            Route::get('resultats/etudiant/{etudiant}', [ESBTPResultatController::class, 'resultatEtudiant'])
                 ->name('resultats.etudiant')
                 ->middleware(['permission:view_own_bulletin|view_bulletins']);
 
-            Route::get('resultats/etudiant/{etudiant}/preview', [ESBTPBulletinController::class, 'previewBulletinEtudiantNew'])
+            Route::get('resultats/etudiant/{etudiant}/preview', [ESBTPResultatController::class, 'previewBulletinEtudiantNew'])
                 ->name('resultats.etudiant.preview')
                 ->middleware(['permission:view_own_bulletin|view_bulletins']);
 
             // Route AJAX pour le lazy loading des étudiants sur la page résultats
-            Route::get('resultats/load-etudiants', [ESBTPBulletinController::class, 'loadEtudiants'])
+            Route::get('resultats/load-etudiants', [ESBTPResultatController::class, 'loadEtudiants'])
                 ->name('resultats.load-etudiants')
                 ->middleware(['permission:view_own_bulletin|view_bulletins']);
 
             // Route principale d'édition groupée par classe
-            Route::get('resultats/classe/{classe}/edit', [ESBTPBulletinController::class, 'editResultatsClasse'])
+            Route::get('resultats/classe/{classe}/edit', [ESBTPResultatController::class, 'editResultatsClasse'])
                 ->name('resultats.classe.edit')
                 ->middleware(['permission:edit_bulletins']);
 
             // Routes AJAX pour édition groupée
-            Route::get('resultats/get-moyennes', [ESBTPBulletinController::class, 'getMoyennes'])
+            Route::get('resultats/get-moyennes', [ESBTPResultatController::class, 'getMoyennes'])
                 ->name('resultats.get-moyennes')
                 ->middleware(['permission:view_bulletins|view_own_bulletin']);
 
-            Route::get('resultats/get-absences', [ESBTPBulletinController::class, 'getAbsences'])
+            Route::get('resultats/get-absences', [ESBTPResultatController::class, 'getAbsences'])
                 ->name('resultats.get-absences')
                 ->middleware(['permission:view_bulletins|view_own_bulletin']);
             
             // Force route cache refresh - 2025-01-30
 
-            Route::post('resultats/bulk-update-moyennes', [ESBTPBulletinController::class, 'bulkUpdateMoyennes'])
+            Route::post('resultats/bulk-update-moyennes', [ESBTPResultatController::class, 'bulkUpdateMoyennes'])
                 ->name('resultats.bulk-update-moyennes')
                 ->middleware(['permission:edit_bulletins']);
 
-            Route::post('resultats/bulk-update-professeurs', [ESBTPBulletinController::class, 'bulkUpdateProfesseurs'])
+            Route::post('resultats/bulk-update-professeurs', [ESBTPResultatController::class, 'bulkUpdateProfesseurs'])
                 ->name('resultats.bulk-update-professeurs')
                 ->middleware(['permission:edit_bulletins']);
 
-            Route::post('resultats/bulk-update-absences', [ESBTPBulletinController::class, 'bulkUpdateAbsences'])
+            Route::post('resultats/bulk-update-absences', [ESBTPResultatController::class, 'bulkUpdateAbsences'])
                 ->name('resultats.bulk-update-absences')
                 ->middleware(['permission:edit_bulletins']);
 
-            Route::post('resultats/bulk-update-coefficients', [ESBTPBulletinController::class, 'bulkUpdateCoefficients'])
+            Route::post('resultats/bulk-update-coefficients', [ESBTPResultatController::class, 'bulkUpdateCoefficients'])
                 ->name('resultats.bulk-update-coefficients')
                 ->middleware(['permission:edit_bulletins']);
 
-            Route::get('resultats/get-matiere-coefficient', [ESBTPBulletinController::class, 'getMatiereCoefficient'])
+            Route::get('resultats/get-matiere-coefficient', [ESBTPResultatController::class, 'getMatiereCoefficient'])
                 ->name('resultats.get-matiere-coefficient')
                 ->middleware(['permission:edit_bulletins']);
 
-            Route::post('resultats/bulk-update-matieres-config', [ESBTPBulletinController::class, 'bulkUpdateMatieresConfig'])
+            Route::post('resultats/bulk-update-matieres-config', [ESBTPResultatController::class, 'bulkUpdateMatieresConfig'])
                 ->name('resultats.bulk-update-matieres-config')
                 ->middleware(['permission:edit_bulletins']);
 
@@ -662,7 +665,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('bulletins/configuration', [ESBTPBulletinController::class, 'saveConfiguration'])
                 ->name('bulletins.save-configuration')
                 ->middleware(['permission:edit_bulletins']);
-            Route::get('resultats/historique/classes', [ESBTPBulletinController::class, 'resultats'])
+            Route::get('resultats/historique/classes', [ESBTPResultatController::class, 'resultats'])
                 ->name('resultats.historique.classes')
                 ->middleware(['permission:view_own_bulletin|view_bulletins']);
 
@@ -967,11 +970,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('student.classes.show')
                 ->middleware(['permission:view_classes|view classes']);
 
-            Route::get('/mon-bulletin', [ESBTPBulletinController::class, 'studentBulletins'])
+            Route::get('/mon-bulletin', [ESBTPStudentBulletinController::class, 'studentBulletins'])
                 ->name('mon-bulletin.index')
                 ->middleware(['permission:view_own_bulletin|view_bulletins']);
 
-            Route::get('/mon-bulletin/{bulletinId}', [ESBTPBulletinController::class, 'showStudentBulletin'])
+            Route::get('/mon-bulletin/{bulletinId}', [ESBTPStudentBulletinController::class, 'showStudentBulletin'])
                 ->name('mon-bulletin.show')
                 ->middleware(['permission:view_own_bulletin|view_bulletins']);
 
@@ -1234,7 +1237,7 @@ Route::middleware(['auth', 'role:enseignant'])->group(function () {
 //             ->name('mes-examens.index');
 //
 //         // Mon bulletin
-//         Route::get('/mon-bulletin', [App\Http\Controllers\ESBTPBulletinController::class, 'studentBulletins'])
+//         Route::get('/mon-bulletin', [App\Http\Controllers\ESBTPStudentBulletinController::class, 'studentBulletins'])
 //             ->name('mon-bulletin.index');
 //
 //         // Mes absences
@@ -1756,17 +1759,17 @@ Route::post('/esbtp/classes/{classe}/remove-students', [ESBTPClasseController::c
 Route::get('/esbtp/classes/{classe}/student-table-html', [ESBTPClasseController::class, 'studentTableHtml'])->name('esbtp.classes.student-table-html');
 
 // Routes spéciales pour la prévisualisation et modification des moyennes
-Route::get('/esbtp-special/bulletins/moyennes-preview', [ESBTPBulletinController::class, 'previewMoyennes'])->name('esbtp.bulletins.moyennes-preview');
-Route::post('/esbtp-special/bulletins/moyennes-update', [ESBTPBulletinController::class, 'updateMoyennes'])->name('esbtp.bulletins.moyennes-update');
-Route::delete('/esbtp-special/bulletins/moyennes-delete', [ESBTPBulletinController::class, 'deleteMoyenne'])->name('esbtp.bulletins.moyennes-delete');
+Route::get('/esbtp-special/bulletins/moyennes-preview', [ESBTPResultatController::class, 'previewMoyennes'])->name('esbtp.bulletins.moyennes-preview');
+Route::post('/esbtp-special/bulletins/moyennes-update', [ESBTPResultatController::class, 'updateMoyennes'])->name('esbtp.bulletins.moyennes-update');
+Route::delete('/esbtp-special/bulletins/moyennes-delete', [ESBTPResultatController::class, 'deleteMoyenne'])->name('esbtp.bulletins.moyennes-delete');
 
 // Routes spéciales pour la configuration des matières et l'édition des professeurs
-Route::get('/esbtp-special/bulletins/config-matieres', [ESBTPBulletinController::class, 'configMatieresTypeFormation'])->name('esbtp.bulletins.config-matieres');
-Route::post('/esbtp-special/bulletins/save-config-matieres', [ESBTPBulletinController::class, 'saveConfigMatieresTypeFormation'])->name('esbtp.bulletins.save-config-matieres');
-Route::get('/esbtp-special/bulletins/edit-professeurs', [ESBTPBulletinController::class, 'editProfesseurs'])->name('esbtp.bulletins.edit-professeurs');
-Route::post('/esbtp-special/bulletins/save-professeurs', [ESBTPBulletinController::class, 'saveProfesseurs'])->name('esbtp.bulletins.save-professeurs');
-Route::get('/esbtp-special/bulletins/edit-absences', [ESBTPBulletinController::class, 'editAbsences'])->name('esbtp.bulletins.edit-absences');
-Route::post('/esbtp-special/bulletins/save-absences', [ESBTPBulletinController::class, 'saveAbsences'])->name('esbtp.bulletins.save-absences');
+Route::get('/esbtp-special/bulletins/config-matieres', [ESBTPBulletinConfigController::class, 'configMatieresTypeFormation'])->name('esbtp.bulletins.config-matieres');
+Route::post('/esbtp-special/bulletins/save-config-matieres', [ESBTPBulletinConfigController::class, 'saveConfigMatieresTypeFormation'])->name('esbtp.bulletins.save-config-matieres');
+Route::get('/esbtp-special/bulletins/edit-professeurs', [ESBTPBulletinConfigController::class, 'editProfesseurs'])->name('esbtp.bulletins.edit-professeurs');
+Route::post('/esbtp-special/bulletins/save-professeurs', [ESBTPBulletinConfigController::class, 'saveProfesseurs'])->name('esbtp.bulletins.save-professeurs');
+Route::get('/esbtp-special/bulletins/edit-absences', [ESBTPBulletinConfigController::class, 'editAbsences'])->name('esbtp.bulletins.edit-absences');
+Route::post('/esbtp-special/bulletins/save-absences', [ESBTPBulletinConfigController::class, 'saveAbsences'])->name('esbtp.bulletins.save-absences');
 Route::get('/esbtp-special/bulletins/generate', [ESBTPBulletinController::class, 'generate'])->name('esbtp.bulletins.generate-special');
 
 // Routes pour les bulletins configurables
