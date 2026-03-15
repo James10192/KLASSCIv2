@@ -365,7 +365,7 @@ class BulletinService
         return (($semester1 * $weights['semester1']) + ($semester2 * $weights['semester2'])) / $total;
     }
 
-    private function normalizePeriode(string $periode): string
+    public function normalizePeriode(string $periode): string
     {
         if ($periode === '1') {
             return 'semestre1';
@@ -759,42 +759,61 @@ class BulletinService
     }
 
     /**
-     * Récupère la configuration PDF
+     * Récupère la configuration PDF (méthode canonique — utilisée par le contrôleur et la vue)
      */
-    private function getPDFConfig()
+    public function getPDFConfig(): array
     {
         return [
-            'school_name' => \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI'),
-            'bulletin_school_name_custom' => \App\Helpers\SettingsHelper::get('bulletin_school_name_custom', ''),
+            // Informations de l'établissement
+            'school_name' => \App\Helpers\SettingsHelper::get('school_name', 'École Spéciale du Bâtiment et des Travaux Publics'),
             'school_address' => \App\Helpers\SettingsHelper::get('school_address', ''),
             'school_phone' => \App\Helpers\SettingsHelper::get('school_phone', ''),
             'school_email' => \App\Helpers\SettingsHelper::get('school_email', ''),
+            'school_website' => \App\Helpers\SettingsHelper::get('school_website', ''),
+            'school_country' => \App\Helpers\SettingsHelper::get('school_country', 'Côte d\'Ivoire'),
             'school_logo' => \App\Helpers\SettingsHelper::get('school_logo', ''),
-            'bulletin_font_size' => \App\Helpers\SettingsHelper::get('bulletin_font_size', '11'),
+            'director_name' => \App\Helpers\SettingsHelper::get('director_name', ''),
+            'director_title' => \App\Helpers\SettingsHelper::get('director_title', 'Directeur'),
 
-            // Configuration de l'en-tête
+            // Configuration PDF
+            'pdf_margin_top' => \App\Helpers\SettingsHelper::get('pdf.margin_top', 15),
+            'pdf_margin_bottom' => \App\Helpers\SettingsHelper::get('pdf.margin_bottom', 15),
+            'pdf_margin_left' => \App\Helpers\SettingsHelper::get('pdf.margin_left', 10),
+            'pdf_margin_right' => \App\Helpers\SettingsHelper::get('pdf.margin_right', 10),
+            'pdf_font_size' => \App\Helpers\SettingsHelper::get('pdf.font_size', 12),
+            'pdf_header_font_size' => \App\Helpers\SettingsHelper::get('pdf.header_font_size', 14),
+            'pdf_title_font_size' => \App\Helpers\SettingsHelper::get('pdf.title_font_size', 16),
+            'pdf_show_watermark' => \App\Helpers\SettingsHelper::get('pdf.show_watermark', false),
+            'pdf_watermark_text' => \App\Helpers\SettingsHelper::get('pdf.watermark_text', 'CONFIDENTIEL'),
+            'pdf_show_signature' => \App\Helpers\SettingsHelper::get('pdf.show_signature', true),
+            'pdf_header_text' => \App\Helpers\SettingsHelper::get('pdf.header_text', ''),
+            'pdf_footer_text' => \App\Helpers\SettingsHelper::get('pdf.footer_text', ''),
+
+            // En-tête bulletin
+            'bulletin_school_name_custom' => \App\Helpers\SettingsHelper::get('bulletin_school_name_custom', ''),
+            'bulletin_font_size' => \App\Helpers\SettingsHelper::get('bulletin_font_size', '11'),
             'bulletin_show_header' => \App\Helpers\SettingsHelper::get('bulletin_show_header', '1'),
+            'bulletin_show_logo' => \App\Helpers\SettingsHelper::get('bulletin_show_logo', '1'),
             'bulletin_show_republic_info' => \App\Helpers\SettingsHelper::get('bulletin_show_republic_info', '1'),
             'bulletin_republic_text' => \App\Helpers\SettingsHelper::get('bulletin_republic_text', 'République de Côte d\'Ivoire'),
             'bulletin_union_text' => \App\Helpers\SettingsHelper::get('bulletin_union_text', 'Union-Discipline-Travail'),
             'bulletin_show_ministry_info' => \App\Helpers\SettingsHelper::get('bulletin_show_ministry_info', '1'),
             'bulletin_ministry_text' => \App\Helpers\SettingsHelper::get('bulletin_ministry_text', 'Ministère de l\'Enseignement Supérieur'),
-            'bulletin_show_logo' => \App\Helpers\SettingsHelper::get('bulletin_show_logo', '1'),
             'bulletin_show_school_info' => \App\Helpers\SettingsHelper::get('bulletin_show_school_info', '1'),
             'bulletin_show_edition_date' => \App\Helpers\SettingsHelper::get('bulletin_show_edition_date', '1'),
             'bulletin_show_cycle_info' => \App\Helpers\SettingsHelper::get('bulletin_show_cycle_info', '1'),
             'bulletin_cycle_text' => \App\Helpers\SettingsHelper::get('bulletin_cycle_text', 'Brevet de Technicien Supérieur'),
             'bulletin_cycle_abbreviation' => \App\Helpers\SettingsHelper::get('bulletin_cycle_abbreviation', 'BTS'),
 
-            // Configuration des informations étudiant
+            // Informations étudiant
             'bulletin_show_student_info' => \App\Helpers\SettingsHelper::get('bulletin_show_student_info', '1'),
-
-            // Toutes les autres configurations du bulletin...
             'bulletin_show_matricule' => \App\Helpers\SettingsHelper::get('bulletin_show_matricule', '1'),
             'bulletin_show_birth_date' => \App\Helpers\SettingsHelper::get('bulletin_show_birth_date', '1'),
             'bulletin_show_redoublant' => \App\Helpers\SettingsHelper::get('bulletin_show_redoublant', '1'),
             'bulletin_show_class_info' => \App\Helpers\SettingsHelper::get('bulletin_show_class_info', '1'),
             'bulletin_show_effectif' => \App\Helpers\SettingsHelper::get('bulletin_show_effectif', '1'),
+
+            // Tableau des matières
             'bulletin_show_subjects_table' => \App\Helpers\SettingsHelper::get('bulletin_show_subjects_table', '1'),
             'bulletin_show_subject_average' => \App\Helpers\SettingsHelper::get('bulletin_show_subject_average', '1'),
             'bulletin_show_coefficient' => \App\Helpers\SettingsHelper::get('bulletin_show_coefficient', '1'),
@@ -805,14 +824,26 @@ class BulletinService
             'bulletin_show_general_subjects' => \App\Helpers\SettingsHelper::get('bulletin_show_general_subjects', '1'),
             'bulletin_show_technical_subjects' => \App\Helpers\SettingsHelper::get('bulletin_show_technical_subjects', '1'),
             'bulletin_show_section_averages' => \App\Helpers\SettingsHelper::get('bulletin_show_section_averages', '1'),
+
+            // Absences
             'bulletin_show_absences' => \App\Helpers\SettingsHelper::get('bulletin_show_absences', '1'),
             'bulletin_show_justified_absences' => \App\Helpers\SettingsHelper::get('bulletin_show_justified_absences', '1'),
             'bulletin_show_unjustified_absences' => \App\Helpers\SettingsHelper::get('bulletin_show_unjustified_absences', '1'),
+
+            // Section résultats
             'bulletin_show_results_section' => \App\Helpers\SettingsHelper::get('bulletin_show_results_section', '1'),
             'bulletin_show_raw_average' => \App\Helpers\SettingsHelper::get('bulletin_show_raw_average', '1'),
             'bulletin_show_attendance_note' => \App\Helpers\SettingsHelper::get('bulletin_show_attendance_note', '1'),
             'bulletin_show_semester_average' => \App\Helpers\SettingsHelper::get('bulletin_show_semester_average', '1'),
             'bulletin_show_student_rank' => \App\Helpers\SettingsHelper::get('bulletin_show_student_rank', '1'),
+            'bulletin_show_attendance' => \App\Helpers\SettingsHelper::get('bulletin_show_attendance', '1'),
+            'bulletin_show_general_average' => \App\Helpers\SettingsHelper::get('bulletin_show_general_average', '1'),
+            'bulletin_show_technical_average' => \App\Helpers\SettingsHelper::get('bulletin_show_technical_average', '1'),
+            'bulletin_show_global_average' => \App\Helpers\SettingsHelper::get('bulletin_show_global_average', '1'),
+            'bulletin_show_class_rank' => \App\Helpers\SettingsHelper::get('bulletin_show_class_rank', '1'),
+            'bulletin_show_class_size' => \App\Helpers\SettingsHelper::get('bulletin_show_class_size', '1'),
+
+            // Mentions
             'bulletin_show_mentions' => \App\Helpers\SettingsHelper::get('bulletin_show_mentions', '1'),
             'bulletin_show_felicitation' => \App\Helpers\SettingsHelper::get('bulletin_show_felicitation', '1'),
             'bulletin_show_encouragement' => \App\Helpers\SettingsHelper::get('bulletin_show_encouragement', '1'),
@@ -824,17 +855,20 @@ class BulletinService
             'bulletin_encouragement_threshold' => \App\Helpers\SettingsHelper::get('bulletin_encouragement_threshold', '14'),
             'bulletin_honor_roll_threshold' => \App\Helpers\SettingsHelper::get('bulletin_honor_roll_threshold', '12'),
             'bulletin_work_warning_threshold' => \App\Helpers\SettingsHelper::get('bulletin_work_warning_threshold', '8'),
+
+            // Statistiques
             'bulletin_show_statistics' => \App\Helpers\SettingsHelper::get('bulletin_show_statistics', '1'),
             'bulletin_show_highest_average' => \App\Helpers\SettingsHelper::get('bulletin_show_highest_average', '1'),
             'bulletin_show_lowest_average' => \App\Helpers\SettingsHelper::get('bulletin_show_lowest_average', '1'),
             'bulletin_show_class_average' => \App\Helpers\SettingsHelper::get('bulletin_show_class_average', '1'),
-            'bulletin_show_class_council_decision' => \App\Helpers\SettingsHelper::get('bulletin_show_class_council_decision', '1'),
-            'bulletin_show_council_decision' => \App\Helpers\SettingsHelper::get('bulletin_show_council_decision', '1'),
-            'bulletin_show_signature' => \App\Helpers\SettingsHelper::get('bulletin_show_signature', '1'),
-            'bulletin_show_director_signature' => \App\Helpers\SettingsHelper::get('bulletin_show_director_signature', '1'),
             'bulletin_include_attendance_in_stats' => \App\Helpers\SettingsHelper::get('bulletin_include_attendance_in_stats', '1'),
-            'director_title' => \App\Helpers\SettingsHelper::get('director_title', 'Directeur'),
-            'director_name' => \App\Helpers\SettingsHelper::get('director_name', ''),
+
+            // Décision et signatures
+            'bulletin_show_council_decision' => \App\Helpers\SettingsHelper::get('bulletin_show_council_decision', '1'),
+            'bulletin_show_class_council_decision' => \App\Helpers\SettingsHelper::get('bulletin_show_class_council_decision', '1'),
+            'bulletin_show_signature' => \App\Helpers\SettingsHelper::get('bulletin_show_signature', '1'),
+            'bulletin_show_signatures' => \App\Helpers\SettingsHelper::get('bulletin_show_signatures', '1'),
+            'bulletin_show_director_signature' => \App\Helpers\SettingsHelper::get('bulletin_show_director_signature', '1'),
         ];
     }
 

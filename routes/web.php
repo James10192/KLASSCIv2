@@ -1724,8 +1724,6 @@ Route::get('/esbtp-special/bulletins-pdf', [ESBTPBulletinController::class, 'gen
 // Route pour prévisualiser le bulletin avant génération PDF
 Route::get('/esbtp/bulletins/preview', [ESBTPBulletinController::class, 'previewBulletin'])->name('esbtp.bulletins.preview');
 
-// Route pour générer PDF directement (utilisée par le bouton download de la preview)
-Route::get('/esbtp/bulletins/generer-pdf', [ESBTPBulletinController::class, 'genererPDFParParams'])->name('esbtp.bulletins.generer-pdf');
 
 // Route pour générer tous les bulletins d'une classe
 Route::post('/esbtp/bulletins/generer-classe', [ESBTPBulletinController::class, 'genererClasseBulletins'])->name('esbtp.bulletins.generer-classe');
