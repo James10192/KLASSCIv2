@@ -292,7 +292,7 @@ class BulletinService
         ];
     }
 
-    private function getSemesterWeights(): array
+    public function getSemesterWeights(): array
     {
         $semester1 = floatval(SettingsHelper::get('bulletin_semester1_weight', '50'));
         $semester2 = floatval(SettingsHelper::get('bulletin_semester2_weight', '50'));
@@ -351,7 +351,7 @@ class BulletinService
         return floatval($bulletin->moyenne_generale + ($bulletin->note_assiduite ?? 0));
     }
 
-    private function calculateAnnualAverage(?float $semester1, ?float $semester2, array $weights): ?float
+    public function calculateAnnualAverage(?float $semester1, ?float $semester2, array $weights): ?float
     {
         if ($semester1 === null || $semester2 === null) {
             return null;
@@ -522,7 +522,7 @@ class BulletinService
     /**
      * Calcule la moyenne pondérée d'une collection de résultats
      */
-    private function calculerMoyennePonderee($resultats)
+    public function calculerMoyennePonderee($resultats)
     {
         if ($resultats->isEmpty()) {
             return 0;
@@ -542,7 +542,7 @@ class BulletinService
     /**
      * Calcule la note d'assiduité
      */
-    private function calculerNoteAssiduite($absencesJustifiees, $absencesNonJustifiees)
+    public function calculerNoteAssiduite($absencesJustifiees, $absencesNonJustifiees)
     {
         // Logique exacte du contrôleur : bonus/malus selon les absences non justifiées
         switch (true) {

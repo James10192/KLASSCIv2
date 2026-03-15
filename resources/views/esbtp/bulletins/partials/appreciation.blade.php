@@ -1,10 +1,12 @@
 @if($moyenne >= 16)
-    Très Bien
+    Excellent
 @elseif($moyenne >= 14)
-    Bien
+    Très Bien
 @elseif($moyenne >= 12)
-    Assez Bien
+    Bien
 @elseif($moyenne >= 10)
+    Assez Bien
+@elseif($moyenne >= 8)
     Passable
 @else
     Insuffisant

@@ -897,7 +897,7 @@ class ESBTPBulletinController extends Controller
                 'bulletin_show_print_button' => \App\Helpers\SettingsHelper::get('bulletin_show_print_button', '1'),
             ];*/
 
-            $semesterWeights = $this->getSemesterWeights();
+            $semesterWeights = $this->bulletinService->getSemesterWeights();
             $periodeCourante = $bulletin->periode;
             $moyenneAvecAssiduite = $moyenneGenerale + ($noteAssiduite ?? 0);
             $moyenneSemestre1 = $this->getBulletinAverageForPeriode(
@@ -916,7 +916,7 @@ class ESBTPBulletinController extends Controller
                 $periodeCourante,
                 $moyenneAvecAssiduite
             );
-            $moyenneAnnuelle = $this->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+            $moyenneAnnuelle = $this->bulletinService->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
 
             $data = [
                 'bulletin' => $bulletin,
@@ -1648,8 +1648,8 @@ class ESBTPBulletinController extends Controller
 
                 $notes = $notesQuery->get();
 
-                // Calculate stats for these students
-                $this->calculateStudentStatsFixed($etudiants, $notes, $moyennes, $rangs);
+                // Calculate stats for these students (pass classe/annee for ESBTPResultat override support)
+                $this->calculateStudentStatsFixed($etudiants, $notes, $moyennes, $rangs, $classe_id, $annee_universitaire_id);
 
                 // Get bulletins
                 $this->getStudentBulletins($etudiants, $classe_id, $annee_universitaire_id, $semestre, $bulletins);
@@ -1747,7 +1747,7 @@ class ESBTPBulletinController extends Controller
 
                 $notes = $notesQuery->get();
 
-                $this->calculateStudentStatsFixed($students, $notes, $moyennes, $rangs);
+                $this->calculateStudentStatsFixed($students, $notes, $moyennes, $rangs, $classe_id, $annee_universitaire_id);
             }
         }
 
@@ -1892,9 +1892,10 @@ class ESBTPBulletinController extends Controller
     }
 
     /**
-     * Helper method to calculate student statistics using the same logic as resultatEtudiant
+     * Helper method to calculate student statistics using the same logic as resultatEtudiant.
+     * Integrates ESBTPResultat (manual grade overrides) when classeId/anneeUniversitaireId are provided.
      */
-    private function calculateStudentStatsFixed($etudiants, $notes, &$moyennes, &$rangs)
+    private function calculateStudentStatsFixed($etudiants, $notes, &$moyennes, &$rangs, $classeId = null, $anneeUniversitaireId = null)
     {
         \Log::info('Calcul des statistiques étudiants - Étudiants: '.count($etudiants).', Notes: '.count($notes));
         \Log::info('Début du calcul des moyennes (logique corrigée) pour '.count($etudiants).' étudiants avec '.count($notes).' notes');
@@ -1953,6 +1954,31 @@ class ESBTPBulletinController extends Controller
 
                 $notesByStudentMatiere[$etudiantId][$matiere_id]['total_points'] += $ponderation;
                 $notesByStudentMatiere[$etudiantId][$matiere_id]['total_coefficients'] += $coefficient;
+            }
+        }
+
+        // Integrate ESBTPResultat (manual grade overrides) — same logic as calculateStudentAverageForPeriode
+        if ($classeId && $anneeUniversitaireId) {
+            $etudiantIds = $etudiants->pluck('id')->toArray();
+            $resultatsManuel = \App\Models\ESBTPResultat::whereIn('etudiant_id', $etudiantIds)
+                ->where('classe_id', $classeId)
+                ->where('annee_universitaire_id', $anneeUniversitaireId)
+                ->get()
+                ->groupBy('etudiant_id');
+
+            foreach ($resultatsManuel as $etudiantId => $resultats) {
+                if (! isset($notesByStudentMatiere[$etudiantId])) {
+                    $notesByStudentMatiere[$etudiantId] = [];
+                }
+                foreach ($resultats as $resultat) {
+                    $matiereId = $resultat->matiere_id;
+                    if (! isset($notesByStudentMatiere[$etudiantId][$matiereId])) {
+                        $notesByStudentMatiere[$etudiantId][$matiereId] = ['total_points' => 0, 'total_coefficients' => 0, 'moyenne' => 0];
+                    }
+                    // Manual moyenne overrides the note-computed value
+                    $notesByStudentMatiere[$etudiantId][$matiereId]['total_points'] = $resultat->moyenne;
+                    $notesByStudentMatiere[$etudiantId][$matiereId]['total_coefficients'] = 1;
+                }
             }
         }
 
@@ -2882,10 +2908,10 @@ class ESBTPBulletinController extends Controller
             'non_numeric_notes' => $nonNumericNotes,
         ]);
 
-        $semesterWeights = $this->getSemesterWeights();
+        $semesterWeights = $this->bulletinService->getSemesterWeights();
         $moyenneSemestre1 = $this->calculateStudentAverageForPeriode($id, $classe_id, $annee_universitaire_id, 'semestre1');
         $moyenneSemestre2 = $this->calculateStudentAverageForPeriode($id, $classe_id, $annee_universitaire_id, 'semestre2');
-        $moyenneAnnuelle = $this->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+        $moyenneAnnuelle = $this->bulletinService->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
 
         return view('esbtp.resultats.etudiant', compact(
             'etudiant',
@@ -3618,7 +3644,7 @@ class ESBTPBulletinController extends Controller
                 }
 
                 // Calculer la note d'assiduité selon le barème
-                $noteAssiduite = $this->calculerNoteAssiduite($justifiees, $nonJustifiees);
+                $noteAssiduite = $this->bulletinService->calculerNoteAssiduite($justifiees, $nonJustifiees);
 
                 // Create or update bulletin avec les absences
                 $bulletin = ESBTPBulletin::updateOrCreate(
@@ -4331,9 +4357,9 @@ class ESBTPBulletinController extends Controller
             });
 
             // Calculer les moyennes par section
-            $moyenneGenerale = $this->calculerMoyennePonderee($resultatsGeneraux);
-            $moyenneTechnique = $this->calculerMoyennePonderee($resultatsTechniques);
-            $moyenneGlobale = $this->calculerMoyennePonderee(collect($resultatsParMatiere));
+            $moyenneGenerale = $this->bulletinService->calculerMoyennePonderee($resultatsGeneraux);
+            $moyenneTechnique = $this->bulletinService->calculerMoyennePonderee($resultatsTechniques);
+            $moyenneGlobale = $this->bulletinService->calculerMoyennePonderee(collect($resultatsParMatiere));
 
             // Calcul des absences et note d'assiduité en utilisant le service
             $absences = $this->absenceService->calculerDetailAbsences(
@@ -4342,7 +4368,7 @@ class ESBTPBulletinController extends Controller
                 $anneeUniversitaire->date_debut,
                 $anneeUniversitaire->date_fin
             );
-            $noteAssiduite = $this->calculerNoteAssiduite($absences['justifiees'], $absences['non_justifiees']);
+            $noteAssiduite = $this->bulletinService->calculerNoteAssiduite($absences['justifiees'], $absences['non_justifiees']);
             $moyenneAvecAssiduite = $moyenneGlobale + $noteAssiduite; // La note d'assiduité est un bonus/malus, pas une moyenne
 
             // Rang de l'étudiant (simplifié)
@@ -4516,39 +4542,22 @@ class ESBTPBulletinController extends Controller
     private function getAppreciation($moyenne)
     {
         if ($moyenne >= 16) {
-            return 'Très Bien';
+            return 'Excellent';
         }
         if ($moyenne >= 14) {
-            return 'Bien';
+            return 'Très Bien';
         }
         if ($moyenne >= 12) {
-            return 'Assez Bien';
+            return 'Bien';
         }
         if ($moyenne >= 10) {
+            return 'Assez Bien';
+        }
+        if ($moyenne >= 8) {
             return 'Passable';
         }
 
         return 'Insuffisant';
-    }
-
-    /**
-     * Calcule la moyenne pondérée d'une collection de résultats
-     */
-    private function calculerMoyennePonderee($resultats)
-    {
-        if ($resultats->isEmpty()) {
-            return 0;
-        }
-
-        $totalPoints = 0;
-        $totalCoeffs = 0;
-
-        foreach ($resultats as $resultat) {
-            $totalPoints += $resultat->moyenne * $resultat->coefficient;
-            $totalCoeffs += $resultat->coefficient;
-        }
-
-        return $totalCoeffs > 0 ? $totalPoints / $totalCoeffs : 0;
     }
 
 
@@ -4816,9 +4825,9 @@ class ESBTPBulletinController extends Controller
             }
 
             // Calculer les moyennes
-            $moyenneGeneraux = $resultatsGeneraux->isEmpty() ? 0 : $this->calculerMoyennePonderee($resultatsGeneraux);
-            $moyenneTechnique = $resultatsTechniques->isEmpty() ? 0 : $this->calculerMoyennePonderee($resultatsTechniques);
-            $moyenneGenerale = $resultats->isEmpty() ? 0 : $this->calculerMoyennePonderee($resultats);
+            $moyenneGeneraux = $resultatsGeneraux->isEmpty() ? 0 : $this->bulletinService->calculerMoyennePonderee($resultatsGeneraux);
+            $moyenneTechnique = $resultatsTechniques->isEmpty() ? 0 : $this->bulletinService->calculerMoyennePonderee($resultatsTechniques);
+            $moyenneGenerale = $resultats->isEmpty() ? 0 : $this->bulletinService->calculerMoyennePonderee($resultats);
 
             // Calcul des rangs pour les résultats généraux
             if (! $resultatsGeneraux->isEmpty()) {
@@ -5103,7 +5112,7 @@ class ESBTPBulletinController extends Controller
             ]);
 
             // Note d'assiduité (peut être ajustée selon vos règles)
-            $noteAssiduite = $this->calculerNoteAssiduite($absencesJustifiees, $absencesNonJustifiees);
+            $noteAssiduite = $this->bulletinService->calculerNoteAssiduite($absencesJustifiees, $absencesNonJustifiees);
 
             // Récupérer tous les paramètres de configuration pour le template pdf-configurable
             $settings = $this->getPDFConfig(); // Utiliser la méthode centralisée
@@ -5183,7 +5192,7 @@ class ESBTPBulletinController extends Controller
             ];*/
 
             // Préparation des données pour la vue
-            $semesterWeights = $this->getSemesterWeights();
+            $semesterWeights = $this->bulletinService->getSemesterWeights();
             $moyenneSemestre1 = $this->getBulletinAverageForPeriode(
                 $etudiant->id,
                 $classe->id,
@@ -5200,7 +5209,7 @@ class ESBTPBulletinController extends Controller
                 $periode,
                 $moyenneGenerale + $noteAssiduite
             );
-            $moyenneAnnuelle = $this->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+            $moyenneAnnuelle = $this->bulletinService->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
 
             $data = [
                 'bulletin' => $bulletin,
@@ -5311,50 +5320,6 @@ class ESBTPBulletinController extends Controller
         }
     }
 
-    /**
-     * Calcule la note d'assiduité en fonction des absences
-     *
-     * @param  int  $absencesJustifiees
-     * @param  int  $absencesNonJustifiees
-     * @return float
-     */
-    private function calculerNoteAssiduite($absencesJustifiees, $absencesNonJustifiees)
-    {
-
-        // Chaque heure d'absence non justifiée pénalise plus que les justifiées
-        // $totalPenalite = ($absencesJustifiees * 0.1) + ($absencesNonJustifiees * 0.5);
-        switch (true) {
-            case $absencesNonJustifiees == 0:
-                return 0.13;
-                break;
-            case $absencesNonJustifiees == 1:
-                return 0;
-                break;
-            case $absencesNonJustifiees == 2:
-                return -0.13;
-                break;
-            case $absencesNonJustifiees == 3:
-                return -0.39;
-                break;
-            case $absencesNonJustifiees == 4:
-                return -0.39;
-                break;
-            case $absencesNonJustifiees >= 5: // 5 ou plus
-                return -0.5;
-        }
-
-        // La note de base est 20, on soustrait les pénalités
-        // $note = 20 + $totalPenalite;
-
-        // // La note ne peut pas être négative
-        // if ($note < 0) $note = 0;
-
-        // //Une note ne peut pas être supérieur à 20
-        // if ($note > 20 ) $note = 20;
-
-        // return number_format($note,2);
-
-    }
 
     /**
      * Calcule la moyenne générale d'un étudiant pour une classe, période et année universitaire données
@@ -5391,7 +5356,7 @@ class ESBTPBulletinController extends Controller
         }
 
         // Calculer la moyenne pondérée en utilisant la méthode existante
-        return $this->calculerMoyennePonderee($resultats);
+        return $this->bulletinService->calculerMoyennePonderee($resultats);
     }
 
     /**
@@ -6937,7 +6902,7 @@ class ESBTPBulletinController extends Controller
         $bulletin->total_absences = $donneeAbsences['total'];
 
         // Calculer et définir la note d'assiduité
-        $bulletin->note_assiduite = $this->calculerNoteAssiduite(
+        $bulletin->note_assiduite = $this->bulletinService->calculerNoteAssiduite(
             $donneeAbsences['justifiees'],
             $donneeAbsences['non_justifiees']
         );
@@ -7125,7 +7090,7 @@ class ESBTPBulletinController extends Controller
             return 0;
         }
 
-        return $this->calculerMoyennePonderee(collect($resultatsParMatiere));
+        return $this->bulletinService->calculerMoyennePonderee(collect($resultatsParMatiere));
     }
 
     /**
@@ -7336,7 +7301,7 @@ class ESBTPBulletinController extends Controller
         }
 
         // Calculer la note d'assiduité actuelle
-        $noteAssiduite = $this->calculerNoteAssiduite(
+        $noteAssiduite = $this->bulletinService->calculerNoteAssiduite(
             $absencesJustifieesDB ?? 0,
             $absencesNonJustifieesDB ?? 0
         );
@@ -7411,7 +7376,7 @@ class ESBTPBulletinController extends Controller
             $bulletin->total_absences = $absencesJustifiees + $absencesNonJustifiees;
 
             // Calculer et mettre à jour la note d'assiduité
-            $bulletin->note_assiduite = $this->calculerNoteAssiduite(
+            $bulletin->note_assiduite = $this->bulletinService->calculerNoteAssiduite(
                 $absencesJustifiees,
                 $absencesNonJustifiees
             );
@@ -7576,43 +7541,6 @@ class ESBTPBulletinController extends Controller
         }
 
         return $result;
-    }
-
-    private function getSemesterWeights(): array
-    {
-        $semester1 = floatval(\App\Helpers\SettingsHelper::get('bulletin_semester1_weight', '50'));
-        $semester2 = floatval(\App\Helpers\SettingsHelper::get('bulletin_semester2_weight', '50'));
-
-        if ($semester1 < 0) {
-            $semester1 = 0;
-        }
-        if ($semester2 < 0) {
-            $semester2 = 0;
-        }
-
-        if (($semester1 + $semester2) <= 0) {
-            $semester1 = 50;
-            $semester2 = 50;
-        }
-
-        return [
-            'semester1' => $semester1,
-            'semester2' => $semester2,
-        ];
-    }
-
-    private function calculateAnnualAverage(?float $semester1, ?float $semester2, array $weights): ?float
-    {
-        if ($semester1 === null || $semester2 === null) {
-            return null;
-        }
-
-        $total = $weights['semester1'] + $weights['semester2'];
-        if ($total <= 0) {
-            return null;
-        }
-
-        return (($semester1 * $weights['semester1']) + ($semester2 * $weights['semester2'])) / $total;
     }
 
     private function calculateStudentAverageForPeriode(int $etudiantId, ?int $classeId, ?int $anneeUniversitaireId, string $periode): ?float
