@@ -20,6 +20,11 @@ use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use Carbon\Carbon;
+use App\Http\Requests\Bulletin\BulkUpdateMoyennesRequest;
+use App\Http\Requests\Bulletin\GenerateClasseBulletinsRequest;
+use App\Http\Requests\Bulletin\StoreBulletinRequest;
+use App\Http\Requests\Bulletin\UpdateBulletinRequest;
+use App\Http\Requests\Bulletin\UpdateMoyennesRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -180,21 +185,8 @@ class ESBTPBulletinController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store(StoreBulletinRequest $request)
     {
-        $request->validate([
-            'etudiant_id' => 'required|exists:esbtp_etudiants,id',
-            'classe_id' => 'required|exists:esbtp_classes,id',
-            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-            'periode' => 'required|in:semestre1,semestre2,annuel',
-            'appreciation_generale' => 'nullable|string',
-            'decision_conseil' => 'nullable|string',
-        ], [
-            'etudiant_id.required' => 'L\'étudiant est obligatoire',
-            'classe_id.required' => 'La classe est obligatoire',
-            'annee_universitaire_id.required' => 'L\'année universitaire est obligatoire',
-            'periode.required' => 'La période est obligatoire',
-        ]);
 
         DB::beginTransaction();
         try {
@@ -399,24 +391,15 @@ class ESBTPBulletinController extends Controller
      */
     private function calculerRang($bulletin)
     {
-        // Récupérer tous les bulletins de la même classe pour la même période
-        $bulletins = ESBTPBulletin::where('classe_id', $bulletin->classe_id)
+        $base = ESBTPBulletin::where('classe_id', $bulletin->classe_id)
             ->where('annee_universitaire_id', $bulletin->annee_universitaire_id)
             ->where('periode', $bulletin->periode)
-            ->whereNotNull('moyenne_generale')
-            ->orderByDesc('moyenne_generale')
-            ->get();
+            ->whereNotNull('moyenne_generale');
 
-        // Mettre à jour l'effectif de la classe
-        $bulletin->effectif_classe = $bulletins->count();
-
-        // Trouver le rang de l'étudiant
-        foreach ($bulletins as $index => $b) {
-            if ($b->id === $bulletin->id) {
-                $bulletin->rang = $index + 1;
-                break;
-            }
-        }
+        $bulletin->effectif_classe = $base->count();
+        $bulletin->rang = (clone $base)
+            ->where('moyenne_generale', '>', $bulletin->moyenne_generale ?? 0)
+            ->count() + 1;
 
         $bulletin->save();
     }
@@ -450,17 +433,8 @@ class ESBTPBulletinController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, ESBTPBulletin $bulletin)
+    public function update(UpdateBulletinRequest $request, ESBTPBulletin $bulletin)
     {
-        $request->validate([
-            'resultats' => 'required|array',
-            'resultats.*.matiere_id' => 'required|exists:esbtp_matieres,id',
-            'resultats.*.moyenne' => 'nullable|numeric|min:0|max:20',
-            'resultats.*.coefficient' => 'required|numeric|min:0',
-            'resultats.*.commentaire' => 'nullable|string',
-            'appreciation_generale' => 'nullable|string',
-            'decision_conseil' => 'nullable|string',
-        ]);
 
         DB::beginTransaction();
         try {
@@ -943,13 +917,8 @@ class ESBTPBulletinController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function genererClasseBulletins(Request $request)
+    public function genererClasseBulletins(GenerateClasseBulletinsRequest $request)
     {
-        $request->validate([
-            'classe_id' => 'required|exists:esbtp_classes,id',
-            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-            'periode' => 'required|in:semestre1,semestre2,annuel',
-        ]);
 
         try {
             Log::info('Début de la génération des bulletins', $request->all());
@@ -2758,8 +2727,8 @@ class ESBTPBulletinController extends Controller
         ]);
 
         $semesterWeights = $this->bulletinService->getSemesterWeights();
-        $moyenneSemestre1 = $this->calculateStudentAverageForPeriode($id, $classe_id, $annee_universitaire_id, 'semestre1');
-        $moyenneSemestre2 = $this->calculateStudentAverageForPeriode($id, $classe_id, $annee_universitaire_id, 'semestre2');
+        $moyenneSemestre1 = $this->bulletinService->calculateStudentAverageForPeriode($id, $classe_id, $annee_universitaire_id, 'semestre1');
+        $moyenneSemestre2 = $this->bulletinService->calculateStudentAverageForPeriode($id, $classe_id, $annee_universitaire_id, 'semestre2');
         $moyenneAnnuelle = $this->bulletinService->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
 
         return view('esbtp.resultats.etudiant', compact(
@@ -2909,7 +2878,7 @@ class ESBTPBulletinController extends Controller
         // NOUVELLE LOGIQUE: Calculer les moyennes automatiques depuis les évaluations pour chaque étudiant
         $moyennesCalculees = [];
         foreach ($students as $student) {
-            $moyennesCalculees[$student->id] = $this->calculateMoyennesForStudent(
+            $moyennesCalculees[$student->id] = $this->bulletinService->calculateMoyennesForStudent(
                 $student->id,
                 $classe_id,
                 $periode,
@@ -3108,7 +3077,7 @@ class ESBTPBulletinController extends Controller
         // Calculer les moyennes pour chaque étudiant
         $moyennesCalculees = [];
         foreach ($request->etudiant_ids as $etudiantId) {
-            $moyennesCalculees[$etudiantId] = $this->calculateMoyennesForStudent(
+            $moyennesCalculees[$etudiantId] = $this->bulletinService->calculateMoyennesForStudent(
                 $etudiantId,
                 $request->classe_id,
                 $periode,
@@ -3221,18 +3190,8 @@ class ESBTPBulletinController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function bulkUpdateMoyennes(Request $request)
+    public function bulkUpdateMoyennes(BulkUpdateMoyennesRequest $request)
     {
-        // Validation stricte : le semestre est OBLIGATOIRE pour éviter les erreurs
-        $this->validate($request, [
-            'classe_id' => 'required|exists:esbtp_classes,id',
-            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-            'semestre' => 'required|in:1,2', // OBLIGATOIRE
-            'moyennes' => 'required|array',
-            'moyennes.*.etudiant_id' => 'required|exists:esbtp_etudiants,id',
-            'moyennes.*.matiere_id' => 'required|exists:esbtp_matieres,id',
-            'moyennes.*.moyenne' => 'nullable|numeric|min:0|max:20',
-        ]);
 
         \DB::beginTransaction();
         try {
@@ -4625,87 +4584,11 @@ class ESBTPBulletinController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function updateMoyennes(Request $request)
+    public function updateMoyennes(UpdateMoyennesRequest $request)
     {
-        // Log détaillé pour diagnostiquer l'erreur de validation
-        \Log::info('🔍 BULLETIN updateMoyennes - Données reçues', [
-            'request_all' => $request->all(),
-            'periode_value' => $request->periode,
-            'periode_type' => gettype($request->periode),
-            'url' => $request->fullUrl(),
-            'method' => $request->method(),
-            'user_id' => auth()->id(),
-        ]);
-
         // Vérifier les permissions et les rôles
         if (! Auth::check() || (! auth()->user()->hasRole('superAdmin') && ! auth()->user()->hasRole('secretaire'))) {
             return redirect()->back()->with('error', 'Vous n\'avez pas les permissions nécessaires pour modifier les moyennes.');
-        }
-
-        // Validation basique des paramètres requis
-        try {
-            $request->validate([
-                'etudiant_id' => 'required|exists:esbtp_etudiants,id',
-                'classe_id' => 'required|exists:esbtp_classes,id',
-                'periode' => 'required|in:semestre1,semestre2,annuel,1,2',
-                'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-            ]);
-            \Log::info('✅ BULLETIN updateMoyennes - Validation basique réussie');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            \Log::error('❌ BULLETIN updateMoyennes - Validation basique échouée:', [
-                'errors' => $e->errors(),
-                'periode_value' => $request->periode,
-                'periode_type' => gettype($request->periode),
-                'validation_rules' => 'semestre1,semestre2,annuel,1,2',
-            ]);
-            throw $e;
-        }
-
-        // Validation conditionnelle: au moins l'un des deux doit être présent
-        if (! $request->has('resultats') && ! $request->has('nouvelles_matieres')) {
-            return redirect()->back()->with('error', 'Aucune donnée à traiter. Veuillez modifier au moins une moyenne ou ajouter une nouvelle matière.');
-        }
-
-        // Validation des résultats existants si présents
-        if ($request->has('resultats') && is_array($request->resultats)) {
-            try {
-                $request->validate([
-                    'resultats' => 'array',
-                    'resultats.*.matiere_id' => 'required|exists:esbtp_matieres,id',
-                    'resultats.*.moyenne' => 'required|numeric|min:0|max:20',
-                    'resultats.*.coefficient' => 'nullable|numeric|min:0',
-                    'resultats.*.appreciation' => 'nullable|string|max:255',
-                ]);
-                \Log::info('✅ BULLETIN updateMoyennes - Validation résultats réussie');
-            } catch (\Illuminate\Validation\ValidationException $e) {
-                \Log::error('❌ BULLETIN updateMoyennes - Validation résultats échouée:', [
-                    'errors' => $e->errors(),
-                    'resultats_data' => $request->resultats,
-                ]);
-                throw $e;
-            }
-        }
-
-        // Validation des nouvelles matières si présentes
-        if ($request->has('nouvelles_matieres') && is_array($request->nouvelles_matieres)) {
-            try {
-                $request->validate([
-                    'nouvelles_matieres' => 'array',
-                    'nouvelles_matieres.*.matiere_type' => 'required|string|in:existante,nouvelle',
-                    'nouvelles_matieres.*.matiere_existante_id' => 'required_if:nouvelles_matieres.*.matiere_type,existante|nullable|exists:esbtp_matieres,id',
-                    'nouvelles_matieres.*.nom_nouvelle' => 'required_if:nouvelles_matieres.*.matiere_type,nouvelle|nullable|string|max:255',
-                    'nouvelles_matieres.*.moyenne' => 'required|numeric|min:0|max:20',
-                    'nouvelles_matieres.*.coefficient' => 'required_if:nouvelles_matieres.*.matiere_type,nouvelle|numeric|min:0',
-                    'nouvelles_matieres.*.appreciation' => 'nullable|string|max:255',
-                ]);
-                \Log::info('✅ BULLETIN updateMoyennes - Validation nouvelles matières réussie');
-            } catch (\Illuminate\Validation\ValidationException $e) {
-                \Log::error('❌ BULLETIN updateMoyennes - Validation nouvelles matières échouée:', [
-                    'errors' => $e->errors(),
-                    'nouvelles_matieres_data' => $request->nouvelles_matieres,
-                ]);
-                throw $e;
-            }
         }
 
         $etudiantId = $request->etudiant_id;
@@ -6386,191 +6269,6 @@ class ESBTPBulletinController extends Controller
      * @param  \Illuminate\Support\Collection  $matieres
      * @return array
      */
-    private function calculateMoyennesForStudent($etudiantId, $classeId, $periode, $anneeUniversitaireId, $matieres)
-    {
-        // Normaliser la période
-        $periodePourBDD = $periode;
-        if ($periode == '1') {
-            $periodePourBDD = 'semestre1';
-        } elseif ($periode == '2') {
-            $periodePourBDD = 'semestre2';
-        }
-
-        // Récupérer toutes les notes de l'étudiant
-        $notesQuery = \App\Models\ESBTPNote::where('etudiant_id', $etudiantId)
-            ->with(['evaluation.matiere', 'matiere']);
-
-        // Filtrer par période (semestre)
-        if ($periodePourBDD) {
-            $notesQuery->where(function ($q) use ($periodePourBDD) {
-                $q->where('semestre', $periodePourBDD)
-                    ->orWhereHas('evaluation', function ($query) use ($periodePourBDD) {
-                        $query->where('periode', $periodePourBDD);
-                    });
-            });
-        }
-
-        // Filtrer par classe
-        $notesQuery->byClasse($classeId);
-
-        // Filtrer par année universitaire (avec année précédente)
-        $notesQuery->byAnneeUniversitaireWithPrevious($anneeUniversitaireId);
-
-        $notes = $notesQuery->get();
-
-        // Organiser les notes par matière
-        $notesByMatiere = [];
-        foreach ($notes as $note) {
-            if (! $note->evaluation || ! $note->evaluation->matiere) {
-                continue;
-            }
-
-            $matiereId = $note->evaluation->matiere->id;
-            if (! isset($notesByMatiere[$matiereId])) {
-                $notesByMatiere[$matiereId] = [
-                    'notes' => [],
-                    'total_points' => 0,
-                    'total_coefficients' => 0,
-                    'moyenne' => 0,
-                ];
-            }
-
-            $notesByMatiere[$matiereId]['notes'][] = $note;
-        }
-
-        // Calculer la moyenne pour chaque matière
-        foreach ($notesByMatiere as $matiereId => &$matiereData) {
-            $totalPoints = 0;
-            $totalCoefficients = 0;
-
-            foreach ($matiereData['notes'] as $note) {
-                if ($note->evaluation && $note->evaluation->bareme > 0) {
-                    $noteValue = is_numeric($note->note) ? floatval($note->note) : (is_numeric($note->valeur) ? floatval($note->valeur) : 0);
-                    $bareme = floatval($note->evaluation->bareme);
-                    $coefficient = $note->evaluation->coefficient ? floatval($note->evaluation->coefficient) : 1;
-
-                    $normalized = ($noteValue / $bareme) * 20;
-                    $totalPoints += $normalized * $coefficient;
-                    $totalCoefficients += $coefficient;
-                }
-            }
-
-            $matiereData['total_points'] = $totalPoints;
-            $matiereData['total_coefficients'] = $totalCoefficients;
-            $matiereData['moyenne'] = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : null;
-        }
-
-        // Retourner les moyennes calculées indexées par matiere_id
-        $result = [];
-        foreach ($matieres as $matiere) {
-            $result[$matiere->id] = [
-                'moyenne' => isset($notesByMatiere[$matiere->id]) ? $notesByMatiere[$matiere->id]['moyenne'] : null,
-                'source' => isset($notesByMatiere[$matiere->id]) && $notesByMatiere[$matiere->id]['moyenne'] !== null ? 'calculee' : 'manuelle',
-            ];
-        }
-
-        return $result;
-    }
-
-    private function calculateStudentAverageForPeriode(int $etudiantId, ?int $classeId, ?int $anneeUniversitaireId, string $periode): ?float
-    {
-        $semestre = $periode === 'semestre2' ? '2' : '1';
-
-        $notesQuery = \App\Models\ESBTPNote::where('etudiant_id', $etudiantId)
-            ->with(['evaluation', 'evaluation.matiere']);
-
-        $notesQuery->where(function ($q) use ($semestre, $periode) {
-            $q->where('semestre', $semestre)
-                ->orWhereHas('evaluation', function ($query) use ($semestre, $periode) {
-                    $query->where('periode', $periode)
-                        ->orWhere('periode', $semestre);
-                });
-        });
-
-        $notes = $notesQuery->get();
-
-        $notesByMatiere = [];
-
-        foreach ($notes as $note) {
-            if (! $note->evaluation || ! $note->evaluation->matiere) {
-                continue;
-            }
-
-            $matiereId = $note->matiere_id ?: $note->evaluation->matiere->id;
-            if (! $matiereId) {
-                continue;
-            }
-
-            if (! isset($notesByMatiere[$matiereId])) {
-                $notesByMatiere[$matiereId] = [
-                    'total_points' => 0,
-                    'total_coefficients' => 0,
-                    'moyenne' => 0,
-                ];
-            }
-
-            if ($note->evaluation->bareme > 0) {
-                $noteValue = is_numeric($note->note) ? floatval($note->note) : (is_numeric($note->valeur) ? floatval($note->valeur) : 0);
-                $bareme = $note->evaluation->bareme > 0 ? floatval($note->evaluation->bareme) : 20;
-                $normalized = ($noteValue / $bareme) * 20;
-                $coefficient = $note->evaluation->coefficient ? floatval($note->evaluation->coefficient) : 1;
-
-                $notesByMatiere[$matiereId]['total_points'] += $normalized * $coefficient;
-                $notesByMatiere[$matiereId]['total_coefficients'] += $coefficient;
-            }
-        }
-
-        foreach ($notesByMatiere as $matiereId => &$matiereData) {
-            if ($matiereData['total_coefficients'] > 0) {
-                $matiereData['moyenne'] = $matiereData['total_points'] / $matiereData['total_coefficients'];
-            }
-        }
-
-        $resultats = \App\Models\ESBTPResultat::where('etudiant_id', $etudiantId)
-            ->when($classeId, function ($query) use ($classeId) {
-                return $query->where('classe_id', $classeId);
-            })
-            ->when($anneeUniversitaireId, function ($query) use ($anneeUniversitaireId) {
-                return $query->where('annee_universitaire_id', $anneeUniversitaireId);
-            })
-            ->where('periode', $periode)
-            ->with('matiere')
-            ->get();
-
-        foreach ($resultats as $resultat) {
-            if (! $resultat->matiere) {
-                continue;
-            }
-
-            $matiereId = $resultat->matiere_id;
-            if (! isset($notesByMatiere[$matiereId])) {
-                $notesByMatiere[$matiereId] = [
-                    'total_points' => 0,
-                    'total_coefficients' => 0,
-                    'moyenne' => 0,
-                ];
-            }
-
-            $notesByMatiere[$matiereId]['moyenne'] = $resultat->moyenne;
-        }
-
-        $moyenneGenerale = 0;
-        $countMatieresFinales = 0;
-
-        foreach ($notesByMatiere as $matiereData) {
-            if ($matiereData['moyenne'] > 0) {
-                $moyenneGenerale += $matiereData['moyenne'];
-                $countMatieresFinales++;
-            }
-        }
-
-        if ($countMatieresFinales === 0) {
-            return null;
-        }
-
-        return $moyenneGenerale / $countMatieresFinales;
-    }
-
     private function getBulletinAverageForPeriode(
         int $etudiantId,
         int $classeId,

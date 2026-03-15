@@ -1040,4 +1040,192 @@ class BulletinService
             return null;
         }
     }
+
+    public function calculateMoyennesForStudent($etudiantId, $classeId, $periode, $anneeUniversitaireId, $matieres)
+    {
+        // Normaliser la période
+        $periodePourBDD = $periode;
+        if ($periode == '1') {
+            $periodePourBDD = 'semestre1';
+        } elseif ($periode == '2') {
+            $periodePourBDD = 'semestre2';
+        }
+
+        // Récupérer toutes les notes de l'étudiant
+        $notesQuery = ESBTPNote::where('etudiant_id', $etudiantId)
+            ->with(['evaluation.matiere', 'matiere']);
+
+        // Filtrer par période (semestre)
+        if ($periodePourBDD) {
+            $notesQuery->where(function ($q) use ($periodePourBDD) {
+                $q->where('semestre', $periodePourBDD)
+                    ->orWhereHas('evaluation', function ($query) use ($periodePourBDD) {
+                        $query->where('periode', $periodePourBDD);
+                    });
+            });
+        }
+
+        // Filtrer par classe
+        $notesQuery->byClasse($classeId);
+
+        // Filtrer par année universitaire (avec année précédente)
+        $notesQuery->byAnneeUniversitaireWithPrevious($anneeUniversitaireId);
+
+        $notes = $notesQuery->get();
+
+        // Organiser les notes par matière
+        $notesByMatiere = [];
+        foreach ($notes as $note) {
+            if (! $note->evaluation || ! $note->evaluation->matiere) {
+                continue;
+            }
+
+            $matiereId = $note->evaluation->matiere->id;
+            if (! isset($notesByMatiere[$matiereId])) {
+                $notesByMatiere[$matiereId] = [
+                    'notes' => [],
+                    'total_points' => 0,
+                    'total_coefficients' => 0,
+                    'moyenne' => 0,
+                ];
+            }
+
+            $notesByMatiere[$matiereId]['notes'][] = $note;
+        }
+
+        // Calculer la moyenne pour chaque matière
+        foreach ($notesByMatiere as $matiereId => &$matiereData) {
+            $totalPoints = 0;
+            $totalCoefficients = 0;
+
+            foreach ($matiereData['notes'] as $note) {
+                if ($note->evaluation && $note->evaluation->bareme > 0) {
+                    $noteValue = is_numeric($note->note) ? floatval($note->note) : (is_numeric($note->valeur) ? floatval($note->valeur) : 0);
+                    $bareme = floatval($note->evaluation->bareme);
+                    $coefficient = $note->evaluation->coefficient ? floatval($note->evaluation->coefficient) : 1;
+
+                    $normalized = ($noteValue / $bareme) * 20;
+                    $totalPoints += $normalized * $coefficient;
+                    $totalCoefficients += $coefficient;
+                }
+            }
+
+            $matiereData['total_points'] = $totalPoints;
+            $matiereData['total_coefficients'] = $totalCoefficients;
+            $matiereData['moyenne'] = $totalCoefficients > 0 ? $totalPoints / $totalCoefficients : null;
+        }
+
+        // Retourner les moyennes calculées indexées par matiere_id
+        $result = [];
+        foreach ($matieres as $matiere) {
+            $result[$matiere->id] = [
+                'moyenne' => isset($notesByMatiere[$matiere->id]) ? $notesByMatiere[$matiere->id]['moyenne'] : null,
+                'source' => isset($notesByMatiere[$matiere->id]) && $notesByMatiere[$matiere->id]['moyenne'] !== null ? 'calculee' : 'manuelle',
+            ];
+        }
+
+        return $result;
+    }
+
+
+    public function calculateStudentAverageForPeriode(int $etudiantId, ?int $classeId, ?int $anneeUniversitaireId, string $periode): ?float
+    {
+        $semestre = $periode === 'semestre2' ? '2' : '1';
+
+        $notesQuery = ESBTPNote::where('etudiant_id', $etudiantId)
+            ->with(['evaluation', 'evaluation.matiere']);
+
+        $notesQuery->where(function ($q) use ($semestre, $periode) {
+            $q->where('semestre', $semestre)
+                ->orWhereHas('evaluation', function ($query) use ($semestre, $periode) {
+                    $query->where('periode', $periode)
+                        ->orWhere('periode', $semestre);
+                });
+        });
+
+        $notes = $notesQuery->get();
+
+        $notesByMatiere = [];
+
+        foreach ($notes as $note) {
+            if (! $note->evaluation || ! $note->evaluation->matiere) {
+                continue;
+            }
+
+            $matiereId = $note->matiere_id ?: $note->evaluation->matiere->id;
+            if (! $matiereId) {
+                continue;
+            }
+
+            if (! isset($notesByMatiere[$matiereId])) {
+                $notesByMatiere[$matiereId] = [
+                    'total_points' => 0,
+                    'total_coefficients' => 0,
+                    'moyenne' => 0,
+                ];
+            }
+
+            if ($note->evaluation->bareme > 0) {
+                $noteValue = is_numeric($note->note) ? floatval($note->note) : (is_numeric($note->valeur) ? floatval($note->valeur) : 0);
+                $bareme = $note->evaluation->bareme > 0 ? floatval($note->evaluation->bareme) : 20;
+                $normalized = ($noteValue / $bareme) * 20;
+                $coefficient = $note->evaluation->coefficient ? floatval($note->evaluation->coefficient) : 1;
+
+                $notesByMatiere[$matiereId]['total_points'] += $normalized * $coefficient;
+                $notesByMatiere[$matiereId]['total_coefficients'] += $coefficient;
+            }
+        }
+
+        foreach ($notesByMatiere as $matiereId => &$matiereData) {
+            if ($matiereData['total_coefficients'] > 0) {
+                $matiereData['moyenne'] = $matiereData['total_points'] / $matiereData['total_coefficients'];
+            }
+        }
+
+        $resultats = ESBTPResultat::where('etudiant_id', $etudiantId)
+            ->when($classeId, function ($query) use ($classeId) {
+                return $query->where('classe_id', $classeId);
+            })
+            ->when($anneeUniversitaireId, function ($query) use ($anneeUniversitaireId) {
+                return $query->where('annee_universitaire_id', $anneeUniversitaireId);
+            })
+            ->where('periode', $periode)
+            ->with('matiere')
+            ->get();
+
+        foreach ($resultats as $resultat) {
+            if (! $resultat->matiere) {
+                continue;
+            }
+
+            $matiereId = $resultat->matiere_id;
+            if (! isset($notesByMatiere[$matiereId])) {
+                $notesByMatiere[$matiereId] = [
+                    'total_points' => 0,
+                    'total_coefficients' => 0,
+                    'moyenne' => 0,
+                ];
+            }
+
+            $notesByMatiere[$matiereId]['moyenne'] = $resultat->moyenne;
+        }
+
+        $moyenneGenerale = 0;
+        $countMatieresFinales = 0;
+
+        foreach ($notesByMatiere as $matiereData) {
+            if ($matiereData['moyenne'] > 0) {
+                $moyenneGenerale += $matiereData['moyenne'];
+                $countMatieresFinales++;
+            }
+        }
+
+        if ($countMatieresFinales === 0) {
+            return null;
+        }
+
+        return $moyenneGenerale / $countMatieresFinales;
+    }
+
+
 }
