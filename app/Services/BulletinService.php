@@ -524,7 +524,7 @@ class BulletinService
         foreach ($resultats as $resultat) {
             if ($resultat->matiere) {
                 try {
-                    $coefficient = $this->getCoefficientForCombination($resultat->matiere_id, $classe, $anneeUniversitaireId);
+                    $coefficient = $this->getCoefficientForCombination($resultat->matiere_id, $classe->id, $anneeUniversitaireId);
                 } catch (\RuntimeException $e) {
                     $coefficient = 1;
                 }
