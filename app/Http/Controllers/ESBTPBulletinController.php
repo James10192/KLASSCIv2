@@ -196,12 +196,13 @@ class ESBTPBulletinController extends Controller
             (object) ['id' => 'annuel', 'nom' => 'Annuel', 'annee_scolaire' => date('Y').'-'.(date('Y') + 1)],
         ];
 
-        // Statistiques pour les widgets
+        // Statistiques pour les widgets (une seule requête)
+        $bulletinCounts = ESBTPBulletin::selectRaw('COUNT(*) as total, SUM(is_published = 1) as published, SUM(is_published = 0) as pending')->first();
         $stats = [
-            'total' => ESBTPBulletin::count(),
-            'published' => ESBTPBulletin::where('is_published', true)->count(),
-            'pending' => ESBTPBulletin::where('is_published', false)->count(),
-            'periodes' => count($periodes),
+            'total'     => (int) ($bulletinCounts->total ?? 0),
+            'published' => (int) ($bulletinCounts->published ?? 0),
+            'pending'   => (int) ($bulletinCounts->pending ?? 0),
+            'periodes'  => count($periodes),
         ];
 
         // Valeurs par défaut filtre
@@ -397,7 +398,7 @@ class ESBTPBulletinController extends Controller
                 }
 
                 // Calculer les absences pour la période du bulletin
-                $donneeAbsences = $this->calculerAbsencesPourBulletin(
+                $donneeAbsences = $this->absenceService->calculerDetailAbsences(
                     $request->etudiant_id,
                     $request->classe_id,
                     $dateDebut,
@@ -1095,38 +1096,6 @@ class ESBTPBulletinController extends Controller
 
     // ///////////////////
     /**
-     * Calcule le total des heures d'absence pour un bulletin.
-     *
-     * @param  \App\Models\ESBTPBulletin  $bulletin
-     * @return int
-     */
-    private function calculerTotalAbsences($bulletin)
-    {
-        \Log::info('Calcul du total des absences pour le bulletin #'.$bulletin->id);
-
-        try {
-            // Utiliser le service d'absences pour calculer les absences
-            $absences = $this->absenceService->calculerDetailAbsences(
-                $bulletin->etudiant_id,
-                $bulletin->classe_id,
-                $bulletin->anneeUniversitaire->date_debut,
-                $bulletin->anneeUniversitaire->date_fin
-            );
-
-            \Log::info('Total des absences calculé: '.$absences['total'].' heures');
-
-            return $absences['total'];
-        } catch (\Exception $e) {
-            \Log::error('Erreur lors du calcul du total des absences: '.$e->getMessage(), [
-                'bulletin_id' => $bulletin->id,
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return 0;
-        }
-    }
-
-    /**
      * Génère les bulletins pour une classe entière.
      *
      * @return \Illuminate\Http\Response
@@ -1693,26 +1662,13 @@ class ESBTPBulletinController extends Controller
             }
 
             // Determine which template to use
+            $classe = $classe_id ? ESBTPClasse::find($classe_id) : null;
+            $viewData = compact('etudiants', 'moyennes', 'rangs', 'bulletins', 'classe') + ['annee_id' => $annee_universitaire_id];
+
             if ((int) $page === 1) {
-                // Page 1: Full table structure with headers
-                $html = view('esbtp.resultats.partials.liste-etudiants', [
-                    'etudiants' => $etudiants,
-                    'moyennes' => $moyennes,
-                    'rangs' => $rangs,
-                    'bulletins' => $bulletins,
-                    'classe' => $classe_id ? ESBTPClasse::find($classe_id) : null,
-                    'annee_id' => $annee_universitaire_id,
-                ])->render();
+                $html = view('esbtp.resultats.partials.liste-etudiants', $viewData)->render();
             } else {
-                // Pages suivantes: Seulement les lignes TR
-                $html = view('esbtp.resultats.partials.lignes-etudiants', [
-                    'etudiants' => $etudiants,
-                    'moyennes' => $moyennes,
-                    'rangs' => $rangs,
-                    'bulletins' => $bulletins,
-                    'classe' => $classe_id ? ESBTPClasse::find($classe_id) : null,
-                    'annee_id' => $annee_universitaire_id,
-                ])->render();
+                $html = view('esbtp.resultats.partials.lignes-etudiants', $viewData)->render();
             }
 
             $hasMore = ($page * $perPage) < $total;
@@ -2051,153 +2007,6 @@ class ESBTPBulletinController extends Controller
         ]);
     }
 
-    /**
-     * Helper method to calculate student statistics (averages and ranks) - OLD METHOD
-     */
-    private function calculateStudentStats($etudiants, $notes, &$moyennes, &$rangs)
-    {
-        // Group notes by student and matière
-        $notesByStudentMatiere = [];
-        $nonNumericNotes = 0;
-        $totalNotesProcessed = 0;
-
-        \Log::info('Début du calcul des moyennes pour '.count($etudiants).' étudiants avec '.count($notes).' notes');
-
-        foreach ($notes as $note) {
-            if (! $note->evaluation || ! $note->evaluation->matiere) {
-                \Log::warning('Note ignorée: absence d\'évaluation ou de matière', [
-                    'note_id' => $note->id,
-                    'etudiant_id' => $note->etudiant_id,
-                ]);
-
-                continue; // Skip notes without evaluations or matières
-            }
-
-            $etudiantId = $note->etudiant_id;
-            $matiereId = $note->evaluation->matiere_id;
-            $totalNotesProcessed++;
-
-            if (! isset($notesByStudentMatiere[$etudiantId])) {
-                $notesByStudentMatiere[$etudiantId] = [];
-            }
-
-            if (! isset($notesByStudentMatiere[$etudiantId][$matiereId])) {
-                $notesByStudentMatiere[$etudiantId][$matiereId] = [
-                    'notes' => [],
-                    'sum' => 0,
-                    'coeffSum' => 0,
-                ];
-            }
-
-            // Add note to collection
-            $notesByStudentMatiere[$etudiantId][$matiereId]['notes'][] = $note;
-
-            // Calculate weighted note if evaluation has valid bareme
-            if ($note->evaluation && $note->evaluation->bareme > 0) {
-                // Utiliser note OU valeur (où que la note soit stockée)
-                $noteValue = is_numeric($note->note) ? $note->note : $note->valeur;
-
-                // Ajouter une gestion spéciale pour les notes "Absent" ou non numériques
-                if ($noteValue === 'Absent' || ! is_numeric($noteValue)) {
-                    // Comptabiliser une absence comme un zéro
-                    $normalized = 0;
-                    $nonNumericNotes++;
-                    \Log::info('Note non numérique détectée', [
-                        'etudiant_id' => $etudiantId,
-                        'matiere_id' => $matiereId,
-                        'note' => $note->note,
-                        'valeur' => $note->valeur,
-                        'noteValue' => $noteValue,
-                        'evaluation_id' => $note->evaluation->id,
-                    ]);
-                } else {
-                    $normalized = ($noteValue / $note->evaluation->bareme) * 20;
-                    \Log::debug('Note calculée', [
-                        'etudiant_id' => $etudiantId,
-                        'matiere_id' => $matiereId,
-                        'noteValue' => $noteValue,
-                        'bareme' => $note->evaluation->bareme,
-                        'normalized' => $normalized,
-                    ]);
-                }
-                $coefficient = $note->evaluation->coefficient ?? 1;
-                $notesByStudentMatiere[$etudiantId][$matiereId]['sum'] += $normalized * $coefficient;
-                $notesByStudentMatiere[$etudiantId][$matiereId]['coeffSum'] += $coefficient;
-            }
-        }
-
-        \Log::info('Notes traitées: '.$totalNotesProcessed.' sur '.count($notes).' notes totales');
-        \Log::info('Étudiants avec des notes: '.count($notesByStudentMatiere).' sur '.count($etudiants).' étudiants totaux');
-
-        // Calculate average for each student
-        foreach ($etudiants as $etudiant) {
-            if (! isset($notesByStudentMatiere[$etudiant->id])) {
-                \Log::warning('Aucune note trouvée pour l\'étudiant '.$etudiant->nom.' '.$etudiant->prenoms.' (ID: '.$etudiant->id.')');
-
-                continue; // Skip if student has no notes
-            }
-
-            $totalSum = 0;
-            $totalCoeff = 0;
-            $matiereCount = 0;
-
-            // Calculate average for each matière, then the overall average
-            foreach ($notesByStudentMatiere[$etudiant->id] as $matiereId => $matiereData) {
-                $matiereCount++;
-                if ($matiereData['coeffSum'] > 0) {
-                    $matiereAverage = $matiereData['sum'] / $matiereData['coeffSum'];
-                    \Log::debug('Moyenne par matière', [
-                        'etudiant_id' => $etudiant->id,
-                        'matiere_id' => $matiereId,
-                        'sum' => $matiereData['sum'],
-                        'coeffSum' => $matiereData['coeffSum'],
-                        'average' => $matiereAverage,
-                    ]);
-
-                    // For overall average, we treat each matière equally for now
-                    // You might want to adjust this to use matière coefficients if available
-                    $matCoeff = 1; // Default coefficient for matière
-                    $totalSum += $matiereAverage * $matCoeff;
-                    $totalCoeff += $matCoeff;
-                } else {
-                    \Log::warning('Matière sans coefficient pour l\'étudiant '.$etudiant->id, [
-                        'matiere_id' => $matiereId,
-                        'notes_count' => count($matiereData['notes']),
-                    ]);
-                }
-            }
-
-            if ($totalCoeff > 0) {
-                $moyennes[$etudiant->id] = $totalSum / $totalCoeff;
-                \Log::info('Moyenne calculée pour l\'étudiant '.$etudiant->nom.' '.$etudiant->prenoms, [
-                    'etudiant_id' => $etudiant->id,
-                    'moyenne' => $moyennes[$etudiant->id],
-                    'matieres_count' => $matiereCount,
-                ]);
-            } else {
-                \Log::warning('Impossible de calculer la moyenne pour l\'étudiant '.$etudiant->nom.' '.$etudiant->prenoms, [
-                    'etudiant_id' => $etudiant->id,
-                    'totalCoeff' => $totalCoeff,
-                    'matieres_count' => $matiereCount,
-                ]);
-            }
-        }
-
-        // Sort by average to calculate ranks
-        arsort($moyennes);
-        $rank = 1;
-        foreach (array_keys($moyennes) as $etudiantId) {
-            $rangs[$etudiantId] = $rank++;
-        }
-
-        // Log the calculated averages for debugging
-        \Log::info('Calcul des moyennes terminé:', [
-            'moyennes_count' => count($moyennes),
-            'rangs_count' => count($rangs),
-            'non_numeric_notes' => $nonNumericNotes,
-            'total_notes_processed' => $totalNotesProcessed,
-        ]);
-    }
 
     /**
      * Helper method to get bulletins for students
@@ -4560,12 +4369,9 @@ class ESBTPBulletinController extends Controller
             // Déterminer l'appréciation selon la moyenne
             $appreciation = $this->getAppreciation($moyenneGlobale);
 
-            // Préparer le logo en utilisant la méthode existante
-            $config = $this->getPDFConfig();
-            $logoBase64 = $this->prepareLogoBase64($config['school_logo']);
-
-            // Préparer les données pour la vue (utiliser le template pdf-configurable)
+            // Préparer le logo et la configuration PDF
             $settings = $this->getPDFConfig();
+            $logoBase64 = $this->prepareLogoBase64($settings['school_logo']);
 
             return view($this->getBulletinTemplateView(), [
                 'etudiant' => $etudiant,
@@ -4602,33 +4408,6 @@ class ESBTPBulletinController extends Controller
         }
     }
 
-    /**
-     * Récupère la liste des professeurs par défaut
-     */
-    private function getProfesseursParDefaut()
-    {
-        return [
-            // Matières d'enseignement général
-            'Anglais' => 'M.FOFANA Lassina',
-            'Gestion' => 'M.YAO YAOBLE',
-            'Informatique' => 'Mme MANDOUA Nadège',
-            'Mathématiques' => 'M.BONE Oussama',
-            'Physique' => 'M.KOFFI Bruno',
-            'Technique d\'Expression Française' => 'M.DJE Charles',
-            'Communication' => 'M.KOUADIO Paul',
-            'Économie' => 'Mme KONAN Sarah',
-            'Droit' => 'M.KOUAME Jean',
-            // Matières techniques/professionnelles
-            'Aménagement foncier cadastre' => 'M.ASSALE Arsène',
-            'Calculs Topo' => 'M.YAO Niamba',
-            'CAO-DAO' => 'M.KIGNELMAN Christian',
-            'Architecture' => 'M.KOUADIO Serge',
-            'Construction Métallique' => 'M.TRAORE Ibrahim',
-            'Béton Armé' => 'M.KONE Moussa',
-            'Topographie' => 'M.BROU Emmanuel',
-            'Géotechnique' => 'M.N\'GUESSAN Paul',
-        ];
-    }
 
     /**
      * Récupère le coefficient d'une matière pour une combinaison filiere + niveau + année
@@ -4778,45 +4557,6 @@ class ESBTPBulletinController extends Controller
         return $totalCoeffs > 0 ? $totalPoints / $totalCoeffs : 0;
     }
 
-    /**
-     * Calcule les absences d'un étudiant
-     */
-    private function calculerAbsences($etudiantId, $classeId, $anneeUniversitaireId)
-    {
-        try {
-            // Récupérer les absences depuis la table ESBTPAbsence
-            $absences = ESBTPAbsence::where('etudiant_id', $etudiantId)
-                ->where('annee_universitaire_id', $anneeUniversitaireId)
-                ->get();
-
-            $justifiees = 0;
-            $nonJustifiees = 0;
-
-            foreach ($absences as $absence) {
-                $heures = $absence->heures ?? 1;
-                if ($absence->justifiee) {
-                    $justifiees += $heures;
-                } else {
-                    $nonJustifiees += $heures;
-                }
-            }
-
-            return [
-                'justifiees' => $justifiees,
-                'non_justifiees' => $nonJustifiees,
-                'total' => $justifiees + $nonJustifiees,
-            ];
-
-        } catch (\Exception $e) {
-            \Log::error('Erreur calcul absences: '.$e->getMessage());
-
-            return [
-                'justifiees' => 0,
-                'non_justifiees' => 0,
-                'total' => 0,
-            ];
-        }
-    }
 
     public function genererPDFParParamsUnified(Request $request)
     {
@@ -7147,31 +6887,6 @@ class ESBTPBulletinController extends Controller
         }
     }
 
-    /**
-     * Cette méthode a été remplacée par le service ESBTPAbsenceService.
-     * Voir la méthode calculerDetailAbsences dans ce service.
-     *
-     * @deprecated
-     */
-    private function calculerAbsencesAttendance($etudiant_id, $classe_id, $date_debut, $date_fin)
-    {
-        \Log::warning('La méthode obsolète calculerAbsencesAttendance a été appelée. Utiliser le service ESBTPAbsenceService à la place.');
-
-        return $this->absenceService->calculerDetailAbsences($etudiant_id, $classe_id, $date_debut, $date_fin);
-    }
-
-    /**
-     * Cette méthode a été remplacée par le service ESBTPAbsenceService.
-     * Voir la méthode calculerDetailAbsences dans ce service.
-     *
-     * @deprecated
-     */
-    private function calculerAbsencesPourBulletin($etudiantId, $classeId, $dateDebut, $dateFin)
-    {
-        \Log::warning('La méthode obsolète calculerAbsencesPourBulletin a été appelée. Utiliser le service ESBTPAbsenceService à la place.');
-
-        return $this->absenceService->calculerDetailAbsences($etudiantId, $classeId, $dateDebut, $dateFin);
-    }
 
     /**
      * @return \Illuminate\Http\Response

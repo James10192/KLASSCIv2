@@ -453,26 +453,4 @@ class ESBTPBulletin extends Model
         });
     }
 
-    public function getResultatsParTypeEtMatiereAttribute()
-    {
-        $resultats = $this->resultats->filter(function ($resultat) use ($type) {
-            return $resultat->matiere->type === $type;
-        });
-
-        if ($resultats->isEmpty()) {
-            return null;
-        }
-
-        $sommePoints = 0;
-        $sommeCoefficients = 0;
-
-        foreach ($resultats as $resultat) {
-            if ($resultat->moyenne !== null) {
-                $sommePoints += $resultat->moyenne * $resultat->coefficient;
-                $sommeCoefficients += $resultat->coefficient;
-            }
-        }
-
-        return $sommeCoefficients > 0 ? $sommePoints / $sommeCoefficients : null;
-    }
 }

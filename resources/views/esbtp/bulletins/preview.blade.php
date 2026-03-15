@@ -347,17 +347,7 @@
                                                 <td rowspan="{{ count($evaluationsParMatiere[$matiere->id]) }}" class="text-center">{{ $credits }}</td>
                                                 <td rowspan="{{ count($evaluationsParMatiere[$matiere->id]) }}" class="text-center">{{ $creditsAcquis }}</td>
                                                 <td rowspan="{{ count($evaluationsParMatiere[$matiere->id]) }}" class="text-center">
-                                                    @if($moyenneMatiere >= 16)
-                                                        Très Bien
-                                                    @elseif($moyenneMatiere >= 14)
-                                                        Bien
-                                                    @elseif($moyenneMatiere >= 12)
-                                                        Assez Bien
-                                                    @elseif($moyenneMatiere >= 10)
-                                                        Passable
-                                                    @else
-                                                        Insuffisant
-                                                    @endif
+                                                    @include('esbtp.bulletins.partials.appreciation', ['moyenne' => $moyenneMatiere])
                                                 </td>
                                             @endif
                                         </tr>
@@ -372,23 +362,13 @@
                                         <td class="text-center">{{ $credits }}</td>
                                         <td class="text-center">{{ $creditsAcquis }}</td>
                                         <td class="text-center">
-                                            @if($moyenneMatiere >= 16)
-                                                Très Bien
-                                            @elseif($moyenneMatiere >= 14)
-                                                Bien
-                                            @elseif($moyenneMatiere >= 12)
-                                                Assez Bien
-                                            @elseif($moyenneMatiere >= 10)
-                                                Passable
-                                            @else
-                                                Insuffisant
-                                            @endif
+                                            @include('esbtp.bulletins.partials.appreciation', ['moyenne' => $moyenneMatiere])
                                         </td>
                                     </tr>
                                 @endif
                             @endforeach
                         @endforeach
-                        
+
                         <!-- Ligne de total -->
                         <tr class="total-row">
                             <td colspan="5" class="text-center"><strong>TOTAL</strong></td>
@@ -422,17 +402,7 @@
                                 <tr>
                                     <td class="fw-bold">Mention:</td>
                                     <td class="result-value">
-                                        @if($moyenneGenerale >= 16)
-                                            Très Bien
-                                        @elseif($moyenneGenerale >= 14)
-                                            Bien
-                                        @elseif($moyenneGenerale >= 12)
-                                            Assez Bien
-                                        @elseif($moyenneGenerale >= 10)
-                                            Passable
-                                        @else
-                                            Insuffisant
-                                        @endif
+                                        @include('esbtp.bulletins.partials.appreciation', ['moyenne' => $moyenneGenerale])
                                     </td>
                                 </tr>
                             </table>
