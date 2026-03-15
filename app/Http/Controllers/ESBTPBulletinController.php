@@ -731,7 +731,7 @@ class ESBTPBulletinController extends Controller
                 $countTechnique = 0;
 
                 foreach ($notesByMatiere as $matiereId => $notes) {
-                    $matiere = ESBTPMatiere::find($matiereId);
+                    $matiere = $notes->first()->matiere; // already eager-loaded via ->with(['matiere', 'evaluation'])
 
                     if ($matiere && $notes->count() > 0) {
                         // Calculer la moyenne pondérée de la matière avec les coefficients des évaluations
@@ -740,14 +740,8 @@ class ESBTPBulletinController extends Controller
                         $evaluationsDetail = [];
 
                         foreach ($notes as $note) {
-                            // Récupérer le coefficient de l'évaluation
-                            $coefficientEval = 1; // Par défaut
-                            if ($note->evaluation_id) {
-                                $evaluation = ESBTPEvaluation::find($note->evaluation_id);
-                                if ($evaluation) {
-                                    $coefficientEval = $evaluation->coefficient;
-                                }
-                            }
+                            // Récupérer le coefficient de l'évaluation (already eager-loaded)
+                            $coefficientEval = $note->evaluation?->coefficient ?? 1;
 
                             $totalPondere += $note->note * $coefficientEval;
                             $totalCoefficients += $coefficientEval;
@@ -827,7 +821,7 @@ class ESBTPBulletinController extends Controller
             $config = $this->getPDFConfig();
 
             // Récupérer tous les paramètres de configuration pour le template pdf-configurable
-            $settings = $this->getPDFConfig(); // Utiliser la méthode centralisée
+            $settings = $config;
             /*$settings = [
                 // Configuration de base
                 'bulletin_font_size' => \App\Helpers\SettingsHelper::get('bulletin_font_size', '11'),
@@ -5581,11 +5575,16 @@ class ESBTPBulletinController extends Controller
 
             // Si des moyennes calculées n'ont pas de résultat correspondant, les ajouter
             // MAIS seulement si la matière correspond à la combinaison filière+niveau de la classe
+
+            // Preload toutes les matières manquantes en une seule requête (évite N×3 requêtes)
+            $missingMatiereIds = array_keys(array_diff_key($notesByMatiere, $resultatsData));
+            $missingMatieres = $missingMatiereIds
+                ? \App\Models\ESBTPMatiere::with(['filieres', 'niveaux'])->whereIn('id', $missingMatiereIds)->get()->keyBy('id')
+                : collect();
+
             foreach ($notesByMatiere as $matiereId => $matiereData) {
                 if (! isset($resultatsData[$matiereId])) {
-                    // CORRECTION AMÉLIORÉE: Récupérer systématiquement l'objet matière directement
-                    // depuis la base de données en utilisant l'ID
-                    $matiere = \App\Models\ESBTPMatiere::with(['filieres', 'niveaux'])->find($matiereId);
+                    $matiere = $missingMatieres->get($matiereId);
 
                     if (! $matiere) {
                         \Log::warning("Matiere with ID {$matiereId} not found when adding calculated averages - skipping");
@@ -6889,55 +6888,14 @@ class ESBTPBulletinController extends Controller
 
 
     /**
+     * @deprecated Route stub — use genererBulletin() instead.
      * @return \Illuminate\Http\Response
      */
     public function generateBulletin(Request $request)
     {
-        // ... existing code ...
-
-        // Code existant pour créer le bulletin
-        $bulletin = ESBTPBulletin::create([
-            // Champs existants...
-        ]);
-
-        // Déterminer la période pour le calcul des absences
-        // Par exemple: utiliser la date de début et de fin du semestre
-        $anneeUniversitaire = ESBTPAnneeUniversitaire::find($request->annee_universitaire_id);
-        if ($anneeUniversitaire) {
-            // Exemple: si periode = 'S1' (1er semestre)
-            if ($request->periode == 'S1') {
-                $dateDebut = $anneeUniversitaire->date_debut;
-                $dateFin = Carbon::parse($dateDebut)->addMonths(4)->format('Y-m-d'); // Environ 4 mois pour un semestre
-            } elseif ($request->periode == 'S2') {
-                $dateDebut = Carbon::parse($anneeUniversitaire->date_debut)->addMonths(4)->format('Y-m-d');
-                $dateFin = $anneeUniversitaire->date_fin;
-            } else {
-                // Pour les périodes différentes ou périodes trimestrielles
-                // Adapter la logique selon vos besoins
-                $dateDebut = $anneeUniversitaire->date_debut;
-                $dateFin = $anneeUniversitaire->date_fin;
-            }
-
-            \Log::info("Génération de bulletin - Étudiant ID: {$request->etudiant_id}, Classe ID: {$request->classe_id}, Période: du {$dateDebut} au {$dateFin}");
-
-            // Calculer les absences pour la période du bulletin en utilisant le service
-            $donneeAbsences = $this->absenceService->calculerDetailAbsences(
-                $request->etudiant_id,
-                $request->classe_id,
-                $dateDebut,
-                $dateFin
-            );
-
-            \Log::info('Absences calculées:', $donneeAbsences);
-
-            // Intégrer les absences au bulletin
-            $bulletin = $this->integrerAbsencesAuBulletin($bulletin, $donneeAbsences);
-        }
-
-        // Suite du code existant...
-
-        return redirect()->route('bulletins.show', $bulletin->id)
-            ->with('success', 'Bulletin créé avec succès.');
+        // This method was a stub that created empty bulletin records.
+        // The real implementation is in genererBulletin().
+        abort(501, 'Not implemented — use the bulletin generation form.');
     }
 
     /**
@@ -7012,13 +6970,16 @@ class ESBTPBulletinController extends Controller
 
         $moyennes = [];
 
+        // Preload tous les résultats manuels pour éviter N+1 (1 requête au lieu de N par étudiant)
+        $allResultatsManuel = \App\Models\ESBTPResultat::whereIn('etudiant_id', $etudiants->pluck('id'))
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->with('matiere')
+            ->get()
+            ->groupBy('etudiant_id');
+
         foreach ($etudiants as $etudiant) {
-            // Récupérer les moyennes manuelles pour cet étudiant
-            $resultatsManuelsSeulement = \App\Models\ESBTPResultat::where('etudiant_id', $etudiant->id)
-                ->where('classe_id', $classeId)
-                ->where('annee_universitaire_id', $anneeUniversitaireId)
-                ->with('matiere')
-                ->get();
+            $resultatsManuelsSeulement = $allResultatsManuel->get($etudiant->id, collect());
 
             // Si aucune moyenne manuelle, utiliser la méthode de calcul pour cet étudiant
             if ($resultatsManuelsSeulement->isEmpty()) {
@@ -7789,20 +7750,21 @@ class ESBTPBulletinController extends Controller
         return floatval($bulletin->moyenne_generale + ($bulletin->note_assiduite ?? 0));
     }
 
+    private function getBulletinStyle(): string
+    {
+        return \App\Helpers\SettingsHelper::get('bulletin_style', 'yakro');
+    }
+
     private function getBulletinTemplateView(): string
     {
-        $style = \App\Helpers\SettingsHelper::get('bulletin_style', 'yakro');
-
-        return $style === 'abidjan'
+        return $this->getBulletinStyle() === 'abidjan'
             ? 'esbtp.bulletins.pdf-configurable-abidjan'
             : 'esbtp.bulletins.pdf-configurable';
     }
 
     private function getBulletinPreviewView(): string
     {
-        $style = \App\Helpers\SettingsHelper::get('bulletin_style', 'yakro');
-
-        return $style === 'abidjan'
+        return $this->getBulletinStyle() === 'abidjan'
             ? 'esbtp.bulletins.preview-abidjan'
             : 'esbtp.bulletins.preview';
     }
