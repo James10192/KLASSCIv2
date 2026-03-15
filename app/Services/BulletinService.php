@@ -13,8 +13,13 @@ use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Services\ESBTP\ESBTPAbsenceService;
+use App\Models\ESBTPConfigMatiere;
+use App\Models\ESBTPEvaluation;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class BulletinService
 {
@@ -94,7 +99,7 @@ class BulletinService
                         'matiere' => $matiere,
                         'notes' => [],
                         'moyenne' => 0,
-                        'coefficient' => $this->getCoefficientForCombination($matiereId, $classe, $anneeUniversitaireId),
+                        'coefficient' => $this->getCoefficientForCombination($matiereId, $classe->id, $anneeUniversitaireId),
                         'rang' => '-',
                         'appreciation' => '',
                         'type_formation' => $typeFormation,
@@ -155,7 +160,7 @@ class BulletinService
                         'matiere' => $resultatManuel->matiere,
                         'notes' => [],
                         'moyenne' => $resultatManuel->moyenne,
-                        'coefficient' => $this->getCoefficientForCombination($matiereId, $classe, $anneeUniversitaireId),
+                        'coefficient' => $this->getCoefficientForCombination($matiereId, $classe->id, $anneeUniversitaireId),
                         'rang' => '-',
                         'appreciation' => $resultatManuel->appreciation ?: $this->getAppreciation($resultatManuel->moyenne),
                         'type_formation' => $typeFormation,
@@ -169,7 +174,7 @@ class BulletinService
                     // Écraser avec les moyennes manuelles (elles l'emportent toujours)
                     $resultatsParMatiere[$matiereId]->moyenne = $resultatManuel->moyenne;
                     $resultatsParMatiere[$matiereId]->appreciation = $resultatManuel->appreciation ?: $this->getAppreciation($resultatManuel->moyenne);
-                    $resultatsParMatiere[$matiereId]->coefficient = $this->getCoefficientForCombination($matiereId, $classe, $anneeUniversitaireId);
+                    $resultatsParMatiere[$matiereId]->coefficient = $this->getCoefficientForCombination($matiereId, $classe->id, $anneeUniversitaireId);
                 }
             }
         }
@@ -410,116 +415,6 @@ class BulletinService
     }
 
     /**
-     * Calcule le coefficient d'une matière pour une combinaison filiere + niveau + année
-     */
-    private function getCoefficientForCombination(int $matiereId, ESBTPClasse $classe, int $anneeUniversitaireId): float
-    {
-        $cacheKey = $matiereId.'|'.$classe->id.'|'.$anneeUniversitaireId;
-
-        if (isset($this->coefficientCache[$cacheKey])) {
-            return $this->coefficientCache[$cacheKey];
-        }
-
-        if (! isset($this->classeCache[$classe->id])) {
-            $this->classeCache[$classe->id] = $classe->fresh();
-        }
-
-        $classeCourante = $this->classeCache[$classe->id];
-        $classeCourante->loadMissing(['filiere', 'niveauEtude']);
-
-        if (! $classeCourante || ! $classeCourante->filiere_id || ! $classeCourante->niveau_etude_id) {
-            throw new \RuntimeException('Classe invalide pour le calcul du coefficient.');
-        }
-
-        $coefficient = ESBTPMatiereCoefficient::where('matiere_id', $matiereId)
-            ->where('filiere_id', $classeCourante->filiere_id)
-            ->where('niveau_etude_id', $classeCourante->niveau_etude_id)
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->value('coefficient');
-
-        if ($coefficient === null) {
-            $matiere = ESBTPMatiere::find($matiereId);
-            $inFiliere = false;
-            $inNiveau = false;
-
-            if ($matiere) {
-                $inFiliere = $matiere->filieres()
-                    ->where('esbtp_filieres.id', $classeCourante->filiere_id)
-                    ->exists();
-                $inNiveau = $matiere->niveaux()
-                    ->where('esbtp_niveau_etudes.id', $classeCourante->niveau_etude_id)
-                    ->exists();
-
-                if (! $inFiliere && $matiere->filiere_id) {
-                    $inFiliere = (int) $matiere->filiere_id === (int) $classeCourante->filiere_id;
-                }
-                if (! $inNiveau && $matiere->niveau_etude_id) {
-                    $inNiveau = (int) $matiere->niveau_etude_id === (int) $classeCourante->niveau_etude_id;
-                }
-            }
-
-            $reason = 'coefficient_missing';
-            if (! $matiere) {
-                $reason = 'matiere_introuvable';
-            } elseif (! $inFiliere || ! $inNiveau) {
-                $reason = 'matiere_hors_combinaison';
-            }
-
-            $context = [
-                'reason' => $reason,
-                'matiere' => $matiere
-                    ? [
-                        'id' => $matiere->id,
-                        'name' => $matiere->name,
-                        'code' => $matiere->code,
-                    ]
-                    : [
-                        'id' => $matiereId,
-                    ],
-                'classe' => [
-                    'id' => $classeCourante->id,
-                    'name' => $classeCourante->name,
-                    'filiere_id' => $classeCourante->filiere_id,
-                    'niveau_etude_id' => $classeCourante->niveau_etude_id,
-                    'filiere_name' => $classeCourante->filiere->name ?? null,
-                    'niveau_name' => $classeCourante->niveauEtude->name ?? null,
-                ],
-                'annee_universitaire_id' => $anneeUniversitaireId,
-            ];
-
-            throw new CoefficientMissingException('Coefficient manquant pour la matière sélectionnée.', $context);
-        }
-
-        $this->coefficientCache[$cacheKey] = (float) $coefficient;
-
-        return $this->coefficientCache[$cacheKey];
-    }
-
-    /**
-     * Détermine l'appréciation selon la moyenne
-     */
-    private function getAppreciation($moyenne)
-    {
-        if ($moyenne >= 16) {
-            return 'Excellent';
-        }
-        if ($moyenne >= 14) {
-            return 'Très Bien';
-        }
-        if ($moyenne >= 12) {
-            return 'Bien';
-        }
-        if ($moyenne >= 10) {
-            return 'Assez Bien';
-        }
-        if ($moyenne >= 8) {
-            return 'Passable';
-        }
-
-        return 'Insuffisant';
-    }
-
-    /**
      * Calcule la moyenne pondérée d'une collection de résultats
      */
     public function calculerMoyennePonderee($resultats)
@@ -746,7 +641,7 @@ class BulletinService
             $moyenneMatiere = $matiereData['total_points'] / $matiereData['total_coefficients'];
 
             try {
-                $coefficient = $this->getCoefficientForCombination($matiereId, $classe, $anneeUniversitaireId);
+                $coefficient = $this->getCoefficientForCombination($matiereId, $classe->id, $anneeUniversitaireId);
             } catch (\RuntimeException $e) {
                 $coefficient = 1;
             }
@@ -1227,5 +1122,778 @@ class BulletinService
         return $moyenneGenerale / $countMatieresFinales;
     }
 
+
+    public function prepareLogoBase64($logoPath)
+    {
+        // Essayer d'abord le chemin depuis storage (logos uploadés)
+        if ($logoPath) {
+            $storagePath = storage_path('app/public/'.$logoPath);
+            if (file_exists($storagePath)) {
+                $logoType = pathinfo($storagePath, PATHINFO_EXTENSION);
+                $logoData = file_get_contents($storagePath);
+                Log::info('Logo uploadé chargé avec succès depuis: '.$storagePath);
+
+                return 'data:image/'.$logoType.';base64,'.base64_encode($logoData);
+            }
+
+            // Essayer aussi dans public/ pour compatibilité
+            $publicPath = public_path($logoPath);
+            if (file_exists($publicPath)) {
+                $logoType = pathinfo($publicPath, PATHINFO_EXTENSION);
+                $logoData = file_get_contents($publicPath);
+                Log::info('Logo public chargé avec succès depuis: '.$publicPath);
+
+                return 'data:image/'.$logoType.';base64,'.base64_encode($logoData);
+            }
+        }
+
+        // Essayer les chemins alternatifs
+        $alternativePaths = [
+            'images/esbtp_logo.png',
+            'images/logo.jpeg',
+            'images/esbtp_logo_white.png',
+            'storage/logos/'.basename($logoPath),
+        ];
+
+        foreach ($alternativePaths as $altPath) {
+            $fullPath = public_path($altPath);
+            if (file_exists($fullPath)) {
+                $logoType = pathinfo($fullPath, PATHINFO_EXTENSION);
+                $logoData = file_get_contents($fullPath);
+                Log::info('Logo alternatif chargé avec succès depuis: '.$fullPath);
+
+                return 'data:image/'.$logoType.';base64,'.base64_encode($logoData);
+            }
+        }
+
+        Log::warning('Aucun logo trouvé pour le chemin: '.$logoPath.'. Chemins testés: storage et public + alternatives');
+
+        return null;
+    }
+
+
+    public function calculerMoyenneGenerale(ESBTPBulletin $bulletin)
+    {
+        Log::info('Calcul de la moyenne générale pour le bulletin '.$bulletin->id);
+
+        try {
+            $resultats = $bulletin->resultats;
+            Log::info('Nombre de résultats trouvés: '.$resultats->count());
+
+            if ($resultats->isEmpty()) {
+                Log::info('Aucun résultat trouvé pour le bulletin '.$bulletin->id);
+                $bulletin->moyenne_generale = null;
+                $bulletin->save();
+
+                return;
+            }
+
+            $sommePoints = 0;
+            $sommeCoefficients = 0;
+
+            foreach ($resultats as $resultat) {
+                if ($resultat->moyenne !== null) {
+                    Log::info('Résultat pour matière '.$resultat->matiere_id.': moyenne='.$resultat->moyenne.', coefficient='.$resultat->coefficient);
+                    $sommePoints += $resultat->moyenne * $resultat->coefficient;
+                    $sommeCoefficients += $resultat->coefficient;
+                } else {
+                    Log::info('Résultat ignoré pour matière '.$resultat->matiere_id.' (moyenne null)');
+                }
+            }
+
+            Log::info('Somme des points: '.$sommePoints.', Somme des coefficients: '.$sommeCoefficients);
+            $moyenneGenerale = $sommeCoefficients > 0 ? $sommePoints / $sommeCoefficients : null;
+            Log::info('Moyenne générale calculée: '.$moyenneGenerale);
+
+            $bulletin->moyenne_generale = $moyenneGenerale;
+            $bulletin->save();
+            Log::info('Moyenne générale enregistrée pour le bulletin '.$bulletin->id);
+
+            // Calculer le rang si la moyenne a changé
+            $this->calculerRang($bulletin);
+        } catch (\Exception $e) {
+            Log::error('Erreur lors du calcul de la moyenne générale: '.$e->getMessage());
+            Log::error('Trace: '.$e->getTraceAsString());
+            throw $e;
+        }
+    }
+
+
+    public function calculerRang($bulletin)
+    {
+        $base = ESBTPBulletin::where('classe_id', $bulletin->classe_id)
+            ->where('annee_universitaire_id', $bulletin->annee_universitaire_id)
+            ->where('periode', $bulletin->periode)
+            ->whereNotNull('moyenne_generale');
+
+        $bulletin->effectif_classe = $base->count();
+        $bulletin->rang = (clone $base)
+            ->where('moyenne_generale', '>', $bulletin->moyenne_generale ?? 0)
+            ->count() + 1;
+
+        $bulletin->save();
+    }
+
+
+    public function calculerAbsencesDetailees($bulletin)
+    {
+        try {
+            \Log::info('Début du calcul des absences détaillées pour le bulletin #'.$bulletin->id);
+
+            // Vérifier que les relations nécessaires sont chargées
+            if (! $bulletin->etudiant || ! $bulletin->classe || ! $bulletin->anneeUniversitaire) {
+                \Log::error('Relations essentielles manquantes pour le calcul des absences du bulletin #'.$bulletin->id);
+                throw new \Exception("Données incomplètes pour calculer les absences. Veuillez vérifier que l'étudiant, la classe et l'année universitaire sont correctement définis.");
+            }
+
+            // Vérifier que les dates de l'année universitaire sont définies
+            if (! $bulletin->anneeUniversitaire->date_debut || ! $bulletin->anneeUniversitaire->date_fin) {
+                \Log::error('Dates de l\'année universitaire non définies pour le bulletin #'.$bulletin->id);
+                throw new \Exception("Les dates de début et de fin de l'année universitaire ne sont pas définies.");
+            }
+
+            // Utiliser le service d'absences pour calculer les absences
+            $absences = $this->absenceService->calculerDetailAbsences(
+                $bulletin->etudiant_id,
+                $bulletin->classe_id,
+                $bulletin->anneeUniversitaire->date_debut,
+                $bulletin->anneeUniversitaire->date_fin
+            );
+
+            \Log::info('Absences détaillées calculées avec succès pour le bulletin #'.$bulletin->id, $absences);
+
+            return $absences;
+
+        } catch (\Exception $e) {
+            \Log::error('Erreur lors du calcul des absences détaillées: '.$e->getMessage(), [
+                'bulletin_id' => $bulletin->id,
+                'etudiant_id' => $bulletin->etudiant_id ?? 'non défini',
+                'classe_id' => $bulletin->classe_id ?? 'non défini',
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            // Retourner des valeurs par défaut en cas d'erreur
+            return [
+                'justifiees' => 0,
+                'non_justifiees' => 0,
+                'total' => 0,
+                'detail' => [
+                    'justifiees' => [],
+                    'non_justifiees' => [],
+                ],
+            ];
+        }
+    }
+
+
+    public function computeResultatsKpis(Collection $studentIds, $classe_id, $annee_universitaire_id, $semestre): array
+    {
+        $kpis = [
+            'total_etudiants' => $studentIds->count(),
+            'moyenne_generale' => null,
+            'taux_reussite' => null,
+            'bulletins_count' => 0,
+        ];
+
+        if ($studentIds->isEmpty()) {
+            return $kpis;
+        }
+
+        $moyennes = [];
+        $rangs = [];
+
+        $this->getPreCalculatedResults(
+            $studentIds->map(function ($id) {
+                return (object) ['id' => $id];
+            })->all(),
+            $classe_id,
+            $annee_universitaire_id,
+            $semestre,
+            $moyennes,
+            $rangs
+        );
+
+        if (empty($moyennes)) {
+            $students = ESBTPEtudiant::whereIn('id', $studentIds)->get();
+
+            if ($students->isNotEmpty()) {
+                $notesQuery = ESBTPNote::whereIn('etudiant_id', $studentIds)
+                    ->with(['evaluation', 'evaluation.classe', 'evaluation.matiere']);
+
+                if ($classe_id) {
+                    $notesQuery->whereHas('evaluation', function ($query) use ($classe_id) {
+                        $query->where('classe_id', $classe_id);
+                    });
+                }
+
+                if ($annee_universitaire_id) {
+                    $notesQuery->whereHas('evaluation', function ($query) use ($annee_universitaire_id) {
+                        $query->where('annee_universitaire_id', $annee_universitaire_id);
+                    });
+                }
+
+                if ($semestre) {
+                    $notesQuery->whereHas('evaluation', function ($query) use ($semestre) {
+                        $query->where('periode', 'like', 'semestre'.$semestre.'%');
+                    });
+                }
+
+                $notes = $notesQuery->get();
+
+                $this->calculateStudentStatsFixed($students, $notes, $moyennes, $rangs, $classe_id, $annee_universitaire_id);
+            }
+        }
+
+        if (! empty($moyennes)) {
+            $values = array_values($moyennes);
+            $kpis['moyenne_generale'] = round(array_sum($values) / max(count($values), 1), 2);
+
+            $reussites = array_filter($values, function ($moyenne) {
+                return $moyenne >= 10;
+            });
+
+            $kpis['taux_reussite'] = count($values) > 0
+                ? round((count($reussites) / count($values)) * 100, 1)
+                : null;
+        }
+
+        $bulletinsQuery = ESBTPBulletin::whereIn('etudiant_id', $studentIds);
+
+        if ($classe_id) {
+            $bulletinsQuery->where('classe_id', $classe_id);
+        }
+
+        if ($annee_universitaire_id) {
+            $bulletinsQuery->where('annee_universitaire_id', $annee_universitaire_id);
+        }
+
+        if ($semestre) {
+            $bulletinsQuery->where('periode', 'semestre'.$semestre);
+        }
+
+        $kpis['bulletins_count'] = $bulletinsQuery->count();
+
+        return $kpis;
+    }
+
+
+    public function buildEtudiantsQuery($classe_id, $annee_universitaire_id, $include_all_statuses)
+    {
+        if ($classe_id) {
+            // Get students through inscriptions for the selected class and year
+            return ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($classe_id, $annee_universitaire_id, $include_all_statuses) {
+                $query->where('classe_id', $classe_id)
+                    ->where('annee_universitaire_id', $annee_universitaire_id);
+
+                if (! $include_all_statuses) {
+                    $query->where('status', 'active');
+                }
+            })
+                ->with(['user', 'inscriptions.classe.filiere', 'inscriptions.classe.niveau'])
+                ->orderBy('nom')
+                ->orderBy('prenoms');
+
+        } elseif ($annee_universitaire_id) {
+            // If no class selected but academic year is set, get all students enrolled in that year
+            return ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($annee_universitaire_id, $include_all_statuses) {
+                $query->where('annee_universitaire_id', $annee_universitaire_id);
+
+                if (! $include_all_statuses) {
+                    $query->where('status', 'active');
+                }
+            })
+                ->with(['user', 'inscriptions' => function ($query) use ($annee_universitaire_id) {
+                    $query->where('annee_universitaire_id', $annee_universitaire_id);
+                }])
+                ->orderBy('nom')
+                ->orderBy('prenoms');
+
+        } else {
+            // If no filters are applied, get all students
+            return ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($include_all_statuses) {
+                if (! $include_all_statuses) {
+                    $query->where('status', 'active');
+                }
+            })
+                ->with(['user', 'inscriptions'])
+                ->orderBy('nom')
+                ->orderBy('prenoms');
+        }
+    }
+
+
+    public function getPreCalculatedResults($etudiants, $classe_id, $annee_universitaire_id, $semestre, &$moyennes, &$rangs)
+    {
+        \Log::info('Tentative de récupération des résultats pré-calculés', [
+            'etudiants_count' => count($etudiants),
+            'classe_id' => $classe_id,
+            'annee_universitaire_id' => $annee_universitaire_id,
+            'semestre' => $semestre,
+        ]);
+
+        $student_ids = collect($etudiants)->pluck('id')->toArray();
+
+        // Récupérer les résultats pré-calculés de la table ESBTPResultat
+        $resultatsQuery = \App\Models\ESBTPResultat::whereIn('etudiant_id', $student_ids);
+
+        if ($classe_id) {
+            $resultatsQuery->where('classe_id', $classe_id);
+        }
+
+        if ($annee_universitaire_id) {
+            $resultatsQuery->where('annee_universitaire_id', $annee_universitaire_id);
+        }
+
+        if ($semestre) {
+            $resultatsQuery->where('periode', 'semestre'.$semestre);
+        }
+
+        $resultats = $resultatsQuery->get();
+
+        \Log::info('Résultats pré-calculés trouvés', [
+            'resultats_count' => $resultats->count(),
+        ]);
+
+        // Extraire les moyennes et rangs
+        foreach ($resultats as $resultat) {
+            if ($resultat->moyenne !== null) {
+                $moyennes[$resultat->etudiant_id] = $resultat->moyenne;
+            }
+
+            if ($resultat->rang !== null) {
+                $rangs[$resultat->etudiant_id] = $resultat->rang;
+            }
+        }
+
+        // Si pas de rangs pré-calculés mais on a des moyennes, calculer les rangs
+        if (empty($rangs) && ! empty($moyennes)) {
+            arsort($moyennes);
+            $rank = 1;
+            foreach (array_keys($moyennes) as $etudiantId) {
+                $rangs[$etudiantId] = $rank++;
+            }
+        }
+
+        \Log::info('Résultats pré-calculés récupérés', [
+            'moyennes_count' => count($moyennes),
+            'rangs_count' => count($rangs),
+        ]);
+    }
+
+
+    public function calculateStudentStatsFixed($etudiants, $notes, &$moyennes, &$rangs, $classeId = null, $anneeUniversitaireId = null)
+    {
+        \Log::info('Calcul des statistiques étudiants - Étudiants: '.count($etudiants).', Notes: '.count($notes));
+        \Log::info('Début du calcul des moyennes (logique corrigée) pour '.count($etudiants).' étudiants avec '.count($notes).' notes');
+
+        // Group notes by student and matière - using the same logic as resultatEtudiant
+        $notesByStudentMatiere = [];
+
+        foreach ($notes as $note) {
+            if (! $note->evaluation || ! $note->evaluation->matiere) {
+                \Log::warning('Note without evaluation or matière', ['note_id' => $note->id]);
+
+                continue;
+            }
+
+            $etudiantId = $note->etudiant_id;
+
+            // CORRECTION: Use matiere_id from note directly, then from evaluation as fallback (same as resultatEtudiant)
+            $matiere_id = $note->matiere_id;
+            if (! $matiere_id && $note->evaluation && $note->evaluation->matiere) {
+                $matiere_id = $note->evaluation->matiere->id;
+            }
+
+            if (! $matiere_id) {
+                \Log::warning('Cannot determine matiere_id for note', ['note_id' => $note->id]);
+
+                continue;
+            }
+
+            // Initialize student if not exists
+            if (! isset($notesByStudentMatiere[$etudiantId])) {
+                $notesByStudentMatiere[$etudiantId] = [];
+            }
+
+            // Initialize matière for this student if not exists (same structure as resultatEtudiant)
+            if (! isset($notesByStudentMatiere[$etudiantId][$matiere_id])) {
+                $notesByStudentMatiere[$etudiantId][$matiere_id] = [
+                    'total_points' => 0,
+                    'total_coefficients' => 0,
+                    'moyenne' => 0,
+                ];
+            }
+
+            // Calculate weighted note using EXACT same logic as resultatEtudiant
+            if ($note->evaluation->bareme > 0) {
+                $noteValue = is_numeric($note->note) ? floatval($note->note) : (is_numeric($note->valeur) ? floatval($note->valeur) : 0);
+                $bareme = $note->evaluation->bareme > 0 ? floatval($note->evaluation->bareme) : 20;
+
+                if ($noteValue === 'Absent' || ! is_numeric($noteValue)) {
+                    $normalized = 0;
+                } else {
+                    $normalized = ($noteValue / $bareme) * 20;
+                }
+
+                $coefficient = $note->evaluation->coefficient ? floatval($note->evaluation->coefficient) : 1;
+                $ponderation = $normalized * $coefficient;
+
+                $notesByStudentMatiere[$etudiantId][$matiere_id]['total_points'] += $ponderation;
+                $notesByStudentMatiere[$etudiantId][$matiere_id]['total_coefficients'] += $coefficient;
+            }
+        }
+
+        // Integrate ESBTPResultat (manual grade overrides) — same logic as calculateStudentAverageForPeriode
+        if ($classeId && $anneeUniversitaireId) {
+            $etudiantIds = $etudiants->pluck('id')->toArray();
+            $resultatsManuel = \App\Models\ESBTPResultat::whereIn('etudiant_id', $etudiantIds)
+                ->where('classe_id', $classeId)
+                ->where('annee_universitaire_id', $anneeUniversitaireId)
+                ->get()
+                ->groupBy('etudiant_id');
+
+            foreach ($resultatsManuel as $etudiantId => $resultats) {
+                if (! isset($notesByStudentMatiere[$etudiantId])) {
+                    $notesByStudentMatiere[$etudiantId] = [];
+                }
+                foreach ($resultats as $resultat) {
+                    $matiereId = $resultat->matiere_id;
+                    if (! isset($notesByStudentMatiere[$etudiantId][$matiereId])) {
+                        $notesByStudentMatiere[$etudiantId][$matiereId] = ['total_points' => 0, 'total_coefficients' => 0, 'moyenne' => 0];
+                    }
+                    // Manual moyenne overrides the note-computed value
+                    $notesByStudentMatiere[$etudiantId][$matiereId]['total_points'] = $resultat->moyenne;
+                    $notesByStudentMatiere[$etudiantId][$matiereId]['total_coefficients'] = 1;
+                }
+            }
+        }
+
+        // Calculate averages for each student using EXACT same logic as resultatEtudiant
+        foreach ($etudiants as $etudiant) {
+            if (! isset($notesByStudentMatiere[$etudiant->id])) {
+                continue;
+            }
+
+            $moyenneGenerale = 0;
+            $countValidMatieres = 0;
+
+            // Calculate average for each matière (same as resultatEtudiant)
+            foreach ($notesByStudentMatiere[$etudiant->id] as $matiere_id => &$matiereData) {
+                if ($matiereData['total_coefficients'] > 0) {
+                    $matiereData['moyenne'] = $matiereData['total_points'] / $matiereData['total_coefficients'];
+                    // For overall average, treat each matière equally (same as resultatEtudiant)
+                    $moyenneGenerale += $matiereData['moyenne'];
+                    $countValidMatieres++;
+                }
+            }
+
+            // Calculate the overall moyenne générale (same as resultatEtudiant)
+            if ($countValidMatieres > 0) {
+                $moyennes[$etudiant->id] = $moyenneGenerale / $countValidMatieres;
+                \Log::debug('Moyenne calculée pour étudiant '.$etudiant->matricule, [
+                    'etudiant_id' => $etudiant->id,
+                    'moyenne' => $moyennes[$etudiant->id],
+                    'matieres_count' => $countValidMatieres,
+                ]);
+            }
+        }
+
+        // Sort by average to calculate ranks
+        if (count($moyennes) > 0) {
+            arsort($moyennes);
+            $rank = 1;
+            foreach (array_keys($moyennes) as $etudiantId) {
+                $rangs[$etudiantId] = $rank++;
+            }
+        }
+
+        \Log::info('Calcul des moyennes terminé (logique corrigée):', [
+            'moyennes_count' => count($moyennes),
+            'rangs_count' => count($rangs),
+        ]);
+    }
+
+
+
+    public function getStudentBulletins($etudiants, $classe_id, $annee_universitaire_id, $semestre, &$bulletins)
+    {
+        $periodeMap = [
+            '1' => 'semestre1',
+            '2' => 'semestre2',
+        ];
+
+        // Si le semestre est spécifié, on récupère seulement ce semestre
+        // Sinon, on récupère tous les semestres
+        $periodes = [];
+        if ($semestre && isset($periodeMap[$semestre])) {
+            $periodes[] = $periodeMap[$semestre];
+        } else {
+            // Si aucun semestre n'est spécifié, on récupère tous les semestres
+            $periodes = array_values($periodeMap);
+        }
+
+        \Log::info('Récupération des bulletins pour '.count($etudiants).' étudiants', [
+            'annee_universitaire_id' => $annee_universitaire_id,
+            'semestre' => $semestre,
+            'periodes' => $periodes,
+        ]);
+
+        foreach ($etudiants as $etudiant) {
+            // If no specific class is provided, get the student's class from inscriptions
+            $studentClasseId = $classe_id;
+            if (! $studentClasseId) {
+                $inscription = $etudiant->inscriptions
+                    ->where('annee_universitaire_id', $annee_universitaire_id)
+                    ->where('status', 'active')
+                    ->first();
+                $studentClasseId = $inscription ? $inscription->classe_id : null;
+            }
+
+            if ($studentClasseId && $annee_universitaire_id && ! empty($periodes)) {
+                $query = ESBTPBulletin::where('etudiant_id', $etudiant->id)
+                    ->where('classe_id', $studentClasseId)
+                    ->where('annee_universitaire_id', $annee_universitaire_id);
+
+                // Si on a des périodes spécifiques, on les utilise
+                // Sinon, on récupère tous les bulletins pour cet étudiant dans cette classe et cette année
+                if (count($periodes) == 1) {
+                    $query->where('periode', $periodes[0]);
+                } else {
+                    $query->whereIn('periode', $periodes);
+                }
+
+                $bulletin = $query->first();
+
+                if ($bulletin) {
+                    $bulletins[$etudiant->id] = $bulletin->id;
+                    \Log::debug('Bulletin trouvé pour étudiant', [
+                        'etudiant_id' => $etudiant->id,
+                        'bulletin_id' => $bulletin->id,
+                        'classe_id' => $studentClasseId,
+                        'periode' => $bulletin->periode,
+                    ]);
+                } else {
+                    \Log::warning('Aucun bulletin trouvé pour étudiant', [
+                        'etudiant_id' => $etudiant->id,
+                        'classe_id' => $studentClasseId,
+                        'periodes' => $periodes,
+                    ]);
+                }
+            } else {
+                \Log::warning('Données insuffisantes pour récupérer le bulletin', [
+                    'etudiant_id' => $etudiant->id,
+                    'studentClasseId' => $studentClasseId,
+                    'annee_universitaire_id' => $annee_universitaire_id,
+                    'periodes' => $periodes,
+                ]);
+            }
+        }
+    }
+
+
+    public function getCoefficientForCombination(int $matiereId, int $classeId, int $anneeUniversitaireId): float
+    {
+        $cacheKey = $matiereId.'|'.$classeId.'|'.$anneeUniversitaireId;
+
+        if (isset($this->coefficientCache[$cacheKey])) {
+            return $this->coefficientCache[$cacheKey];
+        }
+
+        if (! isset($this->classeCache[$classeId])) {
+            $this->classeCache[$classeId] = ESBTPClasse::find($classeId);
+        }
+
+        $classe = $this->classeCache[$classeId];
+
+        if (! $classe || ! $classe->filiere_id || ! $classe->niveau_etude_id) {
+            throw new \RuntimeException('Classe invalide pour le calcul du coefficient.');
+        }
+
+        $coefficient = ESBTPMatiereCoefficient::where('matiere_id', $matiereId)
+            ->where('filiere_id', $classe->filiere_id)
+            ->where('niveau_etude_id', $classe->niveau_etude_id)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->value('coefficient');
+
+        if ($coefficient === null) {
+            throw new \RuntimeException('Coefficient manquant pour la matière sélectionnée.');
+        }
+
+        $this->coefficientCache[$cacheKey] = (float) $coefficient;
+
+        return $this->coefficientCache[$cacheKey];
+    }
+
+
+    public function getAppreciation($moyenne)
+    {
+        if ($moyenne >= 16) {
+            return 'Excellent';
+        }
+        if ($moyenne >= 14) {
+            return 'Très Bien';
+        }
+        if ($moyenne >= 12) {
+            return 'Bien';
+        }
+        if ($moyenne >= 10) {
+            return 'Assez Bien';
+        }
+        if ($moyenne >= 8) {
+            return 'Passable';
+        }
+
+        return 'Insuffisant';
+    }
+
+
+
+    public function getMention($moyenne)
+    {
+        if ($moyenne >= 16) {
+            return 'Félicitation';
+        } elseif ($moyenne >= 14) {
+            return 'Tableau d\'honneur';
+        } elseif ($moyenne >= 12) {
+            return 'Encouragement';
+        } elseif ($moyenne >= 10) {
+            return 'Passable';
+        } elseif ($moyenne >= 8) {
+            return 'Avertissement (Travail)';
+        } else {
+            return 'Blâme (Conduite)';
+        }
+    }
+
+
+
+    public function calculerMoyenneEtudiant($etudiant_id, $classe_id, $periode, $annee_universitaire_id)
+    {
+        $periodesCompatibles = [$periode];
+        if ($periode === 'semestre1') {
+            $periodesCompatibles[] = '1';
+        } elseif ($periode === 'semestre2') {
+            $periodesCompatibles[] = '2';
+        } elseif ($periode === '1') {
+            $periodesCompatibles[] = 'semestre1';
+        } elseif ($periode === '2') {
+            $periodesCompatibles[] = 'semestre2';
+        }
+
+        // Récupérer les résultats de l'étudiant pour les paramètres spécifiés
+        $resultats = \App\Models\ESBTPResultat::where('etudiant_id', $etudiant_id)
+            ->where('classe_id', $classe_id)
+            ->whereIn('periode', array_unique($periodesCompatibles))
+            ->where('annee_universitaire_id', $annee_universitaire_id)
+            ->get();
+
+        // Si aucun résultat n'est trouvé, retourner 0
+        if ($resultats->isEmpty()) {
+            return 0;
+        }
+
+        // Calculer la moyenne pondérée en utilisant la méthode existante
+        return $this->calculerMoyennePonderee($resultats);
+    }
+
+
+    public function integrerAbsencesAuBulletin($bulletin, $donneeAbsences)
+    {
+        \Log::info('Intégration des absences au bulletin ID: '.$bulletin->id, $donneeAbsences);
+
+        // Mettre à jour les champs d'absences du bulletin
+        $bulletin->absences_justifiees = $donneeAbsences['justifiees'];
+        $bulletin->absences_non_justifiees = $donneeAbsences['non_justifiees'];
+        $bulletin->total_absences = $donneeAbsences['total'];
+
+        // Calculer et définir la note d'assiduité
+        $bulletin->note_assiduite = $this->calculerNoteAssiduite(
+            $donneeAbsences['justifiees'],
+            $donneeAbsences['non_justifiees']
+        );
+
+        $bulletin->save();
+
+        \Log::info('Absences intégrées avec succès au bulletin ID: '.$bulletin->id);
+
+        return $bulletin;
+    }
+
+
+    public function getBulletinAverageForPeriode(
+        int $etudiantId,
+        int $classeId,
+        int $anneeUniversitaireId,
+        string $periode,
+        string $currentPeriode,
+        float $currentAverage
+    ): ?float {
+        if ($periode === $currentPeriode) {
+            return $currentAverage;
+        }
+
+        $periodeOptions = [$periode];
+        if ($periode === 'semestre1') {
+            $periodeOptions[] = '1';
+        } elseif ($periode === 'semestre2') {
+            $periodeOptions[] = '2';
+        } elseif ($periode === '1') {
+            $periodeOptions[] = 'semestre1';
+        } elseif ($periode === '2') {
+            $periodeOptions[] = 'semestre2';
+        }
+
+        $bulletin = \App\Models\ESBTPBulletin::where('etudiant_id', $etudiantId)
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('periode', array_unique($periodeOptions))
+            ->first();
+
+        if (! $bulletin || $bulletin->moyenne_generale === null || $bulletin->moyenne_generale <= 0) {
+            return null;
+        }
+
+        return floatval($bulletin->moyenne_generale + ($bulletin->note_assiduite ?? 0));
+    }
+
+
+    public function convertImageToJpegBase64(string $photoPath): ?string
+    {
+        if (! function_exists('imagecreatefromstring')) {
+            // GD non disponible : fallback sur file_get_contents brut
+            $mime = mime_content_type($photoPath) ?: 'image/jpeg';
+            return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($photoPath));
+        }
+
+        try {
+            $rawData = file_get_contents($photoPath);
+            $src = @imagecreatefromstring($rawData);
+            if (! $src) {
+                // Impossible de lire l'image avec GD : fallback brut
+                $mime = mime_content_type($photoPath) ?: 'image/jpeg';
+                return 'data:' . $mime . ';base64,' . base64_encode($rawData);
+            }
+
+            $w = imagesx($src);
+            $h = imagesy($src);
+
+            // Créer une image truecolor avec fond blanc (pour gérer la transparence PNG)
+            $dst = imagecreatetruecolor($w, $h);
+            $white = imagecolorallocate($dst, 255, 255, 255);
+            imagefill($dst, 0, 0, $white);
+            imagecopy($dst, $src, 0, 0, 0, 0, $w, $h);
+            imagedestroy($src);
+
+            ob_start();
+            imagejpeg($dst, null, 85);
+            $jpegData = ob_get_clean();
+            imagedestroy($dst);
+
+            return 'data:image/jpeg;base64,' . base64_encode($jpegData);
+        } catch (\Exception $e) {
+            \Log::error('Erreur conversion image pour PDF: ' . $e->getMessage());
+            return null;
+        }
+    }
 
 }
