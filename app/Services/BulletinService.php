@@ -548,17 +548,13 @@ class BulletinService
         switch (true) {
             case $absencesNonJustifiees == 0:
                 return 0.13; // Bonus pour aucune absence non justifiée
-                break;
             case $absencesNonJustifiees == 1:
                 return 0;
-                break;
             case $absencesNonJustifiees == 2:
                 return -0.13;
-                break;
             case $absencesNonJustifiees == 3:
             case $absencesNonJustifiees == 4:
                 return -0.39;
-                break;
             default: // 5 ou plus
                 return -0.5;
         }
@@ -584,6 +580,8 @@ class BulletinService
         }
 
         $moyennes = [];
+        $afficherNoteAssiduite = SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
+        $anneeUniv = $afficherNoteAssiduite ? \App\Models\ESBTPAnneeUniversitaire::find($anneeUniversitaireId) : null;
 
         foreach ($etudiants as $etudiant) {
             try {
@@ -591,9 +589,7 @@ class BulletinService
                 $moyenneEtudiant = $this->calculerMoyenneGlobaleEtudiant($etudiant->id, $classeId, $anneeUniversitaireId, $periode);
 
                 // Ajouter la note d'assiduité seulement si l'affichage est activé et si la moyenne est valide
-                $afficherNoteAssiduite = SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
                 if ($afficherNoteAssiduite && $moyenneEtudiant > 0) {
-                    $anneeUniv = \App\Models\ESBTPAnneeUniversitaire::find($anneeUniversitaireId);
                     $absencesEtudiant = $this->absenceService->calculerDetailAbsences(
                         $etudiant->id,
                         $classeId,
