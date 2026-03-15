@@ -241,7 +241,7 @@ class BulletinService
         $settings = $this->getPDFConfig();
 
         $semesterWeights = $this->getSemesterWeights();
-        $moyenneSemestre1 = $this->getSemesterAverageFromBulletins(
+        $moyenneSemestre1 = $this->getBulletinAverageForPeriode(
             $etudiantId,
             $classeId,
             $anneeUniversitaireId,
@@ -249,7 +249,7 @@ class BulletinService
             $periode,
             $moyenneAvecAssiduite
         );
-        $moyenneSemestre2 = $this->getSemesterAverageFromBulletins(
+        $moyenneSemestre2 = $this->getBulletinAverageForPeriode(
             $etudiantId,
             $classeId,
             $anneeUniversitaireId,
@@ -318,42 +318,6 @@ class BulletinService
             'semester1' => $semester1,
             'semester2' => $semester2,
         ];
-    }
-
-    private function getSemesterAverageFromBulletins(
-        int $etudiantId,
-        int $classeId,
-        int $anneeUniversitaireId,
-        string $periode,
-        string $currentPeriode,
-        float $currentAverage
-    ): ?float {
-        if ($periode === $currentPeriode) {
-            return $currentAverage;
-        }
-
-        $periodeOptions = [$periode];
-        if ($periode === 'semestre1') {
-            $periodeOptions[] = '1';
-        } elseif ($periode === 'semestre2') {
-            $periodeOptions[] = '2';
-        } elseif ($periode === '1') {
-            $periodeOptions[] = 'semestre1';
-        } elseif ($periode === '2') {
-            $periodeOptions[] = 'semestre2';
-        }
-
-        $bulletin = ESBTPBulletin::where('etudiant_id', $etudiantId)
-            ->where('classe_id', $classeId)
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->whereIn('periode', array_unique($periodeOptions))
-            ->first();
-
-        if (! $bulletin || $bulletin->moyenne_generale === null || $bulletin->moyenne_generale <= 0) {
-            return null;
-        }
-
-        return floatval($bulletin->moyenne_generale + ($bulletin->note_assiduite ?? 0));
     }
 
     public function calculateAnnualAverage(?float $semester1, ?float $semester2, array $weights): ?float

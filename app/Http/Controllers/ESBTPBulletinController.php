@@ -462,6 +462,9 @@ class ESBTPBulletinController extends Controller
                 }
             }
 
+            // Initialiser la note d'assiduité (calculée plus bas si absences disponibles)
+            $noteAssiduite = 0;
+
             // Calculer les absences justifiées et non justifiées
             try {
                 $absences = $this->bulletinService->calculerAbsencesDetailees($bulletin);
@@ -2019,8 +2022,8 @@ class ESBTPBulletinController extends Controller
                 continue;
             }
 
-            // Récupérer la matière directement depuis la base de données pour éviter toute confusion
-            $matiere = \App\Models\ESBTPMatiere::find($matiere_id);
+            // Utiliser la matière déjà eager-loaded via evaluation.matiere
+            $matiere = $note->evaluation?->matiere;
             if (! $matiere) {
                 \Log::warning("Matiere with ID {$matiere_id} not found for note ID {$note->id} - skipping note");
 
@@ -5046,182 +5049,9 @@ class ESBTPBulletinController extends Controller
     /**
      * Calcule les statistiques réelles de la classe
      */
-    private function calculerStatistiquesClasse($classeId, $anneeUniversitaireId)
-    {
-        // Récupérer tous les étudiants de la classe
-        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($classeId, $anneeUniversitaireId) {
-            $q->where('classe_id', $classeId)
-                ->where('annee_universitaire_id', $anneeUniversitaireId);
-        })->get();
-
-        if ($etudiants->isEmpty()) {
-            return [
-                'meilleure_moyenne' => 0,
-                'plus_faible_moyenne' => 0,
-                'moyenne_classe' => 0,
-            ];
-        }
-
-        $moyennes = [];
-
-        // Preload tous les résultats manuels pour éviter N+1 (1 requête au lieu de N par étudiant)
-        $allResultatsManuel = \App\Models\ESBTPResultat::whereIn('etudiant_id', $etudiants->pluck('id'))
-            ->where('classe_id', $classeId)
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->with('matiere')
-            ->get()
-            ->groupBy('etudiant_id');
-
-        foreach ($etudiants as $etudiant) {
-            $resultatsManuelsSeulement = $allResultatsManuel->get($etudiant->id, collect());
-
-            // Si aucune moyenne manuelle, utiliser la méthode de calcul pour cet étudiant
-            if ($resultatsManuelsSeulement->isEmpty()) {
-                // Calculer comme avant
-                $notesAvecEvaluations = ESBTPNote::where('etudiant_id', $etudiant->id)
-                    ->whereHas('evaluation', function ($q) use ($classeId, $anneeUniversitaireId) {
-                        $q->where('classe_id', $classeId)
-                            ->where('annee_universitaire_id', $anneeUniversitaireId);
-                    })
-                    ->with(['evaluation.matiere'])
-                    ->get();
-
-                if ($notesAvecEvaluations->isEmpty()) {
-                    continue; // Ignorer les étudiants sans notes ni moyennes manuelles
-                }
-            }
-
-            // Calculer la moyenne globale de cet étudiant
-            $moyenneEtudiant = $this->calculerMoyenneGlobaleEtudiant($etudiant->id, $classeId, $anneeUniversitaireId);
-
-            if ($moyenneEtudiant > 0) {
-                $moyennes[] = $moyenneEtudiant;
-            }
-        }
-
-        if (empty($moyennes)) {
-            return [
-                'meilleure_moyenne' => 0,
-                'plus_faible_moyenne' => 0,
-                'moyenne_classe' => 0,
-            ];
-        }
-
-        return [
-            'meilleure_moyenne' => max($moyennes),
-            'plus_faible_moyenne' => min($moyennes),
-            'moyenne_classe' => array_sum($moyennes) / count($moyennes),
-        ];
-    }
-
     /**
      * Calculer la moyenne globale d'un étudiant (utilisé pour les statistiques)
      */
-    private function calculerMoyenneGlobaleEtudiant($etudiantId, $classeId, $anneeUniversitaireId)
-    {
-        // Récupérer le bulletin pour la configuration
-        $bulletin = ESBTPBulletin::where('etudiant_id', $etudiantId)
-            ->where('classe_id', $classeId)
-            ->where('periode', 'semestre1')
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->first();
-
-        if (! $bulletin || ! $bulletin->config_matieres) {
-            return 0; // Pas de configuration
-        }
-
-        $configMatieres = json_decode($bulletin->config_matieres, true);
-
-        // Récupérer les notes avec évaluations
-        $notesAvecEvaluations = ESBTPNote::where('etudiant_id', $etudiantId)
-            ->with(['evaluation.matiere'])
-            ->whereHas('evaluation', function ($q) use ($anneeUniversitaireId) {
-                $q->where('annee_universitaire_id', $anneeUniversitaireId)
-                    ->where('status', '!=', 'cancelled');
-            })
-            ->get();
-
-        $resultatsParMatiere = [];
-
-        // Calculer les moyennes automatiques
-        foreach ($notesAvecEvaluations as $note) {
-            if ($note->evaluation && $note->evaluation->matiere) {
-                $matiere = $note->evaluation->matiere;
-                $matiereId = $matiere->id;
-
-                if (! isset($resultatsParMatiere[$matiereId])) {
-                    $resultatsParMatiere[$matiereId] = (object) [
-                        'matiere_id' => $matiereId,
-                        'matiere' => $matiere,
-                        'notes' => [],
-                        'moyenne' => 0,
-                        'coefficient' => $this->bulletinService->getCoefficientForCombination(
-                            $matiereId,
-                            $classeId,
-                            $anneeUniversitaireId
-                        ),
-                    ];
-                }
-
-                $resultatsParMatiere[$matiereId]->notes[] = [
-                    'note' => $note->note,
-                    'coefficient' => $note->evaluation->coefficient,
-                ];
-            }
-        }
-
-        // Calculer les moyennes pondérées
-        foreach ($resultatsParMatiere as $matiereId => $resultat) {
-            $totalPoints = 0;
-            $totalCoeffs = 0;
-
-            foreach ($resultat->notes as $noteData) {
-                $totalPoints += $noteData['note'] * $noteData['coefficient'];
-                $totalCoeffs += $noteData['coefficient'];
-            }
-
-            $resultat->moyenne = $totalCoeffs > 0 ? $totalPoints / $totalCoeffs : 0;
-        }
-
-        // Intégrer les moyennes manuelles (elles l'emportent)
-        $resultatsManuelle = \App\Models\ESBTPResultat::where('etudiant_id', $etudiantId)
-            ->where('classe_id', $classeId)
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->with('matiere')
-            ->get();
-
-        foreach ($resultatsManuelle as $resultatManuel) {
-            $matiereId = $resultatManuel->matiere_id;
-
-            if ($resultatManuel->matiere) {
-                if (! isset($resultatsParMatiere[$matiereId])) {
-                    $resultatsParMatiere[$matiereId] = (object) [
-                        'matiere_id' => $matiereId,
-                        'matiere' => $resultatManuel->matiere,
-                        'moyenne' => $resultatManuel->moyenne,
-                        'coefficient' => $this->bulletinService->getCoefficientForCombination(
-                            $matiereId,
-                            $classeId,
-                            $anneeUniversitaireId
-                        ),
-                    ];
-                } else {
-                    $resultatsParMatiere[$matiereId]->moyenne = $resultatManuel->moyenne;
-                    if ($resultatManuel->coefficient) {
-                        $resultatsParMatiere[$matiereId]->coefficient = $resultatManuel->coefficient;
-                    }
-                }
-            }
-        }
-
-        // Calculer la moyenne globale pondérée
-        if (empty($resultatsParMatiere)) {
-            return 0;
-        }
-
-        return $this->bulletinService->calculerMoyennePonderee(collect($resultatsParMatiere));
-    }
-
     /**
      * Affiche la page de configuration des bulletins
      */
