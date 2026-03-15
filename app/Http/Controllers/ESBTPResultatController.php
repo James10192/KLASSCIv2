@@ -25,6 +25,15 @@ use App\Http\Requests\Bulletin\GenerateClasseBulletinsRequest;
 use App\Http\Requests\Bulletin\StoreBulletinRequest;
 use App\Http\Requests\Bulletin\UpdateBulletinRequest;
 use App\Http\Requests\Bulletin\UpdateMoyennesRequest;
+use App\Http\Requests\Resultat\BulkUpdateAbsencesRequest;
+use App\Http\Requests\Resultat\BulkUpdateCoefficientsRequest;
+use App\Http\Requests\Resultat\BulkUpdateMatieresConfigRequest;
+use App\Http\Requests\Resultat\BulkUpdateMatieresRequest;
+use App\Http\Requests\Resultat\BulkUpdateProfesseursRequest;
+use App\Http\Requests\Resultat\DeleteMoyenneRequest;
+use App\Http\Requests\Resultat\GetAbsencesRequest;
+use App\Http\Requests\Resultat\GetMoyennesRequest;
+use App\Http\Requests\Resultat\ResultatsFilterRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -45,15 +54,8 @@ class ESBTPResultatController extends Controller
         $this->bulletinService = $bulletinService;
     }
 
-    public function resultats(Request $request)
+    public function resultats(ResultatsFilterRequest $request)
     {
-        $this->validate($request, [
-            'classe_id' => 'nullable|exists:esbtp_classes,id',
-            'semestre' => 'nullable|in:1,2',
-            'annee_universitaire_id' => 'nullable|exists:esbtp_annee_universitaires,id',
-            'include_all_statuses' => 'nullable|boolean',
-        ]);
-
         $classe_id = $request->classe_id;
         $semestre = $request->semestre;
         $annee_universitaire_id = $request->annee_universitaire_id;
@@ -278,14 +280,8 @@ class ESBTPResultatController extends Controller
      * @param  ESBTPClasse  $classe
      * @return \Illuminate\Http\Response
      */
-    public function resultatClasse(Request $request, $id)
+    public function resultatClasse(ResultatsFilterRequest $request, $id)
     {
-        $this->validate($request, [
-            'semestre' => 'nullable|in:1,2',
-            'annee_universitaire_id' => 'nullable|exists:esbtp_annee_universitaires,id',
-            'include_all_statuses' => 'nullable|boolean',
-        ]);
-
         $semestre = $request->semestre;
         $periode = $semestre; // Map semestre to periode for view compatibility
         $annee_universitaire_id = $request->annee_universitaire_id;
@@ -468,15 +464,8 @@ class ESBTPResultatController extends Controller
      * @param  ESBTPEtudiant  $etudiant
      * @return \Illuminate\Http\Response
      */
-    public function resultatEtudiant(Request $request, $id)
+    public function resultatEtudiant(ResultatsFilterRequest $request, $id)
     {
-        $this->validate($request, [
-            'semestre' => 'nullable|in:1,2',
-            'periode' => 'nullable|in:1,2,semestre1,semestre2', // Support des deux formats
-            'annee_universitaire_id' => 'nullable|exists:esbtp_annee_universitaires,id',
-            'include_all_statuses' => 'nullable|boolean',
-        ]);
-
         // Gérer les deux paramètres: semestre et periode (compatibilité)
         $semestreRaw = $request->semestre ?? $request->periode;
         $annee_universitaire_id = $request->annee_universitaire_id;
@@ -878,14 +867,8 @@ class ESBTPResultatController extends Controller
      * @param  ESBTPClasse  $classe
      * @return \Illuminate\Http\Response
      */
-    public function editResultatsClasse(Request $request, $id)
+    public function editResultatsClasse(ResultatsFilterRequest $request, $id)
     {
-        $this->validate($request, [
-            'semestre' => 'nullable|in:1,2',
-            'annee_universitaire_id' => 'nullable|exists:esbtp_annee_universitaires,id',
-            'include_all_statuses' => 'nullable|boolean',
-        ]);
-
         $semestre = $request->semestre;
         $periode = $semestre ? 'semestre'.$semestre : null;
         $annee_universitaire_id = $request->annee_universitaire_id;
@@ -1155,17 +1138,8 @@ class ESBTPResultatController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getMoyennes(Request $request)
+    public function getMoyennes(GetMoyennesRequest $request)
     {
-        $this->validate($request, [
-            'classe_id' => 'required|exists:esbtp_classes,id',
-            'matiere_id' => 'nullable|exists:esbtp_matieres,id',
-            'matiere_ids' => 'nullable|array',
-            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-            'semestre' => 'required|in:1,2', // OBLIGATOIRE
-            'etudiant_ids' => 'required|array',
-        ]);
-
         $periode = $request->semestre ? 'semestre'.$request->semestre : null;
 
         $query = ESBTPResultat::where('classe_id', $request->classe_id)
@@ -1268,15 +1242,8 @@ class ESBTPResultatController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function getAbsences(Request $request)
+    public function getAbsences(GetAbsencesRequest $request)
     {
-        $this->validate($request, [
-            'classe_id' => 'required|exists:esbtp_classes,id',
-            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-            'semestre' => 'required|in:1,2', // OBLIGATOIRE
-            'etudiant_ids' => 'required|array',
-        ]);
-
         $periode = $request->semestre ? 'semestre'.$request->semestre : null;
 
         // Sélectionner seulement les colonnes de la table, pas les accessors
@@ -1316,10 +1283,6 @@ class ESBTPResultatController extends Controller
      */
     public function getMatiereCoefficient(Request $request)
     {
-        $request->validate([
-            'matiere_id' => 'required|exists:esbtp_matieres,id',
-            'classe_id' => 'required|exists:esbtp_classes,id',
-        ]);
 
         try {
             $classe = ESBTPClasse::findOrFail($request->classe_id);
@@ -1456,19 +1419,10 @@ class ESBTPResultatController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function bulkUpdateProfesseurs(Request $request)
+    public function bulkUpdateProfesseurs(BulkUpdateProfesseursRequest $request)
     {
         \Log::info('🔵 bulkUpdateProfesseurs - START', [
             'request_data' => $request->all(),
-        ]);
-
-        $this->validate($request, [
-            'classe_id' => 'required|exists:esbtp_classes,id',
-            'periode' => 'required|in:semestre1,semestre2',
-            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-            'professeurs' => 'required|array',
-            'professeurs.*.matiere_id' => 'required|exists:esbtp_matieres,id',
-            'professeurs.*.enseignant_id' => 'nullable|exists:esbtp_teachers,id',  // Table correcte: esbtp_teachers
         ]);
 
         \DB::beginTransaction();
@@ -1619,18 +1573,8 @@ class ESBTPResultatController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function bulkUpdateAbsences(Request $request)
+    public function bulkUpdateAbsences(BulkUpdateAbsencesRequest $request)
     {
-        $this->validate($request, [
-            'classe_id' => 'required|exists:esbtp_classes,id',
-            'semestre' => 'required|in:1,2',
-            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-            'absences' => 'required|array',
-            'absences.*.etudiant_id' => 'required|exists:esbtp_etudiants,id',
-            'absences.*.absences_justifiees' => 'nullable|numeric|min:0',
-            'absences.*.absences_non_justifiees' => 'nullable|numeric|min:0',
-        ]);
-
         \DB::beginTransaction();
         try {
             $updated = 0;
@@ -1702,15 +1646,8 @@ class ESBTPResultatController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function bulkUpdateMatieres(Request $request)
+    public function bulkUpdateMatieres(BulkUpdateMatieresRequest $request)
     {
-        $this->validate($request, [
-            'classe_id' => 'required|exists:esbtp_classes,id',
-            'matieres' => 'required|array',
-            'matieres.*.matiere_id' => 'required|exists:esbtp_matieres,id',
-            'matieres.*.coefficient' => 'required|numeric|min:0',
-        ]);
-
         \DB::beginTransaction();
         try {
             $classe = ESBTPClasse::findOrFail($request->classe_id);
@@ -1751,13 +1688,8 @@ class ESBTPResultatController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function bulkUpdateCoefficients(Request $request)
+    public function bulkUpdateCoefficients(BulkUpdateCoefficientsRequest $request)
     {
-        $this->validate($request, [
-            'classe_id' => 'required|exists:esbtp_classes,id',
-            'coefficients' => 'required|array',
-        ]);
-
         \DB::beginTransaction();
         try {
             $classe = ESBTPClasse::findOrFail($request->classe_id);
@@ -1798,16 +1730,8 @@ class ESBTPResultatController extends Controller
      *
      * @return \Illuminate\Http\JsonResponse
      */
-    public function bulkUpdateMatieresConfig(Request $request)
+    public function bulkUpdateMatieresConfig(BulkUpdateMatieresConfigRequest $request)
     {
-        $this->validate($request, [
-            'classe_id' => 'required|exists:esbtp_classes,id',
-            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-            'semestre' => 'required|in:1,2',
-            'coefficients' => 'nullable|array',
-            'matiere_types' => 'nullable|array',
-        ]);
-
         \DB::beginTransaction();
         try {
             $classe = ESBTPClasse::findOrFail($request->classe_id);
@@ -1925,12 +1849,7 @@ class ESBTPResultatController extends Controller
             return redirect()->back()->with('error', 'Vous n\'avez pas les permissions nécessaires pour modifier les moyennes.');
         }
 
-        // Valider les paramètres avec une validation plus stricte pour la période
-        $request->validate([
-            'etudiant_id' => 'required|exists:esbtp_etudiants,id',
-            'classe_id' => 'required|exists:esbtp_classes,id',
-            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-        ]);
+        // Validation déjà faite par PreviewMoyennesRequest si besoin
 
         try {
             $etudiantId = $request->etudiant_id;
@@ -2432,20 +2351,12 @@ class ESBTPResultatController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function deleteMoyenne(Request $request)
+    public function deleteMoyenne(DeleteMoyenneRequest $request)
     {
         // Vérifier les permissions
         if (! Auth::check() || (! auth()->user()->hasRole('superAdmin') && ! auth()->user()->hasRole('secretaire'))) {
             return redirect()->back()->with('error', 'Vous n\'avez pas les permissions nécessaires pour supprimer les moyennes.');
         }
-
-        $request->validate([
-            'etudiant_id' => 'required|exists:esbtp_etudiants,id',
-            'classe_id' => 'required|exists:esbtp_classes,id',
-            'matiere_id' => 'required|exists:esbtp_matieres,id',
-            'periode' => 'required',
-            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-        ]);
 
         $etudiantId = $request->etudiant_id;
         $classeId = $request->classe_id;
