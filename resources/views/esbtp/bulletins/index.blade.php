@@ -228,7 +228,7 @@
                                                 <a href="{{ route('esbtp.bulletins.edit', $bulletin) }}" class="btn btn-sm btn-warning">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
-                                                <a href="{{ route('esbtp.bulletins.print', $bulletin) }}" class="btn btn-sm btn-secondary" target="_blank">
+                                                <a href="{{ route('esbtp.bulletins.download', $bulletin) }}" class="btn btn-sm btn-secondary" target="_blank">
                                                     <i class="fas fa-print"></i>
                                                 </a>
                                                 <button type="button" class="btn btn-sm btn-danger"
