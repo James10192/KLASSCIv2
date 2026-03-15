@@ -19,7 +19,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>ESBTP - YAKRO</h1>
+            <h1>{{ \App\Helpers\SettingsHelper::get('school_name', config('app.name')) }}</h1>
             <p>Reçu de Paiement</p>
         </div>
 

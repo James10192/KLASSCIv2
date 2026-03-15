@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Liste des années universitaires ESBTP')
+@section('title', 'Liste des années universitaires')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

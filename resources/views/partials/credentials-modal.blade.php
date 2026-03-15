@@ -181,7 +181,7 @@ function printCredentials() {
     printWindow.document.write(`
         <html>
         <head>
-            <title>Informations de connexion ESBTP</title>
+            <title>Informations de connexion {{ \App\Helpers\SettingsHelper::get('school_acronym', config('app.name')) }}</title>
             <style>
                 body { font-family: Arial, sans-serif; padding: 20px; }
                 .header { text-align: center; margin-bottom: 30px; }

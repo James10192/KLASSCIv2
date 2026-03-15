@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Semestres ESBTP')
+@section('title', 'Semestres')
 @section('page_title', 'Gestion des Semestres')
 
 @section('content')

@@ -45,7 +45,7 @@
                 <div class="text-center mb-4">
                     <div class="row align-items-center">
                         <div class="col-md-3">
-                            <img src="{{ asset('images/esbtp_logo.png') }}" alt="ESBTP Logo" class="img-fluid" style="max-height: 120px;">
+                            <img src="{{ asset('images/esbtp_logo.png') }}" alt="{{ \App\Helpers\SettingsHelper::get('school_acronym', config('app.name')) }} Logo" class="img-fluid" style="max-height: 120px;">
                         </div>
                         <div class="col-md-9">
                             <h4>Ecole Spéciale<br>du Bâtiment et des Travaux Publics</h4>

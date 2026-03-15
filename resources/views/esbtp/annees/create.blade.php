@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Créer une nouvelle année universitaire ESBTP')
+@section('title', 'Créer une nouvelle année universitaire')
 
 @section('content')
 <div class="container-fluid">

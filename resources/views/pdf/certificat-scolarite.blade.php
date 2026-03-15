@@ -203,7 +203,7 @@
     
     <!-- Contenu principal -->
     <div class="content">
-        <p>Je soussigné(e) la Directrice des Etudes de l'Ecole Spéciale du Bâtiment et des Travaux publics (ESBTP) certifie que :</p>
+        <p>Je soussigné(e) le/la {{ \App\Helpers\SettingsHelper::get('director_title', 'Directeur(trice) des Etudes') }} de {{ \App\Helpers\SettingsHelper::get('school_name', config('app.name')) }} certifie que :</p>
     </div>
     
     <!-- Informations étudiant -->

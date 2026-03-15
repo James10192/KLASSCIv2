@@ -18,7 +18,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', config('app.name', 'ESBTP'))</title>
+    <title>@yield('title', config('app.name', 'KLASSCI'))</title>
 
     <!-- Favicon -->
     <link rel="shortcut icon" href="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" type="image/x-icon">
@@ -425,8 +425,8 @@
 <body>
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <img src="{{ asset('images/esbtp_logo.png') }}" alt="ESBTP Logo" class="sidebar-logo">
-            <div class="sidebar-brand">ESBTP</div>
+            <img src="{{ asset('images/esbtp_logo.png') }}" alt="{{ \App\Helpers\SettingsHelper::get('school_acronym', config('app.name')) }} Logo" class="sidebar-logo">
+            <div class="sidebar-brand">{{ \App\Helpers\SettingsHelper::get('school_acronym', config('app.name')) }}</div>
             <div class="sidebar-subtitle">Gestion Universitaire</div>
             <!--<div class="sidebar-brand">KLASSCI</div>
             <div class="sidebar-subtitle">Gestion Universitaire</div>-->

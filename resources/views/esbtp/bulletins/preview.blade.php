@@ -254,7 +254,7 @@
                         <div class="col-md-6 text-center">
                             <div class="esbtp-logo">
                                 @if($logoBase64)
-                                    <img src="data:image/png;base64,{{ $logoBase64 }}" alt="Logo ESBTP">
+                                    <img src="data:image/png;base64,{{ $logoBase64 }}" alt="Logo {{ \App\Helpers\SettingsHelper::get('school_acronym', config('app.name')) }}">
                                 @endif
                             </div>
                             <div class="school-info">
@@ -482,8 +482,8 @@
 
                 <!-- Pied de page -->
                 <footer class="bulletin-footer">
-                    <div>ESBTP Yamoussoukro - École Spéciale du Bâtiment et des Travaux Publics</div>
-                    <div>BP 1313 Yamoussoukro - Tél: 27 30 64 95 15 - www.esbtp.ci</div>
+                    <div>{{ \App\Helpers\SettingsHelper::get('school_name', config('app.name')) }}</div>
+                    <div>{{ \App\Helpers\SettingsHelper::get('school_address', '') }}@if(\App\Helpers\SettingsHelper::get('school_phone')) - Tél: {{ \App\Helpers\SettingsHelper::get('school_phone') }}@endif@if(\App\Helpers\SettingsHelper::get('school_website')) - {{ \App\Helpers\SettingsHelper::get('school_website') }}@endif</div>
                 </footer>
             </div>
         </div>

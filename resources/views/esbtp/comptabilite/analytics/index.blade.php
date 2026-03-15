@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title', 'Analytics Prédictifs - ESBTP Comptabilité')
+@section('title', 'Analytics Prédictifs - Comptabilité')
 
 @section('content')
 <div class="container-fluid">

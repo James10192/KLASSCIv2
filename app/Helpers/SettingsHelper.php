@@ -96,8 +96,8 @@ class SettingsHelper
     public static function getSchoolInfo()
     {
         return [
-            'name' => self::get('school_name', 'ESBTP-yAKRO'),
-            'acronym' => self::get('school_acronym', 'ESBTP'),
+            'name' => self::get('school_name', config('app.name', 'KLASSCI')),
+            'acronym' => self::get('school_acronym', config('app.name', 'KLASSCI')),
             'address' => self::get('school_address', ''),
             'city' => self::get('school_city', ''),
             'postal_code' => self::get('school_postal_code', ''),
@@ -205,8 +205,8 @@ class SettingsHelper
     {
         $defaults = [
             // Établissement
-            'school_name' => ['value' => 'ESBTP-yAKRO', 'group' => 'establishment'],
-            'school_acronym' => ['value' => 'ESBTP', 'group' => 'establishment'],
+            'school_name' => ['value' => config('app.name', 'KLASSCI'), 'group' => 'establishment'],
+            'school_acronym' => ['value' => config('app.name', 'KLASSCI'), 'group' => 'establishment'],
             'school_country' => ['value' => 'Côte d\'Ivoire', 'group' => 'establishment'],
             'director_title' => ['value' => 'Directeur Général', 'group' => 'establishment'],
 

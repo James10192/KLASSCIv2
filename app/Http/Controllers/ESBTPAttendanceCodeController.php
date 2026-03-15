@@ -20,7 +20,7 @@ class ESBTPAttendanceCodeController extends Controller
     {
         $this->authorize('generate-attendance-codes');
 
-        $activeCodes = ESBTPDailyCode::with('seance.matiere', 'seance.classe', 'seance.teacher')
+        $activeCodes = ESBTPDailyCode::with(['generator', 'seance.matiere', 'seance.classe', 'seance.teacher'])
             ->where('status', 'active')
             ->where('valid_until', '>', now())
             ->get();

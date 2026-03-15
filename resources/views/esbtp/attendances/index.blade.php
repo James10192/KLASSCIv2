@@ -1019,11 +1019,9 @@
                         </tr>
                     </thead>
                     <tbody>
+                        @php $avatarColors = ['#0453cb','#10b981','#f97316','#06b6d4','#0891b2','#dc6803','#0369a1']; @endphp
                         @forelse($attendances as $attendance)
-                        @php
-                            $colors   = ['#0453cb','#10b981','#f97316','#06b6d4','#0891b2','#dc6803','#0369a1'];
-                            $avatarBg = $colors[abs(crc32($attendance->etudiant->nom_complet)) % count($colors)];
-                        @endphp
+                        @php $avatarBg = $avatarColors[abs(crc32($attendance->etudiant->nom_complet)) % count($avatarColors)]; @endphp
                         <tr>
                             <td>
                                 <div style="font-weight:700;font-size:.875rem;">{{ $attendance->date->format('d/m/Y') }}</div>
@@ -1244,9 +1242,13 @@ function showDailyReportModal(report) {
 
 document.addEventListener('DOMContentLoaded', function() {
     loadRecentActivities();
-    const activitiesTimer = setInterval(loadRecentActivities, 300000);
+    let activitiesTimer = setInterval(loadRecentActivities, 300000);
     document.addEventListener('visibilitychange', function() {
-        if (document.hidden) clearInterval(activitiesTimer);
+        if (document.hidden) {
+            clearInterval(activitiesTimer);
+        } else {
+            activitiesTimer = setInterval(loadRecentActivities, 300000);
+        }
     });
 });
 

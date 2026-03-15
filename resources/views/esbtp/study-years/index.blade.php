@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Années d\'études ESBTP')
+@section('title', 'Années d\'études')
 @section('page_title', 'Gestion des Années d\'études')
 
 @section('content')

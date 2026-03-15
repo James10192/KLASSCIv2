@@ -14,6 +14,6 @@
         <a href="{{ route('esbtp.bons_sortie.show', $bon->id) }}">Voir les détails du bon de sortie</a>
     </p>
     <p>Merci,</p>
-    <p>L'équipe ESBTP</p>
+    <p>L'équipe {{ \App\Helpers\SettingsHelper::get('school_acronym', config('app.name')) }}</p>
 </body>
 </html> 

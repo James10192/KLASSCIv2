@@ -394,7 +394,7 @@
                         {{-- Code principal --}}
                         <div class="acode-main">
                             <div class="acode-value" id="activeCodeValue" title="Cliquer pour copier"
-                                 onclick="copyActiveCode('{{ $activeCode->code }}', this)">{{ $activeCode->code }}</div>
+                                 onclick="copyCode('{{ $activeCode->code }}', this)">{{ $activeCode->code }}</div>
                             <div class="acode-active-badge">
                                 <span class="pulse"></span>Code Actif
                             </div>
@@ -473,7 +473,7 @@
                             <div class="acode-kpi-lbl">Échouées</div>
                         </div>
                         <div class="acode-kpi info">
-                            <div class="acode-kpi-val">{{ $activeCode->total_attempts > 0 ? round(($activeCode->successful_attempts / $activeCode->total_attempts) * 100, 1) : 0 }}%</div>
+                            <div class="acode-kpi-val">{{ $activeCode->getAttemptsStatistics()['success_rate'] }}%</div>
                             <div class="acode-kpi-lbl">Taux réussite</div>
                         </div>
                     </div>
@@ -550,6 +550,7 @@
                     </thead>
                     <tbody>
                         @foreach($recentCodes as $code)
+                        @php $isActive = $code->status === 'active' && $code->valid_until > now(); @endphp
                         <tr class="{{ $code->status === 'active' ? 'row-active' : '' }}">
                             <td>
                                 <span class="acode-code-pill" title="Cliquer pour copier"
@@ -588,15 +589,15 @@
                             <td class="text-center">
                                 <div class="stats-val">{{ $code->successful_attempts }}/{{ $code->total_attempts }}</div>
                                 <div class="stats-rate">
-                                    {{ $code->total_attempts > 0 ? round(($code->successful_attempts / $code->total_attempts) * 100, 1) : 0 }}% réussite
+                                    {{ $code->getAttemptsStatistics()['success_rate'] }}% réussite
                                 </div>
                             </td>
                             <td class="text-center">
-                                @if($code->status === 'active' && $code->valid_until > now())
+                                @if($isActive)
                                     <span class="acode-status s-active">
                                         <i class="fas fa-check-circle"></i>Actif
                                     </span>
-                                @elseif($code->status === 'expired' || ($code->status === 'active' && $code->valid_until <= now()))
+                                @elseif($code->status === 'expired' || !$isActive)
                                     <span class="acode-status s-expired">
                                         <i class="fas fa-clock"></i>Expiré
                                     </span>
@@ -607,7 +608,7 @@
                                 @endif
                             </td>
                             <td class="text-center">
-                                @if($code->status === 'active' && $code->valid_until > now())
+                                @if($isActive)
                                 <form action="{{ route('esbtp.attendance-codes.invalidate', $code->id) }}" method="POST" class="d-inline">
                                     @csrf
                                     <button type="submit" class="acode-btn-icon"
@@ -625,12 +626,10 @@
                 </table>
             </div>
             @else
-            <div style="padding:3rem 1rem;text-align:center;color:var(--text-secondary);">
-                <div style="width:60px;height:60px;border-radius:16px;background:rgba(4,83,203,0.06);display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:#0453cb;opacity:0.5;margin:0 auto 1rem;">
-                    <i class="fas fa-history"></i>
-                </div>
-                <p style="font-weight:700;color:var(--text-primary);margin-bottom:0.3rem;">Aucun historique</p>
-                <p style="font-size:0.82rem;">Les codes générés apparaîtront ici</p>
+            <div class="acode-empty">
+                <div class="acode-empty-icon"><i class="fas fa-history"></i></div>
+                <h3>Aucun historique</h3>
+                <p>Les codes générés apparaîtront ici</p>
             </div>
             @endif
         </div>
@@ -779,17 +778,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
-function copyActiveCode(code, el) {
-    navigator.clipboard.writeText(code).then(() => {
-        el.classList.add('copied');
-        setTimeout(() => el.classList.remove('copied'), 1500);
-    }).catch(() => {});
-}
-
 function copyCode(code, el) {
     navigator.clipboard.writeText(code).then(() => {
         el.classList.add('copied');
-        setTimeout(() => el.classList.remove('copied'), 1200);
+        setTimeout(() => el.classList.remove('copied'), 1400);
     }).catch(() => {});
 }
 </script>

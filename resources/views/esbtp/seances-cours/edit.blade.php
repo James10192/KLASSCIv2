@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Modifier une séance - ' . ($emploiTemps->classe->name ?? 'ESBTP'))
+@section('title', 'Modifier une séance - ' . ($emploiTemps->classe->name ?? 'Classe'))
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

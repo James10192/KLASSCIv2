@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Sélection de classe - ESBTP')
+@section('title', 'Sélection de classe')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">

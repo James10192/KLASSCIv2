@@ -674,7 +674,7 @@
                                     </div>
                 <div class="col-lg-6" data-aos="fade-left" data-aos-duration="1000">
                     <div class="ps-lg-5 mt-5 mt-lg-0">
-                        <span class="subtitle">À propos de l'ESBTP</span>
+                        <span class="subtitle">À propos de {{ \App\Helpers\SettingsHelper::get('school_name', config('app.name')) }}</span>
                         <h2 class="section-title">Former la prochaine génération de professionnels du bâtiment</h2>
                         <p class="section-description">L'École Spéciale du Bâtiment et des Travaux Publics (ESBTP) de Yamoussoukro est un établissement d'enseignement supérieur spécialisé dans la formation aux métiers du bâtiment et des travaux publics. Notre mission est de former des professionnels qualifiés capables de répondre aux défis du secteur de la construction en Côte d'Ivoire et en Afrique.</p>
                         

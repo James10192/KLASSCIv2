@@ -60,7 +60,7 @@
         </tr>
     </table>
 
-    <h3 style="color: #007bff; margin-top: 30px;">Accès à la plateforme ESBTP</h3>
+    <h3 style="color: #007bff; margin-top: 30px;">Accès à la plateforme {{ \App\Helpers\SettingsHelper::get('school_acronym', config('app.name')) }}</h3>
 
     <p class="message">
         Vous pouvez continuer à suivre la scolarité de votre enfant sur la plateforme en ligne avec vos identifiants habituels.
