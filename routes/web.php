@@ -30,7 +30,9 @@ use App\Http\Controllers\ESBTPEnseignantController;
 use App\Http\Controllers\ESBTPEtudiantController;
 use App\Http\Controllers\ESBTPEvaluationController;
 use App\Http\Controllers\ESBTPFiliereController;
+use App\Http\Controllers\ESBTPInscriptionApiController;
 use App\Http\Controllers\ESBTPInscriptionController;
+use App\Http\Controllers\ESBTPInscriptionPaiementController;
 use App\Http\Controllers\ESBTPLogsController;
 use App\Http\Controllers\ESBTPMatiereController;
 use App\Http\Controllers\ESBTPMatriculeConfigController;
@@ -310,8 +312,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('frais/{category}/schedule-reminders', [\App\Http\Controllers\ESBTPFraisController::class, 'scheduleAutomaticReminders'])->name('frais.schedule-reminders');
 
             // Routes pour les souscriptions aux frais optionnels
-            Route::post('inscriptions/{inscription}/subscribe-optional-fee', [\App\Http\Controllers\ESBTPInscriptionController::class, 'subscribeToOptionalFee'])->name('inscriptions.subscribe-optional-fee');
-            Route::post('inscriptions/{inscription}/unsubscribe-optional-fee', [\App\Http\Controllers\ESBTPInscriptionController::class, 'unsubscribeFromOptionalFee'])->name('inscriptions.unsubscribe-optional-fee');
+            Route::post('inscriptions/{inscription}/subscribe-optional-fee', [\App\Http\Controllers\ESBTPInscriptionPaiementController::class, 'subscribeToOptionalFee'])->name('inscriptions.subscribe-optional-fee');
+            Route::post('inscriptions/{inscription}/unsubscribe-optional-fee', [\App\Http\Controllers\ESBTPInscriptionPaiementController::class, 'unsubscribeFromOptionalFee'])->name('inscriptions.unsubscribe-optional-fee');
 
             // Routes pour les certificats de scolarité
             Route::get('/etudiants/{etudiant}/certificat-preview', [ESBTPEtudiantController::class, 'previewCertificat'])
@@ -882,14 +884,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Routes pour les inscriptions ESBTP
             Route::get('/inscriptions', [ESBTPInscriptionController::class, 'index'])->name('inscriptions.index');
             Route::get('/inscriptions/create', [ESBTPInscriptionController::class, 'create'])->name('inscriptions.create');
-            Route::get('/inscriptions/getClasses', [ESBTPInscriptionController::class, 'getClasses'])->name('inscriptions.getClasses');
-            Route::get('/inscriptions/check-transfert/{classe}', [ESBTPInscriptionController::class, 'checkTransfert'])->name('inscriptions.check-transfert');
-            Route::get('/inscriptions/duplicates', [ESBTPInscriptionController::class, 'duplicates'])->name('inscriptions.duplicates');
-            Route::post('/inscriptions/check-duplicates', [ESBTPInscriptionController::class, 'checkDuplicates'])->name('inscriptions.check-duplicates');
+            Route::get('/inscriptions/getClasses', [ESBTPInscriptionApiController::class, 'getClasses'])->name('inscriptions.getClasses');
+            Route::get('/inscriptions/check-transfert/{classe}', [ESBTPInscriptionApiController::class, 'checkTransfert'])->name('inscriptions.check-transfert');
+            Route::get('/inscriptions/duplicates', [ESBTPInscriptionApiController::class, 'duplicates'])->name('inscriptions.duplicates');
+            Route::post('/inscriptions/check-duplicates', [ESBTPInscriptionApiController::class, 'checkDuplicates'])->name('inscriptions.check-duplicates');
             Route::post('/inscriptions', [ESBTPInscriptionController::class, 'store'])->name('inscriptions.store');
             Route::get('/inscriptions/{inscription}', [ESBTPInscriptionController::class, 'show'])->name('inscriptions.show');
-            Route::get('/inscriptions/{inscription}/situation-financiere/preview', [ESBTPInscriptionController::class, 'previewSituationFinanciere'])->name('inscriptions.situation-financiere.preview');
-            Route::get('/inscriptions/{inscription}/situation-financiere/pdf', [ESBTPInscriptionController::class, 'exportSituationFinanciere'])->name('inscriptions.situation-financiere.pdf');
+            Route::get('/inscriptions/{inscription}/situation-financiere/preview', [ESBTPInscriptionPaiementController::class, 'previewSituationFinanciere'])->name('inscriptions.situation-financiere.preview');
+            Route::get('/inscriptions/{inscription}/situation-financiere/pdf', [ESBTPInscriptionPaiementController::class, 'exportSituationFinanciere'])->name('inscriptions.situation-financiere.pdf');
             Route::get('/inscriptions/{inscription}/edit', [ESBTPInscriptionController::class, 'edit'])->name('inscriptions.edit');
             Route::put('/inscriptions/{inscription}', [ESBTPInscriptionController::class, 'update'])->name('inscriptions.update');
             Route::delete('/inscriptions/{inscription}', [ESBTPInscriptionController::class, 'destroy'])->name('inscriptions.destroy');
@@ -900,28 +902,28 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('/inscriptions/bulk-valider', [ESBTPInscriptionController::class, 'bulkValider'])->name('inscriptions.bulk-valider');
 
             // Routes pour actions rapides sur inscriptions (modals AJAX)
-            Route::get('/inscriptions/{inscription}/data', [ESBTPInscriptionController::class, 'getInscriptionData'])->name('inscriptions.data');
-            Route::get('/inscriptions/{inscription}/paiement-en-attente', [ESBTPInscriptionController::class, 'getPaiementEnAttente'])->name('inscriptions.paiement-en-attente');
-            Route::get('/inscriptions/{inscription}/classes-alternatives', [ESBTPInscriptionController::class, 'getClassesAlternatives'])->name('inscriptions.classes-alternatives');
+            Route::get('/inscriptions/{inscription}/data', [ESBTPInscriptionApiController::class, 'getInscriptionData'])->name('inscriptions.data');
+            Route::get('/inscriptions/{inscription}/paiement-en-attente', [ESBTPInscriptionApiController::class, 'getPaiementEnAttente'])->name('inscriptions.paiement-en-attente');
+            Route::get('/inscriptions/{inscription}/classes-alternatives', [ESBTPInscriptionApiController::class, 'getClassesAlternatives'])->name('inscriptions.classes-alternatives');
             Route::post('/inscriptions/{inscription}/changer-classe-rapide', [ESBTPInscriptionController::class, 'changerClasseRapide'])->name('inscriptions.changer-classe-rapide');
 
             // Route API pour validation montant paiement (AJAX)
-            Route::get('/inscriptions/{inscription}/frais/{category}/montant-restant', [ESBTPInscriptionController::class, 'getMontantRestant'])->name('inscriptions.frais.montant-restant');
+            Route::get('/inscriptions/{inscription}/frais/{category}/montant-restant', [ESBTPInscriptionPaiementController::class, 'getMontantRestant'])->name('inscriptions.frais.montant-restant');
             Route::get('/inscriptions/{inscription}/refresh-ligne', [ESBTPInscriptionController::class, 'refreshLigne'])->name('inscriptions.refresh-ligne');
 
             // Routes pour l'administration des inscriptions
             Route::get('/inscriptions-administration', [ESBTPInscriptionController::class, 'administration'])->name('inscriptions.administration');
-            Route::post('/inscriptions/{inscription}/valider-avec-paiement', [ESBTPInscriptionController::class, 'validerAvecPaiement'])->name('inscriptions.valider-avec-paiement');
-            Route::post('/inscriptions/{inscription}/valider-definitivement', [ESBTPInscriptionController::class, 'validerDefinitivement'])->name('inscriptions.valider-definitivement');
-            Route::post('/inscriptions/{inscription}/payer-frais', [ESBTPInscriptionController::class, 'payerFraisCategorie'])->name('inscriptions.payer-frais');
-            Route::post('/inscriptions/{inscription}/transfer-overpayment', [ESBTPInscriptionController::class, 'transferOverpayment'])->name('inscriptions.transfer-overpayment');
-            Route::put('/inscriptions/{inscription}/subscriptions/{subscription}', [ESBTPInscriptionController::class, 'updateSubscription'])->name('inscriptions.update-subscription')->middleware('role:superAdmin');
+            Route::post('/inscriptions/{inscription}/valider-avec-paiement', [ESBTPInscriptionPaiementController::class, 'validerAvecPaiement'])->name('inscriptions.valider-avec-paiement');
+            Route::post('/inscriptions/{inscription}/valider-definitivement', [ESBTPInscriptionPaiementController::class, 'validerDefinitivement'])->name('inscriptions.valider-definitivement');
+            Route::post('/inscriptions/{inscription}/payer-frais', [ESBTPInscriptionPaiementController::class, 'payerFraisCategorie'])->name('inscriptions.payer-frais');
+            Route::post('/inscriptions/{inscription}/transfer-overpayment', [ESBTPInscriptionPaiementController::class, 'transferOverpayment'])->name('inscriptions.transfer-overpayment');
+            Route::put('/inscriptions/{inscription}/subscriptions/{subscription}', [ESBTPInscriptionPaiementController::class, 'updateSubscription'])->name('inscriptions.update-subscription')->middleware('role:superAdmin');
 
             // API pour les parents dans les inscriptions
-            Route::get('/api/parents/search', [ESBTPInscriptionController::class, 'searchParents'])->name('api.parents.search');
+            Route::get('/api/parents/search', [ESBTPInscriptionApiController::class, 'searchParents'])->name('api.parents.search');
 
             // Route pour récupérer les frais par classe
-            Route::get('/inscriptions/frais-by-classe/{classeId}', [ESBTPInscriptionController::class, 'getFraisByClasse'])->name('inscriptions.frais-by-classe');
+            Route::get('/inscriptions/frais-by-classe/{classeId}', [ESBTPInscriptionApiController::class, 'getFraisByClasse'])->name('inscriptions.frais-by-classe');
 
             // Routes API utilisées par les formulaires
 
@@ -1262,7 +1264,7 @@ Route::prefix('api/esbtp')->name('api.esbtp.')->middleware(['auth'])->group(func
 Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth'])->group(function () {
     Route::get('classes/{id}', [ESBTPClasseController::class, 'getClasseById'])->name('classes.get');
     Route::get('classes/{id}/niveau-config', [ESBTPClasseController::class, 'getNiveauConfig'])->name('classes.niveau-config');
-    Route::get('get-classes', [ESBTPInscriptionController::class, 'getClasses'])->name('get-classes');
+    Route::get('get-classes', [ESBTPInscriptionApiController::class, 'getClasses'])->name('get-classes');
     Route::get('search-parents', [ESBTPEtudiantController::class, 'searchParents'])->name('search-parents');
     Route::get('etudiants/search', [ESBTPEtudiantController::class, 'searchForApi'])->name('etudiants.search');
     Route::get('etudiants/inscriptions', [ESBTPEtudiantController::class, 'getInscriptionsForApi'])->name('etudiants.inscriptions');
