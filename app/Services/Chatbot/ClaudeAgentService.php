@@ -321,10 +321,10 @@ PROMPT;
             $role = $msg->role === 'assistant' ? 'assistant' : 'user';
             $text = $msg->content ?? '';
 
-            // Pour les réponses assistant qui avaient des données, ne garder qu'un résumé court
-            // afin que Claude ne réutilise pas les données de l'historique et appelle les outils
-            if ($role === 'assistant' && $msg->display_type !== 'text' && mb_strlen($text) > 100) {
-                $text = mb_substr($text, 0, 100) . '... [données affichées via widget]';
+            // Pour les réponses assistant qui avaient des données, remplacer par un placeholder
+            // pour forcer Claude à appeler les outils au lieu de répondre de mémoire
+            if ($role === 'assistant' && $msg->display_type !== 'text') {
+                $text = '[Résultats affichés via widget - appeler l\'outil pour des données fraîches]';
             }
 
             $contents[] = [
