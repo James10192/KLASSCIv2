@@ -1125,21 +1125,23 @@ class BulletinService
             $notesByMatiere[$matiereId]['moyenne'] = $resultat->moyenne;
         }
 
-        $moyenneGenerale = 0;
-        $countMatieresFinales = 0;
+        // Pondérer par coefficients matière (cohérent avec calculerMoyennePonderee)
+        $sommePoints = 0;
+        $sommeCoefs = 0;
 
-        foreach ($notesByMatiere as $matiereData) {
+        foreach ($notesByMatiere as $matiereId => $matiereData) {
             if ($matiereData['moyenne'] > 0) {
-                $moyenneGenerale += $matiereData['moyenne'];
-                $countMatieresFinales++;
+                $coeff = $this->getCoefficientForCombination($matiereId, $classeId ?? 0, $anneeUniversitaireId ?? 0);
+                $sommePoints += $matiereData['moyenne'] * $coeff;
+                $sommeCoefs += $coeff;
             }
         }
 
-        if ($countMatieresFinales === 0) {
+        if ($sommeCoefs <= 0) {
             return null;
         }
 
-        return $moyenneGenerale / $countMatieresFinales;
+        return $sommePoints / $sommeCoefs;
     }
 
 

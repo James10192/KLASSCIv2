@@ -199,7 +199,7 @@
                     <i class="fas fa-times me-1"></i>Annuler
                 </button>
                 <button type="button" id="srWarningProceedBtn" class="btn btn-warning" style="border-radius: 8px; font-weight: 600; color: white;"
-                        onclick="var url = this.dataset.pdfUrl; if(url) { bootstrap.Modal.getInstance(document.getElementById('srBulletinWarningModal')).hide(); window.location.href = url; }">
+                        onclick="var url = this.dataset.pdfUrl; if(url) { try { var m = bootstrap.Modal.getInstance(document.getElementById('srBulletinWarningModal')); if(m) m.hide(); } catch(e) {} window.location.href = url; }">
                     <i class="fas fa-check me-1"></i><span id="srWarningProceedText">Continuer quand même</span>
                 </button>
             </div>

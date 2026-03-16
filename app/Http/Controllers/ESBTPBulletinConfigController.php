@@ -817,22 +817,28 @@ class ESBTPBulletinConfigController extends Controller
                 ->where('id', '!=', $etudiant_id)
                 ->pluck('id');
 
-                foreach ($autresEtudiantIds as $autreEtudiantId) {
-                    // Créer le bulletin s'il n'existe pas (firstOrCreate)
-                    $autreBulletin = ESBTPBulletin::firstOrCreate(
-                        [
-                            'etudiant_id' => $autreEtudiantId,
-                            'classe_id' => $classe_id,
-                            'periode' => $periode,
-                            'annee_universitaire_id' => $annee_universitaire_id,
-                        ],
-                        ['created_by' => Auth::id()]
-                    );
+                \DB::beginTransaction();
+                try {
+                    foreach ($autresEtudiantIds as $autreEtudiantId) {
+                        $autreBulletin = ESBTPBulletin::firstOrCreate(
+                            [
+                                'etudiant_id' => $autreEtudiantId,
+                                'classe_id' => $classe_id,
+                                'periode' => $periode,
+                                'annee_universitaire_id' => $annee_universitaire_id,
+                            ],
+                            ['created_by' => Auth::id()]
+                        );
 
-                    $autreBulletin->professeurs = json_encode($professeurs);
-                    $autreBulletin->updated_by = Auth::id();
-                    $autreBulletin->save();
-                    $bulletinsPropages++;
+                        $autreBulletin->professeurs = json_encode($professeurs);
+                        $autreBulletin->updated_by = Auth::id();
+                        $autreBulletin->save();
+                        $bulletinsPropages++;
+                    }
+                    \DB::commit();
+                } catch (\Exception $e) {
+                    \DB::rollBack();
+                    Log::error('Erreur propagation professeurs: ' . $e->getMessage());
                 }
 
                 Log::info("✅ Propagation terminée: {$bulletinsPropages} bulletins mis à jour/créés");

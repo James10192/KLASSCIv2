@@ -688,7 +688,7 @@ class ESBTPBulletinController extends Controller
 
             try {
                 Log::info('Chargement de la vue PDF avec le template configurable pour le bulletin #'.$bulletin->id);
-                $pdf = PDF::loadView($this->getBulletinTemplateView(), $data);
+                $pdf = PDF::loadView($this->bulletinService->getBulletinTemplateView(), $data);
 
                 // Configuration PDF avec format A4 et options optimisées
                 $paperFormat = \App\Helpers\SettingsHelper::get('bulletin_paper_format', 'A4');
@@ -1272,7 +1272,7 @@ class ESBTPBulletinController extends Controller
             // Statistiques de la classe
             $totalEtudiants = ESBTPEtudiant::where('classe_id', $classe->id)->count();
 
-            return view($this->getBulletinPreviewView(), compact(
+            return view($this->bulletinService->getBulletinPreviewView(), compact(
                 'etudiant',
                 'classe',
                 'anneeUniversitaire',
@@ -1351,7 +1351,7 @@ class ESBTPBulletinController extends Controller
             $donnees['isPdfExport'] = true;
 
             // Générer le PDF avec le template unifié
-            $pdf = PDF::loadView($this->getBulletinTemplateView(), $donnees);
+            $pdf = PDF::loadView($this->bulletinService->getBulletinTemplateView(), $donnees);
             $pdf->setPaper('a4', 'portrait');
             $pdf->setOptions([
                 'dpi' => 150,
@@ -1625,16 +1625,6 @@ class ESBTPBulletinController extends Controller
      * @param  \Illuminate\Support\Collection  $matieres
      * @return array
      */
-    private function getBulletinTemplateView(): string
-    {
-        return $this->bulletinService->getBulletinTemplateView();
-    }
-
-    private function getBulletinPreviewView(): string
-    {
-        return $this->bulletinService->getBulletinPreviewView();
-    }
-
     private function buildCoefficientIssueContext(array $context, Request $request): array
     {
         $classeId = $context['classe']['id'] ?? $request->input('classe_id');

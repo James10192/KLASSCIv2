@@ -4213,7 +4213,12 @@ function uploadEtudiantPhoto(input) {
 
         if (data.success && data.photo_url) {
             var avatar = document.getElementById('heroAvatarDisplay');
-            avatar.innerHTML = '<img src="' + data.photo_url + '?' + Date.now() + '" alt="Photo" style="width:100%;height:100%;object-fit:cover;display:block;">';
+            var img = document.createElement('img');
+                    img.src = data.photo_url + '?' + Date.now();
+                    img.alt = 'Photo';
+                    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+                    avatar.innerHTML = '';
+                    avatar.appendChild(img);
         } else {
             alert(data.message || 'Erreur lors de la mise à jour de la photo.');
         }
