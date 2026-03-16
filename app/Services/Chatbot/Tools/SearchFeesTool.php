@@ -14,7 +14,7 @@ class SearchFeesTool extends ChatbotTool
 
     public function description(): string
     {
-        return 'Rechercher les frais (scolarité, inscription, cantine, transport...) configurés par filière, niveau et type d\'affectation. Retourne catégorie, montants par type (affectés/réaffectés/non affectés).';
+        return 'Rechercher les frais configurés. Il y a 2 types : (1) Frais OBLIGATOIRES (scolarité, inscription) configurés par combinaison filière+niveau avec 3 montants (affectés/réaffectés/non affectés). (2) Frais OPTIONNELS (cantine, transport...) configurés par FORMULES (ex: Repas complet, Plat de résistance) — PAS par filière/niveau. Pour les optionnels, ne demande PAS la filière ni le niveau, appelle directement sans filtres.';
     }
 
     public function parameters(): array
