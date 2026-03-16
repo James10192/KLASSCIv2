@@ -91,6 +91,30 @@
 .hero-avatar-status.inactif  { background: #94a3b8; }
 .hero-avatar-status.abandon  { background: #ef4444; }
 
+/* Bouton upload photo — overlay camera sur l'avatar */
+.hero-avatar-upload {
+    position: absolute; bottom: -2px; left: -2px;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: rgba(4,83,203,.85);
+    border: 2px solid white;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: white; font-size: 0.7rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    z-index: 2;
+}
+.hero-avatar-upload:hover {
+    background: #0453cb;
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(4,83,203,.4);
+}
+.hero-avatar-upload.uploading {
+    pointer-events: none;
+    background: rgba(4,83,203,.5);
+}
+.hero-avatar-upload .fa-spin { font-size: 0.65rem; }
+
 /* Text block */
 .hero-text { flex: 1; min-width: 200px; color: #fff; }
 .hero-name { font-size: 1.65rem; font-weight: 800; letter-spacing: -.02em; margin: 0 0 3px; line-height: 1.2; }
@@ -1631,7 +1655,7 @@
     <div class="hero-inner">
         {{-- Avatar avec badge statut --}}
         <div class="hero-avatar-wrap">
-            <div class="hero-avatar">
+            <div class="hero-avatar" id="heroAvatarDisplay">
                 @if($etudiant->photo)
                     <img src="{{ asset('storage/photos/etudiants/' . $etudiant->photo) }}"
                          alt="{{ $etudiant->nom_complet }}"
@@ -1643,6 +1667,15 @@
             {{-- Badge rond : vert seulement si inscrit cette année, sinon gris --}}
             <span class="hero-avatar-status {{ $estInscritCetteAnnee ? 'actif' : 'inactif' }}"
                   title="{{ $estInscritCetteAnnee ? 'Inscrit ' . ($anneeCourante->name ?? '') : 'Non inscrit pour l\'année en cours' }}"></span>
+            {{-- Bouton upload photo (superAdmin / secretaire) --}}
+            @if(auth()->user()->hasAnyRole(['superAdmin', 'secretaire']))
+                <label class="hero-avatar-upload" id="heroPhotoUploadBtn" title="Modifier la photo">
+                    <i class="fas fa-camera"></i>
+                    <input type="file" accept="image/jpeg,image/png,image/jpg,image/gif"
+                           style="display:none;" id="heroPhotoInput"
+                           onchange="uploadEtudiantPhoto(this)">
+                </label>
+            @endif
         </div>
 
         {{-- Text --}}
@@ -4147,6 +4180,53 @@
 @endsection
 
 @push('scripts')
+<script>
+// Upload photo étudiant via AJAX
+function uploadEtudiantPhoto(input) {
+    if (!input.files || !input.files[0]) return;
+
+    var file = input.files[0];
+    if (file.size > 5 * 1024 * 1024) {
+        alert('La photo ne doit pas dépasser 5 Mo.');
+        input.value = '';
+        return;
+    }
+
+    var btn = document.getElementById('heroPhotoUploadBtn');
+    var icon = btn.querySelector('i');
+    btn.classList.add('uploading');
+    icon.className = 'fas fa-spinner fa-spin';
+
+    var formData = new FormData();
+    formData.append('photo', file);
+    formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+
+    fetch("{{ route('esbtp.etudiants.update-photo', $etudiant) }}", {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        btn.classList.remove('uploading');
+        icon.className = 'fas fa-camera';
+
+        if (data.success && data.photo_url) {
+            var avatar = document.getElementById('heroAvatarDisplay');
+            avatar.innerHTML = '<img src="' + data.photo_url + '?' + Date.now() + '" alt="Photo" style="width:100%;height:100%;object-fit:cover;display:block;">';
+        } else {
+            alert(data.message || 'Erreur lors de la mise à jour de la photo.');
+        }
+    })
+    .catch(function() {
+        btn.classList.remove('uploading');
+        icon.className = 'fas fa-camera';
+        alert('Erreur réseau lors de l\'upload.');
+    });
+
+    input.value = '';
+}
+</script>
 <script>
 (function () {
     // Tab switching
