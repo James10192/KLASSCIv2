@@ -1159,6 +1159,46 @@
     color: var(--cb-text-muted);
 }
 
+.cb-payment-list {
+    padding: 0;
+}
+
+.cb-payment-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--cb-border-light);
+}
+
+.cb-payment-item:last-child {
+    border-bottom: none;
+}
+
+.cb-payment-row-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.cb-payment-amount {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cb-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.cb-payment-row-details {
+    font-size: 11px;
+    color: var(--cb-text-muted);
+    margin-top: 3px;
+}
+
+.cb-payment-tranche {
+    margin-left: 6px;
+    font-size: 10px;
+    color: var(--cb-primary);
+    font-weight: 600;
+}
+
 .cb-payment-link {
     padding: 8px 12px;
     border-top: 1px solid var(--cb-border-light);

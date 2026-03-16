@@ -451,42 +451,46 @@
             header.appendChild(headerRight);
             section.appendChild(header);
 
-            // Payment table
+            // Payment items (compact stacked layout)
             if (Array.isArray(group.payments) && group.payments.length) {
-                var table = document.createElement('table');
-                table.className = 'cb-fee-table';
-                var thead = document.createElement('thead');
-                thead.innerHTML = '<tr><th>Catégorie</th><th>Montant</th><th>Statut</th><th>Date</th><th>Mode</th></tr>';
-                table.appendChild(thead);
+                var list = document.createElement('div');
+                list.className = 'cb-payment-list';
 
-                var tbody = document.createElement('tbody');
                 group.payments.forEach(function (p) {
-                    var tr = document.createElement('tr');
-                    var cells = [
-                        { cls: 'cb-fee-label', text: p.categorie || 'N/A' },
-                        { cls: 'cb-fee-amount', text: p.montant || '0 FCFA' },
-                        { cls: '', text: p.statut || 'N/A' },
-                        { cls: '', text: p.date || 'N/A' },
-                        { cls: '', text: p.mode || 'N/A' }
-                    ];
-                    cells.forEach(function (c) {
-                        var td = document.createElement('td');
-                        if (c.cls) td.className = c.cls;
-                        td.textContent = c.text;
-                        // Badge for status
-                        if (c.text && (c.text.toLowerCase().indexOf('valid') >= 0)) {
-                            td.innerHTML = '';
-                            var b = document.createElement('span');
-                            b.className = 'badge badge-success';
-                            b.textContent = c.text;
-                            td.appendChild(b);
-                        }
-                        tr.appendChild(td);
-                    });
-                    tbody.appendChild(tr);
+                    var item = document.createElement('div');
+                    item.className = 'cb-payment-item';
+
+                    // Row 1: montant + statut badge
+                    var row1 = document.createElement('div');
+                    row1.className = 'cb-payment-row-main';
+                    var amount = document.createElement('span');
+                    amount.className = 'cb-payment-amount';
+                    amount.textContent = p.montant || '0 FCFA';
+                    row1.appendChild(amount);
+
+                    var statusBadge = document.createElement('span');
+                    var st = (p.statut || '').toLowerCase();
+                    statusBadge.className = 'badge badge-' + (st.indexOf('valid') >= 0 ? 'success' : st.indexOf('attente') >= 0 ? 'warning' : st.indexOf('rejet') >= 0 ? 'danger' : 'secondary');
+                    statusBadge.textContent = p.statut || 'N/A';
+                    row1.appendChild(statusBadge);
+                    item.appendChild(row1);
+
+                    // Row 2: catégorie · date · mode
+                    var row2 = document.createElement('div');
+                    row2.className = 'cb-payment-row-details';
+                    var parts = [p.categorie, p.date, p.mode].filter(function (v) { return v && v !== 'N/A'; });
+                    row2.textContent = parts.join(' · ');
+                    if (p.tranche) {
+                        var trancheEl = document.createElement('span');
+                        trancheEl.className = 'cb-payment-tranche';
+                        trancheEl.textContent = p.tranche;
+                        row2.appendChild(trancheEl);
+                    }
+                    item.appendChild(row2);
+
+                    list.appendChild(item);
                 });
-                table.appendChild(tbody);
-                section.appendChild(table);
+                section.appendChild(list);
             }
 
             // Inscription link
