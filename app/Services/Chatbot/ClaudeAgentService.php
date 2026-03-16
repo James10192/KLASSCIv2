@@ -137,17 +137,26 @@ class ClaudeAgentService
                 if ($tool && !isset($result['error'])) {
                     $allToolCalls[] = ['tool' => $toolName, 'args' => $toolArgs, 'result_count' => $result['count'] ?? null];
 
-                    // Garder le résultat avec le plus de données (pas celui qui retourne 0)
-                    $resultCount = $result['count'] ?? count($result['results'] ?? []);
-                    $lastCount = $lastToolResult ? ($lastToolResult['count'] ?? 0) : 0;
-                    if (!$lastToolResult || $resultCount > 0 || $lastCount === 0) {
-                        $lastToolResult = $result;
-                        if (isset($result['display_type'])) {
-                            $displayType = $result['display_type'];
+                    $resultDisplayType = $result['display_type'] ?? 'text';
+
+                    // Fee groups : fusionner les groupes si même tool appelé plusieurs fois
+                    if ($resultDisplayType === 'fee_groups' && $lastToolResult && ($lastToolResult['display_type'] ?? '') === 'fee_groups') {
+                        $lastToolResult['results'] = array_merge($lastToolResult['results'] ?? [], $result['results'] ?? []);
+                        $lastToolResult['count'] = ($lastToolResult['count'] ?? 0) + ($result['count'] ?? 0);
+                    } else {
+                        // Pour les autres types : garder le résultat avec le plus de données
+                        $resultCount = $result['count'] ?? count($result['results'] ?? []);
+                        $lastCount = $lastToolResult ? ($lastToolResult['count'] ?? 0) : 0;
+                        if (!$lastToolResult || $resultCount > 0 || $lastCount === 0) {
+                            $lastToolResult = $result;
                         }
-                        if (isset($result['deep_link'])) {
-                            $deepLink = $result['deep_link'];
-                        }
+                    }
+
+                    if (isset($result['display_type'])) {
+                        $displayType = $result['display_type'];
+                    }
+                    if (isset($result['deep_link'])) {
+                        $deepLink = $result['deep_link'];
                     }
                     if (isset($result['guide'])) {
                         $displayData = $result['guide'];
@@ -287,7 +296,7 @@ RÈGLES IMPORTANTES :
 2. Utilise les outils (tools) pour récupérer des données réelles. NE JAMAIS inventer de données. NE JAMAIS répondre de mémoire ou à partir de l'historique de conversation — appelle TOUJOURS l'outil même si tu penses déjà connaître la réponse.
 3. Si l'utilisateur pose une question sur des données (étudiants, paiements, inscriptions, frais, classes), appelle OBLIGATOIREMENT l'outil approprié, même si une recherche similaire a déjà été faite dans la conversation.
 4. Pour les salutations ou questions générales, réponds directement sans outil.
-5. Après avoir reçu les résultats d'un outil, écris UNIQUEMENT un court résumé (1-3 phrases). NE REPRODUIS JAMAIS les données brutes, les tableaux ou les listes dans ta réponse — le frontend affiche automatiquement les résultats sous forme de widgets visuels (tableaux, cartes) EN DESSOUS de ton message texte. Ton rôle est juste d'introduire et contextualiser. Ne dis jamais "ci-dessus" — dis "ci-dessous" ou "dans les résultats suivants".
+5. INTERDIT ABSOLU : après un outil, ne reproduis JAMAIS les données (noms, montants, listes, formules) dans ton texte. Le frontend affiche un widget visuel EN DESSOUS. Écris SEULEMENT 1-2 phrases d'introduction. Exemple CORRECT : "Voici les frais optionnels configurés. Les détails s'affichent ci-dessous." Exemple INTERDIT : "Cantine : - Repas complet : 455 000 FCFA..." ← NE FAIS JAMAIS ÇA.
 6. Si un outil retourne 0 résultat, dis-le clairement et suggère des alternatives.
 7. Ne génère JAMAIS de tableaux markdown, de listes de données, de code, ou de JSON. Réponds en langage naturel concis.
 8. Si l'utilisateur demande comment faire quelque chose (créer une inscription, saisir des notes...), utilise navigate_to_page pour lui donner un lien direct. Pour ces réponses de navigation, fournis un guide détaillé avec les étapes numérotées que l'utilisateur devra suivre sur la page (champs à remplir, options à sélectionner, etc.). Le bouton "Ouvrir la page" s'affiche automatiquement en dessous.
