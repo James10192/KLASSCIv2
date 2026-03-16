@@ -1402,6 +1402,60 @@ class ESBTPBulletinController extends Controller
 
 
     /**
+     * Vérifie les pré-requis avant génération du bulletin (AJAX).
+     * Retourne les warnings éventuels (ex: bulletin de l'autre semestre non généré).
+     */
+    public function checkBulletinPrerequisites(Request $request)
+    {
+        $classeId = $request->classe_id;
+        $etudiantId = $request->etudiant_id ?? $request->bulletin;
+        $periode = $request->periode ?? 'semestre1';
+        $anneeId = $request->annee_universitaire_id;
+
+        $warnings = [];
+
+        $otherPeriode = $periode === 'semestre1' ? 'semestre2' : 'semestre1';
+        $otherLabel = $otherPeriode === 'semestre1' ? 'Semestre 1' : 'Semestre 2';
+
+        $otherBulletinExists = \App\Models\ESBTPBulletin::where('etudiant_id', $etudiantId)
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeId)
+            ->where('periode', $otherPeriode)
+            ->where('moyenne_generale', '>', 0)
+            ->exists();
+
+        // Avertir seulement quand on génère S2 sans bulletin S1 officiel
+        // (En S1, c'est normal que S2 n'existe pas encore)
+        if (! $otherBulletinExists && $periode === 'semestre2') {
+            $hasNotes = \App\Models\ESBTPNote::where('etudiant_id', $etudiantId)
+                ->whereHas('evaluation', function ($q) use ($otherPeriode, $anneeId) {
+                    $q->where('annee_universitaire_id', $anneeId)
+                        ->where('periode', $otherPeriode);
+                })
+                ->exists();
+
+            if ($hasNotes) {
+                $warnings[] = [
+                    'type' => 'warning',
+                    'title' => "Bulletin {$otherLabel} non généré",
+                    'message' => "Le bulletin du {$otherLabel} n'a pas encore été généré officiellement. La moyenne sera calculée à la volée à partir des notes existantes. Pour un résultat officiel, générez d'abord le bulletin du {$otherLabel}.",
+                ];
+            } else {
+                $warnings[] = [
+                    'type' => 'info',
+                    'title' => "Pas de notes pour le {$otherLabel}",
+                    'message' => "Aucune note n'a été saisie pour le {$otherLabel}. La moyenne annuelle ne pourra pas être calculée.",
+                ];
+            }
+        }
+
+        return response()->json([
+            'ok' => true,
+            'warnings' => $warnings,
+        ]);
+    }
+
+    /**
      * @deprecated Route stub — use genererBulletin() instead.
      * @return \Illuminate\Http\Response
      */
@@ -1571,23 +1625,14 @@ class ESBTPBulletinController extends Controller
      * @param  \Illuminate\Support\Collection  $matieres
      * @return array
      */
-    private function getBulletinStyle(): string
-    {
-        return \App\Helpers\SettingsHelper::get('bulletin_style', 'yakro');
-    }
-
     private function getBulletinTemplateView(): string
     {
-        return $this->getBulletinStyle() === 'abidjan'
-            ? 'esbtp.bulletins.pdf-configurable-abidjan'
-            : 'esbtp.bulletins.pdf-configurable';
+        return $this->bulletinService->getBulletinTemplateView();
     }
 
     private function getBulletinPreviewView(): string
     {
-        return $this->getBulletinStyle() === 'abidjan'
-            ? 'esbtp.bulletins.preview-abidjan'
-            : 'esbtp.bulletins.preview';
+        return $this->bulletinService->getBulletinPreviewView();
     }
 
     private function buildCoefficientIssueContext(array $context, Request $request): array

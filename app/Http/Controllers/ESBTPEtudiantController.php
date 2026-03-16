@@ -1593,14 +1593,16 @@ class ESBTPEtudiantController extends Controller
             $anneeId = optional($inscription->anneeUniversitaire)->id;
             $mg = null;
 
-            // 1. Bulletins officiels
+            // 1. Bulletins officiels (moyenne_generale + note_assiduite)
             if ($anneeId) {
                 $buls = \App\Models\ESBTPBulletin::where('etudiant_id', $etudiantId)
                     ->where('annee_universitaire_id', $anneeId)
                     ->where('moyenne_generale', '>', 0)
                     ->get();
                 if ($buls->count()) {
-                    $mg = round($buls->avg('moyenne_generale'), 2);
+                    $mg = round($buls->avg(function ($b) {
+                        return $b->moyenne_generale + ($b->note_assiduite ?? 0);
+                    }), 2);
                 }
             }
 

@@ -1,121 +1,74 @@
-{{-- Composant pour les informations de l'étudiant --}}
-<div class="main-card">
-    <div class="main-card-header">
-        <div class="main-card-title">
-            <i class="fas fa-user-graduate"></i>
-            Informations de l'étudiant
+{{-- 3. Student Info Card — premium vertical --}}
+<div class="sr-student-card sr-animate sr-animate-delay-2">
+    <div class="sr-student-avatar">
+        <div class="sr-student-avatar-inner">
+            @if($etudiant->photo_url)
+                <img src="{{ $etudiant->photo_url }}" alt="{{ $etudiant->nom }}">
+            @else
+                <i class="fas fa-user-graduate"></i>
+            @endif
         </div>
-        <div class="main-card-subtitle">Identité et inscription</div>
     </div>
-    <div class="main-card-body">
-        <div class="student-profile">
-            <div class="student-avatar">
-                @if($etudiant->photo_url)
-                    <img src="{{ $etudiant->photo_url }}" alt="Photo de {{ $etudiant->nom }}" class="student-avatar-img">
-                @else
-                    <i class="fas fa-user-circle"></i>
-                @endif
+
+    <h3 class="sr-student-name">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</h3>
+    <div class="sr-student-matricule">
+        <i class="fas fa-id-badge"></i>
+        {{ $etudiant->matricule }}
+    </div>
+
+    <div class="sr-student-divider"></div>
+
+    <div class="sr-student-details">
+        <div class="sr-detail-item">
+            <div class="sr-detail-icon sr-detail-icon--classe">
+                <i class="fas fa-chalkboard"></i>
             </div>
-            <div class="student-details">
-                <h3 class="student-name">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</h3>
-                <p class="student-matricule">{{ $etudiant->matricule }}</p>
-                
-                <div class="student-info-grid">
-                    <div class="info-item">
-                        <label>Classe</label>
-                        <span>{{ isset($classe) && $classe ? $classe->name : 'Non définie' }}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Filière</label>
-                        <span>{{ isset($classe) && $classe && isset($classe->filiere) ? $classe->filiere->name : 'N/A' }}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Niveau</label>
-                        <span>{{ isset($classe) && $classe && isset($classe->niveau) ? $classe->niveau->name : 'N/A' }}</span>
-                    </div>
-                    <div class="info-item">
-                        <label>Année</label>
-                        <span>
-                            @if(isset($anneeUniversitaire))
-                                {{ $anneeUniversitaire->annee_debut }}-{{ $anneeUniversitaire->annee_fin }}
-                            @else
-                                N/A
-                            @endif
-                        </span>
-                    </div>
+            <div class="sr-detail-text">
+                <div class="sr-detail-label">Classe</div>
+                <div class="sr-detail-value">{{ isset($classe) && $classe ? $classe->name : 'Non définie' }}</div>
+            </div>
+        </div>
+        <div class="sr-detail-item">
+            <div class="sr-detail-icon sr-detail-icon--filiere">
+                <i class="fas fa-sitemap"></i>
+            </div>
+            <div class="sr-detail-text">
+                <div class="sr-detail-label">Filière</div>
+                <div class="sr-detail-value">{{ isset($classe) && $classe && isset($classe->filiere) ? $classe->filiere->name : 'N/A' }}</div>
+            </div>
+        </div>
+        <div class="sr-detail-item">
+            <div class="sr-detail-icon sr-detail-icon--niveau">
+                <i class="fas fa-layer-group"></i>
+            </div>
+            <div class="sr-detail-text">
+                <div class="sr-detail-label">Niveau</div>
+                <div class="sr-detail-value">{{ isset($classe) && $classe && isset($classe->niveau) ? $classe->niveau->name : 'N/A' }}</div>
+            </div>
+        </div>
+        <div class="sr-detail-item">
+            <div class="sr-detail-icon sr-detail-icon--annee">
+                <i class="fas fa-calendar-alt"></i>
+            </div>
+            <div class="sr-detail-text">
+                <div class="sr-detail-label">Année</div>
+                <div class="sr-detail-value">
+                    @if(isset($anneeUniversitaire) && $anneeUniversitaire)
+                        @php
+                            $anneeDisplay = $anneeUniversitaire->name;
+                            if (! $anneeDisplay && $anneeUniversitaire->annee_debut && $anneeUniversitaire->annee_fin) {
+                                $anneeDisplay = $anneeUniversitaire->annee_debut . '-' . $anneeUniversitaire->annee_fin;
+                            }
+                            if (! $anneeDisplay && $anneeUniversitaire->start_date && $anneeUniversitaire->end_date) {
+                                $anneeDisplay = $anneeUniversitaire->start_date->format('Y') . '-' . $anneeUniversitaire->end_date->format('Y');
+                            }
+                        @endphp
+                        {{ $anneeDisplay ?: 'N/A' }}
+                    @else
+                        N/A
+                    @endif
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<style>
-.student-profile {
-    display: flex;
-    align-items: flex-start;
-    gap: 1.5rem;
-}
-
-.student-avatar {
-    flex-shrink: 0;
-    width: 80px;
-    height: 80px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-    border-radius: 50%;
-    color: white;
-    font-size: 2.5rem;
-    overflow: hidden;
-}
-
-.student-avatar-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 50%;
-}
-
-.student-details {
-    flex: 1;
-}
-
-.student-name {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 0.25rem;
-}
-
-.student-matricule {
-    color: var(--text-secondary);
-    font-weight: 500;
-    margin-bottom: 1.5rem;
-}
-
-.student-info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-}
-
-.info-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.info-item label {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.info-item span {
-    font-weight: 600;
-    color: var(--text-primary);
-}
-</style>

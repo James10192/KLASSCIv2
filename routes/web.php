@@ -1728,6 +1728,7 @@ Route::get('/debug-permissions', function () {
 // Routes spéciales pour le workflow des bulletins (copiées exactement du GitHub)
 // Route spéciale pour la génération de PDF de bulletins - placée ici pour éviter les conflits
 Route::get('/esbtp-special/bulletins-pdf', [ESBTPBulletinController::class, 'genererPDFParParamsUnified'])->name('esbtp.bulletins.pdf-params');
+Route::get('/esbtp-special/bulletins-check', [ESBTPBulletinController::class, 'checkBulletinPrerequisites'])->name('esbtp.bulletins.check-prerequisites');
 
 // Route pour prévisualiser le bulletin avant génération PDF
 Route::get('/esbtp/bulletins/preview', [ESBTPBulletinController::class, 'previewBulletin'])->name('esbtp.bulletins.preview');

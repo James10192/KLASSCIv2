@@ -214,24 +214,36 @@ class BulletinService
         $noteAssiduite = $afficherNoteAssiduite ? $this->calculerNoteAssiduite($absences['justifiees'], $absences['non_justifiees']) : 0;
         $moyenneAvecAssiduite = $moyenneGlobale + $noteAssiduite;
 
-        // Rang de l'étudiant (simplifié)
-        $rang = '1';
-
         // Effectif de la classe
         $effectif = ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($classe, $anneeUniversitaire) {
             $q->where('classe_id', $classe->id)
                 ->where('annee_universitaire_id', $anneeUniversitaire->id);
         })->count();
 
+        // Persister la moyenne BRUTE (sans assiduité) dans le bulletin.
+        // L'assiduité est stockée séparément dans note_assiduite.
+        // getBulletinAverageForPeriode() additionne les deux.
+        $bulletin->moyenne_generale = $moyenneGlobale;
+        $bulletin->note_assiduite = $noteAssiduite;
+        $bulletin->effectif_classe = $effectif;
+        $bulletin->save();
+
+        // Calculer le vrai rang (basé sur tous les bulletins de la classe/période)
+        $this->calculerRang($bulletin);
+        $bulletin->refresh();
+        $rang = $bulletin->rang ?? 1;
+
         // Calculer les vraies statistiques de classe
         $statsClasse = $this->calculerStatistiquesClasse($classe->id, $anneeUniversitaire->id, $periode);
 
-        // Calculer les rangs par matière - simplification pour un seul étudiant
+        // Calculer les rangs par matière via ESBTPResultat (batch-fetch pour éviter N+1)
+        $allMatiereIds = collect($resultatsParMatiere)->pluck('matiere_id')->filter()->unique()->values()->all();
+        $rangsParMatiere = $this->calculerRangsParMatiereBatch($allMatiereIds, $etudiantId, $classeId, $anneeUniversitaireId, $periodeNormalized);
         foreach ($resultatsGeneraux as $resultat) {
-            $resultat->rang = 1; // Premier et seul étudiant avec cette configuration
+            $resultat->rang = $rangsParMatiere[$resultat->matiere_id] ?? '-';
         }
         foreach ($resultatsTechniques as $resultat) {
-            $resultat->rang = 1; // Premier et seul étudiant avec cette configuration
+            $resultat->rang = $rangsParMatiere[$resultat->matiere_id] ?? '-';
         }
 
         // Déterminer l'appréciation selon la moyenne
@@ -241,13 +253,25 @@ class BulletinService
         $settings = $this->getPDFConfig();
 
         $semesterWeights = $this->getSemesterWeights();
+        $warnings = [];
+
+        // Vérifier si le bulletin de l'autre semestre existe en base
+        $otherPeriode = $periode === 'semestre1' ? 'semestre2' : 'semestre1';
+        $otherBulletinExists = ESBTPBulletin::where('etudiant_id', $etudiantId)
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->where('periode', $otherPeriode)
+            ->where('moyenne_generale', '>', 0)
+            ->exists();
+
         $moyenneSemestre1 = $this->getBulletinAverageForPeriode(
             $etudiantId,
             $classeId,
             $anneeUniversitaireId,
             'semestre1',
             $periode,
-            $moyenneAvecAssiduite
+            $moyenneAvecAssiduite,
+            $noteAssiduite
         );
         $moyenneSemestre2 = $this->getBulletinAverageForPeriode(
             $etudiantId,
@@ -255,9 +279,24 @@ class BulletinService
             $anneeUniversitaireId,
             'semestre2',
             $periode,
-            $moyenneAvecAssiduite
+            $moyenneAvecAssiduite,
+            $noteAssiduite
         );
         $moyenneAnnuelle = $this->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+
+        // Warning si le bulletin de l'autre semestre n'a pas été généré officiellement
+        if (! $otherBulletinExists && ($periode === 'semestre2' && $moyenneSemestre1 !== null)) {
+            $warnings[] = [
+                'type' => 'fallback_calcul',
+                'message' => 'La moyenne du Semestre 1 a été calculée à la volée car aucun bulletin S1 officiel n\'a été généré. Pour des résultats plus fiables, générez d\'abord le bulletin du Semestre 1.',
+            ];
+        }
+        if (! $otherBulletinExists && ($periode === 'semestre1' && $moyenneSemestre2 !== null)) {
+            $warnings[] = [
+                'type' => 'fallback_calcul',
+                'message' => 'La moyenne du Semestre 2 a été calculée à la volée car aucun bulletin S2 officiel n\'a été généré. Pour des résultats plus fiables, générez d\'abord le bulletin du Semestre 2.',
+            ];
+        }
 
         // Préparer la photo de l'étudiant en base64 pour le PDF
         $photoEtudiantBase64 = $this->preparePhotoEtudiantBase64($etudiant);
@@ -294,7 +333,24 @@ class BulletinService
             'moyenneSemestre2' => $moyenneSemestre2,
             'moyenneAnnuelle' => $moyenneAnnuelle,
             'semesterWeights' => $semesterWeights,
+            'warnings' => $warnings,
         ];
+    }
+
+    public function getBulletinTemplateView(): string
+    {
+        $style = SettingsHelper::get('bulletin_style', 'yakro');
+        return $style === 'abidjan'
+            ? 'esbtp.bulletins.pdf-configurable-abidjan'
+            : 'esbtp.bulletins.pdf-configurable';
+    }
+
+    public function getBulletinPreviewView(): string
+    {
+        $style = SettingsHelper::get('bulletin_style', 'yakro');
+        return $style === 'abidjan'
+            ? 'esbtp.bulletins.preview-configurable-abidjan'
+            : 'esbtp.bulletins.preview-configurable';
     }
 
     public function getSemesterWeights(): array
@@ -1198,6 +1254,59 @@ class BulletinService
         $bulletin->save();
     }
 
+    /**
+     * Calcule les rangs d'un étudiant pour plusieurs matières en une seule requête.
+     * Retourne un tableau [matiere_id => rang_string].
+     */
+    private function calculerRangsParMatiereBatch(array $matiereIds, int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        if (empty($matiereIds)) {
+            return [];
+        }
+
+        $resultats = ESBTPResultat::whereIn('matiere_id', $matiereIds)
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->where('periode', $periode)
+            ->whereNotNull('moyenne')
+            ->orderByDesc('moyenne')
+            ->get()
+            ->groupBy('matiere_id');
+
+        $rangs = [];
+        foreach ($matiereIds as $matiereId) {
+            $matiereResultats = $resultats->get($matiereId);
+            if (! $matiereResultats || $matiereResultats->isEmpty()) {
+                $rangs[$matiereId] = '-';
+                continue;
+            }
+
+            $rang = 1;
+            $prevMoyenne = null;
+            $prevRang = 1;
+            $found = false;
+
+            foreach ($matiereResultats->sortByDesc('moyenne')->values() as $r) {
+                if ($prevMoyenne !== null && $r->moyenne < $prevMoyenne) {
+                    $prevRang = $rang;
+                }
+                if ($r->etudiant_id == $etudiantId) {
+                    $rangs[$matiereId] = (string) $prevRang;
+                    $found = true;
+                    break;
+                }
+                $prevMoyenne = $r->moyenne;
+                $rang++;
+            }
+
+            if (! $found) {
+                $rangs[$matiereId] = '-';
+            }
+        }
+
+        return $rangs;
+    }
+
 
     public function calculerAbsencesDetailees($bulletin)
     {
@@ -1790,7 +1899,8 @@ class BulletinService
         int $anneeUniversitaireId,
         string $periode,
         string $currentPeriode,
-        float $currentAverage
+        float $currentAverage,
+        float $currentNoteAssiduite = 0
     ): ?float {
         if ($periode === $currentPeriode) {
             return $currentAverage;
@@ -1814,7 +1924,13 @@ class BulletinService
             ->first();
 
         if (! $bulletin || $bulletin->moyenne_generale === null || $bulletin->moyenne_generale <= 0) {
-            return null;
+            // Fallback: calculer à la volée depuis les notes/résultats + ajouter assiduité
+            $rawAvg = $this->calculateStudentAverageForPeriode($etudiantId, $classeId, $anneeUniversitaireId, $periode);
+            if ($rawAvg === null) {
+                return null;
+            }
+            // L'assiduité est par année (pas par semestre), on utilise celle du semestre courant
+            return $rawAvg + $currentNoteAssiduite;
         }
 
         return floatval($bulletin->moyenne_generale + ($bulletin->note_assiduite ?? 0));

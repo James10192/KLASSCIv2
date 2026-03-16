@@ -1,335 +1,135 @@
-{{-- Composant pour le tableau des résultats par matière --}}
-<div class="main-card mb-4">
-    <div class="main-card-header">
-        <div class="main-card-title">
-            <i class="fas fa-book"></i>
-            Résultats par matière
+{{-- 5. Subjects Table — premium design --}}
+<div class="sr-table-card sr-animate sr-animate-delay-3">
+    <div class="sr-table-header">
+        <div class="sr-table-header-left">
+            <i class="fas fa-book-open"></i>
+            <h3>Résultats par matière</h3>
         </div>
-        <div class="main-card-subtitle">Détail des moyennes par discipline</div>
+        <span class="sr-table-count">{{ count($notesByMatiere) }} matières</span>
     </div>
-    <div class="main-card-body table-container">
-        @if(count($notesByMatiere) > 0)
-            <div class="table-responsive">
-                <table class="table-moderne table-full-width">
-                    <thead>
+
+    @if(count($notesByMatiere) > 0)
+        <div class="sr-table-responsive">
+            <table class="sr-table">
+                <thead>
+                    <tr>
+                        <th style="width: 5%" class="text-center">#</th>
+                        <th style="width: 35%">Matière</th>
+                        <th style="width: 12%" class="text-center">Éval.</th>
+                        <th style="width: 12%" class="text-center">Coeff.</th>
+                        <th style="width: 18%" class="text-center">Moyenne</th>
+                        <th style="width: 18%" class="text-center">Appréciation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @php $i = 1; @endphp
+                    @foreach($notesByMatiere as $matiere_id => $matiereData)
                         <tr>
-                            <th style="width: 8%">#</th>
-                            <th style="width: 32%">Matière</th>
-                            <th style="width: 15%" class="text-center">Évaluations</th>
-                            <th style="width: 15%" class="text-center">Coefficient</th>
-                            <th style="width: 15%" class="text-center">Moyenne</th>
-                            <th style="width: 15%" class="text-center">Appréciation</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @php $i = 1; @endphp
-                        @foreach($notesByMatiere as $matiere_id => $matiereData)
-                            <tr>
-                                <td class="text-center">{{ $i++ }}</td>
-                                <td>
-                                    <div class="subject-cell">
-                                        <div class="subject-icon">
-                                            <i class="fas fa-book"></i>
-                                        </div>
-                                        <div class="subject-info">
-                                            <div class="subject-name">{{ $matiereData['matiere']->name }}</div>
-                                            <div class="d-flex align-items-center gap-2 mt-1">
-                                                @if($matiereData['matiere']->code)
-                                                    <small class="text-muted">{{ $matiereData['matiere']->code }}</small>
+                            <td class="text-center" style="color: var(--sr-muted-light); font-weight: 600; font-size: 0.8rem;">
+                                {{ str_pad($i++, 2, '0', STR_PAD_LEFT) }}
+                            </td>
+                            <td>
+                                <div class="sr-subject-cell">
+                                    <div class="sr-subject-icon">
+                                        <i class="fas fa-book"></i>
+                                    </div>
+                                    <div class="sr-subject-info">
+                                        <div class="sr-subject-name">{{ $matiereData['matiere']->name }}</div>
+                                        <div class="sr-subject-meta">
+                                            @if($matiereData['matiere']->code)
+                                                <span class="sr-subject-code">{{ $matiereData['matiere']->code }}</span>
+                                            @endif
+                                            @if(isset($matiereData['origin']))
+                                                @if($matiereData['origin'] === 'classe')
+                                                    <span class="sr-badge-origin sr-badge-origin--classe">Classe</span>
+                                                @elseif($matiereData['origin'] === 'notes')
+                                                    <span class="sr-badge-origin sr-badge-origin--notes">Notes</span>
                                                 @endif
-                                                @if(isset($matiereData['origin']))
-                                                    @if($matiereData['origin'] === 'classe')
-                                                        <span class="badge bg-primary text-white" style="font-size: 0.7rem;">
-                                                            <i class="fas fa-school me-1"></i>Classe
-                                                        </span>
-                                                    @elseif($matiereData['origin'] === 'notes')
-                                                        <span class="badge bg-info text-white" style="font-size: 0.7rem;">
-                                                            <i class="fas fa-clipboard-list me-1"></i>Notes
-                                                        </span>
-                                                    @endif
+                                            @endif
+                                            @if(isset($matiereData['source']))
+                                                @if($matiereData['source'] == 'calculee')
+                                                    <span class="sr-badge-origin sr-badge-origin--auto">Auto</span>
+                                                @else
+                                                    <span class="sr-badge-origin sr-badge-origin--manual">Manuel</span>
                                                 @endif
-                                                @if(isset($matiereData['source']))
-                                                    @if($matiereData['source'] == 'calculee')
-                                                        <span class="badge bg-success bg-opacity-10 text-success" style="font-size: 0.7rem;">
-                                                            <i class="fas fa-calculator me-1"></i>Auto
-                                                        </span>
-                                                    @else
-                                                        <span class="badge bg-warning bg-opacity-10 text-warning" style="font-size: 0.7rem;">
-                                                            <i class="fas fa-edit me-1"></i>Manuel
-                                                        </span>
-                                                    @endif
-                                                @endif
-                                            </div>
+                                            @endif
                                         </div>
                                     </div>
-                                </td>
-                                <td class="text-center">
-                                    <span class="badge badge-info">{{ count($matiereData['notes']) }}</span>
-                                </td>
-                                <td class="text-center">
-                                    <span class="coefficient">{{ $matiereData['total_coefficients'] }}</span>
-                                </td>
-                                <td class="text-center">
-                                    <span class="average-badge {{ $matiereData['moyenne'] >= 10 ? 'success' : 'danger' }}">
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <span class="sr-eval-count">{{ count($matiereData['notes']) }}</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="sr-coeff">{{ $matiereData['total_coefficients'] }}</span>
+                            </td>
+                            <td class="text-center">
+                                <div class="sr-avg-cell">
+                                    <span class="sr-avg-badge sr-avg-badge--{{ $matiereData['moyenne'] >= 10 ? 'success' : 'danger' }}">
                                         {{ number_format($matiereData['moyenne'], 2) }}/20
                                     </span>
-                                </td>
-                                <td class="text-center">
-                                    @if($matiereData['moyenne'] >= 16)
-                                        <span class="appreciation excellent">Excellent</span>
-                                    @elseif($matiereData['moyenne'] >= 14)
-                                        <span class="appreciation tres-bien">Très bien</span>
-                                    @elseif($matiereData['moyenne'] >= 12)
-                                        <span class="appreciation bien">Bien</span>
-                                    @elseif($matiereData['moyenne'] >= 10)
-                                        <span class="appreciation passable">Passable</span>
-                                    @else
-                                        <span class="appreciation insuffisant">Insuffisant</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                    <tfoot>
-                        <tr class="summary-row">
-                            <th colspan="3" class="text-end">Total des coefficients :</th>
-                            <th class="text-center">{{ array_sum(array_column($notesByMatiere, 'total_coefficients')) }}</th>
-                            <th class="text-center average-cell {{ $moyenneGenerale >= 10 ? 'success' : 'danger' }}">
-                                {{ number_format($moyenneGenerale, 2) }}/20
-                            </th>
-                            <th class="text-center">
-                                <span class="decision {{ $moyenneGenerale >= 10 ? 'success' : 'danger' }}">
-                                    {{ $moyenneGenerale >= 10 ? 'ADMIS' : 'NON ADMIS' }}
-                                </span>
-                            </th>
+                                    <div class="sr-avg-progress">
+                                        <div class="sr-avg-progress-fill sr-avg-progress-fill--{{ $matiereData['moyenne'] >= 10 ? 'success' : 'danger' }}"
+                                             style="width: {{ min($matiereData['moyenne'] * 5, 100) }}%"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                @if($matiereData['moyenne'] >= 16)
+                                    <span class="sr-appreciation sr-appreciation--excellent">Excellent</span>
+                                @elseif($matiereData['moyenne'] >= 14)
+                                    <span class="sr-appreciation sr-appreciation--tres-bien">Très bien</span>
+                                @elseif($matiereData['moyenne'] >= 12)
+                                    <span class="sr-appreciation sr-appreciation--bien">Bien</span>
+                                @elseif($matiereData['moyenne'] >= 10)
+                                    <span class="sr-appreciation sr-appreciation--passable">Passable</span>
+                                @else
+                                    <span class="sr-appreciation sr-appreciation--insuffisant">Insuffisant</span>
+                                @endif
+                            </td>
                         </tr>
-                    </tfoot>
-                </table>
-            </div>
-        @else
-            <div class="empty-state">
-                <i class="fas fa-book-open"></i>
-                <h3>Aucune note disponible</h3>
-                <p>Aucune note trouvée pour cet étudiant dans cette période.</p>
-            </div>
-        @endif
-    </div>
+                    @endforeach
+                </tbody>
+                <tfoot>
+                    <tr class="sr-table-footer-total">
+                        <td colspan="3" class="text-end" style="font-weight: 700; color: var(--sr-ink);">
+                            Total des coefficients
+                        </td>
+                        <td class="text-center" style="font-weight: 800; font-size: 1rem; color: var(--sr-ink);">
+                            {{ array_sum(array_column($notesByMatiere, 'total_coefficients')) }}
+                        </td>
+                        <td class="text-center" style="font-weight: 800; font-size: 1rem; color: {{ ($moyenneAvecAssiduite ?? $moyenneGenerale) >= 10 ? 'var(--sr-success)' : 'var(--sr-danger)' }};">
+                            {{ number_format($moyenneAvecAssiduite ?? $moyenneGenerale, 2) }}/20
+                        </td>
+                        <td class="text-center">
+                            @if(($moyenneAvecAssiduite ?? $moyenneGenerale) >= 10)
+                                <span class="sr-appreciation sr-appreciation--tres-bien">ADMIS</span>
+                            @else
+                                <span class="sr-appreciation sr-appreciation--insuffisant">AJOURNÉ</span>
+                            @endif
+                        </td>
+                    </tr>
+                    <tr class="sr-table-footer-result">
+                        <td colspan="3" class="text-end">Moyenne générale pondérée</td>
+                        <td class="text-center">{{ array_sum(array_column($notesByMatiere, 'total_coefficients')) }}</td>
+                        <td class="text-center" style="font-size: 1.1rem; font-weight: 800;">
+                            {{ number_format($moyenneAvecAssiduite ?? $moyenneGenerale, 2) }}/20
+                        </td>
+                        <td class="text-center">
+                            <span class="sr-decision">
+                                <i class="fas {{ ($moyenneAvecAssiduite ?? $moyenneGenerale) >= 10 ? 'fa-check-circle' : 'fa-times-circle' }}"></i>
+                                {{ ($moyenneAvecAssiduite ?? $moyenneGenerale) >= 10 ? 'ADMIS' : 'AJOURNÉ' }}
+                            </span>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    @else
+        <div class="sr-empty">
+            <i class="fas fa-book-open"></i>
+            <h3>Aucune note disponible</h3>
+            <p>Aucune note trouvée pour cet étudiant dans cette période.</p>
+        </div>
+    @endif
 </div>
-
-<style>
-.table-responsive {
-    width: 100%;
-    overflow-x: auto;
-}
-
-.table-moderne,
-.table-full-width {
-    width: 100% !important;
-    min-width: 100%;
-    table-layout: fixed;
-    border-collapse: collapse;
-    margin-bottom: 0;
-}
-
-.table-moderne th,
-.table-moderne td {
-    padding: 0.875rem 0.75rem;
-    vertical-align: middle;
-    border-bottom: 1px solid var(--border-color);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Allow text wrapping for the subject column */
-.table-moderne td:nth-child(2) {
-    white-space: normal;
-    word-wrap: break-word;
-}
-
-.table-moderne th {
-    background-color: var(--background-secondary);
-    font-weight: 600;
-    color: var(--text-primary);
-    border-bottom: 2px solid var(--border-color);
-}
-
-.table-moderne tbody tr:hover {
-    background-color: var(--hover-bg, #f8f9fa);
-}
-
-.subject-cell {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    min-width: 0;
-}
-
-.subject-icon {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--primary-bg);
-    color: var(--primary);
-    border-radius: 50%;
-    font-size: 0.875rem;
-    flex-shrink: 0;
-}
-
-.subject-info {
-    min-width: 0;
-    flex: 1;
-}
-
-.subject-name {
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.coefficient {
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.average-badge {
-    display: inline-block;
-    padding: 0.375rem 0.75rem;
-    border-radius: var(--border-radius);
-    font-weight: 600;
-    font-size: 0.875rem;
-}
-
-.average-badge.success {
-    background-color: var(--success-bg);
-    color: var(--success);
-    border: 1px solid var(--success);
-}
-
-.average-badge.danger {
-    background-color: var(--danger-bg);
-    color: var(--danger);
-    border: 1px solid var(--danger);
-}
-
-.appreciation {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: var(--border-radius);
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.appreciation.excellent {
-    background-color: #065f46;
-    color: white;
-}
-
-.appreciation.tres-bien {
-    background-color: var(--success-bg);
-    color: var(--success);
-}
-
-.appreciation.bien {
-    background-color: var(--info-bg);
-    color: var(--info);
-}
-
-.appreciation.passable {
-    background-color: var(--warning-bg);
-    color: var(--warning);
-}
-
-.appreciation.insuffisant {
-    background-color: var(--danger-bg);
-    color: var(--danger);
-}
-
-.summary-row {
-    background-color: var(--background-secondary);
-    font-weight: 600;
-}
-
-.summary-row th {
-    padding: 1rem 0.75rem;
-    border-top: 2px solid var(--border-color);
-}
-
-.average-cell.success {
-    color: var(--success);
-}
-
-.average-cell.danger {
-    color: var(--danger);
-}
-
-.decision {
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-}
-
-.decision.success {
-    color: var(--success);
-}
-
-.decision.danger {
-    color: var(--danger);
-}
-
-/* Force full width table layout - only for tables */
-.main-card-body:has(.table-responsive) {
-    padding: 0 !important;
-}
-
-/* Fallback for browsers that don't support :has() */
-.main-card-body.table-container {
-    padding: 0 !important;
-}
-
-.table-responsive {
-    border-radius: 0;
-}
-
-.summary-row th {
-    padding: 1rem 0.75rem !important;
-    border-top: 2px solid var(--border-color);
-    font-size: 0.925rem;
-}
-
-.summary-row:first-child {
-    background-color: var(--background-secondary) !important;
-}
-
-.summary-row:last-child {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%) !important;
-    color: white !important;
-}
-
-.summary-row:last-child th {
-    border-top: 2px solid var(--primary);
-    color: white !important;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .table-moderne th,
-    .table-moderne td {
-        padding: 0.5rem 0.375rem;
-        font-size: 0.875rem;
-    }
-    
-    .subject-cell {
-        flex-direction: column;
-        text-align: center;
-        gap: 0.5rem;
-    }
-    
-    .subject-icon {
-        margin: 0 auto;
-    }
-}
-</style>

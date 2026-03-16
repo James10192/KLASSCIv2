@@ -1,271 +1,126 @@
-{{-- Composant pour l'aperçu des résultats --}}
-<div class="main-card">
-    <div class="main-card-header">
-        <div class="main-card-title">
-            <i class="fas fa-chart-line"></i>
-            Aperçu des résultats
-        </div>
-        <div class="main-card-subtitle">
-            @php
-                $periodeKey = (string) $periode;
-                if ($periodeKey === '1') {
-                    $periodeKey = 'semestre1';
-                } elseif ($periodeKey === '2') {
-                    $periodeKey = 'semestre2';
-                }
+{{-- 4. Results Overview — KPI Dashboard with SVG gauge --}}
+@php
+    $periodeKey = (string) $periode;
+    if ($periodeKey === '1') $periodeKey = 'semestre1';
+    elseif ($periodeKey === '2') $periodeKey = 'semestre2';
 
-                $periodeNom = $periodeKey === 'semestre1' ? 'Semestre 1' : 'Semestre 2';
-                if (isset($periodes)) {
-                    foreach ($periodes as $p) {
-                        if ((string) $p->id === (string) $periode || (isset($p->code) && $p->code === $periodeKey)) {
-                            $periodeNom = $p->nom;
-                            break;
-                        }
-                    }
-                }
-            @endphp
-            {{ $periodeNom }}
-        </div>
+    $periodeNom = $periodeKey === 'semestre1' ? 'Semestre 1' : 'Semestre 2';
+    if (isset($periodes)) {
+        foreach ($periodes as $p) {
+            if ((string) $p->id === (string) $periode || (isset($p->code) && $p->code === $periodeKey)) {
+                $periodeNom = $p->nom;
+                break;
+            }
+        }
+    }
+
+    $showAssiduite = isset($afficherNoteAssiduite) && $afficherNoteAssiduite && isset($noteAssiduite);
+    $displayAvg = $showAssiduite ? ($moyenneAvecAssiduite ?? $moyenneGenerale) : $moyenneGenerale;
+    $gaugePercent = min($displayAvg * 5, 100);
+    $gaugeClass = $displayAvg >= 10 ? 'success' : 'danger';
+    $isS1Active = ($periodeKey === 'semestre1');
+    $isS2Active = ($periodeKey === 'semestre2');
+    $annualAvailable = ($moyenneAnnuelle !== null);
+@endphp
+
+<div class="sr-overview-card sr-animate sr-animate-delay-2">
+    <div class="sr-overview-header">
+        <i class="fas fa-chart-line"></i>
+        <h3>Aperçu des résultats</h3>
+        <span class="sr-periode-badge">{{ $periodeNom }}</span>
     </div>
-    <div class="main-card-body">
-        <div class="results-overview">
-            <div class="average-display">
-                <div class="average-value {{ $moyenneGenerale >= 10 ? 'success' : 'danger' }}">
-                    {{ number_format($moyenneGenerale, 2) }}<span>/20</span>
-                </div>
-                <div class="average-label">Moyenne générale</div>
-                <div class="progress-bar-container">
-                    <div class="progress-bar {{ $moyenneGenerale >= 10 ? 'success' : 'danger' }}" 
-                         style="width: {{ min($moyenneGenerale * 5, 100) }}%"></div>
-                </div>
-                <div class="semester-summary">
-                    <div class="semester-item">
-                        <div class="semester-label">Semestre 1</div>
-                        <div class="semester-value">
-                            {{ $moyenneSemestre1 !== null ? number_format($moyenneSemestre1, 2) . '/20' : '—' }}
-                        </div>
+
+    <div class="sr-overview-body">
+        {{-- Circular gauge + assiduity badge --}}
+        <div class="sr-gauge-wrapper">
+            <div class="sr-gauge">
+                <svg viewBox="0 0 120 120">
+                    <circle class="sr-gauge-bg" cx="60" cy="60" r="50"/>
+                    <circle class="sr-gauge-fill sr-gauge-fill--{{ $gaugeClass }}"
+                            cx="60" cy="60" r="50"
+                            data-percent="{{ $gaugePercent }}"
+                            style="stroke-dasharray: 314.16; stroke-dashoffset: 314.16;"/>
+                </svg>
+                <div class="sr-gauge-center">
+                    <div class="sr-gauge-value sr-gauge-value--{{ $gaugeClass }}">
+                        {{ number_format($displayAvg, 2) }}<span>/20</span>
                     </div>
-                    <div class="semester-item">
-                        <div class="semester-label">Semestre 2</div>
-                        <div class="semester-value">
-                            {{ $moyenneSemestre2 !== null ? number_format($moyenneSemestre2, 2) . '/20' : '—' }}
-                        </div>
-                    </div>
-                    <div class="semester-item highlight">
-                        <div class="semester-label">Moyenne annuelle</div>
-                        <div class="semester-value">
-                            @if($periode === 'semestre2' && $moyenneAnnuelle !== null)
-                                {{ number_format($moyenneAnnuelle, 2) }}/20
-                            @else
-                                —
-                            @endif
-                        </div>
-                    </div>
-                    <div class="semester-note">
-                        Coefficients: S1 {{ $semesterWeights['semester1'] }} • S2 {{ $semesterWeights['semester2'] }}
-                    </div>
+                    <div class="sr-gauge-label">Moyenne</div>
                 </div>
             </div>
-            
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="stat-value">{{ count($notesByMatiere) }}</div>
-                    <div class="stat-label">Matières évaluées</div>
-                    <div class="stat-icon"><i class="fas fa-book"></i></div>
+            @if($showAssiduite && $noteAssiduite != 0)
+                <div class="sr-assiduity-badge {{ $noteAssiduite > 0 ? 'sr-assiduity-badge--positive' : 'sr-assiduity-badge--negative' }}">
+                    <i class="fas {{ $noteAssiduite > 0 ? 'fa-arrow-up' : 'fa-arrow-down' }}"></i>
+                    {{ $noteAssiduite > 0 ? '+' : '' }}{{ number_format($noteAssiduite, 2) }} assiduité
                 </div>
-                <div class="stat-item">
-                    <div class="stat-value">{{ $notes->count() }}</div>
-                    <div class="stat-label">Évaluations</div>
-                    <div class="stat-icon"><i class="fas fa-clipboard-list"></i></div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value">{{ array_sum(array_column($notesByMatiere, 'total_coefficients')) }}</div>
-                    <div class="stat-label">Total coefficients</div>
-                    <div class="stat-icon"><i class="fas fa-calculator"></i></div>
-                </div>
-                <div class="stat-item {{ $moyenneGenerale >= 10 ? 'success' : 'danger' }}">
-                    <div class="stat-value">{{ $moyenneGenerale >= 10 ? 'ADMIS' : 'NON ADMIS' }}</div>
-                    <div class="stat-label">Décision</div>
-                    <div class="stat-icon">
-                        <i class="fas {{ $moyenneGenerale >= 10 ? 'fa-check-circle' : 'fa-times-circle' }}"></i>
+            @endif
+        </div>
+
+        {{-- Right panel --}}
+        <div class="sr-overview-right">
+            {{-- Semesters — always show all 3 --}}
+            <div class="sr-semesters">
+                <div class="sr-semester-card {{ $isS1Active ? 'sr-semester-card--active' : '' }}">
+                    <div class="sr-semester-label">Semestre 1</div>
+                    <div class="sr-semester-value">
+                        {{ $moyenneSemestre1 !== null ? number_format($moyenneSemestre1, 2) : '—' }}
                     </div>
+                </div>
+                <div class="sr-semester-card {{ $isS2Active ? 'sr-semester-card--active' : '' }}">
+                    <div class="sr-semester-label">Semestre 2</div>
+                    <div class="sr-semester-value">
+                        {{ $moyenneSemestre2 !== null ? number_format($moyenneSemestre2, 2) : '—' }}
+                    </div>
+                </div>
+                <div class="sr-semester-card {{ $annualAvailable ? 'sr-semester-card--annual-available' : '' }}">
+                    <div class="sr-semester-label">Annuelle</div>
+                    <div class="sr-semester-value">
+                        {{-- TOUJOURS afficher la moyenne annuelle quand disponible --}}
+                        @if($annualAvailable)
+                            {{ number_format($moyenneAnnuelle, 2) }}
+                        @else
+                            —
+                        @endif
+                    </div>
+                    @if(!$annualAvailable)
+                        <div class="sr-semester-tooltip" title="Nécessite les notes des deux semestres">
+                            Requiert S1 + S2
+                        </div>
+                    @endif
+                </div>
+            </div>
+            <div class="sr-semester-note">
+                Coefficients : S1 {{ $semesterWeights['semester1'] }} | S2 {{ $semesterWeights['semester2'] }}
+                @if($annualAvailable && $isS2Active)
+                    <strong style="color: var(--sr-success); margin-left: 0.5rem;">Bilan complet</strong>
+                @endif
+            </div>
+
+            {{-- Stats --}}
+            <div class="sr-stats">
+                <div class="sr-stat sr-stat--primary">
+                    <div class="sr-stat-icon"><i class="fas fa-book"></i></div>
+                    <div class="sr-stat-value">{{ count($notesByMatiere) }}</div>
+                    <div class="sr-stat-label">Matières</div>
+                </div>
+                <div class="sr-stat sr-stat--info">
+                    <div class="sr-stat-icon"><i class="fas fa-clipboard-list"></i></div>
+                    <div class="sr-stat-value">{{ $notes->count() }}</div>
+                    <div class="sr-stat-label">Évaluations</div>
+                </div>
+                <div class="sr-stat sr-stat--warning">
+                    <div class="sr-stat-icon"><i class="fas fa-calculator"></i></div>
+                    <div class="sr-stat-value">{{ array_sum(array_column($notesByMatiere, 'total_coefficients')) }}</div>
+                    <div class="sr-stat-label">Coefficients</div>
+                </div>
+                <div class="sr-stat sr-stat--{{ $gaugeClass }}">
+                    <div class="sr-stat-icon">
+                        <i class="fas {{ $displayAvg >= 10 ? 'fa-check-circle' : 'fa-times-circle' }}"></i>
+                    </div>
+                    <div class="sr-stat-value">{{ $displayAvg >= 10 ? 'ADMIS' : 'AJOURNÉ' }}</div>
+                    <div class="sr-stat-label">Décision</div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<style>
-.results-overview {
-    display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: 2rem;
-    align-items: center;
-}
-
-.average-display {
-    text-align: center;
-}
-
-.average-value {
-    font-size: 3rem;
-    font-weight: bold;
-    margin-bottom: 0.5rem;
-}
-
-.average-value.success {
-    color: var(--success);
-}
-
-.average-value.danger {
-    color: var(--danger);
-}
-
-.average-value span {
-    font-size: 1.5rem;
-    opacity: 0.7;
-}
-
-.average-label {
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin-bottom: 1rem;
-}
-
-.progress-bar-container {
-    width: 100%;
-    height: 8px;
-    background-color: var(--border-color);
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.progress-bar {
-    height: 100%;
-    transition: width 0.3s ease;
-    border-radius: 4px;
-}
-
-.progress-bar.success {
-    background-color: var(--success);
-}
-
-.progress-bar.danger {
-    background-color: var(--danger);
-}
-
-.semester-summary {
-    margin-top: 1rem;
-    border-top: 1px dashed var(--border-color);
-    padding-top: 0.75rem;
-    display: grid;
-    gap: 0.5rem;
-}
-
-.semester-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.4rem 0.6rem;
-    border-radius: 8px;
-    background: var(--background-secondary);
-    border: 1px solid var(--border-color);
-    font-size: 0.85rem;
-}
-
-.semester-item.highlight {
-    background: rgba(16, 185, 129, 0.12);
-    border-color: rgba(16, 185, 129, 0.4);
-}
-
-.semester-label {
-    color: var(--text-secondary);
-    font-weight: 600;
-}
-
-.semester-value {
-    font-weight: 700;
-    color: var(--text-primary);
-}
-
-.semester-note {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-}
-
-.stat-item {
-    position: relative;
-    background: var(--background-secondary);
-    border-radius: var(--border-radius);
-    padding: 1.5rem;
-    text-align: center;
-    border: 1px solid var(--border-color);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.stat-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.stat-item.success {
-    background-color: var(--success-bg);
-    border-color: var(--success);
-    color: var(--success);
-}
-
-.stat-item.danger {
-    background-color: var(--danger-bg);
-    border-color: var(--danger);
-    color: var(--danger);
-}
-
-.stat-value {
-    font-size: 1.5rem;
-    font-weight: bold;
-    margin-bottom: 0.5rem;
-    color: var(--text-primary);
-}
-
-.stat-item.success .stat-value,
-.stat-item.danger .stat-value {
-    color: inherit;
-}
-
-.stat-label {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-.stat-item.success .stat-label,
-.stat-item.danger .stat-label {
-    color: inherit;
-    opacity: 0.8;
-}
-
-.stat-icon {
-    position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
-    opacity: 0.3;
-    font-size: 1.25rem;
-}
-
-@media (max-width: 768px) {
-    .results-overview {
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
-    }
-    
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-}
-</style>

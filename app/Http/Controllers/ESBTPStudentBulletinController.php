@@ -286,7 +286,7 @@ class ESBTPStudentBulletinController extends Controller
             $donnees['logoBase64'] = $logoBase64;
 
             // Utiliser exactement le même template que la preview admin
-            return view($this->getBulletinTemplateView(), $donnees);
+            return view($this->bulletinService->getBulletinTemplateView(), $donnees);
 
         } catch (\Exception $e) {
             // Gestion des erreurs de configuration

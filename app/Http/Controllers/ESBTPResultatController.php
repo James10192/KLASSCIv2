@@ -722,16 +722,16 @@ class ESBTPResultatController extends Controller
             }
         }
 
-        // Recalculer la moyenne générale avec toutes les matières (Auto + Manuel)
-        $moyenneGeneraleRecalculee = 0;
-        $countMatieresFinales = 0;
+        // Recalculer la moyenne générale PONDÉRÉE (cohérent avec BulletinService::calculerMoyennePonderee)
+        $sommePoints = 0;
+        $sommeCoefs = 0;
         foreach ($notesByMatiere as $matiere_id => $matiereData) {
-            if ($matiereData['moyenne'] > 0) {
-                $moyenneGeneraleRecalculee += $matiereData['moyenne'];
-                $countMatieresFinales++;
+            if ($matiereData['moyenne'] > 0 && $matiereData['total_coefficients'] > 0) {
+                $sommePoints += $matiereData['moyenne'] * $matiereData['total_coefficients'];
+                $sommeCoefs += $matiereData['total_coefficients'];
             }
         }
-        $moyenneGenerale = $countMatieresFinales > 0 ? $moyenneGeneraleRecalculee / $countMatieresFinales : 0;
+        $moyenneGenerale = $sommeCoefs > 0 ? $sommePoints / $sommeCoefs : 0;
 
         \Log::info('Student Result Calculations', [
             'student_id' => $id,
@@ -740,9 +740,33 @@ class ESBTPResultatController extends Controller
             'non_numeric_notes' => $nonNumericNotes,
         ]);
 
+        // Calcul de la note d'assiduité (cohérent avec le bulletin PDF)
+        $afficherNoteAssiduite = \App\Helpers\SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
+        $noteAssiduite = 0;
+        $moyenneAvecAssiduite = $moyenneGenerale;
+
+        if ($afficherNoteAssiduite && $classe && $anneeUniversitaire) {
+            $absences = $this->absenceService->calculerDetailAbsences(
+                $etudiant->id,
+                $classe->id,
+                $anneeUniversitaire->date_debut ?? null,
+                $anneeUniversitaire->date_fin ?? null
+            );
+            $noteAssiduite = $this->bulletinService->calculerNoteAssiduite($absences['justifiees'] ?? 0, $absences['non_justifiees'] ?? 0);
+            $moyenneAvecAssiduite = $moyenneGenerale + $noteAssiduite;
+        }
+
         $semesterWeights = $this->bulletinService->getSemesterWeights();
-        $moyenneSemestre1 = $this->bulletinService->calculateStudentAverageForPeriode($id, $classe_id, $annee_universitaire_id, 'semestre1');
-        $moyenneSemestre2 = $this->bulletinService->calculateStudentAverageForPeriode($id, $classe_id, $annee_universitaire_id, 'semestre2');
+
+        // Moyennes semestrielles incluant l'assiduité (via bulletin ou fallback)
+        $moyenneSemestre1 = $this->bulletinService->getBulletinAverageForPeriode(
+            $id, $classe_id ?? 0, $annee_universitaire_id ?? 0,
+            'semestre1', $periode, $moyenneAvecAssiduite, $noteAssiduite
+        );
+        $moyenneSemestre2 = $this->bulletinService->getBulletinAverageForPeriode(
+            $id, $classe_id ?? 0, $annee_universitaire_id ?? 0,
+            'semestre2', $periode, $moyenneAvecAssiduite, $noteAssiduite
+        );
         $moyenneAnnuelle = $this->bulletinService->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
 
         return view('esbtp.resultats.etudiant', compact(
@@ -752,6 +776,9 @@ class ESBTPResultatController extends Controller
             'notes',
             'notesByMatiere',
             'moyenneGenerale',
+            'moyenneAvecAssiduite',
+            'noteAssiduite',
+            'afficherNoteAssiduite',
             'semestre',
             'periode',
             'annee_universitaire_id',
@@ -2427,29 +2454,11 @@ class ESBTPResultatController extends Controller
                 $periode
             );
 
-            // Préparer le logo pour l'affichage (les settings sont déjà fournis par le service)
+            // Ajouter le logo (la photo étudiant est déjà dans $donnees via le service)
             $logoBase64 = $this->bulletinService->prepareLogoBase64($donnees['settings']['school_logo'] ?? null);
             $donnees['logoBase64'] = $logoBase64;
 
-            // Préparer la photo étudiant en base64 pour la preview (conversion JPEG pour DomPDF)
-            $donnees['photoEtudiantBase64'] = null;
-            if (!empty($donnees['etudiant']?->photo)) {
-                $photo = $donnees['etudiant']->photo;
-                $photoCandidates = [
-                    storage_path('app/public/' . $photo),
-                    storage_path('app/public/photos/etudiants/' . basename($photo)),
-                    public_path('storage/' . $photo),
-                    public_path('storage/photos/etudiants/' . basename($photo)),
-                ];
-                foreach ($photoCandidates as $photoPath) {
-                    if (file_exists($photoPath)) {
-                        $donnees['photoEtudiantBase64'] = $this->bulletinService->convertImageToJpegBase64($photoPath);
-                        break;
-                    }
-                }
-            }
-
-            return view($this->getBulletinTemplateView(), $donnees);
+            return view($this->bulletinService->getBulletinTemplateView(), $donnees);
 
         } catch (CoefficientMissingException $e) {
             $context = $this->buildCoefficientIssueContext($e->getContext(), $request);
