@@ -1,53 +1,45 @@
 @if($classes->isEmpty())
-    <div class="text-center py-5">
-        <i class="fas fa-info-circle fa-3x text-muted mb-3"></i>
-        <h5 class="text-muted">Aucune classe trouvée</h5>
-        <p class="text-muted">Modifiez les filtres ou ajoutez une nouvelle classe.</p>
+    <div class="sr-empty">
+        <i class="fas fa-school"></i>
+        <h3>Aucune classe trouvée</h3>
+        <p>Modifiez les filtres ou ajoutez une nouvelle classe.</p>
     </div>
 @else
-    <div class="row g-4" id="classes-container">
+    <div class="sr-cls-grid" id="classes-container">
         @foreach($classes as $classe)
-            <div class="col-xl-3 col-lg-4 col-md-6 class-card-wrapper"
+            <div class="sr-cls-card class-card-wrapper"
                  data-name="{{ mb_strtolower($classe->name . ' ' . ($classe->filiere->name ?? '') . ' ' . ($classe->niveau->name ?? '')) }}">
-                <div class="card card-moderne class-card h-100">
-                    <div class="card-body d-flex flex-column">
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="icon-bubble me-3">
-                                <i class="fas fa-school"></i>
-                            </div>
-                            <div>
-                                <h5 class="card-title mb-0">{{ $classe->name }}</h5>
-                            </div>
-                        </div>
-                        <div class="text-muted small mb-3">
-                            <div class="mb-1">
-                                <i class="fas fa-layer-group text-primary me-2"></i>{{ $classe->filiere->name ?? 'Filière non définie' }}
-                            </div>
-                            <div class="mb-1">
-                                <i class="fas fa-graduation-cap text-primary me-2"></i>{{ $classe->niveau->name ?? 'Niveau non défini' }}
-                            </div>
-                            <div>
-                                <i class="fas fa-users text-primary me-2"></i>{{ $classe->actifs_count }} étudiant{{ $classe->actifs_count > 1 ? 's' : '' }} actifs
-                            </div>
-                        </div>
-                        <div class="mt-auto d-flex flex-column gap-2">
-                            <div class="d-flex gap-2">
-                                <a href="{{ route('esbtp.resultats.index', ['classe_id' => $classe->id, 'annee_universitaire_id' => $classe->annee_universitaire_id]) }}"
-                                   class="btn-acasi primary flex-grow-1">
-                                    <i class="fas fa-chart-line"></i>Résultats
-                                </a>
-                                <a href="{{ route('esbtp.resultats.classe', $classe->id) }}" class="btn-acasi secondary" title="Vue détaillée">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                            </div>
-                            @if(auth()->user()->hasRole('superAdmin'))
-                                <a href="{{ route('esbtp.resultats.classe.edit', $classe->id) }}"
-                                   class="btn-acasi warning w-100">
-                                    <i class="fas fa-edit"></i>Éditer groupé
-                                </a>
+                <div class="sr-cls-card-top">
+                    <div class="sr-cls-icon">
+                        <i class="fas fa-school"></i>
+                    </div>
+                    <div class="sr-cls-info">
+                        <h4 class="sr-cls-name">{{ $classe->name }}</h4>
+                        <div class="sr-cls-badges">
+                            @if($classe->filiere)
+                                <span class="sr-cls-badge sr-cls-badge--filiere">{{ $classe->filiere->name }}</span>
+                            @endif
+                            @if($classe->niveau)
+                                <span class="sr-cls-badge sr-cls-badge--niveau">{{ $classe->niveau->name }}</span>
                             @endif
                         </div>
                     </div>
+                </div>
+                <div class="sr-cls-meta">
+                    <div class="sr-cls-meta-item">
+                        <i class="fas fa-users"></i>
+                        <span><strong>{{ $classe->actifs_count }}</strong> étudiant{{ $classe->actifs_count > 1 ? 's' : '' }}</span>
+                    </div>
+                </div>
+                <div class="sr-cls-actions">
+                    <a href="{{ route('esbtp.resultats.classe', $classe->id) }}" class="sr-cls-btn sr-cls-btn--primary">
+                        <i class="fas fa-chart-bar"></i>Résultats
+                    </a>
+                    @if(auth()->user()->hasRole('superAdmin'))
+                        <a href="{{ route('esbtp.resultats.classe.edit', $classe->id) }}" class="sr-cls-btn sr-cls-btn--secondary">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    @endif
                 </div>
             </div>
         @endforeach

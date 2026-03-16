@@ -1554,7 +1554,7 @@ class BulletinService
     }
 
 
-    public function calculateStudentStatsFixed($etudiants, $notes, &$moyennes, &$rangs, $classeId = null, $anneeUniversitaireId = null)
+    public function calculateStudentStatsFixed($etudiants, $notes, &$moyennes, &$rangs, $classeId = null, $anneeUniversitaireId = null, $periode = null)
     {
         \Log::info('Calcul des statistiques étudiants - Étudiants: '.count($etudiants).', Notes: '.count($notes));
         \Log::info('Début du calcul des moyennes (logique corrigée) pour '.count($etudiants).' étudiants avec '.count($notes).' notes');
@@ -1619,11 +1619,19 @@ class BulletinService
         // Integrate ESBTPResultat (manual grade overrides) — same logic as calculateStudentAverageForPeriode
         if ($classeId && $anneeUniversitaireId) {
             $etudiantIds = $etudiants->pluck('id')->toArray();
-            $resultatsManuel = \App\Models\ESBTPResultat::whereIn('etudiant_id', $etudiantIds)
+            $resultatsQuery = \App\Models\ESBTPResultat::whereIn('etudiant_id', $etudiantIds)
                 ->where('classe_id', $classeId)
-                ->where('annee_universitaire_id', $anneeUniversitaireId)
-                ->get()
-                ->groupBy('etudiant_id');
+                ->where('annee_universitaire_id', $anneeUniversitaireId);
+
+            // Filtrer par période si spécifiée (évite de mélanger S1 et S2)
+            if ($periode) {
+                $resultatsQuery->where(function ($q) use ($periode) {
+                    $q->where('periode', $periode)
+                        ->orWhere('periode', 'semestre' . $periode);
+                });
+            }
+
+            $resultatsManuel = $resultatsQuery->get()->groupBy('etudiant_id');
 
             foreach ($resultatsManuel as $etudiantId => $resultats) {
                 if (! isset($notesByStudentMatiere[$etudiantId])) {

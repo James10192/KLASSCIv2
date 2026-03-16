@@ -112,7 +112,7 @@ class ESBTPResultatController extends Controller
             ->orderBy('name', 'asc')
             ->get();
 
-        $periodes = ['1' => 'Semestre 1', '2' => 'Semestre 2'];
+        $periodes = ['' => 'Annuel', '1' => 'Semestre 1', '2' => 'Semestre 2'];
         // Récupérer toutes les années universitaires (on affiche name dans la vue)
         $annees_universitaires = ESBTPAnneeUniversitaire::orderBy('id', 'desc')->get();
 
@@ -282,8 +282,24 @@ class ESBTPResultatController extends Controller
      */
     public function resultatClasse(ResultatsFilterRequest $request, $id)
     {
-        $semestre = $request->semestre;
-        $periode = $semestre; // Map semestre to periode for view compatibility
+        // Normaliser : le formulaire envoie 'semestre1'/'semestre2' ou '1'/'2' ou vide (annuel)
+        $rawPeriode = $request->semestre ?? $request->periode;
+        if ($rawPeriode === 'semestre1') {
+            $semestre = '1';
+            $periode = 'semestre1';
+        } elseif ($rawPeriode === 'semestre2') {
+            $semestre = '2';
+            $periode = 'semestre2';
+        } elseif ($rawPeriode === '1') {
+            $semestre = '1';
+            $periode = 'semestre1';
+        } elseif ($rawPeriode === '2') {
+            $semestre = '2';
+            $periode = 'semestre2';
+        } else {
+            $semestre = null; // Annuel = pas de filtre semestre
+            $periode = '';
+        }
         $annee_universitaire_id = $request->annee_universitaire_id;
         $include_all_statuses = $request->has('include_all_statuses');
 
@@ -328,11 +344,15 @@ class ESBTPResultatController extends Controller
                 ->with(['etudiant', 'etudiant.user', 'evaluation', 'evaluation.classe', 'evaluation.matiere']);
 
             // Si un semestre est spécifié, filtrer par ce semestre
+            // Les données en base sont incohérentes : semestre peut être '1', '2', 'semestre1', 'semestre2'
             if ($semestre) {
-                $notesQuery->where(function ($q) use ($semestre) {
+                $periodeFormat = 'semestre' . $semestre; // ex: 'semestre1'
+                $notesQuery->where(function ($q) use ($semestre, $periodeFormat) {
                     $q->where('semestre', $semestre)
-                        ->whereHas('evaluation', function ($query) use ($semestre) {
-                            $query->where('periode', 'semestre'.$semestre);
+                        ->orWhere('semestre', $periodeFormat)
+                        ->orWhereHas('evaluation', function ($query) use ($semestre, $periodeFormat) {
+                            $query->where('periode', $periodeFormat)
+                                ->orWhere('periode', $semestre);
                         });
                 });
             }
@@ -348,8 +368,9 @@ class ESBTPResultatController extends Controller
 
         // Périodes disponibles (format compatible avec la vue)
         $periodes = [
-            'semestre1' => 'Premier Semestre',
-            'semestre2' => 'Deuxième Semestre',
+            '' => 'Annuel',
+            'semestre1' => 'Semestre 1',
+            'semestre2' => 'Semestre 2',
         ];
 
         // Récupérer toutes les années universitaires (on affiche libelle ou name dans la vue)
@@ -428,9 +449,30 @@ class ESBTPResultatController extends Controller
             ];
         }
 
-        // Sort resultats by moyenne in descending order
+        // Calcul de l'assiduité si le setting est activé
+        $afficherNoteAssiduite = \App\Helpers\SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
+        $anneeObj = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
+
+        if ($afficherNoteAssiduite && $anneeObj) {
+            foreach ($resultats as &$r) {
+                $absences = $this->absenceService->calculerDetailAbsences(
+                    $r['etudiant']->id,
+                    $classe->id,
+                    $anneeObj->date_debut ?? null,
+                    $anneeObj->date_fin ?? null
+                );
+                $noteAssid = $this->bulletinService->calculerNoteAssiduite($absences['justifiees'] ?? 0, $absences['non_justifiees'] ?? 0);
+                $r['note_assiduite'] = $noteAssid;
+                $r['moyenne_avec_assiduite'] = $r['moyenne'] + $noteAssid;
+            }
+            unset($r);
+        }
+
+        // Trier par moyenne (avec assiduité si dispo) décroissante
         usort($resultats, function ($a, $b) {
-            return $b['moyenne'] <=> $a['moyenne'];
+            $avgA = $a['moyenne_avec_assiduite'] ?? $a['moyenne'];
+            $avgB = $b['moyenne_avec_assiduite'] ?? $b['moyenne'];
+            return $avgB <=> $avgA;
         });
 
         // Define annee_id for view consistency
@@ -454,7 +496,8 @@ class ESBTPResultatController extends Controller
             'anneesUniversitaires',
             'anneeUniversitaire',
             'resultats',
-            'include_all_statuses'
+            'include_all_statuses',
+            'afficherNoteAssiduite'
         ));
     }
 
@@ -846,8 +889,61 @@ class ESBTPResultatController extends Controller
 
                 $notes = $notesQuery->get();
 
-                // Calculate stats for these students (pass classe/annee for ESBTPResultat override support)
-                $this->bulletinService->calculateStudentStatsFixed($etudiants, $notes, $moyennes, $rangs, $classe_id, $annee_universitaire_id);
+                // Calculate stats for these students
+                if (! $semestre) {
+                    // Mode Annuel : calculer la moyenne annuelle pondérée S1/S2 pour chaque étudiant
+                    $weights = $this->bulletinService->getSemesterWeights();
+                    foreach ($etudiants as $etudiant) {
+                        $s1 = $this->bulletinService->getBulletinAverageForPeriode(
+                            $etudiant->id, $classe_id ?? 0, $annee_universitaire_id ?? 0,
+                            'semestre1', '__none__', 0, 0
+                        );
+                        $s2 = $this->bulletinService->getBulletinAverageForPeriode(
+                            $etudiant->id, $classe_id ?? 0, $annee_universitaire_id ?? 0,
+                            'semestre2', '__none__', 0, 0
+                        );
+                        $annual = $this->bulletinService->calculateAnnualAverage($s1, $s2, $weights);
+                        if ($annual !== null) {
+                            $moyennes[$etudiant->id] = round($annual, 2);
+                        } elseif ($s1 !== null) {
+                            $moyennes[$etudiant->id] = round($s1, 2);
+                        } elseif ($s2 !== null) {
+                            $moyennes[$etudiant->id] = round($s2, 2);
+                        }
+                    }
+                    // Calculer les rangs
+                    if (count($moyennes) > 0) {
+                        arsort($moyennes);
+                        $rank = 1;
+                        foreach (array_keys($moyennes) as $etudiantId) {
+                            $rangs[$etudiantId] = $rank++;
+                        }
+                    }
+                } else {
+                    // Mode Semestre : calcul standard par notes (filtré par période)
+                    $this->bulletinService->calculateStudentStatsFixed($etudiants, $notes, $moyennes, $rangs, $classe_id, $annee_universitaire_id, $semestre);
+
+                    // Ajouter l'assiduité si activée
+                    $showAssid = \App\Helpers\SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
+                    if ($showAssid && $annee_universitaire_id) {
+                        $anneeObj = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
+                        if ($anneeObj) {
+                            foreach ($moyennes as $etudiantId => &$moy) {
+                                $abs = $this->absenceService->calculerDetailAbsences($etudiantId, $classe_id ?? 0, $anneeObj->date_debut ?? null, $anneeObj->date_fin ?? null);
+                                $noteAssid = $this->bulletinService->calculerNoteAssiduite($abs['justifiees'] ?? 0, $abs['non_justifiees'] ?? 0);
+                                $moy += $noteAssid;
+                            }
+                            unset($moy);
+                            // Re-trier et recalculer les rangs
+                            arsort($moyennes);
+                            $rank = 1;
+                            $rangs = [];
+                            foreach (array_keys($moyennes) as $eid) {
+                                $rangs[$eid] = $rank++;
+                            }
+                        }
+                    }
+                }
 
                 // Get bulletins
                 $this->bulletinService->getStudentBulletins($etudiants, $classe_id, $annee_universitaire_id, $semestre, $bulletins);
