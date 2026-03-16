@@ -14,7 +14,7 @@ class SearchPaymentsTool extends ChatbotTool
 
     public function description(): string
     {
-        return 'Rechercher des paiements dans le système. Retourne étudiant, montant, statut, date, mode de paiement.';
+        return 'Rechercher des paiements groupés par inscription. Si l\'étudiant a plusieurs inscriptions et que inscription_id n\'est pas fourni, retourne la liste des inscriptions pour clarification — demande alors à l\'utilisateur laquelle il souhaite consulter avant de rappeler avec inscription_id.';
     }
 
     public function parameters(): array
@@ -22,13 +22,17 @@ class SearchPaymentsTool extends ChatbotTool
         return [
             'type' => 'object',
             'properties' => [
-                'status' => [
-                    'type' => 'string',
-                    'description' => 'Statut du paiement: "en_attente", "validé", "rejeté", "annulé"',
-                ],
                 'student_name' => [
                     'type' => 'string',
                     'description' => 'Nom de l\'étudiant',
+                ],
+                'inscription_id' => [
+                    'type' => 'integer',
+                    'description' => 'ID de l\'inscription spécifique (utiliser après clarification si l\'étudiant a plusieurs inscriptions)',
+                ],
+                'status' => [
+                    'type' => 'string',
+                    'description' => 'Statut du paiement: "en_attente", "validé", "rejeté", "annulé"',
                 ],
                 'month' => [
                     'type' => 'integer',
@@ -52,14 +56,57 @@ class SearchPaymentsTool extends ChatbotTool
 
     public function execute(array $args, $user): array
     {
+        // Si student_name fourni sans inscription_id, vérifier s'il a plusieurs inscriptions
+        if (!empty($args['student_name']) && empty($args['inscription_id'])) {
+            $inscriptions = \App\Models\ESBTPInscription::query()
+                ->with(['classe.filiere', 'etudiant'])
+                ->whereHas('etudiant', function ($q) use ($args) {
+                    $this->applyFuzzyNameSearch($q, $args['student_name']);
+                })
+                ->orderByDesc('date_inscription')
+                ->get();
+
+            if ($inscriptions->count() > 1) {
+                // Plusieurs inscriptions → demander clarification
+                $options = $inscriptions->map(function ($i) {
+                    return [
+                        'inscription_id' => $i->id,
+                        'classe' => $i->classe?->name ?? 'N/A',
+                        'filiere' => $i->classe?->filiere?->name ?? 'N/A',
+                        'type' => ucfirst(str_replace('_', ' ', $i->type_inscription ?? 'N/A')),
+                        'statut' => ucfirst(str_replace('_', ' ', $i->status ?? 'N/A')),
+                        'date' => $i->date_inscription?->format('d/m/Y') ?? 'N/A',
+                    ];
+                })->toArray();
+
+                $etudiantName = $inscriptions->first()->etudiant
+                    ? trim($inscriptions->first()->etudiant->nom . ' ' . $inscriptions->first()->etudiant->prenoms)
+                    : $args['student_name'];
+
+                return [
+                    'results' => [],
+                    'count' => 0,
+                    'needs_clarification' => true,
+                    'message' => "{$etudiantName} a {$inscriptions->count()} inscriptions. Demande à l'utilisateur laquelle il souhaite consulter, puis rappelle search_payments avec inscription_id.",
+                    'inscriptions' => $options,
+                    'display_type' => 'text',
+                ];
+            }
+        }
+
         $query = ESBTPPaiement::query()->with(['etudiant', 'inscription.classe.filiere', 'fraisCategory']);
+
+        // Filtre par inscription_id spécifique
+        if (!empty($args['inscription_id'])) {
+            $query->where('inscription_id', $args['inscription_id']);
+        }
 
         if (!empty($args['status'])) {
             $status = $this->normalizeStatus($args['status']);
             $query->where('status', $status);
         }
 
-        if (!empty($args['student_name'])) {
+        if (!empty($args['student_name']) && empty($args['inscription_id'])) {
             $tool = $this;
             $query->whereHas('etudiant', function ($q) use ($args, $tool) {
                 $tool->applyFuzzyNameSearch($q, $args['student_name']);
