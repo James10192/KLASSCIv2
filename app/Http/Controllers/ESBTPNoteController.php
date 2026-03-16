@@ -536,11 +536,11 @@ class ESBTPNoteController extends Controller
                 ->where('evaluation_id', $request->evaluation_id)
                 ->first();
 
-            // Vérification permission coordinateur : ne peut pas modifier une note existante
-            if ($note && Auth::user()->hasRole('coordinateur')) {
+            // Vérification permission : seuls les utilisateurs avec 'edit_existing_notes' peuvent modifier
+            if ($note && ! Auth::user()->can('edit_existing_notes')) {
                 return response()->json([
                     'success' => false,
-                    'message' => "Vous ne pouvez pas modifier les notes déjà enregistrées.",
+                    'message' => "Vous n'avez pas la permission de modifier les notes déjà enregistrées.",
                 ], 403);
             }
 
@@ -784,14 +784,13 @@ class ESBTPNoteController extends Controller
                 ->withInput();
         }
 
-        // Vérifier si le coordinateur a le droit de modifier les notes existantes
-        if ($user->hasRole('coordinateur')) {
-            // Vérifier s'il y a déjà des notes pour cette évaluation
+        // Vérifier si l'utilisateur a le droit de modifier les notes existantes
+        if (! $user->can('edit_existing_notes')) {
             $existingNotesCount = ESBTPNote::where('evaluation_id', $evaluation->id)->count();
 
             if ($existingNotesCount > 0) {
                 return redirect()->back()
-                    ->with('error', 'Vous ne pouvez pas modifier les notes déjà enregistrées. Vous pouvez seulement ajouter des notes si aucune n\'existe encore.')
+                    ->with('error', "Vous n'avez pas la permission de modifier les notes déjà enregistrées. Vous pouvez seulement ajouter des notes si aucune n'existe encore.")
                     ->withInput();
             }
         }

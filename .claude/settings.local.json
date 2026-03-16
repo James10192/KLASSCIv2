@@ -110,7 +110,8 @@
       "Bash(grep -rn \"mes-notes\\\\|mes_notes\" /c/Users/yabla/Downloads/DEV/KLASSCIv2-issue-146/resources/views/ | grep -v \"blade.php:\" | head -5\ngrep -rn \"include.*mes-notes\\\\|mes-notes\" /c/Users/yabla/Downloads/DEV/KLASSCIv2-issue-146/resources/views/ | grep \"@include\\\\|@extends\" | head -5)",
       "Skill(create-pr)",
       "Bash(cd \"C:\\\\Users\\\\yabla\\\\Downloads\\\\DEV\\\\KLASSCIv2-issue-146\" && gh pr list --state open)",
-      "mcp__plugin_playwright_playwright__browser_wait_for"
+      "mcp__plugin_playwright_playwright__browser_wait_for",
+      "mcp__plugin_playwright_playwright__browser_select_option"
     ],
     "deny": [],
     "ask": [],

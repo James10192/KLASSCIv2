@@ -8,111 +8,97 @@
             'moyenne_s2' => null,
             'moyenne_annuelle' => null,
         ];
-        $className = strtolower($classe->name ?: '');
-        $classFiliere = strtolower(optional($classe->filiere)->name ?: '');
-        $classNiveau = strtolower(optional($classe->niveau)->name ?: '');
+        $completion = $stats['completion'];
+        $progressClass = $completion >= 75 ? 'high' : ($completion >= 40 ? 'medium' : '');
     @endphp
-    <div class="card-moderne resultat-card class-card animate-slide-up @if($classe->is_active) border-active @else border-inactive @endif"
+    <div class="nm-class-card {{ $classe->is_active ? '' : 'inactive' }} class-card"
          data-classe-id="{{ $classe->id }}"
-         data-class-name="{{ $className }}"
-         data-class-filiere="{{ $classFiliere }}"
-         data-class-niveau="{{ $classNiveau }}"
+         data-class-name="{{ strtolower($classe->name ?: '') }}"
+         data-class-filiere="{{ strtolower(optional($classe->filiere)->name ?: '') }}"
+         data-class-niveau="{{ strtolower(optional($classe->niveau)->name ?: '') }}"
          data-class-label="{{ $classe->name }}">
-        <div class="class-card-header">
-            <div class="classe-icon @if($classe->is_active) bg-success @else bg-inactive @endif">
-                <i class="fas fa-graduation-cap" style="color: white; font-size: 16px;"></i>
+
+        <div class="nm-card-header">
+            <div class="nm-card-icon">
+                <i class="fas fa-graduation-cap"></i>
             </div>
-            <div class="class-header-text">
-                <div class="class-title">{{ $classe->name }}</div>
-                <div class="class-code">Code: {{ $classe->code }}</div>
+            <div class="nm-card-title-group">
+                <div class="nm-card-title">{{ $classe->name }}</div>
+                <div class="nm-card-code">{{ $classe->code }}</div>
             </div>
-            <div class="class-badges">
-                <span class="badge {{ $classe->is_active ? 'success' : 'danger' }}">
+            <div class="nm-card-badges">
+                <span class="nm-badge {{ $classe->is_active ? 'success' : 'danger' }}">
                     {{ $classe->is_active ? 'Active' : 'Inactive' }}
                 </span>
-                <span class="badge badge-notes ms-1">
-                    <i class="fas fa-clipboard-check me-1"></i>Notes
-                </span>
             </div>
         </div>
 
-        <div class="class-meta">
+        <div class="nm-card-meta">
             @if ($classe->filiere)
-                <div class="meta-line">
-                    <i class="fas fa-layer-group me-1"></i><strong>{{ $classe->filiere->name }}</strong>
-                    @if ($classe->filiere->parent)
-                        <span class="meta-sub">Option de {{ $classe->filiere->parent->name }}</span>
-                    @endif
+                <div class="nm-meta-line">
+                    <i class="fas fa-layer-group"></i>
+                    <strong>{{ $classe->filiere->name }}</strong>
                 </div>
+                @if ($classe->filiere->parent)
+                    <div class="nm-meta-sub">Option de {{ $classe->filiere->parent->name }}</div>
+                @endif
             @endif
             @if ($classe->niveau)
-                <div class="meta-line text-muted">
-                    <i class="fas fa-level-up-alt me-1"></i>{{ $classe->niveau->name }}
+                <div class="nm-meta-line">
+                    <i class="fas fa-level-up-alt"></i>
+                    {{ $classe->niveau->name }}
                 </div>
             @endif
         </div>
 
-        <div class="notes-kpi-grid">
-            <div class="notes-kpi-item">
-                <div class="notes-kpi-label">Matières liées</div>
-                <div class="notes-kpi-value">{{ $stats['matieres_total'] }}</div>
+        <div class="nm-card-kpis">
+            <div class="nm-card-kpi">
+                <div class="nm-card-kpi-value">{{ $stats['matieres_total'] }}</div>
+                <div class="nm-card-kpi-label">Matières</div>
             </div>
-            <div class="notes-kpi-item">
-                <div class="notes-kpi-label">Matières évaluées</div>
-                <div class="notes-kpi-value">
-                    {{ $stats['matieres_configured'] }}
-                    @if($stats['matieres_total'] === 0 && ($stats['matieres_configured_raw'] ?? 0) > 0)
-                        <span class="badge bg-warning text-dark" style="font-size: 0.65rem; margin-left: 4px;">non liées</span>
-                    @endif
-                </div>
+            <div class="nm-card-kpi">
+                <div class="nm-card-kpi-value">{{ $stats['matieres_configured'] }}</div>
+                <div class="nm-card-kpi-label">Évaluées</div>
             </div>
-            <div class="notes-kpi-item">
-                <div class="notes-kpi-label">Complétude</div>
-                <div class="notes-kpi-value">{{ $stats['completion'] }}%</div>
+            <div class="nm-card-kpi">
+                <div class="nm-card-kpi-value">{{ $classe->inscriptions_count ?? 0 }}</div>
+                <div class="nm-card-kpi-label">Effectif</div>
             </div>
         </div>
 
-        <div class="notes-averages">
-            <span class="avg-chip">S1: {{ $stats['moyenne_s1'] !== null ? number_format($stats['moyenne_s1'], 2) : '--' }}</span>
-            <span class="avg-chip">S2: {{ $stats['moyenne_s2'] !== null ? number_format($stats['moyenne_s2'], 2) : '--' }}</span>
-            <span class="avg-chip highlight">Annuel: {{ $stats['moyenne_annuelle'] !== null ? number_format($stats['moyenne_annuelle'], 2) : '--' }}</span>
-        </div>
-
-        <div class="notes-kpi-grid">
-            <div class="notes-kpi-item">
-                <div class="notes-kpi-label">Effectif</div>
-                <div class="notes-kpi-value">{{ $classe->inscriptions_count ?? 0 }}</div>
+        <div class="nm-card-progress">
+            <div class="nm-progress-bar">
+                <div class="nm-progress-fill {{ $progressClass }}" style="width: {{ min($completion, 100) }}%"></div>
             </div>
-            <div class="notes-kpi-item">
-                <div class="notes-kpi-label">Capacité</div>
-                <div class="notes-kpi-value">{{ $classe->places_totales ?? 0 }}</div>
-            </div>
-            <div class="notes-kpi-item">
-                <div class="notes-kpi-label">Places dispo</div>
-                <div class="notes-kpi-value">
-                    {{ ($classe->places_totales ?? 0) - ($classe->inscriptions_count ?? 0) }}
-                </div>
+            <div class="nm-progress-text">
+                <span>Complétude</span>
+                <span>{{ $completion }}%</span>
             </div>
         </div>
 
-        <div class="class-card-footer">
-            <div class="notes-hint">
+        <div class="nm-card-averages">
+            <span class="nm-avg-chip">S1: {{ $stats['moyenne_s1'] !== null ? number_format($stats['moyenne_s1'], 2) : '--' }}</span>
+            <span class="nm-avg-chip">S2: {{ $stats['moyenne_s2'] !== null ? number_format($stats['moyenne_s2'], 2) : '--' }}</span>
+            <span class="nm-avg-chip annual">Annuel: {{ $stats['moyenne_annuelle'] !== null ? number_format($stats['moyenne_annuelle'], 2) : '--' }}</span>
+        </div>
+
+        <div class="nm-card-footer">
+            <div class="nm-card-hint">
                 @if ($classe->annee)
-                    <i class="fas fa-calendar me-1"></i>{{ $classe->annee->name }}
+                    <i class="fas fa-calendar"></i>{{ $classe->annee->name }}
                 @endif
-                <div class="notes-action-text">
-                    <i class="fas fa-pen-alt me-1"></i>Saisir les notes
-                </div>
             </div>
-            <button type="button" class="btn-acasi primary class-select-btn" title="Saisir les notes">
+            <button type="button" class="nm-card-action class-select-btn" title="Saisir les notes">
                 <i class="fas fa-edit"></i>
             </button>
         </div>
     </div>
 @empty
-    <div class="text-center" style="padding: var(--space-xl); color: var(--text-secondary); grid-column: 1 / -1;">
-        <i class="fas fa-graduation-cap" style="font-size: 48px; margin-bottom: var(--space-lg); color: var(--neutral);"></i>
-        <h5 style="color: var(--text-secondary); margin-bottom: var(--space-sm);">Aucune classe trouvée</h5>
-        <p style="color: var(--text-muted);">Aucune classe ne correspond aux filtres sélectionnés.</p>
+    <div class="nm-empty">
+        <div class="nm-empty-icon">
+            <i class="fas fa-graduation-cap"></i>
+        </div>
+        <h5>Aucune classe trouvée</h5>
+        <p>Aucune classe ne correspond aux filtres sélectionnés.</p>
     </div>
 @endforelse
