@@ -45,7 +45,7 @@ class SearchFeesTool extends ChatbotTool
         if (!empty($args['category'])) {
             $categoryQuery->where('name', 'like', '%' . $args['category'] . '%');
         }
-        $categories = $categoryQuery->get();
+        $categories = $categoryQuery->limit(20)->get();
 
         if ($categories->isEmpty()) {
             return [

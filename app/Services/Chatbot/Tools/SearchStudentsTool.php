@@ -48,7 +48,7 @@ class SearchStudentsTool extends ChatbotTool
 
     public function execute(array $args, $user): array
     {
-        $query = ESBTPEtudiant::query()->with(['inscriptions.classe.filiere']);
+        $query = ESBTPEtudiant::query()->with(['inscriptions' => fn($q) => $q->orderByDesc('date_inscription'), 'inscriptions.classe.filiere']);
 
         if (!empty($args['name'])) {
             $this->applyFuzzyNameSearch($query, $args['name']);

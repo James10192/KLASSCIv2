@@ -12,4 +12,12 @@ return [
 
     'request_timeout' => (int) env('ANTHROPIC_REQUEST_TIMEOUT', 30),
 
+    'max_tokens' => (int) env('ANTHROPIC_MAX_TOKENS', 2048),
+
+    'temperature' => (float) env('ANTHROPIC_TEMPERATURE', 0.2),
+
+    'retry_attempts' => (int) env('ANTHROPIC_RETRY_ATTEMPTS', 2),
+
+    'retry_delay_ms' => (int) env('ANTHROPIC_RETRY_DELAY_MS', 1000),
+
 ];

@@ -89,6 +89,7 @@ class ClaudeAgentService
         $displayData = null;
         $deepLink = null;
         $text = null;
+        $contentBlocks = [];
 
         for ($round = 0; $round < $this->maxToolRounds; $round++) {
             $response = $this->callClaude($systemPrompt, $messages, $toolDefinitions);
@@ -347,18 +348,31 @@ PROMPT;
         $model = config('anthropic.model', 'claude-haiku-4-5');
         $baseUrl = rtrim(config('anthropic.base_url', 'https://api.anthropic.com/v1/'), '/');
         $timeout = (int) config('anthropic.request_timeout', 30);
+        $maxTokens = (int) config('anthropic.max_tokens', 2048);
+        $temperature = (float) config('anthropic.temperature', 0.2);
+        $retryAttempts = (int) config('anthropic.retry_attempts', 2);
+        $retryDelay = (int) config('anthropic.retry_delay_ms', 1000);
 
         $url = $baseUrl . '/messages';
 
+        // System prompt avec cache_control pour réduire les coûts
         $payload = [
             'model' => $model,
-            'max_tokens' => 2048,
-            'system' => $systemPrompt,
+            'max_tokens' => $maxTokens,
+            'temperature' => $temperature,
+            'system' => [
+                [
+                    'type' => 'text',
+                    'text' => $systemPrompt,
+                    'cache_control' => ['type' => 'ephemeral'],
+                ],
+            ],
             'messages' => $messages,
         ];
 
         if (!empty($toolDefinitions)) {
             $payload['tools'] = $toolDefinitions;
+            $payload['tool_choice'] = ['type' => 'auto'];
         }
 
         try {
@@ -372,12 +386,14 @@ PROMPT;
 
             if ($isOAuth) {
                 $headers['Authorization'] = 'Bearer ' . $apiKey;
-                $headers['anthropic-beta'] = 'oauth-2025-04-20';
+                $headers['anthropic-beta'] = 'oauth-2025-04-20,prompt-caching-2024-07-31';
             } else {
                 $headers['x-api-key'] = $apiKey;
+                $headers['anthropic-beta'] = 'prompt-caching-2024-07-31';
             }
 
             $response = Http::timeout($timeout)
+                ->retry($retryAttempts, $retryDelay, fn ($e, $req) => $e instanceof \Illuminate\Http\Client\ConnectionException || ($e instanceof \Illuminate\Http\Client\RequestException && $e->response?->status() >= 500))
                 ->withHeaders($headers)
                 ->post($url, $payload);
 

@@ -60,7 +60,7 @@ abstract class ChatbotTool
 
     /**
      * Appliquer une recherche floue nom/prénoms sur une query Eloquent.
-     * LIKE exact → LIKE par terme → SOUNDEX fallback (si 0 résultat LIKE).
+     * Stratégie fuzzy-OR : LIKE exact + LIKE par terme + SOUNDEX phonétique (combinés).
      */
     public function applyFuzzyNameSearch($query, string $search, string $nomCol = 'nom', string $prenomsCol = 'prenoms'): void
     {

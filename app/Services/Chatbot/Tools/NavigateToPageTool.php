@@ -96,6 +96,15 @@ class NavigateToPageTool extends ChatbotTool
             ];
         }
 
+        // Vérifier si la route nécessite un ID
+        $needsId = str_contains($page, '.show');
+        if ($needsId && !$id) {
+            return [
+                'url' => null,
+                'error' => "Cette page nécessite un ID. Utilise d'abord un outil de recherche (search_students, search_inscriptions...) pour trouver l'élément, puis réutilise navigate_to_page avec l'ID.",
+            ];
+        }
+
         $url = $id ? route($routeName, $id) : route($routeName);
 
         return [

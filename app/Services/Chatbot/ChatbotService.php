@@ -41,6 +41,10 @@ class ChatbotService
     public function sendMessage(string $message, ?string $sessionId = null, ?array $clientContext = null): array
     {
         $user = Auth::user();
+        if (!$user) {
+            return ['success' => false, 'message' => 'Vous devez être connecté pour utiliser le chatbot.'];
+        }
+
         $startTime = microtime(true);
 
         Log::info('ChatbotService: sendMessage', [
@@ -76,7 +80,7 @@ class ChatbotService
                 ]);
             }
 
-            // 5. Appel agent Gemini (tool calling)
+            // 5. Appel agent Claude (tool calling)
             $agentResponse = $this->agent->chat(
                 $conversation,
                 $message,
@@ -123,13 +127,13 @@ class ChatbotService
                 ]);
             }
 
-            // 9. Mettre à jour la conversation
+            // 9. Mettre à jour la conversation (merge, pas overwrite)
             $conversation->update([
                 'last_activity_at' => now(),
-                'context' => array_filter([
+                'context' => array_filter(array_merge($conversation->context ?? [], [
                     'last_display' => $agentResponse['display_type'],
                     'last_tool_calls' => $agentResponse['tool_calls'],
-                ]),
+                ])),
             ]);
 
             // 10. Titre auto
@@ -147,7 +151,7 @@ class ChatbotService
                 'conversation_id' => $conversation->session_id,
             ];
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('ChatbotService: error', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
