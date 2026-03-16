@@ -1,269 +1,238 @@
 @extends('layouts.app')
 
-@section('title', 'Édition Groupée - ' . $classe->name . ' - KLASSCI')
+@section('title', 'Édition Groupée — ' . $classe->name . ' — KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/student-results.css') }}">
 <style>
-    .student-checkbox {
-        width: 18px;
-        height: 18px;
-        cursor: pointer;
-    }
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-    .btn-action {
-        min-width: 140px;
-        padding: 0.65rem 1.25rem !important;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-    }
-    .loading-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.8);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-    }
-    .loading-overlay.active {
-        display: flex;
-    }
+.student-checkbox { width: 18px; height: 18px; cursor: pointer; }
+.loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.8); display: none; align-items: center; justify-content: center; z-index: 1000; }
+.loading-overlay.active { display: flex; }
 </style>
 @endsection
 
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header Section -->
-        <div class="dashboard-header">
-            <div class="header-left">
-                <h1><i class="fas fa-edit me-2"></i>Édition Groupée des Résultats</h1>
-                <p class="header-subtitle">{{ $classe->name }} - {{ $classe->filiere->name ?? '' }} - {{ $classe->niveau->name ?? '' }}</p>
-            </div>
-            <div class="header-actions">
-                <a href="{{ route('esbtp.resultats.classes') }}" class="btn-acasi secondary">
-                    <i class="fas fa-arrow-left"></i>Retour aux classes
-                </a>
+
+        {{-- Hero --}}
+        <div class="sr-hero sr-animate">
+            <div class="sr-hero-content">
+                <div class="sr-hero-left">
+                    <div class="sr-hero-avatar"><i class="fas fa-edit"></i></div>
+                    <div class="sr-hero-info">
+                        <h1>Édition Groupée</h1>
+                        <p>{{ $classe->name }} · {{ $classe->filiere->name ?? '' }} · {{ $classe->niveau->name ?? '' }}</p>
+                        <div class="sr-breadcrumb">
+                            <a href="{{ route('esbtp.resultats.index') }}">Résultats</a>
+                            <i class="fas fa-chevron-right"></i>
+                            <a href="{{ route('esbtp.resultats.classes') }}">Classes</a>
+                            <i class="fas fa-chevron-right"></i>
+                            <a href="{{ route('esbtp.resultats.classe', $classe->id) }}">{{ $classe->name }}</a>
+                            <i class="fas fa-chevron-right"></i>
+                            <span>Édition</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="sr-hero-actions">
+                    <a href="{{ route('esbtp.resultats.classe', $classe->id) }}?annee_universitaire_id={{ $annee_universitaire_id }}" class="sr-hero-btn">
+                        <i class="fas fa-arrow-left"></i>Retour
+                    </a>
+                </div>
             </div>
         </div>
 
         @if(session('success'))
-            <div class="alert alert-success alert-dismissible fade show">
-                <i class="fas fa-check-circle me-2"></i>
-                {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         @endif
-
         @if(session('error'))
-            <div class="alert alert-danger alert-dismissible fade show">
-                <i class="fas fa-exclamation-circle me-2"></i>
-                {{ session('error') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         @endif
 
-        <!-- Filtres -->
-        <div class="main-card mb-4">
-            <div class="main-card-header">
-                <div class="main-card-title">
-                    <i class="fas fa-filter"></i>
-                    Filtres d'affichage
-                </div>
-                <div class="main-card-subtitle">Sélectionnez la période et l'année académique</div>
+        {{-- KPIs — classe "kpi-grid" gardée pour le JS refreshPageContent --}}
+        <div class="kpi-grid sr-animate sr-animate-delay-1" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1.5rem;">
+            <div class="sr-stat sr-stat--primary">
+                <div class="sr-stat-icon"><i class="fas fa-user-graduate"></i></div>
+                <div class="sr-stat-value">{{ $kpis['total_students'] }}</div>
+                <div class="sr-stat-label">Étudiants</div>
             </div>
-            <div class="main-card-body">
-                <form method="GET" action="{{ route('esbtp.resultats.classe.edit', $classe->id) }}" id="filterForm">
-                    <div class="row align-items-end">
-                        <div class="col-md-4">
-                            <label for="annee_universitaire_id" class="form-label text-muted text-uppercase" style="font-size: 12px; font-weight: 600;">Année Académique</label>
-                            <select name="annee_universitaire_id" id="annee_universitaire_id" class="form-select">
-                                @foreach($annees_universitaires as $annee)
-                                    <option value="{{ $annee->id }}" {{ $annee->id == $annee_universitaire_id ? 'selected' : '' }}>
-                                        {{ $annee->name ?? ($annee->annee_debut . '-' . $annee->annee_fin) }}
-                                        @if($annee->is_current) (Année courante) @endif
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="semestre" class="form-label text-muted text-uppercase" style="font-size: 12px; font-weight: 600;">Semestre</label>
-                            <select name="semestre" id="semestre" class="form-select">
-                                <option value="">Toutes les périodes</option>
-                                <option value="1" {{ $semestre == 1 ? 'selected' : '' }}>Premier Semestre</option>
-                                <option value="2" {{ $semestre == 2 ? 'selected' : '' }}>Deuxième Semestre</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="form-check" style="margin-top: 32px;">
-                                <input class="form-check-input" type="checkbox" name="include_all_statuses" id="include_all_statuses" {{ $include_all_statuses ? 'checked' : '' }}>
-                                <label class="form-check-label" for="include_all_statuses">
-                                    Inclure tous les statuts
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn-acasi primary w-100">
-                                <i class="fas fa-sync-alt"></i>Actualiser
-                            </button>
-                        </div>
+            <div class="sr-stat sr-stat--info">
+                <div class="sr-stat-icon"><i class="fas fa-book"></i></div>
+                <div class="sr-stat-value">{{ $kpis['total_matieres'] }}</div>
+                <div class="sr-stat-label">Matières</div>
+            </div>
+            <div class="sr-stat sr-stat--success">
+                <div class="sr-stat-icon"><i class="fas fa-chart-line"></i></div>
+                <div class="sr-stat-value">{{ $kpis['total_resultats'] }}</div>
+                <div class="sr-stat-label">Moyennes</div>
+            </div>
+            <div class="sr-stat sr-stat--warning">
+                <div class="sr-stat-icon"><i class="fas fa-chart-pie"></i></div>
+                <div class="sr-stat-value">{{ $kpis['completion_rate'] }}%</div>
+                <div class="sr-stat-label">Complétion</div>
+            </div>
+        </div>
+
+        {{-- Filtres --}}
+        <div class="sr-filter-bar sr-animate sr-animate-delay-2">
+            <form method="GET" action="{{ route('esbtp.resultats.classe.edit', $classe->id) }}" id="filterForm">
+                <div class="sr-filter-row">
+                    <div class="sr-filter-group">
+                        <label class="sr-filter-label">Année académique</label>
+                        <select name="annee_universitaire_id" id="annee_universitaire_id" class="sr-filter-select">
+                            @foreach($annees_universitaires as $annee)
+                                <option value="{{ $annee->id }}" {{ $annee->id == $annee_universitaire_id ? 'selected' : '' }}>
+                                    {{ $annee->name ?? ($annee->annee_debut . '-' . $annee->annee_fin) }}{{ $annee->is_current ? ' *' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
-                </form>
+                    <div class="sr-filter-group">
+                        <label class="sr-filter-label">Période</label>
+                        <select name="semestre" id="semestre" class="sr-filter-select">
+                            <option value="">Annuel</option>
+                            <option value="1" {{ $semestre == 1 ? 'selected' : '' }}>Semestre 1</option>
+                            <option value="2" {{ $semestre == 2 ? 'selected' : '' }}>Semestre 2</option>
+                        </select>
+                    </div>
+                    <div class="sr-filter-group" style="flex: 0 0 auto; min-width: auto;">
+                        <label class="sr-filter-label">&nbsp;</label>
+                        <button type="submit" class="sr-filter-btn">
+                            <i class="fas fa-sync-alt"></i>Actualiser
+                        </button>
+                    </div>
+                </div>
+                <label class="sr-filter-toggle">
+                    <input type="checkbox" name="include_all_statuses" id="include_all_statuses" {{ $include_all_statuses ? 'checked' : '' }}>
+                    <span class="sr-toggle-track"></span>
+                    <span>Inclure tous les statuts</span>
+                </label>
+            </form>
+        </div>
+
+        {{-- Actions rapides --}}
+        <div class="sr-actions-card sr-animate sr-animate-delay-3" style="margin-bottom: 1.5rem;">
+            <div class="sr-actions-header">
+                <i class="fas fa-bolt"></i>
+                <h3>Actions groupées</h3>
+                <span class="sr-table-count" style="margin-left: auto;"><span id="selected-count">0</span> sélectionné(s)</span>
+            </div>
+            <div class="sr-actions-body" style="padding: 1rem 1.5rem;">
+                <div class="sr-actions-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 0;">
+                    <button class="sr-action-btn" onclick="openMoyennesModal()" id="btnMoyennes">
+                        <div class="sr-action-btn-icon sr-action-btn-icon--primary"><i class="fas fa-calculator"></i></div>
+                        <span class="sr-action-btn-text">Éditer Moyennes</span>
+                    </button>
+                    <button class="sr-action-btn" onclick="openProfesseursModal()" id="btnProfesseurs">
+                        <div class="sr-action-btn-icon sr-action-btn-icon--info"><i class="fas fa-chalkboard-teacher"></i></div>
+                        <span class="sr-action-btn-text">Professeurs</span>
+                    </button>
+                    <button class="sr-action-btn" onclick="openAbsencesModal()" id="btnAbsences">
+                        <div class="sr-action-btn-icon sr-action-btn-icon--warning"><i class="fas fa-calendar-times"></i></div>
+                        <span class="sr-action-btn-text">Absences</span>
+                    </button>
+                    <button class="sr-action-btn" onclick="openMatieresModal()" id="btnMatieres">
+                        <div class="sr-action-btn-icon sr-action-btn-icon--secondary"><i class="fas fa-cog"></i></div>
+                        <span class="sr-action-btn-text">Config. Matières</span>
+                    </button>
+                </div>
             </div>
         </div>
 
-        <!-- KPIs -->
-        <div class="kpi-grid mb-4">
-            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
-                <div class="kpi-title" style="color: #000; font-weight: 600;">Étudiants</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $kpis['total_students'] }}</div>
-                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
-                    <i class="fas fa-user-graduate"></i>
-                    Inscrits actifs
-                </div>
-            </div>
-
-            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
-                <div class="kpi-title" style="color: #000; font-weight: 600;">Matières</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $kpis['total_matieres'] }}</div>
-                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
-                    <i class="fas fa-book"></i>
-                    Configurées
-                </div>
-            </div>
-
-            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
-                <div class="kpi-title" style="color: #000; font-weight: 600;">Moyennes saisies</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $kpis['total_resultats'] }}</div>
-                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
-                    <i class="fas fa-chart-line"></i>
-                    Résultats enregistrés
-                </div>
-            </div>
-
-            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
-                <div class="kpi-title" style="color: #000; font-weight: 600;">Taux de complétion</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $kpis['completion_rate'] }}%</div>
-                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
-                    <i class="fas fa-chart-pie"></i>
-                    Moyennes / Total
-                </div>
-            </div>
-        </div>
-
-        <!-- Actions rapides -->
+        {{-- Table étudiants — classe "main-card mb-4" gardée pour le JS refreshPageContent --}}
         <div class="main-card mb-4">
-            <div class="main-card-header">
-                <div class="main-card-title">
-                    <i class="fas fa-bolt"></i>
-                    Actions d'édition groupée
-                </div>
-                <div class="main-card-subtitle">
-                    <span id="selected-count">0</span> étudiant(s) sélectionné(s)
-                </div>
-            </div>
-            <div class="main-card-body">
-                <div class="d-flex gap-3 flex-wrap">
-                    <button class="btn-acasi primary btn-action" onclick="openMoyennesModal()" id="btnMoyennes">
-                        <i class="fas fa-calculator"></i>Éditer Moyennes
-                    </button>
-                    <button class="btn-acasi info btn-action" onclick="openProfesseursModal()" id="btnProfesseurs">
-                        <i class="fas fa-chalkboard-teacher"></i>Assigner Professeurs
-                    </button>
-                    <button class="btn-acasi warning btn-action" onclick="openAbsencesModal()" id="btnAbsences">
-                        <i class="fas fa-calendar-times"></i>Éditer Absences
-                    </button>
-                    <button class="btn-acasi secondary btn-action" onclick="openMatieresModal()" id="btnMatieres">
-                        <i class="fas fa-cog"></i>Config. Matières
-                    </button>
-                </div>
-                <div class="mt-3">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Sélectionnez un ou plusieurs étudiants ci-dessous pour activer les actions d'édition groupée
-                    </small>
-                </div>
-            </div>
-        </div>
-
-        <!-- Liste des étudiants -->
-        <div class="main-card mb-4">
-            <div class="main-card-header">
-                <div class="main-card-title">
+            <div class="sr-table-header">
+                <div class="sr-table-header-left">
                     <i class="fas fa-users"></i>
-                    Liste des étudiants
+                    <h3>Étudiants</h3>
                 </div>
-                <div class="main-card-subtitle">{{ $students->count() }} étudiant(s)</div>
+                <span class="sr-table-count">{{ $students->count() }} étudiants</span>
             </div>
-            <div class="main-card-body" style="position: relative;">
+            <div class="main-card-body" style="position: relative; padding: 0;">
                 <div class="loading-overlay" id="loadingOverlay">
-                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
-                        <span class="visually-hidden">Chargement...</span>
+                    <div class="sr-loading-spinner" style="box-shadow: none; border: none;">
+                        <div class="sr-loading-spinner-circle"></div>
+                        <div class="sr-loading-spinner-text">Chargement...</div>
                     </div>
                 </div>
 
                 @if($students->count() > 0)
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="bg-light">
+                    <div class="sr-table-responsive">
+                        <table class="sr-table">
+                            <thead>
                                 <tr>
-                                    <th style="width: 50px;">
+                                    <th style="width: 45px; padding-left: 1rem;">
                                         <input type="checkbox" class="student-checkbox" id="selectAll">
                                     </th>
                                     <th>Matricule</th>
-                                    <th>Nom complet</th>
-                                    <th>Genre</th>
+                                    <th>Étudiant</th>
                                     <th class="text-center">Moyennes</th>
                                     <th class="text-center">Absences</th>
-                                    <th>Actions</th>
+                                    <th class="text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($students as $student)
                                     <tr>
-                                        <td>
+                                        <td style="padding-left: 1rem;">
                                             <input type="checkbox" class="student-checkbox student-select"
                                                    value="{{ $student->id }}"
                                                    data-name="{{ $student->nom }} {{ $student->prenoms }}"
                                                    data-matricule="{{ $student->matricule }}">
                                         </td>
-                                        <td>{{ $student->matricule }}</td>
                                         <td>
-                                            <div class="fw-semibold">{{ $student->nom }} {{ $student->prenoms }}</div>
-                                            <small class="text-muted">{{ $student->user->email ?? '' }}</small>
+                                            <span class="sr-subject-code">{{ $student->matricule }}</span>
                                         </td>
-                                        <td>{{ $student->genre == 'M' ? 'Masculin' : 'Féminin' }}</td>
+                                        <td>
+                                            <div class="sr-subject-cell">
+                                                <div class="sr-subject-icon" style="border-radius: 50%; font-size: 0.7rem; width: 34px; height: 34px;">
+                                                    {{ strtoupper(substr($student->nom ?? 'N', 0, 1)) }}{{ strtoupper(substr($student->prenoms ?? 'A', 0, 1)) }}
+                                                </div>
+                                                <div class="sr-subject-info">
+                                                    <div class="sr-subject-name">{{ $student->nom }} {{ $student->prenoms }}</div>
+                                                    @if($student->genre)
+                                                        <span style="font-size: 0.7rem; color: var(--sr-muted);">{{ $student->genre == 'M' ? 'Masculin' : 'Féminin' }}</span>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </td>
                                         <td class="text-center">
                                             @php
                                                 $studentResultats = $resultats->get($student->id);
                                                 $moyennesCount = $studentResultats ? $studentResultats->count() : 0;
+                                                $total = $matieres->count();
+                                                $pct = $total > 0 ? round(($moyennesCount / $total) * 100) : 0;
                                             @endphp
-                                            <span class="badge {{ $moyennesCount > 0 ? 'bg-success' : 'bg-secondary' }}">
-                                                {{ $moyennesCount }} / {{ $matieres->count() }}
-                                            </span>
+                                            <div class="sr-avg-cell">
+                                                <span class="sr-eval-count">{{ $moyennesCount }}/{{ $total }}</span>
+                                                <div class="sr-avg-progress" style="width: 50px;">
+                                                    <div class="sr-avg-progress-fill sr-avg-progress-fill--{{ $pct >= 50 ? 'success' : 'danger' }}"
+                                                         style="width: {{ $pct }}%"></div>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td class="text-center">
                                             @php
                                                 $studentBulletin = $absences->get($student->id);
                                                 $totalHeures = $studentBulletin ? $studentBulletin->total_absences : 0;
                                             @endphp
-                                            <span class="badge {{ $totalHeures > 0 ? 'bg-warning' : 'bg-success' }}">
-                                                {{ $totalHeures }}h
-                                            </span>
+                                            @if($totalHeures > 0)
+                                                <span class="sr-assiduity-badge sr-assiduity-badge--negative" style="margin-top: 0;">{{ $totalHeures }}h</span>
+                                            @else
+                                                <span style="color: var(--sr-success); font-weight: 600; font-size: 0.8rem;">0h</span>
+                                            @endif
                                         </td>
-                                        <td>
-                                            <a href="{{ route('esbtp.resultats.etudiant', $student->id) }}?annee_universitaire_id={{ $annee_universitaire_id }}&semestre={{ $semestre }}"
-                                               class="btn btn-info btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1"
-                                               title="Voir détails">
-                                                <i class="fas fa-eye"></i>
+                                        <td class="text-center">
+                                            <a href="{{ route('esbtp.resultats.etudiant', $student->id) }}?classe_id={{ $classe->id }}&annee_universitaire_id={{ $annee_universitaire_id }}&periode={{ $periode }}"
+                                               class="sr-hero-btn" style="padding: 0.3rem 0.65rem; font-size: 0.72rem; background: var(--sr-primary-gradient); border-color: var(--sr-primary);">
+                                                <i class="fas fa-eye"></i>Détails
                                             </a>
                                         </td>
                                     </tr>
@@ -272,8 +241,10 @@
                         </table>
                     </div>
                 @else
-                    <div class="alert alert-info mb-0">
-                        <i class="fas fa-info-circle me-2"></i>Aucun étudiant trouvé avec les filtres sélectionnés.
+                    <div class="sr-empty">
+                        <i class="fas fa-inbox"></i>
+                        <h3>Aucun étudiant</h3>
+                        <p>Aucun étudiant trouvé avec les filtres sélectionnés.</p>
                     </div>
                 @endif
             </div>
@@ -281,7 +252,6 @@
     </div>
 </div>
 
-<!-- Modals will be included here -->
 @include('esbtp.resultats.modals.edit-moyennes')
 @include('esbtp.resultats.modals.edit-professeurs')
 @include('esbtp.resultats.modals.edit-absences')
