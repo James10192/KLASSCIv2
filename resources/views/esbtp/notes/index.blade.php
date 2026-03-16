@@ -199,7 +199,7 @@
 
                 {{-- Notes grid --}}
                 <div class="nm-grid-wrapper table-responsive notes-grid-wrapper">
-                    <table class="nm-grid-table table table-bordered table-hover notes-grid-table" id="notesGrid">
+                    <table class="nm-grid-table table notes-grid-table" id="notesGrid">
                         <thead>
                             <tr>
                                 <th class="notes-student-col">Étudiants</th>
@@ -600,6 +600,11 @@ $(document).ready(function() {
         }
     });
 
+    // Scroll shadow detection on grid wrapper (scroll doesn't bubble — attach directly)
+    $('.nm-grid-wrapper').on('scroll', function() {
+        $(this).toggleClass('scrolled-x', this.scrollLeft > 0);
+    });
+
     // Initialiser le modal
     $('#classSelectionModal').on('shown.bs.modal', function() {
         if (currentClassId) {
@@ -802,18 +807,18 @@ function renderNotesGrid(students, sortedEvaluations) {
         semestre2: sortedEvaluations.filter(e => e._period === 'semestre2').length,
     };
 
-    const periodRow = $('<tr class="period-row"></tr>');
+    const periodRow = $('<tr class="nm-period-row"></tr>');
     periodRow.append('<th class="notes-student-col">Étudiants</th>');
     if (periodCounts.semestre1 > 0) {
-        periodRow.append(`<th colspan="${periodCounts.semestre1}" class="period-cell semester-1 text-center">Semestre 1</th>`);
+        periodRow.append(`<th colspan="${periodCounts.semestre1}" class="nm-period-s1 text-center">Semestre 1</th>`);
     }
     if (periodCounts.semestre2 > 0) {
-        periodRow.append(`<th colspan="${periodCounts.semestre2}" class="period-cell semester-2 text-center">Semestre 2</th>`);
+        periodRow.append(`<th colspan="${periodCounts.semestre2}" class="nm-period-s2 text-center">Semestre 2</th>`);
     }
-    periodRow.append('<th colspan="2" class="period-cell summary text-center">Synthèse</th>');
+    periodRow.append('<th colspan="2" class="nm-period-summary text-center">Synthèse</th>');
     thead.append(periodRow);
 
-    const evalRow = $('<tr></tr>');
+    const evalRow = $('<tr class="nm-eval-row"></tr>');
     evalRow.append('<th class="notes-student-col">Étudiants</th>');
 
     sortedEvaluations.forEach(evaluation => {
@@ -880,7 +885,6 @@ function renderNotesGrid(students, sortedEvaluations) {
                                data-student-id="${student.id}"
                                data-eval-id="${evaluation.id}"
                                step="0.25" min="0" max="${evaluation.bareme || 20}"
-                               style="text-align: center;"
                                onchange="saveNote(${student.id}, ${evaluation.id}, this.value)">
                         <div class="nm-absence-check form-check form-check-inline position-absolute">
                             <input class="form-check-input absence-checkbox"
@@ -901,7 +905,7 @@ function renderNotesGrid(students, sortedEvaluations) {
         });
 
         row.append('<td class="text-center fw-bold average-cell notes-average-col">--</td>');
-        row.append('<td class="text-center notes-appreciation-col"><span class="badge bg-secondary appreciation-badge">--</span></td>');
+        row.append('<td class="text-center notes-appreciation-col"><span class="nm-appreciation default">--</span></td>');
 
         tbody.append(row);
     });
@@ -909,6 +913,13 @@ function renderNotesGrid(students, sortedEvaluations) {
     buildClassAveragesRow(sortedEvaluations);
     calculateAllAverages();
     $('#saveAllNotesBtn').show();
+
+    // Measure actual period row height for sticky offset
+    const periodRowEl = document.querySelector('.nm-period-row th');
+    if (periodRowEl) {
+        const h = periodRowEl.offsetHeight;
+        document.querySelector('.nm-grid-wrapper').style.setProperty('--nm-period-row-h', h + 'px');
+    }
 }
 
 function buildClassAveragesRow(evaluations) {
@@ -1067,36 +1078,39 @@ function calculateStudentAverage(studentId) {
     });
 
     const averageCell = row.find('.average-cell');
-    const appreciationBadge = row.find('.appreciation-badge');
+    const appreciationBadge = row.find('.nm-appreciation');
 
     if (hasNotes && totalCoefficients > 0) {
         const moyenne = totalPoints / totalCoefficients;
         averageCell.text(moyenne.toFixed(2));
 
         let appreciation = '';
-        let badgeClass = '';
+        let levelClass = '';
 
         if (moyenne >= 16) {
             appreciation = 'Excellent';
-            badgeClass = 'bg-success';
+            levelClass = 'excellent';
         } else if (moyenne >= 14) {
             appreciation = 'Très bien';
-            badgeClass = 'bg-info';
+            levelClass = 'tres-bien';
         } else if (moyenne >= 12) {
             appreciation = 'Bien';
-            badgeClass = 'bg-primary';
+            levelClass = 'bien';
         } else if (moyenne >= 10) {
+            appreciation = 'Assez bien';
+            levelClass = 'assez-bien';
+        } else if (moyenne >= 8) {
             appreciation = 'Passable';
-            badgeClass = 'bg-warning';
+            levelClass = 'passable';
         } else {
             appreciation = 'Insuffisant';
-            badgeClass = 'bg-danger';
+            levelClass = 'insuffisant';
         }
 
-        appreciationBadge.text(appreciation).removeClass().addClass(`badge ${badgeClass} appreciation-badge`);
+        appreciationBadge.text(appreciation).removeClass().addClass(`nm-appreciation ${levelClass}`);
     } else {
         averageCell.text('--');
-        appreciationBadge.text('--').removeClass().addClass('badge bg-secondary appreciation-badge');
+        appreciationBadge.text('--').removeClass().addClass('nm-appreciation default');
     }
 }
 

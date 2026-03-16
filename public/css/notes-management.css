@@ -8,6 +8,7 @@
 :root {
     --nm-gradient-primary: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
     --nm-gradient-primary-90: linear-gradient(90deg, #0453cb, #5e91de);
+    --nm-period-row-h: 33px;
 }
 
 /* ── Layout ──────────────────────────────────────────── */
@@ -542,89 +543,107 @@
 
 /* ================================================================
    MODAL: Class Selection & Notes Grid (#classSelectionModal)
+   Premium Spreadsheet Design
    ================================================================ */
-.nm-page ~ #classSelectionModal .modal-dialog,
-body .nm-page ~ #classSelectionModal .modal-dialog,
+
+/* ── Modal Sizing ─────────────────────────────────────
+   Override modal-force-fix.css & dashboard-moderne.css
+   ID selectors guarantee highest specificity             */
+#classSelectionModal.nm-notes-modal {
+    padding: 0 !important;
+}
 #classSelectionModal.nm-notes-modal .modal-dialog {
-    max-width: 94vw;
-    width: 94vw;
-    margin: 1.5vh auto;
+    max-width: 97vw !important;
+    width: 97vw !important;
+    margin: 1.5vh auto !important;
+    max-height: none !important;
+    align-items: stretch !important;
 }
-.nm-page ~ #classSelectionModal .modal-content,
-body .nm-page ~ #classSelectionModal .modal-content,
 #classSelectionModal.nm-notes-modal .modal-content {
-    max-height: 97vh;
-    height: 97vh;
-    display: flex;
-    flex-direction: column;
-    border-radius: 16px;
-    overflow: hidden;
-    border: none;
-    box-shadow: 0 24px 64px rgba(4,83,203,0.18);
+    max-height: 97vh !important;
+    height: 97vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    border: none !important;
+    box-shadow: 0 25px 80px rgba(4,83,203,0.22), 0 0 0 1px rgba(4,83,203,0.06) !important;
 }
+#classSelectionModal.nm-notes-modal .modal-body {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    padding: 0.75rem 1rem !important;
+    background: #f8fafc !important;
+    max-height: none !important;
+}
+
+/* Re-enable transitions killed by modal-force-fix.css */
+#classSelectionModal .nm-note-input,
+#classSelectionModal .nm-eval-control input,
+#classSelectionModal .nm-modal-control select,
+#classSelectionModal .nm-create-eval-btn,
+#classSelectionModal .nm-modal-footer .btn {
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s, opacity 0.15s !important;
+}
+
+/* ── Modal Header ─────────────────────────────────────── */
 .nm-modal-header {
     background: var(--nm-gradient-primary);
-    padding: 1.1rem 1.5rem;
+    padding: 0.85rem 1.25rem;
     border: none;
     color: #fff;
     flex-shrink: 0;
 }
 .nm-modal-header .modal-title {
     font-weight: 700;
-    font-size: 1.05rem;
+    font-size: 1rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
-#classSelectionModal .modal-body {
-    flex: 1 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-    padding: 1rem 1.25rem;
-    background: #f8fafc;
-}
 
-/* Intro callout */
+/* ── Intro callout ────────────────────────────────────── */
 .nm-modal-intro {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.65rem;
     align-items: center;
-    padding: 0.65rem 1rem;
-    background: linear-gradient(135deg, rgba(4,83,203,0.06), rgba(94,145,222,0.04));
-    border: 1px solid rgba(4,83,203,0.12);
-    border-radius: 10px;
-    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.85rem;
+    background: linear-gradient(135deg, rgba(4,83,203,0.05), rgba(94,145,222,0.03));
+    border: 1px solid rgba(4,83,203,0.1);
+    border-radius: 8px;
+    margin-bottom: 0.6rem;
     flex-shrink: 0;
 }
 .nm-modal-intro-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    background: rgba(4,83,203,0.1);
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: rgba(4,83,203,0.08);
     color: #0453cb;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    font-size: 0.9rem;
+    font-size: 0.82rem;
 }
 .nm-modal-intro-title {
     font-weight: 700;
-    font-size: 0.88rem;
+    font-size: 0.82rem;
     color: #1e293b;
 }
 .nm-modal-intro-sub {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     color: #64748b;
 }
 
-/* Modal controls row */
+/* ── Modal controls row ───────────────────────────────── */
 .nm-modal-controls {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.6rem;
     align-items: flex-end;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.6rem;
     flex-shrink: 0;
     flex-wrap: wrap;
 }
@@ -634,20 +653,21 @@ body .nm-page ~ #classSelectionModal .modal-content,
 }
 .nm-modal-control label {
     display: block;
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: #64748b;
-    margin-bottom: 0.3rem;
+    margin-bottom: 0.25rem;
 }
 .nm-modal-control select {
     width: 100%;
-    padding: 0.45rem 0.75rem;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    font-size: 0.88rem;
+    padding: 0.4rem 0.65rem;
+    border: 1px solid #dde3ed;
+    border-radius: 7px;
+    font-size: 0.85rem;
     background: #fff;
+    color: #1e293b;
 }
 .nm-modal-control select:focus {
     border-color: #0453cb;
@@ -655,26 +675,29 @@ body .nm-page ~ #classSelectionModal .modal-content,
     box-shadow: 0 0 0 3px rgba(4,83,203,0.1);
 }
 .nm-create-eval-btn {
-    padding: 0.45rem 1rem;
-    border-radius: 8px;
+    padding: 0.4rem 0.85rem;
+    border-radius: 7px;
     background: var(--nm-gradient-primary);
     color: #fff;
     border: none;
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     cursor: pointer;
     white-space: nowrap;
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    transition: opacity 0.2s;
+    gap: 0.35rem;
 }
 .nm-create-eval-btn:hover { opacity: 0.9; }
 
-/* Notes grid wrapper */
+/* ══════════════════════════════════════════════════════════
+   NOTES GRID — Premium Spreadsheet
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Grid wrapper ─────────────────────────────────────── */
 .nm-grid-wrapper {
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    border: 1px solid #dde3ed;
     flex: 1;
     min-height: 0;
     overflow: auto;
@@ -683,155 +706,203 @@ body .nm-page ~ #classSelectionModal .modal-content,
     background: #fff;
 }
 
-/* Notes grid table */
+/* ── Base table ───────────────────────────────────────── */
 .nm-grid-table {
     border-collapse: separate;
     border-spacing: 0;
     min-width: 100%;
-    font-size: 0.85rem;
+    font-size: 0.84rem;
+    margin-bottom: 0;
 }
 .nm-grid-table th,
 .nm-grid-table td {
-    padding: 0.5rem 0.4rem;
-    border: 1px solid #e8edf5;
+    padding: 0.45rem 0.5rem;
+    border: none;
+    border-bottom: 1px solid #eef1f6;
+    border-right: 1px solid #eef1f6;
+    vertical-align: middle;
 }
-.nm-grid-table thead th {
+.nm-grid-table th:last-child,
+.nm-grid-table td:last-child {
+    border-right: none;
+}
+
+/* ── Period row (1st header) ──────────────────────────── */
+.nm-grid-table .nm-period-row th {
     position: sticky !important;
     top: 0 !important;
-    z-index: 4;
-    background: #f1f5f9;
-    font-weight: 700;
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    color: #475569;
-}
-
-/* Period row */
-.nm-grid-table .period-row th {
-    background: #eef2f7;
-    text-transform: uppercase;
+    z-index: 10 !important;
+    padding: 0.45rem 0.6rem;
     font-size: 0.7rem;
-    letter-spacing: 0.5px;
-    z-index: 5;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: none;
+    background: #eef2f7;
 }
-.period-cell.semester-1 {
-    background: rgba(4,83,203,0.08) !important;
+.nm-period-s1 {
+    background: linear-gradient(135deg, rgba(4,83,203,0.1), rgba(94,145,222,0.06)) !important;
     color: #1e3a8a;
 }
-.period-cell.semester-2 {
-    background: rgba(16,185,129,0.08) !important;
+.nm-period-s2 {
+    background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(16,185,129,0.04)) !important;
     color: #065f46;
 }
-.period-cell.summary {
-    background: rgba(16,185,129,0.08) !important;
-    color: #065f46;
+.nm-period-summary {
+    background: linear-gradient(135deg, rgba(30,41,59,0.07), rgba(30,41,59,0.03)) !important;
+    color: #334155;
 }
 
-/* Sticky columns */
+/* ── Eval row (2nd header) ────────────────────────────── */
+.nm-grid-table .nm-eval-row th {
+    position: sticky !important;
+    top: var(--nm-period-row-h, 33px) !important;
+    z-index: 9 !important;
+    background: #f8fafc;
+    padding: 0.4rem 0.35rem;
+    border-bottom: 2px solid #dde3ed;
+}
+
+/* ── Sticky: Student column (left) ────────────────────── */
 .nm-grid-table .notes-student-col {
     position: sticky;
     left: 0;
     z-index: 6;
     background: #fff;
-    width: 160px;
-    min-width: 160px;
+    width: 185px;
+    min-width: 185px;
+    border-right: none !important;
 }
-.nm-grid-table thead .notes-student-col {
-    z-index: 8;
+/* Shadow indicator on student col when scrolled (header + footer only) */
+.nm-grid-table thead .notes-student-col::after,
+.nm-grid-table tfoot .notes-student-col::after {
+    content: '';
+    position: absolute;
     top: 0;
-    background: #f1f5f9;
+    right: -6px;
+    bottom: 0;
+    width: 6px;
+    background: linear-gradient(90deg, rgba(15,23,42,0.07), transparent);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s !important;
 }
-.nm-grid-table thead tr:nth-child(2) .notes-student-col {
-    z-index: 7;
+.nm-grid-wrapper.scrolled-x thead .notes-student-col::after,
+.nm-grid-wrapper.scrolled-x tfoot .notes-student-col::after {
+    opacity: 1;
 }
+/* Period row student col */
+.nm-grid-table .nm-period-row .notes-student-col {
+    z-index: 12 !important;
+    background: #eef2f7;
+}
+/* Eval row student col */
+.nm-grid-table .nm-eval-row .notes-student-col {
+    z-index: 11 !important;
+    background: #f8fafc;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: #64748b;
+}
+
+/* ── Sticky: Average column (right) ───────────────────── */
 .nm-grid-table .notes-average-col {
     position: sticky;
-    right: 110px;
-    z-index: 4;
-    background: #f8fafc;
+    right: 120px;
+    z-index: 5;
+    background: #f8f9ff;
     min-width: 90px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
 }
+/* Shadow on average col (header + footer only) */
+.nm-grid-table thead .notes-average-col::before,
+.nm-grid-table tfoot .notes-average-col::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -6px;
+    bottom: 0;
+    width: 6px;
+    background: linear-gradient(270deg, rgba(15,23,42,0.05), transparent);
+    pointer-events: none;
+}
+
+/* ── Sticky: Appreciation column (right edge) ─────────── */
 .nm-grid-table .notes-appreciation-col {
     position: sticky;
     right: 0;
     z-index: 5;
-    background: #f8fafc;
-    min-width: 110px;
+    background: #f8f9ff;
+    min-width: 120px;
+    text-align: center;
 }
-.nm-grid-table thead .notes-average-col {
-    z-index: 6;
-    top: 0;
-    background: #f1f5f9;
+
+/* Header summary columns */
+.nm-grid-table .nm-period-row .notes-average-col,
+.nm-grid-table .nm-period-row .notes-appreciation-col {
+    z-index: 12 !important;
+    background: linear-gradient(135deg, rgba(30,41,59,0.07), rgba(30,41,59,0.03));
 }
-.nm-grid-table thead .notes-appreciation-col {
-    z-index: 7;
-    top: 0;
-    background: #f1f5f9;
+.nm-grid-table .nm-eval-row .notes-average-col,
+.nm-grid-table .nm-eval-row .notes-appreciation-col {
+    z-index: 11 !important;
+    background: #eef2ff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: #475569;
 }
+
+/* ── Sticky: Footer (class averages) ──────────────────── */
 .nm-grid-table tfoot td {
     position: sticky;
     bottom: 0;
-    z-index: 3;
+    z-index: 4;
     background: #f1f5f9;
     font-weight: 700;
     font-size: 0.82rem;
-    box-shadow: inset 0 1px 0 #cbd5e1;
+    border-top: 2px solid #dde3ed;
+    border-bottom: none;
+    padding: 0.55rem 0.5rem;
 }
-.nm-grid-table tfoot .notes-student-col { z-index: 6; background: #f1f5f9; }
-.nm-grid-table tfoot .notes-average-col,
-.nm-grid-table tfoot .notes-appreciation-col { z-index: 6; background: #eef2f7; }
-
-/* Student name col */
-.nm-student-name {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+.nm-grid-table tfoot .notes-student-col {
+    z-index: 8;
+    background: #f1f5f9;
 }
-.nm-student-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    background: linear-gradient(135deg, rgba(4,83,203,0.1), rgba(94,145,222,0.08));
-    color: #0453cb;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
-    flex-shrink: 0;
-}
-.nm-student-info { min-width: 0; }
-.nm-student-fullname {
-    font-weight: 600;
-    font-size: 0.82rem;
+.nm-grid-table tfoot .notes-average-col {
+    z-index: 8;
+    background: #eaedff;
+    font-weight: 800;
+    font-size: 0.88rem;
     color: #1e293b;
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
-.nm-student-matricule {
-    font-size: 0.68rem;
-    color: #94a3b8;
+.nm-grid-table tfoot .notes-appreciation-col {
+    z-index: 8;
+    background: #eaedff;
 }
 
-/* Evaluation header */
+/* ── Evaluation header cell ───────────────────────────── */
 .nm-eval-header {
     background: #f8fafc !important;
-    border-left: 3px solid rgba(4,83,203,0.3) !important;
+    border-left: 3px solid rgba(4,83,203,0.18) !important;
     padding: 0.4rem 0.35rem !important;
-    min-width: 130px;
+    min-width: 140px;
 }
 .nm-eval-title {
     font-weight: 700;
     color: #1e293b;
     text-align: center;
-    margin-bottom: 0.2rem;
-    font-size: 0.78rem;
-    line-height: 1.2;
+    font-size: 0.76rem;
+    line-height: 1.25;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 130px;
+    margin: 0 auto 0.2rem;
 }
 .nm-eval-controls {
     display: flex;
@@ -845,51 +916,100 @@ body .nm-page ~ #classSelectionModal .modal-content,
     gap: 2px;
 }
 .nm-eval-control-label {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     text-transform: uppercase;
-    letter-spacing: 0.2px;
+    letter-spacing: 0.3px;
     color: #94a3b8;
-    font-weight: 600;
+    font-weight: 700;
 }
 .nm-eval-control input {
-    width: 44px;
-    min-width: 44px;
+    width: 46px;
+    min-width: 46px;
     font-size: 0.75rem;
-    padding: 0.15rem 0.2rem;
+    padding: 0.18rem 0.22rem;
     text-align: center;
-    border: 1px solid #e2e8f0;
-    border-radius: 4px;
+    border: 1px solid #dde3ed;
+    border-radius: 5px;
+    background: #fff;
+    font-weight: 600;
+    color: #1e293b;
+}
+.nm-eval-control input:focus {
+    border-color: #0453cb;
+    box-shadow: 0 0 0 2px rgba(4,83,203,0.12);
+    outline: none;
 }
 .nm-eval-type {
-    font-size: 0.68rem;
+    font-size: 0.62rem;
     text-align: center;
-    color: #64748b;
-    font-weight: 600;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    background: rgba(4,83,203,0.06);
+    color: #475569;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.2px;
+    letter-spacing: 0.3px;
 }
 .nm-eval-period {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.1rem 0.4rem;
+    padding: 0.08rem 0.4rem;
     border-radius: 999px;
-    font-size: 0.62rem;
-    font-weight: 700;
+    font-size: 0.58rem;
+    font-weight: 800;
     margin-top: 0.15rem;
+    letter-spacing: 0.5px;
 }
 .nm-eval-period.semestre1 {
-    background: rgba(4,83,203,0.12);
+    background: rgba(4,83,203,0.1);
     color: #1e3a8a;
 }
 .nm-eval-period.semestre2 {
-    background: rgba(245,158,11,0.15);
-    color: #92400e;
+    background: rgba(16,185,129,0.1);
+    color: #065f46;
 }
 
-/* Note input */
+/* ── Student name cell ────────────────────────────────── */
+.nm-student-name {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+.nm-student-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, rgba(4,83,203,0.12), rgba(94,145,222,0.08));
+    color: #0453cb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.nm-student-info { min-width: 0; }
+.nm-student-fullname {
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: #1e293b;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+}
+.nm-student-matricule {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Note cell & input ────────────────────────────────── */
 .nm-note-cell {
-    padding: 0.35rem 0.25rem !important;
+    padding: 0.3rem 0.2rem !important;
+    min-width: 80px;
 }
 .nm-note-wrap {
     position: relative;
@@ -897,97 +1017,150 @@ body .nm-page ~ #classSelectionModal .modal-content,
 .nm-note-input {
     width: 100%;
     min-width: 52px;
-    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-    font-size: 0.85rem;
+    font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.88rem;
     font-weight: 600;
-    padding: 0.3rem 0.25rem;
+    padding: 0.32rem 0.25rem;
     text-align: center;
-    border: 1px solid #e2e8f0;
+    border: 1.5px solid #e2e8f0;
     border-radius: 6px;
-    transition: all 0.2s;
+    background: #fff;
+    color: #1e293b;
+    font-variant-numeric: tabular-nums;
 }
 .nm-note-input:focus {
     border-color: #0453cb;
-    box-shadow: 0 0 0 2px rgba(4,83,203,0.12);
+    box-shadow: 0 0 0 3px rgba(4,83,203,0.1), 0 1px 2px rgba(4,83,203,0.06);
     outline: none;
+    background: #fafbff;
 }
+.nm-note-input:disabled {
+    background: #f1f5f9;
+    color: #94a3b8;
+    border-color: #e8edf5;
+}
+
+/* ── Absence checkbox ─────────────────────────────────── */
 .nm-absence-check {
     position: absolute;
-    top: 2px;
-    right: 2px;
+    top: 1px;
+    right: 1px;
 }
 .nm-absence-check input {
     width: 13px !important;
     height: 13px !important;
     accent-color: #0453cb;
+    cursor: pointer;
 }
 .nm-absence-check label {
-    font-size: 0.65rem;
-    color: #94a3b8;
+    font-size: 0.6rem;
+    color: #cbd5e1;
     cursor: pointer;
 }
 .nm-absence-check input:checked + label {
     color: #0453cb;
 }
 
-/* Zebra & hover */
-.nm-grid-table tbody tr:nth-child(even) { background: #fafbfc; }
+/* ── Zebra & hover ────────────────────────────────────── */
+.nm-grid-table tbody tr:nth-child(even) td { background: #fafbfc; }
 .nm-grid-table tbody tr:nth-child(even) .notes-student-col { background: #fafbfc; }
 .nm-grid-table tbody tr:nth-child(even) .notes-average-col,
-.nm-grid-table tbody tr:nth-child(even) .notes-appreciation-col { background: #f3f6fa; }
-.nm-grid-table tbody tr:hover { background: rgba(4,83,203,0.03) !important; }
-.nm-grid-table tbody tr:hover .notes-student-col { background: rgba(4,83,203,0.05) !important; }
-
-/* Appreciation badges */
-.nm-grid-table .appreciation-badge {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.4rem;
-    border-radius: 999px;
-    font-weight: 600;
+.nm-grid-table tbody tr:nth-child(even) .notes-appreciation-col { background: #f4f5ff; }
+.nm-grid-table tbody tr:hover td { background: rgba(4,83,203,0.025) !important; }
+.nm-grid-table tbody tr:hover .notes-student-col {
+    background: rgba(4,83,203,0.045) !important;
 }
 
-/* Highlight animation */
-.highlight-success {
-    animation: nmHighlight 2s ease-in-out;
+/* ── Average cell ─────────────────────────────────────── */
+.nm-grid-table .average-cell {
+    font-weight: 800;
+    font-size: 0.92rem;
+    color: #1e293b;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+}
+
+/* ── Appreciation badges (KLASSCI palette) ────────────── */
+.nm-appreciation {
+    display: inline-flex;
+    padding: 0.18rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+}
+.nm-appreciation.excellent {
+    background: rgba(16,185,129,0.12);
+    color: #065f46;
+}
+.nm-appreciation.tres-bien {
+    background: rgba(4,83,203,0.1);
+    color: #1e3a8a;
+}
+.nm-appreciation.bien {
+    background: rgba(4,83,203,0.07);
+    color: #0453cb;
+}
+.nm-appreciation.assez-bien {
+    background: rgba(100,116,139,0.08);
+    color: #334155;
+}
+.nm-appreciation.passable {
+    background: rgba(100,116,139,0.1);
+    color: #475569;
+}
+.nm-appreciation.insuffisant {
+    background: rgba(239,68,68,0.08);
+    color: #dc2626;
+}
+.nm-appreciation.default {
+    background: #f1f5f9;
+    color: #94a3b8;
+}
+
+/* ── Highlight animation ──────────────────────────────── */
+.highlight-success td {
+    animation: nmHighlight 1.5s ease-out !important;
 }
 @keyframes nmHighlight {
-    0% { background-color: rgba(16,185,129,0.2); }
-    70% { background-color: rgba(16,185,129,0.05); }
+    0% { background-color: rgba(16,185,129,0.15); }
     100% { background-color: transparent; }
 }
 
-/* Modal footer */
+/* ── Modal footer ─────────────────────────────────────── */
 .nm-modal-footer {
-    background: #f8fafc;
-    border-top: 1px solid #e2e8f0;
-    padding: 0.75rem 1.25rem;
+    background: #fff;
+    border-top: 1px solid #e8edf5;
+    padding: 0.6rem 1rem;
     flex-shrink: 0;
     display: flex;
     gap: 0.5rem;
     justify-content: flex-end;
+    align-items: center;
 }
 .nm-modal-footer .btn {
-    border-radius: 8px;
+    border-radius: 7px;
     font-weight: 600;
-    font-size: 0.85rem;
-    padding: 0.45rem 1rem;
+    font-size: 0.82rem;
+    padding: 0.4rem 0.85rem;
 }
 
-/* Auto-save info */
+/* ── Auto-save info ───────────────────────────────────── */
 .nm-autosave-info {
     flex-shrink: 0;
-    margin-top: 0.5rem;
-    padding: 0.4rem 0.75rem;
-    background: rgba(4,83,203,0.04);
-    border: 1px solid rgba(4,83,203,0.1);
-    border-radius: 8px;
-    font-size: 0.78rem;
+    margin-top: 0.4rem;
+    padding: 0.35rem 0.65rem;
+    background: rgba(4,83,203,0.03);
+    border: 1px solid rgba(4,83,203,0.08);
+    border-radius: 7px;
+    font-size: 0.75rem;
     color: #475569;
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
 }
-.nm-autosave-info i { color: #0453cb; }
+.nm-autosave-info i { color: #0453cb; font-size: 0.8rem; }
 
 /* ================================================================
    MODAL: Evaluation Creation (#evaluationCreateModal)
@@ -1151,16 +1324,18 @@ body .nm-page ~ #classSelectionModal .modal-content,
     .nm-hero-kpis { grid-template-columns: repeat(2, 1fr); }
     .nm-cards-grid { grid-template-columns: 1fr; }
     .nm-filter-grid { grid-template-columns: 1fr; }
-    .nm-page ~ #classSelectionModal .modal-dialog,
     #classSelectionModal.nm-notes-modal .modal-dialog {
-        max-width: 100vw;
-        width: 100vw;
-        margin: 0;
+        max-width: 100vw !important;
+        width: 100vw !important;
+        margin: 0 !important;
     }
-    .nm-page ~ #classSelectionModal .modal-content,
     #classSelectionModal.nm-notes-modal .modal-content {
-        border-radius: 0;
-        height: 100vh;
-        max-height: 100vh;
+        border-radius: 0 !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+    }
+    .nm-grid-table .notes-student-col {
+        width: 130px;
+        min-width: 130px;
     }
 }
