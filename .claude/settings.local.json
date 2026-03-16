@@ -111,7 +111,15 @@
       "Skill(create-pr)",
       "Bash(cd \"C:\\\\Users\\\\yabla\\\\Downloads\\\\DEV\\\\KLASSCIv2-issue-146\" && gh pr list --state open)",
       "mcp__plugin_playwright_playwright__browser_wait_for",
-      "mcp__plugin_playwright_playwright__browser_select_option"
+      "mcp__plugin_playwright_playwright__browser_select_option",
+      "WebFetch(domain:codepen.io)",
+      "WebFetch(domain:www.smashingmagazine.com)",
+      "WebFetch(domain:freefrontend.com)",
+      "WebFetch(domain:flowbite.com)",
+      "WebFetch(domain:gist.github.com)",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs",
+      "WebFetch(domain:daveswift.com)"
     ],
     "deny": [],
     "ask": [],
