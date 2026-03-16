@@ -914,31 +914,49 @@
 /* ── Cards ─────────────────────────────────────────────────── */
 .chatbot-card-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
     margin-top: 10px;
 }
 
 .chatbot-card {
     border: 1px solid var(--cb-border);
-    border-radius: var(--cb-radius-xs);
+    border-radius: 10px;
     overflow: hidden;
     background: var(--cb-bg);
-    transition: border-color var(--cb-transition), box-shadow var(--cb-transition), transform var(--cb-transition);
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 
 .chatbot-card:hover {
     border-color: var(--cb-primary-light);
-    box-shadow: 0 2px 12px rgba(4, 83, 203, 0.1);
-    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(4, 83, 203, 0.12);
+    transform: translateY(-2px);
 }
 
 .chatbot-card-header {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    padding: 10px 12px 6px;
-    gap: 6px;
+    align-items: center;
+    padding: 12px 12px 8px;
+    gap: 10px;
+}
+
+.chatbot-card-avatar {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.chatbot-card-header-text {
+    flex: 1;
+    min-width: 0;
 }
 
 .chatbot-card-header h5 {
@@ -947,13 +965,19 @@
     color: var(--cb-text);
     margin: 0;
     line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .chatbot-card-subtitle {
     font-size: 11px;
     color: var(--cb-primary);
     font-weight: 500;
-    margin: 1px 0 0 0;
+    margin: 2px 0 0 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .chatbot-card-badges {
@@ -963,32 +987,57 @@
 }
 
 .chatbot-card-body {
-    padding: 4px 12px 6px;
+    padding: 2px 12px 8px;
 }
 
 .chatbot-card-row {
     display: flex;
     justify-content: space-between;
-    padding: 2px 0;
+    align-items: center;
+    padding: 3px 0;
 }
 
 .chatbot-card-label {
-    font-size: 10.5px;
+    font-size: 11px;
     color: var(--cb-text-muted);
 }
 
 .chatbot-card-value {
-    font-size: 10.5px;
+    font-size: 11px;
     color: var(--cb-text);
     font-weight: 600;
     text-align: right;
+    font-variant-numeric: tabular-nums;
 }
 
 .chatbot-card-actions {
     display: flex;
     gap: 6px;
-    padding: 6px 12px 8px;
+    padding: 8px 12px;
     border-top: 1px solid var(--cb-border-light);
+}
+
+.chatbot-card-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--cb-primary);
+    background: linear-gradient(135deg, #f0f6ff 0%, #e8f0fe 100%);
+    border: 1px solid rgba(4, 83, 203, 0.15);
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.chatbot-card-action-btn:hover {
+    background: var(--cb-primary);
+    color: #fff;
+    border-color: var(--cb-primary);
+    text-decoration: none;
 }
 
 /* ── Fee Groups ──────────────────────────────────────────── */

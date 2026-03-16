@@ -26,7 +26,7 @@ class ClaudeAgentService
     /** @var ChatbotTool[] */
     protected array $tools = [];
 
-    protected int $contextWindow = 20;
+    protected int $contextWindow = 10;
     protected int $maxToolRounds = 3;
 
     public function __construct(ChatbotSetupGuideService $setupGuide)
@@ -153,6 +153,20 @@ class ClaudeAgentService
 
         $text = $text ?? $this->extractText($contentBlocks ?? []);
 
+        // Si navigate_to_page a retourné un page_guide, l'injecter dans la réponse
+        // car Haiku ignore souvent le guide dans le tool_result
+        if ($lastToolResult && isset($lastToolResult['page_guide']) && $lastToolResult['page_guide']) {
+            $guide = $lastToolResult['page_guide'];
+            // Si Claude n'a pas généré de texte utile, utiliser le guide directement
+            $isGenericResponse = !$text || mb_strlen($text) < 50 || str_contains($text, 'Je suis là pour vous aider');
+            if ($isGenericResponse) {
+                $text = $guide;
+            } elseif (!str_contains($text, '1.') && !str_contains($text, '- ')) {
+                // Si Claude a répondu mais sans détails, ajouter le guide
+                $text .= "\n\n" . $guide;
+            }
+        }
+
         // Construire display_data pour les résultats tabulaires/cartes
         if ($displayType === 'fee_groups' && $lastToolResult) {
             // Fee groups : données pré-structurées par le tool
@@ -245,16 +259,23 @@ Tu es l'assistant IA de KLASSCI, un système de gestion d'établissement scolair
 L'utilisateur s'appelle {$userName} et a le rôle "{$roleName}".
 {$styleInstructions}{$pageContext}{$notesUtilisateur}
 
+WORKFLOW EMPLOI DU TEMPS :
+- La page "Emplois du temps" (index) liste tous les emplois du temps + raccourci pour créer rapidement + bouton "Modifier rapidement" (multi-sélection)
+- Créer un emploi du temps = créer le socle (classe, dates, semestre). C'est un conteneur vide.
+- Ensuite, on ajoute des séances de cours dessus depuis la vue détaillée (show) : matière, enseignant, jour, horaire, salle
+- "Modifier rapidement" = sélectionner plusieurs emplois du temps et les voir/éditer en même temps (vue accordéon)
+- Quand l'outil navigate_to_page retourne un champ "page_guide", utilise-le comme base pour ton guide détaillé.
+
 RÈGLES IMPORTANTES :
 1. Réponds toujours en français.
-2. Utilise les outils (tools) pour récupérer des données réelles. NE JAMAIS inventer de données.
-3. Si l'utilisateur pose une question sur des données (étudiants, paiements, inscriptions, frais, classes), appelle l'outil approprié.
+2. Utilise les outils (tools) pour récupérer des données réelles. NE JAMAIS inventer de données. NE JAMAIS répondre de mémoire ou à partir de l'historique de conversation — appelle TOUJOURS l'outil même si tu penses déjà connaître la réponse.
+3. Si l'utilisateur pose une question sur des données (étudiants, paiements, inscriptions, frais, classes), appelle OBLIGATOIREMENT l'outil approprié, même si une recherche similaire a déjà été faite dans la conversation.
 4. Pour les salutations ou questions générales, réponds directement sans outil.
 5. Après avoir reçu les résultats d'un outil, écris UNIQUEMENT un court résumé (1-3 phrases). NE REPRODUIS JAMAIS les données brutes, les tableaux ou les listes dans ta réponse — le frontend affiche automatiquement les résultats sous forme de widgets visuels (tableaux, cartes) EN DESSOUS de ton message texte. Ton rôle est juste d'introduire et contextualiser. Ne dis jamais "ci-dessus" — dis "ci-dessous" ou "dans les résultats suivants".
 6. Si un outil retourne 0 résultat, dis-le clairement et suggère des alternatives.
 7. Ne génère JAMAIS de tableaux markdown, de listes de données, de code, ou de JSON. Réponds en langage naturel concis.
-8. Si l'utilisateur demande comment faire quelque chose (créer une inscription, saisir des notes...), utilise navigate_to_page pour lui donner un lien direct.
-9. NE METS PAS de suggestions dans ta réponse texte. Le système les génère automatiquement sous forme de boutons cliquables. Ta réponse doit contenir UNIQUEMENT le résumé introductif (1-3 phrases max).
+8. Si l'utilisateur demande comment faire quelque chose (créer une inscription, saisir des notes...), utilise navigate_to_page pour lui donner un lien direct. Pour ces réponses de navigation, fournis un guide détaillé avec les étapes numérotées que l'utilisateur devra suivre sur la page (champs à remplir, options à sélectionner, etc.). Le bouton "Ouvrir la page" s'affiche automatiquement en dessous.
+9. NE METS PAS de suggestions de suivi dans ta réponse texte (ex: "Tu veux aussi voir les paiements ?"). Le système les génère automatiquement sous forme de boutons cliquables. Par contre, pour les données (règle 5), ta réponse doit contenir UNIQUEMENT le résumé introductif (1-3 phrases max).
 PROMPT;
     }
 
@@ -264,16 +285,26 @@ PROMPT;
     protected function buildHistory(ChatbotConversation $conversation): array
     {
         $messages = $conversation->messages()
-            ->orderBy('created_at', 'asc')
+            ->orderBy('created_at', 'desc')
             ->limit($this->contextWindow)
-            ->get();
+            ->get()
+            ->reverse()
+            ->values();
 
         $contents = [];
         foreach ($messages as $msg) {
             $role = $msg->role === 'assistant' ? 'assistant' : 'user';
+            $text = $msg->content ?? '';
+
+            // Pour les réponses assistant qui avaient des données, ne garder qu'un résumé court
+            // afin que Claude ne réutilise pas les données de l'historique et appelle les outils
+            if ($role === 'assistant' && $msg->display_type !== 'text' && mb_strlen($text) > 100) {
+                $text = mb_substr($text, 0, 100) . '... [données affichées via widget]';
+            }
+
             $contents[] = [
                 'role' => $role,
-                'content' => $msg->content ?? '',
+                'content' => $text,
             ];
         }
 
@@ -483,23 +514,34 @@ PROMPT;
             $card = [
                 'title' => $result['etudiant'] ?? $result['nom'] ?? 'N/A',
                 'subtitle' => $result['classe'] ?? $result['filiere'] ?? '',
+                'initials' => $result['initials'] ?? null,
                 'meta' => [],
                 'badges' => [],
             ];
 
+            if (isset($result['matricule']) && $result['matricule'] !== 'N/A') {
+                $card['meta'][] = ['label' => 'Matricule', 'value' => $result['matricule']];
+            }
+            if (isset($result['filiere']) && !isset($result['etudiant'])) {
+                $card['meta'][] = ['label' => 'Filière', 'value' => $result['filiere']];
+            }
             if (isset($result['type'])) {
                 $card['meta'][] = ['label' => 'Type', 'value' => $result['type']];
             }
             if (isset($result['statut'])) {
-                $card['meta'][] = ['label' => 'Statut', 'value' => $result['statut']];
                 $card['badges'][] = ['label' => $result['statut'], 'style' => $this->getBadgeClass($result['statut'])];
             }
             if (isset($result['date'])) {
                 $card['meta'][] = ['label' => 'Date', 'value' => $result['date']];
             }
+            if (isset($result['montant'])) {
+                $card['meta'][] = ['label' => 'Montant', 'value' => $result['montant']];
+            }
 
             if (!empty($result['lien'])) {
-                $card['actions'] = [['label' => 'Voir', 'url' => $result['lien'], 'icon' => 'fas fa-eye']];
+                $card['actions'] = [['label' => 'Voir profil', 'url' => $result['lien'], 'icon' => 'fas fa-user']];
+            } elseif (!empty($result['lien_inscription'])) {
+                $card['actions'] = [['label' => 'Voir', 'url' => $result['lien_inscription'], 'icon' => 'fas fa-eye']];
             }
 
             $cards[] = $card;

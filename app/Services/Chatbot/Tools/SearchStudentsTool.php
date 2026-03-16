@@ -78,13 +78,16 @@ class SearchStudentsTool extends ChatbotTool
 
         $students = $results->map(function ($etudiant) {
             $inscription = $etudiant->inscriptions->first();
+            $nom = trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? ''));
+            $initials = collect(explode(' ', $nom))->take(2)->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->implode('');
             return [
                 'id' => $etudiant->id,
-                'nom' => trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '')),
+                'nom' => $nom,
+                'initials' => $initials,
                 'matricule' => $etudiant->matricule ?? 'N/A',
                 'classe' => $inscription?->classe?->name ?? 'Non inscrit',
                 'filiere' => $inscription?->classe?->filiere?->name ?? 'N/A',
-                'statut' => $inscription?->status ?? 'N/A',
+                'statut' => ucfirst(str_replace('_', ' ', $inscription?->status ?? 'N/A')),
                 'lien' => Route::has('esbtp.etudiants.show') ? route('esbtp.etudiants.show', $etudiant->id) : null,
             ];
         })->toArray();
@@ -93,7 +96,7 @@ class SearchStudentsTool extends ChatbotTool
             'results' => $students,
             'count' => count($students),
             'total' => $total,
-            'display_type' => 'table',
+            'display_type' => 'cards',
             'deep_link' => Route::has('esbtp.etudiants.index') ? route('esbtp.etudiants.index') : null,
         ];
     }

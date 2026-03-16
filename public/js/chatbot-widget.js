@@ -211,14 +211,26 @@
         var grid = document.createElement('div');
         grid.className = 'chatbot-card-grid';
 
-        (data.cards || []).forEach(function (card) {
+        var avatarColors = ['#0453cb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316', '#6366f1'];
+
+        (data.cards || []).forEach(function (card, idx) {
             var cardElement = document.createElement('div');
             cardElement.className = 'chatbot-card';
 
             var header = document.createElement('div');
             header.className = 'chatbot-card-header';
 
+            // Avatar with initials
+            if (card.initials) {
+                var avatar = document.createElement('div');
+                avatar.className = 'chatbot-card-avatar';
+                avatar.style.backgroundColor = avatarColors[idx % avatarColors.length];
+                avatar.textContent = card.initials;
+                header.appendChild(avatar);
+            }
+
             var headerText = document.createElement('div');
+            headerText.className = 'chatbot-card-header-text';
             var title = document.createElement('h5');
             title.textContent = card.title || '';
             headerText.appendChild(title);
@@ -276,15 +288,16 @@
                         return;
                     }
                     var link = document.createElement('a');
-                    link.className = 'btn-acasi secondary btn-xs';
+                    link.className = 'chatbot-card-action-btn';
                     link.href = action.url;
                     link.target = '_blank';
                     link.rel = 'noopener noreferrer';
-                    if (action.icon) {
-                        link.innerHTML = '<i class="' + action.icon + '"></i> ' + (action.label || 'Voir');
-                    } else {
-                        link.textContent = action.label || 'Voir';
-                    }
+                    var icon = document.createElement('i');
+                    icon.className = action.icon || 'fas fa-eye';
+                    link.appendChild(icon);
+                    var span = document.createElement('span');
+                    span.textContent = ' ' + (action.label || 'Voir');
+                    link.appendChild(span);
                     actions.appendChild(link);
                 });
                 cardElement.appendChild(actions);
