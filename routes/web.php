@@ -740,7 +740,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('/planification', [ESBTPPlanningGeneralController::class, 'storePlanification'])->name('store-planification');
                 Route::delete('/planification/{id}', [ESBTPPlanningGeneralController::class, 'destroyPlanification'])->name('destroy-planification');
                 Route::post('/planification/{id}/valider', [ESBTPPlanningGeneralController::class, 'validerPlanification'])->name('valider-planification');
-                Route::post('/configure-rapide', [ESBTPPlanningGeneralController::class, 'configureRapide'])->name('configure-rapide');
+                Route::post('/configure-rapide', [ESBTPPlanningConfigController::class, 'configureRapide'])->name('configure-rapide');
                 Route::get('/annuel', [ESBTPPlanningGeneralController::class, 'annuel'])->name('annuel');
                 Route::get('/repartition-matieres', [ESBTPPlanningGeneralController::class, 'repartitionMatieres'])->name('repartition-matieres');
                 Route::get('/coordinateur', [ESBTPPlanningGeneralController::class, 'coordinateur'])->name('coordinateur')
@@ -788,8 +788,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/paiements/export/csv', [App\Http\Controllers\ESBTPPaiementController::class, 'exportCsv'])->name('paiements.export.csv');
             Route::get('/paiements/export/pdf', [App\Http\Controllers\ESBTPPaiementController::class, 'exportPdf'])->name('paiements.export.pdf');
             Route::get('/paiements/{paiement}/refresh-ligne', [App\Http\Controllers\ESBTPPaiementController::class, 'refreshLigne'])->name('paiements.refresh-ligne');
-            Route::get('/paiements/suivi-categories', [App\Http\Controllers\ESBTPPaiementController::class, 'suiviCategories'])->name('paiements.suivi-categories');
-            Route::get('/paiements/suivi-categories/refresh', [App\Http\Controllers\ESBTPPaiementController::class, 'suiviCategoriesRefresh'])->name('paiements.suivi-categories.refresh');
+            Route::get('/paiements/suivi-categories', [App\Http\Controllers\ESBTPPaiementSuiviController::class, 'suiviCategories'])->name('paiements.suivi-categories');
+            Route::get('/paiements/suivi-categories/refresh', [App\Http\Controllers\ESBTPPaiementSuiviController::class, 'suiviCategoriesRefresh'])->name('paiements.suivi-categories.refresh');
             Route::get('/paiements/suivi-categories/load/{statut}', [App\Http\Controllers\ESBTPPaiementController::class, 'loadStudentsByStatut'])->name('paiements.suivi-categories.load');
             Route::get('/paiements/suivi-categories/export/{statut}/excel', [App\Http\Controllers\ESBTPPaiementController::class, 'exportStudentsExcel'])->name('paiements.suivi-categories.export.excel');
             Route::get('/paiements/suivi-categories/export/{statut}/pdf', [App\Http\Controllers\ESBTPPaiementController::class, 'exportStudentsPdf'])->name('paiements.suivi-categories.export.pdf');
@@ -1394,18 +1394,18 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
 
     // Paiements
     // Gestion des paiements
-    Route::get('/paiements', [ESBTPComptabiliteController::class, 'paiements'])->name('paiements');
-    Route::get('/paiements/create', [ESBTPComptabiliteController::class, 'createPaiement'])->name('paiements.create');
-    Route::post('/paiements', [ESBTPComptabiliteController::class, 'storePaiement'])->name('paiements.store');
-    Route::get('/paiements/{id}', [ESBTPComptabiliteController::class, 'showPaiement'])->name('paiements.show');
-    Route::get('/paiements/{id}/edit', [ESBTPComptabiliteController::class, 'editPaiement'])->name('paiements.edit');
-    Route::put('/paiements/{id}', [ESBTPComptabiliteController::class, 'updatePaiement'])->name('paiements.update');
-    Route::post('/paiements/{id}/valider', [ESBTPComptabiliteController::class, 'validerPaiement'])->name('paiements.valider');
-    Route::post('/paiements/{id}/rejeter', [ESBTPComptabiliteController::class, 'rejeterPaiement'])->name('paiements.rejeter');
-    Route::get('/paiements/{id}/recu', [ESBTPComptabiliteController::class, 'genererRecu'])->name('paiements.recu');
+    Route::get('/paiements', [ESBTPComptabilitePaiementController::class, 'paiements'])->name('paiements');
+    Route::get('/paiements/create', [ESBTPComptabilitePaiementController::class, 'createPaiement'])->name('paiements.create');
+    Route::post('/paiements', [ESBTPComptabilitePaiementController::class, 'storePaiement'])->name('paiements.store');
+    Route::get('/paiements/{id}', [ESBTPComptabilitePaiementController::class, 'showPaiement'])->name('paiements.show');
+    Route::get('/paiements/{id}/edit', [ESBTPComptabilitePaiementController::class, 'editPaiement'])->name('paiements.edit');
+    Route::put('/paiements/{id}', [ESBTPComptabilitePaiementController::class, 'updatePaiement'])->name('paiements.update');
+    Route::post('/paiements/{id}/valider', [ESBTPComptabilitePaiementController::class, 'validerPaiement'])->name('paiements.valider');
+    Route::post('/paiements/{id}/rejeter', [ESBTPComptabilitePaiementController::class, 'rejeterPaiement'])->name('paiements.rejeter');
+    Route::get('/paiements/{id}/recu', [ESBTPComptabilitePaiementController::class, 'genererRecu'])->name('paiements.recu');
 
     // Gestion des frais de scolarité
-    Route::get('/frais-scolarite', [ESBTPComptabiliteController::class, 'fraisScolarite'])->name('frais-scolarite');
+    Route::get('/frais-scolarite', [ESBTPComptabiliteReportController::class, 'fraisScolarite'])->name('frais-scolarite');
     Route::get('/frais-scolarite/create', [ESBTPComptabiliteController::class, 'createFraisScolarite'])->name('frais-scolarite.create');
     Route::post('/frais-scolarite', [ESBTPComptabiliteController::class, 'storeFraisScolarite'])->name('frais-scolarite.store');
     Route::get('/frais-scolarite/{id}', [ESBTPComptabiliteController::class, 'showFraisScolarite'])->name('frais-scolarite.show');
@@ -1423,9 +1423,9 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
     Route::delete('/bourses/{id}', [ESBTPComptabiliteController::class, 'destroyBourse'])->name('bourses.destroy');
 
     // Tableau de bord et rapports financiers
-    Route::get('/rapports', [ESBTPComptabiliteController::class, 'rapports'])->name('rapports');
-    Route::get('/rapports/generate', [ESBTPComptabiliteController::class, 'generateReport'])->name('rapports.generate');
-    Route::post('/rapports/export', [ESBTPComptabiliteController::class, 'exportReport'])->name('rapports.export');
+    Route::get('/rapports', [ESBTPComptabiliteReportController::class, 'rapports'])->name('rapports');
+    Route::get('/rapports/generate', [ESBTPComptabiliteReportController::class, 'generateReport'])->name('rapports.generate');
+    Route::post('/rapports/export', [ESBTPComptabiliteReportController::class, 'exportReport'])->name('rapports.export');
 
     // Routes avancées pour le générateur de rapports - Task #6
     Route::prefix('rapports')->name('rapports.')->group(function () {
@@ -1965,10 +1965,10 @@ Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.'
         ->middleware('permission:manage-planning|view-all-timetables');
 
     // Routes AJAX pour la configuration des volumes horaires
-    Route::get('/planning-general/get-matieres-configuration', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'getMatieresPourConfiguration'])
+    Route::get('/planning-general/get-matieres-configuration', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'getMatieresPourConfiguration'])
         ->name('planning-general.get-matieres-configuration')
         ->middleware('permission:manage-planning|view-all-timetables');
-    Route::post('/planning-general/save-volume-configuration', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'saveVolumeConfiguration'])
+    Route::post('/planning-general/save-volume-configuration', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'saveVolumeConfiguration'])
         ->name('planning-general.save-volume-configuration')
         ->middleware('permission:manage-planning|view-all-timetables');
 });
