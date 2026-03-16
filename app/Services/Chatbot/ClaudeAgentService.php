@@ -136,13 +136,18 @@ class ClaudeAgentService
                 // Capturer les métadonnées d'affichage
                 if ($tool && !isset($result['error'])) {
                     $allToolCalls[] = ['tool' => $toolName, 'args' => $toolArgs, 'result_count' => $result['count'] ?? null];
-                    $lastToolResult = $result;
 
-                    if (isset($result['display_type'])) {
-                        $displayType = $result['display_type'];
-                    }
-                    if (isset($result['deep_link'])) {
-                        $deepLink = $result['deep_link'];
+                    // Garder le résultat avec le plus de données (pas celui qui retourne 0)
+                    $resultCount = $result['count'] ?? count($result['results'] ?? []);
+                    $lastCount = $lastToolResult ? ($lastToolResult['count'] ?? 0) : 0;
+                    if (!$lastToolResult || $resultCount > 0 || $lastCount === 0) {
+                        $lastToolResult = $result;
+                        if (isset($result['display_type'])) {
+                            $displayType = $result['display_type'];
+                        }
+                        if (isset($result['deep_link'])) {
+                            $deepLink = $result['deep_link'];
+                        }
                     }
                     if (isset($result['guide'])) {
                         $displayData = $result['guide'];
