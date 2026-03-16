@@ -20,26 +20,26 @@ class SearchStudentsTool extends ChatbotTool
     public function parameters(): array
     {
         return [
-            'type' => 'OBJECT',
+            'type' => 'object',
             'properties' => [
                 'name' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Nom ou prénom de l\'étudiant à rechercher',
                 ],
                 'matricule' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Matricule de l\'étudiant',
                 ],
                 'classe' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Nom de la classe (ex: "BTS Bâtiment 1ère année")',
                 ],
                 'filiere' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Nom de la filière (ex: "BTS Bâtiment", "Génie Civil")',
                 ],
                 'limit' => [
-                    'type' => 'INTEGER',
+                    'type' => 'integer',
                     'description' => 'Nombre max de résultats (défaut: 10, max: 25)',
                 ],
             ],

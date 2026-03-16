@@ -24,6 +24,8 @@ use App\Http\Controllers\ESBTPClasseController;
 use App\Http\Controllers\ESBTPComptabiliteAnalyticsController;
 use App\Http\Controllers\ESBTPComptabiliteController;
 use App\Http\Controllers\ESBTPComptabiliteFraisController;
+use App\Http\Controllers\ESBTPComptabilitePaiementController;
+use App\Http\Controllers\ESBTPComptabiliteReportController;
 use App\Http\Controllers\ESBTPComptabiliteRelanceController;
 use App\Http\Controllers\ESBTPContinuingEducationController;
 use App\Http\Controllers\ESBTPCycleController;
@@ -743,7 +745,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('/planification', [ESBTPPlanningGeneralController::class, 'storePlanification'])->name('store-planification');
                 Route::delete('/planification/{id}', [ESBTPPlanningGeneralController::class, 'destroyPlanification'])->name('destroy-planification');
                 Route::post('/planification/{id}/valider', [ESBTPPlanningGeneralController::class, 'validerPlanification'])->name('valider-planification');
-                Route::post('/configure-rapide', [ESBTPPlanningConfigController::class, 'configureRapide'])->name('configure-rapide');
+                // Route::post('/configure-rapide', [ESBTPPlanningConfigController::class, 'configureRapide'])->name('configure-rapide'); // TODO: controller supprimé
                 Route::get('/annuel', [ESBTPPlanningGeneralController::class, 'annuel'])->name('annuel');
                 Route::get('/repartition-matieres', [ESBTPPlanningGeneralController::class, 'repartitionMatieres'])->name('repartition-matieres');
                 Route::get('/coordinateur', [ESBTPPlanningGeneralController::class, 'coordinateur'])->name('coordinateur')
@@ -1968,13 +1970,13 @@ Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.'
     Route::post('/planning-general/emargement/generer-code', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'genererCodeEmargement'])->name('planning-general.generer-code-emargement')
         ->middleware('permission:manage-planning|view-all-timetables');
 
-    // Routes AJAX pour la configuration des volumes horaires
-    Route::get('/planning-general/get-matieres-configuration', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'getMatieresPourConfiguration'])
-        ->name('planning-general.get-matieres-configuration')
-        ->middleware('permission:manage-planning|view-all-timetables');
-    Route::post('/planning-general/save-volume-configuration', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'saveVolumeConfiguration'])
-        ->name('planning-general.save-volume-configuration')
-        ->middleware('permission:manage-planning|view-all-timetables');
+    // Routes AJAX pour la configuration des volumes horaires — TODO: controller supprimé
+    // Route::get('/planning-general/get-matieres-configuration', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'getMatieresPourConfiguration'])
+    //     ->name('planning-general.get-matieres-configuration')
+    //     ->middleware('permission:manage-planning|view-all-timetables');
+    // Route::post('/planning-general/save-volume-configuration', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'saveVolumeConfiguration'])
+    //     ->name('planning-general.save-volume-configuration')
+    //     ->middleware('permission:manage-planning|view-all-timetables');
 });
 
 // Routes spécifiques pour les coordinateurs pour événements académiques

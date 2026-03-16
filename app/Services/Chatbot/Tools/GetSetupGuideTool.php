@@ -26,14 +26,14 @@ class GetSetupGuideTool extends ChatbotTool
     public function parameters(): array
     {
         return [
-            'type' => 'OBJECT',
+            'type' => 'object',
             'properties' => [
                 'scope' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Portée du guide: "global" (tout), "academique" (classes, filières, planning), "financier" (frais, inscriptions, paiements), "pedagogie" (évaluations, notes, bulletins)',
                 ],
                 'full_guide' => [
-                    'type' => 'BOOLEAN',
+                    'type' => 'boolean',
                     'description' => 'Si true, retourne toutes les étapes. Si false, retourne un aperçu des 3 prochaines étapes. Défaut: false.',
                 ],
             ],

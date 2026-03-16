@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 /**
  * Service principal du Chatbot KLASSCI.
  *
- * Orchestration simplifiée avec GeminiAgentService :
+ * Orchestration simplifiée avec ClaudeAgentService :
  * 1. Gestion conversation (création, historique)
  * 2. Appel agent Gemini (tool calling natif)
  * 3. Persistence messages + audit
@@ -24,11 +24,11 @@ use Illuminate\Support\Facades\Route;
  */
 class ChatbotService
 {
-    protected GeminiAgentService $agent;
+    protected ClaudeAgentService $agent;
     protected ChatbotSetupGuideService $setupGuide;
 
     public function __construct(
-        GeminiAgentService $agent,
+        ClaudeAgentService $agent,
         ChatbotSetupGuideService $setupGuide
     ) {
         $this->agent = $agent;

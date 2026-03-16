@@ -20,26 +20,26 @@ class SearchClassesTool extends ChatbotTool
     public function parameters(): array
     {
         return [
-            'type' => 'OBJECT',
+            'type' => 'object',
             'properties' => [
                 'name' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Nom ou code de la classe',
                 ],
                 'filiere' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Nom de la filière',
                 ],
                 'niveau' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Niveau d\'études',
                 ],
                 'active_only' => [
-                    'type' => 'BOOLEAN',
+                    'type' => 'boolean',
                     'description' => 'Si true, retourne uniquement les classes actives (défaut: true)',
                 ],
                 'limit' => [
-                    'type' => 'INTEGER',
+                    'type' => 'integer',
                     'description' => 'Nombre max de résultats (défaut: 15, max: 50)',
                 ],
             ],

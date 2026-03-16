@@ -19,14 +19,14 @@ class NavigateToPageTool extends ChatbotTool
     public function parameters(): array
     {
         return [
-            'type' => 'OBJECT',
+            'type' => 'object',
             'properties' => [
                 'page' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Nom de la page cible. Valeurs possibles: "dashboard", "etudiants", "inscriptions", "inscriptions.create", "paiements", "classes", "frais", "evaluations", "notes", "attendances", "emploi_temps", "planning", "bulletins", "resultats", "comptabilite"',
                 ],
                 'id' => [
-                    'type' => 'INTEGER',
+                    'type' => 'integer',
                     'description' => 'ID de la ressource spécifique (pour les pages show/edit)',
                 ],
             ],

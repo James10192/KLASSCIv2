@@ -3,9 +3,9 @@
 namespace App\Services\Chatbot\Tools;
 
 /**
- * Contrat de base pour les outils du chatbot Gemini.
+ * Contrat de base pour les outils du chatbot IA.
  *
- * Chaque outil déclare son schéma (pour l'API Gemini function calling)
+ * Chaque outil déclare son schéma (JSON Schema pour Claude tool use)
  * et exécute une action concrète quand le LLM le demande.
  */
 abstract class ChatbotTool
@@ -21,7 +21,7 @@ abstract class ChatbotTool
     abstract public function description(): string;
 
     /**
-     * Schéma des paramètres au format Gemini (OpenAPI-like).
+     * Schéma des paramètres au format JSON Schema.
      *
      * @return array{type:string,properties:array,required?:array}
      */
@@ -59,14 +59,14 @@ abstract class ChatbotTool
     }
 
     /**
-     * Convertir en déclaration Gemini function calling.
+     * Convertir en définition d'outil Claude (tool use).
      */
-    public function toGeminiDeclaration(): array
+    public function toToolDefinition(): array
     {
         return [
             'name' => $this->name(),
             'description' => $this->description(),
-            'parameters' => $this->parameters(),
+            'input_schema' => $this->parameters(),
         ];
     }
 }

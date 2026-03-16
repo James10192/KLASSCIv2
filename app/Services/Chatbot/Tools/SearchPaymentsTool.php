@@ -20,30 +20,30 @@ class SearchPaymentsTool extends ChatbotTool
     public function parameters(): array
     {
         return [
-            'type' => 'OBJECT',
+            'type' => 'object',
             'properties' => [
                 'status' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Statut du paiement: "en_attente", "validé", "rejeté", "annulé"',
                 ],
                 'student_name' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Nom de l\'étudiant',
                 ],
                 'month' => [
-                    'type' => 'INTEGER',
+                    'type' => 'integer',
                     'description' => 'Mois (1-12). Utiliser le mois en cours si "ce mois".',
                 ],
                 'date_from' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Date de début au format YYYY-MM-DD',
                 ],
                 'date_to' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Date de fin au format YYYY-MM-DD',
                 ],
                 'limit' => [
-                    'type' => 'INTEGER',
+                    'type' => 'integer',
                     'description' => 'Nombre max de résultats (défaut: 10, max: 25)',
                 ],
             ],

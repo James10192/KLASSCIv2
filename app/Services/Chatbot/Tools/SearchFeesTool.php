@@ -20,22 +20,22 @@ class SearchFeesTool extends ChatbotTool
     public function parameters(): array
     {
         return [
-            'type' => 'OBJECT',
+            'type' => 'object',
             'properties' => [
                 'category' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Catégorie de frais: "inscription", "scolarité", "cantine", "transport", etc.',
                 ],
                 'filiere' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Nom de la filière (ex: "BTS Bâtiment")',
                 ],
                 'niveau' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Niveau (ex: "Première Année", "Deuxième Année")',
                 ],
                 'type_affectation' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Type: "affectés", "réaffectés", "non affectés". Si omis, retourne les 3 types.',
                 ],
             ],

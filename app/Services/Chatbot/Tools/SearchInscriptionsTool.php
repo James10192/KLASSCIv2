@@ -20,38 +20,38 @@ class SearchInscriptionsTool extends ChatbotTool
     public function parameters(): array
     {
         return [
-            'type' => 'OBJECT',
+            'type' => 'object',
             'properties' => [
                 'status' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Statut: "active", "en_attente", "annulée", "terminée"',
                 ],
                 'student_name' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Nom de l\'étudiant',
                 ],
                 'classe' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Nom de la classe',
                 ],
                 'filiere' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Nom de la filière',
                 ],
                 'niveau' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Niveau d\'études (ex: "Première Année", "Deuxième Année")',
                 ],
                 'type_inscription' => [
-                    'type' => 'STRING',
+                    'type' => 'string',
                     'description' => 'Type: "nouvelle", "renouvellement", "transfert"',
                 ],
                 'without_payments' => [
-                    'type' => 'BOOLEAN',
+                    'type' => 'boolean',
                     'description' => 'Si true, retourne uniquement les inscriptions sans aucun paiement',
                 ],
                 'limit' => [
-                    'type' => 'INTEGER',
+                    'type' => 'integer',
                     'description' => 'Nombre max de résultats (défaut: 10, max: 25)',
                 ],
             ],
