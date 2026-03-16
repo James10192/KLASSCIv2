@@ -1,6 +1,9 @@
 (function () {
     'use strict';
 
+    function debugWarn() { if (window.console && console.warn) { console.warn.apply(console, arguments); } }
+    function debugError() { if (window.console && console.error) { console.error.apply(console, arguments); } }
+
     function resolvePath(obj, path) {
         if (!obj) {
             return undefined;
@@ -304,90 +307,66 @@
         var container = document.createElement('div');
         container.className = 'chatbot-checklist';
 
-        if (data.title) {
-            var title = document.createElement('h4');
-            title.className = 'chatbot-checklist-title';
-            title.textContent = data.title;
-            container.appendChild(title);
-        }
-
-        if (data.summary) {
-            var summary = document.createElement('p');
-            summary.className = 'chatbot-checklist-summary';
-            summary.textContent = data.summary;
-            container.appendChild(summary);
-        }
-
         (data.sections || []).forEach(function (section) {
             var sectionEl = document.createElement('div');
             sectionEl.className = 'chatbot-checklist-section';
 
             if (section.title) {
-                var sectionTitle = document.createElement('h5');
+                var sectionTitle = document.createElement('div');
+                sectionTitle.className = 'chatbot-checklist-section-title';
                 sectionTitle.textContent = section.title;
                 sectionEl.appendChild(sectionTitle);
             }
 
-            if (section.description) {
-                var sectionDesc = document.createElement('p');
-                sectionDesc.className = 'chatbot-checklist-description';
-                sectionDesc.textContent = section.description;
-                sectionEl.appendChild(sectionDesc);
-            }
-
-            if (section.progress) {
-                var sectionProgress = document.createElement('span');
-                sectionProgress.className = 'chatbot-checklist-progress';
-                sectionProgress.textContent = section.progress;
-                sectionEl.appendChild(sectionProgress);
-            }
-
             (section.steps || []).forEach(function (step) {
                 var stepEl = document.createElement('div');
-                stepEl.className = 'chatbot-checklist-step is-' + (step.status || 'todo');
+                stepEl.className = 'chatbot-checklist-step';
 
-                var stepHeader = document.createElement('div');
-                stepHeader.className = 'chatbot-checklist-step-header';
+                var iconMap = { done: 'fa-check', next: 'fa-arrow-right', blocked: 'fa-lock', todo: 'fa-circle' };
+                var icon = document.createElement('div');
+                icon.className = 'chatbot-checklist-icon ' + (step.status || 'todo');
+                icon.innerHTML = '<i class="fas ' + (iconMap[step.status] || 'fa-circle') + '"></i>';
+                stepEl.appendChild(icon);
 
-                var stepTitle = document.createElement('div');
-                stepTitle.className = 'chatbot-checklist-step-title';
-                stepTitle.textContent = step.title || '';
+                var textWrap = document.createElement('div');
+                textWrap.className = 'chatbot-checklist-text';
 
-                stepHeader.appendChild(stepTitle);
-
-                if (step.status) {
-                    var badge = document.createElement('span');
-                    badge.className = 'chatbot-checklist-badge';
-                    badge.textContent = step.status === 'done'
-                        ? 'Terminé'
-                        : (step.status === 'next' ? 'À faire maintenant' : (step.status === 'blocked' ? 'Bloqué' : 'À faire'));
-                    stepHeader.appendChild(badge);
-                }
-
-                stepEl.appendChild(stepHeader);
+                var title = document.createElement('div');
+                title.className = 'chatbot-checklist-title';
+                title.textContent = step.title || '';
+                textWrap.appendChild(title);
 
                 if (step.description) {
-                    var stepDesc = document.createElement('p');
-                    stepDesc.className = 'chatbot-checklist-step-desc';
-                    stepDesc.textContent = step.description;
-                    stepEl.appendChild(stepDesc);
+                    var desc = document.createElement('div');
+                    desc.className = 'chatbot-checklist-desc';
+                    desc.textContent = step.description;
+                    textWrap.appendChild(desc);
                 }
 
                 if (step.deep_link) {
                     var action = document.createElement('a');
-                    action.className = 'btn-acasi secondary btn-xs';
+                    action.className = 'chatbot-deep-link';
                     action.href = step.deep_link;
                     action.target = '_blank';
                     action.rel = 'noopener noreferrer';
                     action.innerHTML = '<i class="fas fa-arrow-right"></i> ' + (step.action_label || 'Ouvrir');
-                    stepEl.appendChild(action);
+                    textWrap.appendChild(action);
                 }
 
+                stepEl.appendChild(textWrap);
                 sectionEl.appendChild(stepEl);
             });
 
             container.appendChild(sectionEl);
         });
+
+        if (data.progress_percent !== undefined) {
+            var progress = document.createElement('div');
+            progress.className = 'chatbot-checklist-progress';
+            progress.innerHTML = '<div class="chatbot-checklist-progress-bar"><div class="chatbot-checklist-progress-fill" style="width:' + data.progress_percent + '%"></div></div>' +
+                '<span class="chatbot-checklist-progress-text">' + data.progress_percent + '%</span>';
+            container.appendChild(progress);
+        }
 
         return container;
     }
@@ -437,7 +416,7 @@
             }
 
             var wrapper = document.createElement('div');
-            wrapper.className = 'chatbot-form-field';
+            wrapper.className = 'chatbot-form-group';
 
             if (field.type !== 'checkbox') {
                 var label = document.createElement('label');
@@ -512,7 +491,7 @@
             }
 
             var error = document.createElement('div');
-            error.className = 'chatbot-form-field-error';
+            error.className = 'chatbot-form-error-field';
             error.style.display = 'none';
             wrapper.appendChild(error);
 
@@ -527,14 +506,16 @@
             });
         }
 
-        var actions = document.createElement('div');
-        actions.className = 'chatbot-form-actions';
+        var footer = document.createElement('div');
+        footer.className = 'chatbot-form-footer';
         var submit = document.createElement('button');
         submit.type = 'submit';
-        submit.className = 'btn-acasi primary btn-sm';
+        submit.className = 'btn-acasi primary';
         submit.textContent = data.submit_label || 'Envoyer';
-        actions.appendChild(submit);
-        form.appendChild(actions);
+        footer.appendChild(submit);
+        container.appendChild(form);
+        container.appendChild(footer);
+        // form is inside container, footer is sibling
 
         form.addEventListener('submit', function (event) {
             event.preventDefault();
@@ -544,7 +525,7 @@
 
             errorBox.style.display = 'none';
             errorBox.textContent = '';
-            Array.prototype.slice.call(form.querySelectorAll('.chatbot-form-field-error')).forEach(function (el) {
+            Array.prototype.slice.call(form.querySelectorAll('.chatbot-form-error-field')).forEach(function (el) {
                 el.style.display = 'none';
                 el.textContent = '';
             });
@@ -587,7 +568,7 @@
                             Object.keys(response.errors).forEach(function (key) {
                                 var fieldError = form.querySelector('[name="' + key + '"]');
                                 if (fieldError) {
-                                    var errorEl = fieldError.closest('.chatbot-form-field').querySelector('.chatbot-form-field-error');
+                                    var errorEl = fieldError.closest('.chatbot-form-group').querySelector('.chatbot-form-error-field');
                                     if (errorEl) {
                                         errorEl.textContent = response.errors[key][0] || 'Champ invalide.';
                                         errorEl.style.display = 'block';
@@ -642,7 +623,6 @@
                 });
         });
 
-        container.appendChild(form);
         return container;
     }
 
@@ -703,28 +683,22 @@
 
     function createTypingIndicator() {
         var wrapper = document.createElement('div');
-        wrapper.className = 'chatbot-message chatbot-message-assistant chatbot-message-loading';
+        wrapper.className = 'chatbot-typing';
 
         var avatar = document.createElement('div');
-        avatar.className = 'chatbot-avatar';
-        avatar.textContent = 'IA';
+        avatar.className = 'chatbot-message-avatar';
+        avatar.innerHTML = '<i class="fas fa-robot"></i>';
 
-        var content = document.createElement('div');
-        content.className = 'chatbot-message-content';
-
-        var loader = document.createElement('div');
-        loader.className = 'chatbot-loader';
-        loader.setAttribute('aria-label', 'Assistant en train de répondre');
+        var dots = document.createElement('div');
+        dots.className = 'chatbot-typing-dots';
+        dots.setAttribute('aria-label', 'Assistant en train de répondre');
 
         for (var i = 0; i < 3; i += 1) {
-            var dot = document.createElement('span');
-            dot.className = 'chatbot-typing-dot';
-            loader.appendChild(dot);
+            dots.appendChild(document.createElement('span'));
         }
 
-        content.appendChild(loader);
         wrapper.appendChild(avatar);
-        wrapper.appendChild(content);
+        wrapper.appendChild(dots);
 
         return wrapper;
     }
@@ -858,7 +832,7 @@
 
         if (this.conversationToggle && this.conversationsPanel) {
             this.conversationToggle.addEventListener('click', function () {
-                self.conversationsPanel.classList.toggle('is-visible');
+                self.conversationsPanel.classList.toggle('is-open');
                 self.conversationToggle.classList.toggle('is-active');
             });
         }
@@ -920,8 +894,8 @@
         }
 
         document.addEventListener('click', function (event) {
-            if (!self.widget.contains(event.target) && self.conversationsPanel && self.conversationsPanel.classList.contains('is-visible')) {
-                self.conversationsPanel.classList.remove('is-visible');
+            if (!self.widget.contains(event.target) && self.conversationsPanel && self.conversationsPanel.classList.contains('is-open')) {
+                self.conversationsPanel.classList.remove('is-open');
                 if (self.conversationToggle) {
                     self.conversationToggle.classList.remove('is-active');
                 }
@@ -975,10 +949,6 @@
         if (this.settingsButton) {
             this.settingsButton.disabled = false;
             this.settingsButton.classList.remove('is-disabled');
-        }
-
-        if (this.backdrop) {
-            this.backdrop.classList.add('is-visible');
         }
 
         if (this.state.conversations.length === 0) {
@@ -1286,10 +1256,8 @@
 
         if (this.state.conversations.length === 0) {
             var empty = document.createElement('div');
-            empty.className = 'chatbot-empty-state';
-            empty.innerHTML = '<div class="chatbot-empty-icon"><i class="fas fa-comments"></i></div>' +
-                '<h4>Aucune conversation</h4>' +
-                '<p>Démarrez un nouveau message pour parler à l\'assistant.</p>';
+            empty.className = 'chatbot-conversation-empty';
+            empty.innerHTML = '<p>Aucune conversation</p>';
             this.conversationList.appendChild(empty);
             return;
         }
@@ -1300,7 +1268,7 @@
             item.dataset.conversationId = conversation.id;
 
             if (self.state.currentConversationId === conversation.id) {
-                item.classList.add('is-active');
+                item.classList.add('active');
             }
 
             var title = document.createElement('div');
@@ -1315,7 +1283,7 @@
             actions.className = 'chatbot-conversation-actions';
 
             var editBtn = document.createElement('button');
-            editBtn.className = 'chatbot-conversation-edit';
+            editBtn.className = 'chatbot-conversation-action-btn';
             editBtn.setAttribute('type', 'button');
             editBtn.setAttribute('title', 'Renommer');
             editBtn.innerHTML = '<i class="fas fa-pen"></i>';
@@ -1326,7 +1294,7 @@
             });
 
             var deleteBtn = document.createElement('button');
-            deleteBtn.className = 'chatbot-conversation-delete';
+            deleteBtn.className = 'chatbot-conversation-action-btn delete';
             deleteBtn.setAttribute('type', 'button');
             deleteBtn.setAttribute('title', 'Supprimer');
             deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
@@ -1344,12 +1312,12 @@
             item.appendChild(actions);
 
             item.addEventListener('click', function () {
-                if (item.querySelector('.chatbot-conversation-title-input')) {
+                if (item.querySelector('.chatbot-conversation-rename')) {
                     return;
                 }
                 self.loadConversation(conversation.id);
                 if (self.conversationsPanel) {
-                    self.conversationsPanel.classList.remove('is-visible');
+                    self.conversationsPanel.classList.remove('is-open');
                 }
                 if (self.conversationToggle) {
                     self.conversationToggle.classList.remove('is-active');
@@ -1374,7 +1342,7 @@
         var input = document.createElement('input');
         input.type = 'text';
         input.maxLength = 40;
-        input.className = 'chatbot-conversation-title-input';
+        input.className = 'chatbot-conversation-rename';
         input.value = conversation.title || '';
 
         titleEl.replaceWith(input);
@@ -1543,13 +1511,28 @@
         this.messagesContainer.innerHTML = '';
 
         var empty = document.createElement('div');
-        empty.className = 'chatbot-empty-state';
-        empty.innerHTML = '<div class="chatbot-empty-icon"><i class="fas fa-magic"></i></div>' +
-            '<h4>Assistant KLASSCI</h4>' +
-            '<p>' + (message || 'Posez une question sur vos paiements, étudiants, classes ou inscriptions pour commencer.') + '</p>' +
-            '<div class="chatbot-badge"><i class="fas fa-shield-check"></i> Respecte vos permissions</div>';
+        empty.className = 'chatbot-empty';
+        empty.innerHTML = '<div class="chatbot-empty-icon"><i class="fas fa-robot"></i></div>' +
+            '<h5>Assistant KLASSCI</h5>' +
+            '<p>' + (message || 'Posez une question sur vos paiements, étudiants, classes ou inscriptions.') + '</p>' +
+            '<div class="chatbot-empty-suggestions">' +
+            '<button type="button">Mes paiements</button>' +
+            '<button type="button">Liste étudiants</button>' +
+            '<button type="button">Classes disponibles</button>' +
+            '</div>';
 
         this.messagesContainer.appendChild(empty);
+
+        var self = this;
+        empty.querySelectorAll('.chatbot-empty-suggestions button').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                if (self.textarea) {
+                    self.textarea.value = btn.textContent;
+                    self.textarea.dispatchEvent(new Event('input'));
+                    self.textarea.focus();
+                }
+            });
+        });
     };
 
     ChatbotWidget.prototype.handleSend = function () {
@@ -1644,43 +1627,39 @@
 
     ChatbotWidget.prototype.appendUserMessage = function (content, createdAt) {
         var wrapper = document.createElement('div');
-        wrapper.className = 'chatbot-message chatbot-message-user';
+        wrapper.className = 'chatbot-message user';
 
-        var messageContent = document.createElement('div');
-        messageContent.className = 'chatbot-message-content';
+        var bubble = document.createElement('div');
+        bubble.className = 'chatbot-message-bubble';
+        bubble.innerHTML = formatText(content);
 
-        var text = document.createElement('div');
-        text.className = 'chatbot-message-text';
-        text.innerHTML = formatText(content);
-
-        messageContent.appendChild(text);
+        wrapper.appendChild(bubble);
 
         if (createdAt) {
-            var meta = document.createElement('span');
-            meta.className = 'chatbot-message-meta';
+            var meta = document.createElement('div');
+            meta.className = 'chatbot-message-time';
             meta.textContent = formatTimeLabel(createdAt);
-            messageContent.appendChild(meta);
+            wrapper.appendChild(meta);
         }
 
-        wrapper.appendChild(messageContent);
         this.messagesContainer.appendChild(wrapper);
         this.scrollToBottom();
     };
 
     ChatbotWidget.prototype.appendAssistantMessage = function (message) {
         var wrapper = document.createElement('div');
-        wrapper.className = 'chatbot-message chatbot-message-assistant';
+        wrapper.className = 'chatbot-message assistant';
 
         var avatar = document.createElement('div');
-        avatar.className = 'chatbot-avatar';
-        avatar.textContent = 'IA';
+        avatar.className = 'chatbot-message-avatar';
+        avatar.innerHTML = '<i class="fas fa-robot"></i>';
 
         var messageContent = document.createElement('div');
-        messageContent.className = 'chatbot-message-content';
+        messageContent.className = 'chatbot-message-bubble';
 
         if (message.content) {
             var text = document.createElement('div');
-            text.className = 'chatbot-message-text';
+            text.className = 'chatbot-message-text-content';
             text.innerHTML = formatText(message.content);
             messageContent.appendChild(text);
         }
@@ -1719,7 +1698,7 @@
 
         if (message.deep_link && message.display_type !== 'cards' && message.display_type !== 'table') {
             var link = document.createElement('a');
-            link.className = 'btn-acasi secondary btn-sm';
+            link.className = 'chatbot-deep-link';
             link.href = message.deep_link;
             link.target = '_blank';
             link.rel = 'noopener noreferrer';
@@ -1728,10 +1707,10 @@
         }
 
         if (message.created_at) {
-            var meta = document.createElement('span');
-            meta.className = 'chatbot-message-meta';
+            var meta = document.createElement('div');
+            meta.className = 'chatbot-message-time';
             meta.textContent = formatTimeLabel(message.created_at);
-            messageContent.appendChild(meta);
+            wrapper.appendChild(meta);
         }
 
         if (displayData.follow_up) {
@@ -1765,15 +1744,15 @@
 
     ChatbotWidget.prototype.appendErrorMessage = function (message) {
         var wrapper = document.createElement('div');
-        wrapper.className = 'chatbot-message chatbot-message-assistant';
+        wrapper.className = 'chatbot-message assistant';
 
         var avatar = document.createElement('div');
-        avatar.className = 'chatbot-avatar';
-        avatar.textContent = 'IA';
+        avatar.className = 'chatbot-message-avatar';
+        avatar.innerHTML = '<i class="fas fa-robot"></i>';
 
         var content = document.createElement('div');
-        content.className = 'chatbot-message-content chatbot-message-error';
-        content.innerHTML = '<div class="chatbot-message-text">' + formatText(message) + '</div>';
+        content.className = 'chatbot-message-bubble';
+        content.innerHTML = '<div class="chatbot-error">' + formatText(message) + '</div>';
 
         wrapper.appendChild(avatar);
         wrapper.appendChild(content);
@@ -1857,10 +1836,7 @@
             var deltaX = moveEvent.clientX - startX;
             var deltaY = moveEvent.clientY - startY;
 
-            var newWidth = Math.min(Math.max(startRect.width + deltaX, minWidth), maxWidth);
-            var newHeight = Math.min(Math.max(startRect.height + deltaY, minHeight), maxHeight);
-
-            self.state.dimensions.width = newWidth;
+            var newHeight = Math.min(Math.max(startRect.height - deltaY, minHeight), maxHeight);
             self.state.dimensions.height = newHeight;
             self.applyDimensions();
         }
@@ -1942,7 +1918,7 @@
             return;
         }
 
-        if (this.state.isOpen || this.state.isFullscreen) {
+        if (this.state.isOpen && this.state.isFullscreen) {
             this.backdrop.classList.add('is-visible');
         } else {
             this.backdrop.classList.remove('is-visible');
