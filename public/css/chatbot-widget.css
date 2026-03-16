@@ -1123,45 +1123,56 @@
 
 /* ── Payment Groups ─────────────────────────────────────── */
 .cb-payment-header {
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .cb-payment-header-info {
-    flex: 1;
-    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .cb-payment-subtitle {
     font-size: 11px;
     color: var(--cb-primary);
     font-weight: 500;
-    display: block;
-    margin-top: 2px;
 }
 
 .cb-payment-header-meta {
     display: flex;
     align-items: center;
     gap: 8px;
-    flex-shrink: 0;
+    flex-wrap: wrap;
 }
 
 .cb-payment-total {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
     color: var(--cb-primary);
     font-variant-numeric: tabular-nums;
 }
 
 .cb-payment-count {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--cb-text-muted);
 }
 
 .cb-payment-link {
     padding: 8px 12px;
     border-top: 1px solid var(--cb-border-light);
+}
+
+.cb-fee-section .cb-fee-table {
+    display: block;
+    overflow-x: auto;
+}
+
+.cb-fee-section .cb-fee-table thead,
+.cb-fee-section .cb-fee-table tbody {
+    display: table;
+    width: 100%;
 }
 
 /* ── Checklist (setup guide) ───────────────────────────────── */
