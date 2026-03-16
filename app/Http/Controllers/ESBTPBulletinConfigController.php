@@ -809,21 +809,33 @@ class ESBTPBulletinConfigController extends Controller
             if ($request->has('appliquer_a_classe') && $request->input('appliquer_a_classe') == '1') {
                 Log::info('🔄 Propagation des enseignants à toute la classe demandée');
 
-                // Récupérer tous les bulletins de la même classe, période et année (sauf celui qu'on vient de sauver)
-                $autresBulletins = ESBTPBulletin::where('classe_id', $classe_id)
-                    ->where('periode', $periode)
-                    ->where('annee_universitaire_id', $annee_universitaire_id)
-                    ->where('id', '!=', $bulletin->id)
-                    ->get();
+                // Récupérer TOUS les étudiants inscrits dans cette classe/année
+                $autresEtudiantIds = \App\Models\ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($classe_id, $annee_universitaire_id) {
+                    $q->where('classe_id', $classe_id)
+                        ->where('annee_universitaire_id', $annee_universitaire_id);
+                })
+                ->where('id', '!=', $etudiant_id)
+                ->pluck('id');
 
-                foreach ($autresBulletins as $autreBulletin) {
+                foreach ($autresEtudiantIds as $autreEtudiantId) {
+                    // Créer le bulletin s'il n'existe pas (firstOrCreate)
+                    $autreBulletin = ESBTPBulletin::firstOrCreate(
+                        [
+                            'etudiant_id' => $autreEtudiantId,
+                            'classe_id' => $classe_id,
+                            'periode' => $periode,
+                            'annee_universitaire_id' => $annee_universitaire_id,
+                        ],
+                        ['created_by' => Auth::id()]
+                    );
+
                     $autreBulletin->professeurs = json_encode($professeurs);
                     $autreBulletin->updated_by = Auth::id();
                     $autreBulletin->save();
                     $bulletinsPropages++;
                 }
 
-                Log::info("✅ Propagation terminée: {$bulletinsPropages} bulletins mis à jour");
+                Log::info("✅ Propagation terminée: {$bulletinsPropages} bulletins mis à jour/créés");
             }
 
             // Vérifier quelle action a été choisie via le bouton submit
