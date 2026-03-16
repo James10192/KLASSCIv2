@@ -33,27 +33,15 @@
                 <div class="nm-hero-kpi-label">Classes</div>
             </div>
             <div class="nm-hero-kpi">
-                @php
-                    $totalMatieres = collect($classStatsById)->sum('matieres_total');
-                    $totalConfigured = collect($classStatsById)->sum('matieres_configured');
-                @endphp
-                <div class="nm-hero-kpi-value">{{ $totalConfigured }}/{{ $totalMatieres }}</div>
+                <div class="nm-hero-kpi-value">{{ $heroStats['total_configured'] }}/{{ $heroStats['total_matieres'] }}</div>
                 <div class="nm-hero-kpi-label">Matières évaluées</div>
             </div>
             <div class="nm-hero-kpi">
-                @php
-                    $avgCompletion = count($classStatsById) > 0
-                        ? round(collect($classStatsById)->avg('completion'))
-                        : 0;
-                @endphp
-                <div class="nm-hero-kpi-value">{{ $avgCompletion }}%</div>
+                <div class="nm-hero-kpi-value">{{ $heroStats['avg_completion'] }}%</div>
                 <div class="nm-hero-kpi-label">Complétude moy.</div>
             </div>
             <div class="nm-hero-kpi">
-                @php
-                    $globalAvg = collect($classStatsById)->filter(fn($s) => $s['moyenne_annuelle'] !== null)->avg('moyenne_annuelle');
-                @endphp
-                <div class="nm-hero-kpi-value">{{ $globalAvg ? number_format($globalAvg, 2) : '--' }}</div>
+                <div class="nm-hero-kpi-value">{{ $heroStats['global_avg'] ? number_format($heroStats['global_avg'], 2) : '--' }}</div>
                 <div class="nm-hero-kpi-label">Moyenne gén.</div>
             </div>
         </div>
@@ -160,7 +148,7 @@
 {{-- ══════════════════════════════════════════════════════
      MODAL: Sélection Classe & Saisie Notes
      ══════════════════════════════════════════════════════ --}}
-<div class="modal fade" id="classSelectionModal" tabindex="-1" aria-labelledby="classSelectionModalLabel" aria-hidden="true">
+<div class="modal fade nm-notes-modal" id="classSelectionModal" tabindex="-1" aria-labelledby="classSelectionModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header nm-modal-header">
@@ -494,6 +482,10 @@ let currentPeriodeFilter = 'all';
 let evaluationsData = {};
 let notesData = {};
 let currentEvaluations = [];
+let cachedStudents = null;
+let cachedStudentsClassId = null;
+let currentLoadRequest = null;
+let evalParamsCache = {};
 const blankPdfUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf", ["classe" => ":classId"]) }}';
 
 // Initialisation
@@ -580,6 +572,18 @@ $(document).ready(function() {
         selectClass(classId, classLabel);
     });
 
+    // Invalidate eval params cache when user changes bareme/coeff
+    $(document).on('change', '.bareme-input, .coeff-input', function() {
+        const evalId = $(this).data('eval-id');
+        if (evalId) {
+            evalParamsCache[evalId] = {
+                bareme: parseFloat($(`.bareme-input[data-eval-id="${evalId}"]`).val()) || 20,
+                coefficient: parseFloat($(`.coeff-input[data-eval-id="${evalId}"]`).val()) || 1
+            };
+        }
+        calculateAllAverages();
+    });
+
     // Gestion de la sélection de matière
     $('#matiereSelect').on('change', function() {
         currentMatiereId  = $(this).val();
@@ -629,6 +633,10 @@ $(document).ready(function() {
 
 // Fonction pour sélectionner une classe
 function selectClass(classId, className) {
+    if (currentClassId !== classId) {
+        cachedStudents = null;
+        cachedStudentsClassId = null;
+    }
     currentClassId = classId;
     currentClassname = className;
 
@@ -677,6 +685,11 @@ function updateBlankPdfLink() {
 function loadEvaluationsAndNotes() {
     if (!currentClassId || !currentMatiereId) return;
 
+    // Abort any in-flight request to prevent stale data
+    if (currentLoadRequest && currentLoadRequest.readyState !== 4) {
+        currentLoadRequest.abort();
+    }
+
     $('#studentsRows').html(`
         <tr>
             <td colspan="10" class="text-center py-5">
@@ -688,7 +701,7 @@ function loadEvaluationsAndNotes() {
         </tr>
     `);
 
-    $.ajax({
+    currentLoadRequest = $.ajax({
         url: '{{ route("esbtp.notes.evaluations.by-class-matiere", ["classId" => ":classId", "matiereId" => ":matiereId"]) }}'
             .replace(':classId', currentClassId)
             .replace(':matiereId', currentMatiereId),
@@ -700,6 +713,7 @@ function loadEvaluationsAndNotes() {
             buildNotesGrid();
         },
         error: function(xhr) {
+            if (xhr.statusText === 'abort') return;
             console.error('Erreur lors du chargement des données:', xhr);
             $('#studentsRows').html(`
                 <tr>
@@ -723,13 +737,17 @@ function normalizePeriode(periode) {
 // Fonction pour construire la grille des notes
 function buildNotesGrid() {
     const evaluations = Object.values(evaluationsData);
+
+    // Cache normalizePeriode results per evaluation
+    evaluations.forEach(e => { e._period = normalizePeriode(e.periode); });
+
     const filteredEvaluations = currentPeriodeFilter === 'all'
         ? evaluations
-        : evaluations.filter(evaluation => normalizePeriode(evaluation.periode) === currentPeriodeFilter);
+        : evaluations.filter(e => e._period === currentPeriodeFilter);
 
     const sortedEvaluations = [...filteredEvaluations].sort((a, b) => {
-        const periodA = normalizePeriode(a.periode) === 'semestre2' ? 2 : 1;
-        const periodB = normalizePeriode(b.periode) === 'semestre2' ? 2 : 1;
+        const periodA = a._period === 'semestre2' ? 2 : 1;
+        const periodB = b._period === 'semestre2' ? 2 : 1;
         if (periodA !== periodB) return periodA - periodB;
         const dateA = a.date_evaluation ? new Date(a.date_evaluation) : null;
         const dateB = b.date_evaluation ? new Date(b.date_evaluation) : null;
@@ -738,6 +756,21 @@ function buildNotesGrid() {
     });
 
     currentEvaluations = sortedEvaluations;
+
+    // Cache bareme/coeff for average calculations
+    evalParamsCache = {};
+    sortedEvaluations.forEach(e => {
+        evalParamsCache[e.id] = {
+            bareme: parseFloat(e.bareme) || 20,
+            coefficient: parseFloat(e.coefficient) || 1
+        };
+    });
+
+    // Use cached students if same class, otherwise fetch
+    if (cachedStudents && cachedStudentsClassId === currentClassId) {
+        renderNotesGrid(cachedStudents, sortedEvaluations);
+        return;
+    }
 
     $.ajax({
         url: '{{ route("esbtp.notes.classes.students", ["classe" => ":classId"]) }}'.replace(':classId', currentClassId),
@@ -749,130 +782,133 @@ function buildNotesGrid() {
                 return;
             }
 
-            const students = response.students || [];
-
-            // Construire l'en-tête
-            const thead = $('#notesGrid thead');
-            thead.empty();
-
-            const periodCounts = {
-                semestre1: sortedEvaluations.filter(e => normalizePeriode(e.periode) === 'semestre1').length,
-                semestre2: sortedEvaluations.filter(e => normalizePeriode(e.periode) === 'semestre2').length,
-            };
-
-            const periodRow = $('<tr class="period-row"></tr>');
-            periodRow.append('<th class="notes-student-col" style="width: 160px; min-width: 160px; position: sticky; left: 0; top: 0; z-index: 8; background: #f1f5f9;">Étudiants</th>');
-            if (periodCounts.semestre1 > 0) {
-                periodRow.append(`<th colspan="${periodCounts.semestre1}" class="period-cell semester-1 text-center">Semestre 1</th>`);
-            }
-            if (periodCounts.semestre2 > 0) {
-                periodRow.append(`<th colspan="${periodCounts.semestre2}" class="period-cell semester-2 text-center">Semestre 2</th>`);
-            }
-            periodRow.append('<th colspan="2" class="period-cell summary text-center">Synthèse</th>');
-            thead.append(periodRow);
-
-            const evalRow = $('<tr></tr>');
-            evalRow.append('<th class="notes-student-col" style="width: 160px; min-width: 160px; position: sticky; left: 0; top: 0; z-index: 7; background: #f1f5f9;">Étudiants</th>');
-
-            sortedEvaluations.forEach(evaluation => {
-                const periodKey = normalizePeriode(evaluation.periode);
-                const periodLabel = periodKey === 'semestre2' ? 'S2' : 'S1';
-                const header = `
-                    <th id="evalHeader${evaluation.id}" class="nm-eval-header evaluation-header" style="min-width: 130px;">
-                        <div class="nm-eval-title evaluation-title">${evaluation.titre || 'Éval'}</div>
-                        <div class="nm-eval-controls evaluation-controls">
-                            <div class="nm-eval-control evaluation-control">
-                                <span class="nm-eval-control-label control-label">Bar</span>
-                                <input type="number" value="${evaluation.bareme || 20}"
-                                       class="form-control form-control-sm bareme-input"
-                                       data-eval-id="${evaluation.id}" title="Barème">
-                            </div>
-                            <div class="nm-eval-control evaluation-control">
-                                <span class="nm-eval-control-label control-label">Coef</span>
-                                <input type="number" value="${evaluation.coefficient || 1}"
-                                       class="form-control form-control-sm coeff-input"
-                                       data-eval-id="${evaluation.id}" title="Coefficient">
-                            </div>
-                        </div>
-                        <div class="nm-eval-type evaluation-type">${evaluation.type || 'Devoir'}</div>
-                        <div class="nm-eval-period evaluation-period ${periodKey}">${periodLabel}</div>
-                    </th>
-                `;
-                evalRow.append(header);
-            });
-
-            evalRow.append('<th class="notes-average-col" style="min-width: 90px; position: sticky; right: 110px; top: 0; z-index: 6; background: #f1f5f9;">Moyenne</th>');
-            evalRow.append('<th class="notes-appreciation-col" style="min-width: 110px; position: sticky; right: 0; top: 0; z-index: 7; background: #f1f5f9;">Appréciation</th>');
-
-            thead.append(evalRow);
-
-            // Construire les lignes des étudiants
-            const tbody = $('#studentsRows');
-            tbody.empty();
-
-            students.forEach(student => {
-                const initials = ((student.nom || '')[0] || '') + ((student.prenoms || '')[0] || '');
-                const row = $(`
-                    <tr data-student-id="${student.id}">
-                        <td class="fw-medium notes-student-col">
-                            <div class="nm-student-name">
-                                <div class="nm-student-avatar">${initials.toUpperCase()}</div>
-                                <div class="nm-student-info">
-                                    <div class="nm-student-fullname">${student.nom} ${student.prenoms}</div>
-                                    <div class="nm-student-matricule">${student.matricule || ''}</div>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                `);
-
-                sortedEvaluations.forEach(evaluation => {
-                    const note = notesData[student.id]?.[evaluation.id] || '';
-                    const isAbsent = notesData[student.id]?.[evaluation.id + '_absent'] || false;
-
-                    const noteCell = `
-                        <td class="text-center nm-note-cell">
-                            <div class="nm-note-wrap position-relative">
-                                <input type="number"
-                                       class="form-control nm-note-input note-input"
-                                       value="${note}"
-                                       data-student-id="${student.id}"
-                                       data-eval-id="${evaluation.id}"
-                                       step="0.25" min="0" max="${evaluation.bareme || 20}"
-                                       style="text-align: center;"
-                                       onchange="saveNote(${student.id}, ${evaluation.id}, this.value)">
-                                <div class="nm-absence-check form-check form-check-inline position-absolute">
-                                    <input class="form-check-input absence-checkbox"
-                                           type="checkbox"
-                                           id="absent-${student.id}-${evaluation.id}"
-                                           data-student-id="${student.id}"
-                                           data-eval-id="${evaluation.id}"
-                                           ${isAbsent ? 'checked' : ''}
-                                           onchange="toggleAbsence(${student.id}, ${evaluation.id}, this.checked)">
-                                    <label class="form-check-label small" for="absent-${student.id}-${evaluation.id}" title="Absent">
-                                        <i class="fas fa-user-slash"></i>
-                                    </label>
-                                </div>
-                            </div>
-                        </td>
-                    `;
-                    row.append(noteCell);
-                });
-
-                row.append('<td class="text-center fw-bold average-cell notes-average-col">--</td>');
-                row.append('<td class="text-center notes-appreciation-col"><span class="badge bg-secondary appreciation-badge">--</span></td>');
-
-                tbody.append(row);
-            });
-
-            buildClassAveragesRow(sortedEvaluations);
-            calculateAllAverages();
-            $('#saveAllNotesBtn').show();
+            cachedStudents = response.students || [];
+            cachedStudentsClassId = currentClassId;
+            renderNotesGrid(cachedStudents, sortedEvaluations);
         },
         error: function(xhr) {
             console.error('Erreur lors du chargement des étudiants:', xhr);
         }
     });
+}
+
+function renderNotesGrid(students, sortedEvaluations) {
+    // Construire l'en-tête
+    const thead = $('#notesGrid thead');
+    thead.empty();
+
+    const periodCounts = {
+        semestre1: sortedEvaluations.filter(e => e._period === 'semestre1').length,
+        semestre2: sortedEvaluations.filter(e => e._period === 'semestre2').length,
+    };
+
+    const periodRow = $('<tr class="period-row"></tr>');
+    periodRow.append('<th class="notes-student-col">Étudiants</th>');
+    if (periodCounts.semestre1 > 0) {
+        periodRow.append(`<th colspan="${periodCounts.semestre1}" class="period-cell semester-1 text-center">Semestre 1</th>`);
+    }
+    if (periodCounts.semestre2 > 0) {
+        periodRow.append(`<th colspan="${periodCounts.semestre2}" class="period-cell semester-2 text-center">Semestre 2</th>`);
+    }
+    periodRow.append('<th colspan="2" class="period-cell summary text-center">Synthèse</th>');
+    thead.append(periodRow);
+
+    const evalRow = $('<tr></tr>');
+    evalRow.append('<th class="notes-student-col">Étudiants</th>');
+
+    sortedEvaluations.forEach(evaluation => {
+        const periodLabel = evaluation._period === 'semestre2' ? 'S2' : 'S1';
+        const header = `
+            <th id="evalHeader${evaluation.id}" class="nm-eval-header evaluation-header">
+                <div class="nm-eval-title evaluation-title">${evaluation.titre || 'Éval'}</div>
+                <div class="nm-eval-controls evaluation-controls">
+                    <div class="nm-eval-control evaluation-control">
+                        <span class="nm-eval-control-label control-label">Bar</span>
+                        <input type="number" value="${evaluation.bareme || 20}"
+                               class="form-control form-control-sm bareme-input"
+                               data-eval-id="${evaluation.id}" title="Barème">
+                    </div>
+                    <div class="nm-eval-control evaluation-control">
+                        <span class="nm-eval-control-label control-label">Coef</span>
+                        <input type="number" value="${evaluation.coefficient || 1}"
+                               class="form-control form-control-sm coeff-input"
+                               data-eval-id="${evaluation.id}" title="Coefficient">
+                    </div>
+                </div>
+                <div class="nm-eval-type evaluation-type">${evaluation.type || 'Devoir'}</div>
+                <div class="nm-eval-period evaluation-period ${evaluation._period}">${periodLabel}</div>
+            </th>
+        `;
+        evalRow.append(header);
+    });
+
+    evalRow.append('<th class="notes-average-col">Moyenne</th>');
+    evalRow.append('<th class="notes-appreciation-col">Appréciation</th>');
+
+    thead.append(evalRow);
+
+    // Construire les lignes des étudiants
+    const tbody = $('#studentsRows');
+    tbody.empty();
+
+    students.forEach(student => {
+        const initials = ((student.nom || '')[0] || '') + ((student.prenoms || '')[0] || '');
+        const row = $(`
+            <tr data-student-id="${student.id}">
+                <td class="fw-medium notes-student-col">
+                    <div class="nm-student-name">
+                        <div class="nm-student-avatar">${initials.toUpperCase()}</div>
+                        <div class="nm-student-info">
+                            <div class="nm-student-fullname">${student.nom} ${student.prenoms}</div>
+                            <div class="nm-student-matricule">${student.matricule || ''}</div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `);
+
+        sortedEvaluations.forEach(evaluation => {
+            const note = notesData[student.id]?.[evaluation.id] || '';
+            const isAbsent = notesData[student.id]?.[evaluation.id + '_absent'] || false;
+
+            const noteCell = `
+                <td class="text-center nm-note-cell">
+                    <div class="nm-note-wrap position-relative">
+                        <input type="number"
+                               class="form-control nm-note-input note-input"
+                               value="${note}"
+                               data-student-id="${student.id}"
+                               data-eval-id="${evaluation.id}"
+                               step="0.25" min="0" max="${evaluation.bareme || 20}"
+                               style="text-align: center;"
+                               onchange="saveNote(${student.id}, ${evaluation.id}, this.value)">
+                        <div class="nm-absence-check form-check form-check-inline position-absolute">
+                            <input class="form-check-input absence-checkbox"
+                                   type="checkbox"
+                                   id="absent-${student.id}-${evaluation.id}"
+                                   data-student-id="${student.id}"
+                                   data-eval-id="${evaluation.id}"
+                                   ${isAbsent ? 'checked' : ''}
+                                   onchange="toggleAbsence(${student.id}, ${evaluation.id}, this.checked)">
+                            <label class="form-check-label small" for="absent-${student.id}-${evaluation.id}" title="Absent">
+                                <i class="fas fa-user-slash"></i>
+                            </label>
+                        </div>
+                    </div>
+                </td>
+            `;
+            row.append(noteCell);
+        });
+
+        row.append('<td class="text-center fw-bold average-cell notes-average-col">--</td>');
+        row.append('<td class="text-center notes-appreciation-col"><span class="badge bg-secondary appreciation-badge">--</span></td>');
+
+        tbody.append(row);
+    });
+
+    buildClassAveragesRow(sortedEvaluations);
+    calculateAllAverages();
+    $('#saveAllNotesBtn').show();
 }
 
 function buildClassAveragesRow(evaluations) {
@@ -999,6 +1035,15 @@ function calculateAllAverages() {
     calculateClassAverages();
 }
 
+function getEvalParams(evalId) {
+    // Use cache first, fallback to DOM query
+    if (evalParamsCache[evalId]) return evalParamsCache[evalId];
+    const bareme = parseFloat($(`.bareme-input[data-eval-id="${evalId}"]`).val()) || 20;
+    const coefficient = parseFloat($(`.coeff-input[data-eval-id="${evalId}"]`).val()) || 1;
+    evalParamsCache[evalId] = { bareme, coefficient };
+    return evalParamsCache[evalId];
+}
+
 function calculateStudentAverage(studentId) {
     const row = $(`tr[data-student-id="${studentId}"]`);
     const noteInputs = row.find('.note-input');
@@ -1011,15 +1056,12 @@ function calculateStudentAverage(studentId) {
         const evalId = $(this).data('eval-id');
         const noteValue = parseFloat($(this).val()) || 0;
         const isAbsent = $(`#absent-${studentId}-${evalId}`).is(':checked');
-        const coeffInput = $(`.coeff-input[data-eval-id="${evalId}"]`);
-        const coefficient = parseFloat(coeffInput.val()) || 1;
-        const baremeInput = $(`.bareme-input[data-eval-id="${evalId}"]`);
-        const bareme = parseFloat(baremeInput.val()) || 20;
+        const params = getEvalParams(evalId);
 
         if (!isAbsent && !isNaN(noteValue) && noteValue > 0) {
-            const normalizedNote = (noteValue / bareme) * 20;
-            totalPoints += normalizedNote * coefficient;
-            totalCoefficients += coefficient;
+            const normalizedNote = (noteValue / params.bareme) * 20;
+            totalPoints += normalizedNote * params.coefficient;
+            totalCoefficients += params.coefficient;
             hasNotes = true;
         }
     });
@@ -1064,6 +1106,7 @@ function calculateClassAverages() {
     evaluations.forEach(evaluation => {
         const evalId = evaluation.id;
         const noteInputs = $(`.note-input[data-eval-id="${evalId}"]`);
+        const params = getEvalParams(evalId);
 
         let total = 0;
         let count = 0;
@@ -1072,11 +1115,9 @@ function calculateClassAverages() {
             const studentId = $(this).data('student-id');
             const isAbsent = $(`#absent-${studentId}-${evalId}`).is(':checked');
             const noteValue = parseFloat($(this).val()) || 0;
-            const baremeInput = $(`.bareme-input[data-eval-id="${evalId}"]`);
-            const bareme = parseFloat(baremeInput.val()) || 20;
 
             if (!isAbsent && !isNaN(noteValue)) {
-                const normalizedNote = (noteValue / bareme) * 20;
+                const normalizedNote = (noteValue / params.bareme) * 20;
                 total += normalizedNote;
                 count++;
             }
@@ -1122,19 +1163,56 @@ $('#saveAllNotesBtn').on('click', function() {
     const btn = $(this);
     const originalText = btn.html();
 
+    // Collect only inputs with actual values (dirty notes)
+    const inputs = $('.note-input').filter(function() {
+        const val = $(this).val();
+        return val !== '' && val !== null && val !== undefined;
+    });
+
+    if (inputs.length === 0) {
+        btn.html('<i class="fas fa-info-circle me-1"></i> Aucune note à enregistrer').prop('disabled', false);
+        setTimeout(() => { btn.html(originalText); }, 2000);
+        return;
+    }
+
     btn.html('<i class="fas fa-spinner fa-spin me-1"></i> Enregistrement...').prop('disabled', true);
 
-    let savedCount = 0;
-    const totalNotes = $('.note-input').length;
+    let completed = 0;
+    let errors = 0;
+    const total = inputs.length;
 
-    $('.note-input').each(function() {
-        setTimeout(() => {
-            savedCount++;
-            if (savedCount === totalNotes) {
-                btn.html('<i class="fas fa-check me-1"></i> Toutes les notes enregistrées').prop('disabled', false);
-                setTimeout(() => { btn.html(originalText); }, 2000);
+    inputs.each(function() {
+        const studentId = $(this).data('student-id');
+        const evalId = $(this).data('eval-id');
+        const noteValue = $(this).val();
+
+        $.ajax({
+            url: '{{ route("esbtp.notes.save-ajax") }}',
+            method: 'POST',
+            dataType: 'json',
+            data: {
+                _token: '{{ csrf_token() }}',
+                etudiant_id: studentId,
+                evaluation_id: evalId,
+                note: noteValue,
+                is_absent: $(`#absent-${studentId}-${evalId}`).is(':checked') ? 'on' : ''
+            },
+            success: function(response) {
+                if (!response.success) errors++;
+            },
+            error: function() { errors++; },
+            complete: function() {
+                completed++;
+                if (completed === total) {
+                    if (errors > 0) {
+                        btn.html(`<i class="fas fa-exclamation-triangle me-1"></i> ${errors} erreur(s)`).prop('disabled', false);
+                    } else {
+                        btn.html('<i class="fas fa-check me-1"></i> Toutes les notes enregistrées').prop('disabled', false);
+                    }
+                    setTimeout(() => { btn.html(originalText); }, 2000);
+                }
             }
-        }, 100);
+        });
     });
 });
 

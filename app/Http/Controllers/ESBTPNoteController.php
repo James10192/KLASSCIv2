@@ -192,6 +192,20 @@ class ESBTPNoteController extends Controller
             ];
         }
 
+        // Hero KPI aggregates
+        $heroStats = [
+            'total_matieres' => array_sum(array_column($classStatsById, 'matieres_total')),
+            'total_configured' => array_sum(array_column($classStatsById, 'matieres_configured')),
+            'avg_completion' => count($classStatsById) > 0
+                ? round(array_sum(array_column($classStatsById, 'completion')) / count($classStatsById))
+                : 0,
+            'global_avg' => (function () use ($classStatsById) {
+                $vals = array_filter(array_column($classStatsById, 'moyenne_annuelle'), fn ($v) => $v !== null);
+
+                return count($vals) > 0 ? array_sum($vals) / count($vals) : null;
+            })(),
+        ];
+
         if ($request->ajax() && $request->boolean('classes_ajax')) {
             return response()->json([
                 'success' => true,
@@ -247,7 +261,7 @@ class ESBTPNoteController extends Controller
                 ? collect()
                 : User::whereHas('roles', fn ($q) => $q->whereIn('name', ['teacher', 'enseignant']))->orderBy('name')->get();
 
-            return view('esbtp.notes.index', compact('notes', 'classes', 'allClasses', 'matieres', 'anneeAcademique', 'filieres', 'niveaux', 'classStatsById', 'semesterWeights', 'evaluationTypes', 'enseignants'));
+            return view('esbtp.notes.index', compact('notes', 'classes', 'allClasses', 'matieres', 'anneeAcademique', 'filieres', 'niveaux', 'classStatsById', 'heroStats', 'semesterWeights', 'evaluationTypes', 'enseignants'));
         }
 
         // Get filter options for dropdowns (if needed)
@@ -270,6 +284,7 @@ class ESBTPNoteController extends Controller
             'filieres',
             'niveaux',
             'classStatsById',
+            'heroStats',
             'semesterWeights',
             'evaluationTypes',
             'enseignants'

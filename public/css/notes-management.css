@@ -295,6 +295,8 @@
     transition: all 0.25s ease;
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 .nm-class-card::before {
     content: '';
@@ -382,6 +384,7 @@
 /* Card meta */
 .nm-card-meta {
     margin-bottom: 0.75rem;
+    flex: 1;
 }
 .nm-meta-line {
     font-size: 0.82rem;
@@ -540,16 +543,20 @@
 /* ================================================================
    MODAL: Class Selection & Notes Grid (#classSelectionModal)
    ================================================================ */
-#classSelectionModal .modal-dialog {
-    max-width: 94vw !important;
-    width: 94vw !important;
-    margin: 1.5vh auto !important;
+.nm-page ~ #classSelectionModal .modal-dialog,
+body .nm-page ~ #classSelectionModal .modal-dialog,
+#classSelectionModal.nm-notes-modal .modal-dialog {
+    max-width: 94vw;
+    width: 94vw;
+    margin: 1.5vh auto;
 }
-#classSelectionModal .modal-content {
-    max-height: 97vh !important;
-    height: 97vh !important;
-    display: flex !important;
-    flex-direction: column !important;
+.nm-page ~ #classSelectionModal .modal-content,
+body .nm-page ~ #classSelectionModal .modal-content,
+#classSelectionModal.nm-notes-modal .modal-content {
+    max-height: 97vh;
+    height: 97vh;
+    display: flex;
+    flex-direction: column;
     border-radius: 16px;
     overflow: hidden;
     border: none;
@@ -732,7 +739,11 @@
 }
 .nm-grid-table thead .notes-student-col {
     z-index: 8;
+    top: 0;
     background: #f1f5f9;
+}
+.nm-grid-table thead tr:nth-child(2) .notes-student-col {
+    z-index: 7;
 }
 .nm-grid-table .notes-average-col {
     position: sticky;
@@ -750,10 +761,12 @@
 }
 .nm-grid-table thead .notes-average-col {
     z-index: 6;
+    top: 0;
     background: #f1f5f9;
 }
 .nm-grid-table thead .notes-appreciation-col {
     z-index: 7;
+    top: 0;
     background: #f1f5f9;
 }
 .nm-grid-table tfoot td {
@@ -1138,14 +1151,16 @@
     .nm-hero-kpis { grid-template-columns: repeat(2, 1fr); }
     .nm-cards-grid { grid-template-columns: 1fr; }
     .nm-filter-grid { grid-template-columns: 1fr; }
-    #classSelectionModal .modal-dialog {
-        max-width: 100vw !important;
-        width: 100vw !important;
-        margin: 0 !important;
+    .nm-page ~ #classSelectionModal .modal-dialog,
+    #classSelectionModal.nm-notes-modal .modal-dialog {
+        max-width: 100vw;
+        width: 100vw;
+        margin: 0;
     }
-    #classSelectionModal .modal-content {
+    .nm-page ~ #classSelectionModal .modal-content,
+    #classSelectionModal.nm-notes-modal .modal-content {
         border-radius: 0;
-        height: 100vh !important;
-        max-height: 100vh !important;
+        height: 100vh;
+        max-height: 100vh;
     }
 }
