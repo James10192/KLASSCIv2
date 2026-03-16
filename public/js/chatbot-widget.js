@@ -402,6 +402,116 @@
         return container;
     }
 
+    function buildPaymentGroupsFromData(data) {
+        var container = document.createElement('div');
+        container.className = 'cb-fee-groups';
+
+        (data.groups || []).forEach(function (group) {
+            var section = document.createElement('div');
+            section.className = 'cb-fee-section';
+
+            // Header = inscription info
+            var header = document.createElement('div');
+            header.className = 'cb-fee-header cb-payment-header';
+
+            var headerLeft = document.createElement('div');
+            headerLeft.className = 'cb-payment-header-info';
+
+            var title = document.createElement('h4');
+            title.className = 'cb-fee-title';
+            title.textContent = (group.inscription || {}).classe || 'Inscription';
+            headerLeft.appendChild(title);
+
+            var subtitle = document.createElement('span');
+            subtitle.className = 'cb-payment-subtitle';
+            subtitle.textContent = (group.inscription || {}).filiere || '';
+            headerLeft.appendChild(subtitle);
+
+            header.appendChild(headerLeft);
+
+            var headerRight = document.createElement('div');
+            headerRight.className = 'cb-payment-header-meta';
+
+            var totalEl = document.createElement('span');
+            totalEl.className = 'cb-payment-total';
+            totalEl.textContent = group.total_paye || '0 FCFA';
+            headerRight.appendChild(totalEl);
+
+            var countEl = document.createElement('span');
+            countEl.className = 'cb-payment-count';
+            countEl.textContent = (group.nb_paiements || 0) + ' paiement(s)';
+            headerRight.appendChild(countEl);
+
+            var badge = document.createElement('span');
+            var inscStatus = ((group.inscription || {}).statut || '').toLowerCase();
+            badge.className = 'badge badge-' + (inscStatus.indexOf('actif') >= 0 || inscStatus.indexOf('active') >= 0 ? 'success' : 'secondary');
+            badge.textContent = (group.inscription || {}).statut || 'N/A';
+            headerRight.appendChild(badge);
+
+            header.appendChild(headerRight);
+            section.appendChild(header);
+
+            // Payment table
+            if (Array.isArray(group.payments) && group.payments.length) {
+                var table = document.createElement('table');
+                table.className = 'cb-fee-table';
+                var thead = document.createElement('thead');
+                thead.innerHTML = '<tr><th>Catégorie</th><th>Montant</th><th>Statut</th><th>Date</th><th>Mode</th></tr>';
+                table.appendChild(thead);
+
+                var tbody = document.createElement('tbody');
+                group.payments.forEach(function (p) {
+                    var tr = document.createElement('tr');
+                    var cells = [
+                        { cls: 'cb-fee-label', text: p.categorie || 'N/A' },
+                        { cls: 'cb-fee-amount', text: p.montant || '0 FCFA' },
+                        { cls: '', text: p.statut || 'N/A' },
+                        { cls: '', text: p.date || 'N/A' },
+                        { cls: '', text: p.mode || 'N/A' }
+                    ];
+                    cells.forEach(function (c) {
+                        var td = document.createElement('td');
+                        if (c.cls) td.className = c.cls;
+                        td.textContent = c.text;
+                        // Badge for status
+                        if (c.text && (c.text.toLowerCase().indexOf('valid') >= 0)) {
+                            td.innerHTML = '';
+                            var b = document.createElement('span');
+                            b.className = 'badge badge-success';
+                            b.textContent = c.text;
+                            td.appendChild(b);
+                        }
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody);
+                section.appendChild(table);
+            }
+
+            // Inscription link
+            if ((group.inscription || {}).lien) {
+                var linkRow = document.createElement('div');
+                linkRow.className = 'cb-payment-link';
+                var link = document.createElement('a');
+                link.className = 'chatbot-card-action-btn';
+                link.href = group.inscription.lien;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.innerHTML = '<i class="fas fa-file-alt"></i> <span>Voir inscription</span>';
+                linkRow.appendChild(link);
+                section.appendChild(linkRow);
+            }
+
+            container.appendChild(section);
+        });
+
+        var footer = buildFooterElement(data);
+        if (footer) container.appendChild(footer);
+
+        return container;
+    }
+
     function buildChecklistFromData(data) {
         var container = document.createElement('div');
         container.className = 'chatbot-checklist';
@@ -1928,6 +2038,9 @@
         } else if (message.display_type === 'fee_groups' && Array.isArray(displayData.groups)) {
             messageContent.classList.add('has-fee-groups');
             messageContent.appendChild(buildFeeGroupsFromData(displayData));
+        } else if (message.display_type === 'payment_groups' && Array.isArray(displayData.groups)) {
+            messageContent.classList.add('has-fee-groups');
+            messageContent.appendChild(buildPaymentGroupsFromData(displayData));
         } else if (message.display_type === 'checklist' && displayData.sections) {
             messageContent.classList.add('has-checklist');
             messageContent.appendChild(buildChecklistFromData(displayData));
@@ -1952,7 +2065,7 @@
             });
         }
 
-        if (message.deep_link && message.display_type !== 'cards' && message.display_type !== 'table' && message.display_type !== 'fee_groups') {
+        if (message.deep_link && message.display_type !== 'cards' && message.display_type !== 'table' && message.display_type !== 'fee_groups' && message.display_type !== 'payment_groups') {
             var link = document.createElement('a');
             link.className = 'chatbot-deep-link';
             link.href = message.deep_link;

@@ -1121,6 +1121,49 @@
     white-space: nowrap;
 }
 
+/* ── Payment Groups ─────────────────────────────────────── */
+.cb-payment-header {
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.cb-payment-header-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.cb-payment-subtitle {
+    font-size: 11px;
+    color: var(--cb-primary);
+    font-weight: 500;
+    display: block;
+    margin-top: 2px;
+}
+
+.cb-payment-header-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.cb-payment-total {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cb-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.cb-payment-count {
+    font-size: 11px;
+    color: var(--cb-text-muted);
+}
+
+.cb-payment-link {
+    padding: 8px 12px;
+    border-top: 1px solid var(--cb-border-light);
+}
+
 /* ── Checklist (setup guide) ───────────────────────────────── */
 .chatbot-checklist {
     margin-top: 10px;

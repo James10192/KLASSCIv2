@@ -52,7 +52,7 @@ class SearchPaymentsTool extends ChatbotTool
 
     public function execute(array $args, $user): array
     {
-        $query = ESBTPPaiement::query()->with(['etudiant']);
+        $query = ESBTPPaiement::query()->with(['etudiant', 'inscription.classe.filiere', 'fraisCategory']);
 
         if (!empty($args['status'])) {
             $status = $this->normalizeStatus($args['status']);
@@ -82,26 +82,52 @@ class SearchPaymentsTool extends ChatbotTool
         $total = (clone $query)->count();
         $results = $query->orderByDesc('date_paiement')->limit($limit)->get();
 
-        $payments = $results->map(function ($p) {
-            $etudiant = $p->etudiant;
-            return [
-                'id' => $p->id,
+        // Grouper les paiements par inscription
+        $grouped = $results->groupBy('inscription_id');
+        $groups = [];
+
+        foreach ($grouped as $inscriptionId => $paiements) {
+            $first = $paiements->first();
+            $inscription = $first->inscription;
+            $etudiant = $first->etudiant;
+            $classe = $inscription?->classe;
+
+            $inscriptionInfo = [
                 'etudiant' => $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '')) : 'Inconnu',
-                'montant' => number_format($p->montant ?? 0, 0, ',', ' ') . ' FCFA',
-                'montant_brut' => $p->montant ?? 0,
-                'statut' => ucfirst(str_replace('_', ' ', $p->status ?? 'inconnu')),
-                'date' => $p->date_paiement?->format('d/m/Y') ?? 'N/A',
-                'mode' => ucfirst($p->mode_paiement ?? 'N/A'),
-                'lien_inscription' => $p->inscription_id && Route::has('esbtp.inscriptions.show')
-                    ? route('esbtp.inscriptions.show', $p->inscription_id) : null,
+                'classe' => $classe?->name ?? 'N/A',
+                'filiere' => $classe?->filiere?->name ?? 'N/A',
+                'type' => ucfirst(str_replace('_', ' ', $inscription?->type_inscription ?? 'N/A')),
+                'statut' => ucfirst(str_replace('_', ' ', $inscription?->status ?? 'N/A')),
+                'lien' => $inscriptionId && Route::has('esbtp.inscriptions.show')
+                    ? route('esbtp.inscriptions.show', $inscriptionId) : null,
             ];
-        })->toArray();
+
+            $items = $paiements->map(function ($p) {
+                return [
+                    'categorie' => $p->fraisCategory?->name ?? 'N/A',
+                    'montant' => number_format($p->montant ?? 0, 0, ',', ' ') . ' FCFA',
+                    'statut' => ucfirst(str_replace('_', ' ', $p->status ?? 'inconnu')),
+                    'date' => $p->date_paiement?->format('d/m/Y') ?? 'N/A',
+                    'mode' => ucfirst($p->mode_paiement ?? 'N/A'),
+                    'tranche' => $p->tranche ? 'Tranche ' . $p->tranche : null,
+                ];
+            })->toArray();
+
+            $totalMontant = $paiements->sum('montant');
+
+            $groups[] = [
+                'inscription' => $inscriptionInfo,
+                'payments' => $items,
+                'total_paye' => number_format($totalMontant, 0, ',', ' ') . ' FCFA',
+                'nb_paiements' => count($items),
+            ];
+        }
 
         return [
-            'results' => $payments,
-            'count' => count($payments),
+            'results' => $groups,
+            'count' => $total,
             'total' => $total,
-            'display_type' => 'table',
+            'display_type' => 'payment_groups',
             'deep_link' => Route::has('esbtp.paiements.index') ? route('esbtp.paiements.index') : null,
         ];
     }

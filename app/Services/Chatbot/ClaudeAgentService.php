@@ -194,7 +194,12 @@ class ClaudeAgentService
 
         // Construire display_data pour les résultats tabulaires/cartes
         if ($displayType === 'fee_groups' && $lastToolResult) {
-            // Fee groups : données pré-structurées par le tool
+            $displayData = [
+                'groups' => $lastToolResult['results'] ?? [],
+                'deep_link' => $lastToolResult['deep_link'] ?? null,
+                'total_count' => $lastToolResult['count'] ?? 0,
+            ];
+        } elseif ($displayType === 'payment_groups' && $lastToolResult) {
             $displayData = [
                 'groups' => $lastToolResult['results'] ?? [],
                 'deep_link' => $lastToolResult['deep_link'] ?? null,
