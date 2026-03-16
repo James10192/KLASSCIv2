@@ -21,7 +21,10 @@ use App\Http\Controllers\ESBTPResultatController;
 use App\Http\Controllers\ESBTPStudentBulletinController;
 use App\Http\Controllers\ESBTPCategoriePaiementController;
 use App\Http\Controllers\ESBTPClasseController;
+use App\Http\Controllers\ESBTPComptabiliteAnalyticsController;
 use App\Http\Controllers\ESBTPComptabiliteController;
+use App\Http\Controllers\ESBTPComptabiliteFraisController;
+use App\Http\Controllers\ESBTPComptabiliteRelanceController;
 use App\Http\Controllers\ESBTPContinuingEducationController;
 use App\Http\Controllers\ESBTPCycleController;
 use App\Http\Controllers\ESBTPDepartmentController;
@@ -1406,21 +1409,21 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
 
     // Gestion des frais de scolarité
     Route::get('/frais-scolarite', [ESBTPComptabiliteReportController::class, 'fraisScolarite'])->name('frais-scolarite');
-    Route::get('/frais-scolarite/create', [ESBTPComptabiliteController::class, 'createFraisScolarite'])->name('frais-scolarite.create');
-    Route::post('/frais-scolarite', [ESBTPComptabiliteController::class, 'storeFraisScolarite'])->name('frais-scolarite.store');
-    Route::get('/frais-scolarite/{id}', [ESBTPComptabiliteController::class, 'showFraisScolarite'])->name('frais-scolarite.show');
-    Route::get('/frais-scolarite/{id}/edit', [ESBTPComptabiliteController::class, 'editFraisScolarite'])->name('frais-scolarite.edit');
-    Route::put('/frais-scolarite/{id}', [ESBTPComptabiliteController::class, 'updateFraisScolarite'])->name('frais-scolarite.update');
-    Route::delete('/frais-scolarite/{id}', [ESBTPComptabiliteController::class, 'destroyFraisScolarite'])->name('frais-scolarite.destroy');
+    Route::get('/frais-scolarite/create', [ESBTPComptabiliteFraisController::class, 'createFraisScolarite'])->name('frais-scolarite.create');
+    Route::post('/frais-scolarite', [ESBTPComptabiliteFraisController::class, 'storeFraisScolarite'])->name('frais-scolarite.store');
+    Route::get('/frais-scolarite/{id}', [ESBTPComptabiliteFraisController::class, 'showFraisScolarite'])->name('frais-scolarite.show');
+    Route::get('/frais-scolarite/{id}/edit', [ESBTPComptabiliteFraisController::class, 'editFraisScolarite'])->name('frais-scolarite.edit');
+    Route::put('/frais-scolarite/{id}', [ESBTPComptabiliteFraisController::class, 'updateFraisScolarite'])->name('frais-scolarite.update');
+    Route::delete('/frais-scolarite/{id}', [ESBTPComptabiliteFraisController::class, 'destroyFraisScolarite'])->name('frais-scolarite.destroy');
 
     // Gestion des bourses et aides
-    Route::get('/bourses', [ESBTPComptabiliteController::class, 'bourses'])->name('bourses');
-    Route::get('/bourses/create', [ESBTPComptabiliteController::class, 'createBourse'])->name('bourses.create');
-    Route::post('/bourses', [ESBTPComptabiliteController::class, 'storeBourse'])->name('bourses.store');
-    Route::get('/bourses/{id}', [ESBTPComptabiliteController::class, 'showBourse'])->name('bourses.show');
-    Route::get('/bourses/{id}/edit', [ESBTPComptabiliteController::class, 'editBourse'])->name('bourses.edit');
-    Route::put('/bourses/{id}', [ESBTPComptabiliteController::class, 'updateBourse'])->name('bourses.update');
-    Route::delete('/bourses/{id}', [ESBTPComptabiliteController::class, 'destroyBourse'])->name('bourses.destroy');
+    Route::get('/bourses', [ESBTPComptabiliteFraisController::class, 'bourses'])->name('bourses');
+    Route::get('/bourses/create', [ESBTPComptabiliteFraisController::class, 'createBourse'])->name('bourses.create');
+    Route::post('/bourses', [ESBTPComptabiliteFraisController::class, 'storeBourse'])->name('bourses.store');
+    Route::get('/bourses/{id}', [ESBTPComptabiliteFraisController::class, 'showBourse'])->name('bourses.show');
+    Route::get('/bourses/{id}/edit', [ESBTPComptabiliteFraisController::class, 'editBourse'])->name('bourses.edit');
+    Route::put('/bourses/{id}', [ESBTPComptabiliteFraisController::class, 'updateBourse'])->name('bourses.update');
+    Route::delete('/bourses/{id}', [ESBTPComptabiliteFraisController::class, 'destroyBourse'])->name('bourses.destroy');
 
     // Tableau de bord et rapports financiers
     Route::get('/rapports', [ESBTPComptabiliteReportController::class, 'rapports'])->name('rapports');
@@ -1432,47 +1435,47 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
         Route::get('/builder', [ESBTPComptabiliteController::class, 'rapportsAvances'])->name('builder')
             ->middleware(['permission:comptabilite.dashboard.view']);
 
-        Route::post('/generer', [ESBTPComptabiliteController::class, 'genererRapportPersonnalise'])->name('generer')
+        Route::post('/generer', [ESBTPComptabiliteAnalyticsController::class, 'genererRapportPersonnalise'])->name('generer')
             ->middleware(['permission:comptabilite.reports.export', 'throttle:10,1']);
 
-        Route::post('/schedule', [ESBTPComptabiliteController::class, 'programmerRapport'])->name('schedule')
+        Route::post('/schedule', [ESBTPComptabiliteAnalyticsController::class, 'programmerRapport'])->name('schedule')
             ->middleware(['permission:comptabilite.reports.export', 'throttle:5,1']);
 
-        Route::get('/scheduled', [ESBTPComptabiliteController::class, 'listeRapportsProgrammes'])->name('scheduled')
+        Route::get('/scheduled', [ESBTPComptabiliteAnalyticsController::class, 'listeRapportsProgrammes'])->name('scheduled')
             ->middleware(['permission:comptabilite.dashboard.view']);
 
-        Route::post('/analytics/predictive', [ESBTPComptabiliteController::class, 'analysesPredictives'])->name('analytics.predictive')
+        Route::post('/analytics/predictive', [ESBTPComptabiliteAnalyticsController::class, 'analysesPredictives'])->name('analytics.predictive')
             ->middleware(['permission:comptabilite.dashboard.view', 'throttle:20,1']);
 
-        Route::get('/analytics/cashflow', [ESBTPComptabiliteController::class, 'projectionCashFlow'])->name('analytics.cashflow')
+        Route::get('/analytics/cashflow', [ESBTPComptabiliteAnalyticsController::class, 'projectionCashFlow'])->name('analytics.cashflow')
             ->middleware(['permission:comptabilite.dashboard.view']);
 
-        Route::get('/analytics/anomalies', [ESBTPComptabiliteController::class, 'detectionAnomalies'])->name('analytics.anomalies')
+        Route::get('/analytics/anomalies', [ESBTPComptabiliteAnalyticsController::class, 'detectionAnomalies'])->name('analytics.anomalies')
             ->middleware(['permission:comptabilite.dashboard.view']);
 
-        Route::get('/templates', [ESBTPComptabiliteController::class, 'modelesRapports'])->name('templates')
+        Route::get('/templates', [ESBTPComptabiliteAnalyticsController::class, 'modelesRapports'])->name('templates')
             ->middleware(['permission:comptabilite.dashboard.view']);
 
-        Route::post('/templates', [ESBTPComptabiliteController::class, 'sauvegarderModele'])->name('templates.save')
+        Route::post('/templates', [ESBTPComptabiliteAnalyticsController::class, 'sauvegarderModele'])->name('templates.save')
             ->middleware(['permission:comptabilite.config.manage']);
     });
 
     // NOUVELLES ROUTES ANALYTICS PRÉDICTIFS - Tâche #11
     Route::prefix('analytics-predictifs')->name('analytics-predictifs.')->group(function () {
-        Route::get('/', [ESBTPComptabiliteController::class, 'analyticsPredictifs'])->name('index')
+        Route::get('/', [ESBTPComptabiliteAnalyticsController::class, 'analyticsPredictifs'])->name('index')
             ->middleware(['permission:comptabilite.dashboard.view']);
 
-        Route::get('/recommandations', [ESBTPComptabiliteController::class, 'recommandationsIntelligentes'])->name('recommandations')
+        Route::get('/recommandations', [ESBTPComptabiliteAnalyticsController::class, 'recommandationsIntelligentes'])->name('recommandations')
             ->middleware(['permission:comptabilite.dashboard.view']);
 
-        Route::get('/benchmarking', [ESBTPComptabiliteController::class, 'benchmarkingAvance'])->name('benchmarking')
+        Route::get('/benchmarking', [ESBTPComptabiliteAnalyticsController::class, 'benchmarkingAvance'])->name('benchmarking')
             ->middleware(['permission:comptabilite.dashboard.view']);
 
-        Route::get('/visualisations', [ESBTPComptabiliteController::class, 'visualisationsAvancees'])->name('visualisations')
+        Route::get('/visualisations', [ESBTPComptabiliteAnalyticsController::class, 'visualisationsAvancees'])->name('visualisations')
             ->middleware(['permission:comptabilite.dashboard.view']);
 
         // API pour les données en temps réel
-        Route::get('/api/data', [ESBTPComptabiliteController::class, 'apiAnalyticsPredictifs'])->name('api.data')
+        Route::get('/api/data', [ESBTPComptabiliteAnalyticsController::class, 'apiAnalyticsPredictifs'])->name('api.data')
             ->middleware(['permission:comptabilite.dashboard.view', 'throttle:60,1']);
     });
 
@@ -1490,45 +1493,45 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
 
     // Gestion des relances automatisées
     Route::prefix('relances')->name('relances.')->group(function () {
-        Route::get('/', [ESBTPComptabiliteController::class, 'gestionRelances'])->name('index');
-        Route::get('/config', [ESBTPComptabiliteController::class, 'configurationRelances'])->name('config');
-        Route::get('/export-excel', [ESBTPComptabiliteController::class, 'exportRelancesExcel'])->name('export-excel')
+        Route::get('/', [ESBTPComptabiliteRelanceController::class, 'gestionRelances'])->name('index');
+        Route::get('/config', [ESBTPComptabiliteRelanceController::class, 'configurationRelances'])->name('config');
+        Route::get('/export-excel', [ESBTPComptabiliteRelanceController::class, 'exportRelancesExcel'])->name('export-excel')
             ->middleware(['permission:comptabilite.reports.export']);
-        Route::get('/export-pdf', [ESBTPComptabiliteController::class, 'exportRelancesPdf'])->name('export-pdf')
+        Route::get('/export-pdf', [ESBTPComptabiliteRelanceController::class, 'exportRelancesPdf'])->name('export-pdf')
             ->middleware(['permission:comptabilite.reports.export']);
-        Route::get('/{id}', [ESBTPComptabiliteController::class, 'showRelance'])->name('show')->where('id', '[0-9]+');
+        Route::get('/{id}', [ESBTPComptabiliteRelanceController::class, 'showRelance'])->name('show')->where('id', '[0-9]+');
 
         // Actions sur les relances
-        Route::post('/planifier', [ESBTPComptabiliteController::class, 'planifierRelances'])->name('planifier')
+        Route::post('/planifier', [ESBTPComptabiliteRelanceController::class, 'planifierRelances'])->name('planifier')
             ->middleware(['permission:comptabilite.relances.send', 'throttle:10,1']);
-        Route::post('/{id}/renvoyer', [ESBTPComptabiliteController::class, 'renvoyerRelance'])->name('renvoyer')->where('id', '[0-9]+')
+        Route::post('/{id}/renvoyer', [ESBTPComptabiliteRelanceController::class, 'renvoyerRelance'])->name('renvoyer')->where('id', '[0-9]+')
             ->middleware(['permission:comptabilite.relances.send', 'throttle:30,1']);
-        Route::post('/executer', [ESBTPComptabiliteController::class, 'executerRelances'])->name('executer')
+        Route::post('/executer', [ESBTPComptabiliteRelanceController::class, 'executerRelances'])->name('executer')
             ->middleware(['permission:comptabilite.relances.send', 'throttle:5,1']);
 
         // Configuration
-        Route::post('/config/templates', [ESBTPComptabiliteController::class, 'sauvegarderTemplates'])->name('config.templates');
-        Route::post('/config/parametres', [ESBTPComptabiliteController::class, 'sauvegarderParametres'])->name('config.parametres');
-        Route::post('/config/preview', [ESBTPComptabiliteController::class, 'previewTemplate'])->name('config.preview');
+        Route::post('/config/templates', [ESBTPComptabiliteRelanceController::class, 'sauvegarderTemplates'])->name('config.templates');
+        Route::post('/config/parametres', [ESBTPComptabiliteRelanceController::class, 'sauvegarderParametres'])->name('config.parametres');
+        Route::post('/config/preview', [ESBTPComptabiliteRelanceController::class, 'previewTemplate'])->name('config.preview');
 
         // Aperçus et statistiques
-        Route::get('/apercu-etudiants', [ESBTPComptabiliteController::class, 'apercuRelances'])->name('apercu');
+        Route::get('/apercu-etudiants', [ESBTPComptabiliteRelanceController::class, 'apercuRelances'])->name('apercu');
 
         // NOUVELLES ROUTES ANALYTICS AVANCÉES - Tâche #4
-        Route::get('/analytics', [ESBTPComptabiliteController::class, 'analyticsRelances'])->name('analytics')
+        Route::get('/analytics', [ESBTPComptabiliteRelanceController::class, 'analyticsRelances'])->name('analytics')
             ->middleware(['permission:comptabilite.dashboard.view']);
 
-        Route::post('/planifier-avancees', [ESBTPComptabiliteController::class, 'planifierRelancesAvancees'])->name('planifier.avancees')
+        Route::post('/planifier-avancees', [ESBTPComptabiliteRelanceController::class, 'planifierRelancesAvancees'])->name('planifier.avancees')
             ->middleware(['permission:comptabilite.relances.send', 'throttle:5,1']);
 
-        Route::get('/export', [ESBTPComptabiliteController::class, 'exportAnalyticsRelances'])->name('export')
+        Route::get('/export', [ESBTPComptabiliteRelanceController::class, 'exportAnalyticsRelances'])->name('export')
             ->middleware(['permission:comptabilite.reports.export']);
 
-        Route::post('/preview-segmentation', [ESBTPComptabiliteController::class, 'previewSegmentation'])->name('preview.segmentation')
+        Route::post('/preview-segmentation', [ESBTPComptabiliteRelanceController::class, 'previewSegmentation'])->name('preview.segmentation')
             ->middleware(['permission:comptabilite.relances.send']);
 
         // Fiche relance par étudiant
-        Route::get('/etudiant/{inscription}', [ESBTPComptabiliteController::class, 'relanceEtudiant'])->name('etudiant');
+        Route::get('/etudiant/{inscription}', [ESBTPComptabiliteRelanceController::class, 'relanceEtudiant'])->name('etudiant');
     });
 
     // Dashboard comptabilité
