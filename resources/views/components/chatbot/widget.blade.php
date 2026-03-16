@@ -122,6 +122,7 @@
                 userPhoto: @json(auth()->check() && auth()->user()->profile_photo_path ? asset('storage/' . auth()->user()->profile_photo_path) : ''),
                 routes: {
                     message: '{{ route('chatbot.message') }}',
+                    messageStream: '{{ route('chatbot.message.stream') }}',
                     conversations: '{{ route('chatbot.conversations') }}',
                     history: '{{ route('chatbot.history', ['conversationId' => '__ID__']) }}',
                     delete: '{{ route('chatbot.delete', ['conversationId' => '__ID__']) }}',

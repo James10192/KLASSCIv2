@@ -13,6 +13,11 @@ use App\Services\Chatbot\Tools\SearchFeesTool;
 use App\Services\Chatbot\Tools\SearchInscriptionsTool;
 use App\Services\Chatbot\Tools\SearchPaymentsTool;
 use App\Services\Chatbot\Tools\SearchStudentsTool;
+use App\Services\Chatbot\Tools\SearchEvaluationsTool;
+use App\Services\Chatbot\Tools\SearchNotesTool;
+use App\Services\Chatbot\Tools\SearchAttendancesTool;
+use App\Services\Chatbot\Tools\SearchTeachersTool;
+use App\Services\Chatbot\Tools\GetDashboardKpisTool;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -42,6 +47,11 @@ class ClaudeAgentService
             new SearchInscriptionsTool(),
             new SearchFeesTool(),
             new SearchClassesTool(),
+            new SearchEvaluationsTool(),
+            new SearchNotesTool(),
+            new SearchAttendancesTool(),
+            new SearchTeachersTool(),
+            new GetDashboardKpisTool(),
             new GetSetupGuideTool($setupGuide),
             new NavigateToPageTool(),
         ];
@@ -410,6 +420,47 @@ PROMPT;
             Log::error('ClaudeAgent: call failed', ['error' => $e->getMessage()]);
             return null;
         }
+    }
+
+    /**
+     * Chat avec streaming SSE.
+     * Tool rounds = non-streaming (rapide). Réponse finale = streaming texte.
+     * Appelle $onEvent(string $type, mixed $data) pour chaque événement SSE.
+     *
+     * @return array{text: string, tool_calls: array, display_type: string, display_data: ?array, deep_link: ?string}
+     */
+    public function chatStream(
+        ChatbotConversation $conversation,
+        string $message,
+        $user,
+        ?ChatbotUserPreference $preferences = null,
+        ?array $clientContext = null,
+        callable $onEvent = null,
+    ): array {
+        // Phase 1 : Appel normal (tool rounds) — pas de streaming
+        $emit = $onEvent ?? fn() => null;
+        $emit('status', ['message' => 'Analyse de votre demande...']);
+
+        $result = $this->chat($conversation, $message, $user, $preferences, $clientContext);
+
+        // Phase 2 : Envoyer le texte mot par mot pour simuler le streaming
+        $text = $result['text'] ?? '';
+        if ($text) {
+            $words = preg_split('/(\s+)/u', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
+            $buffer = '';
+            foreach ($words as $word) {
+                $buffer .= $word;
+                $emit('text_delta', ['text' => $word, 'full_text' => $buffer]);
+            }
+        }
+
+        $emit('done', [
+            'display_type' => $result['display_type'],
+            'display_data' => $result['display_data'],
+            'deep_link' => $result['deep_link'],
+        ]);
+
+        return $result;
     }
 
     /**

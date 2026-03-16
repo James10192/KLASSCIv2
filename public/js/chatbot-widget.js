@@ -1669,59 +1669,148 @@
             payload.conversation_id = this.state.currentConversationId;
         }
 
-        fetch(this.config.routes.message, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-TOKEN': this.config.csrfToken
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify(payload)
-        })
-            .then(function (response) {
-                if (!response.ok) {
-                    throw new Error('Erreur ' + response.status);
+        var streamUrl = this.config.routes.messageStream;
+        if (streamUrl) {
+            // Streaming SSE via fetch + ReadableStream
+            var streamMessage = null;
+            var streamTextEl = null;
+            var fullText = '';
+            var doneData = null;
+
+            fetch(streamUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'text/event-stream',
+                    'X-CSRF-TOKEN': self.config.csrfToken
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(payload)
+            }).then(function (response) {
+                if (!response.ok) throw new Error('Erreur ' + response.status);
+                var reader = response.body.getReader();
+                var decoder = new TextDecoder();
+                var buffer = '';
+
+                function processChunk() {
+                    return reader.read().then(function (result) {
+                        if (result.done) return;
+                        buffer += decoder.decode(result.value, { stream: true });
+
+                        var lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        var currentEvent = '';
+                        for (var i = 0; i < lines.length; i++) {
+                            var line = lines[i];
+                            if (line.indexOf('event: ') === 0) {
+                                currentEvent = line.substring(7).trim();
+                            } else if (line.indexOf('data: ') === 0) {
+                                var jsonStr = line.substring(6);
+                                try {
+                                    var eventData = JSON.parse(jsonStr);
+                                    if (currentEvent === 'status') {
+                                        // Update typing indicator text
+                                        if (self.typingElement) {
+                                            var statusEl = self.typingElement.querySelector('.chatbot-typing-text');
+                                            if (statusEl) statusEl.textContent = eventData.message || '';
+                                        }
+                                    } else if (currentEvent === 'text_delta') {
+                                        // Remove typing indicator, start streaming text
+                                        if (self.typingElement) {
+                                            self.typingElement.remove();
+                                            self.typingElement = null;
+                                        }
+                                        if (!streamMessage) {
+                                            streamMessage = self.createStreamingMessage();
+                                            streamTextEl = streamMessage.querySelector('.chatbot-stream-text');
+                                        }
+                                        fullText = eventData.full_text || (fullText + (eventData.text || ''));
+                                        if (streamTextEl) streamTextEl.innerHTML = self.renderMarkdown(fullText);
+                                        self.scrollToBottom();
+                                    } else if (currentEvent === 'done') {
+                                        doneData = eventData;
+                                    } else if (currentEvent === 'complete') {
+                                        if (eventData.conversation_id) {
+                                            self.state.currentConversationId = eventData.conversation_id;
+                                        }
+                                    } else if (currentEvent === 'error') {
+                                        throw new Error(eventData.message || 'Erreur streaming');
+                                    }
+                                } catch (e) {
+                                    if (currentEvent === 'error') throw e;
+                                }
+                                currentEvent = '';
+                            }
+                        }
+                        return processChunk();
+                    });
                 }
-                return response.json();
-            })
-            .then(function (data) {
+                return processChunk();
+            }).then(function () {
                 if (self.typingElement) {
                     self.typingElement.remove();
                     self.typingElement = null;
                 }
-
-                if (!data || !data.success) {
-                    throw new Error(data && data.message ? data.message : 'Réponse invalide');
-                }
-
-                if (data.conversation_id) {
-                    self.state.currentConversationId = data.conversation_id;
-                }
-
-                self.appendAssistantMessage({
-                    content: data.message,
-                    display_type: data.display_type,
-                    display_data: data.display_data,
-                    deep_link: data.deep_link,
+                // Replace streaming message with final rendered message
+                if (streamMessage) streamMessage.remove();
+                var finalMsg = {
+                    content: fullText,
+                    display_type: doneData ? doneData.display_type : 'text',
+                    display_data: doneData ? doneData.display_data : null,
+                    deep_link: doneData ? doneData.deep_link : null,
                     created_at: new Date().toISOString()
-                });
-
+                };
+                self.appendAssistantMessage(finalMsg);
                 self.fetchConversations();
-            })
-            .catch(function (error) {
-                debugError('Chatbot widget - envoi message', error);
-                if (self.typingElement) {
-                    self.typingElement.remove();
-                    self.typingElement = null;
-                }
+            }).catch(function (error) {
+                debugError('Chatbot stream error', error);
+                if (self.typingElement) { self.typingElement.remove(); self.typingElement = null; }
+                if (streamMessage) streamMessage.remove();
                 self.appendErrorMessage('Désolé, une erreur est survenue. Réessayez dans un instant.');
-            })
-            .finally(function () {
+            }).finally(function () {
                 self.state.isSending = false;
                 self.sendButton.disabled = false;
                 self.scrollToBottom();
             });
+        } else {
+            // Fallback non-streaming
+            fetch(this.config.routes.message, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': this.config.csrfToken
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(payload)
+            })
+                .then(function (response) {
+                    if (!response.ok) throw new Error('Erreur ' + response.status);
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (self.typingElement) { self.typingElement.remove(); self.typingElement = null; }
+                    if (!data || !data.success) throw new Error(data && data.message ? data.message : 'Réponse invalide');
+                    if (data.conversation_id) self.state.currentConversationId = data.conversation_id;
+                    self.appendAssistantMessage({
+                        content: data.message, display_type: data.display_type,
+                        display_data: data.display_data, deep_link: data.deep_link,
+                        created_at: new Date().toISOString()
+                    });
+                    self.fetchConversations();
+                })
+                .catch(function (error) {
+                    debugError('Chatbot widget - envoi message', error);
+                    if (self.typingElement) { self.typingElement.remove(); self.typingElement = null; }
+                    self.appendErrorMessage('Désolé, une erreur est survenue. Réessayez dans un instant.');
+                })
+                .finally(function () {
+                    self.state.isSending = false;
+                    self.sendButton.disabled = false;
+                    self.scrollToBottom();
+                });
+        }
     };
 
     ChatbotWidget.prototype.buildUserAvatar = function () {
@@ -1761,6 +1850,33 @@
         wrapper.appendChild(bubble);
         this.messagesContainer.appendChild(wrapper);
         this.scrollToBottom();
+    };
+
+    ChatbotWidget.prototype.createStreamingMessage = function () {
+        var wrapper = document.createElement('div');
+        wrapper.className = 'chatbot-message-wrapper assistant';
+        var avatar = document.createElement('div');
+        avatar.className = 'chatbot-avatar assistant';
+        avatar.innerHTML = '<i class="fas fa-robot"></i>';
+        var bubble = document.createElement('div');
+        bubble.className = 'chatbot-bubble assistant';
+        var textEl = document.createElement('div');
+        textEl.className = 'chatbot-stream-text';
+        bubble.appendChild(textEl);
+        wrapper.appendChild(avatar);
+        wrapper.appendChild(bubble);
+        this.messagesContainer.appendChild(wrapper);
+        this.scrollToBottom();
+        return wrapper;
+    };
+
+    ChatbotWidget.prototype.renderMarkdown = function (text) {
+        if (!text) return '';
+        return escapeHtml(text)
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`(.*?)`/g, '<code>$1</code>')
+            .replace(/\n/g, '<br>');
     };
 
     ChatbotWidget.prototype.appendAssistantMessage = function (message) {

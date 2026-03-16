@@ -54,6 +54,44 @@ class ChatbotController extends Controller
     }
 
     /**
+     * Envoyer un message avec streaming SSE
+     */
+    public function sendMessageStream(Request $request)
+    {
+        $validated = $request->validate([
+            'message' => 'required|string|max:1000',
+            'conversation_id' => 'nullable|string',
+            'current_url' => 'nullable|string|max:2048',
+            'current_path' => 'nullable|string|max:1024',
+            'page_title' => 'nullable|string|max:255',
+        ]);
+
+        return response()->stream(function () use ($validated) {
+            $result = $this->chatbotService->sendMessageStream(
+                $validated['message'],
+                $validated['conversation_id'] ?? null,
+                [
+                    'current_url' => $validated['current_url'] ?? null,
+                    'current_path' => $validated['current_path'] ?? null,
+                    'page_title' => $validated['page_title'] ?? null,
+                ],
+                function (string $event, array $data) {
+                    echo "event: {$event}\ndata: " . json_encode($data, JSON_UNESCAPED_UNICODE) . "\n\n";
+                    if (ob_get_level()) {
+                        ob_flush();
+                    }
+                    flush();
+                }
+            );
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'Connection' => 'keep-alive',
+            'X-Accel-Buffering' => 'no',
+        ]);
+    }
+
+    /**
      * Récupérer l'historique d'une conversation
      */
     public function getHistory(Request $request, string $conversationId)

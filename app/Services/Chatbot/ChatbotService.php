@@ -136,8 +136,12 @@ class ChatbotService
                 ])),
             ]);
 
-            // 10. Titre auto
-            $this->updateConversationTitleIfNeeded($conversation, $message);
+            // 10. Titre auto (async — après envoi de la réponse)
+            $conv = $conversation;
+            $msg = $message;
+            app()->terminating(function () use ($conv, $msg) {
+                $this->updateConversationTitleIfNeeded($conv, $msg);
+            });
 
             $duration = round((microtime(true) - $startTime) * 1000, 2);
             Log::info('ChatbotService: success', ['duration_ms' => $duration]);
@@ -162,6 +166,82 @@ class ChatbotService
                 'message' => "Désolé, une erreur s'est produite. Veuillez réessayer.",
                 'error' => config('app.debug') ? $e->getMessage() : null,
             ];
+        }
+    }
+
+    /**
+     * Envoyer un message avec streaming SSE.
+     * Réutilise la logique de sendMessage mais avec chatStream pour le streaming texte.
+     */
+    public function sendMessageStream(string $message, ?string $sessionId, ?array $clientContext, callable $onEvent): array
+    {
+        $user = Auth::user();
+        if (!$user) {
+            $onEvent('error', ['message' => 'Non connecté']);
+            return ['success' => false];
+        }
+
+        try {
+            $conversation = $this->getOrCreateConversation($user->id, $sessionId);
+            $preferences = $this->getUserPreferences($user->id);
+
+            ChatbotMessage::create([
+                'conversation_id' => $conversation->id,
+                'role' => 'user',
+                'content' => $message,
+                'display_type' => 'text',
+            ]);
+
+            if ($clientContext) {
+                $conversation->update([
+                    'context' => array_filter(array_merge($conversation->context ?? [], [
+                        'last_page_url' => $clientContext['current_url'] ?? null,
+                        'last_page_path' => $clientContext['current_path'] ?? null,
+                        'last_page_title' => $clientContext['page_title'] ?? null,
+                    ])),
+                ]);
+            }
+
+            $agentResponse = $this->agent->chatStream(
+                $conversation, $message, $user, $preferences, $clientContext, $onEvent
+            );
+
+            $displayData = $agentResponse['display_data'];
+            $assistantMessage = ChatbotMessage::create([
+                'conversation_id' => $conversation->id,
+                'role' => 'assistant',
+                'content' => $agentResponse['text'],
+                'display_type' => $agentResponse['display_type'],
+                'display_data' => $displayData,
+                'deep_link' => $agentResponse['deep_link'],
+                'metadata' => [
+                    'tool_calls' => $agentResponse['tool_calls'],
+                    'engine' => 'claude',
+                ],
+            ]);
+
+            $conversation->update([
+                'last_activity_at' => now(),
+                'context' => array_filter(array_merge($conversation->context ?? [], [
+                    'last_display' => $agentResponse['display_type'],
+                ])),
+            ]);
+
+            // Titre async après envoi de la réponse
+            app()->terminating(function () use ($conversation, $message) {
+                $this->updateConversationTitleIfNeeded($conversation, $message);
+            });
+
+            $onEvent('complete', [
+                'conversation_id' => $conversation->session_id,
+                'message_id' => $assistantMessage->id,
+            ]);
+
+            return ['success' => true];
+        } catch (\Throwable $e) {
+            Log::error('ChatbotService: stream error', ['error' => $e->getMessage()]);
+            $onEvent('error', ['message' => "Désolé, une erreur s'est produite."]);
+            return ['success' => false];
         }
     }
 

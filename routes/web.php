@@ -2011,6 +2011,7 @@ Route::prefix('external-grading')->name('external-grading.')->group(function () 
 // Routes Chatbot IA - Accessible à tous les utilisateurs authentifiés
 Route::middleware(['auth'])->prefix('chatbot')->name('chatbot.')->group(function () {
     Route::post('/message', [App\Http\Controllers\ChatbotController::class, 'sendMessage'])->name('message');
+    Route::post('/message/stream', [App\Http\Controllers\ChatbotController::class, 'sendMessageStream'])->name('message.stream');
     Route::get('/conversations', [App\Http\Controllers\ChatbotController::class, 'listConversations'])->name('conversations');
     Route::get('/conversations/{conversationId}/history', [App\Http\Controllers\ChatbotController::class, 'getHistory'])->name('history');
     Route::delete('/conversations/{conversationId}', [App\Http\Controllers\ChatbotController::class, 'deleteConversation'])->name('delete');
