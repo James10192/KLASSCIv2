@@ -1625,9 +1625,28 @@
             });
     };
 
+    ChatbotWidget.prototype.buildUserAvatar = function () {
+        var avatar = document.createElement('div');
+        avatar.className = 'chatbot-message-avatar';
+
+        if (this.config.userPhoto) {
+            var img = document.createElement('img');
+            img.src = this.config.userPhoto;
+            img.alt = this.config.userName || '';
+            img.className = 'chatbot-avatar-img';
+            avatar.appendChild(img);
+        } else {
+            avatar.innerHTML = '<i class="fas fa-user"></i>';
+        }
+
+        return avatar;
+    };
+
     ChatbotWidget.prototype.appendUserMessage = function (content, createdAt) {
         var wrapper = document.createElement('div');
         wrapper.className = 'chatbot-message user';
+
+        wrapper.appendChild(this.buildUserAvatar());
 
         var bubble = document.createElement('div');
         bubble.className = 'chatbot-message-bubble';

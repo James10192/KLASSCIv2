@@ -444,7 +444,17 @@
 }
 
 .chatbot-message.user .chatbot-message-avatar {
-    display: none; /* Hide user avatar for cleaner look */
+    background: var(--cb-bg-muted);
+    color: var(--cb-text-secondary);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.chatbot-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
 }
 
 /* — Bubble ——————————————————————————————————————————————————— */
