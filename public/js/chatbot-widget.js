@@ -1646,6 +1646,13 @@
         var wrapper = document.createElement('div');
         wrapper.className = 'chatbot-message user';
 
+        if (createdAt) {
+            var meta = document.createElement('div');
+            meta.className = 'chatbot-message-time user';
+            meta.textContent = formatTimeLabel(createdAt);
+            this.messagesContainer.appendChild(meta);
+        }
+
         wrapper.appendChild(this.buildUserAvatar());
 
         var bubble = document.createElement('div');
@@ -1653,14 +1660,6 @@
         bubble.innerHTML = formatText(content);
 
         wrapper.appendChild(bubble);
-
-        if (createdAt) {
-            var meta = document.createElement('div');
-            meta.className = 'chatbot-message-time';
-            meta.textContent = formatTimeLabel(createdAt);
-            wrapper.appendChild(meta);
-        }
-
         this.messagesContainer.appendChild(wrapper);
         this.scrollToBottom();
     };
@@ -1725,13 +1724,6 @@
             messageContent.appendChild(link);
         }
 
-        if (message.created_at) {
-            var meta = document.createElement('div');
-            meta.className = 'chatbot-message-time';
-            meta.textContent = formatTimeLabel(message.created_at);
-            wrapper.appendChild(meta);
-        }
-
         if (displayData.follow_up) {
             var followUp = buildFollowUpChips(displayData.follow_up);
             if (followUp) {
@@ -1753,6 +1745,13 @@
                     field.focus();
                 }
             }, 120);
+        }
+
+        if (message.created_at) {
+            var meta = document.createElement('div');
+            meta.className = 'chatbot-message-time assistant';
+            meta.textContent = formatTimeLabel(message.created_at);
+            this.messagesContainer.appendChild(meta);
         }
 
         wrapper.appendChild(avatar);
