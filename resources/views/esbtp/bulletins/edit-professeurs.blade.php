@@ -1,125 +1,111 @@
 @extends('layouts.app')
 
-@section('title', 'Édition des professeurs - KLASSCI')
+@section('title', 'Édition des professeurs — KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/student-results.css') }}">
+<style>
+.subject-card {
+    border: 1.5px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 1.25rem;
+    transition: all 0.2s ease;
+    background: white;
+}
+.subject-card:hover {
+    border-color: #0453cb;
+    box-shadow: 0 4px 12px rgba(4,83,203,0.1);
+}
+.form-select-modern {
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    transition: border-color 0.2s;
+    width: 100%;
+}
+.form-select-modern:focus { border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,0.1); outline: none; }
+.form-control-modern {
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    width: 100%;
+}
+.form-control-modern:focus { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,0.1); outline: none; }
+.form-control-modern.value-changed { animation: valFlash 0.8s ease; }
+@keyframes valFlash {
+    0% { background: #d1fae5; transform: scale(1.01); }
+    100% { background: white; transform: scale(1); }
+}
+</style>
 @endsection
 
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header Section -->
-        <div class="dashboard-header">
-            <div class="header-left">
-                <h1><i class="fas fa-user-edit me-2"></i>Édition des professeurs</h1>
-                <p class="header-subtitle">Configurez les enseignants pour chaque matière du bulletin</p>
-            </div>
-            <div class="header-actions">
-                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur'))
-                <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="btn btn-outline-primary me-2" title="Gérer les matières de cette classe">
-                    <i class="fas fa-sliders-h me-1"></i>Gérer les matières de la classe
-                </a>
-                @endif
-                @role('superAdmin')
-                <a href="{{ route('esbtp.matieres.index') }}" class="btn btn-outline-info me-2" title="Gestion globale des matières">
-                    <i class="fas fa-cog me-1"></i>Gestion globale
-                </a>
-                @endrole
-                <span class="badge bg-primary fs-6">
-                    <i class="fas fa-graduation-cap me-1"></i>
-                    {{ $etudiant->nom }} {{ $etudiant->prenom }}
-                </span>
-            </div>
-        </div>
 
-        <!-- Statistiques KPI -->
-        <div class="kpi-grid mb-4">
-            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
-                <div class="kpi-title" style="color: #000; font-weight: 600;">Classe</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 1.5rem; font-weight: bold;">{{ $classe->libelle ?? $classe->name ?? 'N/A' }}</div>
-                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
-                    <i class="fas fa-users"></i>
-                    {{ $classe->filiere->nom ?? $classe->filiere->name ?? 'N/A' }}
-                </div>
-            </div>
-            
-            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
-                <div class="kpi-title" style="color: #000; font-weight: 600;">Matières générales</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $resultatsGeneraux->count() ?? 0 }}</div>
-                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
-                    <i class="fas fa-graduation-cap"></i>
-                    Enseignement général
-                </div>
-            </div>
-            
-            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
-                <div class="kpi-title" style="color: #000; font-weight: 600;">Matières techniques</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ $resultatsTechniques->count() ?? 0 }}</div>
-                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
-                    <i class="fas fa-tools"></i>
-                    Enseignement technique
-                </div>
-            </div>
-            
-            <div class="kpi-card card-moderne" style="background: white; border: 1px solid #e5e7eb;">
-                <div class="kpi-title" style="color: #000; font-weight: 600;">Professeurs assignés</div>
-                <div class="kpi-value" style="color: var(--primary); font-size: 2.5rem; font-weight: bold;">{{ !empty($professeurs) ? count($professeurs) : 0 }}</div>
-                <div class="kpi-trend" style="color: #6b7280; font-size: 0.875rem;">
-                    <i class="fas fa-chalkboard-teacher"></i>
-                    Configurés
-                </div>
-            </div>
-        </div>
-
-        <!-- Guide d'utilisation -->
-        <div class="main-card mb-4">
-            <div class="main-card-header">
-                <div class="main-card-title">
-                    <i class="fas fa-lightbulb"></i>
-                    Guide d'utilisation
-                </div>
-            </div>
-            <div class="main-card-body">
-                <div class="alert alert-info mb-0">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><i class="fas fa-users me-2"></i><strong>Sélection rapide :</strong> Utilisez les listes déroulantes pour choisir un enseignant déjà associé à la matière</p>
-                            <p><i class="fas fa-keyboard me-2"></i><strong>Saisie libre :</strong> Écrivez directement le nom dans le champ de texte</p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><i class="fas fa-eye-slash me-2"></i>Les champs vides n'afficheront pas de nom d'enseignant sur le bulletin</p>
-                            <p><i class="fas fa-save me-2"></i>N'oubliez pas d'enregistrer vos modifications avant de quitter</p>
+        {{-- Hero --}}
+        <div class="sr-hero sr-animate">
+            <div class="sr-hero-content">
+                <div class="sr-hero-left">
+                    <div class="sr-hero-avatar"><i class="fas fa-chalkboard-teacher"></i></div>
+                    <div class="sr-hero-info">
+                        <h1>Édition des professeurs</h1>
+                        <p>{{ $etudiant->nom }} {{ $etudiant->prenoms }} · {{ $classe->name ?? '' }} · {{ $periode }}</p>
+                        <div class="sr-breadcrumb">
+                            <a href="{{ route('esbtp.resultats.etudiant', ['etudiant' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $anneeUniversitaire->id]) }}">Résultats</a>
+                            <i class="fas fa-chevron-right"></i>
+                            <span>Professeurs</span>
                         </div>
                     </div>
                 </div>
+                <div class="sr-hero-actions">
+                    <a href="{{ route('esbtp.resultats.etudiant', ['etudiant' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $anneeUniversitaire->id]) }}" class="sr-hero-btn">
+                        <i class="fas fa-arrow-left"></i>Retour
+                    </a>
+                </div>
             </div>
         </div>
 
-        <!-- Messages d'erreur de validation -->
+        {{-- KPIs --}}
+        <div class="sr-stats sr-animate sr-animate-delay-1" style="margin-bottom: 1.5rem;">
+            <div class="sr-stat sr-stat--primary">
+                <div class="sr-stat-icon"><i class="fas fa-school"></i></div>
+                <div class="sr-stat-value" style="font-size: 1rem;">{{ $classe->name ?? 'N/A' }}</div>
+                <div class="sr-stat-label">Classe</div>
+            </div>
+            <div class="sr-stat sr-stat--info">
+                <div class="sr-stat-icon"><i class="fas fa-graduation-cap"></i></div>
+                <div class="sr-stat-value">{{ $resultatsGeneraux->count() ?? 0 }}</div>
+                <div class="sr-stat-label">Générales</div>
+            </div>
+            <div class="sr-stat sr-stat--success">
+                <div class="sr-stat-icon"><i class="fas fa-tools"></i></div>
+                <div class="sr-stat-value">{{ $resultatsTechniques->count() ?? 0 }}</div>
+                <div class="sr-stat-label">Techniques</div>
+            </div>
+            <div class="sr-stat sr-stat--warning">
+                <div class="sr-stat-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                <div class="sr-stat-value">{{ collect($professeurs)->filter()->count() }}</div>
+                <div class="sr-stat-label">Assignés</div>
+            </div>
+        </div>
+
         @if($errors->any())
-            <div class="alert alert-danger mb-4">
-                <h6><i class="fas fa-exclamation-triangle me-2"></i>Erreurs de validation :</h6>
-                <ul class="mb-0">
-                    @foreach($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
+            <div class="alert alert-danger alert-dismissible fade show"><i class="fas fa-exclamation-circle me-2"></i>
+                @foreach($errors->all() as $error) {{ $error }} @endforeach
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         @endif
-
-        <!-- Messages de succès -->
         @if(session('success'))
-            <div class="alert alert-success mb-4">
-                <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-            </div>
+            <div class="alert alert-success alert-dismissible fade show"><i class="fas fa-check-circle me-2"></i>{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
         @endif
-
-        <!-- Messages d'erreur -->
         @if(session('error'))
-            <div class="alert alert-danger mb-4">
-                <i class="fas fa-exclamation-triangle me-2"></i>{{ session('error') }}
-            </div>
+            <div class="alert alert-danger alert-dismissible fade show"><i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
         @endif
 
         <form id="professeursForm" action="{{ route('esbtp.bulletins.save-professeurs') }}" method="POST">
@@ -129,618 +115,176 @@
             <input type="hidden" name="periode" value="{{ $periode }}">
             <input type="hidden" name="annee_universitaire_id" value="{{ $anneeUniversitaire->id }}">
 
+            {{-- Enseignement général --}}
             @if(isset($resultatsGeneraux) && $resultatsGeneraux->count() > 0)
-            <div class="main-card mb-4">
-                <div class="main-card-header">
-                    <div class="main-card-title">
+            <div class="sr-table-card sr-animate sr-animate-delay-2" style="margin-bottom: 1.5rem;">
+                <div class="sr-table-header">
+                    <div class="sr-table-header-left">
                         <i class="fas fa-graduation-cap"></i>
-                        Enseignement général
+                        <h3>Enseignement général</h3>
                     </div>
-                    <div class="main-card-subtitle">{{ $resultatsGeneraux->count() }} matière(s) d'enseignement général</div>
+                    <span class="sr-table-count">{{ $resultatsGeneraux->count() }} matières</span>
                 </div>
-                <div class="main-card-body">
-                    <div class="row g-4">
-                        @foreach($resultatsGeneraux as $resultat)
-                        <div class="col-lg-6">
-                            <div class="subject-card">
-                                <div class="subject-header">
-                                    <div class="subject-icon">
-                                        <i class="fas fa-book"></i>
-                                    </div>
-                                    <div class="subject-info">
-                                        <h6 class="subject-title">{{ $resultat->matiere->name ?? $resultat->matiere->nom ?? 'Matière #'.$resultat->matiere_id }}</h6>
-                                        <p class="subject-code">{{ $resultat->matiere->code ?? 'Code non défini' }}</p>
-                                        @if(!empty($resultat->sources))
-                                            <div class="d-flex flex-wrap gap-1 mt-1">
-                                                @foreach($resultat->sources as $source)
-                                                    @if($source === 'classe')
-                                                        <span class="badge bg-primary text-white" style="font-size: 0.7rem;">
-                                                            <i class="fas fa-school me-1"></i>Classe
-                                                        </span>
-                                                    @elseif($source === 'notes')
-                                                        <span class="badge bg-info text-white" style="font-size: 0.7rem;">
-                                                            <i class="fas fa-clipboard-list me-1"></i>Notes
-                                                        </span>
-                                                    @endif
-                                                @endforeach
-                                            </div>
-                                        @endif
-                                    </div>
+                <div style="padding: 1.25rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 1rem;">
+                    @foreach($resultatsGeneraux as $resultat)
+                        @php $enseignantsMatiere = $enseignantsParMatiere[$resultat->matiere_id] ?? collect(); @endphp
+                        <div class="subject-card">
+                            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #f3f4f6;">
+                                <div style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #dbeafe, #bfdbfe); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <i class="fas fa-book" style="color: #0453cb; font-size: 0.9rem;"></i>
                                 </div>
-
-                                @php
-                                    $enseignantsMatiere = $enseignantsParMatiere[$resultat->matiere_id] ?? collect();
-                                @endphp
-
-                                @if($enseignantsMatiere->count() > 0)
-                                <div class="quick-select-section">
-                                    <label class="quick-select-label">
-                                        <i class="fas fa-users"></i>
-                                        Sélection rapide
-                                    </label>
+                                <div>
+                                    <div style="font-weight: 700; color: #1e293b; font-size: 0.95rem;">{{ $resultat->matiere->name ?? 'Matière #'.$resultat->matiere_id }}</div>
+                                    <span style="font-size: 0.7rem; color: #6b7280;">{{ $resultat->matiere->code ?? '' }}</span>
+                                </div>
+                            </div>
+                            @if($enseignantsMatiere->count() > 0)
+                                <div style="margin-bottom: 0.75rem;">
+                                    <label style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.3rem; display: block;">Sélection rapide</label>
                                     <select class="form-select-modern">
-                                        <option value="">Choisir un enseignant associé...</option>
+                                        <option value="">— Choisir un enseignant —</option>
                                         @foreach($enseignantsMatiere as $enseignant)
-                                        <option value="{{ $enseignant->name }}">
-                                            {{ $enseignant->name }}
-                                        </option>
+                                            <option value="{{ $enseignant->name }}">{{ $enseignant->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
-                                @endif
-
-                                <div class="teacher-input-section">
-                                    <label for="professeur_{{ $resultat->matiere_id }}" class="teacher-input-label">
-                                        <i class="fas fa-user-edit"></i>
-                                        Nom de l'enseignant
-                                    </label>
-                                    <input type="text"
-                                           class="form-control-modern"
-                                           id="professeur_{{ $resultat->matiere_id }}"
-                                           name="professeurs[{{ $resultat->matiere_id }}]"
-                                           value="{{ $professeurs[$resultat->matiere_id] ?? '' }}"
-                                           placeholder="Nom qui apparaîtra sur le bulletin"
-                                    />
-                                </div>
-
-                                @if($enseignantsMatiere->count() == 0)
-                                <div class="no-teachers-notice">
-                                    <i class="fas fa-info-circle"></i>
-                                    Aucun enseignant associé à cette matière
-                                </div>
-                                @endif
+                            @endif
+                            <div>
+                                <label style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #10b981; margin-bottom: 0.3rem; display: block;">
+                                    <i class="fas fa-user-edit me-1"></i>Nom sur le bulletin
+                                </label>
+                                <input type="text" class="form-control-modern"
+                                       id="professeur_{{ $resultat->matiere_id }}"
+                                       name="professeurs[{{ $resultat->matiere_id }}]"
+                                       value="{{ $professeurs[$resultat->matiere_id] ?? '' }}"
+                                       placeholder="Nom qui apparaîtra sur le bulletin">
                             </div>
                         </div>
-                        @endforeach
-                    </div>
+                    @endforeach
                 </div>
             </div>
             @endif
 
+            {{-- Enseignement technique --}}
             @if(isset($resultatsTechniques) && $resultatsTechniques->count() > 0)
-            <div class="main-card mb-4">
-                <div class="main-card-header">
-                    <div class="main-card-title">
+            <div class="sr-table-card sr-animate sr-animate-delay-3" style="margin-bottom: 1.5rem;">
+                <div class="sr-table-header">
+                    <div class="sr-table-header-left">
                         <i class="fas fa-tools"></i>
-                        Enseignement technique
+                        <h3>Enseignement technique</h3>
                     </div>
-                    <div class="main-card-subtitle">{{ $resultatsTechniques->count() }} matière(s) d'enseignement technique</div>
+                    <span class="sr-table-count">{{ $resultatsTechniques->count() }} matières</span>
                 </div>
-                <div class="main-card-body">
-                    <div class="row g-4">
-                        @foreach($resultatsTechniques as $resultat)
-                        <div class="col-lg-6">
-                            <div class="subject-card">
-                                <div class="subject-header">
-                                    <div class="subject-icon technical">
-                                        <i class="fas fa-cog"></i>
-                                    </div>
-                                    <div class="subject-info">
-                                        <h6 class="subject-title">{{ $resultat->matiere->name ?? $resultat->matiere->nom ?? 'Matière #'.$resultat->matiere_id }}</h6>
-                                        <p class="subject-code">{{ $resultat->matiere->code ?? 'Code non défini' }}</p>
-                                        @if(!empty($resultat->sources))
-                                            <div class="d-flex flex-wrap gap-1 mt-1">
-                                                @foreach($resultat->sources as $source)
-                                                    @if($source === 'classe')
-                                                        <span class="badge bg-primary text-white" style="font-size: 0.7rem;">
-                                                            <i class="fas fa-school me-1"></i>Classe
-                                                        </span>
-                                                    @elseif($source === 'notes')
-                                                        <span class="badge bg-info text-white" style="font-size: 0.7rem;">
-                                                            <i class="fas fa-clipboard-list me-1"></i>Notes
-                                                        </span>
-                                                    @endif
-                                                @endforeach
-                                            </div>
-                                        @endif
-                                    </div>
+                <div style="padding: 1.25rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 1rem;">
+                    @foreach($resultatsTechniques as $resultat)
+                        @php $enseignantsMatiere = $enseignantsParMatiere[$resultat->matiere_id] ?? collect(); @endphp
+                        <div class="subject-card">
+                            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #f3f4f6;">
+                                <div style="width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #d1fae5, #a7f3d0); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <i class="fas fa-cog" style="color: #065f46; font-size: 0.9rem;"></i>
                                 </div>
-
-                                @php
-                                    $enseignantsMatiere = $enseignantsParMatiere[$resultat->matiere_id] ?? collect();
-                                @endphp
-
-                                @if($enseignantsMatiere->count() > 0)
-                                <div class="quick-select-section">
-                                    <label class="quick-select-label">
-                                        <i class="fas fa-users"></i>
-                                        Sélection rapide
-                                    </label>
+                                <div>
+                                    <div style="font-weight: 700; color: #1e293b; font-size: 0.95rem;">{{ $resultat->matiere->name ?? 'Matière #'.$resultat->matiere_id }}</div>
+                                    <span style="font-size: 0.7rem; color: #6b7280;">{{ $resultat->matiere->code ?? '' }}</span>
+                                </div>
+                            </div>
+                            @if($enseignantsMatiere->count() > 0)
+                                <div style="margin-bottom: 0.75rem;">
+                                    <label style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin-bottom: 0.3rem; display: block;">Sélection rapide</label>
                                     <select class="form-select-modern">
-                                        <option value="">Choisir un enseignant associé...</option>
+                                        <option value="">— Choisir un enseignant —</option>
                                         @foreach($enseignantsMatiere as $enseignant)
-                                        <option value="{{ $enseignant->name }}">
-                                            {{ $enseignant->name }}
-                                        </option>
+                                            <option value="{{ $enseignant->name }}">{{ $enseignant->name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
-                                @endif
-
-                                <div class="teacher-input-section">
-                                    <label for="professeur_{{ $resultat->matiere_id }}" class="teacher-input-label">
-                                        <i class="fas fa-user-edit"></i>
-                                        Nom de l'enseignant
-                                    </label>
-                                    <input type="text"
-                                           class="form-control-modern"
-                                           id="professeur_{{ $resultat->matiere_id }}"
-                                           name="professeurs[{{ $resultat->matiere_id }}]"
-                                           value="{{ $professeurs[$resultat->matiere_id] ?? '' }}"
-                                           placeholder="Nom qui apparaîtra sur le bulletin"
-                                    />
-                                </div>
-
-                                @if($enseignantsMatiere->count() == 0)
-                                <div class="no-teachers-notice">
-                                    <i class="fas fa-info-circle"></i>
-                                    Aucun enseignant associé à cette matière
-                                </div>
-                                @endif
+                            @endif
+                            <div>
+                                <label style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #10b981; margin-bottom: 0.3rem; display: block;">
+                                    <i class="fas fa-user-edit me-1"></i>Nom sur le bulletin
+                                </label>
+                                <input type="text" class="form-control-modern"
+                                       id="professeur_{{ $resultat->matiere_id }}"
+                                       name="professeurs[{{ $resultat->matiere_id }}]"
+                                       value="{{ $professeurs[$resultat->matiere_id] ?? '' }}"
+                                       placeholder="Nom qui apparaîtra sur le bulletin">
                             </div>
                         </div>
-                        @endforeach
-                    </div>
+                    @endforeach
                 </div>
             </div>
             @endif
 
+            {{-- Aucune matière --}}
             @if((!isset($resultatsGeneraux) || $resultatsGeneraux->isEmpty()) && (!isset($resultatsTechniques) || $resultatsTechniques->isEmpty()))
-            <div class="main-card">
-                <div class="main-card-body">
-                    <div class="alert alert-warning text-center">
-                        <i class="fas fa-exclamation-triangle fa-2x mb-3 d-block"></i>
-                        <h5>Aucune matière configurée</h5>
-                        <p>Veuillez d'abord configurer les matières pour cet étudiant.</p>
-                        <a href="{{ route('esbtp.bulletins.config-matieres') }}?classe_id={{ $classe->id }}&periode={{ $periode }}&annee_universitaire_id={{ $anneeUniversitaire->id }}&bulletin={{ $etudiant->id }}" class="btn-acasi primary">
-                            <i class="fas fa-cogs"></i> Configurer les matières
-                        </a>
-                    </div>
-                </div>
+            <div class="sr-empty" style="margin-bottom: 1.5rem;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Aucune matière configurée</h3>
+                <p>Veuillez d'abord configurer les matières pour cet étudiant.</p>
+                <a href="{{ route('esbtp.bulletins.config-matieres') }}?classe_id={{ $classe->id }}&periode={{ $periode }}&annee_universitaire_id={{ $anneeUniversitaire->id }}&bulletin={{ $etudiant->id }}" class="sr-filter-btn" style="margin-top: 0.5rem;">
+                    <i class="fas fa-cogs"></i>Configurer les matières
+                </a>
             </div>
             @endif
 
-            <!-- Option de propagation à la classe -->
-            <div class="main-card mb-3">
-                <div class="main-card-body">
-                    <div class="form-check form-switch" style="padding-left: 3rem;">
-                        <input class="form-check-input"
-                               type="checkbox"
-                               name="appliquer_a_classe"
-                               id="appliquerAClasse"
-                               value="1"
-                               style="width: 3em; height: 1.5em; cursor: pointer;">
-                        <label class="form-check-label" for="appliquerAClasse" style="font-size: 1.1rem; font-weight: 600; cursor: pointer; margin-left: 0.5rem;">
-                            <i class="fas fa-users me-2" style="color: var(--primary);"></i>
-                            Appliquer ces enseignants à <strong>tous les étudiants de la classe {{ $classe->libelle ?? $classe->name }}</strong>
-                        </label>
-                        <div style="margin-left: 4rem; margin-top: 0.5rem; color: #6b7280; font-size: 0.9rem;">
-                            <i class="fas fa-info-circle me-1"></i>
-                            Cela copiera automatiquement les noms des enseignants configurés ci-dessus pour tous les bulletins de cette classe (période: {{ $periode }})
-                        </div>
-                    </div>
+            {{-- Toggle propagation --}}
+            <div style="background: white; border: 1.5px solid #e5e7eb; border-radius: 14px; padding: 1.25rem; margin-bottom: 1.5rem;">
+                <label class="sr-filter-toggle" style="margin: 0; cursor: pointer;">
+                    <input type="checkbox" name="appliquer_a_classe" id="appliquerAClasse" value="1">
+                    <span class="sr-toggle-track"></span>
+                    <span style="font-weight: 700; color: #1e293b;">
+                        Appliquer à <strong style="color: #0453cb;">tous les étudiants de {{ $classe->name }}</strong>
+                    </span>
+                </label>
+                <div style="margin-left: 2.85rem; margin-top: 0.35rem; font-size: 0.8rem; color: #6b7280;">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Copie les noms d'enseignants pour tous les bulletins de cette classe ({{ $periode }}).
+                    Les bulletins manquants seront créés automatiquement.
                 </div>
             </div>
 
-            <!-- Actions -->
-            <div class="main-card">
-                <div class="main-card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <a href="{{ route('esbtp.resultats.etudiant', [
-                                'etudiant' => $etudiant->id,
-                                'classe_id' => $classe->id,
-                                'periode' => $periode,
-                                'annee_universitaire_id' => $anneeUniversitaire->id
-                            ]) }}" class="btn btn-outline-secondary btn-lg">
-                                <i class="fas fa-arrow-left me-2"></i> Retour aux résultats
-                            </a>
-                        </div>
-                        <div class="d-flex gap-3">
-                            <button type="submit" class="btn-acasi success btn-lg" name="action" value="save_and_return">
-                                <i class="fas fa-save me-2"></i> Enregistrer et retourner
-                            </button>
-                            <button type="submit" class="btn-acasi primary btn-lg" name="action" value="generate">
-                                <i class="fas fa-file-pdf me-2"></i> Enregistrer et générer bulletin
-                            </button>
-                        </div>
-                    </div>
+            {{-- Actions --}}
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <a href="{{ route('esbtp.resultats.etudiant', ['etudiant' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $anneeUniversitaire->id]) }}"
+                   class="sr-hero-btn" style="background: var(--sr-bg, #f8fafc); color: var(--sr-muted, #6b7280); border-color: var(--sr-border, #e5e7eb);">
+                    <i class="fas fa-arrow-left"></i>Retour
+                </a>
+                <div style="display: flex; gap: 0.75rem;">
+                    <button type="submit" name="action" value="save_and_return" class="sr-hero-btn" style="background: linear-gradient(135deg, #10b981, #059669); border-color: #10b981; color: white;">
+                        <i class="fas fa-save"></i>Enregistrer
+                    </button>
+                    <button type="submit" name="action" value="generate" class="sr-hero-btn sr-hero-btn--solid" style="background: var(--sr-primary-gradient, linear-gradient(135deg, #0453cb, #5e91de)); color: white; border-color: #0453cb;">
+                        <i class="fas fa-file-pdf"></i>Enregistrer + bulletin
+                    </button>
                 </div>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Script de sélection d'enseignant directement dans le HTML -->
 <script>
-debugLog('🔥 SCRIPT EDIT-PROFESSEURS CHARGÉ!');
-
-// Fonction pour animer les changements de valeur
-function animateValueChange(inputElement) {
-    inputElement.classList.add('value-changed');
-    setTimeout(() => {
-        inputElement.classList.remove('value-changed');
-    }, 1000);
+function animateValueChange(el) {
+    el.classList.add('value-changed');
+    setTimeout(function() { el.classList.remove('value-changed'); }, 800);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    debugLog('🚀 EDIT-PROFESSEURS: DOM chargé - Initialisation des event listeners');
-
-    const form = document.getElementById('professeursForm');
-
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            debugLog('Formulaire soumis !');
-            debugLog('Action:', this.action);
-            debugLog('Méthode:', this.method);
-
-            // Collecter les données du formulaire
-            const formData = new FormData(this);
-            const data = {};
-            for (let [key, value] of formData.entries()) {
-                data[key] = value;
-            }
-            debugLog('Données du formulaire:', data);
-
-            // Ne pas empêcher la soumission par défaut
-            // Juste logger pour débogage
-        });
-    }
-
-    // Logger les boutons de soumission
-    const submitButtons = document.querySelectorAll('button[type="submit"]');
-    submitButtons.forEach((button, index) => {
-        button.addEventListener('click', function(e) {
-            debugLog(`Bouton ${index + 1} cliqué:`, this.name, '=', this.value);
-        });
-    });
-
-    // Ajouter des event listeners aux selects d'enseignants
-    const teacherSelects = document.querySelectorAll('.form-select-modern');
-    debugLog('📝 EDIT-PROFESSEURS: Selects trouvés:', teacherSelects.length);
-
-    // Test de diagnostic plus complet
-    debugLog('🔍 DIAGNOSTIC COMPLET:');
-    debugLog('- Tous les selects sur la page:', document.querySelectorAll('select').length);
-    debugLog('- Selects avec classe form-select-modern:', teacherSelects.length);
-    debugLog('- Inputs avec name professeurs:', document.querySelectorAll('input[name^="professeurs["]').length);
-    debugLog('- Subject cards:', document.querySelectorAll('.subject-card').length);
-
-    teacherSelects.forEach((select, index) => {
-        debugLog(`📋 Configuration select ${index + 1}:`, select);
-
-        select.setAttribute('title', 'Cliquez pour sélectionner un enseignant associé à cette matière');
-
-        // Event listener pour la sélection d'enseignant
+    // Quick-select → populate text input
+    document.querySelectorAll('.form-select-modern').forEach(function(select) {
         select.addEventListener('change', function() {
-            debugLog('🔄 Select change détecté sur:', this);
-            debugLog('🔄 Valeur sélectionnée:', this.value);
-
-            if (!this.value) {
-                debugLog('⚠️ Aucune valeur sélectionnée, abandon');
-                return;
+            if (!this.value) return;
+            var card = this.closest('.subject-card');
+            if (!card) return;
+            var input = card.querySelector('.form-control-modern');
+            if (input) {
+                input.value = this.value;
+                input.setAttribute('value', this.value);
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                animateValueChange(input);
+                this.value = '';
             }
-
-            // Trouver l'input correspondant
-            const parentCard = this.closest('.subject-card');
-            debugLog('🏠 Parent card:', parentCard);
-
-            if (parentCard) {
-                const targetInput = parentCard.querySelector('.form-control-modern');
-                debugLog('🎯 Input trouvé:', targetInput);
-                debugLog('🎯 Input classes:', targetInput ? targetInput.className : 'N/A');
-                debugLog('🎯 Input ID:', targetInput ? targetInput.id : 'N/A');
-
-                if (targetInput) {
-                    debugLog('📝 Valeur avant:', targetInput.value);
-
-                    // Essayer plusieurs méthodes d'assignation
-                    targetInput.value = this.value;
-                    targetInput.setAttribute('value', this.value);
-
-                    debugLog('📝 Valeur après:', targetInput.value);
-
-                    // Déclencher l'événement input
-                    targetInput.dispatchEvent(new Event('input', { bubbles: true }));
-                    targetInput.dispatchEvent(new Event('change', { bubbles: true }));
-
-                    // Animation
-                    animateValueChange(targetInput);
-
-                    // Forcer le focus pour s'assurer que la valeur est visible
-                    targetInput.focus();
-                    targetInput.blur();
-
-                    debugLog('✅ Valeur assignée avec succès');
-
-                    // Réinitialiser le select
-                    this.value = '';
-                } else {
-                    debugError('❌ Input cible non trouvé dans la card');
-                    debugLog('🔍 Tous les inputs dans la card:', parentCard.querySelectorAll('input'));
-                }
-            } else {
-                debugError('❌ Parent card non trouvé');
-            }
-        });
-    });
-
-    // Ajouter des gestionnaires d'événements pour les champs de saisie
-    const teacherInputs = document.querySelectorAll('input[name^="professeurs["]');
-    debugLog('🎯 Inputs trouvés:', teacherInputs.length);
-
-    teacherInputs.forEach(input => {
-        // Animation lors de la saisie
-        input.addEventListener('input', function() {
-            // Optionnel: vous pouvez ajouter une légère animation lors de la saisie
-            this.style.borderColor = 'var(--success)';
-        });
-
-        // Réinitialiser la couleur de bordure quand le champ perd le focus
-        input.addEventListener('blur', function() {
-            this.style.borderColor = '';
         });
     });
 });
 </script>
-
-<style>
-/* Cartes de matières modernes */
-.subject-card {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 1.5rem;
-    transition: all 0.3s ease;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.subject-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    border-color: var(--primary);
-}
-
-.subject-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid #f3f4f6;
-}
-
-.subject-icon {
-    width: 48px;
-    height: 48px;
-    background: linear-gradient(135deg, var(--primary), #667eea);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 1rem;
-    flex-shrink: 0;
-}
-
-.subject-icon.technical {
-    background: linear-gradient(135deg, var(--success), #48bb78);
-}
-
-.subject-icon i {
-    color: white;
-    font-size: 1.2rem;
-}
-
-.subject-info {
-    flex: 1;
-}
-
-.subject-title {
-    margin: 0 0 0.25rem 0;
-    font-weight: 600;
-    color: var(--text-primary);
-    font-size: 1.1rem;
-}
-
-.subject-code {
-    margin: 0;
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    opacity: 0.8;
-}
-
-/* Section de sélection rapide */
-.quick-select-section {
-    margin-bottom: 1.5rem;
-    padding: 1rem;
-    background: #f8fafc;
-    border-radius: 8px;
-    border-left: 4px solid var(--info);
-}
-
-.quick-select-label {
-    display: flex;
-    align-items: center;
-    margin: 0 0 0.75rem 0;
-    font-weight: 500;
-    color: var(--text-primary);
-    font-size: 0.9rem;
-}
-
-.quick-select-label i {
-    margin-right: 0.5rem;
-    color: var(--info);
-}
-
-.form-select-modern {
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    background: white;
-    transition: all 0.3s ease;
-    font-size: 0.95rem;
-}
-
-.form-select-modern:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    outline: none;
-}
-
-.form-select-modern:hover {
-    border-color: var(--primary);
-}
-
-/* Section d'input enseignant */
-.teacher-input-section {
-    margin-bottom: 1rem;
-}
-
-.teacher-input-label {
-    display: flex;
-    align-items: center;
-    margin: 0 0 0.75rem 0;
-    font-weight: 500;
-    color: var(--text-primary);
-    font-size: 0.95rem;
-}
-
-.teacher-input-label i {
-    margin-right: 0.5rem;
-    color: var(--success);
-}
-
-.form-control-modern {
-    border: 2px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 0.875rem 1rem;
-    background: white;
-    transition: all 0.3s ease;
-    font-size: 0.95rem;
-    width: 100%;
-}
-
-.form-control-modern:focus {
-    border-color: var(--success);
-    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
-    outline: none;
-}
-
-.form-control-modern:hover {
-    border-color: var(--success);
-}
-
-.form-control-modern::placeholder {
-    color: #9ca3af;
-    opacity: 1;
-}
-
-/* Notice d'absence d'enseignants */
-.no-teachers-notice {
-    display: flex;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    background: #fef3c7;
-    border: 1px solid #f59e0b;
-    border-radius: 6px;
-    color: #92400e;
-    font-size: 0.875rem;
-    margin-top: 1rem;
-}
-
-.no-teachers-notice i {
-    margin-right: 0.5rem;
-    color: #f59e0b;
-}
-
-/* Amélioration des boutons */
-.btn-lg {
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
-    font-weight: 500;
-}
-
-.btn-outline-secondary {
-    border: 2px solid #6b7280;
-    color: #6b7280;
-    transition: all 0.3s ease;
-}
-
-.btn-outline-secondary:hover {
-    background: #6b7280;
-    color: white;
-    transform: translateY(-1px);
-}
-
-/* Espacement responsive */
-@media (max-width: 768px) {
-    .subject-card {
-        margin-bottom: 1rem;
-    }
-
-    .d-flex.justify-content-between {
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .d-flex.gap-3 {
-        justify-content: stretch;
-    }
-
-    .btn-lg {
-        width: 100%;
-        text-align: center;
-    }
-
-    .subject-header {
-        flex-direction: column;
-        text-align: center;
-    }
-
-    .subject-icon {
-        margin: 0 0 1rem 0;
-    }
-}
-
-/* Animation pour les changements de valeur */
-.form-control-modern.value-changed {
-    background-color: #d4edda;
-    border-color: var(--success);
-}
-
-.form-control-modern.value-changed {
-    animation: valueChange 1s ease-out;
-}
-
-@keyframes valueChange {
-    0% {
-        background-color: #d4edda;
-        transform: scale(1.02);
-    }
-    100% {
-        background-color: white;
-        transform: scale(1);
-    }
-}
-</style>
-
 @endsection
