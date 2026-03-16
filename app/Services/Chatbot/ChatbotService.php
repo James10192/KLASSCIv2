@@ -136,12 +136,8 @@ class ChatbotService
                 ])),
             ]);
 
-            // 10. Titre auto (async — après envoi de la réponse)
-            $conv = $conversation;
-            $msg = $message;
-            app()->terminating(function () use ($conv, $msg) {
-                $this->updateConversationTitleIfNeeded($conv, $msg);
-            });
+            // 10. Titre auto
+            $this->updateConversationTitleIfNeeded($conversation, $message);
 
             $duration = round((microtime(true) - $startTime) * 1000, 2);
             Log::info('ChatbotService: success', ['duration_ms' => $duration]);
@@ -227,10 +223,7 @@ class ChatbotService
                 ])),
             ]);
 
-            // Titre async après envoi de la réponse
-            app()->terminating(function () use ($conversation, $message) {
-                $this->updateConversationTitleIfNeeded($conversation, $message);
-            });
+            $this->updateConversationTitleIfNeeded($conversation, $message);
 
             $onEvent('complete', [
                 'conversation_id' => $conversation->session_id,

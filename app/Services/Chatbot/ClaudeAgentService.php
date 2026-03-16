@@ -364,19 +364,15 @@ PROMPT;
         $retryDelay = (int) config('anthropic.retry_delay_ms', 1000);
 
         $url = $baseUrl . '/messages';
+        $isOAuth = str_starts_with($apiKey, 'sk-ant-oat');
 
-        // System prompt avec cache_control pour réduire les coûts
         $payload = [
             'model' => $model,
             'max_tokens' => $maxTokens,
             'temperature' => $temperature,
-            'system' => [
-                [
-                    'type' => 'text',
-                    'text' => $systemPrompt,
-                    'cache_control' => ['type' => 'ephemeral'],
-                ],
-            ],
+            'system' => $isOAuth
+                ? $systemPrompt
+                : [['type' => 'text', 'text' => $systemPrompt, 'cache_control' => ['type' => 'ephemeral']]],
             'messages' => $messages,
         ];
 
@@ -386,9 +382,6 @@ PROMPT;
         }
 
         try {
-            // OAuth token (sk-ant-oat01-*) : Bearer + beta header
-            // API key (sk-ant-api03-*) : x-api-key header
-            $isOAuth = str_starts_with($apiKey, 'sk-ant-oat');
             $headers = [
                 'Content-Type' => 'application/json',
                 'anthropic-version' => '2023-06-01',
@@ -396,14 +389,17 @@ PROMPT;
 
             if ($isOAuth) {
                 $headers['Authorization'] = 'Bearer ' . $apiKey;
-                $headers['anthropic-beta'] = 'oauth-2025-04-20,prompt-caching-2024-07-31';
+                $headers['anthropic-beta'] = 'oauth-2025-04-20';
             } else {
                 $headers['x-api-key'] = $apiKey;
                 $headers['anthropic-beta'] = 'prompt-caching-2024-07-31';
             }
 
             $response = Http::timeout($timeout)
-                ->retry($retryAttempts, $retryDelay, fn ($e, $req) => $e instanceof \Illuminate\Http\Client\ConnectionException || ($e instanceof \Illuminate\Http\Client\RequestException && $e->response?->status() >= 500))
+                ->retry($retryAttempts, $retryDelay, function ($e) {
+                    return $e instanceof \Illuminate\Http\Client\ConnectionException
+                        || ($e instanceof \Illuminate\Http\Client\RequestException && $e->response?->status() >= 500);
+                }, throw: false)
                 ->withHeaders($headers)
                 ->post($url, $payload);
 
