@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Route;
  *
  * Orchestration simplifiée avec ClaudeAgentService :
  * 1. Gestion conversation (création, historique)
- * 2. Appel agent Gemini (tool calling natif)
+ * 2. Appel agent Claude (tool calling natif)
  * 3. Persistence messages + audit
  * 4. Formulaires intégrés (frais, inscriptions)
  */
@@ -104,7 +104,7 @@ class ChatbotService
                 'deep_link' => $agentResponse['deep_link'],
                 'metadata' => [
                     'tool_calls' => $agentResponse['tool_calls'],
-                    'engine' => 'gemini',
+                    'engine' => 'claude',
                 ],
             ]);
 

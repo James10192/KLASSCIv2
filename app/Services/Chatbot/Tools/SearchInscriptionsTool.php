@@ -67,10 +67,9 @@ class SearchInscriptionsTool extends ChatbotTool
         }
 
         if (!empty($args['student_name'])) {
-            $name = $args['student_name'];
-            $query->whereHas('etudiant', function ($q) use ($name) {
-                $q->where('nom', 'like', "%{$name}%")
-                  ->orWhere('prenom', 'like', "%{$name}%");
+            $tool = $this;
+            $query->whereHas('etudiant', function ($q) use ($args, $tool) {
+                $tool->applyFuzzyNameSearch($q, $args['student_name']);
             });
         }
 
@@ -112,7 +111,7 @@ class SearchInscriptionsTool extends ChatbotTool
             $classe = $i->classe;
             return [
                 'id' => $i->id,
-                'etudiant' => $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenom ?? '')) : 'Inconnu',
+                'etudiant' => $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '')) : 'Inconnu',
                 'classe' => $classe?->name ?? 'Non affectée',
                 'filiere' => $classe?->filiere?->name ?? 'N/A',
                 'type' => ucfirst(str_replace('_', ' ', $i->type_inscription ?? 'N/A')),

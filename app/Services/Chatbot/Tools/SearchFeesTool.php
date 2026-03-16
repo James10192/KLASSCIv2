@@ -34,10 +34,6 @@ class SearchFeesTool extends ChatbotTool
                     'type' => 'string',
                     'description' => 'Niveau (ex: "Première Année", "Deuxième Année")',
                 ],
-                'type_affectation' => [
-                    'type' => 'string',
-                    'description' => 'Type: "affectés", "réaffectés", "non affectés". Si omis, retourne les 3 types.',
-                ],
             ],
         ];
     }
@@ -76,14 +72,15 @@ class SearchFeesTool extends ChatbotTool
         }
 
         $configs = $configQuery->select([
+            'fc.id as config_id',
             'cat.name as categorie',
+            'cat.is_mandatory',
             'f.name as filiere',
             'n.name as niveau',
             'fc.amount_affecte',
             'fc.amount_reaffecte',
             'fc.amount_non_affecte',
             'fc.is_active',
-            'fc.effective_date',
         ])->get();
 
         if ($configs->isEmpty()) {
@@ -96,57 +93,67 @@ class SearchFeesTool extends ChatbotTool
             ];
         }
 
-        $typeFilter = !empty($args['type_affectation']) ? mb_strtolower($args['type_affectation'], 'UTF-8') : null;
+        // Grouper par catégorie
+        $groups = [];
+        $grouped = $configs->groupBy('categorie');
 
-        // Déterminer quel(s) type(s) afficher
-        $showAffecte = !$typeFilter;
-        $showReaffecte = !$typeFilter;
-        $showNonAffecte = !$typeFilter;
+        foreach ($grouped as $catName => $catConfigs) {
+            $first = $catConfigs->first();
+            $isMandatory = (bool) $first->is_mandatory;
 
-        if ($typeFilter) {
-            $showNonAffecte = str_contains($typeFilter, 'non affecté') || str_contains($typeFilter, 'non-affecté');
-            $showReaffecte = !$showNonAffecte && (str_contains($typeFilter, 'réaffecté') || str_contains($typeFilter, 'reaffecté') || str_contains($typeFilter, 'réa') || str_contains($typeFilter, 'rea'));
-            $showAffecte = !$showNonAffecte && !$showReaffecte && str_contains($typeFilter, 'affecté');
+            if ($isMandatory) {
+                // Obligatoire : montants affecté/réaffecté/non affecté par filière+niveau
+                $items = [];
+                foreach ($catConfigs as $c) {
+                    $items[] = [
+                        'label' => $c->filiere . ' — ' . $c->niveau,
+                        'affectes' => number_format($c->amount_affecte ?? 0, 0, ',', ' ') . ' FCFA',
+                        'reaffectes' => number_format($c->amount_reaffecte ?? 0, 0, ',', ' ') . ' FCFA',
+                        'non_affectes' => number_format($c->amount_non_affecte ?? 0, 0, ',', ' ') . ' FCFA',
+                    ];
+                }
+                $groups[] = [
+                    'title' => $catName,
+                    'type' => 'mandatory',
+                    'items' => $items,
+                ];
+            } else {
+                // Optionnel : formules (options) avec montant, pas de filière/niveau
+                $allOptions = [];
+                $configIds = $catConfigs->pluck('config_id')->unique();
+                $options = DB::table('esbtp_frais_options')
+                    ->whereIn('configuration_id', $configIds)
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->get(['name', 'additional_amount']);
+
+                // Dédupliquer par nom (même option sur plusieurs configs)
+                $seen = [];
+                foreach ($options as $opt) {
+                    if (isset($seen[$opt->name])) {
+                        continue;
+                    }
+                    $seen[$opt->name] = true;
+                    $allOptions[] = [
+                        'name' => $opt->name,
+                        'montant' => number_format($opt->additional_amount ?? 0, 0, ',', ' ') . ' FCFA',
+                    ];
+                }
+
+                $groups[] = [
+                    'title' => $catName,
+                    'type' => 'optional',
+                    'options' => $allOptions,
+                ];
+            }
         }
 
-        $results = [];
-        foreach ($configs as $c) {
-            $base = [
-                'categorie' => $c->categorie,
-                'filiere' => $c->filiere,
-                'niveau' => $c->niveau,
-                'actif' => $c->is_active ? 'Oui' : 'Non',
-            ];
-
-            if ($showAffecte) {
-                $results[] = array_merge($base, [
-                    'type_tarif' => 'Affectés',
-                    'montant' => number_format($c->amount_affecte ?? 0, 0, ',', ' ') . ' FCFA',
-                    'montant_brut' => $c->amount_affecte ?? 0,
-                ]);
-            }
-
-            if ($showReaffecte) {
-                $results[] = array_merge($base, [
-                    'type_tarif' => 'Réaffectés',
-                    'montant' => number_format($c->amount_reaffecte ?? 0, 0, ',', ' ') . ' FCFA',
-                    'montant_brut' => $c->amount_reaffecte ?? 0,
-                ]);
-            }
-
-            if ($showNonAffecte) {
-                $results[] = array_merge($base, [
-                    'type_tarif' => 'Non affectés',
-                    'montant' => number_format($c->amount_non_affecte ?? 0, 0, ',', ' ') . ' FCFA',
-                    'montant_brut' => $c->amount_non_affecte ?? 0,
-                ]);
-            }
-        }
+        $totalConfigs = $configs->count();
 
         return [
-            'results' => $results,
-            'count' => count($results),
-            'display_type' => 'table',
+            'results' => $groups,
+            'count' => $totalConfigs,
+            'display_type' => 'fee_groups',
             'deep_link' => Route::has('esbtp.frais.index') ? route('esbtp.frais.index') : null,
         ];
     }

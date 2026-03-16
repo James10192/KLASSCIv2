@@ -51,11 +51,7 @@ class SearchStudentsTool extends ChatbotTool
         $query = ESBTPEtudiant::query()->with(['inscriptions.classe.filiere']);
 
         if (!empty($args['name'])) {
-            $search = $args['name'];
-            $query->where(function ($q) use ($search) {
-                $q->where('nom', 'like', "%{$search}%")
-                  ->orWhere('prenom', 'like', "%{$search}%");
-            });
+            $this->applyFuzzyNameSearch($query, $args['name']);
         }
 
         if (!empty($args['matricule'])) {
@@ -84,7 +80,7 @@ class SearchStudentsTool extends ChatbotTool
             $inscription = $etudiant->inscriptions->first();
             return [
                 'id' => $etudiant->id,
-                'nom' => trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenom ?? '')),
+                'nom' => trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '')),
                 'matricule' => $etudiant->matricule ?? 'N/A',
                 'classe' => $inscription?->classe?->name ?? 'Non inscrit',
                 'filiere' => $inscription?->classe?->filiere?->name ?? 'N/A',

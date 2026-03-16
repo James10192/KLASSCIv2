@@ -303,6 +303,92 @@
         return container;
     }
 
+    function buildFeeGroupsFromData(data) {
+        var container = document.createElement('div');
+        container.className = 'cb-fee-groups';
+
+        (data.groups || []).forEach(function (group) {
+            var section = document.createElement('div');
+            section.className = 'cb-fee-section';
+
+            // Header with title + badge
+            var header = document.createElement('div');
+            header.className = 'cb-fee-header';
+            var title = document.createElement('h4');
+            title.className = 'cb-fee-title';
+            title.textContent = group.title || '';
+            header.appendChild(title);
+
+            var badge = document.createElement('span');
+            badge.className = 'badge badge-' + (group.type === 'mandatory' ? 'primary' : 'info');
+            badge.textContent = group.type === 'mandatory' ? 'Obligatoire' : 'Optionnel';
+            header.appendChild(badge);
+            section.appendChild(header);
+
+            if (group.type === 'mandatory' && Array.isArray(group.items)) {
+                // Mandatory: table with filière+niveau rows, 3 amount columns
+                var table = document.createElement('table');
+                table.className = 'cb-fee-table';
+                var thead = document.createElement('thead');
+                thead.innerHTML = '<tr><th>Filière / Niveau</th><th>Affectés</th><th>Réaffectés</th><th>Non affectés</th></tr>';
+                table.appendChild(thead);
+
+                var tbody = document.createElement('tbody');
+                group.items.forEach(function (item) {
+                    var tr = document.createElement('tr');
+                    var cells = [
+                        { cls: 'cb-fee-label', text: item.label || '' },
+                        { cls: 'cb-fee-amount', text: item.affectes || '0 FCFA' },
+                        { cls: 'cb-fee-amount', text: item.reaffectes || '0 FCFA' },
+                        { cls: 'cb-fee-amount', text: item.non_affectes || '0 FCFA' }
+                    ];
+                    cells.forEach(function (c) {
+                        var td = document.createElement('td');
+                        td.className = c.cls;
+                        td.textContent = c.text;
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody);
+                section.appendChild(table);
+
+            } else if (group.type === 'optional' && Array.isArray(group.options)) {
+                // Optional: simple list of formulas with amounts
+                var table = document.createElement('table');
+                table.className = 'cb-fee-table';
+                var thead = document.createElement('thead');
+                thead.innerHTML = '<tr><th>Formule</th><th>Montant</th></tr>';
+                table.appendChild(thead);
+
+                var tbody = document.createElement('tbody');
+                group.options.forEach(function (opt) {
+                    var tr = document.createElement('tr');
+                    var tdName = document.createElement('td');
+                    tdName.className = 'cb-fee-label';
+                    tdName.textContent = opt.name || '';
+                    var tdAmount = document.createElement('td');
+                    tdAmount.className = 'cb-fee-amount';
+                    tdAmount.textContent = opt.montant || '0 FCFA';
+                    tr.appendChild(tdName);
+                    tr.appendChild(tdAmount);
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody);
+                section.appendChild(table);
+            }
+
+            container.appendChild(section);
+        });
+
+        var footer = buildFooterElement(data);
+        if (footer) {
+            container.appendChild(footer);
+        }
+
+        return container;
+    }
+
     function buildChecklistFromData(data) {
         var container = document.createElement('div');
         container.className = 'chatbot-checklist';
@@ -1690,6 +1776,9 @@
         } else if (message.display_type === 'cards' && Array.isArray(displayData.cards)) {
             messageContent.classList.add('has-cards');
             messageContent.appendChild(buildCardsFromData(displayData));
+        } else if (message.display_type === 'fee_groups' && Array.isArray(displayData.groups)) {
+            messageContent.classList.add('has-fee-groups');
+            messageContent.appendChild(buildFeeGroupsFromData(displayData));
         } else if (message.display_type === 'checklist' && displayData.sections) {
             messageContent.classList.add('has-checklist');
             messageContent.appendChild(buildChecklistFromData(displayData));
@@ -1714,7 +1803,7 @@
             });
         }
 
-        if (message.deep_link && message.display_type !== 'cards' && message.display_type !== 'table') {
+        if (message.deep_link && message.display_type !== 'cards' && message.display_type !== 'table' && message.display_type !== 'fee_groups') {
             var link = document.createElement('a');
             link.className = 'chatbot-deep-link';
             link.href = message.deep_link;

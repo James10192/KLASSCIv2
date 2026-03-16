@@ -11,12 +11,12 @@ namespace App\Services\Chatbot\Tools;
 abstract class ChatbotTool
 {
     /**
-     * Nom unique de l'outil (utilisé par Gemini).
+     * Nom unique de l'outil.
      */
     abstract public function name(): string;
 
     /**
-     * Description courte pour Gemini.
+     * Description courte pour le LLM.
      */
     abstract public function description(): string;
 
@@ -30,7 +30,7 @@ abstract class ChatbotTool
     /**
      * Exécuter l'outil et retourner les résultats.
      *
-     * @param  array  $args  Arguments fournis par Gemini
+     * @param  array  $args  Arguments fournis par le LLM
      * @param  \App\Models\User  $user  Utilisateur authentifié
      * @return array  Résultats structurés
      */
@@ -56,6 +56,40 @@ abstract class ChatbotTool
     public function allowedRoles(): ?array
     {
         return null;
+    }
+
+    /**
+     * Appliquer une recherche floue nom/prénoms sur une query Eloquent.
+     * LIKE exact → LIKE par terme → SOUNDEX fallback (si 0 résultat LIKE).
+     */
+    public function applyFuzzyNameSearch($query, string $search, string $nomCol = 'nom', string $prenomsCol = 'prenoms'): void
+    {
+        $terms = preg_split('/\s+/', trim($search));
+
+        $query->where(function ($q) use ($search, $terms, $nomCol, $prenomsCol) {
+            // Exact substring match
+            $q->where($nomCol, 'like', "%{$search}%")
+              ->orWhere($prenomsCol, 'like', "%{$search}%")
+              ->orWhereRaw("CONCAT({$nomCol}, ' ', {$prenomsCol}) LIKE ?", ["%{$search}%"]);
+
+            // Per-term match
+            if (count($terms) > 1) {
+                $q->orWhere(function ($sub) use ($terms, $nomCol, $prenomsCol) {
+                    foreach ($terms as $term) {
+                        $sub->where(function ($inner) use ($term, $nomCol, $prenomsCol) {
+                            $inner->where($nomCol, 'like', "%{$term}%")
+                                  ->orWhere($prenomsCol, 'like', "%{$term}%");
+                        });
+                    }
+                });
+            }
+
+            // SOUNDEX fuzzy fallback
+            foreach ($terms as $term) {
+                $q->orWhereRaw("SOUNDEX({$nomCol}) = SOUNDEX(?)", [$term])
+                  ->orWhereRaw("SOUNDEX({$prenomsCol}) = SOUNDEX(?)", [$term]);
+            }
+        });
     }
 
     /**

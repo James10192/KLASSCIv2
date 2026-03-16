@@ -154,7 +154,14 @@ class ClaudeAgentService
         $text = $text ?? $this->extractText($contentBlocks ?? []);
 
         // Construire display_data pour les résultats tabulaires/cartes
-        if ($displayType !== 'checklist' && $lastToolResult) {
+        if ($displayType === 'fee_groups' && $lastToolResult) {
+            // Fee groups : données pré-structurées par le tool
+            $displayData = [
+                'groups' => $lastToolResult['results'] ?? [],
+                'deep_link' => $lastToolResult['deep_link'] ?? null,
+                'total_count' => $lastToolResult['count'] ?? 0,
+            ];
+        } elseif ($displayType !== 'checklist' && $lastToolResult) {
             $displayData = $this->buildDisplayData($lastToolResult, $displayType);
         }
 
@@ -243,7 +250,7 @@ RÈGLES IMPORTANTES :
 2. Utilise les outils (tools) pour récupérer des données réelles. NE JAMAIS inventer de données.
 3. Si l'utilisateur pose une question sur des données (étudiants, paiements, inscriptions, frais, classes), appelle l'outil approprié.
 4. Pour les salutations ou questions générales, réponds directement sans outil.
-5. Après avoir reçu les résultats d'un outil, écris UNIQUEMENT un court résumé (1-3 phrases). NE REPRODUIS JAMAIS les données brutes, les tableaux ou les listes dans ta réponse — le frontend affiche automatiquement les résultats sous forme de widgets visuels (tableaux, cartes). Ton rôle est juste d'introduire et contextualiser.
+5. Après avoir reçu les résultats d'un outil, écris UNIQUEMENT un court résumé (1-3 phrases). NE REPRODUIS JAMAIS les données brutes, les tableaux ou les listes dans ta réponse — le frontend affiche automatiquement les résultats sous forme de widgets visuels (tableaux, cartes) EN DESSOUS de ton message texte. Ton rôle est juste d'introduire et contextualiser. Ne dis jamais "ci-dessus" — dis "ci-dessous" ou "dans les résultats suivants".
 6. Si un outil retourne 0 résultat, dis-le clairement et suggère des alternatives.
 7. Ne génère JAMAIS de tableaux markdown, de listes de données, de code, ou de JSON. Réponds en langage naturel concis.
 8. Si l'utilisateur demande comment faire quelque chose (créer une inscription, saisir des notes...), utilise navigate_to_page pour lui donner un lien direct.
@@ -526,6 +533,10 @@ PROMPT;
             'code' => 'Code',
             'categorie' => 'Catégorie',
             'type_tarif' => 'Type tarif',
+            'affectes' => 'Affectés',
+            'reaffectes' => 'Réaffectés',
+            'non_affectes' => 'Non affectés',
+            'formule' => 'Formule',
         ];
 
         return $map[$key] ?? ucfirst(str_replace('_', ' ', $key));

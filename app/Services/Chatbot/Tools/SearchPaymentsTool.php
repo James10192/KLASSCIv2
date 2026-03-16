@@ -60,10 +60,9 @@ class SearchPaymentsTool extends ChatbotTool
         }
 
         if (!empty($args['student_name'])) {
-            $name = $args['student_name'];
-            $query->whereHas('etudiant', function ($q) use ($name) {
-                $q->where('nom', 'like', "%{$name}%")
-                  ->orWhere('prenom', 'like', "%{$name}%");
+            $tool = $this;
+            $query->whereHas('etudiant', function ($q) use ($args, $tool) {
+                $tool->applyFuzzyNameSearch($q, $args['student_name']);
             });
         }
 
@@ -87,7 +86,7 @@ class SearchPaymentsTool extends ChatbotTool
             $etudiant = $p->etudiant;
             return [
                 'id' => $p->id,
-                'etudiant' => $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenom ?? '')) : 'Inconnu',
+                'etudiant' => $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '')) : 'Inconnu',
                 'montant' => number_format($p->montant ?? 0, 0, ',', ' ') . ' FCFA',
                 'montant_brut' => $p->montant ?? 0,
                 'statut' => ucfirst(str_replace('_', ' ', $p->status ?? 'inconnu')),

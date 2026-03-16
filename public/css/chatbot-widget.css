@@ -991,6 +991,87 @@
     border-top: 1px solid var(--cb-border-light);
 }
 
+/* ── Fee Groups ──────────────────────────────────────────── */
+.cb-fee-groups {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cb-fee-section {
+    border: 1px solid var(--cb-border);
+    border-radius: var(--cb-radius-xs);
+    background: var(--cb-bg);
+    overflow: hidden;
+}
+
+.cb-fee-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #f0f6ff 0%, #f8fafc 100%);
+    border-bottom: 1px solid var(--cb-border-light);
+}
+
+.cb-fee-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--cb-text);
+    margin: 0;
+}
+
+.cb-fee-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.cb-fee-table thead th {
+    padding: 7px 12px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--cb-text-muted);
+    background: #fafbfc;
+    border-bottom: 1px solid var(--cb-border-light);
+}
+
+.cb-fee-table thead th:not(:first-child) {
+    text-align: right;
+}
+
+.cb-fee-table tbody tr {
+    border-bottom: 1px solid var(--cb-border-light);
+    transition: background var(--cb-transition);
+}
+
+.cb-fee-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.cb-fee-table tbody tr:hover {
+    background: #f8faff;
+}
+
+.cb-fee-label {
+    padding: 8px 12px;
+    color: var(--cb-text);
+    font-weight: 500;
+}
+
+.cb-fee-amount {
+    padding: 8px 12px;
+    text-align: right;
+    font-weight: 600;
+    color: var(--cb-primary);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
 /* ── Checklist (setup guide) ───────────────────────────────── */
 .chatbot-checklist {
     margin-top: 10px;
