@@ -95,9 +95,9 @@
                         </select>
                     </div>
                     <div class="sr-filter-group">
-                        <label class="sr-filter-label">Période</label>
-                        <select name="semestre" id="semestre" class="sr-filter-select">
-                            <option value="">Annuel</option>
+                        <label class="sr-filter-label">Période <span style="color: var(--sr-danger);">*</span></label>
+                        <select name="semestre" id="semestre" class="sr-filter-select" required>
+                            <option value="" disabled {{ !$semestre ? 'selected' : '' }}>— Choisir un semestre —</option>
                             <option value="1" {{ $semestre == 1 ? 'selected' : '' }}>Semestre 1</option>
                             <option value="2" {{ $semestre == 2 ? 'selected' : '' }}>Semestre 2</option>
                         </select>
@@ -117,8 +117,19 @@
             </form>
         </div>
 
+        {{-- Alerte si aucun semestre sélectionné --}}
+        @if(!$semestre)
+            <div class="sr-callout sr-animate sr-animate-delay-3" style="margin-bottom: 1.5rem; border-left-color: var(--sr-warning); background: var(--sr-warning-light);">
+                <i class="fas fa-exclamation-triangle" style="color: var(--sr-warning);"></i>
+                <div>
+                    <h6 style="color: #92400e;">Sélectionnez un semestre</h6>
+                    <p style="color: #92400e;">Vous devez choisir un semestre (Semestre 1 ou Semestre 2) pour pouvoir éditer les moyennes, professeurs, absences et configuration des matières.</p>
+                </div>
+            </div>
+        @endif
+
         {{-- Actions rapides --}}
-        <div class="sr-actions-card sr-animate sr-animate-delay-3" style="margin-bottom: 1.5rem;">
+        <div class="sr-actions-card sr-animate sr-animate-delay-3" style="margin-bottom: 1.5rem; {{ !$semestre ? 'opacity: 0.5; pointer-events: none;' : '' }}">
             <div class="sr-actions-header">
                 <i class="fas fa-bolt"></i>
                 <h3>Actions groupées</h3>
@@ -126,19 +137,19 @@
             </div>
             <div class="sr-actions-body" style="padding: 1rem 1.5rem;">
                 <div class="sr-actions-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 0;">
-                    <button class="sr-action-btn" onclick="openMoyennesModal()" id="btnMoyennes">
+                    <button class="sr-action-btn" onclick="openMoyennesModal()" id="btnMoyennes" {{ !$semestre ? 'disabled' : '' }}>
                         <div class="sr-action-btn-icon sr-action-btn-icon--primary"><i class="fas fa-calculator"></i></div>
                         <span class="sr-action-btn-text">Éditer Moyennes</span>
                     </button>
-                    <button class="sr-action-btn" onclick="openProfesseursModal()" id="btnProfesseurs">
+                    <button class="sr-action-btn" onclick="openProfesseursModal()" id="btnProfesseurs" {{ !$semestre ? 'disabled' : '' }}>
                         <div class="sr-action-btn-icon sr-action-btn-icon--info"><i class="fas fa-chalkboard-teacher"></i></div>
                         <span class="sr-action-btn-text">Professeurs</span>
                     </button>
-                    <button class="sr-action-btn" onclick="openAbsencesModal()" id="btnAbsences">
+                    <button class="sr-action-btn" onclick="openAbsencesModal()" id="btnAbsences" {{ !$semestre ? 'disabled' : '' }}>
                         <div class="sr-action-btn-icon sr-action-btn-icon--warning"><i class="fas fa-calendar-times"></i></div>
                         <span class="sr-action-btn-text">Absences</span>
                     </button>
-                    <button class="sr-action-btn" onclick="openMatieresModal()" id="btnMatieres">
+                    <button class="sr-action-btn" onclick="openMatieresModal()" id="btnMatieres" {{ !$semestre ? 'disabled' : '' }}>
                         <div class="sr-action-btn-icon sr-action-btn-icon--secondary"><i class="fas fa-cog"></i></div>
                         <span class="sr-action-btn-text">Config. Matières</span>
                     </button>
