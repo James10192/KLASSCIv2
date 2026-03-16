@@ -1670,7 +1670,8 @@
         }
 
         var streamUrl = this.config.routes.messageStream;
-        if (streamUrl) {
+        var useStreaming = this.config.enableStreaming && streamUrl;
+        if (useStreaming) {
             // Streaming SSE via fetch + ReadableStream
             var streamMessage = null;
             var streamTextEl = null;
