@@ -219,20 +219,15 @@ class ChatbotController extends Controller
 
     public function getMandatoryFraisCategoryForm(Request $request)
     {
-        $conversation = $this->resolveConversation($request->input('conversation_id'));
-        if (!$conversation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Conversation introuvable.',
-            ], 404);
-        }
+        $sessionId = $request->input('conversation_id');
+        $formData = $this->chatbotService->buildMandatoryFraisCategoryFormData($sessionId);
 
-        $response = $this->chatbotService->buildFormResponse($conversation, 'frais_category', [], null);
-
-        return response()->json($response ?? [
-            'success' => false,
-            'message' => 'Formulaire indisponible.',
-        ], $response ? 200 : 500);
+        return response()->json([
+            'success' => true,
+            'message' => 'Remplis ce formulaire pour créer une catégorie de frais obligatoire.',
+            'display_type' => 'form',
+            'display_data' => $formData,
+        ]);
     }
 
     public function storeMandatoryFraisCategory(Request $request)
@@ -358,54 +353,37 @@ class ChatbotController extends Controller
 
     public function getFraisConfigForm(Request $request)
     {
-        $conversation = $this->resolveConversation($request->input('conversation_id'));
-        if (!$conversation) {
+        $categoryId = $request->input('category_id') ? (int) $request->input('category_id') : null;
+        $sessionId = $request->input('conversation_id');
+        $formData = $this->chatbotService->buildFraisConfigFormData($categoryId, $sessionId);
+
+        if (!$formData) {
             return response()->json([
                 'success' => false,
-                'message' => 'Conversation introuvable.',
+                'message' => 'Aucune catégorie de frais obligatoire trouvée.',
             ], 404);
         }
 
-        $categoryId = $request->input('category_id');
-        $payload = $categoryId ? ['category_id' => (int) $categoryId] : [];
-
-        $response = $this->chatbotService->buildFormResponse($conversation, 'frais_config', $payload, null);
-
-        return response()->json($response ?? [
-            'success' => false,
-            'message' => 'Formulaire indisponible.',
-        ], $response ? 200 : 500);
+        return response()->json([
+            'success' => true,
+            'message' => "Configure les montants pour les frais.",
+            'display_type' => 'form',
+            'display_data' => $formData,
+        ]);
     }
 
     public function getInscriptionsFilterForm(Request $request)
     {
-        $conversation = $this->resolveConversation($request->input('conversation_id'));
-        if (!$conversation) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Conversation introuvable.',
-            ], 404);
-        }
+        $focusField = $request->input('focus_field');
+        $sessionId = $request->input('conversation_id');
+        $formData = $this->chatbotService->buildInscriptionsFilterFormData($focusField, $sessionId);
 
-        $payload = [];
-        if ($request->filled('focus_field')) {
-            $payload['focus_field'] = $request->input('focus_field');
-        }
-
-        if (config('app.debug')) {
-            \Log::debug('Chatbot inscriptions filter form request', [
-                'conversation_id' => $request->input('conversation_id'),
-                'focus_field' => $payload['focus_field'] ?? null,
-                'raw_value' => $request->input('focus_field'),
-            ]);
-        }
-
-        $response = $this->chatbotService->buildFormResponse($conversation, 'inscriptions_filter', $payload, null);
-
-        return response()->json($response ?? [
-            'success' => false,
-            'message' => 'Formulaire indisponible.',
-        ], $response ? 200 : 500);
+        return response()->json([
+            'success' => true,
+            'message' => 'Donne-moi les filtres à appliquer.',
+            'display_type' => 'form',
+            'display_data' => $formData,
+        ]);
     }
 
     public function storeInscriptionsFilter(Request $request)
