@@ -1765,10 +1765,29 @@
                 self.appendAssistantMessage(finalMsg);
                 self.fetchConversations();
             }).catch(function (error) {
-                debugError('Chatbot stream error', error);
+                debugError('Chatbot stream error, falling back to non-streaming', error);
                 if (self.typingElement) { self.typingElement.remove(); self.typingElement = null; }
                 if (streamMessage) streamMessage.remove();
-                self.appendErrorMessage('Désolé, une erreur est survenue. Réessayez dans un instant.');
+                // Fallback: retry with non-streaming endpoint
+                self.typingElement = createTypingIndicator();
+                self.messagesContainer.appendChild(self.typingElement);
+                fetch(self.config.routes.message, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': self.config.csrfToken },
+                    credentials: 'same-origin',
+                    body: JSON.stringify(payload)
+                }).then(function (r) { return r.json(); }).then(function (data) {
+                    if (self.typingElement) { self.typingElement.remove(); self.typingElement = null; }
+                    if (!data || !data.success) throw new Error(data && data.message ? data.message : 'Erreur');
+                    if (data.conversation_id) self.state.currentConversationId = data.conversation_id;
+                    self.appendAssistantMessage({ content: data.message, display_type: data.display_type, display_data: data.display_data, deep_link: data.deep_link, created_at: new Date().toISOString() });
+                    self.fetchConversations();
+                }).catch(function (fallbackErr) {
+                    debugError('Chatbot fallback also failed', fallbackErr);
+                    if (self.typingElement) { self.typingElement.remove(); self.typingElement = null; }
+                    self.appendErrorMessage('Désolé, une erreur est survenue. Réessayez dans un instant.');
+                }).finally(function () { self.state.isSending = false; self.sendButton.disabled = false; self.scrollToBottom(); });
+                return;
             }).finally(function () {
                 self.state.isSending = false;
                 self.sendButton.disabled = false;

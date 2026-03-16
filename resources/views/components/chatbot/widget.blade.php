@@ -118,7 +118,7 @@
     @push('scripts')
         <script>
             window.KLASSCI_CHATBOT_CONFIG = Object.assign({}, window.KLASSCI_CHATBOT_CONFIG || {}, {
-                enableStreaming: false,
+                enableStreaming: true,
                 userName: @json(auth()->check() ? auth()->user()->name : ''),
                 userPhoto: @json(auth()->check() && auth()->user()->profile_photo_path ? asset('storage/' . auth()->user()->profile_photo_path) : ''),
                 routes: {

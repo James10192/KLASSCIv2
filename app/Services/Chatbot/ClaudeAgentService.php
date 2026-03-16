@@ -433,13 +433,19 @@ PROMPT;
         ?array $clientContext = null,
         callable $onEvent = null,
     ): array {
-        // Phase 1 : Appel normal (tool rounds) — pas de streaming
         $emit = $onEvent ?? fn() => null;
         $emit('status', ['message' => 'Analyse de votre demande...']);
 
         $result = $this->chat($conversation, $message, $user, $preferences, $clientContext);
 
-        // Phase 2 : Envoyer le texte mot par mot pour simuler le streaming
+        // Vérifier si c'est une erreur (fallback response)
+        $isFallback = empty($result['tool_calls']) && str_contains($result['text'] ?? '', 'temporairement indisponible');
+        if ($isFallback) {
+            $emit('error', ['message' => $result['text']]);
+            return $result;
+        }
+
+        // Streaming texte mot par mot
         $text = $result['text'] ?? '';
         if ($text) {
             $words = preg_split('/(\s+)/u', $text, -1, PREG_SPLIT_DELIM_CAPTURE);
@@ -447,6 +453,7 @@ PROMPT;
             foreach ($words as $word) {
                 $buffer .= $word;
                 $emit('text_delta', ['text' => $word, 'full_text' => $buffer]);
+                usleep(15000); // 15ms entre chaque mot pour un effet visuel
             }
         }
 
