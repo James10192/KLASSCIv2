@@ -663,6 +663,9 @@ class ESBTPStudentController extends Controller
      */
     public function exportPdf(Request $request)
     {
+        ini_set('memory_limit', '1024M');
+        set_time_limit(300);
+
         try {
             $data = $this->getExportData($request);
             $groupBy = $request->input('group_by');
@@ -721,6 +724,7 @@ class ESBTPStudentController extends Controller
                         'classe' => $inscription?->classe?->name ?? 'Sans classe',
                         'filiere' => $inscription?->filiere?->name ?? 'Sans filière',
                         'niveau' => $inscription?->niveau?->name ?? 'Sans niveau',
+                        'filiere_niveau' => ($inscription?->filiere?->name ?? 'Sans filière') . ' — ' . ($inscription?->niveau?->name ?? 'Sans niveau'),
                         default => 'Tous',
                     };
                 });
@@ -732,8 +736,10 @@ class ESBTPStudentController extends Controller
             $filename = 'etudiants' . $suffix . '-' . now()->format('Y-m-d') . '.pdf';
 
             $pdfOptions = [
+                'dpi' => 72,
                 'isRemoteEnabled' => true,
                 'isHtml5ParserEnabled' => true,
+                'isFontSubsettingEnabled' => true,
                 'defaultFont' => 'DejaVu Sans',
             ];
 

@@ -2938,6 +2938,11 @@
                                     <i class="fas fa-signal"></i>
                                     <span>Par niveau</span>
                                 </label>
+                                <label class="export-radio" :class="{ 'active': exportGroupBy === 'filiere_niveau' }" @click="exportGroupBy = 'filiere_niveau'">
+                                    <input type="radio" name="export_group" value="filiere_niveau" x-model="exportGroupBy">
+                                    <i class="fas fa-layer-group"></i>
+                                    <span>Par filière et niveau</span>
+                                </label>
                             </div>
                         </div>
                     </div>

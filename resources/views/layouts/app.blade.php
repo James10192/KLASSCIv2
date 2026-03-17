@@ -1572,6 +1572,18 @@
                         </div>
                     @endif
 
+                    <!-- Enseignants (toggle module — visible superAdmin/secretaire) -->
+                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire')))
+                        @can('module.enseignants.access')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.enseignants.index') }}" class="menu-link {{ Request::routeIs('esbtp.enseignants.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                                <div class="menu-text">Enseignants</div>
+                            </a>
+                        </div>
+                        @endcan
+                    @endif
+
                     <!-- Coordinateur Section -->
                     @if(auth()->check() && auth()->user() && auth()->user()->hasRole('coordinateur'))
                         <div class="menu-category">Coordination pédagogique</div>

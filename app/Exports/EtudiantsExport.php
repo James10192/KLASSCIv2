@@ -17,7 +17,7 @@ class EtudiantsExport implements WithMultipleSheets
 
     /**
      * @param Collection $etudiants Collection of ['etudiant' => ..., 'inscription' => ...]
-     * @param string|null $groupBy null|'classe'|'filiere'|'niveau'
+     * @param string|null $groupBy null|'classe'|'filiere'|'niveau'|'filiere_niveau'
      * @param array $filters Active filters for display
      */
     public function __construct(Collection $etudiants, ?string $groupBy = null, array $filters = [])
@@ -29,8 +29,10 @@ class EtudiantsExport implements WithMultipleSheets
 
     public function sheets(): array
     {
-        if (!$this->groupBy) {
-            return [new EtudiantsSheetExport($this->etudiants, 'Tous les étudiants')];
+        $settings = $this->loadSettings();
+
+        if (! $this->groupBy) {
+            return [new EtudiantsSheetExport($this->etudiants, 'Tous les étudiants', $settings)];
         }
 
         $grouped = $this->etudiants->groupBy(function ($item) {
@@ -40,6 +42,7 @@ class EtudiantsExport implements WithMultipleSheets
                 'classe' => $inscription?->classe?->name ?? 'Sans classe',
                 'filiere' => $inscription?->filiere?->name ?? 'Sans filière',
                 'niveau' => $inscription?->niveau?->name ?? 'Sans niveau',
+                'filiere_niveau' => ($inscription?->filiere?->name ?? 'Sans filière').' — '.($inscription?->niveau?->name ?? 'Sans niveau'),
                 default => 'Tous',
             };
         });
@@ -47,11 +50,23 @@ class EtudiantsExport implements WithMultipleSheets
         $sheets = [];
         foreach ($grouped as $groupName => $items) {
             $sheets[] = new EtudiantsSheetExport(
-                collect($items),
-                $groupName . ' (' . $items->count() . ')'
+                $items,
+                $groupName.' ('.$items->count().')',
+                $settings
             );
         }
 
         return $sheets;
+    }
+
+    private function loadSettings(): array
+    {
+        return [
+            'school_name' => SettingsHelper::get('school_name', config('app.name')),
+            'school_address' => SettingsHelper::get('school_address'),
+            'school_city' => SettingsHelper::get('school_city'),
+            'school_phone' => SettingsHelper::get('school_phone'),
+            'school_email' => SettingsHelper::get('school_email'),
+        ];
     }
 }
