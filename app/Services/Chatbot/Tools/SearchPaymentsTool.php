@@ -97,16 +97,15 @@ class SearchPaymentsTool extends ChatbotTool
                     ];
                 })->toArray();
 
-                // Construire un message clair pour Claude
-                $optionsList = collect($options)->map(function ($o, $idx) {
-                    return ($idx + 1) . '. ' . $o['label'] . ' (inscription_id: ' . $o['inscription_id'] . ')';
-                })->implode("\n");
-
+                // Retourner les options avec un mapping clair pour Claude
                 return [
                     'results' => [],
                     'count' => 0,
                     'needs_clarification' => true,
-                    'message' => "{$etudiantName} a {$inscriptions->count()} inscriptions :\n{$optionsList}\n\nDemande à l'utilisateur laquelle il veut consulter en présentant les options par NUMÉRO avec classe, année et type (NE PAS montrer l'inscription_id). Quand il choisit, rappelle search_payments avec inscription_id correspondant. Si il dit \"les deux\" ou \"toutes\", appelle search_payments une fois pour chaque inscription_id.",
+                    'etudiant' => $etudiantName,
+                    'nb_inscriptions' => $inscriptions->count(),
+                    'inscriptions' => $options,
+                    'instructions' => "IMPORTANT: Présente les inscriptions à l'utilisateur par numéro avec classe, année et type. NE MONTRE PAS inscription_id. Quand il choisit, utilise EXACTEMENT la valeur inscription_id ci-dessous. MAPPING: " . collect($options)->map(fn($o, $idx) => "choix " . ($idx + 1) . " → inscription_id=" . $o['inscription_id'])->implode(', ') . ". Si l'utilisateur dit 'les deux' ou 'toutes', appelle search_payments DEUX FOIS avec inscription_id=" . collect($options)->pluck('inscription_id')->implode(' puis inscription_id=') . ".",
                     'display_type' => 'text',
                 ];
             }
