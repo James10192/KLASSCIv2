@@ -119,10 +119,10 @@ class DashboardController extends Controller
 
         // Inscriptions en attente - SuperAdmin peut voir toutes les inscriptions (filtré par année en cours)
         if ($anneeEnCours) {
-            $data['pendingInscriptionsCount'] = \App\Models\ESBTPInscription::where('status', 'pending')
+            $data['pendingInscriptionsCount'] = \App\Models\ESBTPInscription::whereIn('status', ['en_attente', 'pending'])
                 ->where('annee_universitaire_id', $anneeEnCours->id)->count();
         } else {
-            $data['pendingInscriptionsCount'] = \App\Models\ESBTPInscription::where('status', 'pending')->count();
+            $data['pendingInscriptionsCount'] = \App\Models\ESBTPInscription::whereIn('status', ['en_attente', 'pending'])->count();
         }
 
         $data['pendingCurrentYearInscriptionsCount'] = 0;
@@ -531,7 +531,7 @@ class DashboardController extends Controller
         $data['anneeEnCours'] = $anneeEnCours;
 
         // Inscriptions en attente
-        $data['pendingInscriptionsCount'] = \App\Models\ESBTPInscription::where('status', 'pending')->count();
+        $data['pendingInscriptionsCount'] = \App\Models\ESBTPInscription::whereIn('status', ['en_attente', 'pending'])->count();
 
         $data['pendingCurrentYearInscriptionsCount'] = 0;
         $data['pendingCurrentYearInscriptionsByStep'] = [];
@@ -593,9 +593,9 @@ class DashboardController extends Controller
 
         // Bulletins - Les secrétaires peuvent générer et consulter les bulletins
         try {
-            $data['pendingBulletins'] = ESBTPBulletin::where('status', 'pending')->count();
+            $data['totalBulletins'] = ESBTPBulletin::count();
         } catch (\Exception $e) {
-            $data['pendingBulletins'] = 0;
+            $data['totalBulletins'] = 0;
         }
 
         // Messages - Les secrétaires peuvent envoyer et recevoir des messages
@@ -905,7 +905,7 @@ class DashboardController extends Controller
         // Inscriptions en attente (filtré par année en cours)
         try {
             if ($anneeEnCours) {
-                $data['pendingInscriptionsCount'] = ESBTPInscription::where('status', 'pending')
+                $data['pendingInscriptionsCount'] = ESBTPInscription::whereIn('status', ['en_attente', 'pending'])
                     ->where('annee_universitaire_id', $anneeEnCours->id)->count();
                 $data['recentInscriptions'] = ESBTPInscription::with([
                     'etudiant',
@@ -916,7 +916,7 @@ class DashboardController extends Controller
                     ->limit(5)
                     ->get();
             } else {
-                $data['pendingInscriptionsCount'] = ESBTPInscription::where('status', 'pending')->count();
+                $data['pendingInscriptionsCount'] = ESBTPInscription::whereIn('status', ['en_attente', 'pending'])->count();
                 $data['recentInscriptions'] = ESBTPInscription::with([
                     'etudiant',
                     'classe.filiere'
