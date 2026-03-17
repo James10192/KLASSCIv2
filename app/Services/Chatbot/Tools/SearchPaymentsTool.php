@@ -83,28 +83,30 @@ class SearchPaymentsTool extends ChatbotTool
 
             if ($inscriptions->count() > 1) {
                 // Plusieurs inscriptions → demander clarification
-                $options = $inscriptions->map(function ($i) {
-                    return [
-                        'inscription_id' => $i->id,
-                        'classe' => $i->classe?->name ?? 'N/A',
-                        'filiere' => $i->classe?->filiere?->name ?? 'N/A',
-                        'annee' => $i->anneeUniversitaire?->name ?? 'N/A',
-                        'type' => ucfirst(str_replace('_', ' ', $i->type_inscription ?? 'N/A')),
-                        'statut' => ucfirst(str_replace('_', ' ', $i->status ?? 'N/A')),
-                        'date' => $i->date_inscription?->format('d/m/Y') ?? 'N/A',
-                    ];
-                })->toArray();
-
                 $etudiantName = $inscriptions->first()->etudiant
                     ? trim($inscriptions->first()->etudiant->nom . ' ' . $inscriptions->first()->etudiant->prenoms)
                     : $args['student_name'];
+
+                $options = $inscriptions->map(function ($i) {
+                    $label = ($i->classe?->name ?? '') . ' (' . ($i->classe?->filiere?->name ?? '') . ')';
+                    $label .= ' — ' . ($i->anneeUniversitaire?->name ?? 'N/A');
+                    $label .= ' — ' . ucfirst(str_replace('_', ' ', $i->type_inscription ?? ''));
+                    return [
+                        'inscription_id' => $i->id,
+                        'label' => $label,
+                    ];
+                })->toArray();
+
+                // Construire un message clair pour Claude
+                $optionsList = collect($options)->map(function ($o, $idx) {
+                    return ($idx + 1) . '. ' . $o['label'] . ' (inscription_id: ' . $o['inscription_id'] . ')';
+                })->implode("\n");
 
                 return [
                     'results' => [],
                     'count' => 0,
                     'needs_clarification' => true,
-                    'message' => "{$etudiantName} a {$inscriptions->count()} inscriptions. Demande à l'utilisateur laquelle il souhaite consulter, puis rappelle search_payments avec inscription_id.",
-                    'inscriptions' => $options,
+                    'message' => "{$etudiantName} a {$inscriptions->count()} inscriptions :\n{$optionsList}\n\nDemande à l'utilisateur laquelle il veut consulter en présentant les options par NUMÉRO avec classe, année et type (NE PAS montrer l'inscription_id). Quand il choisit, rappelle search_payments avec inscription_id correspondant. Si il dit \"les deux\" ou \"toutes\", appelle search_payments une fois pour chaque inscription_id.",
                     'display_type' => 'text',
                 ];
             }
