@@ -2737,4 +2737,52 @@ class ESBTPInscriptionController extends Controller
 
         return false;
     }
+
+    /**
+     * Régénérer les frais obligatoires après changement de classe/filière/niveau
+     */
+    private function regenererFraisInscription(\App\Models\ESBTPInscription $inscription)
+    {
+        \Log::info("Régénération des frais pour inscription", [
+            "inscription_id" => $inscription->id,
+            "filiere_id" => $inscription->filiere_id,
+            "niveau_id" => $inscription->niveau_id,
+            "classe_id" => $inscription->classe_id,
+        ]);
+
+        $inscription->load(["filiere", "niveau", "classe"]);
+
+        $categoriesObligatoires = ESBTPFraisCategory::where("is_mandatory", true)
+            ->where("is_active", true)
+            ->orderBy("sort_order")
+            ->get();
+
+        foreach ($categoriesObligatoires as $category) {
+            $fraisConfig = ESBTPFraisConfiguration::where("frais_category_id", $category->id)
+                ->where("filiere_id", $inscription->filiere_id)
+                ->where("niveau_id", $inscription->niveau_id)
+                ->where("is_active", true)
+                ->first();
+
+            if ($fraisConfig) {
+                $affectationStatus = $inscription->affectation_status ?? "affecté";
+                $montant = $fraisConfig->getMontantByStatus($affectationStatus);
+
+                ESBTPFraisSubscription::updateOrCreate(
+                    [
+                        "inscription_id" => $inscription->id,
+                        "frais_category_id" => $category->id,
+                    ],
+                    [
+                        "selected_option_id" => null,
+                        "amount" => $montant,
+                        "is_active" => true,
+                        "subscribed_at" => now(),
+                        "created_by" => \Auth::id(),
+                        "notes" => "Régénéré automatiquement après changement de classe/filière/niveau",
+                    ],
+                );
+            }
+        }
+    }
 }

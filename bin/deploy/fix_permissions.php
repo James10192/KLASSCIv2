@@ -214,6 +214,12 @@ try {
         'view_resultats',
         'edit_resultats',
 
+        // Permissions modules (toggle par rôle via page Rôles & Permissions)
+        'module.enseignants.access',
+        'module.notes_evaluations.access',
+        'module.emploi_temps.access',
+        'module.presences.access',
+
         // Permissions Service Technique (African Digit Consulting)
         'paywall.configure',
         'paywall.manage_subscriptions',
@@ -302,6 +308,11 @@ try {
         'view_reports',
         'view_planning_general',
         'view_resultats',
+        // Modules toggle
+        'module.enseignants.access',
+        'module.notes_evaluations.access',
+        'module.emploi_temps.access',
+        'module.presences.access',
     ];
     $secretaireRole->syncPermissions($secretairePermissions);
     echo '✓ Secrétaire: '.count($secretairePermissions)." permissions accordées\n";
@@ -334,6 +345,11 @@ try {
         'view_reports', 'generate_reports',
         'view_planning_general', 'edit_planning_general',
         'view_resultats', 'edit_resultats',
+        // Modules toggle
+        'module.enseignants.access',
+        'module.notes_evaluations.access',
+        'module.emploi_temps.access',
+        'module.presences.access',
     ];
     $coordinateurRole->syncPermissions($coordinateurPermissions);
     echo '✓ Coordinateur: '.count($coordinateurPermissions)." permissions accordées\n";

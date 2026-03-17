@@ -89,7 +89,7 @@ class ESBTPRolePermissionConfigController extends Controller
         }
 
         $roleGroups = collect([
-            'Administration' => ['superAdmin', 'secretaire'],
+            'Administration' => ['superAdmin', 'secretaire', 'comptable'],
             'Pédagogie' => ['coordinateur', 'enseignant'],
             'Étudiants' => ['etudiant'],
         ]);

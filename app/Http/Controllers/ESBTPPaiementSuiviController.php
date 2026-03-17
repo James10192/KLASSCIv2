@@ -349,4 +349,202 @@ class ESBTPPaiementSuiviController extends Controller
         return collect($statistiques);
     }
 
+    /**
+     * Version optimisée : utilise les données pré-chargées au lieu de requêtes N+1
+     */
+    private function calculerStatistiquesCategoriesOptimisees($inscriptions, $categories, $configurations, $subscriptions, $paiements)
+    {
+        $statistiques = [];
+
+        foreach ($categories as $category) {
+            $stats = [
+                'category' => $category,
+                'total_etudiants' => $inscriptions->count(),
+                'etudiants_concernes' => 0,
+                'etudiants_a_jour' => 0,
+                'etudiants_en_retard' => 0,
+                'etudiants_non_payes' => 0,
+                'montant_total_attendu' => 0,
+                'montant_total_recu' => 0,
+                'taux_recouvrement' => 0,
+            ];
+
+            foreach ($inscriptions as $inscription) {
+                $estConcerne = false;
+                $montantAttendu = 0;
+
+                if ($category->is_mandatory) {
+                    $estConcerne = true;
+                    $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
+                    $config = $configurations->get($configKey, collect())->first();
+                    $montantAttendu = $config
+                        ? $config->getMontantByStatus($inscription->affectation_status ?? 'affecté')
+                        : $category->default_amount;
+                } else {
+                    $inscSubs = $subscriptions->get($inscription->id, collect());
+                    $sub = $inscSubs->where('frais_category_id', $category->id)->first();
+                    if ($sub) {
+                        $estConcerne = true;
+                        $montantAttendu = $sub->amount;
+                    }
+                }
+
+                if ($estConcerne) {
+                    $stats['etudiants_concernes']++;
+                    $stats['montant_total_attendu'] += $montantAttendu;
+
+                    $paiementKey = $inscription->id . '_' . $category->id;
+                    $montantPaye = $paiements->get($paiementKey, collect())->sum('montant');
+                    $stats['montant_total_recu'] += $montantPaye;
+
+                    if ($montantPaye >= $montantAttendu) {
+                        $stats['etudiants_a_jour']++;
+                    } elseif ($montantPaye > 0) {
+                        $stats['etudiants_en_retard']++;
+                    } else {
+                        $stats['etudiants_non_payes']++;
+                    }
+                }
+            }
+
+            $stats['taux_recouvrement'] = $stats['montant_total_attendu'] > 0
+                ? round(($stats['montant_total_recu'] / $stats['montant_total_attendu']) * 100, 1)
+                : 0;
+
+            $statistiques[] = $stats;
+        }
+
+        return collect($statistiques);
+    }
+
+    /**
+     * Vue d'ensemble optimisée : KPIs globaux depuis données pré-chargées
+     */
+    private function calculerVueEnsembleOptimisee($inscriptions, $categories, $configurations, $subscriptions, $paiements)
+    {
+        $enRegle = 0;
+        $enRetard = 0;
+        $nonPayes = 0;
+        $montantTotalAttendu = 0;
+        $montantTotalRecu = 0;
+
+        foreach ($inscriptions as $inscription) {
+            $totalDu = 0;
+            $totalPaye = 0;
+
+            foreach ($categories as $category) {
+                $montantAttendu = 0;
+                $estConcerne = false;
+
+                if ($category->is_mandatory) {
+                    $estConcerne = true;
+                    $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
+                    $config = $configurations->get($configKey, collect())->first();
+                    $montantAttendu = $config
+                        ? $config->getMontantByStatus($inscription->affectation_status ?? 'affecté')
+                        : $category->default_amount;
+                } else {
+                    $inscSubs = $subscriptions->get($inscription->id, collect());
+                    $sub = $inscSubs->where('frais_category_id', $category->id)->first();
+                    if ($sub) {
+                        $estConcerne = true;
+                        $montantAttendu = $sub->amount;
+                    }
+                }
+
+                if ($estConcerne && $montantAttendu > 0) {
+                    $totalDu += $montantAttendu;
+                    $paiementKey = $inscription->id . '_' . $category->id;
+                    $totalPaye += $paiements->get($paiementKey, collect())->sum('montant');
+                }
+            }
+
+            $montantTotalAttendu += $totalDu;
+            $montantTotalRecu += $totalPaye;
+
+            if ($totalDu <= 0 || $totalPaye >= $totalDu) {
+                $enRegle++;
+            } elseif ($totalPaye > 0) {
+                $enRetard++;
+            } else {
+                $nonPayes++;
+            }
+        }
+
+        return [
+            'etudiants_en_regle' => $enRegle,
+            'etudiants_en_retard' => $enRetard,
+            'etudiants_non_payes' => $nonPayes,
+            'montant_total_attendu' => $montantTotalAttendu,
+            'montant_total_recu' => $montantTotalRecu,
+            'taux_recouvrement_global' => $montantTotalAttendu > 0
+                ? round(($montantTotalRecu / $montantTotalAttendu) * 100, 1)
+                : 0,
+        ];
+    }
+
+    /**
+     * Analyse détaillée d'une catégorie optimisée : listes d'étudiants par statut
+     */
+    private function analyserCategorieDetailleOptimisee($category, $inscriptions, $configurations, $subscriptions, $paiements)
+    {
+        $aJour = collect();
+        $enRetard = collect();
+        $nonPayes = collect();
+        $montantTotalAttendu = 0;
+        $montantTotalRecu = 0;
+
+        foreach ($inscriptions as $inscription) {
+            $estConcerne = false;
+            $montantAttendu = 0;
+
+            if ($category->is_mandatory) {
+                $estConcerne = true;
+                $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
+                $config = $configurations->get($configKey, collect())->first();
+                $montantAttendu = $config
+                    ? $config->getMontantByStatus($inscription->affectation_status ?? 'affecté')
+                    : $category->default_amount;
+            } else {
+                $inscSubs = $subscriptions->get($inscription->id, collect());
+                $sub = $inscSubs->where('frais_category_id', $category->id)->first();
+                if ($sub) {
+                    $estConcerne = true;
+                    $montantAttendu = $sub->amount;
+                }
+            }
+
+            if (!$estConcerne) continue;
+
+            $paiementKey = $inscription->id . '_' . $category->id;
+            $montantPaye = $paiements->get($paiementKey, collect())->sum('montant');
+            $montantTotalAttendu += $montantAttendu;
+            $montantTotalRecu += $montantPaye;
+
+            $row = (object) [
+                'inscription' => $inscription,
+                'montant_attendu' => $montantAttendu,
+                'montant_paye' => $montantPaye,
+                'reste' => max(0, $montantAttendu - $montantPaye),
+            ];
+
+            if ($montantPaye >= $montantAttendu) {
+                $aJour->push($row);
+            } elseif ($montantPaye > 0) {
+                $enRetard->push($row);
+            } else {
+                $nonPayes->push($row);
+            }
+        }
+
+        return [
+            'category' => $category,
+            'etudiants_a_jour' => $aJour,
+            'etudiants_en_retard' => $enRetard,
+            'etudiants_non_payes' => $nonPayes,
+            'montant_total_attendu' => $montantTotalAttendu,
+            'montant_total_recu' => $montantTotalRecu,
+        ];
+    }
+
 }

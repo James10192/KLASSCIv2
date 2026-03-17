@@ -1352,7 +1352,7 @@ Route::prefix('secretaires')->name('secretaires.')->group(function () {
 });
 
 // Routes pour la gestion des enseignants
-Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin|coordinateur'])->group(function () {
+Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:superAdmin|coordinateur|secretaire|comptable', 'permission:module.enseignants.access'])->group(function () {
     Route::get('enseignants/duplicates', [ESBTPEnseignantController::class, 'duplicates'])->name('enseignants.duplicates');
     Route::post('enseignants/quick-create', [ESBTPEnseignantController::class, 'quickStore'])->name('enseignants.quick-create');
     Route::get('enseignants/bulk-availability', [ESBTPEnseignantController::class, 'bulkAvailability'])->name('enseignants.bulk-availability');
@@ -1920,8 +1920,8 @@ Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur', 'paywall']
     Route::post('coordinateurs/{coordinateur}/reset-password', [\App\Http\Controllers\ESBTPCoordinateurController::class, 'resetPassword'])->name('coordinateurs.reset-password');
 });
 
-// Routes pour les coordinateurs avec permissions spécifiques
-Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.')->group(function () {
+// Routes pour les coordinateurs et rôles admin avec permissions spécifiques
+Route::middleware(['auth', 'role:superAdmin|coordinateur|secretaire|comptable'])->prefix('esbtp')->name('esbtp.')->group(function () {
     // Routes pour les notes
     Route::prefix('notes')->name('notes.')->group(function () {
         Route::get('/', [\App\Http\Controllers\ESBTPNoteController::class, 'index'])->name('index')
@@ -1977,13 +1977,13 @@ Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.'
     Route::post('/planning-general/emargement/generer-code', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'genererCodeEmargement'])->name('planning-general.generer-code-emargement')
         ->middleware('permission:manage-planning|view-all-timetables');
 
-    // Routes AJAX pour la configuration des volumes horaires — TODO: controller supprimé
-    // Route::get('/planning-general/get-matieres-configuration', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'getMatieresPourConfiguration'])
-    //     ->name('planning-general.get-matieres-configuration')
-    //     ->middleware('permission:manage-planning|view-all-timetables');
-    // Route::post('/planning-general/save-volume-configuration', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'saveVolumeConfiguration'])
-    //     ->name('planning-general.save-volume-configuration')
-    //     ->middleware('permission:manage-planning|view-all-timetables');
+    // Routes AJAX pour la configuration des volumes horaires
+    Route::get('/planning-general/get-matieres-configuration', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'getMatieresPourConfiguration'])
+        ->name('planning-general.get-matieres-configuration')
+        ->middleware('permission:manage-planning|view-all-timetables');
+    Route::post('/planning-general/save-volume-configuration', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'saveVolumeConfiguration'])
+        ->name('planning-general.save-volume-configuration')
+        ->middleware('permission:manage-planning|view-all-timetables');
 });
 
 // Routes spécifiques pour les coordinateurs pour événements académiques

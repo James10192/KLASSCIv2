@@ -5,6 +5,7 @@
     $roleLabels = [
         'superAdmin' => 'Super Admin',
         'secretaire' => 'Secrétaire',
+        'comptable' => 'Comptable',
         'coordinateur' => 'Coordinateur',
         'enseignant' => 'Enseignant',
         'etudiant' => 'Étudiant',
@@ -12,6 +13,7 @@
     $roleDescriptions = [
         'superAdmin' => 'Accès complet au système',
         'secretaire' => 'Gestion administrative quotidienne',
+        'comptable' => 'Gestion financière et comptabilité',
         'coordinateur' => 'Suivi pédagogique et encadrement',
         'enseignant' => 'Cours, présence, évaluations',
         'etudiant' => 'Accès aux services étudiant',

@@ -1140,4 +1140,35 @@ class ESBTPComptabiliteRelanceController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
+    /**
+     * Calculer le total dû par inscription en utilisant les données pré-chargées
+     */
+    private function calculerTotalDuParInscription($inscription, $categories, $subscriptionsByInscription, $configurations): float
+    {
+        $inscriptionSubs = $subscriptionsByInscription->get($inscription->id, collect());
+        $totalDu = 0;
+
+        foreach ($categories as $category) {
+            $sub = $inscriptionSubs->where('frais_category_id', $category->id)->first();
+            if ($category->is_mandatory) {
+                if ($sub) {
+                    $montant = $sub->amount;
+                } else {
+                    $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
+                    $config = $configurations->get($configKey, collect())->first();
+                    $montant = $config
+                        ? $config->getMontantByStatus($inscription->affectation_status ?? 'affecté')
+                        : $category->default_amount;
+                }
+            } else {
+                $montant = $sub ? $sub->amount : 0;
+            }
+            if ($montant > 0) {
+                $totalDu += $montant;
+            }
+        }
+
+        return (float) $totalDu;
+    }
+
 }
