@@ -14,7 +14,7 @@ class SearchPaymentsTool extends ChatbotTool
 
     public function description(): string
     {
-        return 'Rechercher des paiements groupés par inscription. Si l\'étudiant a plusieurs inscriptions et que inscription_id n\'est pas fourni, retourne la liste des inscriptions pour clarification — demande alors à l\'utilisateur laquelle il souhaite consulter avant de rappeler avec inscription_id.';
+        return 'Rechercher des paiements groupés par inscription. Si l\'étudiant a plusieurs inscriptions et que inscription_id n\'est pas fourni, retourne la liste des inscriptions pour clarification. Utilise inscription_id pour une inscription spécifique, ou all_inscriptions=true pour voir les paiements de toutes les inscriptions.';
     }
 
     public function parameters(): array
@@ -28,7 +28,11 @@ class SearchPaymentsTool extends ChatbotTool
                 ],
                 'inscription_id' => [
                     'type' => 'integer',
-                    'description' => 'ID de l\'inscription spécifique (utiliser après clarification si l\'étudiant a plusieurs inscriptions)',
+                    'description' => 'ID de l\'inscription spécifique (fourni dans le champ inscription_id des options de clarification)',
+                ],
+                'all_inscriptions' => [
+                    'type' => 'boolean',
+                    'description' => 'Si true, retourne les paiements de TOUTES les inscriptions de l\'étudiant. Utiliser quand l\'utilisateur dit "les deux", "toutes", ou "pour toutes les inscriptions".',
                 ],
                 'status' => [
                     'type' => 'string',
@@ -56,8 +60,8 @@ class SearchPaymentsTool extends ChatbotTool
 
     public function execute(array $args, $user): array
     {
-        // Si student_name fourni sans inscription_id, vérifier s'il a plusieurs inscriptions
-        if (!empty($args['student_name']) && empty($args['inscription_id'])) {
+        // Si student_name fourni sans inscription_id et sans all_inscriptions
+        if (!empty($args['student_name']) && empty($args['inscription_id']) && empty($args['all_inscriptions'])) {
             $inscriptions = \App\Models\ESBTPInscription::query()
                 ->with(['classe.filiere', 'etudiant', 'anneeUniversitaire'])
                 ->whereHas('etudiant', function ($q) use ($args) {
@@ -105,7 +109,7 @@ class SearchPaymentsTool extends ChatbotTool
                     'etudiant' => $etudiantName,
                     'nb_inscriptions' => $inscriptions->count(),
                     'inscriptions' => $options,
-                    'instructions' => "IMPORTANT: Présente les inscriptions à l'utilisateur par numéro avec classe, année et type. NE MONTRE PAS inscription_id. Quand il choisit, utilise EXACTEMENT la valeur inscription_id ci-dessous. MAPPING: " . collect($options)->map(fn($o, $idx) => "choix " . ($idx + 1) . " → inscription_id=" . $o['inscription_id'])->implode(', ') . ". Si l'utilisateur dit 'les deux' ou 'toutes', appelle search_payments DEUX FOIS avec inscription_id=" . collect($options)->pluck('inscription_id')->implode(' puis inscription_id=') . ".",
+                    'instructions' => "Présente les inscriptions à l'utilisateur avec classe, année et type. NE MONTRE PAS inscription_id. Quand il choisit une inscription spécifique, rappelle search_payments avec le inscription_id EXACT de cette inscription (voir le champ inscription_id dans chaque option). Si l'utilisateur dit 'les deux', 'toutes' ou 'pour tout', rappelle search_payments UNE SEULE FOIS avec all_inscriptions=true et student_name.",
                     'display_type' => 'text',
                 ];
             }
