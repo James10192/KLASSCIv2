@@ -295,6 +295,271 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
     margin-bottom: 4px;
     font-weight: 500;
 }
+
+/* === ALERTE CLASSE NON AFFECTÉE === */
+.alert-no-classe {
+    position: relative;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 1px solid #f59e0b;
+    border-left: 5px solid #d97706;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+.alert-no-classe::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(217,119,6,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+    transform: translate(30px, -30px);
+}
+.alert-no-classe-icon {
+    width: 42px; height: 42px;
+    border-radius: 10px;
+    background: rgba(217,119,6,0.15);
+    color: #92400e;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+.alert-no-classe-title {
+    font-weight: 700;
+    color: #92400e;
+    font-size: 0.95rem;
+    margin-bottom: 2px;
+}
+.alert-no-classe-text {
+    font-size: 0.82rem;
+    color: #78350f;
+    line-height: 1.4;
+}
+.btn-affecter-classe {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    background: linear-gradient(135deg, #0453cb 0%, #1b64d4 100%);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(4,83,203,0.25);
+}
+.btn-affecter-classe:hover {
+    background: linear-gradient(135deg, #1b64d4 0%, #5e91de 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(4,83,203,0.35);
+    color: #fff;
+}
+.classe-manquante-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.classe-manquante-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    background: rgba(239,68,68,0.08);
+    color: #dc2626;
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.classe-manquante-badge i {
+    font-size: 0.7rem;
+}
+
+/* === MODAL AFFECTATION CLASSE === */
+#affectationClasseModal.modal {
+    z-index: 9999 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+#affectationClasseModal .modal-dialog {
+    z-index: 10000 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+#affectationClasseModal .modal-content {
+    z-index: 10001 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: white !important;
+    border: none !important;
+    border-radius: 16px !important;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25) !important;
+    overflow: hidden;
+}
+#affectationClasseModal .modal-header {
+    background: linear-gradient(135deg, #0453cb 0%, #1b64d4 50%, #5e91de 100%);
+    border: none;
+    padding: 20px 24px;
+    position: relative;
+}
+#affectationClasseModal .modal-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #10b981, #06b6d4, #0453cb);
+}
+#affectationClasseModal .modal-title {
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.05rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+#affectationClasseModal .modal-title i {
+    width: 32px; height: 32px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem;
+}
+#affectationClasseModal .btn-close {
+    filter: brightness(0) invert(1);
+    opacity: 0.8;
+}
+#affectationClasseModal .btn-close:hover {
+    opacity: 1;
+}
+#affectationClasseModal .modal-body {
+    padding: 24px;
+}
+#affectationClasseModal .modal-footer {
+    border-top: 1px solid #f1f5f9;
+    padding: 16px 24px;
+    background: #f8fafc;
+}
+.classe-option-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 8px;
+    background: #fff;
+}
+.classe-option-card:hover {
+    border-color: #93c5fd;
+    background: #f0f7ff;
+}
+.classe-option-card.selected {
+    border-color: #0453cb;
+    background: rgba(4,83,203,0.04);
+    box-shadow: 0 0 0 3px rgba(4,83,203,0.1);
+}
+.classe-option-card.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f9fafb;
+}
+.classe-option-radio {
+    width: 20px; height: 20px;
+    border: 2px solid #cbd5e1;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+.classe-option-card.selected .classe-option-radio {
+    border-color: #0453cb;
+    background: #0453cb;
+}
+.classe-option-card.selected .classe-option-radio::after {
+    content: '';
+    width: 8px; height: 8px;
+    background: #fff;
+    border-radius: 50%;
+}
+.classe-option-info {
+    flex: 1;
+    min-width: 0;
+}
+.classe-option-name {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 0.92rem;
+}
+.classe-option-places {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.places-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+.places-indicator.green {
+    background: rgba(16,185,129,0.1);
+    color: #059669;
+}
+.places-indicator.yellow {
+    background: rgba(245,158,11,0.1);
+    color: #d97706;
+}
+.places-indicator.red {
+    background: rgba(239,68,68,0.1);
+    color: #dc2626;
+}
+.affectation-status-group {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+.affectation-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #64748b;
+    background: #fff;
+    transition: all 0.2s ease;
+}
+.affectation-status-chip:hover {
+    border-color: #93c5fd;
+    color: #1e293b;
+}
+.affectation-status-chip.active {
+    border-color: #0453cb;
+    background: rgba(4,83,203,0.06);
+    color: #0453cb;
+    font-weight: 600;
+}
+.affectation-status-chip i {
+    font-size: 0.8rem;
+}
+
+/* Spinner dans le bouton */
+.btn-affecter-submit .spinner-border {
+    width: 16px; height: 16px;
+    border-width: 2px;
+}
 </style>
 @endsection
 
@@ -669,6 +934,27 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                 </div>
 
                 <div class="col-12 col-md-7 col-lg-8">
+                    {{-- Alerte classe manquante --}}
+                    @if(!$inscription->classe_id)
+                    <div class="alert-no-classe">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="alert-no-classe-icon">
+                                <i class="fas fa-user-slash"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="alert-no-classe-title">Cet étudiant n'est affecté à aucune classe</div>
+                                <div class="alert-no-classe-text mb-2">
+                                    L'étudiant a été retiré de sa classe ou n'a jamais été affecté. Choisissez une classe pour réactiver ses frais de scolarité.
+                                </div>
+                                <button type="button" class="btn-affecter-classe" data-bs-toggle="modal" data-bs-target="#affectationClasseModal">
+                                    <i class="fas fa-user-plus"></i>
+                                    Affecter à une classe
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
                     <!-- Informations de l'inscription -->
                     <div class="card-moderne mb-4">
                         <div class="p-lg">
@@ -689,7 +975,20 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                         </tr>
                                         <tr>
                                             <th>Classe</th>
-                                            <td>{{ $inscription->classe->name }}</td>
+                                            <td>
+                                                @if($inscription->classe)
+                                                    <span id="classe-name-desktop">{{ $inscription->classe->name }}</span>
+                                                @else
+                                                    <div class="classe-manquante-cell" id="classe-name-desktop">
+                                                        <span class="classe-manquante-badge">
+                                                            <i class="fas fa-exclamation-circle"></i> Non affecté
+                                                        </span>
+                                                        <button type="button" class="btn btn-sm btn-affecter-classe" data-bs-toggle="modal" data-bs-target="#affectationClasseModal" style="padding: 4px 12px; font-size: 0.78rem;">
+                                                            <i class="fas fa-user-plus"></i> Affecter
+                                                        </button>
+                                                    </div>
+                                                @endif
+                                            </td>
                                         </tr>
                                         <tr>
                                             <th>Année universitaire</th>
@@ -698,6 +997,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                         <tr>
                                             <th>Statut d'affectation</th>
                                             <td>
+                                                <span id="affectation-badge-desktop">
                                                 @if($inscription->affectation_status)
                                                     @switch($inscription->affectation_status)
                                                         @case('affecté')
@@ -721,6 +1021,7 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                                 @else
                                                     <span class="text-muted">Non renseigné</span>
                                                 @endif
+                                                </span>
                                             </td>
                                         </tr>
                                     </table>
@@ -738,7 +1039,15 @@ body:has(#editSubscriptionModal.show) .modal-backdrop {
                                             </div>
                                             <div class="col-12 d-flex border-bottom py-2">
                                                 <div class="text-muted flex-shrink-0 me-2">Classe:</div>
-                                                <div class="fw-bold">{{ $inscription->classe->name }}</div>
+                                                <div class="fw-bold" id="classe-name-mobile">
+                                                    @if($inscription->classe)
+                                                        {{ $inscription->classe->name }}
+                                                    @else
+                                                        <span class="classe-manquante-badge">
+                                                            <i class="fas fa-exclamation-circle"></i> Non affecté
+                                                        </span>
+                                                    @endif
+                                                </div>
                                             </div>
                                             <div class="col-12 d-flex border-bottom py-2">
                                                 <div class="text-muted flex-shrink-0 me-2">Année universitaire:</div>
