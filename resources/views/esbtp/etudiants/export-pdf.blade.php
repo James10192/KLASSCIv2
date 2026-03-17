@@ -233,6 +233,11 @@
         $hdrText = $pdfCfg['header_text_color'] ?? '#ffffff';
         $primary = $pdfCfg['primary_color']     ?? '#0453cb';
 
+        // Chunk-aware defaults (backward compatible with non-chunked calls)
+        $isFirstChunk = $isFirstChunk ?? true;
+        $isLastChunk  = $isLastChunk ?? true;
+        $rowOffset    = $rowOffset ?? 0;
+
         $allEtudiants = collect();
         foreach ($groups as $items) {
             foreach ($items as $item) {
@@ -241,6 +246,7 @@
         }
     @endphp
     <div class="container">
+        @if($isFirstChunk)
         {{-- Header --}}
         <div class="header-section">
             <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -330,6 +336,7 @@
             {{ implode(' | ', $filterLabels) }}
         </div>
         @endif
+        @endif
 
         {{-- Groups --}}
         @foreach($groups as $groupName => $items)
@@ -372,7 +379,7 @@
                             $inscription = $item['inscription'];
                         @endphp
                         <tr>
-                            <td><span class="student-number">{{ $index + 1 }}</span></td>
+                            <td><span class="student-number">{{ $rowOffset + $index + 1 }}</span></td>
                             <td><span class="student-matricule">{{ $etudiant->matricule ?? 'N/A' }}</span></td>
                             <td class="student-info-cell">
                                 <div class="student-name">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</div>
@@ -398,6 +405,7 @@
             </table>
         @endforeach
 
+        @if($isLastChunk)
         {{-- Footer summary --}}
         <div class="summary-section">
             <div class="summary-left">
@@ -448,6 +456,7 @@
             <strong>Document généré automatiquement le {{ now()->format('d/m/Y à H:i') }}</strong><br>
             {{ $etablissement['nom'] ?? 'KLASSCI' }} — Système de Gestion des Inscriptions
         </div>
+        @endif
     </div>
 </body>
 </html>

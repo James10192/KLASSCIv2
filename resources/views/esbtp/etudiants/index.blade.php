@@ -2774,8 +2774,9 @@
                                 <div class="export-checkbox-list">
                                     @foreach($filieres as $f)
                                     <label class="export-checkbox-item" @click.prevent="toggleFiliere({{ $f->id }})">
-                                        <span class="export-checkbox" :class="{ 'checked': selectedFilieres.includes({{ $f->id }}) }">
-                                            <i x-show="selectedFilieres.includes({{ $f->id }})" class="fas fa-check"></i>
+                                        <span class="export-checkbox" :class="{ 'checked': isFiliereFullySelected({{ $f->id }}), 'partial': isFilierePartiallySelected({{ $f->id }}) }">
+                                            <i x-show="isFiliereFullySelected({{ $f->id }})" class="fas fa-check"></i>
+                                            <i x-show="isFilierePartiallySelected({{ $f->id }})" class="fas fa-minus"></i>
                                         </span>
                                         <span class="export-checkbox-label">{{ $f->name }}</span>
                                     </label>
@@ -2807,8 +2808,9 @@
                                 <div class="export-checkbox-list">
                                     @foreach($niveaux as $n)
                                     <label class="export-checkbox-item" @click.prevent="toggleNiveau({{ $n->id }})">
-                                        <span class="export-checkbox" :class="{ 'checked': selectedNiveaux.includes({{ $n->id }}) }">
-                                            <i x-show="selectedNiveaux.includes({{ $n->id }})" class="fas fa-check"></i>
+                                        <span class="export-checkbox" :class="{ 'checked': isNiveauFullySelected({{ $n->id }}), 'partial': isNiveauPartiallySelected({{ $n->id }}) }">
+                                            <i x-show="isNiveauFullySelected({{ $n->id }})" class="fas fa-check"></i>
+                                            <i x-show="isNiveauPartiallySelected({{ $n->id }})" class="fas fa-minus"></i>
                                         </span>
                                         <span class="export-checkbox-label">{{ $n->name }}</span>
                                     </label>
@@ -4137,52 +4139,66 @@
                 $exportClasses = $classes->map(function($c) { return ['id' => $c->id, 'name' => $c->name, 'filiere_id' => $c->filiere_id, 'niveau_etude_id' => $c->niveau_etude_id]; })->values();
             @endphp {!! json_encode($exportClasses) !!},
 
-            // Selected IDs (start with ALL selected — approach C)
-            selectedFilieres: [],
-            selectedNiveaux: [],
+            // Selected class IDs — single source of truth
             selectedClasses: [],
 
             init() {
-                // Start with everything selected
-                this.selectedFilieres = this.allFilieres.map(f => f.id);
-                this.selectedNiveaux = this.allNiveaux.map(n => n.id);
+                // Start with all classes selected
                 this.selectedClasses = this.allClasses.map(c => c.id);
             },
 
-            // Computed: all/some selected
-            get allFilieresSelected() { return this.selectedFilieres.length === this.allFilieres.length && this.allFilieres.length > 0; },
+            // --- Derived state from selectedClasses (no independent filiere/niveau arrays) ---
+
+            // Filières that have at least one selected class
+            get selectedFilieres() {
+                var ids = [];
+                for (var i = 0; i < this.selectedClasses.length; i++) {
+                    var cls = this._findClass(this.selectedClasses[i]);
+                    if (cls && cls.filiere_id && ids.indexOf(cls.filiere_id) === -1) {
+                        ids.push(cls.filiere_id);
+                    }
+                }
+                return ids;
+            },
+            // Niveaux that have at least one selected class
+            get selectedNiveaux() {
+                var ids = [];
+                for (var i = 0; i < this.selectedClasses.length; i++) {
+                    var cls = this._findClass(this.selectedClasses[i]);
+                    if (cls && cls.niveau_etude_id && ids.indexOf(cls.niveau_etude_id) === -1) {
+                        ids.push(cls.niveau_etude_id);
+                    }
+                }
+                return ids;
+            },
+
+            get allFilieresSelected() { return this.allFilieres.length > 0 && this.selectedFilieres.length === this.allFilieres.length; },
             get someFilieresSelected() { return this.selectedFilieres.length > 0; },
-            get allNiveauxSelected() { return this.selectedNiveaux.length === this.allNiveaux.length && this.allNiveaux.length > 0; },
+            get allNiveauxSelected() { return this.allNiveaux.length > 0 && this.selectedNiveaux.length === this.allNiveaux.length; },
             get someNiveauxSelected() { return this.selectedNiveaux.length > 0; },
-            get allClassesSelected() { return this.selectedClasses.length === this.allClasses.length && this.allClasses.length > 0; },
+            get allClassesSelected() { return this.allClasses.length > 0 && this.selectedClasses.length === this.allClasses.length; },
             get someClassesSelected() { return this.selectedClasses.length > 0; },
 
-            // Filtered classes (by search)
+            // Filtered classes (by search text)
             get filteredClasses() {
                 if (!this.classSearch.trim()) return this.allClasses;
-                const q = this.classSearch.toLowerCase().trim();
-                return this.allClasses.filter(c => c.name.toLowerCase().includes(q));
+                var q = this.classSearch.toLowerCase().trim();
+                return this.allClasses.filter(function(c) { return c.name.toLowerCase().indexOf(q) !== -1; });
             },
 
-            // Toggle individual items
-            toggleFiliere(id) {
-                const idx = this.selectedFilieres.indexOf(id);
-                if (idx > -1) {
-                    this.selectedFilieres.splice(idx, 1);
-                } else {
-                    this.selectedFilieres.push(id);
+            // --- Helper ---
+            _findClass(id) {
+                for (var i = 0; i < this.allClasses.length; i++) {
+                    if (this.allClasses[i].id === id) return this.allClasses[i];
                 }
+                return null;
             },
-            toggleNiveau(id) {
-                const idx = this.selectedNiveaux.indexOf(id);
-                if (idx > -1) {
-                    this.selectedNiveaux.splice(idx, 1);
-                } else {
-                    this.selectedNiveaux.push(id);
-                }
-            },
+
+            // --- Toggle actions with cascade ---
+
+            // Toggle a single class: add/remove, filière/niveau state derives automatically
             toggleClasse(id) {
-                const idx = this.selectedClasses.indexOf(id);
+                var idx = this.selectedClasses.indexOf(id);
                 if (idx > -1) {
                     this.selectedClasses.splice(idx, 1);
                 } else {
@@ -4190,62 +4206,145 @@
                 }
             },
 
-            // Toggle all
-            toggleAllFilieres() {
-                this.selectedFilieres = this.allFilieresSelected ? [] : this.allFilieres.map(f => f.id);
+            // Toggle filière: select/deselect ALL classes of this filière
+            toggleFiliere(id) {
+                var classesOfFiliere = this.allClasses.filter(function(c) { return c.filiere_id === id; });
+                var allSelected = true;
+                for (var i = 0; i < classesOfFiliere.length; i++) {
+                    if (this.selectedClasses.indexOf(classesOfFiliere[i].id) === -1) {
+                        allSelected = false;
+                        break;
+                    }
+                }
+                if (allSelected) {
+                    // Deselect all classes of this filière
+                    for (var i = 0; i < classesOfFiliere.length; i++) {
+                        var idx = this.selectedClasses.indexOf(classesOfFiliere[i].id);
+                        if (idx > -1) this.selectedClasses.splice(idx, 1);
+                    }
+                } else {
+                    // Select all classes of this filière
+                    for (var i = 0; i < classesOfFiliere.length; i++) {
+                        if (this.selectedClasses.indexOf(classesOfFiliere[i].id) === -1) {
+                            this.selectedClasses.push(classesOfFiliere[i].id);
+                        }
+                    }
+                }
             },
+
+            // Toggle niveau: select/deselect ALL classes of this niveau
+            toggleNiveau(id) {
+                var classesOfNiveau = this.allClasses.filter(function(c) { return c.niveau_etude_id === id; });
+                var allSelected = true;
+                for (var i = 0; i < classesOfNiveau.length; i++) {
+                    if (this.selectedClasses.indexOf(classesOfNiveau[i].id) === -1) {
+                        allSelected = false;
+                        break;
+                    }
+                }
+                if (allSelected) {
+                    for (var i = 0; i < classesOfNiveau.length; i++) {
+                        var idx = this.selectedClasses.indexOf(classesOfNiveau[i].id);
+                        if (idx > -1) this.selectedClasses.splice(idx, 1);
+                    }
+                } else {
+                    for (var i = 0; i < classesOfNiveau.length; i++) {
+                        if (this.selectedClasses.indexOf(classesOfNiveau[i].id) === -1) {
+                            this.selectedClasses.push(classesOfNiveau[i].id);
+                        }
+                    }
+                }
+            },
+
+            // Toggle all filières = toggle all classes
+            toggleAllFilieres() {
+                this.selectedClasses = this.allFilieresSelected ? [] : this.allClasses.map(function(c) { return c.id; });
+            },
+            // Toggle all niveaux = toggle all classes
             toggleAllNiveaux() {
-                this.selectedNiveaux = this.allNiveauxSelected ? [] : this.allNiveaux.map(n => n.id);
+                this.selectedClasses = this.allNiveauxSelected ? [] : this.allClasses.map(function(c) { return c.id; });
             },
             toggleAllClasses() {
-                this.selectedClasses = this.allClassesSelected ? [] : this.allClasses.map(c => c.id);
+                this.selectedClasses = this.allClassesSelected ? [] : this.allClasses.map(function(c) { return c.id; });
+            },
+
+            // --- Filière/Niveau checkbox state helpers (for partial indicator) ---
+            isFiliereFullySelected(id) {
+                var classesOfFiliere = this.allClasses.filter(function(c) { return c.filiere_id === id; });
+                if (classesOfFiliere.length === 0) return false;
+                for (var i = 0; i < classesOfFiliere.length; i++) {
+                    if (this.selectedClasses.indexOf(classesOfFiliere[i].id) === -1) return false;
+                }
+                return true;
+            },
+            isFilierePartiallySelected(id) {
+                var classesOfFiliere = this.allClasses.filter(function(c) { return c.filiere_id === id; });
+                var has = false, missing = false;
+                for (var i = 0; i < classesOfFiliere.length; i++) {
+                    if (this.selectedClasses.indexOf(classesOfFiliere[i].id) > -1) has = true;
+                    else missing = true;
+                    if (has && missing) return true;
+                }
+                return false;
+            },
+            isNiveauFullySelected(id) {
+                var classesOfNiveau = this.allClasses.filter(function(c) { return c.niveau_etude_id === id; });
+                if (classesOfNiveau.length === 0) return false;
+                for (var i = 0; i < classesOfNiveau.length; i++) {
+                    if (this.selectedClasses.indexOf(classesOfNiveau[i].id) === -1) return false;
+                }
+                return true;
+            },
+            isNiveauPartiallySelected(id) {
+                var classesOfNiveau = this.allClasses.filter(function(c) { return c.niveau_etude_id === id; });
+                var has = false, missing = false;
+                for (var i = 0; i < classesOfNiveau.length; i++) {
+                    if (this.selectedClasses.indexOf(classesOfNiveau[i].id) > -1) has = true;
+                    else missing = true;
+                    if (has && missing) return true;
+                }
+                return false;
             },
 
             // Export action
             doExport(format) {
-                const params = new URLSearchParams();
+                var params = new URLSearchParams();
 
                 // Propagate page filters (search, annee, status, etc.)
-                const urlParams = new URLSearchParams(window.location.search);
-                ['search', 'annee', 'status', 'affectation_status', 'inscrit_annee_courante', 'est_transfert'].forEach(key => {
+                var urlParams = new URLSearchParams(window.location.search);
+                ['search', 'annee', 'status', 'affectation_status', 'inscrit_annee_courante', 'est_transfert'].forEach(function(key) {
                     if (urlParams.has(key) && urlParams.get(key)) {
                         params.set(key, urlParams.get(key));
                     }
                 });
 
                 // Also check form values
-                const form = document.getElementById('search-form');
+                var form = document.getElementById('search-form');
                 if (form) {
-                    const formData = new FormData(form);
-                    ['search', 'annee', 'status', 'affectation_status', 'inscrit_annee_courante', 'est_transfert'].forEach(key => {
-                        const val = formData.get(key);
+                    var formData = new FormData(form);
+                    ['search', 'annee', 'status', 'affectation_status', 'inscrit_annee_courante', 'est_transfert'].forEach(function(key) {
+                        var val = formData.get(key);
                         if (val && !params.has(key)) {
                             params.set(key, val);
                         }
                     });
                 }
 
-                // Multi-select: only send if NOT all selected (= filtering needed)
-                if (!this.allFilieresSelected && this.selectedFilieres.length > 0) {
-                    this.selectedFilieres.forEach(id => params.append('filieres[]', id));
-                }
-                if (!this.allNiveauxSelected && this.selectedNiveaux.length > 0) {
-                    this.selectedNiveaux.forEach(id => params.append('niveaux[]', id));
-                }
+                // Send only classes[] — single source of truth
                 if (!this.allClassesSelected && this.selectedClasses.length > 0) {
-                    this.selectedClasses.forEach(id => params.append('classes[]', id));
+                    this.selectedClasses.forEach(function(id) { params.append('classes[]', id); });
                 }
 
                 if (this.exportGroupBy) {
                     params.set('group_by', this.exportGroupBy);
                 }
 
-                const baseUrl = format === 'excel'
+                var baseUrl = format === 'excel'
                     ? '{{ route("esbtp.etudiants.export.excel") }}'
                     : '{{ route("esbtp.etudiants.export.pdf") }}';
 
                 // Close modal
-                const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+                var modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
                 if (modal) modal.hide();
 
                 window.location.href = baseUrl + '?' + params.toString();

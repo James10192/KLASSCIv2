@@ -570,34 +570,24 @@ class ESBTPStudentController extends Controller
                 }
             });
 
-        // Multi-select: filieres[] (array) or filiere (single)
-        if ($request->filled('filieres')) {
-            $ids = array_filter((array) $request->input('filieres'));
-            if (!empty($ids)) {
-                $query->whereIn('filiere_id', $ids);
-            }
-        } elseif ($request->filled('filiere')) {
-            $query->where('filiere_id', $request->input('filiere'));
-        }
-
-        // Multi-select: niveaux[] (array) or niveau (single)
-        if ($request->filled('niveaux')) {
-            $ids = array_filter((array) $request->input('niveaux'));
-            if (!empty($ids)) {
-                $query->whereIn('niveau_id', $ids);
-            }
-        } elseif ($request->filled('niveau')) {
-            $query->where('niveau_id', $request->input('niveau'));
-        }
-
-        // Multi-select: classes[] (array) or classe (single)
+        // classes[] is the primary filter from the export modal (single source of truth).
+        // When classes[] is provided, skip filiere/niveau filters (they are redundant).
         if ($request->filled('classes')) {
             $ids = array_filter((array) $request->input('classes'));
             if (!empty($ids)) {
                 $query->whereIn('classe_id', $ids);
             }
-        } elseif ($request->filled('classe')) {
-            $query->where('classe_id', $request->input('classe'));
+        } else {
+            // Fallback: page-level single-select filters
+            if ($request->filled('filiere')) {
+                $query->where('filiere_id', $request->input('filiere'));
+            }
+            if ($request->filled('niveau')) {
+                $query->where('niveau_id', $request->input('niveau'));
+            }
+            if ($request->filled('classe')) {
+                $query->where('classe_id', $request->input('classe'));
+            }
         }
 
         if ($request->filled('annee')) {
@@ -669,13 +659,14 @@ class ESBTPStudentController extends Controller
     }
 
     /**
-     * Export student list to PDF.
+     * Export student list to PDF (with FPDI chunk+merge for large datasets).
      */
     public function exportPdf(Request $request)
     {
         try {
             $data = $this->getExportData($request);
             $groupBy = $request->input('group_by');
+            $totalEtudiants = $data->count();
 
             $schoolInfo = SettingsHelper::getSchoolInfo();
             $etablissement = [
@@ -686,39 +677,37 @@ class ESBTPStudentController extends Controller
                 'logo' => $schoolInfo['logo'] ?? '',
             ];
 
-            // Build active filters description (supports both single and array params)
+            // Build active filters description
             $filterLabels = [];
 
-            // Filières
-            if ($request->filled('filieres')) {
-                $names = ESBTPFiliere::whereIn('id', (array) $request->input('filieres'))->pluck('name');
-                if ($names->isNotEmpty()) $filterLabels[] = 'Filière(s) : ' . $names->join(', ');
-            } elseif ($request->filled('filiere')) {
-                $filiere = ESBTPFiliere::find($request->input('filiere'));
-                if ($filiere) $filterLabels[] = 'Filière : ' . $filiere->name;
-            }
-
-            // Niveaux
-            if ($request->filled('niveaux')) {
-                $names = ESBTPNiveauEtude::whereIn('id', (array) $request->input('niveaux'))->pluck('name');
-                if ($names->isNotEmpty()) $filterLabels[] = 'Niveau(x) : ' . $names->join(', ');
-            } elseif ($request->filled('niveau')) {
-                $niveau = ESBTPNiveauEtude::find($request->input('niveau'));
-                if ($niveau) $filterLabels[] = 'Niveau : ' . $niveau->name;
-            }
-
-            // Classes
             if ($request->filled('classes')) {
                 $names = ESBTPClasse::whereIn('id', (array) $request->input('classes'))->pluck('name');
-                if ($names->isNotEmpty()) $filterLabels[] = 'Classe(s) : ' . $names->join(', ');
+                if ($names->isNotEmpty()) {
+                    $filterLabels[] = 'Classe(s) : ' . $names->join(', ');
+                }
             } elseif ($request->filled('classe')) {
                 $classe = ESBTPClasse::find($request->input('classe'));
-                if ($classe) $filterLabels[] = 'Classe : ' . $classe->name;
+                if ($classe) {
+                    $filterLabels[] = 'Classe : ' . $classe->name;
+                }
             }
-
+            if ($request->filled('filiere')) {
+                $filiere = ESBTPFiliere::find($request->input('filiere'));
+                if ($filiere) {
+                    $filterLabels[] = 'Filière : ' . $filiere->name;
+                }
+            }
+            if ($request->filled('niveau')) {
+                $niveau = ESBTPNiveauEtude::find($request->input('niveau'));
+                if ($niveau) {
+                    $filterLabels[] = 'Niveau : ' . $niveau->name;
+                }
+            }
             if ($request->filled('annee')) {
                 $annee = ESBTPAnneeUniversitaire::find($request->input('annee'));
-                if ($annee) $filterLabels[] = 'Année : ' . $annee->name;
+                if ($annee) {
+                    $filterLabels[] = 'Année : ' . $annee->name;
+                }
             }
             if ($request->filled('status')) {
                 $filterLabels[] = 'Statut : ' . ucfirst($request->input('status'));
@@ -739,26 +728,111 @@ class ESBTPStudentController extends Controller
                 $groups = collect(['Tous les étudiants' => $data]);
             }
 
-            $pdf = PDF::loadView('esbtp.etudiants.export-pdf', [
-                'groups' => $groups,
-                'totalEtudiants' => $data->count(),
-                'etablissement' => $etablissement,
-                'filterLabels' => $filterLabels,
-                'groupBy' => $groupBy,
-            ]);
-
-            $pdf->setPaper('a4', 'landscape');
-
             $suffix = $groupBy ? "-par-{$groupBy}" : '';
             $filename = 'etudiants' . $suffix . '-' . now()->format('Y-m-d') . '.pdf';
 
+            $pdfOptions = [
+                'isRemoteEnabled' => true,
+                'isHtml5ParserEnabled' => true,
+                'defaultFont' => 'DejaVu Sans',
+            ];
+
             \Log::info('Export PDF étudiants', [
                 'user_id' => auth()->id(),
-                'total' => $data->count(),
+                'total' => $totalEtudiants,
                 'group_by' => $groupBy,
             ]);
 
-            return $pdf->download($filename);
+            // Small dataset: direct DomPDF render
+            if ($totalEtudiants <= 500) {
+                $pdf = PDF::loadView('esbtp.etudiants.export-pdf', [
+                    'groups' => $groups,
+                    'totalEtudiants' => $totalEtudiants,
+                    'etablissement' => $etablissement,
+                    'filterLabels' => $filterLabels,
+                    'groupBy' => $groupBy,
+                ]);
+                $pdf->setPaper('a4', 'landscape')->setOptions($pdfOptions);
+
+                return $pdf->download($filename);
+            }
+
+            // Large dataset: chunk + merge with FPDI
+            $chunkSize = 200;
+            $tempDir = storage_path('app/temp');
+            if (! is_dir($tempDir)) {
+                mkdir($tempDir, 0755, true);
+            }
+
+            // Flatten all items for chunking (preserve group info per item)
+            $allItems = collect();
+            foreach ($groups as $groupName => $items) {
+                foreach ($items as $item) {
+                    $allItems->push(array_merge($item, ['_group' => $groupName]));
+                }
+            }
+
+            $chunks = $allItems->chunk($chunkSize);
+            $tempFiles = [];
+            $totalChunks = $chunks->count();
+
+            foreach ($chunks as $chunkIndex => $chunk) {
+                $isFirstChunk = ($chunkIndex === 0);
+                $isLastChunk = ($chunkIndex === $totalChunks - 1);
+                $rowOffset = $chunkIndex * $chunkSize;
+
+                // Re-group chunk items
+                $chunkGroups = $chunk->groupBy('_group')->map(function ($items) {
+                    return $items->map(function ($item) {
+                        unset($item['_group']);
+                        return $item;
+                    });
+                });
+
+                $chunkPdf = PDF::loadView('esbtp.etudiants.export-pdf', [
+                    'groups' => $chunkGroups,
+                    'totalEtudiants' => $totalEtudiants,
+                    'etablissement' => $etablissement,
+                    'filterLabels' => $filterLabels,
+                    'groupBy' => $groupBy,
+                    'isFirstChunk' => $isFirstChunk,
+                    'isLastChunk' => $isLastChunk,
+                    'rowOffset' => $rowOffset,
+                    'chunkIndex' => $chunkIndex,
+                ]);
+                $chunkPdf->setPaper('a4', 'landscape')->setOptions($pdfOptions);
+
+                $tempPath = $tempDir . '/etudiants_chunk_' . uniqid() . '_' . $chunkIndex . '.pdf';
+                file_put_contents($tempPath, $chunkPdf->output());
+                $tempFiles[] = $tempPath;
+
+                unset($chunkPdf);
+            }
+
+            // Merge all chunks with FPDI
+            $merger = new \setasign\Fpdi\Fpdi();
+            $merger->SetAutoPageBreak(false);
+
+            foreach ($tempFiles as $file) {
+                $pageCount = $merger->setSourceFile($file);
+                for ($p = 1; $p <= $pageCount; $p++) {
+                    $tpl = $merger->importPage($p);
+                    $size = $merger->getTemplateSize($tpl);
+                    $merger->AddPage($size['orientation'], [$size['width'], $size['height']]);
+                    $merger->useTemplate($tpl, 0, 0, $size['width'], $size['height']);
+                }
+            }
+
+            $finalPath = $tempDir . '/etudiants_final_' . uniqid() . '.pdf';
+            $merger->Output('F', $finalPath);
+            unset($merger);
+
+            // Cleanup temp chunk files
+            foreach ($tempFiles as $file) {
+                @unlink($file);
+            }
+
+            return response()->download($finalPath, $filename)->deleteFileAfterSend(true);
         } catch (\Exception $e) {
             \Log::error('Erreur export PDF étudiants: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
