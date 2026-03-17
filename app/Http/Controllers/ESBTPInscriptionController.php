@@ -1302,6 +1302,29 @@ class ESBTPInscriptionController extends Controller
             $reinscriptionData["reliquat_gere"] = $reliquatMontant <= 0;
         }
 
+        // Charger les classes compatibles pour le modal d'affectation (si classe manquante)
+        $classesDisponibles = collect();
+        if (!$inscription->classe_id) {
+            $anneeCouranteId = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->value('id');
+
+            $classesDisponibles = ESBTPClasse::where("is_active", true)
+                ->where("filiere_id", $inscription->filiere_id)
+                ->where("niveau_etude_id", $inscription->niveau_id)
+                ->when($anneeCouranteId, fn($q) => $q->withCount([
+                    'inscriptions as nombre_etudiants' => fn($sub) => $sub
+                        ->where('status', 'active')
+                        ->where('annee_universitaire_id', $anneeCouranteId),
+                ]))
+                ->orderBy("name")
+                ->get()
+                ->map(fn($c) => [
+                    "id" => $c->id,
+                    "name" => $c->name,
+                    "places_totales" => $c->places_totales ?? 0,
+                    "places_disponibles" => max(0, ($c->places_totales ?? 0) - ($c->nombre_etudiants ?? 0)),
+                ]);
+        }
+
         return view(
             "esbtp.inscriptions.show",
             compact(
@@ -1316,6 +1339,7 @@ class ESBTPInscriptionController extends Controller
                 "reliquatsSortants",
                 "statistiquesReliquats",
                 "reinscriptionData",
+                "classesDisponibles",
             ),
         );
     }
@@ -2499,6 +2523,11 @@ class ESBTPInscriptionController extends Controller
         Request $request,
         ESBTPInscription $inscription,
     ) {
+        $request->validate([
+            "nouvelle_classe_id" => "required|integer|exists:esbtp_classes,id",
+            "affectation_status" => "nullable|in:affecté,réaffecté,non_affecté",
+        ]);
+
         try {
             DB::beginTransaction();
 
@@ -2521,8 +2550,8 @@ class ESBTPInscriptionController extends Controller
                 );
             }
 
-            // Vérifier que ce n'est pas la même classe
-            if ($ancienneClasseId == $nouvelleClasseId) {
+            // Vérifier que ce n'est pas la même classe (sauf si ancienne est null = première affectation)
+            if ($ancienneClasseId && $ancienneClasseId == $nouvelleClasseId) {
                 return response()->json(
                     [
                         "success" => false,
@@ -2533,11 +2562,16 @@ class ESBTPInscriptionController extends Controller
                 );
             }
 
-            // Mettre à jour la classe
+            // Mettre à jour la classe et le statut d'affectation
+            $affectationStatus = $request->input("affectation_status", $ancienneClasseId ? "réaffecté" : "affecté");
             $inscription->update([
                 "classe_id" => $nouvelleClasseId,
+                "affectation_status" => $affectationStatus,
                 "updated_at" => now(),
             ]);
+
+            // Régénérer les souscriptions de frais avec la nouvelle classe/statut
+            $this->regenererFraisInscription($inscription);
 
             DB::commit();
 
@@ -2545,6 +2579,8 @@ class ESBTPInscriptionController extends Controller
                 "inscription_id" => $inscription->id,
                 "ancienne_classe_id" => $ancienneClasseId,
                 "nouvelle_classe_id" => $nouvelleClasseId,
+                "affectation_status" => $affectationStatus,
+                "frais_regeneres" => true,
                 "user_id" => auth()->id(),
             ]);
 
@@ -2553,9 +2589,12 @@ class ESBTPInscriptionController extends Controller
 
             return response()->json([
                 "success" => true,
-                "message" => "Classe changée avec succès.",
+                "message" => $ancienneClasseId
+                    ? "Classe changée avec succès. Les frais ont été recalculés."
+                    : "Étudiant affecté à la classe avec succès. Les frais ont été générés.",
                 "inscription" => [
                     "id" => $inscription->id,
+                    "affectation_status" => $affectationStatus,
                     "nouvelle_classe" => [
                         "id" => $inscription->classe->id,
                         "name" => $inscription->classe->name,

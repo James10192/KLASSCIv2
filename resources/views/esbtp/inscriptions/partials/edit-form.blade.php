@@ -230,7 +230,7 @@
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label class="form-label">Classe</label>
-                                <input type="text" class="form-control" value="{{ $inscription->classe->name }}" disabled>
+                                <input type="text" class="form-control" value="{{ $inscription->classe?->name ?? 'Non affecté' }}" disabled>
                                 <div id="{{ $placesInfoId }}" class="mt-2 small text-muted"></div>
                                 <div class="alert alert-warning mt-2">La classe ne peut plus être modifiée après activation de l'inscription.</div>
                             </div>
