@@ -139,8 +139,9 @@ class ClaudeAgentService
 
                     $resultDisplayType = $result['display_type'] ?? 'text';
 
-                    // Fee groups : fusionner les groupes si même tool appelé plusieurs fois
-                    if ($resultDisplayType === 'fee_groups' && $lastToolResult && ($lastToolResult['display_type'] ?? '') === 'fee_groups') {
+                    // Fusionner les groupes si même display_type groupé appelé plusieurs fois
+                    $mergeableTypes = ['fee_groups', 'payment_groups'];
+                    if (in_array($resultDisplayType, $mergeableTypes) && $lastToolResult && ($lastToolResult['display_type'] ?? '') === $resultDisplayType) {
                         $lastToolResult['results'] = array_merge($lastToolResult['results'] ?? [], $result['results'] ?? []);
                         $lastToolResult['count'] = ($lastToolResult['count'] ?? 0) + ($result['count'] ?? 0);
                     } else {
