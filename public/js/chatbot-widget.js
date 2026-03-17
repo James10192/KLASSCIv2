@@ -493,6 +493,12 @@
                     list.appendChild(item);
                 });
                 section.appendChild(list);
+            } else {
+                // Aucun paiement pour cette inscription
+                var emptyMsg = document.createElement('div');
+                emptyMsg.className = 'cb-payment-empty';
+                emptyMsg.textContent = 'Aucun paiement enregistré';
+                section.appendChild(emptyMsg);
             }
 
             // Inscription link

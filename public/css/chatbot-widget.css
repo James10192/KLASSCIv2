@@ -1199,6 +1199,14 @@
     font-weight: 600;
 }
 
+.cb-payment-empty {
+    padding: 12px 14px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--cb-text-muted);
+    font-style: italic;
+}
+
 .cb-payment-link {
     padding: 8px 12px;
     border-top: 1px solid var(--cb-border-light);

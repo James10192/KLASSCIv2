@@ -170,10 +170,23 @@ class SearchPaymentsTool extends ChatbotTool
         $grouped = $results->groupBy('inscription_id');
         $groups = [];
 
+        // Si all_inscriptions, ajouter aussi les inscriptions SANS paiements
+        if (!empty($args['all_inscriptions']) && !empty($bestId)) {
+            $allInscriptions = \App\Models\ESBTPInscription::with(['classe.filiere', 'anneeUniversitaire'])
+                ->where('etudiant_id', $bestId)
+                ->orderByDesc('date_inscription')
+                ->get();
+            foreach ($allInscriptions as $insc) {
+                if (!$grouped->has($insc->id)) {
+                    $grouped[$insc->id] = collect(); // inscription vide
+                }
+            }
+        }
+
         foreach ($grouped as $inscriptionId => $paiements) {
             $first = $paiements->first();
-            $inscription = $first->inscription;
-            $etudiant = $first->etudiant;
+            $inscription = $first ? $first->inscription : \App\Models\ESBTPInscription::with(['classe.filiere', 'anneeUniversitaire'])->find($inscriptionId);
+            $etudiant = $first ? $first->etudiant : $inscription?->etudiant;
             $classe = $inscription?->classe;
 
             $inscriptionInfo = [
