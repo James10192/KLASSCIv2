@@ -1514,7 +1514,7 @@ class ESBTPClasseController extends Controller
                         "inscription_id" => $inscription->id,
                     ];
                 })
-                ->sortBy("nom")
+                ->sortBy([["nom", "asc"], ["prenoms", "asc"]])
                 ->values();
 
             \Log::info("✅ [API] students - Success", [
