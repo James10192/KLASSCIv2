@@ -124,6 +124,9 @@ Route::prefix('install')->group(function () {
     Route::get('/finalize', [InstallController::class, 'finalize'])->name('install.finalize.get');
 });
 
+// CSRF token refresh (keeps login/register forms alive when idle)
+Route::get('/csrf-token-refresh', fn () => response()->json(['token' => csrf_token()]))->name('csrf.refresh');
+
 // Routes d'authentification simplifiées
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login')->middleware('guest');
 Route::post('/login', [LoginController::class, 'login'])->middleware('guest');

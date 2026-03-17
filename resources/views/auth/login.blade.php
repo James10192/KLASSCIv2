@@ -626,6 +626,11 @@
                     <i class="fas fa-check-circle me-2"></i>{{ session('status') }}
                 </div>
             @endif
+            @if(session('warning'))
+                <div class="alert alert-warning" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>{{ session('warning') }}
+                </div>
+            @endif
             @if($errors->any())
                 <div class="alert alert-danger">
                     @foreach($errors->all() as $error)
@@ -716,6 +721,21 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Auto-refresh CSRF token every 30 minutes to prevent 419 errors
+        setInterval(function() {
+            fetch('/csrf-token-refresh', { headers: { 'Accept': 'application/json' } })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.token) {
+                        var fields = document.querySelectorAll('input[name="_token"]');
+                        fields.forEach(function(f) { f.value = data.token; });
+                        var meta = document.querySelector('meta[name="csrf-token"]');
+                        if (meta) meta.setAttribute('content', data.token);
+                    }
+                })
+                .catch(function() {});
+        }, 30 * 60 * 1000);
+
         // Toggle password visibility
         document.addEventListener('DOMContentLoaded', function() {
             const togglePassword = document.getElementById('togglePassword');

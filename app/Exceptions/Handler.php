@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Session\TokenMismatchException;
 use RuntimeException;
 use Throwable;
 
@@ -42,6 +43,12 @@ class Handler extends ExceptionHandler
 
     public function render($request, Throwable $e)
     {
+        if ($e instanceof TokenMismatchException) {
+            return redirect()->back()
+                ->withInput($request->except('password', 'password_confirmation'))
+                ->with('warning', 'Votre session a expiré. Veuillez réessayer.');
+        }
+
         if ($e instanceof CoefficientMissingException) {
             $context = $e->getContext();
             $classeId = $context['classe']['id'] ?? null;
