@@ -128,10 +128,26 @@ class SearchPaymentsTool extends ChatbotTool
         }
 
         if (!empty($args['student_name']) && empty($args['inscription_id'])) {
-            $tool = $this;
-            $query->whereHas('etudiant', function ($q) use ($args, $tool) {
-                $tool->applyFuzzyNameSearch($q, $args['student_name']);
-            });
+            // Trouver le meilleur match étudiant (filtrer les faux positifs SOUNDEX)
+            $matchedStudents = \App\Models\ESBTPEtudiant::query()
+                ->where(function ($q) use ($args) {
+                    $this->applyFuzzyNameSearch($q, $args['student_name']);
+                })->get();
+
+            if ($matchedStudents->count() > 1) {
+                $search = mb_strtolower($args['student_name']);
+                $exact = $matchedStudents->filter(function ($e) use ($search) {
+                    $fullName = mb_strtolower(trim(($e->nom ?? '') . ' ' . ($e->prenoms ?? '')));
+                    return str_contains($fullName, $search);
+                });
+                $bestId = $exact->isNotEmpty() ? $exact->first()->id : $matchedStudents->first()->id;
+            } else {
+                $bestId = $matchedStudents->first()?->id;
+            }
+
+            if ($bestId) {
+                $query->whereHas('etudiant', fn($q) => $q->where('id', $bestId));
+            }
         }
 
         if (!empty($args['month'])) {
