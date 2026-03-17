@@ -66,6 +66,21 @@ class SearchPaymentsTool extends ChatbotTool
                 ->orderByDesc('date_inscription')
                 ->get();
 
+            // Grouper par étudiant et prendre celui qui matche le mieux (le plus d'inscriptions ou LIKE exact)
+            $byEtudiant = $inscriptions->groupBy('etudiant_id');
+            if ($byEtudiant->count() > 1) {
+                // Plusieurs étudiants matchent → garder celui avec LIKE exact sur nom
+                $search = $args['student_name'];
+                $bestMatch = $byEtudiant->filter(function ($group) use ($search) {
+                    $e = $group->first()->etudiant;
+                    $fullName = mb_strtolower(trim(($e->nom ?? '') . ' ' . ($e->prenoms ?? '')));
+                    return str_contains($fullName, mb_strtolower($search));
+                })->first();
+                $inscriptions = $bestMatch ?? $byEtudiant->first();
+            } else {
+                $inscriptions = $byEtudiant->first();
+            }
+
             if ($inscriptions->count() > 1) {
                 // Plusieurs inscriptions → demander clarification
                 $options = $inscriptions->map(function ($i) {
