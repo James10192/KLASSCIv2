@@ -748,7 +748,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('/planification', [ESBTPPlanningGeneralController::class, 'storePlanification'])->name('store-planification');
                 Route::delete('/planification/{id}', [ESBTPPlanningGeneralController::class, 'destroyPlanification'])->name('destroy-planification');
                 Route::post('/planification/{id}/valider', [ESBTPPlanningGeneralController::class, 'validerPlanification'])->name('valider-planification');
-                // Route::post('/configure-rapide', [ESBTPPlanningConfigController::class, 'configureRapide'])->name('configure-rapide'); // TODO: controller supprimé
+                Route::post('/configure-rapide', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'configureRapide'])->name('configure-rapide');
                 Route::get('/annuel', [ESBTPPlanningGeneralController::class, 'annuel'])->name('annuel');
                 Route::get('/repartition-matieres', [ESBTPPlanningGeneralController::class, 'repartitionMatieres'])->name('repartition-matieres');
                 Route::get('/coordinateur', [ESBTPPlanningGeneralController::class, 'coordinateur'])->name('coordinateur')
