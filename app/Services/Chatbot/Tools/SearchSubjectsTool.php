@@ -56,13 +56,13 @@ class SearchSubjectsTool extends ChatbotTool
     {
         $search = $args['classe'];
 
-        $classe = ESBTPClasse::query()
+        $classeQuery = ESBTPClasse::query()
             ->with(['filiere', 'niveauEtude', 'matieres.enseignants'])
             ->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('code', 'like', "%{$search}%");
-            })
-            ->first();
+            });
+        $classe = $classeQuery->first();
 
         if (!$classe) {
             return [

@@ -52,11 +52,7 @@ class SearchDebtorsTool extends ChatbotTool
             ->where('status', 'active');
 
         if (!empty($args['classe'])) {
-            $search = $args['classe'];
-            $inscriptionQuery->whereHas('classe', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
-            });
+            $this->applyClasseSearch($inscriptionQuery, $args['classe']);
         }
 
         $inscriptions = $inscriptionQuery->get();
@@ -105,16 +101,16 @@ class SearchDebtorsTool extends ChatbotTool
             }
 
             $etudiant = $insc->etudiant;
-            $nom = $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '')) : 'N/A';
-            $initials = $etudiant ? mb_strtoupper(mb_substr($etudiant->nom ?? '', 0, 1) . mb_substr($etudiant->prenoms ?? '', 0, 1)) : '?';
+            $nom = $this->studentFullName($etudiant);
+            $initials = $this->studentInitials($etudiant);
             $taux = round(($paye / $du) * 100, 0);
 
             $debtors[] = [
                 'nom' => $nom,
                 'initials' => $initials,
                 'classe' => $insc->classe?->name ?? 'N/A',
-                'reste' => number_format($reste, 0, ',', ' ') . ' FCFA',
-                'detail' => number_format($paye, 0, ',', ' ') . ' / ' . number_format($du, 0, ',', ' ') . ' FCFA',
+                'reste' => $this->formatFCFA($reste),
+                'detail' => $this->formatFCFA($paye) . ' / ' . $this->formatFCFA($du),
                 'taux' => $taux . '%',
                 'statut' => $taux >= 75 ? 'Presque à jour' : ($taux >= 50 ? 'Partiel' : ($taux > 0 ? 'En retard' : 'Impayé')),
                 'reste_brut' => $reste,
@@ -128,7 +124,7 @@ class SearchDebtorsTool extends ChatbotTool
         // Trier par reste décroissant (les plus gros impayés en premier)
         usort($debtors, fn ($a, $b) => $b['reste_brut'] <=> $a['reste_brut']);
 
-        $limit = min(max((int) ($args['limit'] ?? 15), 1), 25);
+        $limit = $this->clampLimit($args, 15);
         $total = count($debtors);
         $debtors = array_slice($debtors, 0, $limit);
 

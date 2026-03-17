@@ -72,14 +72,14 @@ class SearchStudentsTool extends ChatbotTool
             });
         }
 
-        $limit = min(max((int) ($args['limit'] ?? 10), 1), 25);
+        $limit = $this->clampLimit($args);
         $total = (clone $query)->count();
         $results = $query->latest()->limit($limit)->get();
 
         $students = $results->map(function ($etudiant) {
             $inscription = $etudiant->inscriptions->first();
-            $nom = trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? ''));
-            $initials = collect(explode(' ', $nom))->take(2)->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))->implode('');
+            $nom = $this->studentFullName($etudiant);
+            $initials = $this->studentInitials($etudiant);
             return [
                 'id' => $etudiant->id,
                 'nom' => $nom,

@@ -893,16 +893,21 @@ class ESBTPResultatController extends Controller
                 if (! $semestre) {
                     // Mode Annuel : calculer la moyenne annuelle pondérée S1/S2 pour chaque étudiant
                     $weights = $this->bulletinService->getSemesterWeights();
+
+                    // Pré-charger les inscriptions pour éviter N+1
+                    $inscriptionMap = collect();
+                    if (!$classe_id) {
+                        $inscriptionMap = \App\Models\ESBTPInscription::query()
+                            ->whereIn('etudiant_id', $etudiants->pluck('id'))
+                            ->where('annee_universitaire_id', $annee_universitaire_id)
+                            ->orderByDesc('date_inscription')
+                            ->get()
+                            ->unique('etudiant_id')
+                            ->keyBy('etudiant_id');
+                    }
+
                     foreach ($etudiants as $etudiant) {
-                        // Déterminer la classe de l'étudiant (filtre global ou via inscription)
-                        $etudiantClasseId = $classe_id;
-                        if (!$etudiantClasseId) {
-                            $inscription = $etudiant->inscriptions()
-                                ->where('annee_universitaire_id', $annee_universitaire_id)
-                                ->orderByDesc('date_inscription')
-                                ->first();
-                            $etudiantClasseId = $inscription?->classe_id;
-                        }
+                        $etudiantClasseId = $classe_id ?: ($inscriptionMap[$etudiant->id]->classe_id ?? null);
                         if (!$etudiantClasseId) {
                             continue; // Pas de classe trouvée, skip cet étudiant
                         }

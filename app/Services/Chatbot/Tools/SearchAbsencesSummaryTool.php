@@ -47,12 +47,9 @@ class SearchAbsencesSummaryTool extends ChatbotTool
         // Trouver les étudiants de la classe
         $inscriptions = ESBTPInscription::query()
             ->with(['etudiant', 'classe'])
-            ->where('status', 'active')
-            ->whereHas('classe', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
-            })
-            ->get();
+            ->where('status', 'active');
+        $this->applyClasseSearch($inscriptions, $search);
+        $inscriptions = $inscriptions->get();
 
         if ($inscriptions->isEmpty()) {
             return [
@@ -66,37 +63,41 @@ class SearchAbsencesSummaryTool extends ChatbotTool
         $classe = $inscriptions->first()->classe;
         $etudiantIds = $inscriptions->pluck('etudiant_id')->unique();
 
-        // Requête d'absences
-        $attendanceQuery = ESBTPAttendance::query()
-            ->whereIn('etudiant_id', $etudiantIds);
+        // Agrégation SQL directe (évite de charger tous les enregistrements en mémoire)
+        $attendanceStats = ESBTPAttendance::query()
+            ->whereIn('etudiant_id', $etudiantIds)
+            ->when(!empty($args['month']), fn($q) => $q->whereMonth('date', (int) $args['month']))
+            ->selectRaw("
+                etudiant_id,
+                COUNT(*) as total,
+                SUM(status = 'present') as presents,
+                SUM(status = 'absent') as absents,
+                SUM(status = 'late') as retards,
+                SUM(status = 'absent' AND is_justified = 1) as justifiees
+            ")
+            ->groupBy('etudiant_id')
+            ->get()
+            ->keyBy('etudiant_id');
 
-        if (!empty($args['month'])) {
-            $attendanceQuery->whereMonth('date', (int) $args['month']);
-        }
-
-        $attendances = $attendanceQuery->get();
-
-        // Agrégation par étudiant
+        // Construire les résultats triés par absences décroissantes
         $stats = [];
         foreach ($etudiantIds as $etudiantId) {
-            $etudiantAttendances = $attendances->where('etudiant_id', $etudiantId);
-            $total = $etudiantAttendances->count();
-            $presents = $etudiantAttendances->where('status', 'present')->count();
-            $absents = $etudiantAttendances->where('status', 'absent')->count();
-            $retards = $etudiantAttendances->where('status', 'late')->count();
-            $justifiees = $etudiantAttendances->where('status', 'absent')->where('is_justified', true)->count();
+            $row = $attendanceStats[$etudiantId] ?? null;
+            $total = (int) ($row?->total ?? 0);
+            $presents = (int) ($row?->presents ?? 0);
+            $absents = (int) ($row?->absents ?? 0);
+            $retards = (int) ($row?->retards ?? 0);
+            $justifiees = (int) ($row?->justifiees ?? 0);
             $nonJustifiees = $absents - $justifiees;
 
             $insc = $inscriptions->firstWhere('etudiant_id', $etudiantId);
             $etudiant = $insc?->etudiant;
 
             $tauxPresence = $total > 0 ? round(($presents / $total) * 100, 1) : null;
-            $nom = $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '')) : 'N/A';
-            $initials = $etudiant ? mb_strtoupper(mb_substr($etudiant->nom ?? '', 0, 1) . mb_substr($etudiant->prenoms ?? '', 0, 1)) : '?';
 
             $stats[] = [
-                'nom' => $nom,
-                'initials' => $initials,
+                'nom' => $this->studentFullName($etudiant),
+                'initials' => $this->studentInitials($etudiant),
                 'taux_presence' => $tauxPresence !== null ? $tauxPresence . '%' : 'N/A',
                 'absences' => $absents . ' (' . $nonJustifiees . ' non just.)',
                 'retards' => (string) $retards,
@@ -112,7 +113,7 @@ class SearchAbsencesSummaryTool extends ChatbotTool
         // Trier par absences décroissantes
         usort($stats, fn ($a, $b) => $b['absences_brut'] <=> $a['absences_brut']);
 
-        $limit = min(max((int) ($args['limit'] ?? 15), 1), 30);
+        $limit = $this->clampLimit($args, 15, 30);
         $stats = array_slice($stats, 0, $limit);
 
         // Retirer champ de tri
@@ -121,9 +122,9 @@ class SearchAbsencesSummaryTool extends ChatbotTool
             return $s;
         }, $stats);
 
-        // Statistiques globales de la classe
-        $totalSeances = $attendances->count();
-        $totalPresents = $attendances->where('status', 'present')->count();
+        // Statistiques globales de la classe (somme des agrégats SQL)
+        $totalSeances = $attendanceStats->sum('total');
+        $totalPresents = $attendanceStats->sum('presents');
         $tauxClasse = $totalSeances > 0 ? round(($totalPresents / $totalSeances) * 100, 1) : 0;
 
         return [

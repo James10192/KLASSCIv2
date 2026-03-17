@@ -58,17 +58,13 @@ class SearchBulletinsTool extends ChatbotTool
         }
 
         if (!empty($args['classe'])) {
-            $search = $args['classe'];
-            $query->whereHas('classe', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
-            });
+            $this->applyClasseSearch($query, $args['classe']);
         }
 
         if (!empty($args['periode'])) {
-            $periode = mb_strtoupper(trim($args['periode']));
-            if (in_array($periode, ['S1', 'S2'])) {
-                $query->where('periode', $periode);
+            $mapped = $this->mapPeriode($args['periode']);
+            if ($mapped) {
+                $query->where('periode', $mapped);
             }
         }
 
@@ -78,14 +74,14 @@ class SearchBulletinsTool extends ChatbotTool
 
         $query->orderByDesc('created_at');
 
-        $limit = min(max((int) ($args['limit'] ?? 10), 1), 25);
+        $limit = $this->clampLimit($args);
         $total = (clone $query)->count();
         $bulletins = $query->limit($limit)->get();
 
         $results = $bulletins->map(function ($b) {
             $etudiant = $b->etudiant;
-            $nom = $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '')) : 'N/A';
-            $initials = $etudiant ? mb_strtoupper(mb_substr($etudiant->nom ?? '', 0, 1) . mb_substr($etudiant->prenoms ?? '', 0, 1)) : '?';
+            $nom = $this->studentFullName($etudiant);
+            $initials = $this->studentInitials($etudiant);
 
             $signatures = [];
             if ($b->signature_responsable) $signatures[] = 'Resp.';

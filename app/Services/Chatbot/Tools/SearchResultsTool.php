@@ -45,7 +45,7 @@ class SearchResultsTool extends ChatbotTool
     public function execute(array $args, $user): array
     {
         $query = ESBTPBulletin::query()
-            ->with(['etudiant', 'classe.filiere', 'anneeUniversitaire', 'resultatsMatiere.matiere']);
+            ->with(['etudiant', 'classe.filiere', 'anneeUniversitaire']);
 
         if (!empty($args['student_name'])) {
             $query->whereHas('etudiant', function ($q) use ($args) {
@@ -54,24 +54,20 @@ class SearchResultsTool extends ChatbotTool
         }
 
         if (!empty($args['classe'])) {
-            $search = $args['classe'];
-            $query->whereHas('classe', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
-            });
+            $this->applyClasseSearch($query, $args['classe']);
         }
 
         if (!empty($args['periode'])) {
-            $periode = mb_strtoupper(trim($args['periode']));
-            if (in_array($periode, ['S1', 'S2'])) {
-                $query->where('periode', $periode);
+            $mapped = $this->mapPeriode($args['periode']);
+            if ($mapped) {
+                $query->where('periode', $mapped);
             }
         }
 
         // Filtrer les bulletins publiés en priorité
         $query->orderByDesc('is_published')->orderByDesc('created_at');
 
-        $limit = min(max((int) ($args['limit'] ?? 10), 1), 25);
+        $limit = $this->clampLimit($args);
         $total = (clone $query)->count();
         $bulletins = $query->limit($limit)->get();
 
@@ -80,7 +76,7 @@ class SearchResultsTool extends ChatbotTool
             $classe = $b->classe;
 
             return [
-                'etudiant' => $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '')) : 'N/A',
+                'etudiant' => $this->studentFullName($etudiant),
                 'classe' => $classe?->name ?? 'N/A',
                 'filiere' => $classe?->filiere?->name ?? 'N/A',
                 'periode' => $b->periode ?? 'N/A',

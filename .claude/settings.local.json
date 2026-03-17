@@ -119,7 +119,8 @@
       "WebFetch(domain:gist.github.com)",
       "mcp__plugin_context7_context7__resolve-library-id",
       "mcp__plugin_context7_context7__query-docs",
-      "WebFetch(domain:daveswift.com)"
+      "WebFetch(domain:daveswift.com)",
+      "WebFetch(domain:packagist.org)"
     ],
     "deny": [],
     "ask": [],

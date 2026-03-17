@@ -39,25 +39,14 @@ class SearchTimetableTool extends ChatbotTool
     {
         $search = $args['classe'];
 
-        $emploiTemps = ESBTPEmploiTemps::query()
-            ->with(['classe.filiere', 'seances.matiere', 'seances.teacher.user', 'annee'])
-            ->whereHas('classe', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
-            })
-            ->where('is_current', true)
-            ->first();
+        $baseQuery = ESBTPEmploiTemps::query()
+            ->with(['classe.filiere', 'seances.matiere', 'seances.teacher.user', 'annee']);
+        $this->applyClasseSearch($baseQuery, $search);
+
+        $emploiTemps = (clone $baseQuery)->where('is_current', true)->first();
 
         if (!$emploiTemps) {
-            // Essayer sans is_current (le plus récent)
-            $emploiTemps = ESBTPEmploiTemps::query()
-                ->with(['classe.filiere', 'seances.matiere', 'seances.teacher.user', 'annee'])
-                ->whereHas('classe', function ($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('code', 'like', "%{$search}%");
-                })
-                ->orderByDesc('created_at')
-                ->first();
+            $emploiTemps = (clone $baseQuery)->orderByDesc('created_at')->first();
         }
 
         if (!$emploiTemps) {

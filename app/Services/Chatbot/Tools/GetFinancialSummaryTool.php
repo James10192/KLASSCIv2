@@ -28,10 +28,6 @@ class GetFinancialSummaryTool extends ChatbotTool
                     'type' => 'string',
                     'description' => 'Filtrer par classe (nom ou code). Si omis, résumé global.',
                 ],
-                'focus' => [
-                    'type' => 'string',
-                    'description' => 'Focus: "global" (tout), "recouvrement" (taux), "impayes" (détail impayés). Défaut: global.',
-                ],
             ],
         ];
     }
@@ -44,15 +40,10 @@ class GetFinancialSummaryTool extends ChatbotTool
     public function execute(array $args, $user): array
     {
         $inscriptionQuery = ESBTPInscription::query()
-            ->with(['classe', 'etudiant'])
             ->where('status', 'active');
 
         if (!empty($args['classe'])) {
-            $search = $args['classe'];
-            $inscriptionQuery->whereHas('classe', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
-            });
+            $this->applyClasseSearch($inscriptionQuery, $args['classe']);
         }
 
         $inscriptions = $inscriptionQuery->get();
@@ -107,22 +98,20 @@ class GetFinancialSummaryTool extends ChatbotTool
 
         $tauxRecouvrement = $totalAttendu > 0 ? round(($totalPaye / $totalAttendu) * 100, 1) : 0;
 
-        // Paiements en attente de validation
-        $enAttente = ESBTPPaiement::query()
+        // Paiements en attente de validation (une seule requête)
+        $pending = ESBTPPaiement::query()
             ->whereIn('inscription_id', $inscriptionIds)
             ->where('status', 'en_attente')
-            ->count();
-
-        $montantEnAttente = ESBTPPaiement::query()
-            ->whereIn('inscription_id', $inscriptionIds)
-            ->where('status', 'en_attente')
-            ->sum('montant');
+            ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(montant), 0) as total')
+            ->first();
+        $enAttente = (int) $pending->cnt;
+        $montantEnAttente = (float) $pending->total;
 
         $results = [
             [
                 'label' => 'Taux de recouvrement',
                 'value' => $tauxRecouvrement . '%',
-                'detail' => number_format($totalPaye, 0, ',', ' ') . ' / ' . number_format($totalAttendu, 0, ',', ' ') . ' FCFA',
+                'detail' => $this->formatFCFA($totalPaye) . ' / ' . $this->formatFCFA($totalAttendu),
                 'icon' => 'fas fa-chart-pie',
                 'color' => $tauxRecouvrement >= 80 ? 'success' : ($tauxRecouvrement >= 50 ? 'warning' : 'danger'),
             ],
@@ -136,20 +125,20 @@ class GetFinancialSummaryTool extends ChatbotTool
             [
                 'label' => 'Étudiants en retard',
                 'value' => (string) $enRetard,
-                'detail' => number_format($impayeTotal, 0, ',', ' ') . ' FCFA d\'impayés',
+                'detail' => $this->formatFCFA($impayeTotal) . ' d\'impayés',
                 'icon' => 'fas fa-user-clock',
                 'color' => $enRetard > 0 ? 'danger' : 'success',
             ],
             [
                 'label' => 'Paiements en attente',
                 'value' => (string) $enAttente,
-                'detail' => number_format($montantEnAttente, 0, ',', ' ') . ' FCFA à valider',
+                'detail' => $this->formatFCFA($montantEnAttente) . ' à valider',
                 'icon' => 'fas fa-hourglass-half',
                 'color' => $enAttente > 0 ? 'warning' : 'success',
             ],
             [
                 'label' => 'Total encaissé',
-                'value' => number_format($totalPaye, 0, ',', ' ') . ' FCFA',
+                'value' => $this->formatFCFA($totalPaye),
                 'detail' => $totalInscriptions . ' inscriptions actives',
                 'icon' => 'fas fa-coins',
                 'color' => 'primary',
