@@ -2164,6 +2164,537 @@
             font-size: 12px;
         }
     }
+
+    /* ========================================
+       EXPORT MODAL — Premium Multi-Select
+       ======================================== */
+    .export-modal-content {
+        border: none;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow:
+            0 8px 16px -4px rgba(0, 0, 0, 0.08),
+            0 20px 40px -8px rgba(0, 0, 0, 0.12);
+    }
+
+    .export-modal-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding: 20px 24px 16px;
+        background: linear-gradient(135deg, #f8faff 0%, #f0f4ff 100%);
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .export-modal-title {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .export-modal-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: var(--primary, #0453cb);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+
+    .export-modal-title h5 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: #1e293b;
+        letter-spacing: -0.01em;
+    }
+
+    .export-modal-subtitle {
+        margin: 2px 0 0;
+        font-size: 13px;
+        color: #64748b;
+        font-weight: 400;
+    }
+
+    .export-modal-close {
+        width: 32px;
+        height: 32px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: white;
+        color: #94a3b8;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        transition: all 0.15s ease;
+        flex-shrink: 0;
+    }
+
+    .export-modal-close:hover {
+        background: #f1f5f9;
+        color: #475569;
+        border-color: #cbd5e1;
+    }
+
+    .export-modal-body {
+        padding: 20px 24px;
+        max-height: 55vh;
+        overflow-y: auto;
+    }
+
+    /* Selection grid: 2 columns for Filières + Niveaux */
+    .export-select-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .export-select-block {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #fafbfc;
+    }
+
+    .export-select-block-full {
+        margin-bottom: 16px;
+    }
+
+    .export-select-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        background: white;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .export-select-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .export-select-title i {
+        color: var(--primary, #0453cb);
+        font-size: 13px;
+    }
+
+    .export-select-counter {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--primary, #0453cb);
+        background: #eff6ff;
+        padding: 3px 8px;
+        border-radius: 6px;
+    }
+
+    .export-toggle-all {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #475569;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f5f9;
+        background: #f8fafc;
+        user-select: none;
+        transition: background 0.12s ease;
+    }
+
+    .export-toggle-all:hover {
+        background: #f1f5f9;
+    }
+
+    .export-toggle-inline {
+        border-bottom: none;
+        padding: 0;
+        background: none;
+        flex-shrink: 0;
+    }
+
+    .export-toggle-inline:hover {
+        background: none;
+    }
+
+    /* Custom checkbox */
+    .export-checkbox {
+        width: 18px;
+        height: 18px;
+        border: 2px solid #cbd5e1;
+        border-radius: 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        color: white;
+        transition: all 0.12s ease;
+        flex-shrink: 0;
+        background: white;
+    }
+
+    .export-checkbox.checked {
+        background: var(--primary, #0453cb);
+        border-color: var(--primary, #0453cb);
+    }
+
+    .export-checkbox.partial {
+        background: #94a3b8;
+        border-color: #94a3b8;
+    }
+
+    .export-checkbox-list {
+        padding: 4px 8px 8px;
+        max-height: 180px;
+        overflow-y: auto;
+    }
+
+    .export-checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.1s ease;
+    }
+
+    .export-checkbox-item:hover {
+        background: #f1f5f9;
+    }
+
+    .export-checkbox-label {
+        font-size: 13px;
+        color: #334155;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .export-checkbox-item-compact {
+        padding: 5px 6px;
+    }
+
+    .export-checkbox-item-compact .export-checkbox-label {
+        font-size: 12.5px;
+    }
+
+    .export-checkbox-item-compact .export-checkbox {
+        width: 16px;
+        height: 16px;
+        font-size: 9px;
+        border-radius: 4px;
+    }
+
+    /* Classes toolbar: toggle all + search side by side */
+    .export-classes-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        background: #f8fafc;
+    }
+
+    .export-search-mini {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: white;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 5px 10px;
+        flex: 1;
+        max-width: 240px;
+        transition: border-color 0.15s ease;
+    }
+
+    .export-search-mini:focus-within {
+        border-color: var(--primary, #0453cb);
+        box-shadow: 0 0 0 2px rgba(4, 83, 203, 0.1);
+    }
+
+    .export-search-mini i {
+        color: #94a3b8;
+        font-size: 12px;
+        flex-shrink: 0;
+    }
+
+    .export-search-mini input {
+        border: none;
+        outline: none;
+        font-size: 12.5px;
+        color: #334155;
+        width: 100%;
+        background: transparent;
+    }
+
+    .export-search-mini input::placeholder {
+        color: #94a3b8;
+    }
+
+    .export-checkbox-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2px;
+        padding: 6px 8px 10px;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .export-empty-hint {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 16px;
+        color: #94a3b8;
+        font-size: 13px;
+    }
+
+    .export-empty-hint i {
+        margin-right: 4px;
+    }
+
+    /* Group by section */
+    .export-panel-section {
+        padding: 0;
+    }
+
+    .export-panel-label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
+    }
+
+    .export-group-options {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        gap: 6px;
+    }
+
+    .export-radio {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 10px;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 12.5px;
+        font-weight: 500;
+        color: #475569;
+        transition: all 0.15s ease;
+        background: #fafbfc;
+        user-select: none;
+    }
+
+    .export-radio input[type="radio"] {
+        display: none;
+    }
+
+    .export-radio i {
+        font-size: 12px;
+        color: #94a3b8;
+        transition: color 0.15s ease;
+    }
+
+    .export-radio:hover {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+    }
+
+    .export-radio.active {
+        border-color: var(--primary, #0453cb);
+        background: #eff6ff;
+        color: var(--primary, #0453cb);
+        font-weight: 600;
+    }
+
+    .export-radio.active i {
+        color: var(--primary, #0453cb);
+    }
+
+    /* Footer */
+    .export-modal-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 24px;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        gap: 16px;
+    }
+
+    .export-format-buttons {
+        display: flex;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .export-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 18px;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        cursor: pointer;
+        background: white;
+        transition: all 0.2s ease;
+        text-align: left;
+    }
+
+    .export-btn i {
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+
+    .export-btn strong {
+        display: block;
+        font-size: 13px;
+        color: #1e293b;
+        font-weight: 600;
+    }
+
+    .export-btn small {
+        display: block;
+        font-size: 11px;
+        color: #94a3b8;
+        font-weight: 400;
+        margin-top: 1px;
+    }
+
+    .export-btn-excel i { color: #10b981; }
+    .export-btn-excel:hover {
+        border-color: #10b981;
+        background: #ecfdf5;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+    }
+
+    .export-btn-pdf i { color: var(--primary, #0453cb); }
+    .export-btn-pdf:hover {
+        border-color: var(--primary, #0453cb);
+        background: #eff6ff;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(4, 83, 203, 0.15);
+    }
+
+    .export-panel-hint {
+        font-size: 12px;
+        color: #94a3b8;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .export-panel-hint i {
+        font-size: 13px;
+        color: #cbd5e1;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .export-select-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .export-checkbox-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .export-group-options {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .export-modal-footer {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .export-format-buttons {
+            justify-content: stretch;
+        }
+
+        .export-format-buttons .export-btn {
+            flex: 1;
+        }
+
+        .export-modal-body {
+            max-height: 60vh;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .export-modal-content {
+            border-radius: 16px 16px 0 0;
+        }
+
+        .modal-dialog.modal-lg {
+            margin: 0;
+            max-width: 100%;
+            align-items: flex-end;
+            min-height: 100%;
+        }
+
+        .export-checkbox-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .export-classes-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+        }
+
+        .export-search-mini {
+            max-width: 100%;
+        }
+    }
+
+    /* Scrollbar styling for checkbox lists */
+    .export-checkbox-list::-webkit-scrollbar,
+    .export-checkbox-grid::-webkit-scrollbar,
+    .export-modal-body::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    .export-checkbox-list::-webkit-scrollbar-track,
+    .export-checkbox-grid::-webkit-scrollbar-track,
+    .export-modal-body::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .export-checkbox-list::-webkit-scrollbar-thumb,
+    .export-checkbox-grid::-webkit-scrollbar-thumb,
+    .export-modal-body::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+
+    .export-checkbox-list::-webkit-scrollbar-thumb:hover,
+    .export-checkbox-grid::-webkit-scrollbar-thumb:hover,
+    .export-modal-body::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
 </style>
 @endsection
 
@@ -2185,6 +2716,201 @@
                     <i class="fas fa-user-graduate"></i>Réinscriptions
                 </a>
                 @endif
+
+                {{-- Export modal trigger --}}
+                <button type="button" class="btn-acasi secondary" data-bs-toggle="modal" data-bs-target="#exportModal" style="gap: 6px;">
+                    <i class="fas fa-download"></i>Exporter
+                </button>
+            </div>
+        </div>
+
+        {{-- ============================================================
+             EXPORT MODAL — Multi-select avec checkboxes
+             ============================================================ --}}
+        <div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true"
+             x-data="exportModal()" x-init="init()">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content export-modal-content">
+                    {{-- Header --}}
+                    <div class="export-modal-header">
+                        <div class="export-modal-title">
+                            <div class="export-modal-icon">
+                                <i class="fas fa-file-export"></i>
+                            </div>
+                            <div>
+                                <h5 id="exportModalLabel">Exporter la liste des étudiants</h5>
+                                <p class="export-modal-subtitle">
+                                    Sélectionnez les éléments à inclure dans l'export
+                                </p>
+                            </div>
+                        </div>
+                        <button type="button" class="export-modal-close" data-bs-dismiss="modal" aria-label="Fermer">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    {{-- Body --}}
+                    <div class="export-modal-body">
+                        {{-- Selection grid: Filières + Niveaux côte à côte --}}
+                        <div class="export-select-grid">
+                            {{-- Filières --}}
+                            <div class="export-select-block">
+                                <div class="export-select-header">
+                                    <div class="export-select-title">
+                                        <i class="fas fa-graduation-cap"></i>
+                                        Filières
+                                    </div>
+                                    <div class="export-select-counter">
+                                        <span x-text="selectedFilieres.length"></span>/<span x-text="allFilieres.length"></span>
+                                    </div>
+                                </div>
+                                <label class="export-toggle-all" @click.prevent="toggleAllFilieres()">
+                                    <span class="export-checkbox" :class="{ 'checked': allFilieresSelected, 'partial': someFilieresSelected && !allFilieresSelected }">
+                                        <i x-show="allFilieresSelected" class="fas fa-check"></i>
+                                        <i x-show="someFilieresSelected && !allFilieresSelected" class="fas fa-minus"></i>
+                                    </span>
+                                    <span x-text="allFilieresSelected ? 'Tout désélectionner' : 'Tout sélectionner'"></span>
+                                </label>
+                                <div class="export-checkbox-list">
+                                    @foreach($filieres as $f)
+                                    <label class="export-checkbox-item" @click.prevent="toggleFiliere({{ $f->id }})">
+                                        <span class="export-checkbox" :class="{ 'checked': selectedFilieres.includes({{ $f->id }}) }">
+                                            <i x-show="selectedFilieres.includes({{ $f->id }})" class="fas fa-check"></i>
+                                        </span>
+                                        <span class="export-checkbox-label">{{ $f->name }}</span>
+                                    </label>
+                                    @endforeach
+                                    @if($filieres->isEmpty())
+                                    <div class="export-empty-hint">Aucune filière disponible</div>
+                                    @endif
+                                </div>
+                            </div>
+
+                            {{-- Niveaux --}}
+                            <div class="export-select-block">
+                                <div class="export-select-header">
+                                    <div class="export-select-title">
+                                        <i class="fas fa-signal"></i>
+                                        Niveaux
+                                    </div>
+                                    <div class="export-select-counter">
+                                        <span x-text="selectedNiveaux.length"></span>/<span x-text="allNiveaux.length"></span>
+                                    </div>
+                                </div>
+                                <label class="export-toggle-all" @click.prevent="toggleAllNiveaux()">
+                                    <span class="export-checkbox" :class="{ 'checked': allNiveauxSelected, 'partial': someNiveauxSelected && !allNiveauxSelected }">
+                                        <i x-show="allNiveauxSelected" class="fas fa-check"></i>
+                                        <i x-show="someNiveauxSelected && !allNiveauxSelected" class="fas fa-minus"></i>
+                                    </span>
+                                    <span x-text="allNiveauxSelected ? 'Tout désélectionner' : 'Tout sélectionner'"></span>
+                                </label>
+                                <div class="export-checkbox-list">
+                                    @foreach($niveaux as $n)
+                                    <label class="export-checkbox-item" @click.prevent="toggleNiveau({{ $n->id }})">
+                                        <span class="export-checkbox" :class="{ 'checked': selectedNiveaux.includes({{ $n->id }}) }">
+                                            <i x-show="selectedNiveaux.includes({{ $n->id }})" class="fas fa-check"></i>
+                                        </span>
+                                        <span class="export-checkbox-label">{{ $n->name }}</span>
+                                    </label>
+                                    @endforeach
+                                    @if($niveaux->isEmpty())
+                                    <div class="export-empty-hint">Aucun niveau disponible</div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Classes (full width, with search) --}}
+                        <div class="export-select-block export-select-block-full">
+                            <div class="export-select-header">
+                                <div class="export-select-title">
+                                    <i class="fas fa-chalkboard"></i>
+                                    Classes
+                                </div>
+                                <div class="export-select-counter">
+                                    <span x-text="selectedClasses.length"></span>/<span x-text="allClasses.length"></span>
+                                </div>
+                            </div>
+                            <div class="export-classes-toolbar">
+                                <label class="export-toggle-all export-toggle-inline" @click.prevent="toggleAllClasses()">
+                                    <span class="export-checkbox" :class="{ 'checked': allClassesSelected, 'partial': someClassesSelected && !allClassesSelected }">
+                                        <i x-show="allClassesSelected" class="fas fa-check"></i>
+                                        <i x-show="someClassesSelected && !allClassesSelected" class="fas fa-minus"></i>
+                                    </span>
+                                    <span x-text="allClassesSelected ? 'Tout désélect.' : 'Tout sélect.'"></span>
+                                </label>
+                                <div class="export-search-mini">
+                                    <i class="fas fa-search"></i>
+                                    <input type="text" placeholder="Rechercher une classe..." x-model="classSearch" @click.stop>
+                                </div>
+                            </div>
+                            <div class="export-checkbox-grid">
+                                <template x-for="cls in filteredClasses" :key="cls.id">
+                                    <label class="export-checkbox-item export-checkbox-item-compact" @click.prevent="toggleClasse(cls.id)">
+                                        <span class="export-checkbox" :class="{ 'checked': selectedClasses.includes(cls.id) }">
+                                            <i x-show="selectedClasses.includes(cls.id)" class="fas fa-check"></i>
+                                        </span>
+                                        <span class="export-checkbox-label" x-text="cls.name"></span>
+                                    </label>
+                                </template>
+                                <div x-show="filteredClasses.length === 0" class="export-empty-hint">
+                                    <i class="fas fa-search"></i> Aucune classe trouvée
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Group by --}}
+                        <div class="export-panel-section">
+                            <label class="export-panel-label">Regrouper par</label>
+                            <div class="export-group-options">
+                                <label class="export-radio" :class="{ 'active': exportGroupBy === '' }" @click="exportGroupBy = ''">
+                                    <input type="radio" name="export_group" value="" x-model="exportGroupBy">
+                                    <i class="fas fa-layer-group"></i>
+                                    <span>Tout combiné</span>
+                                </label>
+                                <label class="export-radio" :class="{ 'active': exportGroupBy === 'classe' }" @click="exportGroupBy = 'classe'">
+                                    <input type="radio" name="export_group" value="classe" x-model="exportGroupBy">
+                                    <i class="fas fa-chalkboard"></i>
+                                    <span>Par classe</span>
+                                </label>
+                                <label class="export-radio" :class="{ 'active': exportGroupBy === 'filiere' }" @click="exportGroupBy = 'filiere'">
+                                    <input type="radio" name="export_group" value="filiere" x-model="exportGroupBy">
+                                    <i class="fas fa-graduation-cap"></i>
+                                    <span>Par filière</span>
+                                </label>
+                                <label class="export-radio" :class="{ 'active': exportGroupBy === 'niveau' }" @click="exportGroupBy = 'niveau'">
+                                    <input type="radio" name="export_group" value="niveau" x-model="exportGroupBy">
+                                    <i class="fas fa-signal"></i>
+                                    <span>Par niveau</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Footer --}}
+                    <div class="export-modal-footer">
+                        <div class="export-panel-hint">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Les filtres de la page seront aussi appliqués</span>
+                        </div>
+                        <div class="export-format-buttons">
+                            <button type="button" class="export-btn export-btn-excel" @click="doExport('excel')">
+                                <i class="fas fa-file-excel"></i>
+                                <div>
+                                    <strong>Excel</strong>
+                                    <small>.xlsx</small>
+                                </div>
+                            </button>
+                            <button type="button" class="export-btn export-btn-pdf" @click="doExport('pdf')">
+                                <i class="fas fa-file-pdf"></i>
+                                <div>
+                                    <strong>PDF</strong>
+                                    <small>.pdf</small>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -3391,5 +4117,140 @@
         initTableSorting(resultsContainer);
 
     });
+
+    // ========================================
+    // EXPORT MODAL - Alpine Component
+    // ========================================
+    function exportModal() {
+        return {
+            exportGroupBy: '',
+            classSearch: '',
+
+            // Data arrays (populated from Blade)
+            allFilieres: @php
+                $exportFilieres = $filieres->map(function($f) { return ['id' => $f->id, 'name' => $f->name]; })->values();
+            @endphp {!! json_encode($exportFilieres) !!},
+            allNiveaux: @php
+                $exportNiveaux = $niveaux->map(function($n) { return ['id' => $n->id, 'name' => $n->name]; })->values();
+            @endphp {!! json_encode($exportNiveaux) !!},
+            allClasses: @php
+                $exportClasses = $classes->map(function($c) { return ['id' => $c->id, 'name' => $c->name, 'filiere_id' => $c->filiere_id, 'niveau_etude_id' => $c->niveau_etude_id]; })->values();
+            @endphp {!! json_encode($exportClasses) !!},
+
+            // Selected IDs (start with ALL selected — approach C)
+            selectedFilieres: [],
+            selectedNiveaux: [],
+            selectedClasses: [],
+
+            init() {
+                // Start with everything selected
+                this.selectedFilieres = this.allFilieres.map(f => f.id);
+                this.selectedNiveaux = this.allNiveaux.map(n => n.id);
+                this.selectedClasses = this.allClasses.map(c => c.id);
+            },
+
+            // Computed: all/some selected
+            get allFilieresSelected() { return this.selectedFilieres.length === this.allFilieres.length && this.allFilieres.length > 0; },
+            get someFilieresSelected() { return this.selectedFilieres.length > 0; },
+            get allNiveauxSelected() { return this.selectedNiveaux.length === this.allNiveaux.length && this.allNiveaux.length > 0; },
+            get someNiveauxSelected() { return this.selectedNiveaux.length > 0; },
+            get allClassesSelected() { return this.selectedClasses.length === this.allClasses.length && this.allClasses.length > 0; },
+            get someClassesSelected() { return this.selectedClasses.length > 0; },
+
+            // Filtered classes (by search)
+            get filteredClasses() {
+                if (!this.classSearch.trim()) return this.allClasses;
+                const q = this.classSearch.toLowerCase().trim();
+                return this.allClasses.filter(c => c.name.toLowerCase().includes(q));
+            },
+
+            // Toggle individual items
+            toggleFiliere(id) {
+                const idx = this.selectedFilieres.indexOf(id);
+                if (idx > -1) {
+                    this.selectedFilieres.splice(idx, 1);
+                } else {
+                    this.selectedFilieres.push(id);
+                }
+            },
+            toggleNiveau(id) {
+                const idx = this.selectedNiveaux.indexOf(id);
+                if (idx > -1) {
+                    this.selectedNiveaux.splice(idx, 1);
+                } else {
+                    this.selectedNiveaux.push(id);
+                }
+            },
+            toggleClasse(id) {
+                const idx = this.selectedClasses.indexOf(id);
+                if (idx > -1) {
+                    this.selectedClasses.splice(idx, 1);
+                } else {
+                    this.selectedClasses.push(id);
+                }
+            },
+
+            // Toggle all
+            toggleAllFilieres() {
+                this.selectedFilieres = this.allFilieresSelected ? [] : this.allFilieres.map(f => f.id);
+            },
+            toggleAllNiveaux() {
+                this.selectedNiveaux = this.allNiveauxSelected ? [] : this.allNiveaux.map(n => n.id);
+            },
+            toggleAllClasses() {
+                this.selectedClasses = this.allClassesSelected ? [] : this.allClasses.map(c => c.id);
+            },
+
+            // Export action
+            doExport(format) {
+                const params = new URLSearchParams();
+
+                // Propagate page filters (search, annee, status, etc.)
+                const urlParams = new URLSearchParams(window.location.search);
+                ['search', 'annee', 'status', 'affectation_status', 'inscrit_annee_courante', 'est_transfert'].forEach(key => {
+                    if (urlParams.has(key) && urlParams.get(key)) {
+                        params.set(key, urlParams.get(key));
+                    }
+                });
+
+                // Also check form values
+                const form = document.getElementById('search-form');
+                if (form) {
+                    const formData = new FormData(form);
+                    ['search', 'annee', 'status', 'affectation_status', 'inscrit_annee_courante', 'est_transfert'].forEach(key => {
+                        const val = formData.get(key);
+                        if (val && !params.has(key)) {
+                            params.set(key, val);
+                        }
+                    });
+                }
+
+                // Multi-select: only send if NOT all selected (= filtering needed)
+                if (!this.allFilieresSelected && this.selectedFilieres.length > 0) {
+                    this.selectedFilieres.forEach(id => params.append('filieres[]', id));
+                }
+                if (!this.allNiveauxSelected && this.selectedNiveaux.length > 0) {
+                    this.selectedNiveaux.forEach(id => params.append('niveaux[]', id));
+                }
+                if (!this.allClassesSelected && this.selectedClasses.length > 0) {
+                    this.selectedClasses.forEach(id => params.append('classes[]', id));
+                }
+
+                if (this.exportGroupBy) {
+                    params.set('group_by', this.exportGroupBy);
+                }
+
+                const baseUrl = format === 'excel'
+                    ? '{{ route("esbtp.etudiants.export.excel") }}'
+                    : '{{ route("esbtp.etudiants.export.pdf") }}';
+
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+                if (modal) modal.hide();
+
+                window.location.href = baseUrl + '?' + params.toString();
+            }
+        };
+    }
 </script>
 @endpush

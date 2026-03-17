@@ -15,6 +15,9 @@ use Illuminate\Support\Str;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Services\FuzzyNameMatcher;
 use App\Services\EtudiantDossierService;
+use App\Exports\EtudiantsExport;
+use App\Helpers\SettingsHelper;
+use Maatwebsite\Excel\Facades\Excel;
 use PDF;
 
 class ESBTPStudentController extends Controller
@@ -22,7 +25,7 @@ class ESBTPStudentController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('permission:view_students', ['only' => ['index', 'show', 'genererCertificat']]);
+        $this->middleware('permission:view_students', ['only' => ['index', 'show', 'genererCertificat', 'exportExcel', 'exportPdf']]);
         $this->middleware('permission:create_students', ['only' => ['create', 'store']]);
         $this->middleware('permission:edit_students', ['only' => ['edit', 'update']]);
         $this->middleware('permission:delete_students', ['only' => ['destroy']]);
@@ -541,5 +544,225 @@ class ESBTPStudentController extends Controller
             'success' => true,
             'inscriptions' => $inscriptions
         ]);
+    }
+
+    /**
+     * Build filtered query for exports.
+     * Supports both single-value (from page filters) and array (from export modal) params.
+     */
+    protected function buildExportQuery(Request $request)
+    {
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        $query = \App\Models\ESBTPInscription::query()
+            ->with(['etudiant', 'filiere', 'niveau', 'classe', 'anneeUniversitaire'])
+            ->whereHas('etudiant', function ($q) use ($request) {
+                if ($request->filled('status')) {
+                    $q->where('statut', $request->input('status'));
+                }
+                if ($request->filled('search')) {
+                    $search = '%' . $request->input('search') . '%';
+                    $q->where(function ($sub) use ($search) {
+                        $sub->where('matricule', 'like', $search)
+                            ->orWhere('nom', 'like', $search)
+                            ->orWhere('prenoms', 'like', $search);
+                    });
+                }
+            });
+
+        // Multi-select: filieres[] (array) or filiere (single)
+        if ($request->filled('filieres')) {
+            $ids = array_filter((array) $request->input('filieres'));
+            if (!empty($ids)) {
+                $query->whereIn('filiere_id', $ids);
+            }
+        } elseif ($request->filled('filiere')) {
+            $query->where('filiere_id', $request->input('filiere'));
+        }
+
+        // Multi-select: niveaux[] (array) or niveau (single)
+        if ($request->filled('niveaux')) {
+            $ids = array_filter((array) $request->input('niveaux'));
+            if (!empty($ids)) {
+                $query->whereIn('niveau_id', $ids);
+            }
+        } elseif ($request->filled('niveau')) {
+            $query->where('niveau_id', $request->input('niveau'));
+        }
+
+        // Multi-select: classes[] (array) or classe (single)
+        if ($request->filled('classes')) {
+            $ids = array_filter((array) $request->input('classes'));
+            if (!empty($ids)) {
+                $query->whereIn('classe_id', $ids);
+            }
+        } elseif ($request->filled('classe')) {
+            $query->where('classe_id', $request->input('classe'));
+        }
+
+        if ($request->filled('annee')) {
+            $query->where('annee_universitaire_id', $request->input('annee'));
+        } elseif ($anneeCourante) {
+            $query->where('annee_universitaire_id', $anneeCourante->id);
+        }
+
+        if ($request->filled('affectation_status') && $anneeCourante) {
+            $query->where('affectation_status', $request->input('affectation_status'));
+        }
+
+        if ($request->filled('inscrit_annee_courante') && $anneeCourante) {
+            $val = $request->input('inscrit_annee_courante');
+            if ($val === 'validee') {
+                $query->where('workflow_step', 'etudiant_cree');
+            } elseif ($val === 'en_attente') {
+                $query->where('workflow_step', '!=', 'etudiant_cree');
+            }
+        }
+
+        $query->where('status', 'active');
+
+        return $query->orderBy('esbtp_inscriptions.id');
+    }
+
+    /**
+     * Prepare export data collection from filtered inscriptions.
+     */
+    protected function getExportData(Request $request): \Illuminate\Support\Collection
+    {
+        $inscriptions = $this->buildExportQuery($request)->get();
+
+        return $inscriptions->map(function ($inscription) {
+            return [
+                'etudiant' => $inscription->etudiant,
+                'inscription' => $inscription,
+            ];
+        });
+    }
+
+    /**
+     * Export student list to Excel.
+     */
+    public function exportExcel(Request $request)
+    {
+        try {
+            $data = $this->getExportData($request);
+            $groupBy = $request->input('group_by');
+
+            $export = new EtudiantsExport($data, $groupBy);
+
+            $suffix = $groupBy ? "-par-{$groupBy}" : '';
+            $filename = 'etudiants' . $suffix . '-' . now()->format('Y-m-d') . '.xlsx';
+
+            \Log::info('Export Excel étudiants', [
+                'user_id' => auth()->id(),
+                'total' => $data->count(),
+                'group_by' => $groupBy,
+                'filters' => $request->only(['filiere', 'niveau', 'classe', 'annee', 'status']),
+            ]);
+
+            return Excel::download($export, $filename);
+        } catch (\Exception $e) {
+            \Log::error('Erreur export Excel étudiants: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
+            return redirect()->back()->with('error', "Erreur lors de l'export Excel : " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Export student list to PDF.
+     */
+    public function exportPdf(Request $request)
+    {
+        try {
+            $data = $this->getExportData($request);
+            $groupBy = $request->input('group_by');
+
+            $schoolInfo = SettingsHelper::getSchoolInfo();
+            $etablissement = [
+                'nom' => $schoolInfo['name'] ?? 'KLASSCI',
+                'adresse' => $schoolInfo['address'] ?? '',
+                'telephone' => $schoolInfo['phone'] ?? '',
+                'email' => $schoolInfo['email'] ?? '',
+                'logo' => $schoolInfo['logo'] ?? '',
+            ];
+
+            // Build active filters description (supports both single and array params)
+            $filterLabels = [];
+
+            // Filières
+            if ($request->filled('filieres')) {
+                $names = ESBTPFiliere::whereIn('id', (array) $request->input('filieres'))->pluck('name');
+                if ($names->isNotEmpty()) $filterLabels[] = 'Filière(s) : ' . $names->join(', ');
+            } elseif ($request->filled('filiere')) {
+                $filiere = ESBTPFiliere::find($request->input('filiere'));
+                if ($filiere) $filterLabels[] = 'Filière : ' . $filiere->name;
+            }
+
+            // Niveaux
+            if ($request->filled('niveaux')) {
+                $names = ESBTPNiveauEtude::whereIn('id', (array) $request->input('niveaux'))->pluck('name');
+                if ($names->isNotEmpty()) $filterLabels[] = 'Niveau(x) : ' . $names->join(', ');
+            } elseif ($request->filled('niveau')) {
+                $niveau = ESBTPNiveauEtude::find($request->input('niveau'));
+                if ($niveau) $filterLabels[] = 'Niveau : ' . $niveau->name;
+            }
+
+            // Classes
+            if ($request->filled('classes')) {
+                $names = ESBTPClasse::whereIn('id', (array) $request->input('classes'))->pluck('name');
+                if ($names->isNotEmpty()) $filterLabels[] = 'Classe(s) : ' . $names->join(', ');
+            } elseif ($request->filled('classe')) {
+                $classe = ESBTPClasse::find($request->input('classe'));
+                if ($classe) $filterLabels[] = 'Classe : ' . $classe->name;
+            }
+
+            if ($request->filled('annee')) {
+                $annee = ESBTPAnneeUniversitaire::find($request->input('annee'));
+                if ($annee) $filterLabels[] = 'Année : ' . $annee->name;
+            }
+            if ($request->filled('status')) {
+                $filterLabels[] = 'Statut : ' . ucfirst($request->input('status'));
+            }
+
+            // Group data if requested
+            if ($groupBy) {
+                $groups = $data->groupBy(function ($item) use ($groupBy) {
+                    $inscription = $item['inscription'] ?? null;
+                    return match ($groupBy) {
+                        'classe' => $inscription?->classe?->name ?? 'Sans classe',
+                        'filiere' => $inscription?->filiere?->name ?? 'Sans filière',
+                        'niveau' => $inscription?->niveau?->name ?? 'Sans niveau',
+                        default => 'Tous',
+                    };
+                });
+            } else {
+                $groups = collect(['Tous les étudiants' => $data]);
+            }
+
+            $pdf = PDF::loadView('esbtp.etudiants.export-pdf', [
+                'groups' => $groups,
+                'totalEtudiants' => $data->count(),
+                'etablissement' => $etablissement,
+                'filterLabels' => $filterLabels,
+                'groupBy' => $groupBy,
+            ]);
+
+            $pdf->setPaper('a4', 'landscape');
+
+            $suffix = $groupBy ? "-par-{$groupBy}" : '';
+            $filename = 'etudiants' . $suffix . '-' . now()->format('Y-m-d') . '.pdf';
+
+            \Log::info('Export PDF étudiants', [
+                'user_id' => auth()->id(),
+                'total' => $data->count(),
+                'group_by' => $groupBy,
+            ]);
+
+            return $pdf->download($filename);
+        } catch (\Exception $e) {
+            \Log::error('Erreur export PDF étudiants: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
+            return redirect()->back()->with('error', "Erreur lors de l'export PDF : " . $e->getMessage());
+        }
     }
 }

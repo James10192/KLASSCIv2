@@ -1667,6 +1667,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('esbtp/etudiants/{etudiant}/all-inscriptions', [ESBTPStudentController::class, 'getAllInscriptions'])
         ->name('esbtp.etudiants.all-inscriptions');
 
+    // Export étudiants (avant resource pour éviter conflit {etudiant})
+    Route::get('esbtp/etudiants-export/excel', [ESBTPStudentController::class, 'exportExcel'])->name('esbtp.etudiants.export.excel');
+    Route::get('esbtp/etudiants-export/pdf', [ESBTPStudentController::class, 'exportPdf'])->name('esbtp.etudiants.export.pdf');
+
     Route::resource('esbtp/etudiants', ESBTPStudentController::class, ['as' => 'esbtp'])->parameters(['etudiants' => 'etudiant']);
     Route::post('esbtp/etudiants/{id}/restore', [ESBTPStudentController::class, 'restore'])->name('esbtp.etudiants.restore');
     Route::post('esbtp/etudiants/{etudiant}/update-photo', [ESBTPEtudiantController::class, 'updatePhoto'])->name('esbtp.etudiants.update-photo');
