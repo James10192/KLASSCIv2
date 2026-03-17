@@ -2249,22 +2249,104 @@
     }
 
     /* Selection grid: 2 columns for Filières + Niveaux */
-    .export-select-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-        margin-bottom: 16px;
-    }
-
-    .export-select-block {
+    .export-filiere-card {
         border: 1.5px solid #e2e8f0;
-        border-radius: 12px;
-        overflow: hidden;
+        border-radius: 10px;
+        padding: 12px 14px;
         background: #fafbfc;
+        transition: border-color 0.2s, background 0.2s;
     }
 
-    .export-select-block-full {
-        margin-bottom: 16px;
+    .export-filiere-card:hover {
+        border-color: #c7d5f0;
+    }
+
+    .export-filiere-card.has-selection {
+        border-color: #93b4e8;
+        background: #f5f8ff;
+    }
+
+    .export-niveau-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 12px;
+        border-radius: 20px;
+        border: 1.5px solid #e2e8f0;
+        background: white;
+        font-size: 12px;
+        font-weight: 500;
+        color: #475569;
+        cursor: pointer;
+        transition: all 0.2s;
+        user-select: none;
+    }
+
+    .export-niveau-pill:hover {
+        border-color: #93b4e8;
+        background: #f0f4ff;
+    }
+
+    .export-niveau-pill .export-pill-check {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 1.5px solid #cbd5e1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 8px;
+        color: transparent;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .export-niveau-pill.active {
+        border-color: #0453cb;
+        background: #e8f0fe;
+        color: #0453cb;
+        font-weight: 600;
+    }
+
+    .export-niveau-pill.active .export-pill-check {
+        background: #0453cb;
+        border-color: #0453cb;
+        color: white;
+    }
+
+    .export-classes-auto {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        background: #f8fafc;
+    }
+
+    .export-classes-auto-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: #475569;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .export-class-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 6px;
+        background: #e8f0fe;
+        color: #0453cb;
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    .export-class-tag .tag-filiere {
+        font-size: 9px;
+        color: #64748b;
+        margin-left: 2px;
     }
 
     .export-select-header {
@@ -2751,114 +2833,85 @@
 
                     {{-- Body --}}
                     <div class="export-modal-body">
-                        {{-- Selection grid: Filières + Niveaux côte à côte --}}
-                        <div class="export-select-grid">
-                            {{-- Filières --}}
-                            <div class="export-select-block">
-                                <div class="export-select-header">
-                                    <div class="export-select-title">
-                                        <i class="fas fa-graduation-cap"></i>
-                                        Filières
-                                    </div>
-                                    <div class="export-select-counter">
-                                        <span x-text="selectedFilieres.length"></span>/<span x-text="allFilieres.length"></span>
-                                    </div>
-                                </div>
-                                <label class="export-toggle-all" @click.prevent="toggleAllFilieres()">
-                                    <span class="export-checkbox" :class="{ 'checked': allFilieresSelected, 'partial': someFilieresSelected && !allFilieresSelected }">
-                                        <i x-show="allFilieresSelected" class="fas fa-check"></i>
-                                        <i x-show="someFilieresSelected && !allFilieresSelected" class="fas fa-minus"></i>
+                        {{-- Global toolbar --}}
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <label class="export-toggle-all export-toggle-inline" @click.prevent="toggleAll()">
+                                    <span class="export-checkbox" :class="{ 'checked': allSelected, 'partial': someSelected && !allSelected }">
+                                        <i x-show="allSelected" class="fas fa-check"></i>
+                                        <i x-show="someSelected && !allSelected" class="fas fa-minus"></i>
                                     </span>
-                                    <span x-text="allFilieresSelected ? 'Tout désélectionner' : 'Tout sélectionner'"></span>
+                                    <span x-text="allSelected ? 'Tout désélect.' : 'Tout sélect.'"></span>
                                 </label>
-                                <div class="export-checkbox-list">
-                                    @foreach($filieres as $f)
-                                    <label class="export-checkbox-item" @click.prevent="toggleFiliere({{ $f->id }})">
-                                        <span class="export-checkbox" :class="{ 'checked': isFiliereFullySelected({{ $f->id }}), 'partial': isFilierePartiallySelected({{ $f->id }}) }">
-                                            <i x-show="isFiliereFullySelected({{ $f->id }})" class="fas fa-check"></i>
-                                            <i x-show="isFilierePartiallySelected({{ $f->id }})" class="fas fa-minus"></i>
-                                        </span>
-                                        <span class="export-checkbox-label">{{ $f->name }}</span>
-                                    </label>
-                                    @endforeach
-                                    @if($filieres->isEmpty())
-                                    <div class="export-empty-hint">Aucune filière disponible</div>
-                                    @endif
-                                </div>
-                            </div>
-
-                            {{-- Niveaux --}}
-                            <div class="export-select-block">
-                                <div class="export-select-header">
-                                    <div class="export-select-title">
-                                        <i class="fas fa-signal"></i>
-                                        Niveaux
-                                    </div>
-                                    <div class="export-select-counter">
-                                        <span x-text="selectedNiveaux.length"></span>/<span x-text="allNiveaux.length"></span>
-                                    </div>
-                                </div>
-                                <label class="export-toggle-all" @click.prevent="toggleAllNiveaux()">
-                                    <span class="export-checkbox" :class="{ 'checked': allNiveauxSelected, 'partial': someNiveauxSelected && !allNiveauxSelected }">
-                                        <i x-show="allNiveauxSelected" class="fas fa-check"></i>
-                                        <i x-show="someNiveauxSelected && !allNiveauxSelected" class="fas fa-minus"></i>
-                                    </span>
-                                    <span x-text="allNiveauxSelected ? 'Tout désélectionner' : 'Tout sélectionner'"></span>
-                                </label>
-                                <div class="export-checkbox-list">
-                                    @foreach($niveaux as $n)
-                                    <label class="export-checkbox-item" @click.prevent="toggleNiveau({{ $n->id }})">
-                                        <span class="export-checkbox" :class="{ 'checked': isNiveauFullySelected({{ $n->id }}), 'partial': isNiveauPartiallySelected({{ $n->id }}) }">
-                                            <i x-show="isNiveauFullySelected({{ $n->id }})" class="fas fa-check"></i>
-                                            <i x-show="isNiveauPartiallySelected({{ $n->id }})" class="fas fa-minus"></i>
-                                        </span>
-                                        <span class="export-checkbox-label">{{ $n->name }}</span>
-                                    </label>
-                                    @endforeach
-                                    @if($niveaux->isEmpty())
-                                    <div class="export-empty-hint">Aucun niveau disponible</div>
-                                    @endif
-                                </div>
+                                <span class="export-select-counter" style="font-size: 12px; background: #f0f4ff; padding: 2px 10px; border-radius: 20px; color: #0453cb; font-weight: 600;">
+                                    <span x-text="selectedCombinations.length"></span> sélection<span x-show="selectedCombinations.length > 1">s</span>
+                                </span>
                             </div>
                         </div>
 
-                        {{-- Classes (full width, with search) --}}
-                        <div class="export-select-block export-select-block-full">
-                            <div class="export-select-header">
-                                <div class="export-select-title">
-                                    <i class="fas fa-chalkboard"></i>
-                                    Classes
-                                </div>
-                                <div class="export-select-counter">
-                                    <span x-text="selectedClasses.length"></span>/<span x-text="allClasses.length"></span>
-                                </div>
-                            </div>
-                            <div class="export-classes-toolbar">
-                                <label class="export-toggle-all export-toggle-inline" @click.prevent="toggleAllClasses()">
-                                    <span class="export-checkbox" :class="{ 'checked': allClassesSelected, 'partial': someClassesSelected && !allClassesSelected }">
-                                        <i x-show="allClassesSelected" class="fas fa-check"></i>
-                                        <i x-show="someClassesSelected && !allClassesSelected" class="fas fa-minus"></i>
-                                    </span>
-                                    <span x-text="allClassesSelected ? 'Tout désélect.' : 'Tout sélect.'"></span>
-                                </label>
-                                <div class="export-search-mini">
-                                    <i class="fas fa-search"></i>
-                                    <input type="text" placeholder="Rechercher une classe..." x-model="classSearch" @click.stop>
-                                </div>
-                            </div>
-                            <div class="export-checkbox-grid">
-                                <template x-for="cls in filteredClasses" :key="cls.id">
-                                    <label class="export-checkbox-item export-checkbox-item-compact" @click.prevent="toggleClasse(cls.id)">
-                                        <span class="export-checkbox" :class="{ 'checked': selectedClasses.includes(cls.id) }">
-                                            <i x-show="selectedClasses.includes(cls.id)" class="fas fa-check"></i>
-                                        </span>
-                                        <span class="export-checkbox-label" x-text="cls.name"></span>
+                        {{-- Filières & Niveaux grouped (like matières pattern) --}}
+                        <div style="display: flex; flex-direction: column; gap: 10px; max-height: 340px; overflow-y: auto; padding-right: 4px;">
+                            @foreach($filieres as $f)
+                            <div class="export-filiere-card" :class="{ 'has-selection': hasFiliereSelection({{ $f->id }}) }">
+                                {{-- Filière header --}}
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary, #0453cb); flex-shrink: 0;"></span>
+                                        <span style="font-weight: 600; font-size: 13px; color: #1e293b;">{{ $f->name }}</span>
+                                        @if($f->code)
+                                        <span style="font-size: 10px; background: #e0e7ff; color: #3730a3; padding: 1px 6px; border-radius: 4px; font-weight: 500;">{{ $f->code }}</span>
+                                        @endif
+                                    </div>
+                                    <label style="font-size: 11px; color: var(--primary, #0453cb); cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: 500;"
+                                           @click.prevent="toggleAllNiveauxOfFiliere({{ $f->id }})">
+                                        <i class="fas" :class="isFiliereFullySelected({{ $f->id }}) ? 'fa-times-circle' : 'fa-check-double'" style="font-size: 10px;"></i>
+                                        <span x-text="isFiliereFullySelected({{ $f->id }}) ? 'Tout désélect.' : 'Tout sélect.'"></span>
                                     </label>
-                                </template>
-                                <div x-show="filteredClasses.length === 0" class="export-empty-hint">
-                                    <i class="fas fa-search"></i> Aucune classe trouvée
+                                </div>
+                                {{-- Niveaux pills --}}
+                                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                    @foreach($niveaux as $n)
+                                    @php
+                                        $hasClasses = $classes->where('filiere_id', $f->id)->where('niveau_etude_id', $n->id)->isNotEmpty();
+                                    @endphp
+                                    @if($hasClasses)
+                                    <span class="export-niveau-pill"
+                                          :class="{ 'active': isCombinationSelected({{ $f->id }}, {{ $n->id }}) }"
+                                          @click="toggleCombination({{ $f->id }}, {{ $n->id }})">
+                                        <span class="export-pill-check">
+                                            <i class="fas fa-check"></i>
+                                        </span>
+                                        {{ $n->name }}
+                                        @if($n->code)
+                                        <span style="font-size: 9px; opacity: 0.65; margin-left: 2px;">{{ $n->code }}</span>
+                                        @endif
+                                    </span>
+                                    @endif
+                                    @endforeach
                                 </div>
                             </div>
+                            @endforeach
+                        </div>
+
+                        {{-- Auto-resolved classes --}}
+                        <div class="export-classes-auto" x-show="selectedCombinations.length > 0" style="margin-top: 12px;">
+                            <div class="export-classes-auto-title">
+                                <i class="fas fa-chalkboard"></i>
+                                Classes incluses
+                                <span class="export-select-counter" style="font-size: 11px;" x-text="'(' + resolvedClasses.length + ')'"></span>
+                            </div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                <template x-for="cls in resolvedClasses" :key="cls.id">
+                                    <span class="export-class-tag">
+                                        <i class="fas fa-check" style="font-size: 8px;"></i>
+                                        <span x-text="cls.name"></span>
+                                    </span>
+                                </template>
+                            </div>
+                        </div>
+                        <div x-show="selectedCombinations.length === 0" style="margin-top: 12px; text-align: center; color: #94a3b8; font-size: 12px; padding: 16px;">
+                            <i class="fas fa-info-circle" style="margin-right: 4px;"></i>
+                            Cliquez sur les niveaux dans les filières pour sélectionner les classes à exporter
                         </div>
 
                         {{-- Group by --}}
@@ -4128,189 +4181,147 @@
             exportGroupBy: '',
             classSearch: '',
 
-            // Data arrays (populated from Blade)
+            // Data arrays
             allFilieres: @php
-                $exportFilieres = $filieres->map(function($f) { return ['id' => $f->id, 'name' => $f->name]; })->values();
+                $exportFilieres = $filieres->map(function($f) { return ['id' => $f->id, 'name' => $f->name, 'code' => $f->code]; })->values();
             @endphp {!! json_encode($exportFilieres) !!},
             allNiveaux: @php
-                $exportNiveaux = $niveaux->map(function($n) { return ['id' => $n->id, 'name' => $n->name]; })->values();
+                $exportNiveaux = $niveaux->map(function($n) { return ['id' => $n->id, 'name' => $n->name, 'code' => $n->code]; })->values();
             @endphp {!! json_encode($exportNiveaux) !!},
             allClasses: @php
                 $exportClasses = $classes->map(function($c) { return ['id' => $c->id, 'name' => $c->name, 'filiere_id' => $c->filiere_id, 'niveau_etude_id' => $c->niveau_etude_id]; })->values();
             @endphp {!! json_encode($exportClasses) !!},
 
-            // Selected class IDs — single source of truth
-            selectedClasses: [],
+            // Selected combinations: array of {filiere_id, niveau_id} pairs
+            selectedCombinations: [],
 
             init() {
-                // Start with all classes selected
-                this.selectedClasses = this.allClasses.map(c => c.id);
+                // Start with all valid combinations selected
+                var self = this;
+                this.allClasses.forEach(function(c) {
+                    if (c.filiere_id && c.niveau_etude_id) {
+                        var key = c.filiere_id + '-' + c.niveau_etude_id;
+                        var exists = self.selectedCombinations.some(function(combo) {
+                            return combo.filiere_id === c.filiere_id && combo.niveau_id === c.niveau_etude_id;
+                        });
+                        if (!exists) {
+                            self.selectedCombinations.push({ filiere_id: c.filiere_id, niveau_id: c.niveau_etude_id });
+                        }
+                    }
+                });
             },
 
-            // --- Derived state from selectedClasses (no independent filiere/niveau arrays) ---
+            // Is a (filière, niveau) combination selected?
+            isCombinationSelected(filiereId, niveauId) {
+                return this.selectedCombinations.some(function(c) {
+                    return c.filiere_id === filiereId && c.niveau_id === niveauId;
+                });
+            },
 
-            // Filières that have at least one selected class
-            get selectedFilieres() {
-                var ids = [];
-                for (var i = 0; i < this.selectedClasses.length; i++) {
-                    var cls = this._findClass(this.selectedClasses[i]);
-                    if (cls && cls.filiere_id && ids.indexOf(cls.filiere_id) === -1) {
-                        ids.push(cls.filiere_id);
+            // Toggle a specific (filière, niveau) combination
+            toggleCombination(filiereId, niveauId) {
+                var idx = -1;
+                for (var i = 0; i < this.selectedCombinations.length; i++) {
+                    if (this.selectedCombinations[i].filiere_id === filiereId && this.selectedCombinations[i].niveau_id === niveauId) {
+                        idx = i;
+                        break;
                     }
                 }
-                return ids;
-            },
-            // Niveaux that have at least one selected class
-            get selectedNiveaux() {
-                var ids = [];
-                for (var i = 0; i < this.selectedClasses.length; i++) {
-                    var cls = this._findClass(this.selectedClasses[i]);
-                    if (cls && cls.niveau_etude_id && ids.indexOf(cls.niveau_etude_id) === -1) {
-                        ids.push(cls.niveau_etude_id);
-                    }
-                }
-                return ids;
-            },
-
-            get allFilieresSelected() { return this.allFilieres.length > 0 && this.selectedFilieres.length === this.allFilieres.length; },
-            get someFilieresSelected() { return this.selectedFilieres.length > 0; },
-            get allNiveauxSelected() { return this.allNiveaux.length > 0 && this.selectedNiveaux.length === this.allNiveaux.length; },
-            get someNiveauxSelected() { return this.selectedNiveaux.length > 0; },
-            get allClassesSelected() { return this.allClasses.length > 0 && this.selectedClasses.length === this.allClasses.length; },
-            get someClassesSelected() { return this.selectedClasses.length > 0; },
-
-            // Filtered classes (by search text)
-            get filteredClasses() {
-                if (!this.classSearch.trim()) return this.allClasses;
-                var q = this.classSearch.toLowerCase().trim();
-                return this.allClasses.filter(function(c) { return c.name.toLowerCase().indexOf(q) !== -1; });
-            },
-
-            // --- Helper ---
-            _findClass(id) {
-                for (var i = 0; i < this.allClasses.length; i++) {
-                    if (this.allClasses[i].id === id) return this.allClasses[i];
-                }
-                return null;
-            },
-
-            // --- Toggle actions with cascade ---
-
-            // Toggle a single class: add/remove, filière/niveau state derives automatically
-            toggleClasse(id) {
-                var idx = this.selectedClasses.indexOf(id);
                 if (idx > -1) {
-                    this.selectedClasses.splice(idx, 1);
+                    this.selectedCombinations.splice(idx, 1);
                 } else {
-                    this.selectedClasses.push(id);
+                    this.selectedCombinations.push({ filiere_id: filiereId, niveau_id: niveauId });
                 }
             },
 
-            // Toggle filière: select/deselect ALL classes of this filière
-            toggleFiliere(id) {
-                var classesOfFiliere = this.allClasses.filter(function(c) { return c.filiere_id === id; });
-                var allSelected = true;
-                for (var i = 0; i < classesOfFiliere.length; i++) {
-                    if (this.selectedClasses.indexOf(classesOfFiliere[i].id) === -1) {
-                        allSelected = false;
-                        break;
+            // Does a filière have at least one selected combination?
+            hasFiliereSelection(filiereId) {
+                return this.selectedCombinations.some(function(c) { return c.filiere_id === filiereId; });
+            },
+
+            // Are ALL niveaux of a filière selected?
+            isFiliereFullySelected(filiereId) {
+                var self = this;
+                // Get niveaux that have classes in this filière
+                var niveauIds = [];
+                this.allClasses.forEach(function(c) {
+                    if (c.filiere_id === filiereId && c.niveau_etude_id && niveauIds.indexOf(c.niveau_etude_id) === -1) {
+                        niveauIds.push(c.niveau_etude_id);
                     }
-                }
-                if (allSelected) {
-                    // Deselect all classes of this filière
-                    for (var i = 0; i < classesOfFiliere.length; i++) {
-                        var idx = this.selectedClasses.indexOf(classesOfFiliere[i].id);
-                        if (idx > -1) this.selectedClasses.splice(idx, 1);
+                });
+                if (niveauIds.length === 0) return false;
+                return niveauIds.every(function(nId) { return self.isCombinationSelected(filiereId, nId); });
+            },
+
+            // Toggle all niveaux of a filière
+            toggleAllNiveauxOfFiliere(filiereId) {
+                var self = this;
+                var niveauIds = [];
+                this.allClasses.forEach(function(c) {
+                    if (c.filiere_id === filiereId && c.niveau_etude_id && niveauIds.indexOf(c.niveau_etude_id) === -1) {
+                        niveauIds.push(c.niveau_etude_id);
                     }
+                });
+
+                if (this.isFiliereFullySelected(filiereId)) {
+                    // Remove all combos of this filière
+                    this.selectedCombinations = this.selectedCombinations.filter(function(c) {
+                        return c.filiere_id !== filiereId;
+                    });
                 } else {
-                    // Select all classes of this filière
-                    for (var i = 0; i < classesOfFiliere.length; i++) {
-                        if (this.selectedClasses.indexOf(classesOfFiliere[i].id) === -1) {
-                            this.selectedClasses.push(classesOfFiliere[i].id);
+                    // Add missing combos
+                    niveauIds.forEach(function(nId) {
+                        if (!self.isCombinationSelected(filiereId, nId)) {
+                            self.selectedCombinations.push({ filiere_id: filiereId, niveau_id: nId });
                         }
-                    }
+                    });
                 }
             },
 
-            // Toggle niveau: select/deselect ALL classes of this niveau
-            toggleNiveau(id) {
-                var classesOfNiveau = this.allClasses.filter(function(c) { return c.niveau_etude_id === id; });
-                var allSelected = true;
-                for (var i = 0; i < classesOfNiveau.length; i++) {
-                    if (this.selectedClasses.indexOf(classesOfNiveau[i].id) === -1) {
-                        allSelected = false;
-                        break;
+            // Resolved classes from selected combinations
+            get resolvedClasses() {
+                var self = this;
+                return this.allClasses.filter(function(c) {
+                    return self.selectedCombinations.some(function(combo) {
+                        return combo.filiere_id === c.filiere_id && combo.niveau_id === c.niveau_etude_id;
+                    });
+                });
+            },
+
+            // Global toggle states
+            get allSelected() {
+                var self = this;
+                // All possible combos
+                var allCombos = [];
+                this.allClasses.forEach(function(c) {
+                    if (c.filiere_id && c.niveau_etude_id) {
+                        var exists = allCombos.some(function(x) { return x.filiere_id === c.filiere_id && x.niveau_id === c.niveau_etude_id; });
+                        if (!exists) allCombos.push({ filiere_id: c.filiere_id, niveau_id: c.niveau_etude_id });
                     }
-                }
-                if (allSelected) {
-                    for (var i = 0; i < classesOfNiveau.length; i++) {
-                        var idx = this.selectedClasses.indexOf(classesOfNiveau[i].id);
-                        if (idx > -1) this.selectedClasses.splice(idx, 1);
-                    }
+                });
+                return allCombos.length > 0 && this.selectedCombinations.length === allCombos.length;
+            },
+            get someSelected() { return this.selectedCombinations.length > 0; },
+
+            toggleAll() {
+                if (this.allSelected) {
+                    this.selectedCombinations = [];
                 } else {
-                    for (var i = 0; i < classesOfNiveau.length; i++) {
-                        if (this.selectedClasses.indexOf(classesOfNiveau[i].id) === -1) {
-                            this.selectedClasses.push(classesOfNiveau[i].id);
+                    var combos = [];
+                    this.allClasses.forEach(function(c) {
+                        if (c.filiere_id && c.niveau_etude_id) {
+                            var exists = combos.some(function(x) { return x.filiere_id === c.filiere_id && x.niveau_id === c.niveau_etude_id; });
+                            if (!exists) combos.push({ filiere_id: c.filiere_id, niveau_id: c.niveau_etude_id });
                         }
-                    }
+                    });
+                    this.selectedCombinations = combos;
                 }
-            },
-
-            // Toggle all filières = toggle all classes
-            toggleAllFilieres() {
-                this.selectedClasses = this.allFilieresSelected ? [] : this.allClasses.map(function(c) { return c.id; });
-            },
-            // Toggle all niveaux = toggle all classes
-            toggleAllNiveaux() {
-                this.selectedClasses = this.allNiveauxSelected ? [] : this.allClasses.map(function(c) { return c.id; });
-            },
-            toggleAllClasses() {
-                this.selectedClasses = this.allClassesSelected ? [] : this.allClasses.map(function(c) { return c.id; });
-            },
-
-            // --- Filière/Niveau checkbox state helpers (for partial indicator) ---
-            isFiliereFullySelected(id) {
-                var classesOfFiliere = this.allClasses.filter(function(c) { return c.filiere_id === id; });
-                if (classesOfFiliere.length === 0) return false;
-                for (var i = 0; i < classesOfFiliere.length; i++) {
-                    if (this.selectedClasses.indexOf(classesOfFiliere[i].id) === -1) return false;
-                }
-                return true;
-            },
-            isFilierePartiallySelected(id) {
-                var classesOfFiliere = this.allClasses.filter(function(c) { return c.filiere_id === id; });
-                var has = false, missing = false;
-                for (var i = 0; i < classesOfFiliere.length; i++) {
-                    if (this.selectedClasses.indexOf(classesOfFiliere[i].id) > -1) has = true;
-                    else missing = true;
-                    if (has && missing) return true;
-                }
-                return false;
-            },
-            isNiveauFullySelected(id) {
-                var classesOfNiveau = this.allClasses.filter(function(c) { return c.niveau_etude_id === id; });
-                if (classesOfNiveau.length === 0) return false;
-                for (var i = 0; i < classesOfNiveau.length; i++) {
-                    if (this.selectedClasses.indexOf(classesOfNiveau[i].id) === -1) return false;
-                }
-                return true;
-            },
-            isNiveauPartiallySelected(id) {
-                var classesOfNiveau = this.allClasses.filter(function(c) { return c.niveau_etude_id === id; });
-                var has = false, missing = false;
-                for (var i = 0; i < classesOfNiveau.length; i++) {
-                    if (this.selectedClasses.indexOf(classesOfNiveau[i].id) > -1) has = true;
-                    else missing = true;
-                    if (has && missing) return true;
-                }
-                return false;
             },
 
             // Export action
             doExport(format) {
                 var params = new URLSearchParams();
 
-                // Propagate page filters (search, annee, status, etc.)
                 var urlParams = new URLSearchParams(window.location.search);
                 ['search', 'annee', 'status', 'affectation_status', 'inscrit_annee_courante', 'est_transfert'].forEach(function(key) {
                     if (urlParams.has(key) && urlParams.get(key)) {
@@ -4318,7 +4329,6 @@
                     }
                 });
 
-                // Also check form values
                 var form = document.getElementById('search-form');
                 if (form) {
                     var formData = new FormData(form);
@@ -4330,9 +4340,10 @@
                     });
                 }
 
-                // Send only classes[] — single source of truth
-                if (!this.allClassesSelected && this.selectedClasses.length > 0) {
-                    this.selectedClasses.forEach(function(id) { params.append('classes[]', id); });
+                // Send resolved class IDs
+                var resolved = this.resolvedClasses;
+                if (resolved.length > 0 && resolved.length < this.allClasses.length) {
+                    resolved.forEach(function(c) { params.append('classes[]', c.id); });
                 }
 
                 if (this.exportGroupBy) {
@@ -4343,7 +4354,6 @@
                     ? '{{ route("esbtp.etudiants.export.excel") }}'
                     : '{{ route("esbtp.etudiants.export.pdf") }}';
 
-                // Close modal
                 var modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
                 if (modal) modal.hide();
 
