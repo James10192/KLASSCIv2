@@ -937,6 +937,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // Routes pour les notes
             Route::post('notes/save-ajax', [ESBTPNoteController::class, 'saveNoteAjax'])->name('notes.save-ajax');
+            Route::post('notes/save-ajax-bulk', [ESBTPNoteController::class, 'saveNotesAjaxBulk'])->name('notes.save-ajax-bulk');
             Route::resource('notes', \App\Http\Controllers\ESBTPNoteController::class)
                 ->names([
                     'index' => 'esbtp.notes.index',

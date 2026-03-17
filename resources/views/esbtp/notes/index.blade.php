@@ -1191,42 +1191,50 @@ $('#saveAllNotesBtn').on('click', function() {
 
     btn.html('<i class="fas fa-spinner fa-spin me-1"></i> Enregistrement...').prop('disabled', true);
 
-    let completed = 0;
-    let errors = 0;
-    const total = inputs.length;
-
+    // Collecter toutes les notes en un seul tableau
+    const notesPayload = [];
     inputs.each(function() {
         const studentId = $(this).data('student-id');
         const evalId = $(this).data('eval-id');
-        const noteValue = $(this).val();
-
-        $.ajax({
-            url: '{{ route("esbtp.notes.save-ajax") }}',
-            method: 'POST',
-            dataType: 'json',
-            data: {
-                _token: '{{ csrf_token() }}',
-                etudiant_id: studentId,
-                evaluation_id: evalId,
-                note: noteValue,
-                is_absent: $(`#absent-${studentId}-${evalId}`).is(':checked') ? 'on' : ''
-            },
-            success: function(response) {
-                if (!response.success) errors++;
-            },
-            error: function() { errors++; },
-            complete: function() {
-                completed++;
-                if (completed === total) {
-                    if (errors > 0) {
-                        btn.html(`<i class="fas fa-exclamation-triangle me-1"></i> ${errors} erreur(s)`).prop('disabled', false);
-                    } else {
-                        btn.html('<i class="fas fa-check me-1"></i> Toutes les notes enregistrées').prop('disabled', false);
-                    }
-                    setTimeout(() => { btn.html(originalText); }, 2000);
-                }
-            }
+        notesPayload.push({
+            etudiant_id: studentId,
+            evaluation_id: evalId,
+            note: $(this).val(),
+            is_absent: $(`#absent-${studentId}-${evalId}`).is(':checked') ? 'on' : ''
         });
+    });
+
+    // Envoyer une seule requête bulk au lieu d'une par étudiant
+    $.ajax({
+        url: '{{ route("esbtp.notes.save-ajax-bulk") }}',
+        method: 'POST',
+        dataType: 'json',
+        data: {
+            _token: '{{ csrf_token() }}',
+            notes: notesPayload
+        },
+        success: function(response) {
+            if (response.success) {
+                btn.html(`<i class="fas fa-check me-1"></i> ${response.saved} note(s) enregistrée(s)`).prop('disabled', false);
+            } else {
+                btn.html(`<i class="fas fa-exclamation-triangle me-1"></i> ${response.errors} erreur(s)`).prop('disabled', false);
+            }
+            // Highlight rows and recalculate averages
+            notesPayload.forEach(function(entry) {
+                triggerRowHighlight(entry.etudiant_id);
+                if (!notesData[entry.etudiant_id]) notesData[entry.etudiant_id] = {};
+                notesData[entry.etudiant_id][entry.evaluation_id] = entry.is_absent === 'on' ? 0 : entry.note;
+                calculateStudentAverage(entry.etudiant_id);
+            });
+            calculateClassAverages();
+            setTimeout(() => { btn.html(originalText); }, 2500);
+        },
+        error: function(xhr) {
+            const msg = xhr.responseJSON?.message || 'Erreur lors de la sauvegarde.';
+            btn.html(`<i class="fas fa-times me-1"></i> Échec`).prop('disabled', false);
+            alert(msg);
+            setTimeout(() => { btn.html(originalText); }, 2500);
+        }
     });
 });
 

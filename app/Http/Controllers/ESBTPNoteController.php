@@ -534,11 +534,8 @@ class ESBTPNoteController extends Controller
         ]);
 
         try {
-            $isAbsent = in_array($request->is_absent, ['on', '1', 'true', true], true);
-
             $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
 
-            // Vérification publication évaluation
             if (! $evaluation->is_published) {
                 return response()->json([
                     'success' => false,
@@ -546,52 +543,35 @@ class ESBTPNoteController extends Controller
                 ], 422);
             }
 
-            // UPSERT : trouver la note existante ou en créer une nouvelle
-            $note = ESBTPNote::where('etudiant_id', $request->etudiant_id)
+            $existingNote = ESBTPNote::where('etudiant_id', $request->etudiant_id)
                 ->where('evaluation_id', $request->evaluation_id)
                 ->first();
 
-            // Vérification permission : seuls les utilisateurs avec 'edit_existing_notes' peuvent modifier
-            if ($note && ! Auth::user()->can('edit_existing_notes')) {
+            if ($existingNote && ! Auth::user()->can('edit_existing_notes')) {
                 return response()->json([
                     'success' => false,
                     'message' => "Vous n'avez pas la permission de modifier les notes déjà enregistrées.",
                 ], 403);
             }
 
-            if (! $note) {
-                $note = new ESBTPNote;
-                $note->etudiant_id        = $request->etudiant_id;
-                $note->evaluation_id      = $request->evaluation_id;
-                $note->classe_id          = $evaluation->classe_id;
-                $note->matiere_id         = $evaluation->matiere_id;
-                $note->semestre           = $evaluation->periode;
-                $note->annee_universitaire = $evaluation->anneeUniversitaire
-                    ? $evaluation->anneeUniversitaire->name : 'N/A';
-                $note->type_evaluation    = $evaluation->type;
-                $note->created_by         = Auth::id();
-            } else {
-                $note->semestre = $evaluation->periode;
-            }
+            $result = $this->processNoteEntry($evaluation, $existingNote, [
+                'etudiant_id'   => $request->etudiant_id,
+                'evaluation_id' => $request->evaluation_id,
+                'note'          => $request->note,
+                'is_absent'     => $request->is_absent,
+                'commentaire'   => $request->commentaire,
+            ]);
 
-            // Valeur de la note : 0 si absent, valeur saisie sinon
-            $note->note       = $isAbsent ? 0 : (float) ($request->note ?? 0);
-            $note->is_absent  = $isAbsent ? 1 : 0;
-            $note->commentaire = $request->commentaire;
-            $note->updated_by  = Auth::id();
-            $note->save();
-
-            // Notification d'absence si nécessaire
-            if ($isAbsent && $note->wasRecentlyCreated) {
-                $this->sendAbsenceNotificationForNote($note, $evaluation);
+            if ($result['is_new_absent']) {
+                $this->sendAbsenceNotificationForNote($result['note'], $evaluation);
             }
 
             return response()->json([
-                'success'  => true,
-                'message'  => 'Note enregistrée avec succès.',
-                'note_id'  => $note->id,
-                'is_absent' => (bool) $note->is_absent,
-                'note'     => $note->note,
+                'success'   => true,
+                'message'   => 'Note enregistrée avec succès.',
+                'note_id'   => $result['note']->id,
+                'is_absent' => (bool) $result['note']->is_absent,
+                'note'      => $result['note']->note,
             ]);
 
         } catch (\Exception $e) {
@@ -601,6 +581,124 @@ class ESBTPNoteController extends Controller
                 'message' => 'Erreur serveur : ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Sauvegarde en masse des notes (une seule requête HTTP au lieu d'une par étudiant).
+     */
+    public function saveNotesAjaxBulk(Request $request)
+    {
+        $request->validate([
+            'notes'                 => 'required|array|min:1',
+            'notes.*.etudiant_id'   => 'required|integer',
+            'notes.*.evaluation_id' => 'required|integer',
+            'notes.*.note'          => 'nullable|numeric|min:0',
+            'notes.*.is_absent'     => 'nullable|string',
+        ]);
+
+        $errors = 0;
+        $saved  = 0;
+
+        DB::beginTransaction();
+        try {
+            $evalIds = collect($request->notes)->pluck('evaluation_id')->unique();
+            $evaluations = ESBTPEvaluation::whereIn('id', $evalIds)->get()->keyBy('id');
+
+            // Requête tuple-based IN au lieu de N orWhere
+            $pairs = collect($request->notes)
+                ->map(fn($e) => "({$e['etudiant_id']}, {$e['evaluation_id']})")
+                ->implode(',');
+            $existingNotes = $pairs
+                ? ESBTPNote::whereRaw("(etudiant_id, evaluation_id) IN ({$pairs})")
+                    ->get()->keyBy(fn($n) => $n->etudiant_id . '_' . $n->evaluation_id)
+                : collect();
+
+            $canEdit = Auth::user()->can('edit_existing_notes');
+            $pendingNotifications = [];
+
+            foreach ($request->notes as $entry) {
+                $evaluation = $evaluations->get($entry['evaluation_id']);
+                if (! $evaluation || ! $evaluation->is_published) {
+                    $errors++;
+                    continue;
+                }
+
+                $key  = $entry['etudiant_id'] . '_' . $entry['evaluation_id'];
+                $note = $existingNotes->get($key);
+
+                if ($note && ! $canEdit) {
+                    $errors++;
+                    continue;
+                }
+
+                $result = $this->processNoteEntry($evaluation, $note, $entry);
+
+                if ($result['is_new_absent']) {
+                    $pendingNotifications[] = [$result['note'], $evaluation];
+                }
+                $saved++;
+            }
+
+            DB::commit();
+
+            // Envoyer les notifications après le commit (évite rollback en cascade)
+            foreach ($pendingNotifications as [$note, $evaluation]) {
+                $this->sendAbsenceNotificationForNote($note, $evaluation);
+            }
+
+            return response()->json([
+                'success' => $errors === 0,
+                'saved'   => $saved,
+                'errors'  => $errors,
+                'total'   => count($request->notes),
+                'message' => $errors === 0
+                    ? "{$saved} note(s) enregistrée(s) avec succès."
+                    : "{$saved} enregistrée(s), {$errors} erreur(s).",
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('saveNotesAjaxBulk error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur serveur : ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Logique partagée : crée ou met à jour une note pour un étudiant/évaluation.
+     */
+    private function processNoteEntry(ESBTPEvaluation $evaluation, ?ESBTPNote $existingNote, array $entry): array
+    {
+        $isAbsent = in_array($entry['is_absent'] ?? '', ['on', '1', 'true', true], true);
+        $isNew = false;
+
+        if (! $existingNote) {
+            $isNew = true;
+            $existingNote = new ESBTPNote;
+            $existingNote->etudiant_id        = $entry['etudiant_id'];
+            $existingNote->evaluation_id      = $entry['evaluation_id'];
+            $existingNote->classe_id          = $evaluation->classe_id;
+            $existingNote->matiere_id         = $evaluation->matiere_id;
+            $existingNote->semestre           = $evaluation->periode;
+            $existingNote->annee_universitaire = $evaluation->anneeUniversitaire
+                ? $evaluation->anneeUniversitaire->name : 'N/A';
+            $existingNote->type_evaluation    = $evaluation->type;
+            $existingNote->created_by         = Auth::id();
+        } else {
+            $existingNote->semestre = $evaluation->periode;
+        }
+
+        $existingNote->note       = $isAbsent ? 0 : (float) ($entry['note'] ?? 0);
+        $existingNote->is_absent  = $isAbsent ? 1 : 0;
+        $existingNote->updated_by = Auth::id();
+        if (isset($entry['commentaire'])) {
+            $existingNote->commentaire = $entry['commentaire'];
+        }
+        $existingNote->save();
+
+        return ['note' => $existingNote, 'is_new_absent' => $isAbsent && $isNew];
     }
 
     /**
