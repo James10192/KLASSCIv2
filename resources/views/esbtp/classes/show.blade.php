@@ -225,6 +225,73 @@
         }
         .planning-kpi-value { font-size: 1.4rem; }
     }
+
+    /* Student table rows (partial loaded via AJAX) */
+    .str-table { border-collapse: separate; border-spacing: 0; }
+    .str-table thead th {
+        background: var(--background, #f8fafc);
+        color: var(--text-secondary, #64748b);
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 0.75rem 1rem;
+        border-bottom: 2px solid #e2e8f0;
+        white-space: nowrap;
+    }
+    .str-table tbody tr { transition: background 0.15s ease; }
+    .str-table tbody tr:hover { background: #f1f5f9; }
+    .str-table tbody td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: var(--text-primary, #1e293b);
+        font-size: 0.875rem;
+    }
+    .str-avatar {
+        width: 36px; height: 36px; border-radius: 50%;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 0.8rem; color: #fff;
+        flex-shrink: 0; letter-spacing: 0.02em;
+    }
+    .str-avatar--m { background: linear-gradient(135deg, var(--primary, #0453cb), #5e91de); }
+    .str-avatar--f { background: linear-gradient(135deg, var(--success, #10b981), #6ee7b7); }
+    .str-matricule {
+        display: inline-block; background: #f1f5f9; color: #475569;
+        font-family: 'Courier New', monospace; font-size: 0.8rem;
+        font-weight: 600; padding: 0.2rem 0.5rem; border-radius: 4px;
+        letter-spacing: 0.03em;
+    }
+    .str-name { font-weight: 600; color: var(--text-primary, #1e293b); }
+    .str-prenom { font-weight: 400; color: #475569; }
+    .str-contact-line {
+        display: flex; align-items: center; gap: 0.375rem;
+        font-size: 0.8125rem; color: var(--text-secondary, #64748b); line-height: 1.6;
+    }
+    .str-contact-line i { width: 14px; text-align: center; color: var(--text-muted, #94a3b8); font-size: 0.75rem; }
+    .str-gender-badge {
+        display: inline-flex; align-items: center; gap: 0.25rem;
+        font-size: 0.8125rem; color: var(--text-secondary, #64748b);
+    }
+    .str-gender-badge i { font-size: 0.75rem; }
+    .str-btn-view {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 32px; height: 32px; border-radius: 8px;
+        border: 1px solid #e2e8f0; background: #fff; color: var(--primary, #0453cb);
+        transition: all 0.15s ease; font-size: 0.8rem;
+    }
+    .str-btn-view:hover {
+        background: var(--primary, #0453cb); color: #fff; border-color: var(--primary, #0453cb);
+        box-shadow: 0 2px 8px rgba(4, 83, 203, 0.25);
+    }
+    .str-empty { text-align: center; padding: 3rem 1.5rem; }
+    .str-empty-icon {
+        width: 56px; height: 56px; border-radius: 50%; background: #f1f5f9;
+        display: inline-flex; align-items: center; justify-content: center;
+        margin-bottom: 1rem; color: var(--text-muted, #94a3b8); font-size: 1.5rem;
+    }
+    .str-empty-title { font-weight: 600; color: var(--text-primary, #1e293b); margin-bottom: 0.25rem; }
+    .str-empty-text { color: var(--text-secondary, #64748b); font-size: 0.875rem; }
 </style>
 @endsection
 
@@ -865,8 +932,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     container.innerHTML = data.html;
                     container.style.opacity = '1';
                     // Mettre à jour le compteur dans le header
-                    document.getElementById('studentCountSubtitle').textContent =
-                        data.count + ' étudiant(s) inscrit(s) dans cette classe pour l\'année courante';
+                    var subtitleEl = document.getElementById('studentCountSubtitle');
+                    if (subtitleEl) {
+                        subtitleEl.textContent = data.count + ' étudiant(s) inscrit(s) dans cette classe pour l\'année courante';
+                    }
                     // Réinitialiser DataTables
                     initStudentDataTable();
                     // Mettre à jour la liste dans le modal Retirer
@@ -895,12 +964,17 @@ document.addEventListener('DOMContentLoaded', () => {
             rows.forEach(function(row) {
                 var id = row.getAttribute('data-etudiant-id');
                 var cells = row.querySelectorAll('td');
-                var matricule = cells[0] ? cells[0].textContent.trim() : '';
-                var nom = cells[1] ? cells[1].textContent.trim() : '';
+                // Table layout: [0]=avatar, [1]=matricule, [2]=nom complet
+                var avatar = cells[0] ? cells[0].textContent.trim() : '';
+                var matricule = cells[1] ? cells[1].textContent.trim() : '';
+                var nom = cells[2] ? cells[2].textContent.trim() : '';
+                var isMale = cells[0] && cells[0].querySelector('.str-avatar--m');
+                var avatarClass = isMale ? 'str-avatar--m' : 'str-avatar--f';
                 html += '<label class="list-group-item d-flex align-items-center gap-2" style="cursor: pointer;">' +
                     '<input type="checkbox" class="form-check-input remove-student-checkbox" value="' + id + '" style="margin: 0;">' +
-                    '<span class="badge bg-light text-dark" style="font-family: monospace; font-size: 0.8rem;">' + matricule + '</span>' +
-                    '<span>' + nom + '</span>' +
+                    '<div class="str-avatar ' + avatarClass + '" style="width:28px;height:28px;font-size:0.7rem;">' + avatar + '</div>' +
+                    '<span class="str-matricule">' + matricule + '</span>' +
+                    '<span class="fw-semibold">' + nom + '</span>' +
                     '</label>';
             });
             listContainer.innerHTML = html;
@@ -981,7 +1055,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function updateAddSelectedCount() {
             var count = Object.keys(addSelectedStudents).length;
-            document.getElementById('addSelectedCount').textContent = count;
+            var el = document.getElementById('addSelectedCount');
+            if (el) el.textContent = count;
             document.getElementById('addSubmitBtn').disabled = count === 0;
 
             // Mettre à jour le tag area
@@ -1026,12 +1101,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: JSON.stringify({ etudiant_ids: ids })
             })
-            .then(function(response) { return response.json(); })
+            .then(function(response) {
+                if (!response.ok) {
+                    return response.text().then(function(text) {
+                        try { return JSON.parse(text); } catch(e) {
+                            throw new Error('Erreur serveur (' + response.status + ')');
+                        }
+                    });
+                }
+                return response.json();
+            })
             .then(function(data) {
                 if (data.success) {
                     // Fermer le modal
@@ -1052,8 +1136,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-plus me-1"></i>Ajouter <span class="badge bg-light text-success" id="addSelectedCount">0</span> étudiant(s)';
             })
-            .catch(function() {
-                showNotification('danger', 'Erreur de connexion.');
+            .catch(function(err) {
+                console.error('Erreur ajout étudiants:', err);
+                showNotification('danger', err.message || 'Erreur de connexion.');
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-plus me-1"></i>Ajouter <span class="badge bg-light text-success" id="addSelectedCount">0</span> étudiant(s)';
             });
@@ -1089,12 +1174,17 @@ document.addEventListener('DOMContentLoaded', () => {
             tableRows.forEach(function(row) {
                 var id = row.getAttribute('data-etudiant-id');
                 var cells = row.querySelectorAll('td');
-                var matricule = cells[0] ? cells[0].textContent.trim() : '';
-                var nom = cells[1] ? cells[1].textContent.trim() : '';
+                // Table layout: [0]=avatar, [1]=matricule, [2]=nom complet
+                var avatar = cells[0] ? cells[0].textContent.trim() : '';
+                var matricule = cells[1] ? cells[1].textContent.trim() : '';
+                var nom = cells[2] ? cells[2].textContent.trim() : '';
+                var isMale = cells[0] && cells[0].querySelector('.str-avatar--m');
+                var avatarClass = isMale ? 'str-avatar--m' : 'str-avatar--f';
                 html += '<label class="list-group-item d-flex align-items-center gap-2" style="cursor: pointer;">' +
                     '<input type="checkbox" class="form-check-input remove-student-checkbox" value="' + id + '" style="margin: 0;">' +
-                    '<span class="badge bg-light text-dark" style="font-family: monospace; font-size: 0.8rem;">' + matricule + '</span>' +
-                    '<span>' + nom + '</span>' +
+                    '<div class="str-avatar ' + avatarClass + '" style="width:28px;height:28px;font-size:0.7rem;">' + avatar + '</div>' +
+                    '<span class="str-matricule">' + matricule + '</span>' +
+                    '<span class="fw-semibold">' + nom + '</span>' +
                     '</label>';
             });
             listContainer.innerHTML = html;
@@ -1115,7 +1205,11 @@ document.addEventListener('DOMContentLoaded', () => {
             var items = document.querySelectorAll('#removeStudentsList .list-group-item');
             items.forEach(function(item) {
                 var text = item.textContent.toLowerCase();
-                item.style.display = text.includes(query) ? '' : 'none';
+                if (text.includes(query)) {
+                    item.classList.remove('d-none');
+                } else {
+                    item.classList.add('d-none');
+                }
             });
         });
 
@@ -1126,8 +1220,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function updateRemoveSelectedCount() {
             var count = document.querySelectorAll('.remove-student-checkbox:checked').length;
-            document.getElementById('removeSelectedCount').textContent = count;
-            document.getElementById('removeSubmitBtn').disabled = count === 0;
+            var el = document.getElementById('removeSelectedCount');
+            if (el) el.textContent = count;
+            var btn = document.getElementById('removeSubmitBtn');
+            if (btn) btn.disabled = count === 0;
         }
 
         // Soumettre le retrait/transfert
@@ -1161,12 +1257,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: JSON.stringify(body)
             })
-            .then(function(response) { return response.json(); })
+            .then(function(response) {
+                if (!response.ok) {
+                    return response.text().then(function(text) {
+                        try { return JSON.parse(text); } catch(e) {
+                            throw new Error('Erreur serveur (' + response.status + ')');
+                        }
+                    });
+                }
+                return response.json();
+            })
             .then(function(data) {
                 if (data.success) {
                     // Fermer le modal
@@ -1185,8 +1290,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-exchange-alt me-1"></i>Retirer / Transférer <span class="badge bg-light text-warning" id="removeSelectedCount">0</span> étudiant(s)';
             })
-            .catch(function() {
-                showNotification('danger', 'Erreur de connexion.');
+            .catch(function(err) {
+                console.error('Erreur retrait étudiants:', err);
+                showNotification('danger', err.message || 'Erreur de connexion.');
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-exchange-alt me-1"></i>Retirer / Transférer <span class="badge bg-light text-warning" id="removeSelectedCount">0</span> étudiant(s)';
             });

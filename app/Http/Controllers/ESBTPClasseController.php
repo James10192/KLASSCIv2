@@ -442,7 +442,9 @@ class ESBTPClasseController extends Controller
                                 ->where("status", "active")
                                 ->where("workflow_step", "etudiant_cree")
                                 ->where("classe_id", $classe->id);
-                        });
+                        })
+                        ->orderBy("nom")
+                        ->orderBy("prenoms");
                 },
                 "inscriptions" => function ($query) use ($anneeCourante) {
                     $query
@@ -2542,7 +2544,9 @@ class ESBTPClasseController extends Controller
                                     ->where('status', 'active')
                                     ->where('workflow_step', 'etudiant_cree')
                                     ->where('classe_id', $classe->id);
-                            });
+                            })
+                            ->orderBy('nom')
+                            ->orderBy('prenoms');
                     },
                 ]);
             } else {
