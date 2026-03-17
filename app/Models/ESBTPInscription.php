@@ -72,6 +72,9 @@ class ESBTPInscription extends Model
         'est_transfert' => 'boolean',
     ];
 
+    // Constants for affectation status
+    const DEFAULT_AFFECTATION_STATUS = 'affecté';
+
     /**
      * Relation avec l'étudiant.
      *

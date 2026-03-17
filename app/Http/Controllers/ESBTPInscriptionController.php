@@ -2750,22 +2750,24 @@ class ESBTPInscriptionController extends Controller
             "classe_id" => $inscription->classe_id,
         ]);
 
-        $inscription->load(["filiere", "niveau", "classe"]);
-
         $categoriesObligatoires = ESBTPFraisCategory::where("is_mandatory", true)
             ->where("is_active", true)
             ->orderBy("sort_order")
             ->get();
 
+        // Pré-charger toutes les configurations en une seule requête (évite N+1)
+        $configurations = ESBTPFraisConfiguration::where("is_active", true)
+            ->whereIn("frais_category_id", $categoriesObligatoires->pluck("id"))
+            ->get()
+            ->groupBy(fn($config) => "{$config->frais_category_id}_{$config->filiere_id}_{$config->niveau_id}");
+
+        $affectationStatus = $inscription->affectation_status ?? \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
+
         foreach ($categoriesObligatoires as $category) {
-            $fraisConfig = ESBTPFraisConfiguration::where("frais_category_id", $category->id)
-                ->where("filiere_id", $inscription->filiere_id)
-                ->where("niveau_id", $inscription->niveau_id)
-                ->where("is_active", true)
-                ->first();
+            $configKey = "{$category->id}_{$inscription->filiere_id}_{$inscription->niveau_id}";
+            $fraisConfig = $configurations->get($configKey, collect())->first();
 
             if ($fraisConfig) {
-                $affectationStatus = $inscription->affectation_status ?? "affecté";
                 $montant = $fraisConfig->getMontantByStatus($affectationStatus);
 
                 ESBTPFraisSubscription::updateOrCreate(

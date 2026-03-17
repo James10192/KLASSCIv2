@@ -6,12 +6,27 @@
 
 @section('content')
 <style>
+    :root {
+        --ar-shadow-primary: rgba(4,83,203,0.06);
+        --ar-shadow-primary-hover: rgba(4,83,203,0.25);
+        --ar-primary-dark: #0341a0;
+        --ar-warn-bg: #fffbeb;
+        --ar-warn-border: #fef3c7;
+        --ar-warn-icon: #f59e0b;
+        --ar-warn-text: #92400e;
+        --ar-border: #e2e8f0;
+        --ar-bg-light: #f8fafc;
+        --ar-text-primary: #1e293b;
+        --ar-text-secondary: #64748b;
+        --ar-text-muted: #94a3b8;
+    }
+
     .ar-container { max-width: 560px; margin: 2rem auto; }
     .ar-card {
         background: #fff;
         border-radius: 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 6px 24px rgba(4,83,203,0.06);
-        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 6px 24px var(--ar-shadow-primary);
+        border: 1px solid var(--ar-border);
         overflow: hidden;
     }
     .ar-header {
@@ -30,9 +45,9 @@
     .ar-header h2 { font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 0.35rem; }
     .ar-header p { font-size: 0.8125rem; color: rgba(255,255,255,0.8); margin: 0; }
     .ar-body { padding: 1.75rem 2rem 2rem; }
-    .ar-message { font-size: 0.875rem; line-height: 1.6; color: #64748b; margin-bottom: 1.5rem; }
+    .ar-message { font-size: 0.875rem; line-height: 1.6; color: var(--ar-text-secondary); margin-bottom: 1.5rem; }
     .ar-steps {
-        background: #f8fafc;
+        background: var(--ar-bg-light);
         border-radius: 10px;
         padding: 1.25rem;
         margin-bottom: 1.5rem;
@@ -40,27 +55,27 @@
     .ar-steps-title {
         font-size: 0.75rem; font-weight: 600;
         text-transform: uppercase; letter-spacing: 0.05em;
-        color: #94a3b8; margin-bottom: 0.875rem;
+        color: var(--ar-text-muted); margin-bottom: 0.875rem;
     }
     .ar-step { display: flex; gap: 0.75rem; align-items: flex-start; padding: 0.5rem 0; }
-    .ar-step + .ar-step { border-top: 1px solid #e2e8f0; }
+    .ar-step + .ar-step { border-top: 1px solid var(--ar-border); }
     .ar-step-num {
         width: 22px; height: 22px; min-width: 22px;
         background: var(--primary, #0453cb); color: #fff;
         font-size: 0.6875rem; font-weight: 700; border-radius: 6px;
         display: flex; align-items: center; justify-content: center; margin-top: 1px;
     }
-    .ar-step-text { font-size: 0.8125rem; line-height: 1.5; color: #1e293b; }
+    .ar-step-text { font-size: 0.8125rem; line-height: 1.5; color: var(--ar-text-primary); }
     .ar-step-text strong { font-weight: 600; }
     .ar-step-text a { color: var(--primary, #0453cb); text-decoration: none; font-weight: 500; }
     .ar-step-text a:hover { text-decoration: underline; }
     .ar-note {
         display: flex; gap: 0.5rem; align-items: flex-start;
-        background: #fffbeb; border: 1px solid #fef3c7;
+        background: var(--ar-warn-bg); border: 1px solid var(--ar-warn-border);
         border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.5rem;
     }
-    .ar-note svg { width: 16px; height: 16px; min-width: 16px; fill: #f59e0b; margin-top: 1px; }
-    .ar-note p { font-size: 0.75rem; line-height: 1.5; color: #92400e; margin: 0; }
+    .ar-note svg { width: 16px; height: 16px; min-width: 16px; fill: var(--ar-warn-icon); margin-top: 1px; }
+    .ar-note p { font-size: 0.75rem; line-height: 1.5; color: var(--ar-warn-text); margin: 0; }
     .ar-actions { display: flex; gap: 0.75rem; }
     .ar-btn {
         flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
@@ -70,11 +85,11 @@
     }
     .ar-btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     .ar-btn-primary { background: var(--primary, #0453cb); color: #fff; }
-    .ar-btn-primary:hover { background: #0341a0; color: #fff; box-shadow: 0 2px 8px rgba(4,83,203,0.25); text-decoration: none; }
-    .ar-btn-outline { background: #fff; color: #1e293b; border: 1px solid #e2e8f0; }
-    .ar-btn-outline:hover { background: #f8fafc; border-color: #cbd5e1; text-decoration: none; color: #1e293b; }
-    .ar-footer { border-top: 1px solid #e2e8f0; padding: 1rem 2rem; text-align: center; }
-    .ar-footer p { font-size: 0.6875rem; color: #94a3b8; margin: 0; }
+    .ar-btn-primary:hover { background: var(--ar-primary-dark); color: #fff; box-shadow: 0 2px 8px var(--ar-shadow-primary-hover); text-decoration: none; }
+    .ar-btn-outline { background: #fff; color: var(--ar-text-primary); border: 1px solid var(--ar-border); }
+    .ar-btn-outline:hover { background: var(--ar-bg-light); border-color: #cbd5e1; text-decoration: none; color: var(--ar-text-primary); }
+    .ar-footer { border-top: 1px solid var(--ar-border); padding: 1rem 2rem; text-align: center; }
+    .ar-footer p { font-size: 0.6875rem; color: var(--ar-text-muted); margin: 0; }
     .ar-footer a { color: var(--primary, #0453cb); text-decoration: none; font-weight: 500; }
     .ar-footer a:hover { text-decoration: underline; }
     @media (max-width: 480px) {
@@ -83,6 +98,7 @@
         .ar-actions { flex-direction: column; }
     }
 </style>
+<?php $supportEmail = config('app.support_email'); ?>
 
 <div class="ar-container">
     <div class="ar-card">
@@ -123,7 +139,7 @@
                 <div class="ar-step">
                     <div class="ar-step-num">3</div>
                     <div class="ar-step-text">
-                        Envoyez votre demande validée à <a href="mailto:marcel.djedjeli@africandigitconsulting.com?subject=%5BKLASSCI%5D%20Demande%20d%27acc%C3%A8s%20-%20{{ urlencode(auth()->user()->name ?? 'Utilisateur') }}&body=Bonjour%2C%0A%0AJe%20souhaite%20obtenir%20l%27acc%C3%A8s%20%C3%A0%20la%20fonctionnalit%C3%A9%20suivante%20%3A%20%5Bpr%C3%A9cisez%5D%0A%0ARaison%20%3A%20%5Bpr%C3%A9cisez%5D%0A%0ACette%20demande%20a%20%C3%A9t%C3%A9%20valid%C3%A9e%20par%20le%20Directeur%20des%20%C3%89tudes.%0A%0ACordialement%2C%0A{{ urlencode(auth()->user()->name ?? '') }}">marcel.djedjeli@africandigitconsulting.com</a>
+                        Envoyez votre demande validée à <a href="mailto:{{ $supportEmail }}?subject=%5BKLASSCI%5D%20Demande%20d%27acc%C3%A8s%20-%20{{ urlencode(auth()->user()->name ?? 'Utilisateur') }}&body=Bonjour%2C%0A%0AJe%20souhaite%20obtenir%20l%27acc%C3%A8s%20%C3%A0%20la%20fonctionnalit%C3%A9%20suivante%20%3A%20%5Bpr%C3%A9cisez%5D%0A%0ARaison%20%3A%20%5Bpr%C3%A9cisez%5D%0A%0ACette%20demande%20a%20%C3%A9t%C3%A9%20valid%C3%A9e%20par%20le%20Directeur%20des%20%C3%89tudes.%0A%0ACordialement%2C%0A{{ urlencode(auth()->user()->name ?? '') }}">{{ $supportEmail }}</a>
                     </div>
                 </div>
             </div>
@@ -141,7 +157,7 @@
                     <svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1"/></svg>
                     Tableau de bord
                 </a>
-                <a href="mailto:marcel.djedjeli@africandigitconsulting.com?subject=%5BKLASSCI%5D%20Demande%20d%27acc%C3%A8s%20-%20{{ urlencode(auth()->user()->name ?? 'Utilisateur') }}&body=Bonjour%2C%0A%0AJe%20souhaite%20obtenir%20l%27acc%C3%A8s%20%C3%A0%20la%20fonctionnalit%C3%A9%20suivante%20%3A%20%5Bpr%C3%A9cisez%5D%0A%0ARaison%20%3A%20%5Bpr%C3%A9cisez%5D%0A%0ACette%20demande%20a%20%C3%A9t%C3%A9%20valid%C3%A9e%20par%20le%20Directeur%20des%20%C3%89tudes.%0A%0ACordialement%2C%0A{{ urlencode(auth()->user()->name ?? '') }}" class="ar-btn ar-btn-outline">
+                <a href="mailto:{{ $supportEmail }}?subject=%5BKLASSCI%5D%20Demande%20d%27acc%C3%A8s%20-%20{{ urlencode(auth()->user()->name ?? 'Utilisateur') }}&body=Bonjour%2C%0A%0AJe%20souhaite%20obtenir%20l%27acc%C3%A8s%20%C3%A0%20la%20fonctionnalit%C3%A9%20suivante%20%3A%20%5Bpr%C3%A9cisez%5D%0A%0ARaison%20%3A%20%5Bpr%C3%A9cisez%5D%0A%0ACette%20demande%20a%20%C3%A9t%C3%A9%20valid%C3%A9e%20par%20le%20Directeur%20des%20%C3%89tudes.%0A%0ACordialement%2C%0A{{ urlencode(auth()->user()->name ?? '') }}" class="ar-btn ar-btn-outline">
                     <svg viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                     Demander l'accès
                 </a>
@@ -149,7 +165,7 @@
         </div>
 
         <div class="ar-footer">
-            <p>Service technique — <a href="mailto:marcel.djedjeli@africandigitconsulting.com">African Digit Consulting</a></p>
+            <p>Service technique — <a href="mailto:{{ $supportEmail }}">African Digit Consulting</a></p>
         </div>
     </div>
 </div>

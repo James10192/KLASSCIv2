@@ -350,6 +350,32 @@ class ESBTPPaiementSuiviController extends Controller
     }
 
     /**
+     * Helper : calculer le montant attendu pour une inscription et catégorie
+     */
+    private function getMontantAttendu($category, $inscription, $configurations, $subscriptions): float
+    {
+        if ($category->is_mandatory) {
+            $configKey = $this->buildConfigKey($category->id, $inscription->filiere_id, $inscription->niveau_id);
+            $config = $configurations->get($configKey, collect())->first();
+            return $config
+                ? $config->getMontantByStatus($inscription->affectation_status ?? \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS)
+                : $category->default_amount;
+        } else {
+            $inscSubs = $subscriptions->get($inscription->id, collect());
+            $sub = $inscSubs->where('frais_category_id', $category->id)->first();
+            return $sub ? $sub->amount : 0;
+        }
+    }
+
+    /**
+     * Helper : construire la clé de configuration (catégorie + filière + niveau)
+     */
+    private function buildConfigKey($categoryId, $filiereId, $niveauId): string
+    {
+        return "{$categoryId}_{$filiereId}_{$niveauId}";
+    }
+
+    /**
      * Version optimisée : utilise les données pré-chargées au lieu de requêtes N+1
      */
     private function calculerStatistiquesCategoriesOptimisees($inscriptions, $categories, $configurations, $subscriptions, $paiements)
@@ -370,26 +396,9 @@ class ESBTPPaiementSuiviController extends Controller
             ];
 
             foreach ($inscriptions as $inscription) {
-                $estConcerne = false;
-                $montantAttendu = 0;
+                $montantAttendu = $this->getMontantAttendu($category, $inscription, $configurations, $subscriptions);
 
-                if ($category->is_mandatory) {
-                    $estConcerne = true;
-                    $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
-                    $config = $configurations->get($configKey, collect())->first();
-                    $montantAttendu = $config
-                        ? $config->getMontantByStatus($inscription->affectation_status ?? 'affecté')
-                        : $category->default_amount;
-                } else {
-                    $inscSubs = $subscriptions->get($inscription->id, collect());
-                    $sub = $inscSubs->where('frais_category_id', $category->id)->first();
-                    if ($sub) {
-                        $estConcerne = true;
-                        $montantAttendu = $sub->amount;
-                    }
-                }
-
-                if ($estConcerne) {
+                if ($montantAttendu > 0) {
                     $stats['etudiants_concernes']++;
                     $stats['montant_total_attendu'] += $montantAttendu;
 
@@ -433,26 +442,9 @@ class ESBTPPaiementSuiviController extends Controller
             $totalPaye = 0;
 
             foreach ($categories as $category) {
-                $montantAttendu = 0;
-                $estConcerne = false;
+                $montantAttendu = $this->getMontantAttendu($category, $inscription, $configurations, $subscriptions);
 
-                if ($category->is_mandatory) {
-                    $estConcerne = true;
-                    $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
-                    $config = $configurations->get($configKey, collect())->first();
-                    $montantAttendu = $config
-                        ? $config->getMontantByStatus($inscription->affectation_status ?? 'affecté')
-                        : $category->default_amount;
-                } else {
-                    $inscSubs = $subscriptions->get($inscription->id, collect());
-                    $sub = $inscSubs->where('frais_category_id', $category->id)->first();
-                    if ($sub) {
-                        $estConcerne = true;
-                        $montantAttendu = $sub->amount;
-                    }
-                }
-
-                if ($estConcerne && $montantAttendu > 0) {
+                if ($montantAttendu > 0) {
                     $totalDu += $montantAttendu;
                     $paiementKey = $inscription->id . '_' . $category->id;
                     $totalPaye += $paiements->get($paiementKey, collect())->sum('montant');
@@ -495,26 +487,9 @@ class ESBTPPaiementSuiviController extends Controller
         $montantTotalRecu = 0;
 
         foreach ($inscriptions as $inscription) {
-            $estConcerne = false;
-            $montantAttendu = 0;
+            $montantAttendu = $this->getMontantAttendu($category, $inscription, $configurations, $subscriptions);
 
-            if ($category->is_mandatory) {
-                $estConcerne = true;
-                $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
-                $config = $configurations->get($configKey, collect())->first();
-                $montantAttendu = $config
-                    ? $config->getMontantByStatus($inscription->affectation_status ?? 'affecté')
-                    : $category->default_amount;
-            } else {
-                $inscSubs = $subscriptions->get($inscription->id, collect());
-                $sub = $inscSubs->where('frais_category_id', $category->id)->first();
-                if ($sub) {
-                    $estConcerne = true;
-                    $montantAttendu = $sub->amount;
-                }
-            }
-
-            if (!$estConcerne) continue;
+            if ($montantAttendu <= 0) continue;
 
             $paiementKey = $inscription->id . '_' . $category->id;
             $montantPaye = $paiements->get($paiementKey, collect())->sum('montant');
