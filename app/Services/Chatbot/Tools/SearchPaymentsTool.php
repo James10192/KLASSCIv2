@@ -59,7 +59,7 @@ class SearchPaymentsTool extends ChatbotTool
         // Si student_name fourni sans inscription_id, vérifier s'il a plusieurs inscriptions
         if (!empty($args['student_name']) && empty($args['inscription_id'])) {
             $inscriptions = \App\Models\ESBTPInscription::query()
-                ->with(['classe.filiere', 'etudiant'])
+                ->with(['classe.filiere', 'etudiant', 'anneeUniversitaire'])
                 ->whereHas('etudiant', function ($q) use ($args) {
                     $this->applyFuzzyNameSearch($q, $args['student_name']);
                 })
@@ -88,6 +88,7 @@ class SearchPaymentsTool extends ChatbotTool
                         'inscription_id' => $i->id,
                         'classe' => $i->classe?->name ?? 'N/A',
                         'filiere' => $i->classe?->filiere?->name ?? 'N/A',
+                        'annee' => $i->anneeUniversitaire?->name ?? 'N/A',
                         'type' => ucfirst(str_replace('_', ' ', $i->type_inscription ?? 'N/A')),
                         'statut' => ucfirst(str_replace('_', ' ', $i->status ?? 'N/A')),
                         'date' => $i->date_inscription?->format('d/m/Y') ?? 'N/A',
@@ -109,7 +110,7 @@ class SearchPaymentsTool extends ChatbotTool
             }
         }
 
-        $query = ESBTPPaiement::query()->with(['etudiant', 'inscription.classe.filiere', 'fraisCategory']);
+        $query = ESBTPPaiement::query()->with(['etudiant', 'inscription.classe.filiere', 'inscription.anneeUniversitaire', 'fraisCategory']);
 
         // Filtre par inscription_id spécifique
         if (!empty($args['inscription_id'])) {
@@ -158,6 +159,7 @@ class SearchPaymentsTool extends ChatbotTool
                 'etudiant' => $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '')) : 'Inconnu',
                 'classe' => $classe?->name ?? 'N/A',
                 'filiere' => $classe?->filiere?->name ?? 'N/A',
+                'annee' => $inscription?->anneeUniversitaire?->name ?? 'N/A',
                 'type' => ucfirst(str_replace('_', ' ', $inscription?->type_inscription ?? 'N/A')),
                 'statut' => ucfirst(str_replace('_', ' ', $inscription?->status ?? 'N/A')),
                 'lien' => $inscriptionId && Route::has('esbtp.inscriptions.show')

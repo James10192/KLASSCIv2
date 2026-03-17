@@ -422,9 +422,11 @@
             title.textContent = (group.inscription || {}).classe || 'Inscription';
             headerLeft.appendChild(title);
 
+            var insc = group.inscription || {};
+            var subtitleParts = [insc.filiere, insc.annee, insc.type].filter(function(v) { return v && v !== 'N/A'; });
             var subtitle = document.createElement('span');
             subtitle.className = 'cb-payment-subtitle';
-            subtitle.textContent = (group.inscription || {}).filiere || '';
+            subtitle.textContent = subtitleParts.join(' · ');
             headerLeft.appendChild(subtitle);
 
             header.appendChild(headerLeft);
