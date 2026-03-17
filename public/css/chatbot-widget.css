@@ -1816,12 +1816,14 @@
     background: rgba(15, 23, 42, 0.4);
     backdrop-filter: blur(4px);
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
 .chatbot-modal.is-open {
     opacity: 1;
+    visibility: visible;
     pointer-events: auto;
 }
 

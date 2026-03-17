@@ -2688,4 +2688,53 @@ class ESBTPInscriptionController extends Controller
             );
         }
     }
+
+    /**
+     * Vérifier les limites du paywall pour les inscriptions
+     */
+    private function checkPaywallLimitsForInscription()
+    {
+        $isPaywallActive = \App\Models\ESBTPSystemSetting::getValue(
+            "paywall_active",
+            false,
+        );
+
+        if (!$isPaywallActive) {
+            return false;
+        }
+
+        $maxInscriptionsPerYear = \App\Models\ESBTPSystemSetting::getValue(
+            "paywall_max_inscriptions_per_year",
+            500,
+        );
+
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where(
+            "is_current",
+            1,
+        )->first();
+
+        if (!$anneeCourante) {
+            return false;
+        }
+
+        $inscriptionsActuelles = \App\Models\ESBTPInscription::where(
+            "annee_universitaire_id",
+            $anneeCourante->id,
+        )
+            ->where("status", "active")
+            ->count();
+
+        if ($inscriptionsActuelles >= $maxInscriptionsPerYear) {
+            \Log::warning('Paywall: Limite d\'inscriptions atteinte', [
+                "inscriptions_actuelles" => $inscriptionsActuelles,
+                "limite_configuree" => $maxInscriptionsPerYear,
+                "annee_courante" => $anneeCourante->nom,
+                "user_id" => auth()->id(),
+            ]);
+
+            return true;
+        }
+
+        return false;
+    }
 }
