@@ -42,6 +42,8 @@ use Illuminate\Support\Str;
 
 class ESBTPInscriptionApiController extends Controller
 {
+    private const DUPLICATE_BLOCKING_SCORE = 55;
+
     private $inscriptionService;
     private $comptabiliteService;
     private $workflowService;
