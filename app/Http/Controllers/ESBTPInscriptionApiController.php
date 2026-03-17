@@ -627,10 +627,10 @@ class ESBTPInscriptionApiController extends Controller
      * Nouvelle route de recherche de doublons étudiants.
      */
     public function duplicates(
-        Request $request,
+        CheckDuplicatesRequest $request,
         StudentDuplicateDetector $detector,
     ) {
-        $validated = $this->validateDuplicateRequest($request);
+        $validated = $request->validated();
 
         $duplicates = $detector
             ->find(
