@@ -18,6 +18,13 @@ use App\Services\Chatbot\Tools\SearchNotesTool;
 use App\Services\Chatbot\Tools\SearchAttendancesTool;
 use App\Services\Chatbot\Tools\SearchTeachersTool;
 use App\Services\Chatbot\Tools\GetDashboardKpisTool;
+use App\Services\Chatbot\Tools\SearchResultsTool;
+use App\Services\Chatbot\Tools\SearchTimetableTool;
+use App\Services\Chatbot\Tools\SearchSubjectsTool;
+use App\Services\Chatbot\Tools\GetFinancialSummaryTool;
+use App\Services\Chatbot\Tools\SearchDebtorsTool;
+use App\Services\Chatbot\Tools\SearchBulletinsTool;
+use App\Services\Chatbot\Tools\SearchAbsencesSummaryTool;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -52,6 +59,13 @@ class ClaudeAgentService
             new SearchAttendancesTool(),
             new SearchTeachersTool(),
             new GetDashboardKpisTool(),
+            new SearchResultsTool(),
+            new SearchTimetableTool(),
+            new SearchSubjectsTool(),
+            new GetFinancialSummaryTool(),
+            new SearchDebtorsTool(),
+            new SearchBulletinsTool(),
+            new SearchAbsencesSummaryTool(),
             new GetSetupGuideTool($setupGuide),
             new NavigateToPageTool(),
         ];
@@ -205,6 +219,23 @@ class ClaudeAgentService
                 'groups' => $lastToolResult['results'] ?? [],
                 'deep_link' => $lastToolResult['deep_link'] ?? null,
                 'total_count' => $lastToolResult['count'] ?? 0,
+            ];
+        } elseif ($displayType === 'stat_cards' && $lastToolResult) {
+            $displayData = [
+                'stats' => $lastToolResult['results'] ?? [],
+                'deep_link' => $lastToolResult['deep_link'] ?? null,
+                'total_count' => $lastToolResult['count'] ?? 0,
+            ];
+        } elseif ($displayType === 'timetable' && $lastToolResult) {
+            $displayData = [
+                'days' => $lastToolResult['results'] ?? [],
+                'classe' => $lastToolResult['classe'] ?? 'N/A',
+                'filiere' => $lastToolResult['filiere'] ?? '',
+                'semestre' => $lastToolResult['semestre'] ?? '',
+                'annee' => $lastToolResult['annee'] ?? '',
+                'periode' => $lastToolResult['periode'] ?? '',
+                'total_count' => $lastToolResult['count'] ?? 0,
+                'deep_link' => $lastToolResult['deep_link'] ?? null,
             ];
         } elseif ($displayType !== 'checklist' && $lastToolResult) {
             $displayData = $this->buildDisplayData($lastToolResult, $displayType);
@@ -545,7 +576,7 @@ PROMPT;
         }
 
         $first = $results[0];
-        $skipKeys = ['id', 'lien', 'lien_inscription', 'montant_brut', 'deep_link'];
+        $skipKeys = ['id', 'lien', 'lien_label', 'lien_icon', 'lien_inscription', 'montant_brut', 'deep_link', 'reste_brut', 'absences_brut'];
         $columns = [];
         foreach (array_keys($first) as $key) {
             if (in_array($key, $skipKeys, true)) {
@@ -609,10 +640,32 @@ PROMPT;
                 'badges' => [],
             ];
 
-            if (isset($result['matricule']) && $result['matricule'] !== 'N/A') {
-                $card['meta'][] = ['label' => 'Matricule', 'value' => $result['matricule']];
+            // Champs standards
+            $metaFields = [
+                'matricule' => 'Matricule',
+                'periode' => 'Période',
+                'annee' => 'Année',
+                'moyenne' => 'Moyenne',
+                'rang' => 'Rang',
+                'decision' => 'Décision',
+                'absences' => 'Absences',
+                'taux_presence' => 'Présence',
+                'seances' => 'Séances',
+                'retards' => 'Retards',
+                'reste' => 'Reste dû',
+                'detail' => 'Paiement',
+                'taux' => 'Progression',
+                'date' => 'Date',
+                'montant' => 'Montant',
+            ];
+
+            foreach ($metaFields as $key => $label) {
+                if (isset($result[$key]) && $result[$key] !== 'N/A' && $result[$key] !== null && $result[$key] !== '') {
+                    $card['meta'][] = ['label' => $label, 'value' => (string) $result[$key]];
+                }
             }
-            if (isset($result['filiere']) && !isset($result['etudiant'])) {
+
+            if (isset($result['filiere']) && !isset($result['etudiant']) && !isset($result['nom'])) {
                 $card['meta'][] = ['label' => 'Filière', 'value' => $result['filiere']];
             }
             if (isset($result['type'])) {
@@ -621,15 +674,14 @@ PROMPT;
             if (isset($result['statut'])) {
                 $card['badges'][] = ['label' => $result['statut'], 'style' => $this->getBadgeClass($result['statut'])];
             }
-            if (isset($result['date'])) {
-                $card['meta'][] = ['label' => 'Date', 'value' => $result['date']];
-            }
-            if (isset($result['montant'])) {
-                $card['meta'][] = ['label' => 'Montant', 'value' => $result['montant']];
+            if (isset($result['publie'])) {
+                $card['badges'][] = ['label' => $result['publie'] === 'Oui' ? 'Publié' : 'Non publié', 'style' => $result['publie'] === 'Oui' ? 'success' : 'info'];
             }
 
             if (!empty($result['lien'])) {
-                $card['actions'] = [['label' => 'Voir profil', 'url' => $result['lien'], 'icon' => 'fas fa-user']];
+                $actionLabel = $result['lien_label'] ?? 'Voir';
+                $actionIcon = $result['lien_icon'] ?? 'fas fa-eye';
+                $card['actions'] = [['label' => $actionLabel, 'url' => $result['lien'], 'icon' => $actionIcon]];
             } elseif (!empty($result['lien_inscription'])) {
                 $card['actions'] = [['label' => 'Voir', 'url' => $result['lien_inscription'], 'icon' => 'fas fa-eye']];
             }
@@ -722,6 +774,41 @@ PROMPT;
                 'Voir les paiements',
                 'Configurer les frais',
                 'Lister les inscriptions',
+            ],
+            'search_results' => [
+                'Voir le bulletin',
+                'Voir les notes détaillées',
+                'Chercher un autre étudiant',
+            ],
+            'search_timetable' => [
+                'Voir les matières de la classe',
+                'Chercher un enseignant',
+                'Voir les évaluations',
+            ],
+            'search_subjects' => [
+                'Voir l\'emploi du temps',
+                'Chercher un enseignant',
+                'Voir les évaluations',
+            ],
+            'get_financial_summary' => [
+                'Étudiants en retard de paiement',
+                'Voir les paiements en attente',
+                'Accéder à la comptabilité',
+            ],
+            'search_debtors' => [
+                'Résumé financier global',
+                'Paiements en attente',
+                'Voir les inscriptions',
+            ],
+            'search_bulletins' => [
+                'Voir les résultats',
+                'Chercher un étudiant',
+                'Voir les évaluations',
+            ],
+            'search_absences_summary' => [
+                'Voir les présences détaillées',
+                'Voir les résultats de la classe',
+                'Voir l\'emploi du temps',
             ],
             'get_setup_guide' => [
                 'Créer une filière',

@@ -894,14 +894,32 @@ class ESBTPResultatController extends Controller
                     // Mode Annuel : calculer la moyenne annuelle pondérée S1/S2 pour chaque étudiant
                     $weights = $this->bulletinService->getSemesterWeights();
                     foreach ($etudiants as $etudiant) {
-                        $s1 = $this->bulletinService->getBulletinAverageForPeriode(
-                            $etudiant->id, $classe_id ?? 0, $annee_universitaire_id ?? 0,
-                            'semestre1', '__none__', 0, 0
-                        );
-                        $s2 = $this->bulletinService->getBulletinAverageForPeriode(
-                            $etudiant->id, $classe_id ?? 0, $annee_universitaire_id ?? 0,
-                            'semestre2', '__none__', 0, 0
-                        );
+                        // Déterminer la classe de l'étudiant (filtre global ou via inscription)
+                        $etudiantClasseId = $classe_id;
+                        if (!$etudiantClasseId) {
+                            $inscription = $etudiant->inscriptions()
+                                ->where('annee_universitaire_id', $annee_universitaire_id)
+                                ->orderByDesc('date_inscription')
+                                ->first();
+                            $etudiantClasseId = $inscription?->classe_id;
+                        }
+                        if (!$etudiantClasseId) {
+                            continue; // Pas de classe trouvée, skip cet étudiant
+                        }
+
+                        try {
+                            $s1 = $this->bulletinService->getBulletinAverageForPeriode(
+                                $etudiant->id, $etudiantClasseId, $annee_universitaire_id ?? 0,
+                                'semestre1', '__none__', 0, 0
+                            );
+                            $s2 = $this->bulletinService->getBulletinAverageForPeriode(
+                                $etudiant->id, $etudiantClasseId, $annee_universitaire_id ?? 0,
+                                'semestre2', '__none__', 0, 0
+                            );
+                        } catch (\RuntimeException $e) {
+                            // Coefficient manquant pour cet étudiant, skip
+                            continue;
+                        }
                         $annual = $this->bulletinService->calculateAnnualAverage($s1, $s2, $weights);
                         if ($annual !== null) {
                             $moyennes[$etudiant->id] = round($annual, 2);

@@ -842,29 +842,37 @@
     background: var(--cb-bg);
 }
 
+.chatbot-data-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 .chatbot-data-table table {
     width: 100%;
+    min-width: 300px;
     border-collapse: collapse;
-    font-size: 12.5px;
+    font-size: 11.5px;
 }
 
 .chatbot-data-table thead th {
     background: var(--cb-primary-soft);
     color: var(--cb-primary);
     font-weight: 600;
-    font-size: 11px;
+    font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    padding: 8px 10px;
+    letter-spacing: 0.03em;
+    padding: 6px 6px;
     text-align: left;
     border-bottom: 1px solid var(--cb-border);
+    white-space: nowrap;
 }
 
 .chatbot-data-table tbody td {
-    padding: 8px 10px;
+    padding: 6px 6px;
     color: var(--cb-text);
     border-bottom: 1px solid var(--cb-border-light);
     vertical-align: middle;
+    font-size: 11px;
 }
 
 .chatbot-data-table tbody tr:last-child td {
@@ -1221,6 +1229,199 @@
 .cb-fee-section .cb-fee-table tbody {
     display: table;
     width: 100%;
+}
+
+/* ── Stat Cards (KPIs financiers) ─────────────────────────── */
+.cb-stat-cards {
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.cb-stat-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    position: relative;
+    overflow: hidden;
+}
+
+.cb-stat-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+}
+
+/* Gradient backgrounds by color */
+.cb-stat-primary { background: linear-gradient(135deg, rgba(4,83,203,0.06), rgba(94,145,222,0.12)); border-color: rgba(4,83,203,0.15); }
+.cb-stat-success { background: linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.12)); border-color: rgba(16,185,129,0.15); }
+.cb-stat-warning { background: linear-gradient(135deg, rgba(245,158,11,0.06), rgba(245,158,11,0.12)); border-color: rgba(245,158,11,0.15); }
+.cb-stat-danger { background: linear-gradient(135deg, rgba(239,68,68,0.06), rgba(239,68,68,0.12)); border-color: rgba(239,68,68,0.15); }
+
+.cb-stat-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.cb-stat-primary .cb-stat-icon { background: rgba(4, 83, 203, 0.15); color: var(--cb-primary); }
+.cb-stat-success .cb-stat-icon { background: rgba(16, 185, 129, 0.15); color: var(--cb-success); }
+.cb-stat-warning .cb-stat-icon { background: rgba(245, 158, 11, 0.15); color: #d97706; }
+.cb-stat-danger .cb-stat-icon { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+.cb-stat-content {
+    min-width: 0;
+    flex: 1;
+}
+
+.cb-stat-value {
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.cb-stat-primary .cb-stat-value { color: var(--cb-primary); }
+.cb-stat-success .cb-stat-value { color: var(--cb-success); }
+.cb-stat-warning .cb-stat-value { color: #d97706; }
+.cb-stat-danger .cb-stat-value { color: #ef4444; }
+
+.cb-stat-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--cb-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-top: 1px;
+}
+
+.cb-stat-detail {
+    font-size: 9.5px;
+    color: var(--cb-text-secondary);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Timetable (emploi du temps) ──────────────────────────── */
+.cb-timetable {
+    margin-top: 10px;
+}
+
+.cb-timetable-header {
+    padding: 10px 12px;
+    background: linear-gradient(135deg, var(--cb-primary), #5e91de);
+    border-radius: 10px 10px 0 0;
+    color: #fff;
+}
+
+.cb-timetable-title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.cb-timetable-meta {
+    display: block;
+    font-size: 11px;
+    opacity: 0.85;
+    margin-top: 2px;
+}
+
+.cb-timetable-periode {
+    display: block;
+    font-size: 10px;
+    opacity: 0.7;
+    margin-top: 1px;
+}
+
+.cb-timetable-day {
+    border: 1px solid var(--cb-border-light);
+    border-top: none;
+    background: #fff;
+}
+
+.cb-timetable-day:last-of-type {
+    border-radius: 0 0 10px 10px;
+}
+
+.cb-timetable-day-header {
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--cb-primary);
+    background: rgba(4, 83, 203, 0.04);
+    border-bottom: 1px solid var(--cb-border-light);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.cb-timetable-slot {
+    display: flex;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    align-items: stretch;
+}
+
+.cb-timetable-slot:last-child {
+    border-bottom: none;
+}
+
+.cb-timetable-time {
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+    min-width: 42px;
+    text-align: center;
+    color: var(--cb-text-secondary);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    line-height: 1.4;
+}
+
+.cb-timetable-info {
+    flex: 1;
+    min-width: 0;
+    border-left: 3px solid var(--cb-primary);
+    padding-left: 8px;
+}
+
+.cb-timetable-slot:nth-child(2n) .cb-timetable-info { border-left-color: var(--cb-success); }
+.cb-timetable-slot:nth-child(3n) .cb-timetable-info { border-left-color: #8b5cf6; }
+.cb-timetable-slot:nth-child(4n) .cb-timetable-info { border-left-color: #f59e0b; }
+
+.cb-timetable-matiere {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--cb-text-primary);
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cb-timetable-detail {
+    font-size: 10px;
+    color: var(--cb-text-secondary);
+    margin-top: 1px;
+}
+
+.cb-timetable-empty {
+    padding: 8px 12px;
+    font-size: 11px;
+    color: var(--cb-text-secondary);
+    font-style: italic;
+    text-align: center;
 }
 
 /* ── Checklist (setup guide) ───────────────────────────────── */

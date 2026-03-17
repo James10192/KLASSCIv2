@@ -89,6 +89,8 @@ class SearchStudentsTool extends ChatbotTool
                 'filiere' => $inscription?->classe?->filiere?->name ?? 'N/A',
                 'statut' => ucfirst(str_replace('_', ' ', $inscription?->status ?? 'N/A')),
                 'lien' => Route::has('esbtp.etudiants.show') ? route('esbtp.etudiants.show', $etudiant->id) : null,
+                'lien_label' => 'Fiche',
+                'lien_icon' => 'fas fa-user',
             ];
         })->toArray();
 

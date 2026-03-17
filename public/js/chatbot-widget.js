@@ -273,6 +273,26 @@
                     value.className = 'chatbot-card-value';
                     value.textContent = metaRow.value || '';
 
+                    // Color-code specific fields
+                    var lbl = (metaRow.label || '').toLowerCase();
+                    var val = (metaRow.value || '');
+                    if (lbl === 'reste dû' || lbl === 'absences') {
+                        value.style.color = '#ef4444';
+                        value.style.fontWeight = '700';
+                    } else if (lbl === 'moyenne') {
+                        var num = parseFloat(val.replace(',', '.'));
+                        if (!isNaN(num)) {
+                            value.style.fontWeight = '700';
+                            value.style.color = num >= 14 ? '#10b981' : num >= 10 ? '#0453cb' : '#ef4444';
+                        }
+                    } else if (lbl === 'présence' || lbl === 'progression') {
+                        var pct = parseInt(val);
+                        if (!isNaN(pct)) {
+                            value.style.fontWeight = '700';
+                            value.style.color = pct >= 80 ? '#10b981' : pct >= 50 ? '#d97706' : '#ef4444';
+                        }
+                    }
+
                     row.appendChild(label);
                     row.appendChild(value);
                     body.appendChild(row);
@@ -516,6 +536,147 @@
             }
 
             container.appendChild(section);
+        });
+
+        var footer = buildFooterElement(data);
+        if (footer) container.appendChild(footer);
+
+        return container;
+    }
+
+    function buildStatCardsFromData(data) {
+        var container = document.createElement('div');
+        container.className = 'cb-stat-cards';
+
+        (data.stats || []).forEach(function (stat) {
+            var card = document.createElement('div');
+            card.className = 'cb-stat-card';
+
+            var colorClass = stat.color || 'primary';
+            card.classList.add('cb-stat-' + colorClass);
+
+            var iconEl = document.createElement('div');
+            iconEl.className = 'cb-stat-icon';
+            iconEl.innerHTML = '<i class="' + (stat.icon || 'fas fa-info-circle') + '"></i>';
+            card.appendChild(iconEl);
+
+            var content = document.createElement('div');
+            content.className = 'cb-stat-content';
+
+            var value = document.createElement('div');
+            value.className = 'cb-stat-value';
+            value.textContent = stat.value || '0';
+            content.appendChild(value);
+
+            var label = document.createElement('div');
+            label.className = 'cb-stat-label';
+            label.textContent = stat.label || '';
+            content.appendChild(label);
+
+            if (stat.detail) {
+                var detail = document.createElement('div');
+                detail.className = 'cb-stat-detail';
+                detail.textContent = stat.detail;
+                content.appendChild(detail);
+            }
+
+            card.appendChild(content);
+            container.appendChild(card);
+        });
+
+        var footer = buildFooterElement(data);
+        if (footer) container.appendChild(footer);
+
+        return container;
+    }
+
+    function buildTimetableFromData(data) {
+        var container = document.createElement('div');
+        container.className = 'cb-timetable';
+
+        // Header with class info
+        var header = document.createElement('div');
+        header.className = 'cb-timetable-header';
+        var titleEl = document.createElement('h4');
+        titleEl.className = 'cb-timetable-title';
+        titleEl.textContent = data.classe || 'Emploi du temps';
+        header.appendChild(titleEl);
+
+        var metaParts = [data.filiere, data.semestre, data.annee].filter(function(v) { return v && v !== 'N/A' && v !== ''; });
+        if (metaParts.length) {
+            var meta = document.createElement('span');
+            meta.className = 'cb-timetable-meta';
+            meta.textContent = metaParts.join(' · ');
+            header.appendChild(meta);
+        }
+        if (data.periode) {
+            var periode = document.createElement('span');
+            periode.className = 'cb-timetable-periode';
+            periode.textContent = data.periode;
+            header.appendChild(periode);
+        }
+        container.appendChild(header);
+
+        // Days
+        (data.days || []).forEach(function (day) {
+            var dayEl = document.createElement('div');
+            dayEl.className = 'cb-timetable-day';
+
+            var dayHeader = document.createElement('div');
+            dayHeader.className = 'cb-timetable-day-header';
+            dayHeader.textContent = day.jour || 'Jour';
+            dayEl.appendChild(dayHeader);
+
+            (day.slots || []).forEach(function (slot) {
+                var slotEl = document.createElement('div');
+                slotEl.className = 'cb-timetable-slot';
+
+                var timeEl = document.createElement('div');
+                timeEl.className = 'cb-timetable-time';
+                // Split "08:00 - 10:00" into stacked start/end
+                var timeParts = (slot.horaire || '').split(' - ');
+                if (timeParts.length === 2) {
+                    var startEl = document.createElement('span');
+                    startEl.style.fontWeight = '700';
+                    startEl.style.color = 'var(--cb-text-primary)';
+                    startEl.textContent = timeParts[0];
+                    var endEl = document.createElement('span');
+                    endEl.textContent = timeParts[1];
+                    timeEl.appendChild(startEl);
+                    timeEl.appendChild(endEl);
+                } else {
+                    timeEl.textContent = slot.horaire || '';
+                }
+                slotEl.appendChild(timeEl);
+
+                var infoEl = document.createElement('div');
+                infoEl.className = 'cb-timetable-info';
+
+                var matiere = document.createElement('div');
+                matiere.className = 'cb-timetable-matiere';
+                matiere.textContent = slot.matiere || 'N/A';
+                infoEl.appendChild(matiere);
+
+                var detailParts = [slot.enseignant, slot.salle].filter(function(v) { return v && v !== 'N/A'; });
+                if (detailParts.length) {
+                    var detail = document.createElement('div');
+                    detail.className = 'cb-timetable-detail';
+                    detail.textContent = detailParts.join(' · ');
+                    infoEl.appendChild(detail);
+                }
+
+                slotEl.appendChild(infoEl);
+                dayEl.appendChild(slotEl);
+            });
+
+            if (!day.slots || !day.slots.length) {
+                var empty = document.createElement('div');
+                empty.className = 'cb-timetable-empty';
+                empty.textContent = 'Aucun cours';
+                dayEl.appendChild(empty);
+            }
+
+            container.appendChild(dayEl);
         });
 
         var footer = buildFooterElement(data);
@@ -2053,6 +2214,12 @@
         } else if (message.display_type === 'payment_groups' && Array.isArray(displayData.groups)) {
             messageContent.classList.add('has-fee-groups');
             messageContent.appendChild(buildPaymentGroupsFromData(displayData));
+        } else if (message.display_type === 'stat_cards' && Array.isArray(displayData.stats)) {
+            messageContent.classList.add('has-stat-cards');
+            messageContent.appendChild(buildStatCardsFromData(displayData));
+        } else if (message.display_type === 'timetable' && Array.isArray(displayData.days)) {
+            messageContent.classList.add('has-timetable');
+            messageContent.appendChild(buildTimetableFromData(displayData));
         } else if (message.display_type === 'checklist' && displayData.sections) {
             messageContent.classList.add('has-checklist');
             messageContent.appendChild(buildChecklistFromData(displayData));
