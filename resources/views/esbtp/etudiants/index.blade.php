@@ -2341,6 +2341,30 @@
         color: #0453cb;
         font-size: 11px;
         font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        border: 1.5px solid transparent;
+        user-select: none;
+    }
+    .export-class-tag:hover {
+        background: #d6e4fd;
+    }
+    .export-class-tag.unchecked {
+        background: #f1f5f9;
+        color: #94a3b8;
+        border-color: #e2e8f0;
+    }
+    .export-class-tag.unchecked:hover {
+        background: #e8f0fe;
+        color: #0453cb;
+        border-color: transparent;
+    }
+    .export-class-tag .tag-check {
+        font-size: 8px;
+        transition: transform 0.15s ease;
+    }
+    .export-class-tag.unchecked .tag-check {
+        opacity: 0.4;
     }
 
     .export-class-tag .tag-filiere {
@@ -2893,23 +2917,30 @@
                             @endforeach
                         </div>
 
-                        {{-- Auto-resolved classes --}}
-                        <div class="export-classes-auto" x-show="selectedCombinations.length > 0" style="margin-top: 12px;">
+                        {{-- Selectable classes --}}
+                        <div class="export-classes-auto" x-show="comboClasses.length > 0" style="margin-top: 12px;">
                             <div class="export-classes-auto-title">
                                 <i class="fas fa-chalkboard"></i>
                                 Classes incluses
-                                <span class="export-select-counter" style="font-size: 11px;" x-text="'(' + resolvedClasses.length + ')'"></span>
+                                <span class="export-select-counter" style="font-size: 11px;" x-text="'(' + selectedClassIds.length + ' / ' + comboClasses.length + ')'"></span>
+                                <span style="margin-left: auto; font-size: 11px; color: var(--primary, #0453cb); cursor: pointer; font-weight: 500;"
+                                      @click="toggleAllClasses()">
+                                    <i class="fas" :class="selectedClassIds.length === comboClasses.length ? 'fa-times-circle' : 'fa-check-double'" style="font-size: 10px; margin-right: 2px;"></i>
+                                    <span x-text="selectedClassIds.length === comboClasses.length ? 'Tout décocher' : 'Tout cocher'"></span>
+                                </span>
                             </div>
                             <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-                                <template x-for="cls in resolvedClasses" :key="cls.id">
-                                    <span class="export-class-tag">
-                                        <i class="fas fa-check" style="font-size: 8px;"></i>
+                                <template x-for="cls in comboClasses" :key="cls.id">
+                                    <span class="export-class-tag"
+                                          :class="{ 'unchecked': !isClassSelected(cls.id) }"
+                                          @click="toggleClass(cls.id)">
+                                        <i class="fas tag-check" :class="isClassSelected(cls.id) ? 'fa-check' : 'fa-plus'"></i>
                                         <span x-text="cls.name"></span>
                                     </span>
                                 </template>
                             </div>
                         </div>
-                        <div x-show="selectedCombinations.length === 0" style="margin-top: 12px; text-align: center; color: #94a3b8; font-size: 12px; padding: 16px;">
+                        <div x-show="comboClasses.length === 0" style="margin-top: 12px; text-align: center; color: #94a3b8; font-size: 12px; padding: 16px;">
                             <i class="fas fa-info-circle" style="margin-right: 4px;"></i>
                             Cliquez sur les niveaux dans les filières pour sélectionner les classes à exporter
                         </div>
@@ -4199,19 +4230,22 @@
 
             // Selected combinations: array of {filiere_id, niveau_id} pairs
             selectedCombinations: [],
+            // Individual class selection (IDs)
+            selectedClassIds: [],
 
             init() {
                 // Start with all valid combinations selected
                 var self = this;
                 this.allClasses.forEach(function(c) {
                     if (c.filiere_id && c.niveau_etude_id) {
-                        var key = c.filiere_id + '-' + c.niveau_etude_id;
                         var exists = self.selectedCombinations.some(function(combo) {
                             return combo.filiere_id === c.filiere_id && combo.niveau_id === c.niveau_etude_id;
                         });
                         if (!exists) {
                             self.selectedCombinations.push({ filiere_id: c.filiere_id, niveau_id: c.niveau_etude_id });
                         }
+                        // All classes selected by default
+                        self.selectedClassIds.push(c.id);
                     }
                 });
             },
@@ -4223,8 +4257,13 @@
                 });
             },
 
-            // Toggle a specific (filière, niveau) combination
+            // Toggle a specific (filière, niveau) combination + sync classes
             toggleCombination(filiereId, niveauId) {
+                var self = this;
+                var comboClassIds = this.allClasses
+                    .filter(function(c) { return c.filiere_id === filiereId && c.niveau_etude_id === niveauId; })
+                    .map(function(c) { return c.id; });
+
                 var idx = -1;
                 for (var i = 0; i < this.selectedCombinations.length; i++) {
                     if (this.selectedCombinations[i].filiere_id === filiereId && this.selectedCombinations[i].niveau_id === niveauId) {
@@ -4233,9 +4272,19 @@
                     }
                 }
                 if (idx > -1) {
+                    // Uncheck combo → remove its classes
                     this.selectedCombinations.splice(idx, 1);
+                    this.selectedClassIds = this.selectedClassIds.filter(function(id) {
+                        return comboClassIds.indexOf(id) === -1;
+                    });
                 } else {
+                    // Check combo → add its classes
                     this.selectedCombinations.push({ filiere_id: filiereId, niveau_id: niveauId });
+                    comboClassIds.forEach(function(id) {
+                        if (self.selectedClassIds.indexOf(id) === -1) {
+                            self.selectedClassIds.push(id);
+                        }
+                    });
                 }
             },
 
@@ -4258,33 +4307,45 @@
                 return niveauIds.every(function(nId) { return self.isCombinationSelected(filiereId, nId); });
             },
 
-            // Toggle all niveaux of a filière
+            // Toggle all niveaux of a filière + sync classes
             toggleAllNiveauxOfFiliere(filiereId) {
                 var self = this;
                 var niveauIds = [];
+                var filiereClassIds = [];
                 this.allClasses.forEach(function(c) {
-                    if (c.filiere_id === filiereId && c.niveau_etude_id && niveauIds.indexOf(c.niveau_etude_id) === -1) {
-                        niveauIds.push(c.niveau_etude_id);
+                    if (c.filiere_id === filiereId && c.niveau_etude_id) {
+                        if (niveauIds.indexOf(c.niveau_etude_id) === -1) {
+                            niveauIds.push(c.niveau_etude_id);
+                        }
+                        filiereClassIds.push(c.id);
                     }
                 });
 
                 if (this.isFiliereFullySelected(filiereId)) {
-                    // Remove all combos of this filière
+                    // Remove all combos + classes of this filière
                     this.selectedCombinations = this.selectedCombinations.filter(function(c) {
                         return c.filiere_id !== filiereId;
                     });
+                    this.selectedClassIds = this.selectedClassIds.filter(function(id) {
+                        return filiereClassIds.indexOf(id) === -1;
+                    });
                 } else {
-                    // Add missing combos
+                    // Add missing combos + classes
                     niveauIds.forEach(function(nId) {
                         if (!self.isCombinationSelected(filiereId, nId)) {
                             self.selectedCombinations.push({ filiere_id: filiereId, niveau_id: nId });
                         }
                     });
+                    filiereClassIds.forEach(function(id) {
+                        if (self.selectedClassIds.indexOf(id) === -1) {
+                            self.selectedClassIds.push(id);
+                        }
+                    });
                 }
             },
 
-            // Resolved classes from selected combinations
-            get resolvedClasses() {
+            // Classes matching selected combos (visible in the class list)
+            get comboClasses() {
                 var self = this;
                 return this.allClasses.filter(function(c) {
                     return self.selectedCombinations.some(function(combo) {
@@ -4293,33 +4354,85 @@
                 });
             },
 
+            // Resolved classes = only checked ones (for export)
+            get resolvedClasses() {
+                var self = this;
+                return this.comboClasses.filter(function(c) {
+                    return self.selectedClassIds.indexOf(c.id) !== -1;
+                });
+            },
+
+            // Individual class toggle
+            isClassSelected(classId) {
+                return this.selectedClassIds.indexOf(classId) !== -1;
+            },
+
+            toggleClass(classId) {
+                var idx = this.selectedClassIds.indexOf(classId);
+                if (idx > -1) {
+                    this.selectedClassIds.splice(idx, 1);
+                } else {
+                    this.selectedClassIds.push(classId);
+                }
+                // Sync combo: if no classes left for a combo, uncheck the combo
+                this.syncCombosFromClasses();
+            },
+
+            toggleAllClasses() {
+                var self = this;
+                var comboIds = this.comboClasses.map(function(c) { return c.id; });
+                var allChecked = comboIds.every(function(id) { return self.selectedClassIds.indexOf(id) !== -1; });
+
+                if (allChecked) {
+                    // Uncheck all visible classes
+                    this.selectedClassIds = this.selectedClassIds.filter(function(id) {
+                        return comboIds.indexOf(id) === -1;
+                    });
+                } else {
+                    // Check all visible classes
+                    comboIds.forEach(function(id) {
+                        if (self.selectedClassIds.indexOf(id) === -1) {
+                            self.selectedClassIds.push(id);
+                        }
+                    });
+                }
+            },
+
+            // Sync: if all classes of a combo are unchecked, remove the combo
+            syncCombosFromClasses() {
+                var self = this;
+                this.selectedCombinations = this.selectedCombinations.filter(function(combo) {
+                    var comboClassIds = self.allClasses
+                        .filter(function(c) { return c.filiere_id === combo.filiere_id && c.niveau_etude_id === combo.niveau_id; })
+                        .map(function(c) { return c.id; });
+                    // Keep combo if at least one class is still selected
+                    return comboClassIds.some(function(id) { return self.selectedClassIds.indexOf(id) !== -1; });
+                });
+            },
+
             // Global toggle states
             get allSelected() {
-                var self = this;
-                // All possible combos
-                var allCombos = [];
-                this.allClasses.forEach(function(c) {
-                    if (c.filiere_id && c.niveau_etude_id) {
-                        var exists = allCombos.some(function(x) { return x.filiere_id === c.filiere_id && x.niveau_id === c.niveau_etude_id; });
-                        if (!exists) allCombos.push({ filiere_id: c.filiere_id, niveau_id: c.niveau_etude_id });
-                    }
-                });
-                return allCombos.length > 0 && this.selectedCombinations.length === allCombos.length;
+                return this.allClasses.length > 0 && this.selectedClassIds.length === this.allClasses.length;
             },
-            get someSelected() { return this.selectedCombinations.length > 0; },
+            get someSelected() { return this.selectedClassIds.length > 0; },
 
             toggleAll() {
+                var self = this;
                 if (this.allSelected) {
                     this.selectedCombinations = [];
+                    this.selectedClassIds = [];
                 } else {
                     var combos = [];
+                    var classIds = [];
                     this.allClasses.forEach(function(c) {
                         if (c.filiere_id && c.niveau_etude_id) {
                             var exists = combos.some(function(x) { return x.filiere_id === c.filiere_id && x.niveau_id === c.niveau_etude_id; });
                             if (!exists) combos.push({ filiere_id: c.filiere_id, niveau_id: c.niveau_etude_id });
+                            classIds.push(c.id);
                         }
                     });
                     this.selectedCombinations = combos;
+                    this.selectedClassIds = classIds;
                 }
             },
 
@@ -4345,10 +4458,9 @@
                     });
                 }
 
-                // Send resolved class IDs
-                var resolved = this.resolvedClasses;
-                if (resolved.length > 0 && resolved.length < this.allClasses.length) {
-                    resolved.forEach(function(c) { params.append('classes[]', c.id); });
+                // Send selected class IDs
+                if (this.selectedClassIds.length > 0 && this.selectedClassIds.length < this.allClasses.length) {
+                    this.selectedClassIds.forEach(function(id) { params.append('classes[]', id); });
                 }
 
                 if (this.exportGroupBy) {
