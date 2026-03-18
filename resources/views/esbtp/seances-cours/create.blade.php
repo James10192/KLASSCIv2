@@ -2084,24 +2084,30 @@ function renderManageTeachersContent(linked, available) {
             const opt = new Option(`${t.name}${t.specialization ? ' — ' + t.specialization : ''}`, t.id);
             select.add(opt);
         });
-        // Re-init Select2 — dropdownParent on body with high z-index
-        // Bootstrap .modal has overflow-y:auto which clips absolutely-positioned children,
-        // so the dropdown MUST render on body to escape the modal's overflow.
+        // Re-init Select2 — dropdownParent on modal body (NOT document.body)
+        // Bootstrap .modal has overflow-y:auto but the modal-body itself works fine
+        // if we ensure the modal-content allows overflow.
         if (window.jQuery) {
             if ($(select).data('select2')) {
                 $(select).select2('destroy');
             }
             $(select).select2({
-                dropdownParent: $(document.body),
+                dropdownParent: $('#manageTeachersModal .modal-content'),
                 placeholder: 'Rechercher un enseignant...',
                 allowClear: true,
                 theme: 'bootstrap-5',
                 width: '100%',
-                language: 'fr',
-                dropdownCssClass: 'mgt-select2-dropdown'
+                language: 'fr'
             }).on('change', function () {
+                console.log('[MGT] Select2 change:', this.value);
                 const btn = document.getElementById('mgtAssociateBtn');
                 if (btn) btn.disabled = !this.value;
+            }).on('select2:open', function () {
+                console.log('[MGT] Select2 opened');
+            }).on('select2:close', function () {
+                console.log('[MGT] Select2 closed');
+            }).on('select2:select', function (e) {
+                console.log('[MGT] Select2 selected:', e.params.data);
             });
         }
     }
@@ -3312,7 +3318,7 @@ function forceRefreshAvailability() {
 .mgt-modal {
     border: none;
     border-radius: 20px;
-    overflow: hidden;
+    overflow: visible !important;
     box-shadow:
         0 24px 80px rgba(0, 0, 0, 0.18),
         0 4px 24px rgba(4, 83, 203, 0.08);
@@ -3377,6 +3383,8 @@ function forceRefreshAvailability() {
 .mgt-body {
     padding: 1.5rem 1.75rem;
     background: #fafbfd;
+    border-radius: 0 0 20px 20px;
+    overflow: visible !important;
 }
 
 .mgt-loading {
@@ -3759,6 +3767,15 @@ function forceRefreshAvailability() {
     color: white;
 }
 
+/* Override Bootstrap modal overflow to allow Select2 dropdown to extend */
+#manageTeachersModal.modal {
+    overflow: visible !important;
+}
+
+#manageTeachersModal .modal-dialog {
+    overflow: visible !important;
+}
+
 /* Select2 inside modal — flush with card */
 #manageTeachersModal .select2-container {
     width: 100% !important;
@@ -3855,9 +3872,9 @@ function forceRefreshAvailability() {
     background: white !important;
 }
 
-/* Select2 dropdown on body — must be above Bootstrap modal (z-index 1055) and backdrop (1050) */
-.mgt-select2-dropdown.select2-dropdown {
-    z-index: 1075 !important;
+/* Select2 dropdown inside modal-content — needs to be above other modal elements */
+#manageTeachersModal .select2-dropdown {
+    z-index: 10 !important;
 }
 </style>
 @endpush
