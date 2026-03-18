@@ -1772,6 +1772,7 @@ Route::post('/esbtp/classes/{classe}/update-matieres', [ESBTPClasseController::c
 Route::get('/esbtp/classes/{classe}/search-available-students', [ESBTPClasseController::class, 'searchAvailableStudents'])->name('esbtp.classes.search-available-students');
 Route::post('/esbtp/classes/{classe}/add-students', [ESBTPClasseController::class, 'addStudents'])->name('esbtp.classes.add-students');
 Route::post('/esbtp/classes/{classe}/remove-students', [ESBTPClasseController::class, 'removeStudents'])->name('esbtp.classes.remove-students');
+Route::post('/esbtp/classes/{classe}/check-student-data', [ESBTPClasseController::class, 'checkStudentData'])->name('esbtp.classes.check-student-data');
 Route::get('/esbtp/classes/{classe}/student-table-html', [ESBTPClasseController::class, 'studentTableHtml'])->name('esbtp.classes.student-table-html');
 
 // Routes spéciales pour la prévisualisation et modification des moyennes
@@ -1985,6 +1986,10 @@ Route::middleware(['auth', 'role:superAdmin|coordinateur|secretaire|comptable'])
     Route::post('/planning-general/save-volume-configuration', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'saveVolumeConfiguration'])
         ->name('planning-general.save-volume-configuration')
         ->middleware('permission:manage-planning|view-all-timetables');
+    Route::get('/planning-general/planifications/{planification}/teachers', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'getTeachersForManagement'])
+        ->name('planning-general.get-teachers');
+    Route::post('/planning-general/planifications/{planification}/manage-teachers', [\App\Http\Controllers\ESBTPPlanningConfigController::class, 'manageTeachers'])
+        ->name('planning-general.manage-teachers');
 });
 
 // Routes spécifiques pour les coordinateurs pour événements académiques

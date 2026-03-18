@@ -393,9 +393,14 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="openTeacherModalBtn">
-                                            <i class="fas fa-user-plus me-1"></i>Créer un enseignant
-                                        </button>
+                                        <div class="d-flex gap-2 mt-2 flex-wrap">
+                                            <button type="button" class="btn btn-outline-primary btn-sm" id="openTeacherModalBtn">
+                                                <i class="fas fa-user-plus me-1"></i>Créer un enseignant
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" id="openManageTeachersBtn">
+                                                <i class="fas fa-cogs me-1"></i>Gérer les enseignants
+                                            </button>
+                                        </div>
                                     </div>
                                     <div id="teacher-info" class="form-info" style="display: none;">
                                         <i class="fas fa-check-circle"></i>
@@ -739,6 +744,91 @@
     </div>
 </div>
 
+<!-- Modal Gérer les enseignants -->
+<div class="modal fade" id="manageTeachersModal" tabindex="-1" aria-labelledby="manageTeachersModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content mgt-modal">
+            <div class="modal-header mgt-header">
+                <div class="mgt-header-content">
+                    <div class="mgt-header-icon">
+                        <i class="fas fa-users-cog"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title mgt-title" id="manageTeachersModalLabel">Gérer les enseignants</h5>
+                        <p class="mgt-subtitle" id="mgtMatiereLabel">—</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body mgt-body">
+                <!-- Loading spinner -->
+                <div id="mgtLoading" class="mgt-loading">
+                    <div class="mgt-spinner"></div>
+                    <span>Chargement des enseignants...</span>
+                </div>
+
+                <!-- Content -->
+                <div id="mgtContent" style="display: none;">
+                    <!-- Section: Enseignants associés -->
+                    <div class="mgt-section">
+                        <div class="mgt-section-header">
+                            <i class="fas fa-link"></i>
+                            <span>Enseignants associés</span>
+                            <span class="mgt-count" id="mgtLinkedCount">0</span>
+                        </div>
+                        <div id="mgtLinkedList" class="mgt-linked-list">
+                            <!-- Populated dynamically -->
+                        </div>
+                        <div id="mgtLinkedEmpty" class="mgt-empty-state" style="display: none;">
+                            <i class="fas fa-user-slash"></i>
+                            <span>Aucun enseignant associé à cette matière</span>
+                        </div>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="mgt-divider">
+                        <span>Ajouter un enseignant existant</span>
+                    </div>
+
+                    <!-- Section: Ajouter -->
+                    <div class="mgt-section">
+                        <div class="mgt-add-row">
+                            <select id="mgtTeacherSelect" class="form-select mgt-select">
+                                <option value="">Rechercher un enseignant...</option>
+                            </select>
+                            <button type="button" class="btn mgt-btn-associate" id="mgtAssociateBtn" disabled>
+                                <i class="fas fa-link me-1"></i>Associer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dialog d'erreur pour dissociation bloquée -->
+<div class="modal fade" id="mgtErrorDialog" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content mgt-error-dialog">
+            <div class="mgt-error-icon-wrap">
+                <div class="mgt-error-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+            </div>
+            <div class="mgt-error-body">
+                <h6 class="mgt-error-title">Action impossible</h6>
+                <p class="mgt-error-message" id="mgtErrorMessage">—</p>
+            </div>
+            <div class="mgt-error-footer">
+                <button type="button" class="btn mgt-btn-understand" data-bs-dismiss="modal">
+                    <i class="fas fa-check me-1"></i>Compris
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="seance-data"
      data-default-colors='@json($defaultColors)'
      data-availability='@json($availabilityData ?? [])'
@@ -757,6 +847,7 @@ const currentTeacherId = "{{ old('teacher_id') }}";
 const seanceDataElement = document.getElementById('seance-data');
 const isEmbedded = seanceDataElement ? seanceDataElement.dataset.embed === '1' : false;
 const teacherQuickCreateUrl = "{{ route('esbtp.enseignants.quick-create') }}";
+const manageTeachersBaseUrl = "{{ url('/esbtp/planning-general/planifications') }}";
 const seanceData = seanceDataElement
     ? {
         defaultColors: JSON.parse(seanceDataElement.dataset.defaultColors || '{}'),
@@ -951,6 +1042,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const teacherCreateForm = document.getElementById('teacherCreateForm');
     if (teacherCreateForm) {
         teacherCreateForm.addEventListener('submit', handleTeacherCreateSubmit);
+    }
+
+    const openManageTeachersBtn = document.getElementById('openManageTeachersBtn');
+    if (openManageTeachersBtn) {
+        openManageTeachersBtn.addEventListener('click', openManageTeachersModal);
+    }
+
+    const mgtAssociateBtn = document.getElementById('mgtAssociateBtn');
+    if (mgtAssociateBtn) {
+        mgtAssociateBtn.addEventListener('click', handleAssociateTeacher);
+    }
+
+    const mgtTeacherSelect = document.getElementById('mgtTeacherSelect');
+    if (mgtTeacherSelect) {
+        mgtTeacherSelect.addEventListener('change', function () {
+            const btn = document.getElementById('mgtAssociateBtn');
+            if (btn) btn.disabled = !this.value;
+        });
     }
 
     const availabilityAllAvailableBtn = document.getElementById('availabilityAllAvailable');
@@ -1878,6 +1987,228 @@ function attachTeacherToCurrentMatiere(teacherId) {
         enseignantsIds.push(teacherId);
         selectedOption.dataset.enseignants = JSON.stringify(enseignantsIds);
     }
+}
+
+// ─── Gestion des enseignants (modal) ────────────────────────────────
+let currentPlanificationId = null;
+
+function openManageTeachersModal() {
+    const matiereSelect = document.getElementById('matiere_id');
+    if (!matiereSelect || !matiereSelect.value) {
+        alert('Sélectionnez une matière avant de gérer les enseignants.');
+        return;
+    }
+    const selectedOption = matiereSelect.options[matiereSelect.selectedIndex];
+    const planifId = selectedOption.dataset.planificationId;
+    if (!planifId) {
+        alert("Cette matière n'est pas encore configurée dans le planning général.");
+        return;
+    }
+    currentPlanificationId = planifId;
+
+    // Set matière label
+    const label = document.getElementById('mgtMatiereLabel');
+    if (label) label.textContent = selectedOption.textContent.trim();
+
+    // Show loading, hide content
+    const loading = document.getElementById('mgtLoading');
+    const content = document.getElementById('mgtContent');
+    if (loading) loading.style.display = 'flex';
+    if (content) content.style.display = 'none';
+
+    const modalEl = document.getElementById('manageTeachersModal');
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+
+    // Fetch data
+    fetch(`${manageTeachersBaseUrl}/${planifId}/teachers`, {
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) throw data;
+        renderManageTeachersContent(data.linked_teachers, data.available_teachers);
+        if (loading) loading.style.display = 'none';
+        if (content) content.style.display = 'block';
+    })
+    .catch(() => {
+        if (loading) loading.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Erreur de chargement';
+    });
+}
+
+function renderManageTeachersContent(linked, available) {
+    // Linked teachers list
+    const listEl = document.getElementById('mgtLinkedList');
+    const emptyEl = document.getElementById('mgtLinkedEmpty');
+    const countEl = document.getElementById('mgtLinkedCount');
+    if (countEl) countEl.textContent = linked.length;
+
+    if (linked.length === 0) {
+        if (listEl) listEl.innerHTML = '';
+        if (emptyEl) emptyEl.style.display = 'flex';
+    } else {
+        if (emptyEl) emptyEl.style.display = 'none';
+        if (listEl) {
+            listEl.innerHTML = linked.map(t => {
+                const hasSeances = t.seance_count > 0;
+                const seanceBadge = hasSeances
+                    ? `<span class="mgt-seance-badge" title="${t.seance_count} séance(s) programmée(s)"><i class="fas fa-calendar-check me-1"></i>${t.seance_count}</span>`
+                    : '';
+                const removeBtn = hasSeances
+                    ? `<button class="mgt-btn-remove mgt-btn-locked" disabled title="Cet enseignant a ${t.seance_count} séance(s) programmée(s)"><i class="fas fa-lock"></i></button>`
+                    : `<button class="mgt-btn-remove" onclick="handleDissociateTeacher(${t.id})" title="Retirer de la planification"><i class="fas fa-times"></i></button>`;
+                return `
+                    <div class="mgt-teacher-row" data-teacher-id="${t.id}">
+                        <div class="mgt-teacher-avatar">${(t.name || '?')[0].toUpperCase()}</div>
+                        <div class="mgt-teacher-info">
+                            <span class="mgt-teacher-name">${t.name}</span>
+                            <span class="mgt-teacher-spec">${t.specialization || ''}</span>
+                        </div>
+                        ${seanceBadge}
+                        ${removeBtn}
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    // Available teachers select
+    const select = document.getElementById('mgtTeacherSelect');
+    if (select) {
+        select.innerHTML = '<option value="">Rechercher un enseignant...</option>';
+        available.forEach(t => {
+            const opt = new Option(`${t.name}${t.specialization ? ' — ' + t.specialization : ''}`, t.id);
+            select.add(opt);
+        });
+        // Re-init Select2 if available
+        if (window.jQuery) {
+            $(select).select2({
+                dropdownParent: document.getElementById('manageTeachersModal'),
+                placeholder: 'Rechercher un enseignant...',
+                allowClear: true,
+                theme: 'bootstrap-5'
+            }).on('change', function () {
+                const btn = document.getElementById('mgtAssociateBtn');
+                if (btn) btn.disabled = !this.value;
+            });
+        }
+    }
+    const btn = document.getElementById('mgtAssociateBtn');
+    if (btn) btn.disabled = true;
+}
+
+function handleAssociateTeacher() {
+    const select = document.getElementById('mgtTeacherSelect');
+    const teacherId = select ? select.value : null;
+    if (!teacherId || !currentPlanificationId) return;
+
+    const btn = document.getElementById('mgtAssociateBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Association...';
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+    fetch(`${manageTeachersBaseUrl}/${currentPlanificationId}/manage-teachers`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ action: 'associate', teacher_id: teacherId })
+    })
+    .then(async r => {
+        const payload = await r.json().catch(() => ({}));
+        if (!r.ok) throw payload;
+        return payload;
+    })
+    .then(data => {
+        // Re-fetch full data to refresh both lists
+        refreshManageTeachersContent();
+        // Update matière data-enseignants attribute for the main form
+        syncLinkedTeachersToForm(data.linked_ids || []);
+        updateTeachersForSubject();
+    })
+    .catch(err => {
+        alert(err.message || "Erreur lors de l'association.");
+    })
+    .finally(() => {
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-link me-1"></i>Associer';
+            btn.disabled = true;
+        }
+    });
+}
+
+function handleDissociateTeacher(teacherId) {
+    if (!currentPlanificationId) return;
+
+    const row = document.querySelector(`.mgt-teacher-row[data-teacher-id="${teacherId}"]`);
+    if (row) row.classList.add('mgt-removing');
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+    fetch(`${manageTeachersBaseUrl}/${currentPlanificationId}/manage-teachers`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ action: 'dissociate', teacher_id: teacherId })
+    })
+    .then(async r => {
+        const payload = await r.json().catch(() => ({}));
+        if (!r.ok) throw payload;
+        return payload;
+    })
+    .then(data => {
+        refreshManageTeachersContent();
+        syncLinkedTeachersToForm(data.linked_ids || []);
+        updateTeachersForSubject();
+    })
+    .catch(err => {
+        if (row) row.classList.remove('mgt-removing');
+        if (err.blocked) {
+            showMgtErrorDialog(err.message);
+        } else {
+            alert(err.message || 'Erreur lors de la dissociation.');
+        }
+    });
+}
+
+function showMgtErrorDialog(message) {
+    const msgEl = document.getElementById('mgtErrorMessage');
+    if (msgEl) msgEl.textContent = message;
+    const dialogEl = document.getElementById('mgtErrorDialog');
+    if (dialogEl) {
+        const dialog = new bootstrap.Modal(dialogEl);
+        dialog.show();
+    }
+}
+
+function refreshManageTeachersContent() {
+    if (!currentPlanificationId) return;
+    fetch(`${manageTeachersBaseUrl}/${currentPlanificationId}/teachers`, {
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            renderManageTeachersContent(data.linked_teachers, data.available_teachers);
+        }
+    });
+}
+
+function syncLinkedTeachersToForm(linkedIds) {
+    const matiereSelect = document.getElementById('matiere_id');
+    if (!matiereSelect || !matiereSelect.value) return;
+    const selectedOption = matiereSelect.options[matiereSelect.selectedIndex];
+    selectedOption.dataset.enseignants = JSON.stringify(linkedIds);
 }
 
 // Fonction pour afficher la disponibilité de l'enseignant sélectionné
@@ -2963,6 +3294,420 @@ function forceRefreshAvailability() {
     .session-type-label {
         font-size: 0.875rem;
     }
+}
+
+/* ─── Manage Teachers Modal (mgt-*) ─────────────────────────────── */
+.mgt-modal {
+    border: none;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow:
+        0 24px 80px rgba(0, 0, 0, 0.18),
+        0 4px 24px rgba(4, 83, 203, 0.08);
+}
+
+.mgt-header {
+    background: linear-gradient(135deg, #0453cb 0%, #1e6fe0 50%, #5e91de 100%);
+    border: none;
+    padding: 1.5rem 1.75rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.mgt-header::before {
+    content: '';
+    position: absolute;
+    top: -40%;
+    right: -15%;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+}
+
+.mgt-header-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+.mgt-header-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: white;
+    flex-shrink: 0;
+}
+
+.mgt-title {
+    color: white;
+    font-weight: 700;
+    font-size: 1.15rem;
+    margin: 0;
+    letter-spacing: -0.01em;
+}
+
+.mgt-subtitle {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.82rem;
+    margin: 0.15rem 0 0;
+    font-weight: 500;
+}
+
+.mgt-body {
+    padding: 1.5rem 1.75rem;
+    background: #fafbfd;
+}
+
+.mgt-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 3rem 0;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.mgt-spinner {
+    width: 22px;
+    height: 22px;
+    border: 2.5px solid #e2e8f0;
+    border-top-color: #0453cb;
+    border-radius: 50%;
+    animation: mgtSpin 0.7s linear infinite;
+}
+
+@keyframes mgtSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* Section headers */
+.mgt-section {
+    margin-bottom: 1rem;
+}
+
+.mgt-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #475569;
+    margin-bottom: 0.75rem;
+}
+
+.mgt-section-header i {
+    color: #0453cb;
+    font-size: 0.75rem;
+}
+
+.mgt-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 100px;
+    background: linear-gradient(135deg, #0453cb, #5e91de);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+/* Teacher rows */
+.mgt-linked-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.mgt-teacher-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e8ecf1;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mgt-teacher-row:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.mgt-teacher-row.mgt-removing {
+    opacity: 0.4;
+    transform: scale(0.97);
+    pointer-events: none;
+}
+
+.mgt-teacher-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    letter-spacing: -0.02em;
+}
+
+.mgt-teacher-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.mgt-teacher-name {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mgt-teacher-spec {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mgt-seance-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.6rem;
+    border-radius: 100px;
+    background: #f0fdf4;
+    color: #16a34a;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border: 1px solid #bbf7d0;
+    flex-shrink: 0;
+}
+
+.mgt-btn-remove {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid #fecaca;
+    background: #fff5f5;
+    color: #ef4444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+}
+
+.mgt-btn-remove:hover:not(:disabled) {
+    background: #fef2f2;
+    border-color: #f87171;
+    color: #dc2626;
+    transform: scale(1.08);
+}
+
+.mgt-btn-remove.mgt-btn-locked {
+    border-color: #e2e8f0;
+    background: #f8fafc;
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+
+/* Empty state */
+.mgt-empty-state {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 1.25rem;
+    background: white;
+    border-radius: 12px;
+    border: 1px dashed #cbd5e1;
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+.mgt-empty-state i {
+    font-size: 1.1rem;
+    opacity: 0.6;
+}
+
+/* Divider */
+.mgt-divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 1.25rem 0;
+    color: #94a3b8;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.mgt-divider::before,
+.mgt-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #e2e8f0 50%, transparent);
+}
+
+/* Add row */
+.mgt-add-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: stretch;
+}
+
+.mgt-select {
+    flex: 1;
+    border-radius: 10px !important;
+    border: 2px solid #e2e8f0 !important;
+    padding: 0.6rem 0.9rem !important;
+    font-size: 0.88rem !important;
+    transition: border-color 0.2s ease !important;
+}
+
+.mgt-select:focus {
+    border-color: #0453cb !important;
+    box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1) !important;
+}
+
+.mgt-btn-associate {
+    padding: 0.6rem 1.25rem;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0453cb, #1e6fe0);
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+    border: none;
+    white-space: nowrap;
+    transition: all 0.25s ease;
+    box-shadow: 0 2px 8px rgba(4, 83, 203, 0.25);
+}
+
+.mgt-btn-associate:hover:not(:disabled) {
+    background: linear-gradient(135deg, #033ea0, #0453cb);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(4, 83, 203, 0.35);
+    color: white;
+}
+
+.mgt-btn-associate:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Error dialog */
+.mgt-error-dialog {
+    border: none;
+    border-radius: 20px;
+    overflow: hidden;
+    text-align: center;
+    padding: 2rem 1.5rem 1.5rem;
+}
+
+.mgt-error-icon-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.mgt-error-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #ef4444;
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0.06);
+}
+
+.mgt-error-body {
+    margin-bottom: 1.5rem;
+}
+
+.mgt-error-title {
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+}
+
+.mgt-error-message {
+    color: #64748b;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.mgt-error-footer {
+    display: flex;
+    justify-content: center;
+}
+
+.mgt-btn-understand {
+    padding: 0.6rem 2rem;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #1e293b, #334155);
+    color: white;
+    font-weight: 600;
+    font-size: 0.88rem;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.mgt-btn-understand:hover {
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    transform: translateY(-1px);
+    color: white;
+}
+
+/* Select2 inside modal overrides */
+#manageTeachersModal .select2-container {
+    width: 100% !important;
+}
+
+#manageTeachersModal .select2-container--bootstrap-5 .select2-selection {
+    border-radius: 10px !important;
+    border: 2px solid #e2e8f0 !important;
+    min-height: 42px !important;
+}
+
+#manageTeachersModal .select2-container--bootstrap-5 .select2-selection--single:focus,
+#manageTeachersModal .select2-container--bootstrap-5.select2-container--focus .select2-selection {
+    border-color: #0453cb !important;
+    box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1) !important;
 }
 </style>
 @endpush

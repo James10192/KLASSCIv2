@@ -664,6 +664,185 @@ class ESBTPPlanningConfigController extends Controller
 
 
     /**
+     * Gérer les enseignants d'une planification (associer/désassocier) via AJAX.
+     */
+    public function manageTeachers(Request $request, ESBTPPlanificationAcademique $planification)
+    {
+        $request->validate([
+            'action' => 'required|in:associate,dissociate',
+            'teacher_id' => 'required|exists:esbtp_teachers,id',
+        ]);
+
+        $teacherId = $request->teacher_id;
+        $action = $request->action;
+
+        if ($action === 'associate') {
+            $exists = DB::table('esbtp_planification_teachers')
+                ->where('planification_id', $planification->id)
+                ->where('teacher_id', $teacherId)
+                ->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cet enseignant est déjà associé à cette planification.',
+                ], 422);
+            }
+
+            DB::table('esbtp_planification_teachers')->insert([
+                'planification_id' => $planification->id,
+                'teacher_id' => $teacherId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Set as principal if none exists
+            if (!$planification->enseignant_principal_id) {
+                $teacher = ESBTPTeacher::find($teacherId);
+                if ($teacher && $teacher->user_id) {
+                    $planification->update([
+                        'enseignant_principal_id' => $teacher->user_id,
+                    ]);
+                }
+            }
+
+            $message = 'Enseignant associé avec succès.';
+        } else {
+            // Check if teacher has existing seances on this planification's classe
+            $seanceCount = ESBTPSeanceCours::where('teacher_id', $teacherId)
+                ->where('matiere_id', $planification->matiere_id)
+                ->whereHas('emploiTemps', function ($q) use ($planification) {
+                    $q->whereHas('classe', function ($cq) use ($planification) {
+                        $cq->where('filiere_id', $planification->filiere_id)
+                            ->where('niveau_etude_id', $planification->niveau_etude_id);
+                    });
+                })
+                ->where('is_active', true)
+                ->count();
+
+            if ($seanceCount > 0) {
+                return response()->json([
+                    'success' => false,
+                    'blocked' => true,
+                    'seance_count' => $seanceCount,
+                    'message' => "Impossible de retirer cet enseignant : il a {$seanceCount} séance(s) de cours programmée(s) sur cette matière.",
+                ], 422);
+            }
+
+            DB::table('esbtp_planification_teachers')
+                ->where('planification_id', $planification->id)
+                ->where('teacher_id', $teacherId)
+                ->delete();
+
+            // Reassign principal if removed teacher was the principal
+            $teacher = ESBTPTeacher::find($teacherId);
+            if ($teacher && $planification->enseignant_principal_id === $teacher->user_id) {
+                $nextTeacher = DB::table('esbtp_planification_teachers')
+                    ->where('planification_id', $planification->id)
+                    ->first();
+
+                if ($nextTeacher) {
+                    $next = ESBTPTeacher::find($nextTeacher->teacher_id);
+                    $planification->update([
+                        'enseignant_principal_id' => $next?->user_id,
+                    ]);
+                } else {
+                    $planification->update(['enseignant_principal_id' => null]);
+                }
+            }
+
+            $message = 'Enseignant retiré avec succès.';
+        }
+
+        // Return updated list of linked teachers
+        $linkedTeachers = ESBTPTeacher::whereIn('id', function ($q) use ($planification) {
+            $q->select('teacher_id')
+                ->from('esbtp_planification_teachers')
+                ->where('planification_id', $planification->id);
+        })->with('user')->get();
+
+        // Count seances per teacher for the UI
+        $teachersWithSeances = $linkedTeachers->map(function ($t) use ($planification) {
+            $seances = ESBTPSeanceCours::where('teacher_id', $t->id)
+                ->where('matiere_id', $planification->matiere_id)
+                ->whereHas('emploiTemps', function ($q) use ($planification) {
+                    $q->whereHas('classe', function ($cq) use ($planification) {
+                        $cq->where('filiere_id', $planification->filiere_id)
+                            ->where('niveau_etude_id', $planification->niveau_etude_id);
+                    });
+                })
+                ->where('is_active', true)
+                ->count();
+
+            return [
+                'id' => $t->id,
+                'name' => $t->user?->name ?? $t->matricule,
+                'specialization' => $t->specialization,
+                'seance_count' => $seances,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'linked_teachers' => $teachersWithSeances,
+            'linked_ids' => $linkedTeachers->pluck('id')->toArray(),
+        ]);
+    }
+
+    /**
+     * Retourner la liste des enseignants pour le modal de gestion.
+     */
+    public function getTeachersForManagement(ESBTPPlanificationAcademique $planification)
+    {
+        $linkedIds = DB::table('esbtp_planification_teachers')
+            ->where('planification_id', $planification->id)
+            ->pluck('teacher_id')
+            ->toArray();
+
+        $linkedTeachers = ESBTPTeacher::whereIn('id', $linkedIds)
+            ->with('user')
+            ->get()
+            ->map(function ($t) use ($planification) {
+                $seances = ESBTPSeanceCours::where('teacher_id', $t->id)
+                    ->where('matiere_id', $planification->matiere_id)
+                    ->whereHas('emploiTemps', function ($q) use ($planification) {
+                        $q->whereHas('classe', function ($cq) use ($planification) {
+                            $cq->where('filiere_id', $planification->filiere_id)
+                                ->where('niveau_etude_id', $planification->niveau_etude_id);
+                        });
+                    })
+                    ->where('is_active', true)
+                    ->count();
+
+                return [
+                    'id' => $t->id,
+                    'name' => $t->user?->name ?? $t->matricule,
+                    'specialization' => $t->specialization,
+                    'seance_count' => $seances,
+                ];
+            });
+
+        $availableTeachers = ESBTPTeacher::whereNotIn('id', $linkedIds)
+            ->where('status', 'active')
+            ->with('user')
+            ->get()
+            ->map(function ($t) {
+                return [
+                    'id' => $t->id,
+                    'name' => $t->user?->name ?? $t->matricule,
+                    'specialization' => $t->specialization,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'linked_teachers' => $linkedTeachers,
+            'available_teachers' => $availableTeachers,
+        ]);
+    }
+
+    /**
      * Configuration rapide d'une planification via AJAX
      */
     public function configureRapide(Request $request)
