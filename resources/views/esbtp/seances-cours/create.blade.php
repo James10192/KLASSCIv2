@@ -2084,13 +2084,19 @@ function renderManageTeachersContent(linked, available) {
             const opt = new Option(`${t.name}${t.specialization ? ' — ' + t.specialization : ''}`, t.id);
             select.add(opt);
         });
-        // Re-init Select2 if available
+        // Re-init Select2 — dropdownParent on body to avoid modal overflow clipping
         if (window.jQuery) {
+            if ($(select).data('select2')) {
+                $(select).select2('destroy');
+            }
             $(select).select2({
-                dropdownParent: document.getElementById('manageTeachersModal'),
+                dropdownParent: $(document.body),
                 placeholder: 'Rechercher un enseignant...',
                 allowClear: true,
-                theme: 'bootstrap-5'
+                theme: 'bootstrap-5',
+                width: '100%',
+                language: 'fr',
+                dropdownCssClass: 'mgt-select2-dropdown'
             }).on('change', function () {
                 const btn = document.getElementById('mgtAssociateBtn');
                 if (btn) btn.disabled = !this.value;
@@ -3845,6 +3851,11 @@ function forceRefreshAvailability() {
     border-color: #0453cb !important;
     box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1) !important;
     background: white !important;
+}
+
+/* Dropdown rendered on body — must float above modal (z-index 1055) */
+.mgt-select2-dropdown {
+    z-index: 1070 !important;
 }
 </style>
 @endpush
