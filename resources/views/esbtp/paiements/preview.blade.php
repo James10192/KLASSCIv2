@@ -118,8 +118,8 @@
     }
 
     .rc-header-logo {
-        width: 70px;
-        height: 70px;
+        width: 90px;
+        height: 90px;
         background: rgba(255,255,255,0.15);
         border-radius: 14px;
         display: flex;
@@ -132,12 +132,12 @@
     }
 
     .rc-header-logo img {
-        max-height: 50px;
-        max-width: 50px;
+        max-height: 65px;
+        max-width: 65px;
     }
 
     .rc-header-logo .fallback-letter {
-        font-size: 32px;
+        font-size: 40px;
         font-weight: 900;
         color: white;
         opacity: 0.6;
@@ -150,14 +150,14 @@
     }
 
     .rc-header-school {
-        font-size: 19px;
+        font-size: 22px;
         font-weight: 700;
         color: white;
         margin-bottom: 2px;
     }
 
     .rc-header-contact {
-        font-size: 13px;
+        font-size: 14px;
         color: rgba(255,255,255,0.8);
         margin-bottom: 8px;
     }
@@ -171,7 +171,7 @@
     }
 
     .rc-header-doc-title {
-        font-size: 16px;
+        font-size: 18px;
         font-weight: 700;
         color: white;
         letter-spacing: 0.5px;
@@ -197,7 +197,7 @@
     }
 
     .rc-number-label {
-        font-size: 14px;
+        font-size: 15px;
         font-weight: 600;
         color: var(--rc-text-secondary);
         text-transform: uppercase;
@@ -205,7 +205,7 @@
     }
 
     .rc-number-value {
-        font-size: 22px;
+        font-size: 26px;
         font-weight: 800;
         color: var(--rc-primary);
         background: white;
@@ -234,7 +234,7 @@
         background: var(--rc-primary);
         color: white;
         padding: 10px 18px;
-        font-size: 15px;
+        font-size: 16px;
         font-weight: 700;
         letter-spacing: 0.3px;
         display: flex;
@@ -265,7 +265,7 @@
         width: 200px;
         flex-shrink: 0;
         padding: 10px 18px;
-        font-size: 15px;
+        font-size: 16px;
         font-weight: 600;
         color: var(--rc-text-secondary);
         background: var(--rc-surface);
@@ -275,7 +275,7 @@
     .rc-kv-value {
         flex: 1;
         padding: 10px 18px;
-        font-size: 15px;
+        font-size: 16px;
         font-weight: 500;
         color: var(--rc-text);
     }
@@ -306,7 +306,7 @@
     }
 
     .rc-amount-value {
-        font-size: 36px;
+        font-size: 42px;
         font-weight: 900;
         color: var(--rc-success);
         line-height: 1;
@@ -314,7 +314,7 @@
     }
 
     .rc-amount-currency {
-        font-size: 18px;
+        font-size: 20px;
         font-weight: 600;
         color: var(--rc-success);
         opacity: 0.7;
@@ -324,7 +324,7 @@
         margin-top: 10px;
         padding-top: 10px;
         border-top: 1px dashed rgba(5, 150, 105, 0.25);
-        font-size: 15px;
+        font-size: 16px;
         font-style: italic;
         color: var(--rc-text-secondary);
     }
@@ -343,7 +343,7 @@
     }
 
     .rc-signature-label {
-        font-size: 14px;
+        font-size: 15px;
         font-weight: 700;
         color: var(--rc-primary);
         text-transform: uppercase;
@@ -357,13 +357,13 @@
     }
 
     .rc-signature-name {
-        font-size: 14px;
+        font-size: 15px;
         font-weight: 600;
         color: var(--rc-text);
     }
 
     .rc-signature-date {
-        font-size: 13px;
+        font-size: 14px;
         color: var(--rc-text-secondary);
         margin-top: 2px;
     }
@@ -379,7 +379,7 @@
 
     .rc-footer-warning {
         text-align: center;
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 700;
         color: var(--rc-danger);
         margin-bottom: 5px;
@@ -387,7 +387,7 @@
 
     .rc-footer-contact {
         text-align: center;
-        font-size: 13px;
+        font-size: 14px;
         color: var(--rc-text-secondary);
     }
 

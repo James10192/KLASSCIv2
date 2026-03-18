@@ -75,7 +75,7 @@
 
         .kv-table td {
             padding: 8px 14px;
-            font-size: 14px;
+            font-size: 15px;
             border-bottom: 1px solid #f1f5f9;
             vertical-align: middle;
         }
@@ -149,7 +149,7 @@
 
         .footer-warning {
             text-align: center;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: bold;
             color: #dc2626;
             margin-bottom: 4px;
@@ -157,7 +157,7 @@
 
         .footer-contact {
             text-align: center;
-            font-size: 11px;
+            font-size: 12px;
             color: #64748b;
             line-height: 1.4;
         }
@@ -199,20 +199,20 @@
                     <td width="16%" style="background-color: {{ $hdrBg }}; padding: 12px 10px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.2);">
                         @if(isset($settings['show_logo']) && $settings['show_logo'] && isset($settings['logo_base64']))
                             <img src="{{ $settings['logo_base64'] }}"
-                                 style="max-height: 55px; max-width: 95px;"
+                                 style="max-height: 70px; max-width: 120px;"
                                  alt="Logo">
                         @else
-                            <div style="font-size: 28px; font-weight: 900; color: {{ $hdrText }}; opacity: 0.4;">K</div>
+                            <div style="font-size: 36px; font-weight: 900; color: {{ $hdrText }}; opacity: 0.4;">K</div>
                         @endif
                     </td>
                     <!-- Info Column -->
                     <td width="84%" style="background-color: {{ $hdrBg }}; padding: 10px 16px; vertical-align: middle;">
                         <!-- School Name -->
-                        <div style="font-size: 17px; font-weight: 700; color: {{ $hdrText }}; margin-bottom: 2px;">
+                        <div style="font-size: 19px; font-weight: 700; color: {{ $hdrText }}; margin-bottom: 2px;">
                             {{ $settings['school_name'] ?? 'KLASSCI' }}
                         </div>
                         <!-- Contact -->
-                        <div style="font-size: 11px; color: {{ $hdrText }}; opacity: 0.8; margin-bottom: 6px;">
+                        <div style="font-size: 12px; color: {{ $hdrText }}; opacity: 0.8; margin-bottom: 6px;">
                             @if($settings['school_address'] ?? false){{ $settings['school_address'] }}@endif
                             @if($settings['school_phone'] ?? false) &nbsp;|&nbsp; Tél: {{ $settings['school_phone'] }}@endif
                             @if($settings['school_email'] ?? false) &nbsp;|&nbsp; Email: {{ $settings['school_email'] }}@endif
@@ -221,10 +221,10 @@
                         <div style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 6px;">
                             <table width="100%" border="0" cellspacing="0" cellpadding="0">
                                 <tr>
-                                    <td width="60%" style="font-size: 16px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.5px;">
+                                    <td width="60%" style="font-size: 18px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.5px;">
                                         REÇU DE PAIEMENT
                                     </td>
-                                    <td width="40%" style="font-size: 12px; color: {{ $hdrText }}; opacity: 0.75; text-align: right;">
+                                    <td width="40%" style="font-size: 13px; color: {{ $hdrText }}; opacity: 0.75; text-align: right;">
                                         {{ $paiement->inscription->anneeUniversitaire->name ?? '' }}
                                     </td>
                                 </tr>
@@ -245,7 +245,7 @@
                                 <td style="font-size: 14px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 1px; padding-right: 12px; vertical-align: middle;">
                                     Reçu N°
                                 </td>
-                                <td style="font-size: 20px; font-weight: 900; color: {{ $primary }}; background-color: #f8fafc; padding: 5px 20px; border: 2px solid {{ $primary }}; border-radius: 6px; letter-spacing: 1px;">
+                                <td style="font-size: 22px; font-weight: 900; color: {{ $primary }}; background-color: #f8fafc; padding: 5px 20px; border: 2px solid {{ $primary }}; border-radius: 6px; letter-spacing: 1px;">
                                     {{ $paiement->numero_recu }}
                                 </td>
                             </tr>
@@ -259,7 +259,7 @@
         <div class="card-section">
             <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
-                    <td style="background-color: {{ $primary }}; color: {{ $hdrText }}; padding: 8px 14px; font-size: 14px; font-weight: 700; letter-spacing: 0.3px;">
+                    <td style="background-color: {{ $primary }}; color: {{ $hdrText }}; padding: 8px 14px; font-size: 15px; font-weight: 700; letter-spacing: 0.3px;">
                         INFORMATIONS DE L'ÉTUDIANT
                     </td>
                 </tr>
@@ -296,7 +296,7 @@
         <div class="card-section">
             <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
-                    <td style="background-color: {{ $primary }}; color: {{ $hdrText }}; padding: 8px 14px; font-size: 14px; font-weight: 700; letter-spacing: 0.3px;">
+                    <td style="background-color: {{ $primary }}; color: {{ $hdrText }}; padding: 8px 14px; font-size: 15px; font-weight: 700; letter-spacing: 0.3px;">
                         DÉTAILS DU PAIEMENT
                     </td>
                 </tr>
@@ -359,19 +359,19 @@
         <div class="amount-section">
             <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
-                    <td style="background-color: #059669; color: white; padding: 6px 14px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-align: center;">
+                    <td style="background-color: #059669; color: white; padding: 6px 14px; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-align: center;">
                         Montant du Paiement
                     </td>
                 </tr>
                 <tr>
                     <td style="padding: 12px 14px; text-align: center; background-color: #ecfdf5;">
-                        <div style="font-size: 32px; font-weight: 900; color: #059669; line-height: 1; margin-bottom: 2px;">
+                        <div style="font-size: 36px; font-weight: 900; color: #059669; line-height: 1; margin-bottom: 2px;">
                             {{ number_format($paiement->montant, 0, ',', ' ') }}
                         </div>
-                        <div style="font-size: 16px; font-weight: 600; color: #059669; opacity: 0.7;">
+                        <div style="font-size: 18px; font-weight: 600; color: #059669; opacity: 0.7;">
                             FCFA
                         </div>
-                        <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(5,150,105,0.25); font-size: 13px; font-style: italic; color: #64748b;">
+                        <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(5,150,105,0.25); font-size: 14px; font-style: italic; color: #64748b;">
                             {{ ucfirst(\App\Services\NumberToWords::convert($paiement->montant)) }} Francs CFA
                         </div>
                     </td>
@@ -383,22 +383,22 @@
         <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 10px; margin-top: 16px;">
             <tr>
                 <td width="45%" style="text-align: center; vertical-align: top; padding-right: 20px;">
-                    <div style="font-size: 13px; font-weight: 700; color: {{ $primary }}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 28px;">
+                    <div style="font-size: 14px; font-weight: 700; color: {{ $primary }}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 28px;">
                         Date d'émission
                     </div>
                     <div style="border-top: 2px solid {{ $primary }}; padding-top: 6px;">
-                        <div style="font-size: 13px; font-weight: 600; color: #1e293b;">
+                        <div style="font-size: 14px; font-weight: 600; color: #1e293b;">
                             {{ $paiement->date_validation ? $paiement->date_validation->format('d/m/Y') : date('d/m/Y') }}
                         </div>
                     </div>
                 </td>
                 <td width="10%"></td>
                 <td width="45%" style="text-align: center; vertical-align: top; padding-left: 20px;">
-                    <div style="font-size: 13px; font-weight: 700; color: {{ $primary }}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 28px;">
+                    <div style="font-size: 14px; font-weight: 700; color: {{ $primary }}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 28px;">
                         Signature et Cachet
                     </div>
                     <div style="border-top: 2px solid {{ $primary }}; padding-top: 6px;">
-                        <div style="font-size: 13px; font-weight: 600; color: #1e293b;">
+                        <div style="font-size: 14px; font-weight: 600; color: #1e293b;">
                             {{ $paiement->validatedBy ? $paiement->validatedBy->name : 'Le Comptable' }}
                         </div>
                     </div>
