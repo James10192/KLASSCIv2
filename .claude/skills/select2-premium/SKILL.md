@@ -62,25 +62,26 @@ $('#mySelect').select2({ templateResult: formatWithAvatar });
 
 Bootstrap `.modal` has `overflow-y: auto` which **clips** any absolutely-positioned child. Setting `dropdownParent` to the modal element does NOT work — the dropdown renders inside the modal but is still clipped by its overflow.
 
-**The only working solution**: render on `document.body` with a z-index above the modal.
+**The working solution**: `dropdownParent` on `.modal-content` + `overflow: visible !important` on all parent layers.
 
 ```javascript
 $('#mySelect').select2({
-    dropdownParent: $(document.body),        // NOT the modal
-    dropdownCssClass: 'my-select2-dropdown', // For z-index targeting
+    dropdownParent: $('#myModal .modal-content'),
     theme: 'bootstrap-5',
     width: '100%'
 });
 ```
 
 ```css
-/* Must be above Bootstrap modal (1055) and backdrop (1050) */
-.my-select2-dropdown.select2-dropdown {
-    z-index: 1075 !important;
-}
+/* Override Bootstrap overflow on ALL modal layers */
+#myModal.modal { overflow: visible !important; }
+#myModal .modal-dialog { overflow: visible !important; }
+#myModal .modal-content { overflow: visible !important; }
 ```
 
-**Why `dropdownParent: $('#myModal')` fails**: Bootstrap's `.modal.show` has `overflow-y: auto` creating a scroll container that clips absolutely-positioned children. Even with `overflow: visible` on `.modal-content`, the parent `.modal` still clips.
+**Why this works**: The dropdown renders inside `.modal-content` (proper alignment), and `overflow: visible !important` on `.modal`, `.modal-dialog`, and `.modal-content` prevents clipping at every layer.
+
+**Why `dropdownParent: $(document.body)` is worse**: z-index wars, dropdown misaligned with the select, and visual disconnect from the modal.
 
 **Alternative**: Use Choices.js instead of Select2 in modals (see annonces/create.blade.php for example — Choices.js renders inline with `position: 'bottom'` and `overflow: visible`).
 
