@@ -7,6 +7,7 @@ use App\Models\ESBTPRegleAcademique;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPMatiere;
+use App\Models\ESBTPFraisSubscription;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -625,20 +626,25 @@ class ReeinscriptionService
     }
 
     /**
-     * Calculer le solde restant d'une inscription
+     * Calculer le solde restant d'une inscription basé sur les frais souscriptions actives.
+     * Si aucune souscription → solde = 0 (rien à payer).
      */
     private function calculerSoldeInscription($inscription): float
     {
-        // Utiliser la logique existante de calcul des soldes
-        $montantAttendu = $inscription->paiements()->sum('montant') + 
-                         $inscription->frais_inscription + 
-                         $inscription->montant_scolarite;
-        
-        $montantPaye = $inscription->paiements()
-            ->where('status', 'validated')
+        $subscriptions = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+            ->where('is_active', true)
+            ->get();
+
+        if ($subscriptions->isEmpty()) {
+            return 0;
+        }
+
+        $totalAttendu = $subscriptions->sum('amount');
+        $totalPaye = $inscription->paiements()
+            ->where('status', 'validé')
             ->sum('montant');
-            
-        return $montantAttendu - $montantPaye;
+
+        return $totalAttendu - $totalPaye;
     }
 
     /**
