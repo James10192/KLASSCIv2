@@ -2084,34 +2084,13 @@ function renderManageTeachersContent(linked, available) {
             const opt = new Option(`${t.name}${t.specialization ? ' — ' + t.specialization : ''}`, t.id);
             select.add(opt);
         });
-        // Re-init Select2 — dropdownParent on body, force dropdown below
+        // Re-init Select2 — dropdownParent on body with high z-index
+        // Bootstrap .modal has overflow-y:auto which clips absolutely-positioned children,
+        // so the dropdown MUST render on body to escape the modal's overflow.
         if (window.jQuery) {
             if ($(select).data('select2')) {
                 $(select).select2('destroy');
             }
-
-            // Custom adapter to force dropdown below (never flip above)
-            var AttachBody = $.fn.select2.amd.require('select2/dropdown/attachBody');
-            var DropdownSearch = $.fn.select2.amd.require('select2/dropdown/search');
-            var Dropdown = $.fn.select2.amd.require('select2/dropdown');
-            var Utils = $.fn.select2.amd.require('select2/utils');
-
-            function ForceBelow() {}
-            ForceBelow.prototype._positionDropdown = function() {
-                // Call original positioning
-                AttachBody.prototype._positionDropdown.call(this);
-                // Force --below class and position below the container
-                this.$dropdown.removeClass('select2-dropdown--above');
-                this.$dropdown.addClass('select2-dropdown--below');
-                this.$container.removeClass('select2-container--above');
-                this.$container.addClass('select2-container--below');
-            };
-
-            var CustomDropdown = Utils.Decorate(
-                Utils.Decorate(Dropdown, DropdownSearch),
-                AttachBody
-            );
-
             $(select).select2({
                 dropdownParent: $(document.body),
                 placeholder: 'Rechercher un enseignant...',
@@ -2119,30 +2098,10 @@ function renderManageTeachersContent(linked, available) {
                 theme: 'bootstrap-5',
                 width: '100%',
                 language: 'fr',
-                dropdownCssClass: 'mgt-select2-dropdown',
-                dropdownAdapter: CustomDropdown
+                dropdownCssClass: 'mgt-select2-dropdown'
             }).on('change', function () {
                 const btn = document.getElementById('mgtAssociateBtn');
                 if (btn) btn.disabled = !this.value;
-            });
-
-            // Force below positioning after open
-            $(select).on('select2:open', function() {
-                var $dropdown = $('.mgt-select2-dropdown');
-                setTimeout(function() {
-                    $dropdown.removeClass('select2-dropdown--above')
-                             .addClass('select2-dropdown--below');
-                    var $container = $(select).data('select2').$container;
-                    $container.removeClass('select2-container--above')
-                              .addClass('select2-container--below');
-                    // Reposition: place dropdown right below the select container
-                    var containerOffset = $container.offset();
-                    var containerHeight = $container.outerHeight();
-                    $dropdown.css({
-                        top: (containerOffset.top + containerHeight) + 'px',
-                        left: containerOffset.left + 'px'
-                    });
-                }, 0);
             });
         }
     }
@@ -3896,9 +3855,9 @@ function forceRefreshAvailability() {
     background: white !important;
 }
 
-/* Dropdown rendered on body — must float above modal (z-index 1055) */
-.mgt-select2-dropdown {
-    z-index: 1070 !important;
+/* Select2 dropdown on body — must be above Bootstrap modal (z-index 1055) and backdrop (1050) */
+.mgt-select2-dropdown.select2-dropdown {
+    z-index: 1075 !important;
 }
 </style>
 @endpush
