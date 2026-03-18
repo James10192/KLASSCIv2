@@ -1572,9 +1572,18 @@
                         </div>
                     @endif
 
-                    <!-- Enseignants (toggle module — visible superAdmin/secretaire) -->
+                    <!-- Personnel (exclusif : manage_personnel domine module.enseignants.access) -->
                     @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire')))
-                        @can('module.enseignants.access')
+                        @can('manage_personnel')
+                        <div class="menu-category">Personnel</div>
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.personnel.unified.index') }}" class="menu-link {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-users-cog"></i></div>
+                                <div class="menu-text">Gestion du personnel</div>
+                            </a>
+                        </div>
+                        @elsecan('module.enseignants.access')
+                        <div class="menu-category">Personnel</div>
                         <div class="menu-item">
                             <a href="{{ route('esbtp.enseignants.index') }}" class="menu-link {{ Request::routeIs('esbtp.enseignants.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-chalkboard-teacher"></i></div>
@@ -1635,12 +1644,14 @@
                         </div>
 
                         <!-- Personnel Management -->
+                        @can('manage_personnel')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.personnel.unified.index') }}" class="menu-link {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-users-cog"></i></div>
                                 <div class="menu-text">Gestion du personnel</div>
                             </a>
                         </div>
+                        @endcan
 
                         @can('module.enseignants.access')
                         <div class="menu-item">

@@ -320,8 +320,14 @@ class ESBTPEnseignantController extends Controller
                 $this->userService->generateDefaultPassword(),
             );
 
+            // Redirect flexible via permission toggle :
+            // manage_personnel → page unifiée, sinon → liste enseignants
+            $redirectRoute = auth()->user()->can('manage_personnel')
+                ? "esbtp.personnel.unified.index"
+                : "esbtp.enseignants.index";
+
             return redirect()
-                ->route("esbtp.personnel.unified.index")
+                ->route($redirectRoute)
                 ->with("success", "Enseignant créé avec succès")
                 ->with("credentials", $credentials)
                 ->with("created_teacher_id", $teacher->id);

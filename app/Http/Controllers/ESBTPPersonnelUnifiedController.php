@@ -17,21 +17,22 @@ class ESBTPPersonnelUnifiedController extends Controller
      */
     public function index(Request $request)
     {
-        // Vérifier les permissions - permettre aux coordinateurs, superAdmin et admin
-        if (!auth()->user()->hasAnyRole(['superAdmin', 'admin', 'coordinateur'])) {
+        // Vérifier les permissions via toggle (manage_personnel)
+        if (!auth()->user()->can('manage_personnel')) {
             abort(403, 'Accès non autorisé');
         }
-        
-        // Vérifier si l'utilisateur est coordinateur pour ajuster l'affichage
-        $isCoordinateur = auth()->user()->hasRole('coordinateur');
-        
+
+        // Rôle principal de l'utilisateur connecté — on cache le tab de son propre rôle
+        // (un secretaire ne gère pas d'autres secretaires, un coordinateur ne gère pas d'autres coordinateurs)
+        $userRole = auth()->user()->getRoleNames()->first();
+
         // Récupérer tous les types de personnel avec vérification des rôles
         $coordinateurs = collect();
         $secretaires = collect();
-        
+
         try {
-            // Ne récupérer les coordinateurs que si l'utilisateur connecté n'est pas coordinateur
-            if (!$isCoordinateur && Role::where('name', 'coordinateur')->exists()) {
+            // Ne récupérer les coordinateurs que si l'utilisateur n'est pas coordinateur lui-même
+            if ($userRole !== 'coordinateur' && Role::where('name', 'coordinateur')->exists()) {
                 $coordinateurs = User::role('coordinateur')
                     ->with(['roles'])
                     ->where('is_active', true)
@@ -51,8 +52,8 @@ class ESBTPPersonnelUnifiedController extends Controller
             ->get();
             
         try {
-            // Vérifier si le rôle secretaire existe
-            if (Role::where('name', 'secretaire')->exists()) {
+            // Ne récupérer les secrétaires que si l'utilisateur n'est pas secrétaire lui-même
+            if ($userRole !== 'secretaire' && Role::where('name', 'secretaire')->exists()) {
                 $secretaires = User::role('secretaire')
                     ->with(['roles'])
                     ->where('is_active', true)
@@ -87,13 +88,17 @@ class ESBTPPersonnelUnifiedController extends Controller
             'total' => $coordinateurs->count() + $enseignants->count() + $secretaires->count() + $comptables->count(),
         ];
 
+        // Rétro-compatibilité : $isCoordinateur est dérivé de $userRole
+        $isCoordinateur = ($userRole === 'coordinateur');
+
         return view('esbtp.personnel.unified-index', compact(
             'coordinateurs',
             'enseignants',
             'secretaires',
             'comptables',
             'stats',
-            'isCoordinateur'
+            'isCoordinateur',
+            'userRole'
         ));
     }
 

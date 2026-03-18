@@ -120,7 +120,12 @@
       "mcp__plugin_context7_context7__resolve-library-id",
       "mcp__plugin_context7_context7__query-docs",
       "WebFetch(domain:daveswift.com)",
-      "WebFetch(domain:packagist.org)"
+      "WebFetch(domain:packagist.org)",
+      "WebFetch(domain:transloadit.com)",
+      "WebFetch(domain:www.itsolutionstuff.com)",
+      "WebFetch(domain:codeboxr.com)",
+      "WebFetch(domain:prahladyeri.github.io)",
+      "mcp__plugin_playwright_playwright__browser_handle_dialog"
     ],
     "deny": [],
     "ask": [],
