@@ -400,15 +400,17 @@ class ManageFraisSubscriptions extends Command
                 continue;
             }
 
-            $oldSubs = $inscription->fraisSubscriptions->where('is_active', true);
+            // Vérifier TOUTES les souscriptions (actives + inactives) à cause de la contrainte unique
+            $allSubs = $inscription->fraisSubscriptions;
 
-            // Ignorer les inscriptions qui ont déjà des souscriptions actives
-            if ($oldSubs->count() > 0) {
+            // Ignorer les inscriptions qui ont déjà des souscriptions (actives ou inactives)
+            if ($allSubs->count() > 0) {
+                $activeSubs = $allSubs->where('is_active', true);
                 $skippedRows[] = [
                     $inscription->id,
                     $inscription->etudiant ? ($inscription->etudiant->nom . ' ' . substr($inscription->etudiant->prenoms ?? '', 0, 15)) : 'N/A',
-                    $oldSubs->count(),
-                    number_format($oldSubs->sum('amount'), 0, ',', ' ') . ' FCFA',
+                    $activeSubs->count() . ' actives, ' . ($allSubs->count() - $activeSubs->count()) . ' inactives',
+                    number_format($activeSubs->sum('amount'), 0, ',', ' ') . ' FCFA',
                 ];
                 continue;
             }
