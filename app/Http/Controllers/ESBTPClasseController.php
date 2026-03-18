@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPInscription;
+use App\Models\ESBTPNote;
+use App\Models\ESBTPResultat;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPMatiere;
@@ -2396,6 +2399,35 @@ class ESBTPClasseController extends Controller
                     continue;
                 }
 
+                // Restaurer les notes/résultats/bulletins archivés si l'étudiant revient dans cette classe
+                $restoredNotes = ESBTPNote::withoutGlobalScope('not_archived')
+                    ->where('etudiant_id', $etudiantId)
+                    ->where('classe_id', $classe->id)
+                    ->whereNotNull('archived_at')
+                    ->update(['archived_at' => null]);
+
+                $restoredResultats = ESBTPResultat::withoutGlobalScope('not_archived')
+                    ->where('etudiant_id', $etudiantId)
+                    ->where('classe_id', $classe->id)
+                    ->whereNotNull('archived_at')
+                    ->update(['archived_at' => null]);
+
+                $restoredBulletins = ESBTPBulletin::withoutGlobalScope('not_archived')
+                    ->where('etudiant_id', $etudiantId)
+                    ->where('classe_id', $classe->id)
+                    ->whereNotNull('archived_at')
+                    ->update(['archived_at' => null]);
+
+                if ($restoredNotes + $restoredResultats + $restoredBulletins > 0) {
+                    \Log::info('Données restaurées pour étudiant réintégré', [
+                        'etudiant_id' => $etudiantId,
+                        'classe_id' => $classe->id,
+                        'notes' => $restoredNotes,
+                        'resultats' => $restoredResultats,
+                        'bulletins' => $restoredBulletins,
+                    ]);
+                }
+
                 // Mettre à jour l'inscription
                 $inscription->update([
                     'classe_id' => $classe->id,
@@ -2476,6 +2508,28 @@ class ESBTPClasseController extends Controller
                     continue;
                 }
 
+                // Archiver les notes, résultats et bulletins de l'ancienne classe
+                $now = now();
+                $archivedNotes = ESBTPNote::where('etudiant_id', $etudiantId)
+                    ->where('classe_id', $classe->id)
+                    ->update(['archived_at' => $now]);
+
+                $archivedResultats = ESBTPResultat::where('etudiant_id', $etudiantId)
+                    ->where('classe_id', $classe->id)
+                    ->update(['archived_at' => $now]);
+
+                $archivedBulletins = ESBTPBulletin::where('etudiant_id', $etudiantId)
+                    ->where('classe_id', $classe->id)
+                    ->update(['archived_at' => $now]);
+
+                \Log::info('Données archivées pour étudiant', [
+                    'etudiant_id' => $etudiantId,
+                    'classe_id' => $classe->id,
+                    'notes' => $archivedNotes,
+                    'resultats' => $archivedResultats,
+                    'bulletins' => $archivedBulletins,
+                ]);
+
                 if ($destinationClasseId) {
                     // Transfert vers une autre classe
                     $inscription->update([
@@ -2524,6 +2578,57 @@ class ESBTPClasseController extends Controller
             ]);
             return response()->json(['success' => false, 'message' => 'Erreur serveur.'], 500);
         }
+    }
+
+    /**
+     * Vérifie les données académiques des étudiants avant retrait/transfert.
+     */
+    public function checkStudentData(Request $request, ESBTPClasse $classe)
+    {
+        $request->validate([
+            'etudiant_ids' => 'required|array|min:1',
+            'etudiant_ids.*' => 'integer',
+        ]);
+
+        $etudiantIds = $request->input('etudiant_ids');
+        $students = [];
+
+        foreach ($etudiantIds as $etudiantId) {
+            $etudiant = ESBTPEtudiant::find($etudiantId);
+            if (!$etudiant) continue;
+
+            $notesCount = ESBTPNote::where('etudiant_id', $etudiantId)
+                ->where('classe_id', $classe->id)
+                ->count();
+
+            $resultatsCount = ESBTPResultat::where('etudiant_id', $etudiantId)
+                ->where('classe_id', $classe->id)
+                ->count();
+
+            $bulletinsCount = ESBTPBulletin::where('etudiant_id', $etudiantId)
+                ->where('classe_id', $classe->id)
+                ->count();
+
+            $students[] = [
+                'etudiant_id' => $etudiantId,
+                'nom' => $etudiant->nom . ' ' . $etudiant->prenoms,
+                'notes_count' => $notesCount,
+                'resultats_count' => $resultatsCount,
+                'bulletins_count' => $bulletinsCount,
+                'has_data' => ($notesCount + $resultatsCount + $bulletinsCount) > 0,
+            ];
+        }
+
+        $totalData = collect($students)->sum(fn($s) => $s['notes_count'] + $s['resultats_count'] + $s['bulletins_count']);
+
+        return response()->json([
+            'success' => true,
+            'students' => $students,
+            'has_any_data' => $totalData > 0,
+            'total_notes' => collect($students)->sum('notes_count'),
+            'total_resultats' => collect($students)->sum('resultats_count'),
+            'total_bulletins' => collect($students)->sum('bulletins_count'),
+        ]);
     }
 
     /**

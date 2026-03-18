@@ -62,7 +62,7 @@ class GetDashboardKpisTool extends ChatbotTool
                 ->where('status', 'completed')
                 ->whereNull('deleted_at')
                 ->count();
-            $kpis['notes_saisies'] = DB::table('esbtp_notes')->whereNull('deleted_at')->count();
+            $kpis['notes_saisies'] = DB::table('esbtp_notes')->whereNull('deleted_at')->whereNull('archived_at')->count();
         }
 
         if ($focus === 'general' || $focus === 'attendance') {

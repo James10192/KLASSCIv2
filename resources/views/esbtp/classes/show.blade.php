@@ -1226,7 +1226,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (btn) btn.disabled = count === 0;
         }
 
-        // Soumettre le retrait/transfert
+        // Soumettre le retrait/transfert — Étape 1 : vérifier les données
         document.getElementById('removeSubmitBtn').addEventListener('click', function() {
             var checkboxes = document.querySelectorAll('.remove-student-checkbox:checked');
             var ids = [];
@@ -1236,13 +1236,98 @@ document.addEventListener('DOMContentLoaded', () => {
 
             var destinationSelect = document.getElementById('destinationClasseId');
             var destinationClasseId = destinationSelect.value || null;
+            var destinationName = destinationClasseId
+                ? destinationSelect.options[destinationSelect.selectedIndex].text.trim()
+                : null;
 
-            // Confirmation
-            var actionText = destinationClasseId
-                ? 'transférer ' + ids.length + ' étudiant(s) vers "' + destinationSelect.options[destinationSelect.selectedIndex].text + '"'
-                : 'retirer ' + ids.length + ' étudiant(s) de cette classe (ils seront marqués comme non affectés)';
+            var btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Vérification...';
 
-            if (!confirm('Confirmer : ' + actionText + ' ?')) return;
+            // Vérifier les données académiques avant transfert
+            fetch("{{ route('esbtp.classes.check-student-data', ['classe' => $classe->id]) }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ etudiant_ids: ids })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(checkData) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-exchange-alt me-1"></i>Retirer / Transférer <span class="badge bg-light text-warning" id="removeSelectedCount">' + ids.length + '</span> étudiant(s)';
+
+                // Construire le contenu du modal de confirmation
+                showRemoveConfirmModal(checkData, ids, destinationClasseId, destinationName);
+            })
+            .catch(function(err) {
+                console.error('Erreur vérification:', err);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-exchange-alt me-1"></i>Retirer / Transférer <span class="badge bg-light text-warning" id="removeSelectedCount">' + ids.length + '</span> étudiant(s)';
+                showNotification('danger', 'Impossible de vérifier les données.');
+            });
+        });
+
+        // Étape 2 : afficher le modal de confirmation avec les données
+        function showRemoveConfirmModal(checkData, ids, destinationClasseId, destinationName) {
+            var actionText = destinationName
+                ? 'Transférer vers <strong>' + destinationName + '</strong>'
+                : 'Retirer de la classe <strong>(non affectés)</strong>';
+
+            var warningHtml = '';
+            if (checkData.has_any_data) {
+                warningHtml = '<div class="alert alert-danger d-flex align-items-start gap-2 mb-3" style="border-radius: 8px;">' +
+                    '<i class="fas fa-exclamation-triangle mt-1" style="font-size: 1.1rem;"></i>' +
+                    '<div><strong>Données académiques détectées</strong><br>' +
+                    'Les notes, résultats et bulletins de ces étudiants dans cette classe seront <strong>archivés</strong> ' +
+                    'et ne seront plus visibles dans l\'application (moyennes, classements, bulletins).</div></div>';
+            }
+
+            var tableHtml = '<table class="table table-sm mb-0" style="font-size: 0.85rem;">' +
+                '<thead><tr><th>Étudiant</th><th class="text-center">Notes</th><th class="text-center">Résultats</th><th class="text-center">Bulletins</th></tr></thead><tbody>';
+
+            checkData.students.forEach(function(s) {
+                var rowClass = s.has_data ? 'table-warning' : '';
+                tableHtml += '<tr class="' + rowClass + '">' +
+                    '<td>' + s.nom + '</td>' +
+                    '<td class="text-center">' + (s.notes_count > 0 ? '<span class="badge bg-danger">' + s.notes_count + '</span>' : '<span class="text-muted">0</span>') + '</td>' +
+                    '<td class="text-center">' + (s.resultats_count > 0 ? '<span class="badge bg-danger">' + s.resultats_count + '</span>' : '<span class="text-muted">0</span>') + '</td>' +
+                    '<td class="text-center">' + (s.bulletins_count > 0 ? '<span class="badge bg-danger">' + s.bulletins_count + '</span>' : '<span class="text-muted">0</span>') + '</td>' +
+                    '</tr>';
+            });
+            tableHtml += '</tbody></table>';
+
+            // Injecter dans le modal de confirmation
+            var confirmBody = document.getElementById('removeConfirmBody');
+            confirmBody.innerHTML =
+                '<p class="mb-2">' + actionText + ' — <strong>' + ids.length + ' étudiant(s)</strong></p>' +
+                warningHtml + tableHtml;
+
+            // Stocker les données pour la soumission
+            document.getElementById('removeConfirmBtn').dataset.ids = JSON.stringify(ids);
+            document.getElementById('removeConfirmBtn').dataset.destinationClasseId = destinationClasseId || '';
+
+            // Bouton style selon danger
+            var confirmBtn = document.getElementById('removeConfirmBtn');
+            if (checkData.has_any_data) {
+                confirmBtn.className = 'btn btn-danger';
+                confirmBtn.innerHTML = '<i class="fas fa-archive me-1"></i>Confirmer (archiver les données)';
+            } else {
+                confirmBtn.className = 'btn btn-warning';
+                confirmBtn.innerHTML = '<i class="fas fa-exchange-alt me-1"></i>Confirmer le transfert';
+            }
+
+            // Afficher le modal de confirmation
+            var confirmModal = new bootstrap.Modal(document.getElementById('removeConfirmModal'));
+            confirmModal.show();
+        }
+
+        // Étape 3 : confirmer et exécuter le retrait/transfert
+        document.getElementById('removeConfirmBtn').addEventListener('click', function() {
+            var ids = JSON.parse(this.dataset.ids);
+            var destinationClasseId = this.dataset.destinationClasseId || null;
 
             var btn = this;
             btn.disabled = true;
@@ -1273,8 +1358,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 return response.json();
             })
             .then(function(data) {
+                // Fermer le modal de confirmation
+                var confirmModal = bootstrap.Modal.getInstance(document.getElementById('removeConfirmModal'));
+                if (confirmModal) confirmModal.hide();
+
                 if (data.success) {
-                    // Fermer le modal
+                    // Fermer le modal retirer
                     var removeModal = bootstrap.Modal.getInstance(document.getElementById('removeStudentsModal'));
                     if (removeModal) removeModal.hide();
                     // Réinitialiser
@@ -1282,19 +1371,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('removeSearchInput').value = '';
                     // Rafraîchir la table
                     refreshStudentTable();
-                    // Notification
                     showNotification('success', data.message);
                 } else {
                     showNotification('danger', data.message || 'Erreur lors du retrait.');
                 }
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-exchange-alt me-1"></i>Retirer / Transférer <span class="badge bg-light text-warning" id="removeSelectedCount">0</span> étudiant(s)';
             })
             .catch(function(err) {
                 console.error('Erreur retrait étudiants:', err);
                 showNotification('danger', err.message || 'Erreur de connexion.');
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-exchange-alt me-1"></i>Retirer / Transférer <span class="badge bg-light text-warning" id="removeSelectedCount">0</span> étudiant(s)';
             });
         });
 
@@ -1436,6 +1522,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
                 <button type="button" class="btn btn-warning" id="removeSubmitBtn" disabled>
                     <i class="fas fa-exchange-alt me-1"></i>Retirer / Transférer <span class="badge bg-light text-warning" id="removeSelectedCount">0</span> étudiant(s)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================
+     MODAL : CONFIRMATION RETRAIT/TRANSFERT
+     ========================================== -->
+<div class="modal fade" id="removeConfirmModal" tabindex="-1" aria-labelledby="removeConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #dc2626, #b91c1c); color: white;">
+                <h5 class="modal-title" id="removeConfirmModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirmation requise
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body" id="removeConfirmBody">
+                <!-- Contenu injecté dynamiquement par JS -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="removeConfirmBtn">
+                    <i class="fas fa-archive me-1"></i>Confirmer
                 </button>
             </div>
         </div>

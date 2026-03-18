@@ -1660,6 +1660,7 @@ class ESBTPResultatController extends Controller
                     // FORCE update avec Query Builder au lieu d'Eloquent pour éviter le cache
                     $affected = \DB::table('esbtp_bulletins')
                         ->where('id', $bulletin->id)
+                        ->whereNull('archived_at')
                         ->update([
                             'professeurs' => $professeursJson,
                             'updated_by' => auth()->id(),

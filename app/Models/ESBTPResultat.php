@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -9,6 +10,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class ESBTPResultat extends Model
 {
     use HasFactory, SoftDeletes;
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('not_archived', function (Builder $builder) {
+            $builder->whereNull($builder->getModel()->getTable() . '.archived_at');
+        });
+    }
 
     /**
      * La table associée au modèle.

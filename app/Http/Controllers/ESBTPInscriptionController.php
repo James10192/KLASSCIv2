@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
+use App\Models\ESBTPNote;
+use App\Models\ESBTPResultat;
 use App\Models\ESBTPFraisCategory;
 use App\Models\ESBTPFraisConfiguration;
 use App\Models\ESBTPFraisSubscription;
@@ -2561,6 +2564,39 @@ class ESBTPInscriptionController extends Controller
                     400,
                 );
             }
+
+            // Archiver les notes/résultats/bulletins de l'ancienne classe
+            if ($ancienneClasseId) {
+                $etudiantId = $inscription->etudiant_id;
+                $now = now();
+                ESBTPNote::where('etudiant_id', $etudiantId)
+                    ->where('classe_id', $ancienneClasseId)
+                    ->update(['archived_at' => $now]);
+                ESBTPResultat::where('etudiant_id', $etudiantId)
+                    ->where('classe_id', $ancienneClasseId)
+                    ->update(['archived_at' => $now]);
+                ESBTPBulletin::where('etudiant_id', $etudiantId)
+                    ->where('classe_id', $ancienneClasseId)
+                    ->update(['archived_at' => $now]);
+            }
+
+            // Restaurer les notes/résultats/bulletins archivés si l'étudiant revient dans la nouvelle classe
+            $etudiantId = $inscription->etudiant_id;
+            ESBTPNote::withoutGlobalScope('not_archived')
+                ->where('etudiant_id', $etudiantId)
+                ->where('classe_id', $nouvelleClasseId)
+                ->whereNotNull('archived_at')
+                ->update(['archived_at' => null]);
+            ESBTPResultat::withoutGlobalScope('not_archived')
+                ->where('etudiant_id', $etudiantId)
+                ->where('classe_id', $nouvelleClasseId)
+                ->whereNotNull('archived_at')
+                ->update(['archived_at' => null]);
+            ESBTPBulletin::withoutGlobalScope('not_archived')
+                ->where('etudiant_id', $etudiantId)
+                ->where('classe_id', $nouvelleClasseId)
+                ->whereNotNull('archived_at')
+                ->update(['archived_at' => null]);
 
             // Mettre à jour la classe et le statut d'affectation
             $affectationStatus = $request->input("affectation_status", $ancienneClasseId ? "réaffecté" : "affecté");

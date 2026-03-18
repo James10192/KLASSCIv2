@@ -152,6 +152,7 @@ class ESBTPNoteController extends Controller
                 ->where('annee_universitaire_id', $anneeCourante->id)
                 ->whereIn('classe_id', $classeIds)
                 ->whereNotNull('moyenne_generale')
+                ->whereNull('archived_at')
                 ->groupBy('classe_id', 'periode')
                 ->get()
             : collect();

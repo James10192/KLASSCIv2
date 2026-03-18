@@ -52,7 +52,7 @@ class CheckESBTPNotesTable extends Command
             }
             
             // Vérifier le nombre de notes
-            $count = DB::table('esbtp_notes')->count();
+            $count = DB::table('esbtp_notes')->whereNull('archived_at')->count();
             $this->info('Nombre d\'enregistrements: ' . $count);
             
             return 0;

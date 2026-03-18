@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -9,6 +10,19 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class ESBTPNote extends Model
 {
     use HasFactory, SoftDeletes;
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('not_archived', function (Builder $builder) {
+            $builder->whereNull($builder->getModel()->getTable() . '.archived_at');
+        });
+
+        static::saving(function ($note) {
+            if ($note->evaluation) {
+                $note->semestre = (int) str_replace('semestre', '', $note->evaluation->periode);
+            }
+        });
+    }
 
     /**
      * La table associée au modèle.
@@ -326,12 +340,4 @@ class ESBTPNote extends Model
         ];
     }
 
-    protected static function booted()
-    {
-        static::saving(function ($note) {
-            if ($note->evaluation) {
-                $note->semestre = (int) str_replace('semestre', '', $note->evaluation->periode);
-            }
-        });
-    }
 }
