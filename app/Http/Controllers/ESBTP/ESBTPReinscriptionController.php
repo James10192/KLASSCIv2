@@ -168,49 +168,13 @@ class ESBTPReinscriptionController extends Controller
      */
     private function calculerTotalAttendu($inscription)
     {
-        $affectationStatus = $inscription->affectation_status ?? 'affecté';
-
-        // Souscriptions actives de cet étudiant pour cette inscription
+        // Basé UNIQUEMENT sur les frais souscriptions actives.
+        // Pas de souscriptions → rien à payer → 0.
         $subscriptions = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
             ->where('is_active', true)
-            ->with(['fraisCategory'])
             ->get();
 
-        // Frais obligatoires actifs
-        $mandatoryCategories = \App\Models\ESBTPFraisCategory::where('is_mandatory', true)
-            ->where('is_active', true)
-            ->get();
-
-        $totalAttendu = 0;
-
-        foreach ($mandatoryCategories as $category) {
-            // Priorité 1 : montant de la souscription individuelle
-            $subscription = $subscriptions->where('frais_category_id', $category->id)->first();
-            if ($subscription) {
-                $totalAttendu += $subscription->amount;
-                continue;
-            }
-
-            // Priorité 2 : règle filière/niveau
-            $rule = $category->getApplicableRule(
-                $inscription->classe->filiere_id,
-                $inscription->classe->niveau_etude_id,
-                $inscription->annee_universitaire_id,
-            );
-            if ($rule) {
-                $totalAttendu += $rule->getMontantByStatus($affectationStatus);
-            }
-            // Aucune règle ni souscription → ce frais n'est pas comptabilisé
-        }
-
-        // Frais optionnels souscrits (non-obligatoires)
-        foreach ($subscriptions as $subscription) {
-            if ($subscription->fraisCategory && !$subscription->fraisCategory->is_mandatory) {
-                $totalAttendu += $subscription->amount;
-            }
-        }
-
-        return $totalAttendu;
+        return $subscriptions->sum('amount');
     }
     
     /**
