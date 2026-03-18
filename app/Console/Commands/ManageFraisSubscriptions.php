@@ -21,7 +21,7 @@ class ManageFraisSubscriptions extends Command
                             {--dry-run : Prévisualiser sans modifier la base}
                             {--force : Ignorer les confirmations}';
 
-    protected $description = 'Gérer les souscriptions de frais : nettoyer ou régénérer pour une année, classe, filière, niveau ou étudiant';
+    protected $description = 'Gérer les souscriptions de frais : supprimer ou régénérer pour une année, classe, filière, niveau ou étudiant';
 
     protected ESBTPInscriptionService $inscriptionService;
 
@@ -44,15 +44,15 @@ class ManageFraisSubscriptions extends Command
         // ── Étape 1 : Choisir l'action ──
         $action = $this->choice(
             '📋 Quelle action voulez-vous effectuer ?',
-            ['Nettoyer les souscriptions', 'Régénérer les souscriptions'],
+            ['Supprimer les souscriptions', 'Régénérer les souscriptions'],
             0
         );
-        $isClean = str_contains($action, 'Nettoyer');
+        $isClean = str_contains($action, 'Supprimer');
 
         $this->newLine();
         $this->info($isClean
-            ? '🧹 Mode NETTOYAGE — Supprimer/désactiver les souscriptions de frais'
-            : '🔄 Mode RÉGÉNÉRATION — Recalculer les souscriptions depuis les configurations actuelles'
+            ? '🗑️  Mode SUPPRESSION — Supprimer/désactiver les souscriptions de frais'
+            : '🔄 Mode RÉGÉNÉRATION — Générer les souscriptions manquantes depuis les configurations actuelles'
         );
         $this->newLine();
 
@@ -191,75 +191,64 @@ class ManageFraisSubscriptions extends Command
         $this->newLine();
 
         if ($totalSubscriptions === 0 && $isClean) {
-            $this->warn('⚠️  Aucune souscription active à nettoyer.');
+            $this->warn('⚠️  Aucune souscription active à supprimer.');
             return Command::SUCCESS;
         }
 
-        // ── Étape 5 : Vérifier les paiements existants ──
-        $subscriptionIds = $inscriptions->pluck('fraisSubscriptions')->flatten()->where('is_active', true)->pluck('id');
-        $inscriptionIds = $inscriptions->pluck('id');
-
-        // Paiements liés aux mêmes inscription_id + frais_category_id
-        $categoryIdsByInscription = [];
-        foreach ($inscriptions as $insc) {
-            foreach ($insc->fraisSubscriptions->where('is_active', true) as $sub) {
-                $categoryIdsByInscription[$insc->id][] = $sub->frais_category_id;
-            }
-        }
-
-        $paiementsQuery = ESBTPPaiement::whereIn('inscription_id', $inscriptionIds)
-            ->whereNotNull('frais_category_id');
-        $paiementsCount = (clone $paiementsQuery)->count();
-        $paiementsTotal = (clone $paiementsQuery)->sum('montant');
-
-        $hasPaiements = $paiementsCount > 0;
-        $deletePaiements = false;
-
-        if ($hasPaiements) {
-            $this->newLine();
-            $this->error('⚠️  ATTENTION — PAIEMENTS EXISTANTS DÉTECTÉS');
-            $this->warn("   {$paiementsCount} paiement(s) totalisant " . number_format($paiementsTotal, 0, ',', ' ') . " FCFA sont liés à ces souscriptions.");
-            $this->newLine();
-
-            // Afficher détail des paiements (top 10)
-            $paiementsDetails = (clone $paiementsQuery)
-                ->with(['etudiant', 'fraisCategory'])
-                ->limit(10)
-                ->get();
-
-            $paiementsRows = $paiementsDetails->map(fn($p) => [
-                $p->id,
-                $p->etudiant ? ($p->etudiant->nom . ' ' . ($p->etudiant->prenoms ?? '')) : 'N/A',
-                $p->fraisCategory->name ?? 'N/A',
-                number_format($p->montant, 0, ',', ' ') . ' FCFA',
-                $p->statut ?? $p->status ?? 'N/A',
-                $p->date_paiement?->format('d/m/Y') ?? 'N/A',
-            ])->toArray();
-
-            $this->table(
-                ['Paie. ID', 'Étudiant', 'Catégorie', 'Montant', 'Statut', 'Date'],
-                $paiementsRows
-            );
-
-            if ($paiementsCount > 10) {
-                $this->info("   ... et " . ($paiementsCount - 10) . " autres paiements");
-            }
-
-            $this->newLine();
-
-            if (!$isForced) {
-                $deletePaiements = $this->confirm(
-                    '🗑️  Voulez-vous AUSSI supprimer ces paiements ? (soft-delete)',
-                    false
-                );
-            }
-        }
-
-        // ── Étape 6 : Action spécifique ──
+        // ── Étape 5 : Action spécifique ──
         if ($isClean) {
+            // Vérifier les paiements existants (uniquement pour le mode Supprimer)
+            $inscriptionIds = $inscriptions->pluck('id');
+            $paiementsQuery = ESBTPPaiement::whereIn('inscription_id', $inscriptionIds)
+                ->whereNotNull('frais_category_id');
+            $paiementsCount = (clone $paiementsQuery)->count();
+            $paiementsTotal = (clone $paiementsQuery)->sum('montant');
+
+            $hasPaiements = $paiementsCount > 0;
+            $deletePaiements = false;
+
+            if ($hasPaiements) {
+                $this->newLine();
+                $this->error('⚠️  ATTENTION — PAIEMENTS EXISTANTS DÉTECTÉS');
+                $this->warn("   {$paiementsCount} paiement(s) totalisant " . number_format($paiementsTotal, 0, ',', ' ') . " FCFA sont liés à ces souscriptions.");
+                $this->newLine();
+
+                $paiementsDetails = (clone $paiementsQuery)
+                    ->with(['etudiant', 'fraisCategory'])
+                    ->limit(10)
+                    ->get();
+
+                $paiementsRows = $paiementsDetails->map(fn($p) => [
+                    $p->id,
+                    $p->etudiant ? ($p->etudiant->nom . ' ' . ($p->etudiant->prenoms ?? '')) : 'N/A',
+                    $p->fraisCategory->name ?? 'N/A',
+                    number_format($p->montant, 0, ',', ' ') . ' FCFA',
+                    $p->statut ?? $p->status ?? 'N/A',
+                    $p->date_paiement?->format('d/m/Y') ?? 'N/A',
+                ])->toArray();
+
+                $this->table(
+                    ['Paie. ID', 'Étudiant', 'Catégorie', 'Montant', 'Statut', 'Date'],
+                    $paiementsRows
+                );
+
+                if ($paiementsCount > 10) {
+                    $this->info("   ... et " . ($paiementsCount - 10) . " autres paiements");
+                }
+
+                $this->newLine();
+
+                if (!$isForced) {
+                    $deletePaiements = $this->confirm(
+                        '🗑️  Voulez-vous AUSSI supprimer ces paiements ? (soft-delete)',
+                        false
+                    );
+                }
+            }
+
             return $this->executeClean($inscriptions, $isDryRun, $isForced, $hasPaiements, $deletePaiements, $filterLabel);
         } else {
-            return $this->executeRegenerate($inscriptions, $isDryRun, $isForced, $hasPaiements, $deletePaiements, $filterLabel);
+            return $this->executeRegenerate($inscriptions, $isDryRun, $isForced, $filterLabel);
         }
     }
 
@@ -363,7 +352,7 @@ class ManageFraisSubscriptions extends Command
         $this->newLine(2);
 
         // Résumé final
-        $this->info('✅ NETTOYAGE TERMINÉ');
+        $this->info('✅ SUPPRESSION TERMINÉE');
         $this->table(['Métrique', 'Valeur'], [
             ['Scope', $filterLabel],
             ['Inscriptions traitées', $processed],
@@ -382,15 +371,12 @@ class ManageFraisSubscriptions extends Command
     /**
      * Exécuter la régénération des souscriptions
      */
-    private function executeRegenerate($inscriptions, bool $isDryRun, bool $isForced, bool $hasPaiements, bool $deletePaiements, string $filterLabel): int
+    private function executeRegenerate($inscriptions, bool $isDryRun, bool $isForced, string $filterLabel): int
     {
         $this->newLine();
-        $this->info('🔄 Les souscriptions actuelles seront remplacées par celles calculées depuis les configurations.');
+        $this->info('🔄 Les souscriptions seront générées UNIQUEMENT pour les inscriptions sans souscriptions actives.');
+        $this->info('   Les inscriptions ayant déjà des souscriptions actives seront ignorées.');
         $this->info('   Le statut d\'affectation de chaque inscription sera respecté.');
-
-        if ($deletePaiements) {
-            $this->warn('⚠️  Les paiements associés seront AUSSI supprimés (soft-delete) avant régénération.');
-        }
 
         // Prévisualisation des changements
         $this->newLine();
@@ -398,9 +384,9 @@ class ManageFraisSubscriptions extends Command
         $this->newLine();
 
         $diffRows = [];
-        $totalOldAmount = 0;
         $totalNewAmount = 0;
         $inscriptionsToProcess = [];
+        $skippedRows = [];
 
         foreach ($inscriptions as $inscription) {
             $classe = $inscription->classe;
@@ -409,14 +395,23 @@ class ManageFraisSubscriptions extends Command
                     $inscription->id,
                     $inscription->etudiant ? $inscription->etudiant->nom : 'N/A',
                     '⚠️  Pas de classe',
-                    '-', '-', '-',
+                    '-', '-',
                 ];
                 continue;
             }
 
             $oldSubs = $inscription->fraisSubscriptions->where('is_active', true);
-            $oldAmount = $oldSubs->sum('amount');
-            $totalOldAmount += $oldAmount;
+
+            // Ignorer les inscriptions qui ont déjà des souscriptions actives
+            if ($oldSubs->count() > 0) {
+                $skippedRows[] = [
+                    $inscription->id,
+                    $inscription->etudiant ? ($inscription->etudiant->nom . ' ' . substr($inscription->etudiant->prenoms ?? '', 0, 15)) : 'N/A',
+                    $oldSubs->count(),
+                    number_format($oldSubs->sum('amount'), 0, ',', ' ') . ' FCFA',
+                ];
+                continue;
+            }
 
             // Calculer les nouveaux frais
             $affectationStatus = $inscription->affectation_status ?? 'affecté';
@@ -428,45 +423,62 @@ class ManageFraisSubscriptions extends Command
             $newAmount = array_sum(array_column($newFees, 'amount'));
             $totalNewAmount += $newAmount;
 
-            $diff = $newAmount - $oldAmount;
-            $diffStr = ($diff >= 0 ? '+' : '') . number_format($diff, 0, ',', ' ');
-
             $diffRows[] = [
                 $inscription->id,
                 $inscription->etudiant ? ($inscription->etudiant->nom . ' ' . substr($inscription->etudiant->prenoms ?? '', 0, 15)) : 'N/A',
                 $affectationStatus,
-                number_format($oldAmount, 0, ',', ' '),
+                count($newFees),
                 number_format($newAmount, 0, ',', ' '),
-                $diffStr,
             ];
 
             $inscriptionsToProcess[] = [
                 'inscription' => $inscription,
                 'newFees' => $newFees,
-                'oldAmount' => $oldAmount,
                 'newAmount' => $newAmount,
             ];
         }
 
-        // Afficher le diff
+        // Afficher les inscriptions ignorées (souscriptions existantes)
+        if (count($skippedRows) > 0) {
+            $this->info("⏭️  Inscriptions IGNORÉES (souscriptions actives existantes) : " . count($skippedRows));
+            if (count($skippedRows) > 10) {
+                $this->table(
+                    ['Insc. ID', 'Étudiant', 'Sousc. actives', 'Montant'],
+                    array_slice($skippedRows, 0, 5)
+                );
+                $this->info("   ... et " . (count($skippedRows) - 5) . " autres ignorées");
+            } else {
+                $this->table(
+                    ['Insc. ID', 'Étudiant', 'Sousc. actives', 'Montant'],
+                    $skippedRows
+                );
+            }
+            $this->newLine();
+        }
+
+        // Afficher les inscriptions à traiter
+        if (count($diffRows) === 0) {
+            $this->warn('⚠️  Toutes les inscriptions ont déjà des souscriptions actives. Rien à régénérer.');
+            return Command::SUCCESS;
+        }
+
+        $this->info("🆕 Inscriptions SANS souscriptions (à générer) : " . count($diffRows));
         if (count($diffRows) > 20) {
             $this->table(
-                ['Insc. ID', 'Étudiant', 'Affectation', 'Ancien (FCFA)', 'Nouveau (FCFA)', 'Diff'],
+                ['Insc. ID', 'Étudiant', 'Affectation', 'Nb frais', 'Montant (FCFA)'],
                 array_slice($diffRows, 0, 15)
             );
             $this->info("   ... et " . (count($diffRows) - 15) . " autres inscriptions");
         } else {
             $this->table(
-                ['Insc. ID', 'Étudiant', 'Affectation', 'Ancien (FCFA)', 'Nouveau (FCFA)', 'Diff'],
+                ['Insc. ID', 'Étudiant', 'Affectation', 'Nb frais', 'Montant (FCFA)'],
                 $diffRows
             );
         }
 
         $this->newLine();
-        $totalDiff = $totalNewAmount - $totalOldAmount;
-        $this->info("📊 Total ancien : " . number_format($totalOldAmount, 0, ',', ' ') . " FCFA");
-        $this->info("📊 Total nouveau : " . number_format($totalNewAmount, 0, ',', ' ') . " FCFA");
-        $this->info("📊 Différence : " . ($totalDiff >= 0 ? '+' : '') . number_format($totalDiff, 0, ',', ' ') . " FCFA");
+        $this->info("📊 Total à générer : " . number_format($totalNewAmount, 0, ',', ' ') . " FCFA pour " . count($inscriptionsToProcess) . " inscription(s)");
+        $this->info("📊 Ignorées : " . count($skippedRows) . " inscription(s) avec souscriptions existantes");
         $this->newLine();
 
         if (!$isForced && !$this->confirm('Confirmer la régénération ?', false)) {
@@ -477,8 +489,6 @@ class ManageFraisSubscriptions extends Command
         // Exécution
         $processed = 0;
         $subsCreated = 0;
-        $subsRemoved = 0;
-        $paiementsDeleted = 0;
         $errors = 0;
 
         $progress = $this->output->createProgressBar(count($inscriptionsToProcess));
@@ -493,32 +503,7 @@ class ManageFraisSubscriptions extends Command
                     DB::beginTransaction();
                 }
 
-                // 1. Supprimer les paiements si demandé
-                if ($deletePaiements && !$isDryRun) {
-                    $categoryIds = $inscription->fraisSubscriptions
-                        ->where('is_active', true)
-                        ->pluck('frais_category_id')
-                        ->toArray();
-
-                    if (!empty($categoryIds)) {
-                        $pCount = ESBTPPaiement::where('inscription_id', $inscription->id)
-                            ->whereIn('frais_category_id', $categoryIds)
-                            ->count();
-                        ESBTPPaiement::where('inscription_id', $inscription->id)
-                            ->whereIn('frais_category_id', $categoryIds)
-                            ->delete();
-                        $paiementsDeleted += $pCount;
-                    }
-                }
-
-                // 2. Supprimer les anciennes souscriptions (hard-delete)
-                $oldCount = $inscription->fraisSubscriptions()->where('is_active', true)->count();
-                if (!$isDryRun) {
-                    $inscription->fraisSubscriptions()->where('is_active', true)->delete();
-                }
-                $subsRemoved += $oldCount;
-
-                // 3. Créer les nouvelles souscriptions
+                // Créer les nouvelles souscriptions (pas d'anciennes à supprimer car filtrées)
                 foreach ($newFees as $fee) {
                     if ($fee['amount'] > 0) {
                         if (!$isDryRun) {
@@ -542,7 +527,6 @@ class ManageFraisSubscriptions extends Command
 
                     Log::info('esbtp:manage-fees regenerate', [
                         'inscription_id' => $inscription->id,
-                        'old_amount' => $item['oldAmount'],
                         'new_amount' => $item['newAmount'],
                         'fees_count' => count($newFees),
                     ]);
@@ -574,12 +558,9 @@ class ManageFraisSubscriptions extends Command
         $this->table(['Métrique', 'Valeur'], [
             ['Scope', $filterLabel],
             ['Inscriptions traitées', $processed],
-            ['Anciennes souscriptions supprimées', $subsRemoved],
+            ['Inscriptions ignorées (souscriptions existantes)', count($skippedRows)],
             ['Nouvelles souscriptions créées', $subsCreated],
-            ['Paiements supprimés', $paiementsDeleted],
-            ['Ancien total', number_format($totalOldAmount, 0, ',', ' ') . ' FCFA'],
-            ['Nouveau total', number_format($totalNewAmount, 0, ',', ' ') . ' FCFA'],
-            ['Différence', ($totalDiff >= 0 ? '+' : '') . number_format($totalDiff, 0, ',', ' ') . ' FCFA'],
+            ['Total généré', number_format($totalNewAmount, 0, ',', ' ') . ' FCFA'],
             ['Erreurs', $errors],
         ]);
 
