@@ -3582,20 +3582,21 @@ function forceRefreshAvailability() {
 }
 
 /* Add card */
+/* Add card */
 .mgt-add-card {
     display: flex;
-    gap: 0.75rem;
+    gap: 0;
     align-items: stretch;
-    padding: 1rem;
-    background: white;
+    background: linear-gradient(135deg, #f0f4ff 0%, #e8eef9 100%);
     border-radius: 14px;
-    border: 2px solid #e8ecf1;
+    border: 2px solid rgba(4, 83, 203, 0.12);
+    overflow: hidden;
     transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .mgt-add-card:focus-within {
-    border-color: #0453cb;
-    box-shadow: 0 0 0 4px rgba(4, 83, 203, 0.08);
+    border-color: rgba(4, 83, 203, 0.3);
+    box-shadow: 0 0 0 4px rgba(4, 83, 203, 0.06);
 }
 
 .mgt-add-select-wrap {
@@ -3603,36 +3604,40 @@ function forceRefreshAvailability() {
     position: relative;
     display: flex;
     align-items: center;
+    min-width: 0;
 }
 
 .mgt-add-search-icon {
     position: absolute;
-    left: 14px;
-    color: #94a3b8;
-    font-size: 0.85rem;
+    left: 16px;
+    color: #0453cb;
+    font-size: 0.8rem;
     z-index: 1;
     pointer-events: none;
-    transition: color 0.2s ease;
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
 }
 
 .mgt-add-select-wrap:focus-within .mgt-add-search-icon {
-    color: #0453cb;
+    opacity: 1;
 }
 
 .mgt-select {
     flex: 1;
+    width: 100% !important;
     border: none !important;
-    padding: 0.65rem 0.9rem 0.65rem 2.4rem !important;
+    padding: 0.85rem 1rem 0.85rem 2.6rem !important;
     font-size: 0.88rem !important;
-    background: #f8fafc !important;
-    border-radius: 10px !important;
+    background: transparent !important;
+    border-radius: 0 !important;
     transition: background 0.2s ease !important;
     color: #1e293b !important;
     font-weight: 500 !important;
+    height: auto !important;
 }
 
 .mgt-select:focus {
-    background: #f1f5f9 !important;
+    background: rgba(255, 255, 255, 0.5) !important;
     box-shadow: none !important;
     outline: none !important;
 }
@@ -3641,57 +3646,41 @@ function forceRefreshAvailability() {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.25rem;
-    padding: 0.65rem 1.5rem;
-    border-radius: 10px;
+    gap: 0.35rem;
+    padding: 0.85rem 1.75rem;
+    border-radius: 0 12px 12px 0;
     background: linear-gradient(135deg, #0453cb 0%, #1e6fe0 100%);
     color: white;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 0.85rem;
+    letter-spacing: 0.01em;
     border: none;
     white-space: nowrap;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 3px 12px rgba(4, 83, 203, 0.3);
-    position: relative;
-    overflow: hidden;
-}
-
-.mgt-btn-associate::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%);
-    opacity: 0;
-    transition: opacity 0.3s ease;
+    box-shadow: -4px 0 16px rgba(4, 83, 203, 0.15);
+    flex-shrink: 0;
 }
 
 .mgt-btn-associate:hover:not(:disabled) {
     background: linear-gradient(135deg, #033ea0, #0453cb);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(4, 83, 203, 0.4);
+    box-shadow: -4px 0 24px rgba(4, 83, 203, 0.3);
     color: white;
 }
 
-.mgt-btn-associate:hover:not(:disabled)::before {
-    opacity: 1;
-}
-
 .mgt-btn-associate:active:not(:disabled) {
-    transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(4, 83, 203, 0.3);
+    box-shadow: -2px 0 8px rgba(4, 83, 203, 0.2);
 }
 
 .mgt-btn-associate:disabled {
-    background: #e2e8f0;
-    color: #94a3b8;
+    background: linear-gradient(135deg, #cbd5e1, #b0bec5);
+    color: rgba(255, 255, 255, 0.7);
     cursor: not-allowed;
-    transform: none;
     box-shadow: none;
 }
 
 .mgt-btn-associate:disabled i {
-    opacity: 0.6;
+    opacity: 0.7;
 }
 
 /* Error dialog */
@@ -3762,70 +3751,100 @@ function forceRefreshAvailability() {
     color: white;
 }
 
-/* Select2 inside modal overrides */
+/* Select2 inside modal — flush with card */
 #manageTeachersModal .select2-container {
     width: 100% !important;
 }
 
 #manageTeachersModal .select2-container--bootstrap-5 .select2-selection {
     border: none !important;
-    border-radius: 10px !important;
-    background: #f8fafc !important;
-    min-height: 40px !important;
-    padding-left: 2.4rem !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    min-height: 44px !important;
+    padding-left: 2.6rem !important;
     font-weight: 500 !important;
     box-shadow: none !important;
+    display: flex !important;
+    align-items: center !important;
 }
 
 #manageTeachersModal .select2-container--bootstrap-5 .select2-selection--single:focus,
 #manageTeachersModal .select2-container--bootstrap-5.select2-container--focus .select2-selection {
-    background: #f1f5f9 !important;
+    background: rgba(255, 255, 255, 0.5) !important;
     box-shadow: none !important;
 }
 
 #manageTeachersModal .select2-container--bootstrap-5 .select2-selection__rendered {
     color: #1e293b !important;
     padding-left: 0 !important;
+    font-weight: 500 !important;
+    line-height: 1.4 !important;
 }
 
 #manageTeachersModal .select2-container--bootstrap-5 .select2-selection__placeholder {
     color: #94a3b8 !important;
 }
 
-/* Select2 dropdown results styling */
+#manageTeachersModal .select2-container--bootstrap-5 .select2-selection__clear {
+    margin-right: 0.5rem !important;
+    color: #94a3b8 !important;
+    font-size: 1.1rem !important;
+}
+
+#manageTeachersModal .select2-container--bootstrap-5 .select2-selection__clear:hover {
+    color: #ef4444 !important;
+}
+
+/* Select2 dropdown premium styling */
+.select2-container--bootstrap-5 .select2-dropdown {
+    border: none !important;
+    border-radius: 14px !important;
+    box-shadow:
+        0 12px 40px rgba(0, 0, 0, 0.14),
+        0 2px 12px rgba(4, 83, 203, 0.06) !important;
+    overflow: hidden !important;
+    margin-top: 6px !important;
+    padding: 6px !important;
+}
+
 .select2-container--bootstrap-5 .select2-results__option {
-    padding: 0.6rem 1rem !important;
+    padding: 0.7rem 1rem !important;
     font-size: 0.88rem !important;
-    transition: background 0.15s ease !important;
+    border-radius: 8px !important;
+    margin-bottom: 2px !important;
+    transition: all 0.15s ease !important;
+    color: #334155 !important;
+    font-weight: 500 !important;
 }
 
 .select2-container--bootstrap-5 .select2-results__option--highlighted {
     background: linear-gradient(135deg, #0453cb, #1e6fe0) !important;
     color: white !important;
-    border-radius: 6px !important;
-    margin: 2px 4px !important;
 }
 
-.select2-container--bootstrap-5 .select2-dropdown {
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 12px !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
-    overflow: hidden !important;
-    margin-top: 4px !important;
+.select2-container--bootstrap-5 .select2-results__option--selected {
+    background: #f0f4ff !important;
+    color: #0453cb !important;
+}
+
+.select2-container--bootstrap-5 .select2-search--dropdown {
+    padding: 6px 6px 4px !important;
 }
 
 .select2-container--bootstrap-5 .select2-search--dropdown .select2-search__field {
     border: 2px solid #e2e8f0 !important;
-    border-radius: 8px !important;
-    padding: 0.5rem 0.75rem !important;
+    border-radius: 10px !important;
+    padding: 0.6rem 0.85rem !important;
     font-size: 0.88rem !important;
-    margin: 8px !important;
-    width: calc(100% - 16px) !important;
+    width: 100% !important;
+    background: #fafbfd !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
 }
 
 .select2-container--bootstrap-5 .select2-search--dropdown .select2-search__field:focus {
     border-color: #0453cb !important;
     box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1) !important;
+    background: white !important;
 }
 </style>
 @endpush
