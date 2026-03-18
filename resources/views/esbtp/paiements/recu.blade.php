@@ -1,420 +1,417 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-    @include('pdf.partials.theme')
+    <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Reçu de Paiement - {{ $paiement->numero_recu }}</title>
+    @php
+        $pdfCfg  = \App\Helpers\SettingsHelper::getPdfSettings();
+        $primary = $pdfCfg['primary_color'] ?? '#0453cb';
+        $hdrBg   = $pdfCfg['header_bg_color'] ?? $primary;
+        $hdrText = $pdfCfg['header_text_color'] ?? '#ffffff';
+    @endphp
     <style>
         body {
-            font-family: Arial, sans-serif;
-            font-size: 11px;
-            line-height: 1.3;
-            color: #333;
+            font-family: DejaVu Sans, Arial, sans-serif;
+            font-size: 10px;
             margin: 0;
-            padding: 0;
-            background-color: white;
-        }
-        
-        .container {
-            width: 100%;
-            max-width: 750px;
-            margin: 0 auto;
-            padding: 15px;
-        }
-        
-        /* En-tête moderne */
-        .receipt-header {
-            text-align: center;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #1e40af;
-            padding-bottom: 10px;
-        }
-        
-        .receipt-logo {
-            max-width: 80px;
-            margin-bottom: 8px;
-        }
-        
-        .receipt-title {
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 4px;
-            text-transform: uppercase;
-            color: #1e40af;
-        }
-        
-        .receipt-subtitle {
-            font-size: 14px;
-            margin-bottom: 4px;
-            color: #64748b;
-        }
-        
-        /* Numéro de reçu avec style moderne */
-        .receipt-number {
-            font-size: 16px;
-            font-weight: bold;
-            margin: 15px 0;
-            text-align: center;
-            border: 2px solid #1e40af;
             padding: 8px;
-            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
-            border-radius: 6px;
-            color: #1e40af;
+            color: #1e293b;
+            line-height: 1.4;
+            background: white;
         }
-        
-        /* Sections d'informations */
-        .info-section {
-            margin-bottom: 15px;
+
+        @page {
+            margin: 0.8cm;
+            size: A4 portrait;
         }
-        
-        .info-title {
-            font-weight: bold;
-            margin-bottom: 6px;
-            border-bottom: 1px solid #cbd5e1;
-            padding-bottom: 3px;
-            color: #1e40af;
-            font-size: 12px;
+
+        .container {
+            max-width: 100%;
+            background: white;
+            padding: 10px;
         }
-        
-        /* Tables modernisées */
-        .receipt-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 10px;
+
+        /* ── Header Banner ── */
+        .header-section {
             border-radius: 6px;
             overflow: hidden;
+            margin-bottom: 14px;
+        }
+
+        /* ── Receipt Number ── */
+        .receipt-number-section {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        /* ── Card Style ── */
+        .card-section {
             border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 16px;
         }
-        
-        .receipt-table th,
-        .receipt-table td {
-            padding: 6px 8px;
-            text-align: left;
-            border-bottom: 1px solid #e2e8f0;
+
+        /* ── Key-Value Table ── */
+        .kv-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .kv-table td {
+            padding: 8px 14px;
             font-size: 10px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
         }
-        
-        .receipt-table th {
-            background: #f8fafc;
-            font-weight: bold;
-            color: #1e40af;
-            border-bottom: 2px solid #e2e8f0;
-        }
-        
-        .receipt-table tr:last-child td {
+
+        .kv-table tr:last-child td {
             border-bottom: none;
         }
-        
-        /* Détails de paiement avec style moderne */
-        .payment-details {
-            margin: 15px 0;
-            border: 2px solid #1e40af;
-            padding: 12px;
-            border-radius: 8px;
-            background: linear-gradient(135deg, #fefefe, #f8fafc);
-        }
-        
-        .payment-title {
-            font-size: 14px;
+
+        .kv-label {
+            width: 38%;
             font-weight: bold;
-            text-align: center;
-            margin-bottom: 8px;
-            color: #1e40af;
-            padding: 6px;
-            background: rgba(30, 64, 175, 0.1);
-            border-radius: 4px;
-        }
-        
-        /* Montant avec mise en valeur */
-        .amount-display {
-            font-size: 16px;
-            font-weight: bold;
-            text-align: center;
-            margin: 12px 0;
-            color: #059669;
-            padding: 12px;
-            background: rgba(5, 150, 105, 0.1);
-            border-radius: 6px;
-            border: 2px solid #10b981;
-        }
-        
-        .amount-words {
-            text-align: center;
-            font-style: italic;
-            margin-top: 8px;
             color: #64748b;
-            padding: 8px;
-            background: #f8fafc;
-            border-radius: 4px;
-            font-size: 10px;
+            background-color: #f8fafc;
+            border-right: 1px solid #f1f5f9;
         }
-        
-        /* Section signatures modernisée */
-        .signature-section {
-            margin-top: 20px;
-            display: table;
-            width: 100%;
-            table-layout: fixed;
+
+        .kv-value {
+            font-weight: 500;
+            color: #1e293b;
         }
-        
-        .signature-box {
-            display: table-cell;
-            width: 50%;
-            border-top: 2px solid #1e40af;
-            padding-top: 8px;
-            text-align: center;
-            min-height: 40px;
-            vertical-align: top;
-        }
-        
-        .signature-box:first-child {
-            padding-right: 15px;
-        }
-        
-        .signature-box:last-child {
-            padding-left: 15px;
-        }
-        
-        .signature-label {
-            font-weight: bold;
-            margin-bottom: 6px;
-            color: #1e40af;
-            font-size: 11px;
-        }
-        
-        .signature-value {
-            color: #64748b;
-            font-size: 10px;
-        }
-        
-        /* Pied de page modernisé */
-        .receipt-footer {
-            margin-top: 20px;
-            text-align: center;
-            font-size: 9px;
-            color: #64748b;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 10px;
-        }
-        
-        .footer-warning {
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #dc2626;
-            font-size: 9px;
-        }
-        
-        .footer-contact {
-            color: #64748b;
-            line-height: 1.4;
-        }
-        
-        /* Badge de statut si nécessaire */
-        .status-badge {
+
+        /* ── Badge ── */
+        .badge {
             display: inline-block;
-            padding: 3px 6px;
-            border-radius: 12px;
+            padding: 2px 8px;
+            border-radius: 10px;
             font-size: 8px;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.3px;
         }
-        
-        .status-badge.success {
-            background: rgba(5, 150, 105, 0.1);
-            color: #059669;
-            border: 1px solid #10b981;
+
+        .badge-success {
+            background-color: #dcfce7;
+            color: #166534;
+            border: 1px solid #86efac;
         }
-        
-        .status-badge.warning {
-            background: rgba(245, 158, 11, 0.1);
-            color: #f59e0b;
-            border: 1px solid #fbbf24;
+
+        .badge-warning {
+            background-color: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
         }
-        
-        .status-badge.danger {
-            background: rgba(220, 38, 38, 0.1);
+
+        .badge-danger {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+
+        .badge-info {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+
+        /* ── Amount Section ── */
+        .amount-section {
+            border: 2px solid #059669;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        /* ── Footer ── */
+        .footer-section {
+            margin-top: 14px;
+            padding-top: 10px;
+            border-top: 2px solid {{ $primary }};
+        }
+
+        .footer-warning {
+            text-align: center;
+            font-size: 9px;
+            font-weight: bold;
             color: #dc2626;
-            border: 1px solid #ef4444;
+            margin-bottom: 5px;
+        }
+
+        .footer-contact {
+            text-align: center;
+            font-size: 8.5px;
+            color: #64748b;
+            line-height: 1.5;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- En-tête moderne -->
-        <div class="receipt-header">
-            @if(isset($settings['show_logo']) && $settings['show_logo'] && isset($settings['logo_base64']))
-                <img src="{{ $settings['logo_base64'] }}" alt="Logo École" class="receipt-logo">
-            @endif
-            <div class="receipt-title">{{ $settings['school_name'] ?? 'Ecole Spéciale du Bâtiment et des Travaux Publics' }}</div>
-            <div class="receipt-subtitle">Reçu de Paiement</div>
+
+        <!-- ═══ HEADER BANNER ═══ -->
+        <div class="header-section">
+            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                    <!-- Logo Column -->
+                    <td width="16%" style="background-color: {{ $hdrBg }}; padding: 14px 10px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.2);">
+                        @if(isset($settings['show_logo']) && $settings['show_logo'] && isset($settings['logo_base64']))
+                            <img src="{{ $settings['logo_base64'] }}"
+                                 style="max-height: 50px; max-width: 90px;"
+                                 alt="Logo">
+                        @else
+                            <div style="font-size: 28px; font-weight: 900; color: {{ $hdrText }}; opacity: 0.4;">K</div>
+                        @endif
+                    </td>
+                    <!-- Info Column -->
+                    <td width="84%" style="background-color: {{ $hdrBg }}; padding: 12px 16px; vertical-align: middle;">
+                        <!-- School Name -->
+                        <div style="font-size: 14px; font-weight: 700; color: {{ $hdrText }}; margin-bottom: 2px;">
+                            {{ $settings['school_name'] ?? 'KLASSCI' }}
+                        </div>
+                        <!-- Contact -->
+                        <div style="font-size: 8px; color: {{ $hdrText }}; opacity: 0.8; margin-bottom: 8px;">
+                            @if($settings['school_address'] ?? false){{ $settings['school_address'] }}@endif
+                            @if($settings['school_phone'] ?? false) &nbsp;|&nbsp; Tél: {{ $settings['school_phone'] }}@endif
+                            @if($settings['school_email'] ?? false) &nbsp;|&nbsp; Email: {{ $settings['school_email'] }}@endif
+                        </div>
+                        <!-- Divider + Title -->
+                        <div style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 7px;">
+                            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td width="60%" style="font-size: 12px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.5px;">
+                                        REÇU DE PAIEMENT
+                                    </td>
+                                    <td width="40%" style="font-size: 9px; color: {{ $hdrText }}; opacity: 0.75; text-align: right;">
+                                        {{ $paiement->inscription->anneeUniversitaire->libelle ?? '' }}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </td>
+                </tr>
+            </table>
         </div>
 
-        <!-- Numéro de reçu -->
-        <div class="receipt-number">
-            REÇU N° {{ $paiement->numero_recu }}
+        <!-- ═══ RECEIPT NUMBER ═══ -->
+        <div class="receipt-number-section">
+            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                    <td style="text-align: center; padding: 10px 0;">
+                        <table border="0" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
+                            <tr>
+                                <td style="font-size: 10px; font-weight: bold; color: #64748b; text-transform: uppercase; letter-spacing: 1px; padding-right: 12px; vertical-align: middle;">
+                                    Reçu N°
+                                </td>
+                                <td style="font-size: 15px; font-weight: 900; color: {{ $primary }}; background-color: #f8fafc; padding: 6px 20px; border: 2px solid {{ $primary }}; border-radius: 6px; letter-spacing: 1px;">
+                                    {{ $paiement->numero_recu }}
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
         </div>
 
-        <!-- Informations étudiant -->
-        <div class="info-section">
-            <div class="info-title">Informations de l'Étudiant</div>
-            <table class="receipt-table">
+        <!-- ═══ STUDENT INFO CARD ═══ -->
+        <div class="card-section">
+            <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
-                    <th width="40%">Matricule</th>
-                    <td>{{ $paiement->etudiant->matricule }}</td>
+                    <td style="background-color: {{ $primary }}; color: {{ $hdrText }}; padding: 8px 14px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px;">
+                        INFORMATIONS DE L'ÉTUDIANT
+                    </td>
                 </tr>
                 <tr>
-                    <th>Nom et Prénoms</th>
-                    <td>{{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet ?? 'N/A' }}</td>
+                    <td style="padding: 0;">
+                        <table class="kv-table">
+                            <tr>
+                                <td class="kv-label">Matricule</td>
+                                <td class="kv-value" style="font-family: 'Courier New', monospace; font-weight: 700;">{{ $paiement->etudiant->matricule }}</td>
+                            </tr>
+                            <tr>
+                                <td class="kv-label">Nom et Prénoms</td>
+                                <td class="kv-value" style="font-weight: 700;">{{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet ?? 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="kv-label">Filière</td>
+                                <td class="kv-value">{{ $paiement->inscription->filiere->name ?? 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="kv-label">Niveau</td>
+                                <td class="kv-value">{{ $paiement->inscription->niveauEtude->name ?? 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="kv-label">Année Universitaire</td>
+                                <td class="kv-value">{{ $paiement->inscription->anneeUniversitaire->libelle ?? 'N/A' }}</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- ═══ PAYMENT DETAILS CARD ═══ -->
+        <div class="card-section">
+            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                    <td style="background-color: {{ $primary }}; color: {{ $hdrText }}; padding: 8px 14px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px;">
+                        DÉTAILS DU PAIEMENT
+                    </td>
                 </tr>
                 <tr>
-                    <th>Filière</th>
-                    <td>{{ $paiement->inscription->filiere->name ?? 'N/A' }}</td>
-                </tr>
-                <tr>
-                    <th>Niveau</th>
-                    <td>{{ $paiement->inscription->niveauEtude->name ?? 'N/A' }}</td>
-                </tr>
-                <tr>
-                    <th>Année Universitaire</th>
-                    <td>{{ $paiement->inscription->anneeUniversitaire->libelle ?? 'N/A' }}</td>
+                    <td style="padding: 0;">
+                        <table class="kv-table">
+                            <tr>
+                                <td class="kv-label">Date de paiement</td>
+                                <td class="kv-value">{{ $paiement->date_paiement->format('d/m/Y') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="kv-label">Motif</td>
+                                <td class="kv-value">{{ $paiement->motif }}</td>
+                            </tr>
+                            @php
+                                $categoryInfo = null;
+                                $categoryColors = [
+                                    'academic' => 'success',
+                                    'service' => 'warning',
+                                    'administrative' => 'info'
+                                ];
+
+                                if ($paiement->fraisCategory) {
+                                    $categoryInfo = [
+                                        'name' => $paiement->fraisCategory->name,
+                                        'type' => $paiement->fraisCategory->category_type ?? 'academic',
+                                    ];
+                                } elseif ($paiement->categorie) {
+                                    $categoryInfo = [
+                                        'name' => $paiement->categorie->nom ?? 'Catégorie ancienne',
+                                        'type' => $paiement->categorie->nom && str_contains(strtolower($paiement->categorie->nom), 'cantine') ? 'service' : 'academic',
+                                    ];
+                                } elseif ($paiement->motif) {
+                                    $motifLower = strtolower($paiement->motif);
+                                    $type = 'academic';
+                                    if (str_contains($motifLower, 'cantine') || str_contains($motifLower, 'transport')) {
+                                        $type = 'service';
+                                    } elseif (str_contains($motifLower, 'documentation') || str_contains($motifLower, 'examen')) {
+                                        $type = 'administrative';
+                                    }
+                                    $categoryInfo = [
+                                        'name' => $paiement->motif,
+                                        'type' => $type,
+                                    ];
+                                }
+
+                                $color = $categoryColors[$categoryInfo['type'] ?? 'academic'] ?? 'secondary';
+                                $typeLabel = [
+                                    'academic' => 'Académique',
+                                    'service' => 'Service',
+                                    'administrative' => 'Administratif'
+                                ][$categoryInfo['type'] ?? 'academic'] ?? 'Académique';
+                            @endphp
+                            @if($categoryInfo)
+                            <tr>
+                                <td class="kv-label">Catégorie</td>
+                                <td class="kv-value">
+                                    {{ $categoryInfo['name'] }}
+                                    <span class="badge badge-{{ $color }}" style="margin-left: 6px;">{{ $typeLabel }}</span>
+                                </td>
+                            </tr>
+                            @endif
+                            @if($paiement->tranche)
+                            <tr>
+                                <td class="kv-label">Tranche</td>
+                                <td class="kv-value">{{ $paiement->tranche }}</td>
+                            </tr>
+                            @endif
+                            <tr>
+                                <td class="kv-label">Mode de paiement</td>
+                                <td class="kv-value">{{ $paiement->mode_paiement }}</td>
+                            </tr>
+                            @if($paiement->reference_paiement)
+                            <tr>
+                                <td class="kv-label">Référence</td>
+                                <td class="kv-value" style="font-family: 'Courier New', monospace;">{{ $paiement->reference_paiement }}</td>
+                            </tr>
+                            @endif
+                            <tr>
+                                <td class="kv-label">Statut</td>
+                                <td class="kv-value">
+                                    <span class="badge badge-{{ $paiement->status === 'validé' ? 'success' : ($paiement->status === 'en_attente' ? 'warning' : 'danger') }}">
+                                        {{ $paiement->status_formatte }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
                 </tr>
             </table>
         </div>
 
-        <!-- Détails du paiement -->
-        <div class="payment-details">
-            <div class="payment-title">Détails du Paiement</div>
-            <table class="receipt-table">
+        <!-- ═══ AMOUNT SECTION ═══ -->
+        <div class="amount-section">
+            <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
-                    <th width="40%">Date de paiement</th>
-                    <td>{{ $paiement->date_paiement->format('d/m/Y') }}</td>
-                </tr>
-                <tr>
-                    <th>Motif</th>
-                    <td>{{ $paiement->motif }}</td>
-                </tr>
-                @php
-                    $categoryInfo = null;
-                    $categoryColors = [
-                        'academic' => 'success',
-                        'service' => 'warning', 
-                        'administrative' => 'info'
-                    ];
-                    $categoryIcons = [
-                        'academic' => 'graduation-cap',
-                        'service' => 'cogs',
-                        'administrative' => 'file-alt'
-                    ];
-                    
-                    // D'abord essayer avec le nouveau système
-                    if ($paiement->fraisCategory) {
-                        $categoryInfo = [
-                            'name' => $paiement->fraisCategory->name,
-                            'type' => $paiement->fraisCategory->category_type ?? 'academic',
-                        ];
-                    }
-                    // Fallback sur l'ancien système
-                    elseif ($paiement->categorie) {
-                        $categoryInfo = [
-                            'name' => $paiement->categorie->nom ?? 'Catégorie ancienne',
-                            'type' => $paiement->categorie->nom && str_contains(strtolower($paiement->categorie->nom), 'cantine') ? 'service' : 'academic',
-                        ];
-                    }
-                    // Fallback sur le motif
-                    elseif ($paiement->motif) {
-                        $motifLower = strtolower($paiement->motif);
-                        $type = 'academic';
-                        if (str_contains($motifLower, 'cantine') || str_contains($motifLower, 'transport')) {
-                            $type = 'service';
-                        } elseif (str_contains($motifLower, 'documentation') || str_contains($motifLower, 'examen')) {
-                            $type = 'administrative';
-                        }
-                        $categoryInfo = [
-                            'name' => $paiement->motif,
-                            'type' => $type,
-                        ];
-                    }
-                    
-                    $color = $categoryColors[$categoryInfo['type'] ?? 'academic'] ?? 'secondary';
-                    $typeLabel = [
-                        'academic' => 'Académique',
-                        'service' => 'Service',
-                        'administrative' => 'Administratif'
-                    ][$categoryInfo['type'] ?? 'academic'] ?? 'Académique';
-                @endphp
-                @if($categoryInfo)
-                <tr>
-                    <th>Catégorie</th>
-                    <td>
-                        {{ $categoryInfo['name'] }}
-                        <span class="status-badge {{ $color }}" style="margin-left: 8px;">{{ $typeLabel }}</span>
+                    <td style="background-color: #059669; color: white; padding: 7px 14px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-align: center;">
+                        Montant du Paiement
                     </td>
                 </tr>
-                @endif
-                @if($paiement->tranche)
                 <tr>
-                    <th>Tranche</th>
-                    <td>{{ $paiement->tranche }}</td>
-                </tr>
-                @endif
-                <tr>
-                    <th>Mode de paiement</th>
-                    <td>{{ $paiement->mode_paiement }}</td>
-                </tr>
-                @if($paiement->reference_paiement)
-                <tr>
-                    <th>Référence</th>
-                    <td>{{ $paiement->reference_paiement }}</td>
-                </tr>
-                @endif
-                <tr>
-                    <th>Statut</th>
-                    <td>
-                        <span class="status-badge {{ $paiement->status === 'validé' ? 'success' : ($paiement->status === 'en_attente' ? 'warning' : 'danger') }}">
-                            {{ $paiement->status_formatte }}
-                        </span>
+                    <td style="padding: 18px 14px; text-align: center; background-color: #ecfdf5;">
+                        <div style="font-size: 26px; font-weight: 900; color: #059669; line-height: 1; margin-bottom: 2px;">
+                            {{ number_format($paiement->montant, 0, ',', ' ') }}
+                        </div>
+                        <div style="font-size: 13px; font-weight: 600; color: #059669; opacity: 0.7;">
+                            FCFA
+                        </div>
+                        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(5,150,105,0.25); font-size: 10px; font-style: italic; color: #64748b;">
+                            {{ ucfirst(\App\Services\NumberToWords::convert($paiement->montant)) }} Francs CFA
+                        </div>
                     </td>
                 </tr>
             </table>
-
-            <!-- Montant avec style moderne -->
-            <div class="amount-display">
-                Montant: {{ number_format($paiement->montant, 0, ',', ' ') }} FCFA
-            </div>
-
-            <div class="amount-words">
-                {{ ucfirst(\App\Services\NumberToWords::convert($paiement->montant)) }} Francs CFA
-            </div>
         </div>
 
-        <!-- Signatures modernisées -->
-        <div class="signature-section">
-            <div class="signature-box">
-                <div class="signature-label">Date d'émission</div>
-                <div class="signature-value">
-                    {{ $paiement->date_validation ? $paiement->date_validation->format('d/m/Y') : date('d/m/Y') }}
-                </div>
-            </div>
+        <!-- ═══ SIGNATURES ═══ -->
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 14px; margin-top: 20px;">
+            <tr>
+                <td width="45%" style="text-align: center; vertical-align: top; padding-right: 20px;">
+                    <div style="font-size: 10px; font-weight: 700; color: {{ $primary }}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 35px;">
+                        Date d'émission
+                    </div>
+                    <div style="border-top: 2px solid {{ $primary }}; padding-top: 7px;">
+                        <div style="font-size: 10px; font-weight: 600; color: #1e293b;">
+                            {{ $paiement->date_validation ? $paiement->date_validation->format('d/m/Y') : date('d/m/Y') }}
+                        </div>
+                    </div>
+                </td>
+                <td width="10%"></td>
+                <td width="45%" style="text-align: center; vertical-align: top; padding-left: 20px;">
+                    <div style="font-size: 10px; font-weight: 700; color: {{ $primary }}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 35px;">
+                        Signature et Cachet
+                    </div>
+                    <div style="border-top: 2px solid {{ $primary }}; padding-top: 7px;">
+                        <div style="font-size: 10px; font-weight: 600; color: #1e293b;">
+                            {{ $paiement->validatedBy ? $paiement->validatedBy->name : 'Le Comptable' }}
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
 
-            <div class="signature-box">
-                <div class="signature-label">Signature et Cachet</div>
-                <div class="signature-value">
-                    {{ $paiement->validatedBy ? $paiement->validatedBy->name : 'Le Comptable' }}
-                </div>
-            </div>
-        </div>
-
-        <!-- Pied de page modernisé -->
-        <div class="receipt-footer">
+        <!-- ═══ FOOTER ═══ -->
+        <div class="footer-section">
             <div class="footer-warning">
                 Ce reçu est un document officiel. Toute falsification constitue un délit passible de poursuites judiciaires.
             </div>
             <div class="footer-contact">
-                {{ $settings['school_name'] ?? 'ESBTP' }} - {{ $settings['school_address'] ?? 'BP 2541 Yamoussoukro' }}<br>
-                Email: {{ $settings['school_email'] ?? 'esbtp@aviso.ci' }} - Tél: {{ $settings['school_phone'] ?? '30 64 39 93' }}
+                {{ $settings['school_name'] ?? 'KLASSCI' }} — {{ $settings['school_address'] ?? '' }}<br>
+                Email: {{ $settings['school_email'] ?? '' }} — Tél: {{ $settings['school_phone'] ?? '' }}
             </div>
         </div>
+
     </div>
 </body>
 </html>

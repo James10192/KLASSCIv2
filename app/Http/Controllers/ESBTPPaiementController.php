@@ -1090,7 +1090,16 @@ class ESBTPPaiementController extends Controller
         $settings = $this->getReceiptSettings();
 
         // Générer le PDF avec les settings
-        $pdf = PDF::loadView('esbtp.paiements.recu', compact('paiement', 'settings'));
+        $pdf = PDF::loadView('esbtp.paiements.recu', compact('paiement', 'settings'))
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'dpi' => 150,
+                'defaultFont' => 'DejaVu Sans',
+                'isRemoteEnabled' => false,
+                'isHtml5ParserEnabled' => true,
+                'isPhpEnabled' => false,
+                'isFontSubsettingEnabled' => true,
+            ]);
 
         // Définir le nom du fichier
         $filename = 'Recu_' . $paiement->numero_recu . '.pdf';
