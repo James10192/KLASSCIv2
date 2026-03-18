@@ -1035,6 +1035,29 @@ function toggleAbsence(studentId, evaluationId, isAbsent) {
         saveNote(studentId, evaluationId, 0);
     } else {
         input.val('').prop('disabled', false).attr('placeholder', 'Note...').focus();
+        // Sauvegarder la suppression de l'absence côté serveur
+        $.ajax({
+            url: '{{ route("esbtp.notes.save-ajax") }}',
+            method: 'POST',
+            dataType: 'json',
+            data: {
+                _token: '{{ csrf_token() }}',
+                etudiant_id: studentId,
+                evaluation_id: evaluationId,
+                note: '',
+                is_absent: ''
+            },
+            success: function(response) {
+                if (response.success) {
+                    if (!notesData[studentId]) notesData[studentId] = {};
+                    notesData[studentId][evaluationId] = '';
+                    notesData[studentId][evaluationId + '_absent'] = false;
+                    calculateStudentAverage(studentId);
+                    calculateClassAverages();
+                    triggerRowHighlight(studentId);
+                }
+            }
+        });
     }
 }
 
