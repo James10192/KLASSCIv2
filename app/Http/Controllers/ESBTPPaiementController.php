@@ -1063,6 +1063,7 @@ class ESBTPPaiementController extends Controller
             'inscription.anneeUniversitaire',
             'inscription.filiere',
             'inscription.niveauEtude',
+            'fraisCategory',
             'validatedBy'
         ])->findOrFail($id);
 
@@ -1083,6 +1084,7 @@ class ESBTPPaiementController extends Controller
             'inscription.anneeUniversitaire',
             'inscription.filiere',
             'inscription.niveauEtude',
+            'fraisCategory',
             'validatedBy'
         ])->findOrFail($id);
 

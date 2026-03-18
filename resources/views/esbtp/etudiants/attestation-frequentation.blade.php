@@ -32,11 +32,11 @@
         }
 
         .document-watermark {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            opacity: 0.06;
-            width: 55%;
+            position: fixed;
+            top: 30%;
+            left: 15%;
+            width: 70%;
+            opacity: 0.10;
             z-index: 0;
             text-align: center;
         }

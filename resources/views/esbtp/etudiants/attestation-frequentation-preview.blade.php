@@ -40,7 +40,7 @@
     }
     .doc-watermark {
         position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-        opacity:.05; width:55%; z-index:0; pointer-events:none; text-align:center;
+        opacity:.10; width:60%; z-index:0; pointer-events:none; text-align:center;
     }
     .doc-watermark img { max-width:100%; }
     .doc-inner { position:relative; z-index:1; padding:36px 42px 32px; }

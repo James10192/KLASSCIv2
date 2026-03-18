@@ -66,18 +66,33 @@
     .rc-document {
         font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
         color: var(--rc-text);
-        line-height: 1.5;
+        line-height: 1.45;
+        position: relative;
     }
+
+    /* ── Watermark ── */
+    .rc-watermark {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        opacity: 0.10;
+        width: 60%;
+        z-index: 0;
+        pointer-events: none;
+        text-align: center;
+    }
+    .rc-watermark img { max-width: 100%; }
 
     /* ── Header Banner ── */
     .rc-header {
         background: linear-gradient(135deg, var(--rc-primary) 0%, var(--rc-primary-light) 100%);
-        padding: 28px 32px;
+        padding: 24px 32px;
         display: flex;
         align-items: center;
         gap: 20px;
         position: relative;
         overflow: hidden;
+        z-index: 1;
     }
 
     .rc-header::before {
@@ -135,16 +150,16 @@
     }
 
     .rc-header-school {
-        font-size: 18px;
+        font-size: 19px;
         font-weight: 700;
         color: white;
         margin-bottom: 2px;
     }
 
     .rc-header-contact {
-        font-size: 12px;
+        font-size: 13px;
         color: rgba(255,255,255,0.8);
-        margin-bottom: 10px;
+        margin-bottom: 8px;
     }
 
     .rc-header-divider {
@@ -156,14 +171,14 @@
     }
 
     .rc-header-doc-title {
-        font-size: 14px;
+        font-size: 16px;
         font-weight: 700;
         color: white;
         letter-spacing: 0.5px;
     }
 
     .rc-header-doc-date {
-        font-size: 11px;
+        font-size: 12px;
         color: rgba(255,255,255,0.7);
         margin-left: auto;
     }
@@ -172,15 +187,17 @@
     .rc-number-banner {
         background: var(--rc-surface);
         border-bottom: 1px solid var(--rc-border);
-        padding: 16px 32px;
+        padding: 14px 32px;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 12px;
+        position: relative;
+        z-index: 1;
     }
 
     .rc-number-label {
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 600;
         color: var(--rc-text-secondary);
         text-transform: uppercase;
@@ -188,7 +205,7 @@
     }
 
     .rc-number-value {
-        font-size: 18px;
+        font-size: 22px;
         font-weight: 800;
         color: var(--rc-primary);
         background: white;
@@ -200,7 +217,9 @@
 
     /* ── Body Content ── */
     .rc-body {
-        padding: 28px 32px;
+        padding: 24px 32px;
+        position: relative;
+        z-index: 1;
     }
 
     /* ── Info Cards ── */
@@ -208,14 +227,14 @@
         border: 1px solid var(--rc-border);
         border-radius: 10px;
         overflow: hidden;
-        margin-bottom: 24px;
+        margin-bottom: 20px;
     }
 
     .rc-card-header {
         background: var(--rc-primary);
         color: white;
         padding: 10px 18px;
-        font-size: 13px;
+        font-size: 15px;
         font-weight: 700;
         letter-spacing: 0.3px;
         display: flex;
@@ -224,7 +243,7 @@
     }
 
     .rc-card-header i {
-        font-size: 12px;
+        font-size: 14px;
         opacity: 0.8;
     }
 
@@ -245,8 +264,8 @@
     .rc-kv-label {
         width: 200px;
         flex-shrink: 0;
-        padding: 11px 18px;
-        font-size: 13px;
+        padding: 10px 18px;
+        font-size: 15px;
         font-weight: 600;
         color: var(--rc-text-secondary);
         background: var(--rc-surface);
@@ -255,15 +274,15 @@
 
     .rc-kv-value {
         flex: 1;
-        padding: 11px 18px;
-        font-size: 13px;
+        padding: 10px 18px;
+        font-size: 15px;
         font-weight: 500;
         color: var(--rc-text);
     }
 
     /* ── Amount Section ── */
     .rc-amount-section {
-        margin-bottom: 24px;
+        margin-bottom: 20px;
         border: 2px solid var(--rc-success);
         border-radius: 12px;
         overflow: hidden;
@@ -273,7 +292,7 @@
         background: var(--rc-success);
         color: white;
         padding: 8px 18px;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -281,13 +300,13 @@
     }
 
     .rc-amount-body {
-        padding: 20px;
+        padding: 18px;
         text-align: center;
         background: var(--rc-success-bg);
     }
 
     .rc-amount-value {
-        font-size: 32px;
+        font-size: 36px;
         font-weight: 900;
         color: var(--rc-success);
         line-height: 1;
@@ -295,17 +314,17 @@
     }
 
     .rc-amount-currency {
-        font-size: 16px;
+        font-size: 18px;
         font-weight: 600;
         color: var(--rc-success);
         opacity: 0.7;
     }
 
     .rc-amount-words {
-        margin-top: 12px;
-        padding-top: 12px;
+        margin-top: 10px;
+        padding-top: 10px;
         border-top: 1px dashed rgba(5, 150, 105, 0.25);
-        font-size: 13px;
+        font-size: 15px;
         font-style: italic;
         color: var(--rc-text-secondary);
     }
@@ -314,8 +333,8 @@
     .rc-signatures {
         display: flex;
         gap: 40px;
-        margin-bottom: 24px;
-        padding-top: 8px;
+        margin-bottom: 20px;
+        padding-top: 6px;
     }
 
     .rc-signature-box {
@@ -324,12 +343,12 @@
     }
 
     .rc-signature-label {
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 700;
         color: var(--rc-primary);
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        margin-bottom: 40px;
+        margin-bottom: 36px;
     }
 
     .rc-signature-line {
@@ -338,13 +357,13 @@
     }
 
     .rc-signature-name {
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 600;
         color: var(--rc-text);
     }
 
     .rc-signature-date {
-        font-size: 11px;
+        font-size: 13px;
         color: var(--rc-text-secondary);
         margin-top: 2px;
     }
@@ -352,21 +371,23 @@
     /* ── Footer ── */
     .rc-footer {
         border-top: 2px solid var(--rc-primary);
-        padding: 16px 32px;
+        padding: 14px 32px;
         background: var(--rc-surface);
+        position: relative;
+        z-index: 1;
     }
 
     .rc-footer-warning {
         text-align: center;
-        font-size: 11px;
+        font-size: 13px;
         font-weight: 700;
         color: var(--rc-danger);
-        margin-bottom: 6px;
+        margin-bottom: 5px;
     }
 
     .rc-footer-contact {
         text-align: center;
-        font-size: 11px;
+        font-size: 13px;
         color: var(--rc-text-secondary);
     }
 
@@ -375,7 +396,7 @@
         display: inline-block;
         padding: 3px 10px;
         border-radius: 20px;
-        font-size: 10px;
+        font-size: 12px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.3px;
@@ -449,7 +470,7 @@
 
             <!-- Receipt Document -->
             <div class="preview-content">
-                <div class="rc-document">
+                <div class="rc-document" style="position: relative;">
                     @php
                         use App\Helpers\SettingsHelper;
                         $pdfCfg = SettingsHelper::getPdfSettings();
@@ -481,6 +502,11 @@
                         }
                     @endphp
 
+                    <!-- Watermark -->
+                    @if($logoUrl)
+                    <div class="rc-watermark"><img src="{{ $logoUrl }}" alt=""></div>
+                    @endif
+
                     <!-- Header Banner -->
                     <div class="rc-header" style="background: {{ $hdrBg }};">
                         <div class="rc-header-logo">
@@ -500,7 +526,7 @@
                             <div class="rc-header-divider">
                                 <div class="rc-header-doc-title" style="color: {{ $hdrText }};">REÇU DE PAIEMENT</div>
                                 <div class="rc-header-doc-date" style="color: {{ $hdrText }}; opacity: 0.7;">
-                                    {{ $paiement->inscription->anneeUniversitaire->libelle ?? '' }}
+                                    {{ $paiement->inscription->anneeUniversitaire->name ?? '' }}
                                 </div>
                             </div>
                         </div>
@@ -538,7 +564,7 @@
                                 </div>
                                 <div class="rc-kv-row">
                                     <div class="rc-kv-label">Année Universitaire</div>
-                                    <div class="rc-kv-value">{{ $paiement->inscription->anneeUniversitaire->libelle ?? 'N/A' }}</div>
+                                    <div class="rc-kv-value">{{ $paiement->inscription->anneeUniversitaire->name ?? 'N/A' }}</div>
                                 </div>
                             </div>
                         </div>
@@ -559,51 +585,17 @@
                                     <div class="rc-kv-value">{{ $paiement->motif }}</div>
                                 </div>
                                 @php
-                                    $categoryInfo = null;
-                                    $categoryColors = [
-                                        'academic' => 'success',
-                                        'service' => 'warning',
-                                        'administrative' => 'info'
-                                    ];
-
+                                    $categoryName = null;
                                     if ($paiement->fraisCategory) {
-                                        $categoryInfo = [
-                                            'name' => $paiement->fraisCategory->name,
-                                            'type' => $paiement->fraisCategory->category_type ?? 'academic',
-                                        ];
+                                        $categoryName = $paiement->fraisCategory->name;
                                     } elseif ($paiement->categorie) {
-                                        $categoryInfo = [
-                                            'name' => $paiement->categorie->nom ?? 'Catégorie ancienne',
-                                            'type' => $paiement->categorie->nom && str_contains(strtolower($paiement->categorie->nom), 'cantine') ? 'service' : 'academic',
-                                        ];
-                                    } elseif ($paiement->motif) {
-                                        $motifLower = strtolower($paiement->motif);
-                                        $type = 'academic';
-                                        if (str_contains($motifLower, 'cantine') || str_contains($motifLower, 'transport')) {
-                                            $type = 'service';
-                                        } elseif (str_contains($motifLower, 'documentation') || str_contains($motifLower, 'examen')) {
-                                            $type = 'administrative';
-                                        }
-                                        $categoryInfo = [
-                                            'name' => $paiement->motif,
-                                            'type' => $type,
-                                        ];
+                                        $categoryName = $paiement->categorie->nom ?? null;
                                     }
-
-                                    $color = $categoryColors[$categoryInfo['type'] ?? 'academic'] ?? 'secondary';
-                                    $typeLabel = [
-                                        'academic' => 'Académique',
-                                        'service' => 'Service',
-                                        'administrative' => 'Administratif'
-                                    ][$categoryInfo['type'] ?? 'academic'] ?? 'Académique';
                                 @endphp
-                                @if($categoryInfo)
+                                @if($categoryName)
                                 <div class="rc-kv-row">
-                                    <div class="rc-kv-label">Catégorie</div>
-                                    <div class="rc-kv-value">
-                                        {{ $categoryInfo['name'] }}
-                                        <span class="rc-badge rc-badge-{{ $color }} ms-2">{{ $typeLabel }}</span>
-                                    </div>
+                                    <div class="rc-kv-label">Catégorie de frais</div>
+                                    <div class="rc-kv-value">{{ $categoryName }}</div>
                                 </div>
                                 @endif
                                 @if($paiement->tranche)
