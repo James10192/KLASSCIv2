@@ -10,6 +10,20 @@
    Tokens, hero glassmorphism, tabs animés, rings SVG, payment timeline
 =================================================================== */
 
+/* ── Toast succès paiement ────────────────────────────────────── */
+.etd-toast-success {
+    position: fixed; top: 24px; left: 50%; transform: translateX(-50%) translateY(-20px);
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: #fff; padding: 14px 28px; border-radius: 12px;
+    font-size: .9rem; font-weight: 600;
+    box-shadow: 0 8px 32px rgba(16,185,129,.35);
+    z-index: 9999; opacity: 0;
+    transition: opacity .3s, transform .3s;
+    display: flex; align-items: center; gap: 10px;
+}
+.etd-toast-success.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.etd-toast-success i { font-size: 1.1rem; }
+
 /* ── Tokens ──────────────────────────────────────────────────────── */
 :root {
     --k-blue:      #0453cb;
@@ -1716,11 +1730,11 @@
                 <span class="hero-pill year"><i class="fas fa-calendar-alt"></i> {{ $anneeCourante->name }}</span>
             @endif
             <div class="hero-btns">
-                @can('update', $etudiant)
+                @if(auth()->user()->hasAnyRole(['superAdmin', 'secretaire']))
                 <a href="{{ route('esbtp.etudiants.edit', $etudiant) }}" class="hero-btn primary">
                     <i class="fas fa-edit"></i> <span class="d-none d-sm-inline">Modifier</span>
                 </a>
-                @endcan
+                @endif
 
                 {{-- Dropdown Documents — visible dès qu'il y a au moins une inscription --}}
                 @if($etudiant->inscriptions->isNotEmpty())
@@ -1937,7 +1951,12 @@
         $kpiPaiTotal = $kpiInscActive
             ? $kpiInscActive->paiements->where('status', 'validé')->sum('montant')
             : null; // null = pas inscrit cette année
-        $kpiPaiDu = 0;
+        // Total attendu via fraisSubscriptions (même logique que tab Finance L.3365)
+        $kpiTotalAttendu = 0;
+        if ($kpiInscActive) {
+            try { $kpiTotalAttendu = $kpiInscActive->fraisSubscriptions->sum('amount'); } catch(\Exception $e) {}
+        }
+        $kpiPaiDu = max(0, $kpiTotalAttendu - ($kpiPaiTotal ?? 0));
 
         // Moyenne : 1) chercher bulletins officiels de l'inscription de référence
         $kpiBulletins = $kpiInscActive
@@ -3475,7 +3494,61 @@
                 @if($finReliquats > 0)<span><span class="fin-legend-dot reliquat"></span>Reliquat ({{ number_format($finReliquats, 0, ',', ' ') }} FCFA)</span>@endif
             </div>
         </div>
+
+        {{-- Bouton nouveau paiement --}}
+        @if($finInscActive && $finSolde > 0)
+        <div style="text-align:center; margin-top:16px;">
+            <button class="hero-btn primary" style="display:inline-flex; align-items:center; gap:8px; padding:10px 24px; font-size:.88rem; border-radius:10px; background:linear-gradient(135deg, var(--k-blue), var(--k-blue-2)); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 4px 12px rgba(4,83,203,.3);"
+                    data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal"
+                    onclick="prepareEtudiantPaymentModal({{ $finInscActive->id }})">
+                <i class="fas fa-plus-circle"></i> Enregistrer un paiement
+            </button>
+        </div>
+        @endif
     </div>
+
+    {{-- ── BANDEAU PAIEMENTS EN ATTENTE ── --}}
+    @php
+        $finPaiementsEnAttente = $finPaiementsActive->filter(fn($p) =>
+            str_contains(strtolower($p->status ?? $p->statut ?? ''), 'attente')
+        );
+    @endphp
+    @if($finPaiementsEnAttente->count() > 0)
+    <div style="
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        border: 1.5px solid #fbbf24;
+        border-left: 5px solid #f59e0b;
+        border-radius: 12px;
+        padding: 14px 18px;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+    ">
+        <div style="flex-shrink:0; width:38px; height:38px; background:#f59e0b; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+            <i class="fas fa-hourglass-half" style="color:#fff; font-size:.85rem;"></i>
+        </div>
+        <div style="flex:1; min-width:180px;">
+            <div style="font-weight:700; color:#92400e; font-size:.9rem;">
+                {{ $finPaiementsEnAttente->count() }} paiement(s) en attente de validation
+            </div>
+            <div style="font-size:.82rem; color:#a16207; margin-top:2px;">
+                Total : {{ number_format($finPaiementsEnAttente->sum('montant'), 0, ',', ' ') }} FCFA
+            </div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <a href="{{ route('esbtp.paiements.index') }}?search={{ urlencode($etudiant->nom . ' ' . $etudiant->prenoms) }}&status=en_attente"
+               style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; background:#f59e0b; color:#fff; border-radius:8px; font-size:.8rem; font-weight:600; text-decoration:none; white-space:nowrap;">
+                <i class="fas fa-clock"></i> Voir les paiements en attente
+            </a>
+            <a href="{{ route('esbtp.paiements.index') }}?search={{ urlencode($etudiant->nom . ' ' . $etudiant->prenoms) }}"
+               style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; background:rgba(245,158,11,.15); color:#92400e; border:1.5px solid #fbbf24; border-radius:8px; font-size:.8rem; font-weight:600; text-decoration:none; white-space:nowrap;">
+                <i class="fas fa-list"></i> Tous les paiements
+            </a>
+        </div>
+    </div>
+    @endif
 
     {{-- ── TABLEAU RÉCAPITULATIF PAR INSCRIPTION (année active) ── --}}
     @php
@@ -3504,6 +3577,7 @@
                         <th style="text-align:right;">Payé</th>
                         <th style="text-align:right;">Solde</th>
                         <th style="text-align:center;">Avancement</th>
+                        <th style="text-align:center;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -3530,6 +3604,17 @@
                                 <div class="fin-mini-fill" style="width:{{ $subTaux }}%; background:{{ $subTaux >= 100 ? '#10b981' : ($subTaux >= 50 ? '#f59e0b' : '#ef4444') }};"></div>
                             </div>
                             <span style="font-size:.72rem; color:var(--k-muted);">{{ $subTaux }}%</span>
+                        </td>
+                        <td style="text-align:center;">
+                            @if($subSolde > 0)
+                            <button class="pmt-act-btn view" style="background:rgba(4,83,203,.08); color:var(--k-blue); border:none; border-radius:6px; padding:5px 10px; cursor:pointer; font-size:.78rem; font-weight:600;"
+                                    data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal"
+                                    onclick="prepareEtudiantPaymentModalForCategory({{ $finInscActive->id }}, {{ $sub->frais_category_id }})">
+                                <i class="fas fa-coins"></i> Payer
+                            </button>
+                            @else
+                            <span style="font-size:.75rem; color:#10b981; font-weight:600;"><i class="fas fa-check-circle"></i> Soldé</span>
+                            @endif
                         </td>
                     </tr>
                 @endforeach
@@ -3836,7 +3921,11 @@
                     @else <span class="empty">Non renseigné</span> @endif
                 </span>
             </div>
-            <div class="info-row"><span class="info-lbl">Adresse</span><span class="info-val">{{ $etudiant->adresse ?? '—' }}</span></div>
+            <div class="info-row"><span class="info-lbl">Ville de résidence</span><span class="info-val">{{ $etudiant->ville ?? '—' }}</span></div>
+            <div class="info-row"><span class="info-lbl">Commune de résidence</span><span class="info-val">{{ $etudiant->commune ?? '—' }}</span></div>
+            @if($etudiant->adresse)
+            <div class="info-row"><span class="info-lbl">Adresse complète</span><span class="info-val">{{ $etudiant->adresse }}</span></div>
+            @endif
             @if($etudiant->statut === 'abandon')
             <div class="info-row"><span class="info-lbl">Date abandon</span><span class="info-val">{{ $etudiant->date_abandon ? \Carbon\Carbon::parse($etudiant->date_abandon)->format('d/m/Y') : '—' }}</span></div>
             <div class="info-row"><span class="info-lbl">Motif abandon</span><span class="info-val">{{ $etudiant->motif_abandon ?? '—' }}</span></div>
@@ -4462,5 +4551,359 @@ function uploadEtudiantPhoto(input) {
     }
 
 })();
+
+// ════════════════════════════════════════════════════════════════
+// PAYMENT MODAL — Enregistrer un paiement depuis fiche étudiant
+// ════════════════════════════════════════════════════════════════
+// Move modal to <body> to escape stacking context (animation/transform)
+(function() {
+    var m = document.getElementById('etudiantPaymentModal');
+    if (m) document.body.appendChild(m);
+})();
+
+function prepareEtudiantPaymentModal(inscriptionId) {
+    const form = document.getElementById('etudiantPaymentForm');
+    form.action = `/esbtp/inscriptions/${inscriptionId}/valider-avec-paiement`;
+    form.reset();
+    const dateInput = form.querySelector('#etd_date_paiement');
+    if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+    // Reset validation message
+    const msgDiv = document.getElementById('etd-montant-validation-message');
+    if (msgDiv) msgDiv.style.display = 'none';
+    const montantInput = form.querySelector('#etd_montant');
+    if (montantInput) { montantInput.removeAttribute('disabled'); montantInput.value = ''; montantInput.removeAttribute('max'); }
+    window._etdInscriptionId = inscriptionId;
+    window._etdIsSubscribed = false;
+}
+
+function prepareEtudiantPaymentModalForCategory(inscriptionId, categoryId) {
+    prepareEtudiantPaymentModal(inscriptionId);
+    setTimeout(() => {
+        const sel = document.getElementById('etd_fee_category_id');
+        if (sel) { sel.value = categoryId; etdUpdateMontantRestant(); }
+    }, 100);
+}
+
+function etdUpdateMontantRestant() {
+    const inscriptionId = window._etdInscriptionId;
+    const sel = document.getElementById('etd_fee_category_id');
+    const montantInput = document.getElementById('etd_montant');
+    const categoryId = sel ? sel.value : null;
+
+    if (!categoryId || !montantInput) {
+        window._etdIsSubscribed = false;
+        if (montantInput) { montantInput.setAttribute('disabled', 'disabled'); montantInput.value = ''; }
+        const md = document.getElementById('etd-montant-validation-message');
+        if (md) md.style.display = 'none';
+        return;
+    }
+
+    fetch(`/esbtp/inscriptions/${inscriptionId}/frais/${categoryId}/montant-restant`)
+        .then(r => r.json())
+        .then(data => {
+            const md = document.getElementById('etd-montant-validation-message');
+            if (data.success && data.is_subscribed) {
+                window._etdIsSubscribed = true;
+                montantInput.removeAttribute('disabled');
+                montantInput.value = data.montant_restant;
+                montantInput.setAttribute('max', data.montant_restant);
+                if (md) {
+                    md.style.display = 'block';
+                    md.innerHTML = `<div style="background:linear-gradient(135deg,#e7f3ff,#f0f8ff);border-left:4px solid var(--k-blue);border-radius:8px;padding:.75rem 1rem;">
+                        <div style="display:flex;align-items:start;gap:.5rem;">
+                            <i class="fas fa-info-circle" style="color:var(--k-blue);margin-top:2px;"></i>
+                            <div style="flex:1;">
+                                <strong style="color:#084298;">Montant maximum :</strong>
+                                <span style="color:#052c65;font-weight:600;">${data.montant_restant.toLocaleString('fr-FR')} FCFA</span><br>
+                                <small style="color:var(--k-muted);">Total: ${data.montant_total.toLocaleString('fr-FR')} FCFA · Payé: ${data.montant_paye.toLocaleString('fr-FR')} FCFA</small>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+                montantInput.oninput = function() {
+                    const v = parseFloat(this.value) || 0;
+                    if (v > data.montant_restant) { this.setCustomValidity(`Max ${data.montant_restant.toLocaleString('fr-FR')} FCFA`); this.reportValidity(); }
+                    else this.setCustomValidity('');
+                };
+            } else {
+                window._etdIsSubscribed = false;
+                montantInput.setAttribute('disabled', 'disabled'); montantInput.value = '';
+                if (md) {
+                    md.style.display = 'block';
+                    md.innerHTML = `<div style="background:linear-gradient(135deg,#f8d7da,#f5c2c7);border-left:4px solid #dc3545;border-radius:8px;padding:.75rem 1rem;">
+                        <div style="display:flex;align-items:start;gap:.5rem;">
+                            <i class="fas fa-times-circle" style="color:#dc3545;margin-top:2px;"></i>
+                            <div style="flex:1;color:#842029;"><strong>Impossible :</strong><br>${data.message || 'Étudiant non souscrit à cette catégorie.'}</div>
+                        </div>
+                    </div>`;
+                }
+            }
+        })
+        .catch(() => {
+            window._etdIsSubscribed = false;
+            montantInput.setAttribute('disabled', 'disabled'); montantInput.value = '';
+        });
+}
+
+// AJAX submission — reste sur etudiants.show, recharge tab finances
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('etudiantPaymentForm');
+    if (!form) return;
+    let submitted = false;
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        if (!window._etdIsSubscribed) {
+            alert('❌ Veuillez sélectionner une catégorie de frais valide.');
+            return;
+        }
+        const montant = parseFloat(form.querySelector('#etd_montant').value) || 0;
+        const max = parseFloat(form.querySelector('#etd_montant').getAttribute('max')) || Infinity;
+        if (montant > max) {
+            alert(`❌ Le montant ne peut pas dépasser ${max.toLocaleString('fr-FR')} FCFA`);
+            return;
+        }
+        if (submitted) return;
+        submitted = true;
+
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const origHtml = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement...';
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+            body: new FormData(form)
+        })
+        .then(r => r.json().catch(() => ({ success: true })))
+        .then(data => {
+            // Fermer le modal
+            const modalEl = document.getElementById('etudiantPaymentModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+
+            // Afficher toast de succès
+            const toast = document.createElement('div');
+            toast.className = 'etd-toast-success';
+            toast.innerHTML = '<i class="fas fa-check-circle"></i> Paiement enregistré avec succès';
+            document.body.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('show'));
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 3500);
+
+            // Spinner sur tab finances pendant le fetch
+            const finTab = document.getElementById('tab-finances');
+            if (finTab) {
+                const overlay = document.createElement('div');
+                overlay.id = 'fin-loading-overlay';
+                overlay.style.cssText = 'position:absolute;inset:0;background:rgba(255,255,255,.75);display:flex;align-items:center;justify-content:center;z-index:10;border-radius:12px;';
+                overlay.innerHTML = '<div style="text-align:center;"><i class="fas fa-spinner fa-spin" style="font-size:2rem;color:var(--k-blue);"></i><div style="margin-top:8px;font-size:.85rem;color:var(--k-muted);font-weight:600;">Mise à jour...</div></div>';
+                finTab.style.position = 'relative';
+                finTab.appendChild(overlay);
+            }
+
+            // Fetch la page pour récupérer le HTML à jour
+            fetch(window.location.pathname, {
+                headers: { 'Accept': 'text/html' }
+            })
+            .then(r => r.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                // 1. Remplacer #tab-finances
+                const newFin = doc.getElementById('tab-finances');
+                const oldFin = document.getElementById('tab-finances');
+                if (newFin && oldFin) {
+                    oldFin.innerHTML = newFin.innerHTML;
+                    // Garder le tab actif
+                    oldFin.classList.add('active');
+                }
+
+                // 2. Remplacer .hero-kpi-strip
+                const newStrip = doc.querySelector('.hero-kpi-strip');
+                const oldStrip = document.querySelector('.hero-kpi-strip');
+                if (newStrip && oldStrip) oldStrip.innerHTML = newStrip.innerHTML;
+
+                // 3. Remplacer .kpi-grid (KPI cards overview)
+                const newGrid = doc.querySelector('.kpi-grid');
+                const oldGrid = document.querySelector('.kpi-grid');
+                if (newGrid && oldGrid) oldGrid.innerHTML = newGrid.innerHTML;
+
+                // Retirer l'overlay
+                const ov = document.getElementById('fin-loading-overlay');
+                if (ov) ov.remove();
+
+                // Re-déplacer le modal vers body (il a été recréé dans le nouveau HTML)
+                const newModal = document.getElementById('etudiantPaymentModal');
+                if (newModal && newModal.parentElement !== document.body) {
+                    document.body.appendChild(newModal);
+                }
+
+                // Reset du form pour un prochain paiement
+                submitted = false;
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = origHtml;
+            })
+            .catch(() => {
+                // Fallback : recharger la page
+                const url = new URL(window.location.href);
+                url.searchParams.set('tab', 'finances');
+                window.location.href = url.toString();
+            });
+        })
+        .catch(err => {
+            console.error('Erreur paiement:', err);
+            alert('❌ Une erreur est survenue. Veuillez réessayer.');
+            submitted = false;
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = origHtml;
+        });
+    });
+});
 </script>
+
+{{-- ═══ MODAL PAIEMENT ÉTUDIANT ═══ --}}
+@if(isset($finInscActive) && $finInscActive)
+<div class="modal fade" id="etudiantPaymentModal" tabindex="-1" aria-labelledby="etudiantPaymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius:15px; border:none; box-shadow:0 10px 40px rgba(0,0,0,.2);">
+            <div class="modal-header" style="background:linear-gradient(135deg, var(--k-blue) 0%, var(--k-blue-2) 100%); color:#fff; border-radius:15px 15px 0 0; padding:1.5rem; border:none;">
+                <h5 class="modal-title fw-bold" id="etudiantPaymentModalLabel">
+                    <i class="fas fa-money-bill-wave me-2"></i>Enregistrer un paiement
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="etudiantPaymentForm" method="POST" action="">
+                @csrf
+                <input type="hidden" name="_action" value="valider-avec-paiement">
+                <div class="modal-body" style="padding:2rem;">
+                    <div style="background:linear-gradient(135deg,#e7f3ff,#f0f8ff);border-left:4px solid var(--k-blue);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;">
+                        <div class="d-flex align-items-start gap-3">
+                            <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--k-blue),var(--k-blue-2));display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;">
+                                <i class="fas fa-user-graduate"></i>
+                            </div>
+                            <div>
+                                <div style="color:#084298;font-weight:500;margin-bottom:.25rem;">{{ $etudiant->nom_complet }}</div>
+                                <div style="color:#052c65;font-size:.9rem;">
+                                    Matricule : <strong>{{ $etudiant->matricule ?? 'N/A' }}</strong>
+                                    @if($finInscActive->classe) · {{ $finInscActive->classe->name }} @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="etd-montant-validation-message" style="display:none; margin-bottom:1rem;"></div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="etd_fee_category_id" class="form-label fw-semibold" style="color:#2d3748;font-size:.9rem;">
+                                <i class="fas fa-tags me-1" style="color:var(--k-blue);"></i>Catégorie de frais <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="etd_fee_category_id" name="fee_category_id" required
+                                    style="border:2px solid #dee2e6;border-radius:8px;font-weight:500;"
+                                    onchange="etdUpdateMontantRestant()">
+                                <option value="">Sélectionnez une catégorie</option>
+                                @if(isset($finInscActive) && $finInscActive)
+                                    @foreach($finInscActive->fraisSubscriptions as $sub)
+                                        @php
+                                            $subCatName = $sub->fraisCategory->name ?? 'Catégorie #'.$sub->frais_category_id;
+                                            $subPayeOuAttente = $finPaiementsActive->filter(fn($p) =>
+                                                ($p->frais_category_id ?? null) == ($sub->frais_category_id ?? null) &&
+                                                (str_contains(strtolower($p->status ?? $p->statut ?? ''), 'valid') ||
+                                                 str_contains(strtolower($p->status ?? $p->statut ?? ''), 'attente'))
+                                            )->sum('montant');
+                                            $subRestant = max(0, $sub->amount - $subPayeOuAttente);
+                                        @endphp
+                                        @if($subRestant > 0)
+                                        <option value="{{ $sub->frais_category_id }}">{{ $subCatName }} — reste {{ number_format($subRestant, 0, ',', ' ') }} FCFA</option>
+                                        @endif
+                                    @endforeach
+                                @endif
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="etd_montant" class="form-label fw-semibold" style="color:#2d3748;font-size:.9rem;">
+                                <i class="fas fa-coins me-1" style="color:var(--k-blue);"></i>Montant <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="etd_montant" name="montant" min="0" step="1" required disabled
+                                       style="border:2px solid #dee2e6;font-weight:600;">
+                                <span class="input-group-text" style="background:linear-gradient(135deg,#f8f9fa,#e9ecef);border:2px solid #dee2e6;border-left:none;font-weight:600;">FCFA</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="etd_mode_paiement" class="form-label fw-semibold" style="color:#2d3748;font-size:.9rem;">
+                                <i class="fas fa-credit-card me-1" style="color:var(--k-blue);"></i>Mode de paiement <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="etd_mode_paiement" name="mode_paiement" required
+                                    style="border:2px solid #dee2e6;border-radius:8px;font-weight:500;">
+                                <option value="">Sélectionnez un mode</option>
+                                <option value="especes">Espèces</option>
+                                <option value="cheque">Chèque</option>
+                                <option value="virement">Virement</option>
+                                <option value="mobile_money">Mobile Money</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="etd_reference_paiement" class="form-label fw-semibold" style="color:#2d3748;font-size:.9rem;">
+                                <i class="fas fa-hashtag me-1" style="color:#6c757d;"></i>Référence
+                            </label>
+                            <input type="text" class="form-control" id="etd_reference_paiement" name="reference_paiement"
+                                   placeholder="N° chèque, réf. virement..."
+                                   style="border:2px solid #dee2e6;border-radius:8px;">
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="etd_date_paiement" class="form-label fw-semibold" style="color:#2d3748;font-size:.9rem;">
+                                <i class="fas fa-calendar-alt me-1" style="color:var(--k-blue);"></i>Date <span class="text-danger">*</span>
+                            </label>
+                            <input type="date" class="form-control" id="etd_date_paiement" name="date_paiement" value="{{ date('Y-m-d') }}" required
+                                   style="border:2px solid #dee2e6;border-radius:8px;font-weight:500;">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="etd_observations" class="form-label fw-semibold" style="color:#2d3748;font-size:.9rem;">
+                                <i class="fas fa-comment-dots me-1" style="color:#6c757d;"></i>Observations
+                            </label>
+                            <textarea class="form-control" id="etd_observations" name="observations" rows="3"
+                                      placeholder="Commentaires..."
+                                      style="border:2px solid #dee2e6;border-radius:8px;resize:none;"></textarea>
+                        </div>
+                    </div>
+
+                    {{-- Checkbox validation directe --}}
+                    <div style="margin-top:1.25rem; padding:14px 16px; background:linear-gradient(135deg,#f0fdf4,#dcfce7); border:1.5px solid #86efac; border-radius:10px;">
+                        <div class="form-check" style="margin:0;">
+                            <input class="form-check-input" type="checkbox" id="etd_validate_payment" name="validate_payment" value="1" checked
+                                   style="width:18px; height:18px; margin-top:2px; cursor:pointer;">
+                            <label class="form-check-label" for="etd_validate_payment" style="font-weight:600; color:#166534; font-size:.88rem; cursor:pointer; margin-left:4px;">
+                                <i class="fas fa-shield-alt me-1"></i>
+                                Valider le paiement immédiatement
+                            </label>
+                            <div style="font-size:.78rem; color:#15803d; margin-top:3px; margin-left:22px;">
+                                Si décoché, le paiement sera enregistré en attente de validation.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="background:#f8f9fa;border-radius:0 0 15px 15px;padding:1.25rem 2rem;border:none;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="padding:.65rem 1.5rem;border-radius:8px;font-weight:600;border:2px solid #6c757d;">
+                        <i class="fas fa-times me-2"></i>Annuler
+                    </button>
+                    <button type="submit" class="btn btn-primary" style="padding:.65rem 1.5rem;border-radius:8px;font-weight:600;background:linear-gradient(135deg,var(--k-blue),var(--k-blue-2));border:none;box-shadow:0 4px 12px rgba(4,83,203,.3);">
+                        <i class="fas fa-check-circle me-2"></i>Enregistrer le paiement
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
 @endpush

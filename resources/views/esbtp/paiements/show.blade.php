@@ -1,599 +1,599 @@
 @extends('layouts.app')
 
-@section('title', 'Détails du Paiement #' . $paiement->numero_recu . ' - KLASSCI')
+@section('title', 'Paiement #' . $paiement->numero_recu . ' — KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    .payment-header {
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        color: white;
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-lg);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .payment-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 100px;
-        height: 100px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 50%;
-        transform: translate(50%, -50%);
-    }
-    
-    .payment-amount {
-        font-size: 2.5rem;
-        font-weight: 800;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-    
-    .status-badge {
-        padding: var(--space-sm) var(--space-md);
-        border-radius: var(--radius-full);
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        font-size: var(--text-small);
-    }
-    
-    .status-badge.validé {
-        background: rgba(16, 185, 129, 0.1);
-        color: var(--success);
-        border: 2px solid var(--success);
-    }
-    
-    .status-badge.en_attente {
-        background: rgba(245, 158, 11, 0.1);
-        color: var(--warning);
-        border: 2px solid var(--warning);
-    }
-    
-    .status-badge.rejeté {
-        background: rgba(239, 68, 68, 0.1);
-        color: var(--danger);
-        border: 2px solid var(--danger);
-    }
-    
-    .info-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: var(--space-md) 0;
-        border-bottom: 1px solid var(--border-light);
-    }
-    
-    .info-item:last-child {
-        border-bottom: none;
-    }
-    
-    .info-label {
-        font-weight: 600;
-        color: var(--text-secondary);
-        flex: 0 0 40%;
-    }
-    
-    .info-value {
-        color: var(--text-primary);
-        font-weight: 500;
-        text-align: right;
-        flex: 1;
-    }
-    
-    .student-avatar {
-        width: 60px;
-        height: 60px;
-        border-radius: var(--radius-circle);
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        font-weight: 700;
-        margin-right: var(--space-md);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    }
-    
-    .action-buttons {
-        display: flex;
-        gap: var(--space-md);
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    
-    .btn-action {
-        padding: var(--space-sm) var(--space-lg);
-        border-radius: var(--radius-small);
-        border: none;
-        font-weight: 600;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: var(--space-xs);
-        transition: all 0.3s ease;
-        white-space: nowrap;
-        min-width: 120px;
-        justify-content: center;
-    }
-    
-    .btn-action.primary {
-        background: var(--primary);
-        color: white;
-    }
-    
-    .btn-action.secondary {
-        background: var(--surface);
-        color: var(--text-primary);
-        border: 1px solid var(--border);
-    }
-    
-    .btn-action.success {
-        background: var(--success);
-        color: white;
-    }
-    
-    .btn-action.danger {
-        background: var(--danger);
-        color: white;
-    }
-    
-    .btn-action:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    }
-    
-    .comment-section {
-        background: var(--background);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        border-left: 4px solid var(--primary);
-    }
-    
-    .timeline-item {
-        font-size: var(--text-small);
-        color: var(--text-secondary);
-        padding: var(--space-sm);
-        background: var(--surface);
-        border-radius: var(--radius-small);
-        border-left: 3px solid var(--border);
-    }
-    
-    /* Styles pour le dropdown PDF compact sur page show */
-    .pdf-dropdown-show {
-        position: relative;
-        z-index: 1000;
-    }
-    
-    .pdf-dropdown-show .dropdown-menu {
-        min-width: 150px;
-        font-size: 0.9rem;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        border: 1px solid var(--border);
-        position: absolute !important;
-        z-index: 1050;
-        right: 0;
-        left: auto;
-    }
-    
-    .pdf-dropdown-show .dropdown-item {
-        padding: 0.5rem 1rem;
-        font-size: 0.9rem;
-        transition: all 0.2s ease;
-    }
-    
-    .pdf-dropdown-show .dropdown-item:hover {
-        background: rgba(var(--primary-rgb), 0.1);
-        color: var(--primary);
-    }
-    
-    .pdf-dropdown-show .dropdown-item i {
-        width: 16px;
-        text-align: center;
-        margin-right: 0.5rem;
-    }
-    
-    /* Forcer la visibilité du dropdown en surpassant les overflows */
-    .action-buttons {
-        overflow: visible !important;
-    }
-    
-    .payment-header {
-        overflow: visible !important;
-    }
-    
-    .payment-header .text-end {
-        overflow: visible !important;
-    }
+/* ===================================================================
+   PAIEMENT SHOW PREMIUM — KLASSCI Design System 2025
+   Namespace: ps-  (payment-show)
+=================================================================== */
+
+:root {
+    --k-blue:      #0453cb;
+    --k-blue-2:    #5e91de;
+    --k-surface:   #f4f7fb;
+    --k-card:      #ffffff;
+    --k-border:    #e2e8f0;
+    --k-text:      #1e293b;
+    --k-muted:     #64748b;
+    --k-success:   #10b981;
+    --k-warning:   #f59e0b;
+    --k-danger:    #ef4444;
+    --k-radius:    12px;
+    --k-radius-lg: 20px;
+    --k-shadow:    0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+    --k-shadow-lg: 0 8px 32px rgba(4,83,203,.12);
+}
+
+.ps-page { background: var(--k-surface); min-height: 100vh; }
+
+/* ── HERO ────────────────────────────────────────────────────── */
+@php
+    $statusColor = match($paiement->status) {
+        'validé' => '#10b981',
+        'en_attente' => '#f59e0b',
+        'rejeté' => '#ef4444',
+        default => '#94a3b8',
+    };
+@endphp
+
+.ps-hero {
+    position: relative;
+    background: linear-gradient(135deg, var(--k-blue) 0%, var(--k-blue-2) 100%);
+}
+.ps-hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='1.5' fill='rgba(255,255,255,0.1)'/%3E%3C/svg%3E");
+    pointer-events: none;
+}
+.ps-hero::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 48px;
+    background: linear-gradient(to top, var(--k-surface), transparent);
+}
+.ps-hero-inner {
+    position: relative; z-index: 2;
+    max-width: 1280px; margin: 0 auto;
+    padding: 32px 32px 44px;
+}
+.ps-hero-top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 20px; flex-wrap: wrap;
+}
+.ps-hero-left { flex: 1; min-width: 250px; }
+.ps-hero-right { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
+
+/* Receipt number */
+.ps-receipt {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 5px 14px; border-radius: 50px;
+    background: rgba(255,255,255,.12);
+    color: rgba(255,255,255,.9);
+    font-size: .8rem; font-weight: 600;
+    border: 1px solid rgba(255,255,255,.2);
+    backdrop-filter: blur(4px);
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: background .2s;
+}
+.ps-receipt:hover { background: rgba(255,255,255,.22); }
+.ps-receipt code { background: none; color: #fff; font-size: .8rem; font-weight: 700; }
+
+/* Amount */
+.ps-amount {
+    font-size: 2.8rem; font-weight: 900; color: #fff;
+    letter-spacing: -.03em; line-height: 1.1;
+    text-shadow: 0 2px 8px rgba(0,0,0,.15);
+    margin-bottom: 8px;
+}
+.ps-amount-currency { font-size: 1.2rem; font-weight: 600; opacity: .7; margin-left: 6px; }
+
+.ps-date {
+    font-size: .88rem; color: rgba(255,255,255,.7); font-weight: 500;
+    display: flex; align-items: center; gap: 6px;
+}
+
+/* Status pill */
+.ps-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 18px; border-radius: 50px;
+    font-size: .82rem; font-weight: 700; letter-spacing: .03em;
+    text-transform: uppercase;
+    background: {{ $statusColor }}15;
+    color: {{ $statusColor }};
+    border: 2px solid {{ $statusColor }};
+    margin-bottom: 8px;
+}
+
+/* Hero buttons */
+.ps-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 8px;
+    font-size: .82rem; font-weight: 600;
+    text-decoration: none; cursor: pointer;
+    transition: all .2s; border: none;
+}
+.ps-btn.ghost { background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.3); }
+.ps-btn.ghost:hover { background: rgba(255,255,255,.25); color: #fff; }
+.ps-btn.success { background: var(--k-success); color: #fff; }
+.ps-btn.success:hover { box-shadow: 0 4px 12px rgba(16,185,129,.4); }
+.ps-btn.danger { background: var(--k-danger); color: #fff; }
+.ps-btn.danger:hover { box-shadow: 0 4px 12px rgba(239,68,68,.4); }
+.ps-btn.warning { background: var(--k-warning); color: #fff; }
+.ps-btn.primary { background: linear-gradient(135deg, var(--k-blue), var(--k-blue-2)); color: #fff; }
+.ps-btn.primary:hover { box-shadow: 0 4px 12px rgba(4,83,203,.4); }
+
+/* Dropdown fix */
+.ps-dropdown { position: relative; }
+.ps-dropdown .dropdown-menu {
+    min-width: 180px; border-radius: 10px; border: 1px solid var(--k-border);
+    box-shadow: 0 8px 24px rgba(0,0,0,.12); overflow: hidden;
+}
+.ps-dropdown .dropdown-item { padding: 10px 16px; font-size: .85rem; font-weight: 500; transition: background .15s; }
+.ps-dropdown .dropdown-item:hover { background: rgba(4,83,203,.06); color: var(--k-blue); }
+.ps-dropdown .dropdown-item i { width: 18px; text-align: center; margin-right: 8px; }
+
+/* ── CONTENT ─────────────────────────────────────────────────── */
+.ps-content {
+    max-width: 1280px; margin: -20px auto 0;
+    padding: 0 24px 40px;
+    position: relative; z-index: 3;
+}
+
+/* ── CARDS ────────────────────────────────────────────────────── */
+.ps-card {
+    background: var(--k-card);
+    border: 1px solid var(--k-border);
+    border-radius: var(--k-radius-lg);
+    box-shadow: var(--k-shadow);
+    overflow: hidden;
+    animation: psFadeUp .5s ease both;
+}
+.ps-card:nth-child(2) { animation-delay: .06s; }
+.ps-card:nth-child(3) { animation-delay: .12s; }
+
+.ps-card-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--k-border);
+    background: linear-gradient(135deg, rgba(4,83,203,.02), rgba(94,145,222,.02));
+}
+.ps-card-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--k-blue), var(--k-blue-2));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: .85rem; flex-shrink: 0;
+}
+.ps-card-title { font-size: 1rem; font-weight: 700; color: var(--k-text); }
+.ps-card-body { padding: 24px; }
+
+/* Info rows */
+.ps-info { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+.ps-info:last-child { border-bottom: none; }
+.ps-info-lbl { font-size: .84rem; font-weight: 600; color: var(--k-muted); }
+.ps-info-val { font-size: .88rem; font-weight: 600; color: var(--k-text); text-align: right; }
+
+/* Student block */
+.ps-student {
+    display: flex; align-items: center; gap: 16px;
+    padding: 16px; margin-bottom: 16px;
+    background: linear-gradient(135deg, rgba(4,83,203,.03), rgba(94,145,222,.03));
+    border-radius: 14px; border: 1px solid rgba(4,83,203,.08);
+}
+.ps-student-avatar {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--k-blue), var(--k-blue-2));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; font-size: 1.1rem;
+    flex-shrink: 0; overflow: hidden;
+    box-shadow: 0 4px 12px rgba(4,83,203,.25);
+}
+.ps-student-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.ps-student-name { font-size: 1rem; font-weight: 700; color: var(--k-text); margin: 0 0 2px; }
+.ps-student-mat { font-size: .82rem; color: var(--k-muted); font-weight: 500; }
+
+/* Badges */
+.ps-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 12px; border-radius: 50px;
+    font-size: .76rem; font-weight: 700; letter-spacing: .02em;
+}
+.ps-badge.blue { background: rgba(4,83,203,.08); color: var(--k-blue); }
+.ps-badge.green { background: rgba(16,185,129,.08); color: var(--k-success); }
+.ps-badge.amber { background: rgba(245,158,11,.08); color: #d97706; }
+.ps-badge.info { background: rgba(14,165,233,.08); color: #0284c7; }
+
+/* Action links */
+.ps-action-links {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px;
+    padding-top: 16px; border-top: 1px solid #f1f5f9;
+}
+.ps-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 8px;
+    font-size: .82rem; font-weight: 600;
+    text-decoration: none; transition: all .2s;
+    background: rgba(4,83,203,.06); color: var(--k-blue);
+    border: 1px solid rgba(4,83,203,.12);
+}
+.ps-link:hover { background: var(--k-blue); color: #fff; }
+
+/* Timeline */
+.ps-timeline { display: flex; flex-direction: column; gap: 0; }
+.ps-tl-item {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+.ps-tl-item:last-child { border-bottom: none; }
+.ps-tl-dot {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: .7rem;
+}
+.ps-tl-dot.created { background: rgba(16,185,129,.1); color: var(--k-success); }
+.ps-tl-dot.updated { background: rgba(245,158,11,.1); color: var(--k-warning); }
+.ps-tl-dot.validated { background: rgba(4,83,203,.1); color: var(--k-blue); }
+.ps-tl-text { font-size: .84rem; color: var(--k-text); line-height: 1.5; }
+.ps-tl-text strong { font-weight: 700; }
+.ps-tl-text .ps-tl-date { color: var(--k-muted); font-size: .78rem; }
+
+/* Comment */
+.ps-comment {
+    background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+    border: 1.5px solid #bae6fd;
+    border-left: 5px solid var(--k-blue);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+}
+.ps-comment-label { font-size: .78rem; font-weight: 700; color: var(--k-blue); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+.ps-comment-text { font-size: .88rem; color: var(--k-text); line-height: 1.6; }
+
+/* Pending alert */
+.ps-pending-alert {
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+    border: 1.5px solid #fbbf24;
+    border-left: 5px solid #f59e0b;
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex; align-items: center; gap: 14px;
+    flex-wrap: wrap;
+}
+.ps-pending-icon {
+    width: 38px; height: 38px; background: #f59e0b; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.ps-pending-icon i { color: #fff; font-size: .85rem; }
+.ps-pending-text { flex: 1; min-width: 180px; }
+.ps-pending-text strong { color: #92400e; font-size: .9rem; }
+.ps-pending-text p { color: #a16207; font-size: .82rem; margin: 2px 0 0; }
+.ps-pending-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Animation ───────────────────────────────────────────────── */
+@keyframes psFadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .ps-hero-inner { padding: 20px 16px 36px; }
+    .ps-amount { font-size: 2rem; }
+    .ps-content { padding: 0 12px 32px; }
+    .ps-card-body { padding: 16px; }
+    .ps-hero-top { flex-direction: column; }
+    .ps-hero-right { width: 100%; }
+}
 </style>
 @endsection
 
 @section('content')
-<div class="dashboard-acasi">
-    <div class="main-content">
-        <!-- Header avec informations principales -->
-        <div class="payment-header">
-            <div class="d-flex justify-content-between align-items-start">
-                <div>
-                    <h1 class="mb-2">Paiement #{{ $paiement->numero_recu }}</h1>
-                    <div class="payment-amount">{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</div>
-                    <p class="mb-0 opacity-75">{{ $paiement->date_paiement->format('d/m/Y à H:i') }}</p>
+<div class="ps-page">
+
+{{-- ═══ HERO ═══ --}}
+<div class="ps-hero">
+    <div class="ps-hero-inner">
+        <div class="ps-hero-top">
+            <div class="ps-hero-left">
+                <div class="ps-receipt" onclick="navigator.clipboard.writeText('{{ $paiement->numero_recu }}'); this.querySelector('.ps-copy-hint').textContent='Copié !';" title="Cliquer pour copier">
+                    <i class="fas fa-receipt"></i>
+                    <code>{{ $paiement->numero_recu }}</code>
+                    <span class="ps-copy-hint" style="font-size:.7rem; opacity:.6;">Copier</span>
                 </div>
-                <div class="text-end">
-                    <div class="status-badge {{ $paiement->status }}">
-                        <i class="fas fa-{{ $paiement->status == 'validé' ? 'check-circle' : ($paiement->status == 'en_attente' ? 'clock' : 'times-circle') }} me-1"></i>
-                        {{ $paiement->status_formatte }}
-                    </div>
-                    <div class="action-buttons mt-3">
-                        <a href="{{ route('esbtp.paiements.index') }}" class="btn-action secondary mb-2">
-                            <i class="fas fa-arrow-left me-1"></i>Retour
-                        </a>
-                        @if($paiement->status == 'validé')
-                        <div class="dropdown pdf-dropdown-show mb-2">
-                            <button class="btn-action primary dropdown-toggle" type="button" 
-                                    id="pdfDropdownShow" data-bs-toggle="dropdown" 
-                                    aria-expanded="false">
-                                <i class="fas fa-file-pdf me-1"></i>Reçu PDF
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="pdfDropdownShow">
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('esbtp.paiements.preview', $paiement->id) }}">
-                                        <i class="fas fa-eye me-1"></i>Prévisualiser
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{{ route('esbtp.paiements.recu', $paiement->id) }}">
-                                        <i class="fas fa-download me-1"></i>Télécharger
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                        @endif
-
-                        @if(auth()->user()->hasRole('superAdmin'))
-                            <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}" class="btn-action warning mb-2">
-                                <i class="fas fa-edit me-1"></i>Modifier
-                            </a>
-
-                            <form action="{{ route('esbtp.paiements.destroy', $paiement->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Supprimer définitivement ce paiement ? Cette action est irréversible.');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn-action danger mb-2">
-                                    <i class="fas fa-trash-alt me-1"></i>Supprimer
-                                </button>
-                            </form>
-                        @endif
-
-                        @if($paiement->status === 'en_attente')
-                            <form action="{{ route('esbtp.paiements.valider', $paiement->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Êtes-vous sûr de vouloir valider ce paiement ?')">
-                                @csrf
-                                <button type="submit" class="btn-action success mb-2">
-                                    <i class="fas fa-check me-1"></i>Valider
-                                </button>
-                            </form>
-
-                            <button type="button" class="btn-action danger mb-2" data-bs-toggle="modal" data-bs-target="#modalRejeter">
-                                <i class="fas fa-times me-1"></i>Rejeter
-                            </button>
-                        @endif
-                    </div>
+                <div class="ps-amount">
+                    {{ number_format($paiement->montant, 0, ',', ' ') }}<span class="ps-amount-currency">FCFA</span>
                 </div>
-            </div>
-        </div>
-
-        <div class="row">
-            <!-- Informations du paiement -->
-            <div class="col-lg-6 mb-lg">
-                <div class="card-moderne">
-                    <div class="p-lg">
-                        <div class="section-title mb-md">
-                            <i class="fas fa-receipt me-2"></i>
-                            Informations du Paiement
-                        </div>
-                        
-                        <div class="info-item">
-                            <span class="info-label">Numéro de reçu</span>
-                            <span class="info-value">
-                                <code>{{ $paiement->numero_recu }}</code>
-                            </span>
-                        </div>
-                        
-                        <div class="info-item">
-                            <span class="info-label">Catégorie de frais</span>
-                            <span class="info-value">
-                                @if($paiement->fraisCategory)
-                                    @php
-                                        $categoryColors = [
-                                            'academic' => 'success',
-                                            'service' => 'warning',
-                                            'administrative' => 'info'
-                                        ];
-                                        $categoryIcons = [
-                                            'academic' => 'fas fa-graduation-cap',
-                                            'service' => 'fas fa-cogs',
-                                            'administrative' => 'fas fa-file-alt'
-                                        ];
-                                        $categoryType = $paiement->fraisCategory->category_type ?? 'academic';
-                                        $color = $categoryColors[$categoryType] ?? 'secondary';
-                                        $icon = $categoryIcons[$categoryType] ?? 'fas fa-money-bill';
-                                    @endphp
-                                    <span class="badge bg-{{ $color }}">
-                                        <i class="{{ $icon }} me-1"></i>{{ $paiement->fraisCategory->name }}
-                                    </span>
-                                @else
-                                    <span class="badge bg-secondary">Non définie</span>
-                                @endif
-                            </span>
-                        </div>
-                        
-                        <div class="info-item">
-                            <span class="info-label">Mode de paiement</span>
-                            <span class="info-value">
-                                <span class="badge bg-info">{{ ucfirst($paiement->mode_paiement) }}</span>
-                            </span>
-                        </div>
-                        
-                        <div class="info-item">
-                            <span class="info-label">Référence</span>
-                            <span class="info-value">
-                                <code>{{ $paiement->reference_paiement ?: 'N/A' }}</code>
-                            </span>
-                        </div>
-                        
-                        <div class="info-item">
-                            <span class="info-label">Motif</span>
-                            <span class="info-value">{{ $paiement->motif ?: 'Non spécifié' }}</span>
-                        </div>
-                        
-                        @if($paiement->status == 'validé' && $paiement->date_validation)
-                        <div class="info-item">
-                            <span class="info-label">Date de validation</span>
-                            <span class="info-value">{{ $paiement->date_validation->format('d/m/Y à H:i') }}</span>
-                        </div>
-                        <div class="info-item">
-                            <span class="info-label">Validé par</span>
-                            <span class="info-value">{{ $paiement->validatedBy ? $paiement->validatedBy->name : 'N/A' }}</span>
-                        </div>
-                        @endif
-                    </div>
+                <div class="ps-date">
+                    <i class="fas fa-calendar-day"></i>
+                    {{ $paiement->date_paiement ? $paiement->date_paiement->format('d/m/Y à H:i') : '—' }}
+                </div>
+                <div style="margin-top:14px;">
+                    <span class="ps-status">
+                        <i class="fas fa-{{ $paiement->status == 'validé' ? 'check-circle' : ($paiement->status == 'en_attente' ? 'clock' : 'times-circle') }}"></i>
+                        {{ $paiement->status == 'validé' ? 'Validé' : ($paiement->status == 'en_attente' ? 'En attente' : 'Rejeté') }}
+                    </span>
                 </div>
             </div>
 
-            <!-- Informations de l'étudiant -->
-            <div class="col-lg-6 mb-lg">
-                <div class="card-moderne">
-                    <div class="p-lg">
-                        <div class="section-title mb-md">
-                            <i class="fas fa-user-graduate me-2"></i>
-                            Informations de l'Étudiant
-                        </div>
-                        
-                        <!-- Avatar et nom -->
-                        <div class="d-flex align-items-center mb-lg">
-                            <div class="student-avatar">
-                                {{ substr($paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet, 0, 2) }}
-                            </div>
-                            <div>
-                                <h5 class="mb-1">{{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet }}</h5>
-                                <p class="text-muted mb-0">{{ $paiement->etudiant->matricule }}</p>
-                            </div>
-                        </div>
-                        
-                        <div class="info-item">
-                            <span class="info-label">Email personnel</span>
-                            <span class="info-value">
-                                @if($paiement->etudiant->email_personnel)
-                                    <a href="mailto:{{ $paiement->etudiant->email_personnel }}" class="text-primary">
-                                        {{ $paiement->etudiant->email_personnel }}
-                                    </a>
-                                @else
-                                    <span class="text-muted">Non renseigné</span>
-                                @endif
-                            </span>
-                        </div>
-                        
-                        <div class="info-item">
-                            <span class="info-label">Email institutionnel</span>
-                            <span class="info-value">
-                                @if($paiement->etudiant->user && $paiement->etudiant->user->email)
-                                    <a href="mailto:{{ $paiement->etudiant->user->email }}" class="text-primary">
-                                        {{ $paiement->etudiant->user->email }}
-                                    </a>
-                                @else
-                                    <span class="text-muted">Non disponible</span>
-                                @endif
-                            </span>
-                        </div>
-                        
-                        <div class="info-item">
-                            <span class="info-label">Filière</span>
-                            <span class="info-value">
-                                <span class="badge bg-primary">{{ $paiement->inscription->filiere->name ?? 'N/A' }}</span>
-                            </span>
-                        </div>
-                        
-                        <div class="info-item">
-                            <span class="info-label">Niveau d'étude</span>
-                            <span class="info-value">{{ $paiement->inscription->niveauEtude->name ?? 'N/A' }}</span>
-                        </div>
-                        
-                        <div class="info-item">
-                            <span class="info-label">Année universitaire</span>
-                            <span class="info-value">
-                                @if($paiement->inscription->anneeUniversitaire)
-                                    {{ $paiement->inscription->anneeUniversitaire->libelle ?: $paiement->inscription->anneeUniversitaire->annee_debut . '-' . $paiement->inscription->anneeUniversitaire->annee_fin }}
-                                @else
-                                    <span class="text-muted">Non définie</span>
-                                @endif
-                            </span>
-                        </div>
-                        
-                        <!-- Boutons d'action -->
-                        <div class="action-buttons mt-lg">
-                            <a href="{{ route('esbtp.etudiants.show', $paiement->etudiant_id) }}" class="btn-action primary mb-2">
-                                <i class="fas fa-user me-1"></i>Voir le profil
-                            </a>
-                            <a href="{{ route('esbtp.inscriptions.show', $paiement->inscription_id) }}" class="btn-action secondary mb-2">
-                                <i class="fas fa-eye me-1"></i>Voir l'inscription
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+            <div class="ps-hero-right">
+                <a href="{{ route('esbtp.paiements.index') }}" class="ps-btn ghost">
+                    <i class="fas fa-arrow-left"></i> Retour
+                </a>
 
-        <!-- Section commentaires et historique -->
-        <div class="card-moderne">
-            <div class="p-lg">
-                <div class="section-title mb-md">
-                    <i class="fas fa-comments me-2"></i>
-                    Commentaires et Historique
+                @if($paiement->status == 'validé')
+                <div class="dropdown ps-dropdown">
+                    <button class="ps-btn primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-file-pdf"></i> Reçu PDF
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ route('esbtp.paiements.preview', $paiement->id) }}"><i class="fas fa-eye"></i>Prévisualiser</a></li>
+                        <li><a class="dropdown-item" href="{{ route('esbtp.paiements.recu', $paiement->id) }}"><i class="fas fa-download"></i>Télécharger</a></li>
+                    </ul>
                 </div>
-                
-                @if($paiement->commentaire)
-                    <div class="comment-section mb-lg">
-                        <h6 class="mb-2">
-                            <i class="fas fa-comment text-primary me-2"></i>Commentaire
-                        </h6>
-                        <p class="mb-0">{{ $paiement->commentaire }}</p>
-                    </div>
                 @endif
-                
-                <!-- Historique -->
-                <div class="timeline-item">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span>
-                            <i class="fas fa-plus-circle text-success me-2"></i>
-                            Paiement créé le {{ $paiement->created_at->format('d/m/Y à H:i') }}
-                            @if($paiement->createdBy)
-                                par <strong>{{ $paiement->createdBy->name }}</strong>
+
+                @if(auth()->user()->hasRole('superAdmin'))
+                <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}" class="ps-btn warning">
+                    <i class="fas fa-edit"></i> Modifier
+                </a>
+                <form action="{{ route('esbtp.paiements.destroy', $paiement->id) }}" method="POST" style="margin:0"
+                      onsubmit="return confirm('Supprimer définitivement ce paiement ?')">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="ps-btn danger"><i class="fas fa-trash"></i></button>
+                </form>
+                @endif
+
+                @if($paiement->status === 'en_attente')
+                <form action="{{ route('esbtp.paiements.valider', $paiement->id) }}" method="POST" style="margin:0"
+                      onsubmit="return confirm('Valider ce paiement ?')">
+                    @csrf
+                    <button type="submit" class="ps-btn success"><i class="fas fa-check"></i> Valider</button>
+                </form>
+                <button type="button" class="ps-btn danger" data-bs-toggle="modal" data-bs-target="#modalRejeter">
+                    <i class="fas fa-times"></i> Rejeter
+                </button>
+                @endif
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ═══ CONTENT ═══ --}}
+<div class="ps-content">
+
+    {{-- Alerte en attente --}}
+    @if($paiement->status === 'en_attente')
+    <div class="ps-pending-alert" style="margin-bottom:20px;">
+        <div class="ps-pending-icon"><i class="fas fa-hourglass-half"></i></div>
+        <div class="ps-pending-text">
+            <strong>Ce paiement est en attente de validation</strong>
+            <p>Il sera comptabilisé une fois validé par un administrateur.</p>
+        </div>
+    </div>
+    @endif
+
+    <div class="row g-4">
+        {{-- ═══ Informations du paiement ═══ --}}
+        <div class="col-lg-6">
+            <div class="ps-card">
+                <div class="ps-card-header">
+                    <div class="ps-card-icon"><i class="fas fa-receipt"></i></div>
+                    <div class="ps-card-title">Informations du paiement</div>
+                </div>
+                <div class="ps-card-body">
+                    <div class="ps-info">
+                        <span class="ps-info-lbl">Numéro de reçu</span>
+                        <span class="ps-info-val"><code style="background:rgba(4,83,203,.06); padding:3px 10px; border-radius:6px; color:var(--k-blue); font-weight:700;">{{ $paiement->numero_recu }}</code></span>
+                    </div>
+                    <div class="ps-info">
+                        <span class="ps-info-lbl">Catégorie de frais</span>
+                        <span class="ps-info-val">
+                            @if($paiement->fraisCategory)
+                                <span class="ps-badge blue"><i class="fas fa-tag"></i> {{ $paiement->fraisCategory->name }}</span>
+                            @else
+                                <span class="ps-badge" style="background:#f1f5f9; color:var(--k-muted);">Non définie</span>
                             @endif
                         </span>
                     </div>
-                    
-                    @if($paiement->updated_at->gt($paiement->created_at))
-                    <div class="mt-2 pt-2 border-top">
-                        <i class="fas fa-edit text-warning me-2"></i>
-                        Dernière modification le {{ $paiement->updated_at->format('d/m/Y à H:i') }}
-                        @if($paiement->updatedBy)
-                            par <strong>{{ $paiement->updatedBy->name }}</strong>
-                        @endif
+                    <div class="ps-info">
+                        <span class="ps-info-lbl">Mode de paiement</span>
+                        <span class="ps-info-val">
+                            <span class="ps-badge info">
+                                <i class="fas fa-{{ match($paiement->mode_paiement) { 'especes' => 'money-bill-wave', 'cheque' => 'money-check', 'virement' => 'exchange-alt', 'mobile_money' => 'mobile-alt', default => 'credit-card' } }}"></i>
+                                {{ ucfirst(str_replace('_', ' ', $paiement->mode_paiement)) }}
+                            </span>
+                        </span>
+                    </div>
+                    <div class="ps-info">
+                        <span class="ps-info-lbl">Référence</span>
+                        <span class="ps-info-val">
+                            @if($paiement->reference_paiement)
+                                <code style="background:#f8fafc; padding:3px 10px; border-radius:6px; font-size:.82rem;">{{ $paiement->reference_paiement }}</code>
+                            @else
+                                <span style="color:var(--k-muted); font-style:italic;">—</span>
+                            @endif
+                        </span>
+                    </div>
+                    @if($paiement->motif)
+                    <div class="ps-info">
+                        <span class="ps-info-lbl">Motif</span>
+                        <span class="ps-info-val">{{ $paiement->motif }}</span>
+                    </div>
+                    @endif
+                    @if($paiement->status == 'validé' && $paiement->date_validation)
+                    <div class="ps-info">
+                        <span class="ps-info-lbl">Validé le</span>
+                        <span class="ps-info-val">{{ $paiement->date_validation->format('d/m/Y à H:i') }}</span>
+                    </div>
+                    <div class="ps-info">
+                        <span class="ps-info-lbl">Validé par</span>
+                        <span class="ps-info-val">
+                            <span class="ps-badge green"><i class="fas fa-user-shield"></i> {{ $paiement->validatedBy?->name ?? '—' }}</span>
+                        </span>
                     </div>
                     @endif
                 </div>
-                
-                <!-- Actions de validation -->
-                @if($paiement->status == 'en_attente')
-                    @can('validate-paiements')
-                    <div class="mt-lg">
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            Ce paiement est en attente de validation.
+            </div>
+        </div>
+
+        {{-- ═══ Informations de l'étudiant ═══ --}}
+        <div class="col-lg-6">
+            <div class="ps-card">
+                <div class="ps-card-header">
+                    <div class="ps-card-icon"><i class="fas fa-user-graduate"></i></div>
+                    <div class="ps-card-title">Étudiant</div>
+                </div>
+                <div class="ps-card-body">
+                    <div class="ps-student">
+                        <div class="ps-student-avatar">
+                            @if($paiement->etudiant->photo)
+                                <img src="{{ asset('storage/photos/etudiants/' . $paiement->etudiant->photo) }}" alt=""
+                                     onerror="this.parentElement.innerHTML='{{ strtoupper(substr($paiement->etudiant->prenoms ?? 'E', 0, 1)) }}{{ strtoupper(substr($paiement->etudiant->nom, 0, 1)) }}'">
+                            @else
+                                {{ strtoupper(substr($paiement->etudiant->prenoms ?? 'E', 0, 1)) }}{{ strtoupper(substr($paiement->etudiant->nom, 0, 1)) }}
+                            @endif
                         </div>
-                        <div class="action-buttons">
-                            <button type="button" class="btn-action success" data-bs-toggle="modal" data-bs-target="#modalValider">
-                                <i class="fas fa-check"></i>Valider ce paiement
-                            </button>
-                            <button type="button" class="btn-action danger" data-bs-toggle="modal" data-bs-target="#modalRejeter">
-                                <i class="fas fa-times"></i>Rejeter ce paiement
-                            </button>
+                        <div>
+                            <div class="ps-student-name">{{ $paiement->etudiant->nom_complet ?? ($paiement->etudiant->user->name ?? '—') }}</div>
+                            <div class="ps-student-mat"><i class="fas fa-id-badge me-1"></i>{{ $paiement->etudiant->matricule ?? '—' }}</div>
                         </div>
                     </div>
-                    @endcan
+
+                    <div class="ps-info">
+                        <span class="ps-info-lbl">Email personnel</span>
+                        <span class="ps-info-val">
+                            @if($paiement->etudiant->email_personnel)
+                                <a href="mailto:{{ $paiement->etudiant->email_personnel }}" style="color:var(--k-blue); text-decoration:none;">{{ $paiement->etudiant->email_personnel }}</a>
+                            @else <span style="color:var(--k-muted); font-style:italic;">—</span> @endif
+                        </span>
+                    </div>
+                    <div class="ps-info">
+                        <span class="ps-info-lbl">Filière</span>
+                        <span class="ps-info-val">
+                            <span class="ps-badge blue">{{ $paiement->inscription->filiere->name ?? '—' }}</span>
+                        </span>
+                    </div>
+                    <div class="ps-info">
+                        <span class="ps-info-lbl">Niveau</span>
+                        <span class="ps-info-val">{{ $paiement->inscription->niveauEtude->name ?? '—' }}</span>
+                    </div>
+                    <div class="ps-info">
+                        <span class="ps-info-lbl">Année universitaire</span>
+                        <span class="ps-info-val">
+                            @if($paiement->inscription->anneeUniversitaire)
+                                <span class="ps-badge amber"><i class="fas fa-calendar-alt"></i> {{ $paiement->inscription->anneeUniversitaire->libelle ?: ($paiement->inscription->anneeUniversitaire->annee_debut . '-' . $paiement->inscription->anneeUniversitaire->annee_fin) }}</span>
+                            @else <span style="color:var(--k-muted);">—</span> @endif
+                        </span>
+                    </div>
+
+                    <div class="ps-action-links">
+                        <a href="{{ route('esbtp.etudiants.show', $paiement->etudiant_id) }}" class="ps-link">
+                            <i class="fas fa-user"></i> Voir le profil
+                        </a>
+                        <a href="{{ route('esbtp.inscriptions.show', $paiement->inscription_id) }}" class="ps-link">
+                            <i class="fas fa-eye"></i> Voir l'inscription
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ═══ Commentaires & Historique ═══ --}}
+    <div class="ps-card" style="margin-top:20px;">
+        <div class="ps-card-header">
+            <div class="ps-card-icon"><i class="fas fa-history"></i></div>
+            <div class="ps-card-title">Historique & commentaires</div>
+        </div>
+        <div class="ps-card-body">
+            @if($paiement->commentaire)
+            <div class="ps-comment">
+                <div class="ps-comment-label"><i class="fas fa-comment-alt me-1"></i> Commentaire</div>
+                <div class="ps-comment-text">{{ $paiement->commentaire }}</div>
+            </div>
+            @endif
+
+            <div class="ps-timeline">
+                <div class="ps-tl-item">
+                    <div class="ps-tl-dot created"><i class="fas fa-plus"></i></div>
+                    <div class="ps-tl-text">
+                        Paiement créé
+                        @if($paiement->createdBy) par <strong>{{ $paiement->createdBy->name }}</strong>@endif
+                        <br><span class="ps-tl-date"><i class="fas fa-clock me-1"></i>{{ $paiement->created_at->format('d/m/Y à H:i') }}</span>
+                    </div>
+                </div>
+
+                @if($paiement->updated_at->gt($paiement->created_at))
+                <div class="ps-tl-item">
+                    <div class="ps-tl-dot updated"><i class="fas fa-edit"></i></div>
+                    <div class="ps-tl-text">
+                        Dernière modification
+                        @if($paiement->updatedBy) par <strong>{{ $paiement->updatedBy->name }}</strong>@endif
+                        <br><span class="ps-tl-date"><i class="fas fa-clock me-1"></i>{{ $paiement->updated_at->format('d/m/Y à H:i') }}</span>
+                    </div>
+                </div>
+                @endif
+
+                @if($paiement->status == 'validé' && $paiement->date_validation)
+                <div class="ps-tl-item">
+                    <div class="ps-tl-dot validated"><i class="fas fa-check"></i></div>
+                    <div class="ps-tl-text">
+                        Paiement validé
+                        @if($paiement->validatedBy) par <strong>{{ $paiement->validatedBy->name }}</strong>@endif
+                        <br><span class="ps-tl-date"><i class="fas fa-clock me-1"></i>{{ $paiement->date_validation->format('d/m/Y à H:i') }}</span>
+                    </div>
+                </div>
                 @endif
             </div>
         </div>
     </div>
+
+</div>
 </div>
 
-<!-- Modal Valider -->
-@can('validate-paiements')
-<div class="modal fade" id="modalValider" tabindex="-1" aria-labelledby="modalValiderLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title" id="modalValiderLabel">
-                    <i class="fas fa-check-circle me-2"></i>Valider le paiement
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Vous êtes sur le point de valider ce paiement.
-                </div>
-                <div class="row">
-                    <div class="col-6"><strong>Montant :</strong></div>
-                    <div class="col-6">{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</div>
-                </div>
-                <div class="row">
-                    <div class="col-6"><strong>Étudiant :</strong></div>
-                    <div class="col-6">{{ $paiement->etudiant->user->name ?? $paiement->etudiant->nom_complet ?? 'N/A' }}</div>
-                </div>
-                <div class="row">
-                    <div class="col-6"><strong>Référence :</strong></div>
-                    <div class="col-6"><code>{{ $paiement->numero_recu }}</code></div>
-                </div>
-                <div class="alert alert-warning mt-3">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Attention :</strong> Cette action est irréversible.
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Annuler
-                </button>
-                <button type="submit" class="btn btn-success" form="validerForm">
-                    <i class="fas fa-check me-1"></i>Confirmer la validation
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-@endcan
-
-<!-- Modal Rejeter -->
-@can('validate-paiements')
-<div class="modal fade" id="modalRejeter" tabindex="-1" aria-labelledby="modalRejeterLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="modalRejeterLabel">
-                    <i class="fas fa-times-circle me-2"></i>Rejeter le paiement
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+{{-- ═══ MODAL REJETER ═══ --}}
+@if($paiement->status === 'en_attente')
+<div class="modal fade" id="modalRejeter" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:15px; border:none; box-shadow:0 10px 40px rgba(0,0,0,.2);">
+            <div class="modal-header" style="background:linear-gradient(135deg, #ef4444, #dc2626); color:#fff; border-radius:15px 15px 0 0; padding:1.25rem 1.5rem; border:none;">
+                <h5 class="modal-title fw-bold"><i class="fas fa-times-circle me-2"></i>Rejeter le paiement</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form action="{{ route('esbtp.paiements.rejeter', $paiement->id) }}" method="POST">
                 @csrf
-                <div class="modal-body">
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        Vous êtes sur le point de rejeter ce paiement.
+                <div class="modal-body" style="padding:1.5rem;">
+                    <div style="background:#fef2f2; border:1.5px solid #fca5a5; border-radius:10px; padding:12px 16px; margin-bottom:16px;">
+                        <div style="display:flex; gap:10px; align-items:flex-start;">
+                            <i class="fas fa-exclamation-triangle" style="color:#ef4444; margin-top:2px;"></i>
+                            <div>
+                                <strong style="color:#991b1b;">Attention :</strong>
+                                <span style="color:#991b1b; font-size:.88rem;"> Cette action est irréversible.</span>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="motif_rejet" class="form-label">
-                            Motif du rejet <span class="text-danger">*</span>
-                        </label>
-                        <textarea name="motif_rejet" id="motif_rejet" rows="4" class="form-control" required
-                                  placeholder="Veuillez expliquer la raison du rejet..."></textarea>
+                    <div style="display:flex; gap:16px; margin-bottom:16px; font-size:.88rem;">
+                        <div><strong>Montant :</strong> {{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</div>
+                        <div><strong>Réf :</strong> {{ $paiement->numero_recu }}</div>
                     </div>
-                    
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Attention :</strong> Cette action est irréversible.
-                    </div>
+                    <label for="motif_rejet" class="form-label fw-semibold" style="font-size:.88rem;">
+                        Motif du rejet <span class="text-danger">*</span>
+                    </label>
+                    <textarea name="motif_rejet" id="motif_rejet" rows="4" class="form-control" required
+                              placeholder="Expliquez la raison du rejet..."
+                              style="border:2px solid #dee2e6; border-radius:10px; resize:none;"></textarea>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <div class="modal-footer" style="background:#f8f9fa; border-radius:0 0 15px 15px; padding:1rem 1.5rem; border:none;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:8px; font-weight:600;">
                         <i class="fas fa-times me-1"></i>Annuler
                     </button>
-                    <button type="submit" class="btn btn-danger">
+                    <button type="submit" class="btn btn-danger" style="border-radius:8px; font-weight:600;">
                         <i class="fas fa-times me-1"></i>Confirmer le rejet
                     </button>
                 </div>
@@ -601,37 +601,16 @@
         </div>
     </div>
 </div>
-@endcan
+@endif
 @endsection
 
 @push('scripts')
 <script>
-$(function() {
-    // Animation d'entrée des cartes
-    $('.card-moderne').each(function(index) {
-        $(this).css({
-            'opacity': '0',
-            'transform': 'translateY(20px)'
-        }).delay(index * 100).animate({
-            'opacity': '1'
-        }, 600).css('transform', 'translateY(0)');
-    });
-    
-    // Copier au clic sur les codes
-    $('code').click(function() {
-        const text = $(this).text();
-        navigator.clipboard.writeText(text).then(() => {
-            $(this).attr('title', 'Copié!').tooltip('show');
-            setTimeout(() => {
-                $(this).attr('title', 'Cliquer pour copier');
-            }, 2000);
-        });
-    }).attr('title', 'Cliquer pour copier').css('cursor', 'pointer');
-    // Validation/Rejet des paiements
-    $('#validerBtn').on('click', function() {
-        if (confirm('Êtes-vous sûr de vouloir valider ce paiement ?')) {
-            $('#validerForm').submit();
-        }
+// Copy receipt number on click
+document.querySelectorAll('.ps-receipt').forEach(el => {
+    el.addEventListener('click', function() {
+        const hint = this.querySelector('.ps-copy-hint');
+        if (hint) { hint.textContent = 'Copié !'; setTimeout(() => hint.textContent = 'Copier', 2000); }
     });
 });
 </script>

@@ -403,6 +403,7 @@ class ESBTPEtudiantController extends Controller
             },
             'inscriptions' => function($q) {
                 $q->with(['filiere', 'niveauEtude', 'anneeUniversitaire', 'paiements',
+                          'fraisSubscriptions.fraisCategory',
                           'classe' => fn($cq) => $cq->with(['filiere', 'niveauEtude'])])
                   ->orderBy('created_at', 'desc');
             },
@@ -443,7 +444,10 @@ class ESBTPEtudiantController extends Controller
             'nombre_reliquats_actifs' => $reliquatsEntrants->where('statut', 'actif')->count(),
         ];
 
-        return view('esbtp.etudiants.show', compact('etudiant', 'statistiques', 'reliquatsEntrants', 'reliquatsSortants'));
+        // Catégories de frais pour la modal de paiement
+        $categoriesfrais = \App\Models\ESBTPFraisCategory::where('is_active', true)->orderBy('name')->get();
+
+        return view('esbtp.etudiants.show', compact('etudiant', 'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais'));
     }
 
     /**

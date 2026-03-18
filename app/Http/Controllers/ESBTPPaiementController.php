@@ -931,6 +931,7 @@ class ESBTPPaiementController extends Controller
     {
         $paiement = ESBTPPaiement::with([
             'etudiant.user',
+            'fraisCategory',
             'inscription.anneeUniversitaire',
             'inscription.filiere',
             'inscription.niveauEtude',
