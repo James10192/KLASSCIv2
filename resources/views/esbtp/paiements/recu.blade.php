@@ -380,13 +380,13 @@
         </div>
 
         <!-- ═══ SIGNATURES ═══ -->
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 10px; margin-top: 16px;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 10px; margin-top: 28px;">
             <tr>
                 <td width="45%" style="text-align: center; vertical-align: top; padding-right: 20px;">
-                    <div style="font-size: 14px; font-weight: 700; color: {{ $primary }}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 28px;">
+                    <div style="font-size: 14px; font-weight: 700; color: {{ $primary }}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 36px;">
                         Date d'émission
                     </div>
-                    <div style="border-top: 2px solid {{ $primary }}; padding-top: 6px;">
+                    <div style="border-top: 2px solid {{ $primary }}; padding-top: 8px;">
                         <div style="font-size: 14px; font-weight: 600; color: #1e293b;">
                             {{ $paiement->date_validation ? $paiement->date_validation->format('d/m/Y') : date('d/m/Y') }}
                         </div>
@@ -394,10 +394,10 @@
                 </td>
                 <td width="10%"></td>
                 <td width="45%" style="text-align: center; vertical-align: top; padding-left: 20px;">
-                    <div style="font-size: 14px; font-weight: 700; color: {{ $primary }}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 28px;">
+                    <div style="font-size: 14px; font-weight: 700; color: {{ $primary }}; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 36px;">
                         Signature et Cachet
                     </div>
-                    <div style="border-top: 2px solid {{ $primary }}; padding-top: 6px;">
+                    <div style="border-top: 2px solid {{ $primary }}; padding-top: 8px;">
                         <div style="font-size: 14px; font-weight: 600; color: #1e293b;">
                             {{ $paiement->validatedBy ? $paiement->validatedBy->name : 'Le Comptable' }}
                         </div>
@@ -407,7 +407,7 @@
         </table>
 
         <!-- ═══ FOOTER ═══ -->
-        <div class="footer-section">
+        <div class="footer-section" style="margin-top: 16px;">
             <div class="footer-warning">
                 Ce reçu est un document officiel. Toute falsification constitue un délit passible de poursuites judiciaires.
             </div>

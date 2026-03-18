@@ -752,12 +752,10 @@ class ESBTPInscriptionPaiementController extends Controller
             "filiere",
             "niveau",
             "classe",
+            "classe.filiere",
+            "classe.niveau",
             "anneeUniversitaire",
-            "paiements" => function ($query) {
-                $query
-                    ->where("status", "validé")
-                    ->orderBy("date_paiement", "desc");
-            },
+            "paiements.fraisCategory",
         ]);
 
         // Récupérer les frais souscrits pour cette inscription
@@ -842,12 +840,10 @@ class ESBTPInscriptionPaiementController extends Controller
             "filiere",
             "niveau",
             "classe",
+            "classe.filiere",
+            "classe.niveau",
             "anneeUniversitaire",
-            "paiements" => function ($query) {
-                $query
-                    ->where("status", "validé")
-                    ->orderBy("date_paiement", "desc");
-            },
+            "paiements.fraisCategory",
         ]);
 
         $fraisSouscrits = ESBTPFraisSubscription::where(
@@ -905,6 +901,30 @@ class ESBTPInscriptionPaiementController extends Controller
             "logo" => Setting::get("school_logo", null),
         ];
 
+        // Settings PDF (couleurs, logo, signature)
+        $settings = \App\Helpers\SettingsHelper::getPdfSettings();
+        $settings['city'] = Setting::get('school_city', 'Yamoussoukro');
+        $settings['director_title'] = Setting::get('director_title', 'Le Directeur');
+        $settings['director_name'] = Setting::get('director_name', '');
+
+        // Préparer le logo en base64
+        $logoPath = Setting::get('school_logo');
+        $settings['logo_base64'] = null;
+        $settings['show_logo'] = false;
+        if ($logoPath) {
+            foreach ([
+                storage_path('app/public/' . $logoPath),
+                public_path($logoPath),
+            ] as $path) {
+                if (file_exists($path)) {
+                    $ext = pathinfo($path, PATHINFO_EXTENSION);
+                    $settings['logo_base64'] = 'data:image/' . $ext . ';base64,' . base64_encode(file_get_contents($path));
+                    $settings['show_logo'] = true;
+                    break;
+                }
+            }
+        }
+
         // Augmenter le temps d'exécution pour le PDF
         set_time_limit(120);
         ini_set("memory_limit", "512M");
@@ -918,24 +938,19 @@ class ESBTPInscriptionPaiementController extends Controller
                 "reliquatsEntrants",
                 "statistiques",
                 "etablissement",
+                "settings",
             ),
         );
 
         $pdf->setPaper("A4", "portrait");
 
-        // Optimiser les options DomPDF pour les images
         $pdf->setOptions([
             "isHtml5ParserEnabled" => true,
-            "isRemoteEnabled" => true,
+            "isRemoteEnabled" => false,
             "defaultFont" => "DejaVu Sans",
-            "dpi" => 96,
-            "defaultMediaType" => "print",
+            "dpi" => 150,
             "isFontSubsettingEnabled" => true,
-            "isPhpEnabled" => true,
-            "margin-top" => 10,
-            "margin-right" => 10,
-            "margin-bottom" => 10,
-            "margin-left" => 10,
+            "isPhpEnabled" => false,
         ]);
 
         $filename =

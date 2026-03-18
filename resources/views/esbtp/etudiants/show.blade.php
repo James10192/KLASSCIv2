@@ -3495,16 +3495,26 @@
             </div>
         </div>
 
-        {{-- Bouton nouveau paiement --}}
-        @if($finInscActive && $finSolde > 0)
-        <div style="text-align:center; margin-top:16px;">
+        {{-- Boutons actions financières --}}
+        <div style="text-align:center; margin-top:16px; display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+            @if($finInscActive)
+            <a href="{{ route('esbtp.inscriptions.situation-financiere.preview', $finInscActive->id) }}"
+               class="hero-btn" style="display:inline-flex; align-items:center; gap:8px; padding:10px 24px; font-size:.88rem; border-radius:10px; background:linear-gradient(135deg, #059669, #10b981); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 4px 12px rgba(5,150,105,.3); text-decoration:none;">
+                <i class="fas fa-chart-line"></i> Situation Financière
+            </a>
+            <a href="{{ route('esbtp.inscriptions.situation-financiere.pdf', $finInscActive->id) }}"
+               class="hero-btn" style="display:inline-flex; align-items:center; gap:8px; padding:10px 24px; font-size:.88rem; border-radius:10px; background:linear-gradient(135deg, #dc2626, #ef4444); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 4px 12px rgba(220,38,38,.3); text-decoration:none;">
+                <i class="fas fa-file-pdf"></i> PDF Situation
+            </a>
+            @endif
+            @if($finInscActive && $finSolde > 0)
             <button class="hero-btn primary" style="display:inline-flex; align-items:center; gap:8px; padding:10px 24px; font-size:.88rem; border-radius:10px; background:linear-gradient(135deg, var(--k-blue), var(--k-blue-2)); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 4px 12px rgba(4,83,203,.3);"
                     data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal"
                     onclick="prepareEtudiantPaymentModal({{ $finInscActive->id }})">
                 <i class="fas fa-plus-circle"></i> Enregistrer un paiement
             </button>
+            @endif
         </div>
-        @endif
     </div>
 
     {{-- ── BANDEAU PAIEMENTS EN ATTENTE ── --}}
