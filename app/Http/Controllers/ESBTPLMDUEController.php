@@ -19,7 +19,7 @@ class ESBTPLMDUEController extends Controller
     {
         $query = ESBTPUniteEnseignement::query()
             ->withCount('matieres')
-            ->with(['filiere', 'niveau', 'parcours', 'parcoursMultiple', 'ecues']);
+            ->with(['filiere', 'niveau', 'parcours', 'parcoursMultiple', 'ecues', 'matieres']);
 
         // Filtres optionnels
         if ($request->filled('parcours_id')) {
@@ -247,6 +247,11 @@ class ESBTPLMDUEController extends Controller
         $creditEcue = $validated['credit_ecue'] ?? null;
         $ordreBulletin = $validated['ordre_bulletin'] ?? 0;
 
+        // Vérifier que la somme des crédits ECUE ne dépasse pas le crédit de l'UE
+        if ($error = $this->checkCreditOverflow($ue, $creditEcue, null, $request)) {
+            return $error;
+        }
+
         if (!empty($validated['matiere_id'])) {
             $matiere = ESBTPMatiere::findOrFail($validated['matiere_id']);
         } else {
@@ -299,6 +304,11 @@ class ESBTPLMDUEController extends Controller
             'ordre_bulletin'  => 'nullable|integer|min:0',
         ]);
 
+        // Vérifier que la somme des crédits ECUE ne dépasse pas le crédit de l'UE
+        if ($error = $this->checkCreditOverflow($ue, $validated['credit_ecue'] ?? null, $ecue->id, $request)) {
+            return $error;
+        }
+
         // Mettre à jour la matière en un seul UPDATE (nom, code, coeff, credit, ordre)
         $ecue->update([
             'name' => $validated['name'] ?? $ecue->name,
@@ -338,6 +348,19 @@ class ESBTPLMDUEController extends Controller
 
         return redirect()->route('esbtp.lmd.ue.show', $ue)
             ->with('success', 'ECUE détaché de l\'UE avec succès.');
+    }
+
+    /**
+     * Liste des matières disponibles pour rattachement à une UE (non déjà liées).
+     */
+    public function matieresDisponibles(ESBTPUniteEnseignement $ue)
+    {
+        $matieres = ESBTPMatiere::where('is_active', true)
+            ->whereDoesntHave('unitesEnseignementMultiple', fn($q) => $q->where('esbtp_ue_matiere.unite_enseignement_id', $ue->id))
+            ->orderBy('name')
+            ->get(['id', 'name', 'code', 'coefficient_ecue', 'credit_ecue']);
+
+        return response()->json($matieres);
     }
 
     /**
@@ -403,5 +426,35 @@ class ESBTPLMDUEController extends Controller
         });
 
         return response()->json(['success' => true, 'message' => $count . ' lien(s) parcours-semestre créé(s).']);
+    }
+
+    /**
+     * Vérifier que l'ajout/modification d'un crédit ECUE ne dépasse pas le crédit de l'UE.
+     * Retourne une response d'erreur si dépassement, null sinon.
+     */
+    private function checkCreditOverflow(ESBTPUniteEnseignement $ue, $creditEcue, ?int $excludeMatiereId, Request $request)
+    {
+        if (!$ue->credit || !$creditEcue) {
+            return null;
+        }
+
+        $query = DB::table('esbtp_ue_matiere')->where('unite_enseignement_id', $ue->id);
+        if ($excludeMatiereId) {
+            $query->where('matiere_id', '!=', $excludeMatiereId);
+        }
+        $creditsAutres = (int) $query->sum('credit_ecue');
+
+        if ($creditsAutres + (int) $creditEcue <= (int) $ue->credit) {
+            return null;
+        }
+
+        $restant = (int) $ue->credit - $creditsAutres;
+        $message = "La somme des crédits ECUE ({$creditsAutres} + {$creditEcue} = " . ($creditsAutres + (int) $creditEcue) . ") "
+            . "dépasse le crédit de l'UE ({$ue->credit}). Il reste {$restant} crédit(s) disponible(s).";
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => false, 'message' => $message], 422);
+        }
+        return redirect()->back()->with('error', $message);
     }
 }
