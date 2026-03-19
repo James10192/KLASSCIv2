@@ -67,6 +67,7 @@ class ESBTPLMDNoteController extends Controller
         $evaluations = ESBTPEvaluation::where('classe_id', $classe->id)
             ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
             ->with(['matiere:id,name,code,unite_enseignement_id', 'matiere.uniteEnseignement:id,name,code'])
+            ->withCount('notes')
             ->orderByDesc('date_evaluation')
             ->get()
             ->map(fn($e) => [
@@ -79,16 +80,21 @@ class ESBTPLMDNoteController extends Controller
                 'ue' => $e->matiere?->uniteEnseignement?->name,
                 'ue_code' => $e->matiere?->uniteEnseignement?->code,
                 'status' => $e->status,
-                'notes_count' => $e->notes()->count(),
+                'notes_count' => $e->notes_count,
                 'saisie_url' => route('esbtp.lmd.notes.saisie', $e),
             ]);
 
-        // Matières (ECUEs) disponibles pour cette classe via parcours
+        // Matières (ECUEs) disponibles pour cette classe via parcours + filtrées par semestres du niveau
         $matieres = collect();
+        $uesDisponibles = collect();
         if ($classe->parcours) {
-            $matieres = $classe->parcours->unitesEnseignement()
-                ->with('matieres:id,name,code,unite_enseignement_id')
-                ->get()
+            $semestresAutorises = $classe->getSemestresLMD();
+            $uesDisponibles = $classe->parcours->unitesEnseignement()
+                ->wherePivotIn('semestre', $semestresAutorises)
+                ->with(['matieres' => fn($q) => $q->where('is_active', true)->orderBy('ordre_bulletin')->orderBy('code')])
+                ->get();
+
+            $matieres = $uesDisponibles
                 ->flatMap(fn($ue) => $ue->matieres->map(fn($m) => [
                     'id' => $m->id,
                     'name' => $m->name,
@@ -104,10 +110,18 @@ class ESBTPLMDNoteController extends Controller
                 'name' => $classe->name,
                 'filiere' => $classe->filiere?->name,
                 'niveau' => $classe->niveau?->name,
+                'semestres' => $classe->getSemestresLMD(),
             ],
             'etudiants' => $etudiants,
             'evaluations' => $evaluations,
             'matieres' => $matieres,
+            'ues' => $uesDisponibles->map(fn($ue) => [
+                'id' => $ue->id,
+                'name' => $ue->name,
+                'code' => $ue->code,
+                'semestre' => $ue->pivot->semestre ?? $ue->semestre,
+                'ecues_count' => $ue->matieres->count(),
+            ]),
         ]);
     }
 
@@ -116,10 +130,13 @@ class ESBTPLMDNoteController extends Controller
      */
     public function saisieRapide(ESBTPEvaluation $evaluation)
     {
-        $evaluation->load(['classe.inscriptions.etudiant', 'matiere.uniteEnseignement']);
+        $evaluation->load([
+            'classe.inscriptions' => fn($q) => $q->where('status', 'active')->where('workflow_step', 'etudiant_cree'),
+            'classe.inscriptions.etudiant',
+            'matiere.uniteEnseignement',
+        ]);
 
         $etudiants = $evaluation->classe->inscriptions
-            ->where('status', 'active')
             ->map(fn($i) => $i->etudiant)
             ->filter()
             ->sortBy('nom');

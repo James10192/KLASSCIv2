@@ -50,7 +50,8 @@ class ESBTPLMDResultatController extends Controller
      */
     public function classe(Request $request, ESBTPClasse $classe)
     {
-        $semestre = $request->semestre ?? 1;
+        $semestresAutorises = $classe->getSemestresLMD();
+        $semestre = $request->semestre ?? $semestresAutorises[0] ?? 1;
         $anneeId = $request->annee_universitaire_id
             ?? $classe->annee_universitaire_id;
 
@@ -74,7 +75,7 @@ class ESBTPLMDResultatController extends Controller
 
         $annees = ESBTPAnneeUniversitaire::orderByDesc('start_date')->get();
 
-        return view('esbtp.lmd.resultats.classe', compact('classe', 'bulletins', 'stats', 'semestre', 'anneeId', 'annees'));
+        return view('esbtp.lmd.resultats.classe', compact('classe', 'bulletins', 'stats', 'semestre', 'anneeId', 'annees', 'semestresAutorises'));
     }
 
     /**

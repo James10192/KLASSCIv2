@@ -1025,6 +1025,14 @@
 
 @push('scripts')
 <script>
+    // HTML escape helper to prevent XSS
+    function escHtml(str) {
+        if (!str) return '';
+        const d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
     /**
      * Reset modal to "create" mode
      */
@@ -1124,7 +1132,7 @@
                 bootstrap.Modal.getInstance(document.getElementById('modalCreateClasse')).hide();
                 window.location.reload();
             } else {
-                errBox.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>' + (data.message || Object.values(data.errors || {}).flat().join('<br>'));
+                errBox.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>' + escHtml(data.message || Object.values(data.errors || {}).flat().join(', '));
                 errBox.style.display = 'block';
                 btn.disabled = false;
                 document.getElementById('cc_submit_text').textContent = 'Créer la classe';
@@ -1182,8 +1190,8 @@
         return `<label style="display:flex; align-items:center; gap:.65rem; padding:.6rem .85rem; border-radius:10px; background:${checked ? '#eff6ff' : '#f8fafc'}; border:1.5px solid ${checked ? '#0453cb' : '#e8ecf1'}; cursor:pointer; transition:all .2s;">
             <input type="checkbox" name="classe_ids[]" value="${classe.id}" ${checked ? 'checked' : ''} style="width:1.1em; height:1.1em; accent-color:#0453cb; cursor:pointer;">
             <div>
-                <div style="font-size:.88rem; font-weight:600; color:#1e293b;">${classe.name}</div>
-                <div style="font-size:.72rem; color:#94a3b8;">${classe.code}</div>
+                <div style="font-size:.88rem; font-weight:600; color:#1e293b;">${escHtml(classe.name)}</div>
+                <div style="font-size:.72rem; color:#94a3b8;">${escHtml(classe.code)}</div>
             </div>
         </label>`;
     }
@@ -1282,7 +1290,7 @@
         return `<div style="display:flex; align-items:center; gap:.65rem; padding:.6rem .85rem; border-radius:10px; background:${hasAnySem ? '#eef2ff' : '#f8fafc'}; border:1.5px solid ${hasAnySem ? '#4338ca' : '#e8ecf1'}; transition:all .2s; margin-bottom:.1rem;">
             <input type="checkbox" class="lu-ue-check" value="${ue.id}" ${hasAnySem ? 'checked' : ''} style="width:1.1em; height:1.1em; accent-color:#4338ca; cursor:pointer; flex-shrink:0;">
             <div style="flex:1; min-width:0;">
-                <div style="font-size:.86rem; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${ue.code || ''} — ${ue.name}</div>
+                <div style="font-size:.86rem; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escHtml(ue.code || '')} — ${escHtml(ue.name)}</div>
                 <div style="display:flex; gap:.25rem; flex-wrap:wrap; margin-top:.35rem;">${semChips}</div>
             </div>
         </div>`;

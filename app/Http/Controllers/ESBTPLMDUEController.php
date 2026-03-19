@@ -8,6 +8,7 @@ use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ESBTPLMDUEController extends Controller
 {
@@ -349,21 +350,24 @@ class ESBTPLMDUEController extends Controller
      */
     public function syncParcours(Request $request, ESBTPUniteEnseignement $ue)
     {
-        $items = $request->input('parcours', []);
+        $request->validate([
+            'parcours' => 'present|array',
+            'parcours.*.id' => 'required|exists:esbtp_lmd_parcours,id',
+            'parcours.*.semestres' => 'required|array|min:1',
+            'parcours.*.semestres.*' => 'integer|between:1,10',
+        ]);
 
-        $ue->parcoursMultiple()->detach();
-
-        $count = 0;
-        foreach ($items as $item) {
-            $pId = $item['id'] ?? null;
-            $semestres = $item['semestres'] ?? [];
-            if (!$pId || empty($semestres)) continue;
-
-            foreach ($semestres as $sem) {
-                $ue->parcoursMultiple()->attach($pId, ['semestre' => $sem]);
-                $count++;
+        $count = DB::transaction(function () use ($request, $ue) {
+            $ue->parcoursMultiple()->detach();
+            $count = 0;
+            foreach ($request->input('parcours', []) as $item) {
+                foreach ($item['semestres'] as $sem) {
+                    $ue->parcoursMultiple()->attach($item['id'], ['semestre' => $sem]);
+                    $count++;
+                }
             }
-        }
+            return $count;
+        });
 
         return response()->json(['success' => true, 'message' => $count . ' lien(s) parcours-semestre créé(s).']);
     }

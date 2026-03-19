@@ -137,6 +137,18 @@ class ESBTPClasse extends Model
         return $this->systeme_academique !== 'LMD';
     }
 
+    /**
+     * Retourne les 2 semestres autorises pour cette classe LMD.
+     * L1 (year=1) → [1,2], L2 (year=2) → [3,4], L3 → [5,6], M1 → [7,8], M2 → [9,10]
+     */
+    public function getSemestresLMD(): array
+    {
+        $year = $this->niveau->year ?? 1;
+        $s1 = ($year - 1) * 2 + 1;
+        $s2 = $s1 + 1;
+        return [$s1, $s2];
+    }
+
     public function scopeLmd($query)
     {
         return $query->where('systeme_academique', 'LMD');

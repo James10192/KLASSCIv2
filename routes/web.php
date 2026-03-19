@@ -1752,6 +1752,9 @@ Route::post('/esbtp/classes/sync-systeme-academique', [ESBTPClasseController::cl
 
 // Route AJAX pour récupérer les étudiants d'une classe
 Route::get('/esbtp/classes/{classe}/etudiants', [ESBTPClasseController::class, 'getEtudiants'])->name('esbtp.classes.etudiants');
+Route::get('/esbtp/classes/{classe}/semestres-lmd', function (\App\Models\ESBTPClasse $classe) {
+    return response()->json(['semestres' => $classe->getSemestresLMD()]);
+})->name('esbtp.classes.semestres-lmd');
 
 // Routes pour les listes d'étudiants par classe
 Route::get('/esbtp/classes/{classe}/liste-appel', [ESBTPClasseController::class, 'listeAppel'])->name('esbtp.classes.liste-appel');

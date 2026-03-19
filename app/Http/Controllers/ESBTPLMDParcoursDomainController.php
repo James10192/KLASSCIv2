@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPLMDDomaine;
 use App\Models\ESBTPUniteEnseignement;
+use Illuminate\Support\Facades\DB;
 use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPNiveauEtude;
@@ -22,7 +23,7 @@ class ESBTPLMDParcoursDomainController extends Controller
         $domaines = ESBTPLMDDomaine::with([
                 'mentions.parcours.classes',
                 'mentions.parcours.unitesEnseignement',
-                'mentions.domaine',
+                'mentions.parcours.responsable',
             ])
             ->orderBy('name')
             ->get();
@@ -452,25 +453,27 @@ class ESBTPLMDParcoursDomainController extends Controller
      */
     public function syncUes(Request $request, ESBTPLMDParcours $parcours)
     {
-        $items = $request->input('ues', []);
+        $request->validate([
+            'ues' => 'present|array',
+            'ues.*.id' => 'required|exists:esbtp_unites_enseignement,id',
+            'ues.*.semestres' => 'required|array|min:1',
+            'ues.*.semestres.*' => 'integer|between:1,10',
+        ]);
 
-        // Detach all existing, then re-attach with multi-semestres
-        $parcours->unitesEnseignement()->detach();
-
-        $count = 0;
-        foreach ($items as $item) {
-            $ueId = $item['id'] ?? null;
-            $semestres = $item['semestres'] ?? [];
-            if (!$ueId || empty($semestres)) continue;
-
-            foreach ($semestres as $sem) {
-                $parcours->unitesEnseignement()->attach($ueId, [
-                    'semestre' => $sem,
-                    'ordre' => $item['ordre'] ?? 0,
-                ]);
-                $count++;
+        $count = DB::transaction(function () use ($request, $parcours) {
+            $parcours->unitesEnseignement()->detach();
+            $count = 0;
+            foreach ($request->input('ues', []) as $item) {
+                foreach ($item['semestres'] as $sem) {
+                    $parcours->unitesEnseignement()->attach($item['id'], [
+                        'semestre' => $sem,
+                        'ordre' => $item['ordre'] ?? 0,
+                    ]);
+                    $count++;
+                }
             }
-        }
+            return $count;
+        });
 
         return response()->json(['success' => true, 'message' => $count . ' lien(s) UE-semestre créé(s).']);
     }

@@ -483,60 +483,23 @@
                         </div>
                     </div>
 
-                    {{-- Row 2: Semestre chips --}}
+                    {{-- Row 2: Semestre chips (dynamiques selon la classe) --}}
                     <div class="bs-row bs-row--1">
                         <div class="bs-field">
                             <label class="bs-label">Semestre <span class="bs-req">*</span></label>
-                            <div class="bs-semester-grid">
-                                <div class="bs-sem-group">
-                                    <span class="bs-sem-group-label">L1</span>
-                                    @for($s = 1; $s <= 2; $s++)
-                                        <label class="bs-sem-chip" :class="semestre == '{{ $s }}' ? 'bs-sem-chip--active' : ''" @click="semestre = '{{ $s }}'">
-                                            <input type="radio" name="sem_visual" value="{{ $s }}" x-model="semestre">
-                                            S{{ $s }}
-                                        </label>
-                                    @endfor
-                                </div>
-                                <div class="bs-sem-divider"></div>
-                                <div class="bs-sem-group">
-                                    <span class="bs-sem-group-label">L2</span>
-                                    @for($s = 3; $s <= 4; $s++)
-                                        <label class="bs-sem-chip" :class="semestre == '{{ $s }}' ? 'bs-sem-chip--active' : ''" @click="semestre = '{{ $s }}'">
-                                            <input type="radio" name="sem_visual" value="{{ $s }}" x-model="semestre">
-                                            S{{ $s }}
-                                        </label>
-                                    @endfor
-                                </div>
-                                <div class="bs-sem-divider"></div>
-                                <div class="bs-sem-group">
-                                    <span class="bs-sem-group-label">L3</span>
-                                    @for($s = 5; $s <= 6; $s++)
-                                        <label class="bs-sem-chip" :class="semestre == '{{ $s }}' ? 'bs-sem-chip--active' : ''" @click="semestre = '{{ $s }}'">
-                                            <input type="radio" name="sem_visual" value="{{ $s }}" x-model="semestre">
-                                            S{{ $s }}
-                                        </label>
-                                    @endfor
-                                </div>
-                                <div class="bs-sem-divider"></div>
-                                <div class="bs-sem-group">
-                                    <span class="bs-sem-group-label">M1</span>
-                                    @for($s = 7; $s <= 8; $s++)
-                                        <label class="bs-sem-chip" :class="semestre == '{{ $s }}' ? 'bs-sem-chip--active' : ''" @click="semestre = '{{ $s }}'">
-                                            <input type="radio" name="sem_visual" value="{{ $s }}" x-model="semestre">
-                                            S{{ $s }}
-                                        </label>
-                                    @endfor
-                                </div>
-                                <div class="bs-sem-divider"></div>
-                                <div class="bs-sem-group">
-                                    <span class="bs-sem-group-label">M2</span>
-                                    @for($s = 9; $s <= 10; $s++)
-                                        <label class="bs-sem-chip" :class="semestre == '{{ $s }}' ? 'bs-sem-chip--active' : ''" @click="semestre = '{{ $s }}'">
-                                            <input type="radio" name="sem_visual" value="{{ $s }}" x-model="semestre">
-                                            S{{ $s }}
-                                        </label>
-                                    @endfor
-                                </div>
+                            <div class="bs-semester-grid" x-show="semestresAutorises.length > 0">
+                                <template x-for="s in semestresAutorises" :key="s">
+                                    <label class="bs-sem-chip" :class="semestre == s ? 'bs-sem-chip--active' : ''" @click="semestre = String(s)">
+                                        <input type="radio" name="sem_visual" :value="s" x-model="semestre">
+                                        <span x-text="'S' + s"></span>
+                                    </label>
+                                </template>
+                            </div>
+                            <div x-show="!classeId" style="font-size:.82rem; color:#94a3b8; padding:.5rem 0;">
+                                <i class="fas fa-info-circle me-1"></i>Sélectionnez d'abord une classe pour voir les semestres disponibles.
+                            </div>
+                            <div x-show="classeId && semestresAutorises.length === 0" style="font-size:.82rem; color:#94a3b8; padding:.5rem 0;">
+                                <i class="fas fa-spinner fa-spin me-1"></i>Chargement...
                             </div>
                         </div>
                     </div>
@@ -664,13 +627,32 @@ function lmdBulletinSelect() {
         semestre: '',
         etudiantId: '',
         etudiants: [],
+        semestresAutorises: [],
         loading: false,
 
         onClasseChange() {
             this.etudiants = [];
             this.etudiantId = '';
+            this.semestre = '';
+            this.semestresAutorises = [];
             if (!this.classeId) return;
             this.fetchEtudiants();
+            this.fetchSemestres();
+        },
+
+        async fetchSemestres() {
+            try {
+                const resp = await fetch(`/esbtp/classes/${this.classeId}/semestres-lmd`);
+                const data = await resp.json();
+                this.semestresAutorises = data.semestres || [];
+                // Auto-select premier semestre
+                if (this.semestresAutorises.length > 0) {
+                    this.semestre = String(this.semestresAutorises[0]);
+                }
+            } catch (err) {
+                console.error('Erreur chargement semestres:', err);
+                this.semestresAutorises = [1, 2]; // fallback
+            }
         },
 
         async fetchEtudiants() {

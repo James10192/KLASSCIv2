@@ -85,6 +85,15 @@ class ESBTPLMDBulletinController extends Controller
             'semestre' => 'required|integer|min:1|max:10',
         ]);
 
+        // Vérifier que le semestre correspond au niveau de la classe
+        $classe = ESBTPClasse::findOrFail($request->classe_id);
+        $semestresAutorises = $classe->getSemestresLMD();
+        if (!in_array((int) $request->semestre, $semestresAutorises)) {
+            return redirect()->back()->with('error',
+                "Le semestre S{$request->semestre} ne correspond pas au niveau {$classe->niveau->name}. Semestres autorisés : S" . implode(', S', $semestresAutorises) . "."
+            );
+        }
+
         $bulletin = $this->service->genererBulletinLMD(
             $request->etudiant_id,
             $request->classe_id,
@@ -107,6 +116,15 @@ class ESBTPLMDBulletinController extends Controller
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
             'semestre' => 'required|integer|min:1|max:10',
         ]);
+
+        // Vérifier que le semestre correspond au niveau de la classe
+        $classe = ESBTPClasse::findOrFail($request->classe_id);
+        $semestresAutorises = $classe->getSemestresLMD();
+        if (!in_array((int) $request->semestre, $semestresAutorises)) {
+            return redirect()->back()->with('error',
+                "Le semestre S{$request->semestre} ne correspond pas au niveau {$classe->niveau->name}. Semestres autorisés : S" . implode(', S', $semestresAutorises) . "."
+            );
+        }
 
         $bulletins = $this->service->genererBulletinsClasse(
             $request->classe_id,

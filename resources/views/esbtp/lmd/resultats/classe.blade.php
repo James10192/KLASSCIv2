@@ -331,11 +331,11 @@
             <div class="rc-filter-group">
                 <label class="rc-filter-label">Semestre</label>
                 <select class="rc-filter-control" name="semestre" onchange="document.getElementById('rc-filter-form').submit()">
-                    @for($s = 1; $s <= 10; $s++)
-                        <option value="{{ $s }}" {{ ($semestre ?? 1) == $s ? 'selected' : '' }}>
+                    @foreach($semestresAutorises ?? [1, 2] as $s)
+                        <option value="{{ $s }}" {{ ($semestre ?? $semestresAutorises[0] ?? 1) == $s ? 'selected' : '' }}>
                             Semestre {{ $s }}
                         </option>
-                    @endfor
+                    @endforeach
                 </select>
             </div>
             <div class="rc-filter-group">

@@ -1116,6 +1116,14 @@
 
 @push('scripts')
 <script>
+// HTML escape helper to prevent XSS
+function escHtml(str) {
+    if (!str) return '';
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+}
+
 const modalUE = new bootstrap.Modal(document.getElementById('modalUE'));
 const formUE = document.getElementById('formUE');
 const errorsDiv = document.getElementById('ue_errors');
@@ -1193,11 +1201,11 @@ formUE.addEventListener('submit', async function(e) {
         if (!resp.ok) {
             // Validation errors
             if (data.errors) {
-                const msgs = Object.values(data.errors).flat().join('<br>');
+                const msgs = Object.values(data.errors).flat().map(m => escHtml(m)).join('<br>');
                 errorsDiv.innerHTML = msgs;
                 errorsDiv.classList.remove('d-none');
             } else {
-                errorsDiv.innerHTML = data.message || 'Une erreur est survenue.';
+                errorsDiv.textContent = data.message || 'Une erreur est survenue.';
                 errorsDiv.classList.remove('d-none');
             }
             return;
@@ -1279,7 +1287,7 @@ document.getElementById('ecue_form').addEventListener('submit', async function(e
             bootstrap.Modal.getInstance(document.getElementById('modalECUE')).hide();
             window.location.reload();
         } else {
-            const msgs = data.errors ? Object.values(data.errors).flat().join('<br>') : (data.message || 'Erreur');
+            const msgs = data.errors ? Object.values(data.errors).flat().map(m => escHtml(m)).join('<br>') : escHtml(data.message || 'Erreur');
             errBox.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>' + msgs;
             errBox.style.display = 'block';
         }
@@ -1344,7 +1352,7 @@ function buildParcoursCheckbox(p, checked) {
     return `<div style="display:flex; align-items:center; gap:.65rem; padding:.6rem .85rem; border-radius:10px; background:${hasAnySem ? '#eef2ff' : '#f8fafc'}; border:1.5px solid ${hasAnySem ? '#4338ca' : '#e8ecf1'}; transition:all .2s; margin-bottom:.1rem;">
         <input type="checkbox" class="lp-parcours-check" value="${p.id}" ${hasAnySem ? 'checked' : ''} style="width:1.1em; height:1.1em; accent-color:#4338ca; cursor:pointer; flex-shrink:0;">
         <div style="flex:1; min-width:0;">
-            <div style="font-size:.86rem; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.code || ''} — ${p.name}</div>
+            <div style="font-size:.86rem; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escHtml(p.code || '')} — ${escHtml(p.name)}</div>
             <div style="display:flex; gap:.25rem; flex-wrap:wrap; margin-top:.35rem;">${semChips}</div>
         </div>
     </div>`;
