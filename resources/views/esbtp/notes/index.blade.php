@@ -878,15 +878,16 @@ function renderNotesGrid(students, sortedEvaluations) {
 
             const noteCell = `
                 <td class="text-center nm-note-cell">
-                    <div class="nm-note-wrap position-relative">
+                    <div class="nm-note-wrap d-flex align-items-center gap-1">
                         <input type="number"
                                class="form-control nm-note-input note-input"
                                value="${note}"
                                data-student-id="${student.id}"
                                data-eval-id="${evaluation.id}"
                                step="0.25" min="0" max="${evaluation.bareme || 20}"
+                               ${isAbsent ? 'disabled' : ''}
                                onchange="saveNote(${student.id}, ${evaluation.id}, this.value)">
-                        <div class="nm-absence-check form-check form-check-inline position-absolute">
+                        <div class="nm-absence-check">
                             <input class="form-check-input absence-checkbox"
                                    type="checkbox"
                                    id="absent-${student.id}-${evaluation.id}"
@@ -1028,14 +1029,14 @@ function saveNote(studentId, evaluationId, noteValue) {
 }
 
 function toggleAbsence(studentId, evaluationId, isAbsent) {
-    const input = $(`input[data-student-id="${studentId}"][data-eval-id="${evaluationId}"]`);
+    const input = $(`input.note-input[data-student-id="${studentId}"][data-eval-id="${evaluationId}"]`);
 
     if (isAbsent) {
         input.val('0').prop('disabled', true);
         saveNote(studentId, evaluationId, 0);
     } else {
-        input.val('').prop('disabled', false).attr('placeholder', 'Note...').focus();
-        // Sauvegarder la suppression de l'absence côté serveur
+        input.val('0').prop('disabled', false).focus();
+        // Sauvegarder la suppression de l'absence côté serveur (note reste à 0)
         $.ajax({
             url: '{{ route("esbtp.notes.save-ajax") }}',
             method: 'POST',
@@ -1044,13 +1045,13 @@ function toggleAbsence(studentId, evaluationId, isAbsent) {
                 _token: '{{ csrf_token() }}',
                 etudiant_id: studentId,
                 evaluation_id: evaluationId,
-                note: '',
+                note: 0,
                 is_absent: ''
             },
             success: function(response) {
                 if (response.success) {
                     if (!notesData[studentId]) notesData[studentId] = {};
-                    notesData[studentId][evaluationId] = '';
+                    notesData[studentId][evaluationId] = 0;
                     notesData[studentId][evaluationId + '_absent'] = false;
                     calculateStudentAverage(studentId);
                     calculateClassAverages();

@@ -1012,11 +1012,13 @@
     min-width: 80px;
 }
 .nm-note-wrap {
-    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 .nm-note-input {
-    width: 100%;
-    min-width: 52px;
+    flex: 1;
+    min-width: 44px;
     font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
     font-size: 0.88rem;
     font-weight: 600;
@@ -1042,24 +1044,24 @@
 
 /* ── Absence checkbox ─────────────────────────────────── */
 .nm-absence-check {
-    position: absolute;
-    top: 1px;
-    right: 1px;
-    z-index: 5;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 2px;
 }
 .nm-absence-check input {
-    width: 15px !important;
-    height: 15px !important;
+    width: 16px !important;
+    height: 16px !important;
     accent-color: #0453cb;
     cursor: pointer;
-    pointer-events: auto;
+    margin: 0 !important;
 }
 .nm-absence-check label {
     font-size: 0.65rem;
     color: #cbd5e1;
     cursor: pointer;
-    padding: 2px;
-    pointer-events: auto;
+    margin: 0;
+    line-height: 1;
 }
 .nm-absence-check input:checked + label {
     color: #0453cb;
