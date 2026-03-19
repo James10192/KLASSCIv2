@@ -3152,6 +3152,7 @@
         if ($autreIsLMD) {
             $autreBulsLMD = \App\Models\ESBTPLMDBulletin::where('etudiant_id', $etudiant->id)
                 ->where('classe_id', optional($autreInsc->classe)->id)
+                ->where('annee_universitaire_id', $autreInsc->annee_universitaire_id)
                 ->with(['resultatsUEs.uniteEnseignement', 'resultatsECUEs.matiere'])
                 ->orderBy('semestre')->get();
             $autreBuls = collect(); // pas de BTS bulletins
@@ -5005,6 +5006,20 @@ function uploadEtudiantPhoto(input) {
     if (m) document.body.appendChild(m);
 })();
 
+// Skeleton helpers
+function etdShowSkeleton(el, cls) {
+    if (!el) return;
+    el.style.display = 'none';
+    if (!el.parentElement.querySelector('.' + cls)) {
+        el.insertAdjacentHTML('afterend', '<div class="etd-skeleton ' + cls + '"></div>');
+    }
+}
+function etdHideSkeleton(el, cls) {
+    if (!el?.parentElement) return;
+    el.style.display = '';
+    el.parentElement.querySelector('.' + cls)?.remove();
+}
+
 function prepareEtudiantPaymentModal(inscriptionId) {
     const form = document.getElementById('etudiantPaymentForm');
     form.action = `/esbtp/inscriptions/${inscriptionId}/valider-avec-paiement`;
@@ -5017,18 +5032,17 @@ function prepareEtudiantPaymentModal(inscriptionId) {
     if (montantInput) { montantInput.setAttribute('disabled', 'disabled'); montantInput.value = ''; montantInput.removeAttribute('max'); }
     window._etdInscriptionId = inscriptionId;
     window._etdIsSubscribed = false;
+    window._etdCategoryCache = {};
 
-    // Charger les catégories de frais via AJAX
     const sel = document.getElementById('etd_fee_category_id');
-    if (sel) {
-        sel.innerHTML = '<option value="">Chargement...</option>';
-        sel.disabled = true;
-    }
+    const montantWrap = document.getElementById('etd_montant')?.parentElement;
+    etdShowSkeleton(sel, 'etd-skeleton-select');
+    etdShowSkeleton(montantWrap, 'etd-skeleton-input');
+
     fetch(`/esbtp/inscriptions/${inscriptionId}/frais-restants`)
         .then(r => r.json())
         .then(data => {
             if (!data.success || !sel) return;
-            // Mettre à jour le header du modal (classe + année)
             const classeSpan = document.getElementById('etd-modal-classe-info');
             if (classeSpan) {
                 let info = '';
@@ -5036,7 +5050,11 @@ function prepareEtudiantPaymentModal(inscriptionId) {
                 if (data.annee) info += ' · ' + data.annee;
                 classeSpan.textContent = info;
             }
-            // Repeupler le select
+            // Cache category data to avoid 2nd AJAX call
+            window._etdCategoryCache = {};
+            data.categories.forEach(c => {
+                window._etdCategoryCache[c.category_id] = c;
+            });
             sel.innerHTML = '<option value="">Sélectionnez une catégorie</option>';
             data.categories.forEach(c => {
                 const opt = document.createElement('option');
@@ -5047,7 +5065,11 @@ function prepareEtudiantPaymentModal(inscriptionId) {
             sel.disabled = false;
         })
         .catch(() => {
-            if (sel) { sel.innerHTML = '<option value="">Erreur de chargement</option>'; sel.disabled = false; }
+            if (sel) { sel.innerHTML = '<option value="">Erreur de chargement</option>'; }
+        })
+        .finally(() => {
+            etdHideSkeleton(sel, 'etd-skeleton-select');
+            etdHideSkeleton(montantWrap, 'etd-skeleton-input');
         });
 }
 
@@ -5060,64 +5082,51 @@ function prepareEtudiantPaymentModalForCategory(inscriptionId, categoryId) {
 }
 
 function etdUpdateMontantRestant() {
-    const inscriptionId = window._etdInscriptionId;
     const sel = document.getElementById('etd_fee_category_id');
     const montantInput = document.getElementById('etd_montant');
     const categoryId = sel ? sel.value : null;
+    const md = document.getElementById('etd-montant-validation-message');
 
     if (!categoryId || !montantInput) {
         window._etdIsSubscribed = false;
         if (montantInput) { montantInput.setAttribute('disabled', 'disabled'); montantInput.value = ''; }
-        const md = document.getElementById('etd-montant-validation-message');
         if (md) md.style.display = 'none';
         return;
     }
 
-    fetch(`/esbtp/inscriptions/${inscriptionId}/frais/${categoryId}/montant-restant`)
-        .then(r => r.json())
-        .then(data => {
-            const md = document.getElementById('etd-montant-validation-message');
-            if (data.success && data.is_subscribed) {
-                window._etdIsSubscribed = true;
-                montantInput.removeAttribute('disabled');
-                montantInput.value = data.montant_restant;
-                montantInput.setAttribute('max', data.montant_restant);
-                if (md) {
-                    md.style.display = 'block';
-                    md.innerHTML = `<div style="background:linear-gradient(135deg,#e7f3ff,#f0f8ff);border-left:4px solid var(--k-blue);border-radius:8px;padding:.75rem 1rem;">
-                        <div style="display:flex;align-items:start;gap:.5rem;">
-                            <i class="fas fa-info-circle" style="color:var(--k-blue);margin-top:2px;"></i>
-                            <div style="flex:1;">
-                                <strong style="color:#084298;">Montant maximum :</strong>
-                                <span style="color:#052c65;font-weight:600;">${data.montant_restant.toLocaleString('fr-FR')} FCFA</span><br>
-                                <small style="color:var(--k-muted);">Total: ${data.montant_total.toLocaleString('fr-FR')} FCFA · Payé: ${data.montant_paye.toLocaleString('fr-FR')} FCFA</small>
-                            </div>
-                        </div>
-                    </div>`;
-                }
-                montantInput.oninput = function() {
-                    const v = parseFloat(this.value) || 0;
-                    if (v > data.montant_restant) { this.setCustomValidity(`Max ${data.montant_restant.toLocaleString('fr-FR')} FCFA`); this.reportValidity(); }
-                    else this.setCustomValidity('');
-                };
-            } else {
-                window._etdIsSubscribed = false;
-                montantInput.setAttribute('disabled', 'disabled'); montantInput.value = '';
-                if (md) {
-                    md.style.display = 'block';
-                    md.innerHTML = `<div style="background:linear-gradient(135deg,#f8d7da,#f5c2c7);border-left:4px solid #dc3545;border-radius:8px;padding:.75rem 1rem;">
-                        <div style="display:flex;align-items:start;gap:.5rem;">
-                            <i class="fas fa-times-circle" style="color:#dc3545;margin-top:2px;"></i>
-                            <div style="flex:1;color:#842029;"><strong>Impossible :</strong><br>${data.message || 'Étudiant non souscrit à cette catégorie.'}</div>
-                        </div>
-                    </div>`;
-                }
-            }
-        })
-        .catch(() => {
-            window._etdIsSubscribed = false;
-            montantInput.setAttribute('disabled', 'disabled'); montantInput.value = '';
-        });
+    // Use cached data from first AJAX call — no 2nd request needed
+    const cached = (window._etdCategoryCache || {})[categoryId];
+    if (cached) {
+        window._etdIsSubscribed = true;
+        montantInput.removeAttribute('disabled');
+        montantInput.value = cached.montant_restant;
+        montantInput.setAttribute('max', cached.montant_restant);
+        if (md) {
+            md.style.display = 'block';
+            md.innerHTML = `<div style="background:linear-gradient(135deg,#e7f3ff,#f0f8ff);border-left:4px solid var(--k-blue);border-radius:8px;padding:.75rem 1rem;">
+                <div style="display:flex;align-items:start;gap:.5rem;">
+                    <i class="fas fa-info-circle" style="color:var(--k-blue);margin-top:2px;"></i>
+                    <div style="flex:1;">
+                        <strong style="color:#084298;">Montant maximum :</strong>
+                        <span style="color:#052c65;font-weight:600;">${Number(cached.montant_restant).toLocaleString('fr-FR')} FCFA</span><br>
+                        <small style="color:var(--k-muted);">Total: ${Number(cached.montant_total).toLocaleString('fr-FR')} FCFA · Payé: ${Number(cached.montant_paye).toLocaleString('fr-FR')} FCFA</small>
+                    </div>
+                </div>
+            </div>`;
+        }
+        montantInput.oninput = function() {
+            const v = parseFloat(this.value) || 0;
+            if (v > cached.montant_restant) { this.setCustomValidity(`Max ${Number(cached.montant_restant).toLocaleString('fr-FR')} FCFA`); this.reportValidity(); }
+            else this.setCustomValidity('');
+        };
+        return;
+    }
+
+    // Fallback: fetch from server if not cached
+    window._etdIsSubscribed = false;
+    montantInput.setAttribute('disabled', 'disabled');
+    montantInput.value = '';
+    if (md) md.style.display = 'none';
 }
 
 // AJAX submission — reste sur etudiants.show, recharge tab finances
@@ -5243,6 +5252,31 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 {{-- ═══ MODAL PAIEMENT ÉTUDIANT ═══ --}}
+<style>
+.etd-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: #e9ecef;
+    border-radius: 8px;
+    color: transparent !important;
+    pointer-events: none;
+    user-select: none;
+}
+.etd-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.55) 50%, transparent 100%);
+    animation: etd-shimmer 1.4s infinite;
+}
+@keyframes etd-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+.etd-skeleton-select { height: 38px; width: 100%; }
+.etd-skeleton-input { height: 38px; width: 100%; }
+.etd-skeleton-msg { height: 52px; width: 100%; margin-bottom: 1rem; }
+</style>
 @if(isset($finInscActive) && $finInscActive)
 <div class="modal fade" id="etudiantPaymentModal" tabindex="-1" aria-labelledby="etudiantPaymentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">

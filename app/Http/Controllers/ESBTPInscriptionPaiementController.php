@@ -1052,13 +1052,16 @@ class ESBTPInscriptionPaiementController extends Controller
     {
         $inscription->load(['fraisSubscriptions.fraisCategory', 'classe', 'anneeUniversitaire']);
 
-        $categories = $inscription->fraisSubscriptions->map(function ($sub) use ($inscription) {
-            $totalPaye = \App\Models\ESBTPPaiement::where('inscription_id', $inscription->id)
-                ->where('frais_category_id', $sub->frais_category_id)
-                ->whereIn('status', ['validé', 'en_attente'])
-                ->whereNull('deleted_at')
-                ->sum('montant');
+        // Single grouped query instead of N individual SUM queries
+        $paiementsParCategorie = \App\Models\ESBTPPaiement::where('inscription_id', $inscription->id)
+            ->whereIn('status', ['validé', 'en_attente'])
+            ->whereNull('deleted_at')
+            ->groupBy('frais_category_id')
+            ->selectRaw('frais_category_id, SUM(montant) as total_paye')
+            ->pluck('total_paye', 'frais_category_id');
 
+        $categories = $inscription->fraisSubscriptions->map(function ($sub) use ($paiementsParCategorie) {
+            $totalPaye = $paiementsParCategorie[$sub->frais_category_id] ?? 0;
             $restant = max(0, $sub->amount - $totalPaye);
 
             return [
