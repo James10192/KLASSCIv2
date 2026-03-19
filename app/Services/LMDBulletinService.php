@@ -104,11 +104,11 @@ class LMDBulletinService
             $ues = $this->getUEsForSemestre($classe, $semestre);
 
             // Pre-load ALL notes for this student in this semestre (avoid N+1)
-            $periodeLabel = 'semestre' . $semestre;
+            $periodeVariants = $this->getPeriodeVariants($semestre);
             $allNotes = ESBTPNote::where('etudiant_id', $etudiantId)
                 ->where('classe_id', $classeId)
-                ->whereHas('evaluation', function ($q) use ($periodeLabel, $anneeUniversitaireId) {
-                    $q->where('periode', $periodeLabel)
+                ->whereHas('evaluation', function ($q) use ($periodeVariants, $anneeUniversitaireId) {
+                    $q->whereIn('periode', $periodeVariants)
                       ->where('annee_universitaire_id', $anneeUniversitaireId)
                       ->where('status', ESBTPEvaluation::STATUS_COMPLETED);
                 })
@@ -359,14 +359,7 @@ class LMDBulletinService
         if ($preloadedNotes !== null) {
             $notes = $preloadedNotes;
         } else {
-            // Match both formats: '3', 'semestre3', 'S3', 'Semestre 3'
-            $periodeVariants = [
-                (string) $semestre,
-                'semestre' . $semestre,
-                'S' . $semestre,
-                'Semestre ' . $semestre,
-                'semestre ' . $semestre,
-            ];
+            $periodeVariants = $this->getPeriodeVariants($semestre);
             $notes = ESBTPNote::where('etudiant_id', $etudiantId)
                 ->where('matiere_id', $matiereId)
                 ->where('classe_id', $classeId)
