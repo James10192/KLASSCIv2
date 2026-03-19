@@ -295,7 +295,7 @@ class ESBTPClasseController extends Controller
                 "places_totales" => "required|integer|min:1",
                 "description" => "nullable|string",
                 "is_active" => "boolean",
-                "systeme_academique" => "nullable|in:BTS,LMD",
+                // systeme_academique is auto-set by ESBTPClasse::booted() from niveau_etude_id
                 "parcours_id" => "nullable|exists:esbtp_lmd_parcours,id",
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -832,7 +832,7 @@ class ESBTPClasseController extends Controller
                 "places_totales" => "required|integer|min:1",
                 "description" => "nullable|string",
                 "is_active" => "boolean",
-                "systeme_academique" => "nullable|in:BTS,LMD",
+                // systeme_academique is auto-set by ESBTPClasse::booted() from niveau_etude_id
                 "parcours_id" => "nullable|exists:esbtp_lmd_parcours,id",
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {

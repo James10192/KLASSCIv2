@@ -7,7 +7,6 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPLMDBulletin;
-use App\Models\Setting;
 use App\Services\LMDBulletinService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -143,15 +142,16 @@ class ESBTPLMDBulletinController extends Controller
     {
         $data = $this->service->preparerDonneesBulletin($bulletin);
 
-        // Etablissement depuis Settings (même pattern que liste-complete-pdf)
+        // Etablissement depuis SettingsHelper (methode centralisee)
+        $schoolInfo = SettingsHelper::getSchoolInfo();
         $data['etablissement'] = [
-            'nom' => Setting::get('school_name', 'KLASSCI'),
-            'adresse' => Setting::get('school_address', ''),
-            'telephone' => Setting::get('school_phone', ''),
-            'email' => Setting::get('school_email', ''),
-            'logo' => Setting::get('school_logo', ''),
-            'ville' => Setting::get('school_city', 'Abidjan'),
-            'directeur' => Setting::get('director_name', ''),
+            'nom' => $schoolInfo['name'],
+            'adresse' => $schoolInfo['address'],
+            'telephone' => $schoolInfo['phone'],
+            'email' => $schoolInfo['email'],
+            'logo' => $schoolInfo['logo'],
+            'ville' => $schoolInfo['city'] ?: 'Abidjan',
+            'directeur' => $schoolInfo['director_name'],
         ];
 
         // Couleurs PDF depuis SettingsHelper

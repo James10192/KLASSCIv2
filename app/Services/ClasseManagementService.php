@@ -46,12 +46,8 @@ class ClasseManagementService
 
             if ($classe->systeme_academique !== $expected) {
                 $old = $classe->systeme_academique;
-                // Bypass model event to avoid infinite loop
-                $classe->timestamps = false;
-                ESBTPClasse::withoutEvents(function () use ($classe, $expected) {
-                    $classe->update(['systeme_academique' => $expected]);
-                });
-                $classe->timestamps = true;
+                // Model event won't loop: niveau_etude_id isn't dirty, only systeme_academique changes
+                $classe->update(['systeme_academique' => $expected]);
 
                 $details[] = [
                     'id' => $classe->id,
