@@ -143,38 +143,19 @@ class ESBTPLMDUEController extends Controller
             'code'        => 'required|string|max:50|unique:esbtp_unites_enseignement,code',
             'description' => 'nullable|string',
             'credit'      => 'nullable|integer|min:1',
-            'semestre'    => 'nullable|integer|min:1|max:10',
             'type_ue'     => 'required|in:' . implode(',', [
                 \App\Models\ESBTPUniteEnseignement::TYPE_FONDAMENTALE,
                 \App\Models\ESBTPUniteEnseignement::TYPE_METHODOLOGIQUE,
                 \App\Models\ESBTPUniteEnseignement::TYPE_DECOUVERTE,
                 \App\Models\ESBTPUniteEnseignement::TYPE_TRANSVERSALE,
             ]),
-            'filiere_id'  => 'nullable|exists:esbtp_filieres,id',
-            'niveau_id'   => 'nullable|exists:esbtp_niveau_etudes,id',
-            'parcours_id' => 'nullable|exists:esbtp_lmd_parcours,id',
-            'ordre'       => 'nullable|integer|min:0',
-            'is_active'   => 'nullable|boolean',
         ]);
-
-        $parcoursId = $validated['parcours_id'] ?? null;
-        $ordre = $validated['ordre'] ?? 0;
-        unset($validated['ordre']); // ordre is on the pivot, not on the UE table
 
         $validated['created_by'] = auth()->id();
         $validated['updated_by'] = auth()->id();
-        $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['is_active'] = true;
 
         $ue = ESBTPUniteEnseignement::create($validated);
-
-        // Lier au parcours via pivot si parcours_id fourni
-        if ($parcoursId) {
-            $ue->parcoursMultiple()->attach($parcoursId, [
-                'semestre' => $validated['semestre'],
-                'is_optional' => false,
-                'ordre' => $ordre,
-            ]);
-        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'UE créée avec succès.', 'ue' => $ue]);
@@ -216,39 +197,17 @@ class ESBTPLMDUEController extends Controller
             'code'        => 'required|string|max:50|unique:esbtp_unites_enseignement,code,' . $ue->id,
             'description' => 'nullable|string',
             'credit'      => 'nullable|integer|min:1',
-            'semestre'    => 'nullable|integer|min:1|max:10',
             'type_ue'     => 'required|in:' . implode(',', [
                 \App\Models\ESBTPUniteEnseignement::TYPE_FONDAMENTALE,
                 \App\Models\ESBTPUniteEnseignement::TYPE_METHODOLOGIQUE,
                 \App\Models\ESBTPUniteEnseignement::TYPE_DECOUVERTE,
                 \App\Models\ESBTPUniteEnseignement::TYPE_TRANSVERSALE,
             ]),
-            'filiere_id'  => 'nullable|exists:esbtp_filieres,id',
-            'niveau_id'   => 'nullable|exists:esbtp_niveau_etudes,id',
-            'parcours_id' => 'nullable|exists:esbtp_lmd_parcours,id',
-            'ordre'       => 'nullable|integer|min:0',
-            'is_active'   => 'nullable|boolean',
         ]);
 
-        $parcoursId = $validated['parcours_id'] ?? null;
-        $ordre = $validated['ordre'] ?? 0;
-        unset($validated['ordre']);
-
         $validated['updated_by'] = auth()->id();
-        $validated['is_active'] = $request->boolean('is_active', true);
 
         $ue->update($validated);
-
-        // Sync pivot parcours
-        if ($parcoursId) {
-            $ue->parcoursMultiple()->syncWithoutDetaching([
-                $parcoursId => [
-                    'semestre' => $validated['semestre'],
-                    'is_optional' => false,
-                    'ordre' => $ordre,
-                ],
-            ]);
-        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'UE mise à jour avec succès.', 'ue' => $ue]);
