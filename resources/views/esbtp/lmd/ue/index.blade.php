@@ -766,7 +766,7 @@ function buildParcoursCheckbox(p, checked) {
 
 // ── Save Link Parcours (global, called by button onclick) ──
 document.getElementById('lp_submit').addEventListener('click', async function() {
-    const mgr = document.querySelector('[x-data]').__x.$data;
+    const mgr = Alpine.$data(document.querySelector('[x-data]'));
     const btn = this;
     btn.disabled = true;
     document.getElementById('lp_submit_text').textContent = 'Enregistrement...';
@@ -817,7 +817,7 @@ document.getElementById('formUE').addEventListener('submit', async function(e) {
             return;
         }
         bootstrap.Modal.getInstance(document.getElementById('modalUE')).hide();
-        const mgr = document.querySelector('[x-data]').__x.$data;
+        const mgr = Alpine.$data(document.querySelector('[x-data]'));
         mgr.loadUes(mgr.pagination.current_page);
         mgr.showToast(data.message || 'UE enregistrée');
     } catch (err) {
@@ -837,11 +837,16 @@ document.getElementById('ecue_form').addEventListener('submit', async function(e
     btn.disabled = true;
     errBox.style.display = 'none';
 
+    const formData = new FormData(this);
+    const isPut = document.getElementById('ecue_method').value === 'PUT';
+
+    // Build body without _method (we'll use actual HTTP method or query param)
     const body = {};
-    new FormData(this).forEach((v, k) => body[k] = v);
+    formData.forEach((v, k) => { if (k !== '_method') body[k] = v; });
 
     try {
-        const resp = await fetch(this.action, {
+        const url = isPut ? this.action + '?_method=PUT' : this.action;
+        const resp = await fetch(url, {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
@@ -849,7 +854,7 @@ document.getElementById('ecue_form').addEventListener('submit', async function(e
         const data = await resp.json();
         if (resp.ok && data.success !== false) {
             bootstrap.Modal.getInstance(document.getElementById('modalECUE')).hide();
-            const mgr = document.querySelector('[x-data]').__x.$data;
+            const mgr = Alpine.$data(document.querySelector('[x-data]'));
             mgr.loadUes(mgr.pagination.current_page);
             mgr.showToast(data.message || 'ECUE enregistré');
         } else {
