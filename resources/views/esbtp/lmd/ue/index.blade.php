@@ -801,9 +801,9 @@ function buildParcoursCheckbox(p, checked) {
     const hasAnySem = activeSems.length > 0;
     const semChips = [1,2,3,4,5,6,7,8,9,10].map(s => {
         const active = activeSems.includes(s);
-        return `<span class="lp-sem-chip ${active ? 'lp-sem-chip--on' : ''}" data-parcours-id="${p.id}" data-sem="${s}" onclick="this.classList.toggle('lp-sem-chip--on')">S${s}</span>`;
+        return `<span class="lp-sem-chip ${active ? 'lp-sem-chip--on' : ''}" data-parcours-id="${p.id}" data-sem="${s}" onclick="this.classList.toggle('lp-sem-chip--on'); var row=this.closest('.lp-row'); var cb=row.querySelector('.lp-parcours-check'); cb.checked=!!row.querySelector('.lp-sem-chip--on');">S${s}</span>`;
     }).join('');
-    return `<div style="display:flex; align-items:center; gap:.65rem; padding:.6rem .85rem; border-radius:10px; background:${hasAnySem ? '#eef2ff' : '#f8fafc'}; border:1.5px solid ${hasAnySem ? '#4338ca' : '#e8ecf1'}; margin-bottom:.1rem;">
+    return `<div class="lp-row" style="display:flex; align-items:center; gap:.65rem; padding:.6rem .85rem; border-radius:10px; background:${hasAnySem ? '#eef2ff' : '#f8fafc'}; border:1.5px solid ${hasAnySem ? '#4338ca' : '#e8ecf1'}; margin-bottom:.1rem;">
         <input type="checkbox" class="lp-parcours-check" value="${p.id}" ${hasAnySem ? 'checked' : ''} style="width:1.1em; height:1.1em; accent-color:#4338ca; cursor:pointer; flex-shrink:0;">
         <div style="flex:1; min-width:0;">
             <div style="font-size:.86rem; font-weight:600; color:#1e293b;">${escHtml(p.code || '')} — ${escHtml(p.name)}</div>
