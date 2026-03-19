@@ -2940,6 +2940,16 @@ class ESBTPPaiementController extends Controller
 
             // Récupérer les paramètres de l'école
             $settings = $this->getReceiptSettings();
+            $schoolInfo = \App\Helpers\SettingsHelper::getSchoolInfo();
+            $pdfCfg = \App\Helpers\SettingsHelper::getPdfSettings();
+
+            $etablissement = [
+                'nom' => $schoolInfo['name'],
+                'adresse' => $schoolInfo['address'],
+                'telephone' => $schoolInfo['phone'],
+                'email' => $schoolInfo['email'],
+                'logo' => $schoolInfo['logo'],
+            ];
 
             Log::info('Export PDF paiements généré', [
                 'user_id' => auth()->id(),
@@ -2952,6 +2962,8 @@ class ESBTPPaiementController extends Controller
                 'stats' => $data['stats'],
                 'filters' => $filters,
                 'settings' => $settings,
+                'etablissement' => $etablissement,
+                'pdfCfg' => $pdfCfg,
                 'dateExport' => now()
             ]);
 

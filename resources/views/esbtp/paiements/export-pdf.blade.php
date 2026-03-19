@@ -3,229 +3,98 @@
 <head>
     @include('pdf.partials.theme')
     <meta charset="UTF-8">
-    <title>Export paiements - {{ $settings['school_name'] ?? 'Établissement' }}</title>
+    <title>Export paiements - {{ $etablissement['nom'] ?? $settings['school_name'] ?? 'Établissement' }}</title>
     <style>
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: DejaVu Sans, Arial, sans-serif;
             font-size: 10px;
             margin: 0;
-            padding: 0;
-            background: #f3f4f6;
+            padding: 8px;
             color: #1f2937;
-            line-height: 1.4;
-        }
-
-        .page {
-            padding: 12px;
+            line-height: 1.3;
+            background: white;
         }
 
         .container {
-            background: #ffffff;
-            border-radius: 12px;
+            max-width: 100%;
+            background: white;
             padding: 10px;
-            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
         }
 
         .header-section {
-            background: #0453cb;
-            color: #ffffff;
-            padding: 14px;
-            border-radius: 12px;
-            text-align: center;
-            margin-bottom: 14px;
-            -webkit-print-color-adjust: exact;
-            color-adjust: exact;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            overflow: hidden;
         }
 
-        .header-logo {
-            max-height: 38px;
-            margin-bottom: 8px;
-        }
-
-        .school-name {
-            font-size: 14px;
-            font-weight: 700;
-            letter-spacing: 0.4px;
-            margin-bottom: 4px;
-        }
-
-        .school-meta {
-            font-size: 9px;
-            opacity: 0.9;
-        }
-
-        .document-title {
-            display: inline-block;
-            margin-top: 8px;
-            background: rgba(255, 255, 255, 0.15);
-            padding: 5px 12px;
-            border-radius: 999px;
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 0.6px;
-        }
-
-        .kpi-grid {
-            text-align: center;
-            font-size: 0;
-            margin-bottom: 12px;
-        }
-
-        .kpi-card {
-            display: inline-block;
-            vertical-align: top;
-            width: 18%;
-            min-width: 130px;
-            margin: 0 0.5% 6px;
-            font-size: 10px;
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 8px 10px;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
-        }
-
+        /* ── KPI row ── */
         .kpi-label {
-            font-size: 8px;
-            color: #64748b;
+            font-size: 7.5px;
+            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.4px;
-            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+            color: white;
+            opacity: 0.8;
+            margin-bottom: 3px;
         }
-
         .kpi-value {
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 700;
-            color: #0453cb;
-            margin-bottom: 4px;
+            color: white;
+            line-height: 1.1;
+            margin-bottom: 2px;
         }
-
         .kpi-sub {
-            font-size: 9px;
-            color: #6b7280;
+            font-size: 7px;
+            color: white;
+            opacity: 0.65;
         }
 
-        .section-title {
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.4px;
-            text-transform: uppercase;
-            color: #0f172a;
-            margin: 16px 0 8px;
-        }
-
+        /* ── Table ── */
         .payments-table {
             width: 100%;
             border-collapse: collapse;
-            background: #ffffff;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 6px 14px rgba(15, 23, 42, 0.05);
-            table-layout: fixed;
+            margin-top: 6px;
+            background: white;
+            font-size: 9.5px;
         }
 
-        .payments-table thead th {
-            background: #0453cb;
-            color: #ffffff;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.2px;
-            font-size: 7.5px;
-            padding: 4px 3px;
-            text-align: center;
-            border-right: 1px solid rgba(255, 255, 255, 0.2);
-            -webkit-print-color-adjust: exact;
-            color-adjust: exact;
-        }
-
-        .payments-table thead th:last-child {
-            border-right: none;
-        }
-
-        .payments-table tbody td {
-            padding: 4px 3px;
+        .payments-table td {
+            padding: 5px 4px;
             border-bottom: 1px solid #e5e7eb;
             vertical-align: middle;
-            font-size: 8px;
-            word-break: break-word;
         }
 
-        .payments-table tbody tr:nth-child(even) {
-            background: #f8fafc;
+        .payments-table tbody tr:nth-child(even) td {
+            background-color: #f8f9fa;
         }
 
-        .payments-table tbody tr:last-child td {
-            border-bottom: none;
+        .num-col {
+            font-weight: bold;
+            font-size: 9px;
+            min-width: 16px;
+            display: inline-block;
         }
 
-        /* Colonne N° */
-        .payments-table td:nth-child(1),
-        .payments-table th:nth-child(1) {
-            width: 30px;
-            text-align: center;
-        }
-
-        /* Colonne Date */
-        .payments-table td:nth-child(2),
-        .payments-table th:nth-child(2) {
-            width: 58px;
-            text-align: center;
-        }
-
-        /* Colonne Matricule */
-        .payments-table td:nth-child(3),
-        .payments-table th:nth-child(3) {
-            width: 72px;
+        .matricule-col {
             font-family: 'Courier New', monospace;
-            text-align: center;
+            font-size: 8.5px;
+            background: #f3f4f6;
+            padding: 2px 3px;
+            border-radius: 2px;
+            color: #374151;
         }
 
-        /* Colonne Nom complet */
-        .payments-table td:nth-child(4),
-        .payments-table th:nth-child(4) {
-            width: 118px;
-        }
-
-        /* Colonne Classe */
-        .payments-table td:nth-child(5),
-        .payments-table th:nth-child(5) {
-            width: 82px;
-        }
-
-        /* Colonne Catégorie */
-        .payments-table td:nth-child(6),
-        .payments-table th:nth-child(6) {
-            width: 88px;
-        }
-
-        /* Colonne Montant */
-        .payments-table td:nth-child(7),
-        .payments-table th:nth-child(7) {
-            width: 68px;
-            text-align: right;
+        .student-name {
             font-weight: 600;
+            font-size: 9.5px;
+            color: #1f2937;
         }
 
-        /* Colonne Mode */
-        .payments-table td:nth-child(8),
-        .payments-table th:nth-child(8) {
-            width: 60px;
-            text-align: center;
-        }
-
-        /* Colonne Statut */
-        .payments-table td:nth-child(9),
-        .payments-table th:nth-child(9) {
-            width: 64px;
-            text-align: center;
-        }
-
-        /* Colonne N° reçu */
-        .payments-table td:nth-child(10),
-        .payments-table th:nth-child(10) {
-            width: 68px;
-            text-align: center;
-            font-family: 'Courier New', monospace;
+        .montant-col {
+            font-weight: 700;
+            text-align: right;
+            font-size: 10px;
         }
 
         .status-badge {
@@ -236,145 +105,72 @@
             font-size: 7.5px;
             color: #ffffff;
             text-transform: uppercase;
-            letter-spacing: 0.4px;
+            letter-spacing: 0.3px;
         }
+        .status-valid { background: #16a34a; }
+        .status-pending { background: #f59e0b; }
+        .status-rejected { background: #dc2626; }
+        .status-default { background: #6b7280; }
 
-        .status-valid {
-            background: #16a34a;
-        }
-
-        .status-pending {
-            background: #f59e0b;
-        }
-
-        .status-rejected {
-            background: #dc2626;
-        }
-
-        .status-default {
-            background: #6b7280;
-        }
-
-        .stats-section {
-            margin-top: 18px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 14px;
-        }
-
-        .stats-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .stats-item {
-            flex: 1 1 200px;
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            padding: 10px;
-            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
-        }
-
-        .stats-item-title {
-            font-size: 8.5px;
+        /* ── Stats section ── */
+        .section-title {
+            font-size: 10px;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.3px;
-            color: #475569;
-            margin-bottom: 4px;
+            color: #1f2937;
+            margin: 12px 0 6px;
         }
 
-        .stats-item-value {
-            font-size: 12px;
-            font-weight: 700;
-            color: #0453cb;
+        .filter-row td {
+            padding: 4px 6px;
+            font-size: 9px;
+            border-bottom: 1px solid #f1f5f9;
         }
-
-        .filters-section {
-            margin-top: 14px;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 12px;
-            background: #ffffff;
-        }
-
-        .filters-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .filter-chip {
-            flex: 1 1 220px;
-            background: #f8fafc;
-            border: 1px dashed #cbd5f5;
-            border-radius: 8px;
-            padding: 8px 10px;
-        }
-
         .filter-label {
             font-size: 8px;
             text-transform: uppercase;
             color: #64748b;
-            margin-bottom: 4px;
             letter-spacing: 0.3px;
         }
-
         .filter-value {
-            font-size: 10px;
+            font-size: 9.5px;
             color: #1f2937;
             font-weight: 600;
         }
 
-        .empty-state {
-            background: #fef3c7;
-            border: 1px solid #fcd34d;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            color: #92400e;
+        .export-footer {
             margin-top: 12px;
-        }
-
-        .export-info {
-            margin-top: 18px;
             text-align: center;
-            font-size: 9px;
+            font-size: 8.5px;
             color: #64748b;
+            padding-top: 6px;
+            border-top: 1px solid #e5e7eb;
         }
 
-        .export-info strong {
-            color: #1f2937;
-        }
-
-        @media print {
-            body {
-                background: #ffffff;
-            }
-
-            .page {
-                padding: 10px;
-            }
+        @page {
+            margin: 0.5cm;
+            size: A4 landscape;
         }
     </style>
 </head>
 <body>
 @php
+    $pdfCfgLocal = $pdfCfg ?? \App\Helpers\SettingsHelper::getPdfSettings();
+    $hdrBg   = $pdfCfgLocal['header_bg_color'] ?? $pdfCfgLocal['primary_color'] ?? '#0453cb';
+    $hdrText = $pdfCfgLocal['header_text_color'] ?? '#ffffff';
+    $primary = $pdfCfgLocal['primary_color'] ?? '#0453cb';
+    $etab    = $etablissement ?? [];
+
     $formatMontant = function ($montant) {
         return number_format((float) $montant, 0, ',', ' ') . ' FCFA';
     };
 
     $formatDate = function ($date, $withTime = false) {
-        if (!$date) {
-            return 'N/A';
-        }
-
+        if (!$date) return 'N/A';
         if ($date instanceof \Carbon\Carbon) {
             return $withTime ? $date->format('d/m/Y H:i') : $date->format('d/m/Y');
         }
-
         try {
             $parsed = \Carbon\Carbon::parse($date);
             return $withTime ? $parsed->format('d/m/Y H:i') : $parsed->format('d/m/Y');
@@ -392,191 +188,176 @@
     $recoveryRate = $stats['recovery_rate'] ?? null;
 
     $filterItems = [];
-    if (!empty($filters['search'])) {
-        $filterItems[] = ['label' => 'Recherche', 'value' => $filters['search']];
-    }
+    if (!empty($filters['search'])) $filterItems[] = ['label' => 'Recherche', 'value' => $filters['search']];
     if (!empty($filters['status'])) {
-        $statusMap = [
-            'en_attente' => 'En attente',
-            'validé' => 'Validé',
-            'valide' => 'Validé',
-            'rejeté' => 'Rejeté',
-            'rejete' => 'Rejeté',
-        ];
-        $filterItems[] = [
-            'label' => 'Statut',
-            'value' => $statusMap[$filters['status']] ?? ucfirst($filters['status']),
-        ];
+        $statusMap = ['en_attente' => 'En attente', 'validé' => 'Validé', 'valide' => 'Validé', 'rejeté' => 'Rejeté', 'rejete' => 'Rejeté'];
+        $filterItems[] = ['label' => 'Statut', 'value' => $statusMap[$filters['status']] ?? ucfirst($filters['status'])];
     }
-    if (!empty($filters['date_debut'])) {
-        $filterItems[] = ['label' => 'Date début', 'value' => $formatDate($filters['date_debut'])];
-    }
-    if (!empty($filters['date_fin'])) {
-        $filterItems[] = ['label' => 'Date fin', 'value' => $formatDate($filters['date_fin'])];
-    }
-    if (empty($filterItems)) {
-        $filterItems[] = ['label' => 'Filtres', 'value' => 'Aucun filtre spécifique appliqué'];
-    }
+    if (!empty($filters['date_debut'])) $filterItems[] = ['label' => 'Date début', 'value' => $formatDate($filters['date_debut'])];
+    if (!empty($filters['date_fin'])) $filterItems[] = ['label' => 'Date fin', 'value' => $formatDate($filters['date_fin'])];
+    if (empty($filterItems)) $filterItems[] = ['label' => 'Filtres', 'value' => 'Aucun filtre appliqué'];
 @endphp
 
-<div class="page">
-    <div class="container">
-        <div class="header-section">
-            @if(($settings['show_logo'] ?? false) && !empty($settings['logo_base64']))
-                <img src="{{ $settings['logo_base64'] }}" alt="Logo établissement" class="header-logo">
-            @endif
-            <div class="school-name">{{ $settings['school_name'] ?? 'Établissement' }}</div>
-            <div class="school-meta">
-                @if(!empty($settings['school_address'])){{ $settings['school_address'] }}@endif
-                @if(!empty($settings['school_phone'])) &nbsp;•&nbsp; Tel: {{ $settings['school_phone'] }}@endif
-                @if(!empty($settings['school_email'])) &nbsp;•&nbsp; Email: {{ $settings['school_email'] }}@endif
-            </div>
-            <div class="document-title">Tableau détaillé des paiements</div>
-        </div>
+<div class="container">
 
-        <div class="kpi-grid">
-            <div class="kpi-card">
-                <div class="kpi-label">Total paiements</div>
+    {{-- ═══ HEADER — même pattern que liste-complete-pdf ═══ --}}
+    <div class="header-section">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+            <tr>
+                {{-- Logo --}}
+                <td width="15%" style="background-color: {{ $hdrBg }}; padding: 14px 10px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.25);">
+                    @if(($etab['logo'] ?? '') && file_exists(storage_path('app/public/' . $etab['logo'])))
+                        <img src="data:image/{{ pathinfo($etab['logo'], PATHINFO_EXTENSION) }};base64,{{ base64_encode(file_get_contents(storage_path('app/public/' . $etab['logo']))) }}"
+                             style="max-height: 70px; max-width: 120px;" alt="Logo">
+                    @elseif(($settings['logo_base64'] ?? null))
+                        <img src="{{ $settings['logo_base64'] }}" style="max-height: 70px; max-width: 120px;" alt="Logo">
+                    @else
+                        <div style="font-size: 32px; font-weight: 900; color: {{ $hdrText }}; opacity: 0.4; letter-spacing: -2px;">K</div>
+                    @endif
+                </td>
+                {{-- Infos école + titre --}}
+                <td width="85%" style="background-color: {{ $hdrBg }}; padding: 12px 16px; vertical-align: middle;">
+                    <div style="font-size: 16px; font-weight: 700; color: {{ $hdrText }}; margin-bottom: 2px;">{{ $etab['nom'] ?? $settings['school_name'] ?? 'KLASSCI' }}</div>
+                    @if(($etab['adresse'] ?? '') || ($etab['telephone'] ?? '') || ($etab['email'] ?? ''))
+                    <div style="font-size: 9px; color: {{ $hdrText }}; opacity: 0.85; margin-bottom: 8px;">
+                        @if($etab['adresse'] ?? ''){{ $etab['adresse'] }}@endif
+                        @if($etab['telephone'] ?? '')
+                            @if($etab['adresse'] ?? '') &nbsp;|&nbsp; @endif
+                            Tél: {{ $etab['telephone'] }}
+                        @endif
+                        @if($etab['email'] ?? '')
+                            @if(($etab['adresse'] ?? '') || ($etab['telephone'] ?? '')) &nbsp;|&nbsp; @endif
+                            Email: {{ $etab['email'] }}
+                        @endif
+                    </div>
+                    @endif
+                    <div style="border-top: 1px solid rgba(255,255,255,0.35); padding-top: 7px;">
+                        <div style="font-size: 13px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.5px; margin-bottom: 4px;">TABLEAU DÉTAILLÉ DES PAIEMENTS</div>
+                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                            <tr>
+                                <td width="33%" style="font-size: 9px; color: {{ $hdrText }};">
+                                    <span style="opacity: 0.75;">Total :</span>
+                                    <strong>{{ $totalPaiements }} paiement(s)</strong>
+                                </td>
+                                <td width="33%" style="font-size: 9px; color: {{ $hdrText }}; text-align: center;">
+                                    <span style="opacity: 0.75;">Date :</span>
+                                    <strong>{{ now()->format('d/m/Y') }}</strong>
+                                </td>
+                                <td width="34%" style="font-size: 9px; color: {{ $hdrText }}; text-align: right;">
+                                    <span style="opacity: 0.75;">Montant :</span>
+                                    <strong>{{ $formatMontant($montantTotal) }}</strong>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    {{-- ═══ KPIs ═══ --}}
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 10px;">
+        <tr>
+            <td width="20%" style="background-color: {{ $primary }}; padding: 8px 6px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
+                <div class="kpi-label">TOTAL</div>
                 <div class="kpi-value">{{ $totalPaiements }}</div>
-                <div class="kpi-sub">Nombre d'opérations enregistrées</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Montant cumulé</div>
-                <div class="kpi-value">{{ $formatMontant($montantTotal) }}</div>
-                <div class="kpi-sub">Somme de tous les paiements</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">Paiements validés</div>
+                <div class="kpi-sub">Paiements</div>
+            </td>
+            <td width="25%" style="background-color: {{ $primary }}; padding: 8px 6px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
+                <div class="kpi-label">MONTANT CUMULÉ</div>
+                <div class="kpi-value" style="font-size:13px;">{{ $formatMontant($montantTotal) }}</div>
+                <div class="kpi-sub">Tous paiements</div>
+            </td>
+            <td width="20%" style="background-color: {{ $primary }}; padding: 8px 6px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
+                <div class="kpi-label">VALIDÉS</div>
                 <div class="kpi-value">{{ $valides }}</div>
                 <div class="kpi-sub">{{ $formatMontant($montantValide) }}</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-label">En attente</div>
+            </td>
+            <td width="20%" style="background-color: {{ $primary }}; padding: 8px 6px; text-align: center; vertical-align: middle; {{ !is_null($recoveryRate) ? 'border-right: 1px solid rgba(255,255,255,0.25);' : '' }}">
+                <div class="kpi-label">EN ATTENTE</div>
                 <div class="kpi-value">{{ $enAttente }}</div>
                 <div class="kpi-sub">{{ $formatMontant($montantEnAttente) }}</div>
-            </div>
+            </td>
             @if(!is_null($recoveryRate))
-                <div class="kpi-card">
-                    <div class="kpi-label">Taux de recouvrement</div>
-                    <div class="kpi-value">{{ $recoveryRate }}%</div>
-                    <div class="kpi-sub">Sur la période filtrée</div>
-                </div>
+            <td width="15%" style="background-color: {{ $primary }}; padding: 8px 6px; text-align: center; vertical-align: middle;">
+                <div class="kpi-label">RECOUVREMENT</div>
+                <div class="kpi-value">{{ $recoveryRate }}%</div>
+                <div class="kpi-sub">Taux</div>
+            </td>
             @endif
-        </div>
+        </tr>
+    </table>
 
-        @if($paiements->count() > 0)
-            <div class="section-title">Détails des paiements</div>
-            <table class="payments-table">
-                <thead>
+    {{-- ═══ TABLE PAIEMENTS ═══ --}}
+    @if($paiements->count() > 0)
+        <table class="payments-table">
+            <thead>
+                <tr>
+                    <td style="width:4%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:center; font-size:9px; padding:6px 3px;">N°</td>
+                    <td style="width:8%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:center; font-size:9px; padding:6px 3px;">Date</td>
+                    <td style="width:10%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:center; font-size:9px; padding:6px 3px;">Matricule</td>
+                    <td style="width:16%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; font-size:9px; padding:6px 3px;">Nom complet</td>
+                    <td style="width:12%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; font-size:9px; padding:6px 3px;">Classe</td>
+                    <td style="width:14%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; font-size:9px; padding:6px 3px;">Catégorie</td>
+                    <td style="width:10%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:right; font-size:9px; padding:6px 3px;">Montant</td>
+                    <td style="width:8%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:center; font-size:9px; padding:6px 3px;">Mode</td>
+                    <td style="width:8%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:center; font-size:9px; padding:6px 3px;">Statut</td>
+                    <td style="width:10%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:center; font-size:9px; padding:6px 3px;">N° reçu</td>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($paiements as $index => $paiement)
+                    @php
+                        $status = $paiement->status;
+                        $statusLabel = 'En attente';
+                        $statusClass = 'status-pending';
+                        switch ($status) {
+                            case 'validé': case 'valide': $statusLabel = 'Validé'; $statusClass = 'status-valid'; break;
+                            case 'rejeté': case 'rejete': $statusLabel = 'Rejeté'; $statusClass = 'status-rejected'; break;
+                            case 'en_attente': case 'en attente': case 'pending': $statusLabel = 'En attente'; $statusClass = 'status-pending'; break;
+                            default: $statusLabel = $status ? ucfirst($status) : 'N/D'; $statusClass = 'status-default'; break;
+                        }
+                    @endphp
                     <tr>
-                        <th>N°</th>
-                        <th>Date</th>
-                        <th>Matricule</th>
-                        <th>Nom complet</th>
-                        <th>Classe</th>
-                        <th>Catégorie</th>
-                        <th>Montant</th>
-                        <th>Mode</th>
-                        <th>Statut</th>
-                        <th>N° reçu</th>
+                        <td style="text-align:center;"><span class="num-col">{{ $index + 1 }}</span></td>
+                        <td style="text-align:center; font-size:9px;">{{ $formatDate($paiement->date_paiement ?? null) }}</td>
+                        <td style="text-align:center;"><span class="matricule-col">{{ $paiement->etudiant->matricule ?? 'N/A' }}</span></td>
+                        <td><span class="student-name">{{ trim(($paiement->etudiant->nom ?? '') . ' ' . ($paiement->etudiant->prenoms ?? '')) ?: 'N/A' }}</span></td>
+                        <td style="font-size:9px;">{{ optional(optional($paiement->inscription)->classe)->name ?? 'N/A' }}</td>
+                        <td style="font-size:9px;">{{ $paiement->fraisCategory->name ?? ($paiement->categorie->nom ?? ($paiement->motif ?? 'N/A')) }}</td>
+                        <td class="montant-col">{{ $formatMontant($paiement->montant ?? 0) }}</td>
+                        <td style="text-align:center; font-size:9px;">{{ $paiement->mode_paiement ?? 'N/A' }}</td>
+                        <td style="text-align:center;"><span class="status-badge {{ $statusClass }}">{{ $statusLabel }}</span></td>
+                        <td style="text-align:center; font-family:'Courier New',monospace; font-size:8.5px;">{{ $paiement->numero_recu ?? '-' }}</td>
                     </tr>
-                </thead>
-                <tbody>
-                    @foreach($paiements as $index => $paiement)
-                        @php
-                            $status = $paiement->status;
-                            $statusLabel = 'En attente';
-                            $statusClass = 'status-pending';
-
-                            switch ($status) {
-                                case 'validé':
-                                case 'valide':
-                                    $statusLabel = 'Validé';
-                                    $statusClass = 'status-valid';
-                                    break;
-                                case 'rejeté':
-                                case 'rejete':
-                                    $statusLabel = 'Rejeté';
-                                    $statusClass = 'status-rejected';
-                                    break;
-                                case 'en_attente':
-                                case 'en attente':
-                                case 'pending':
-                                    $statusLabel = 'En attente';
-                                    $statusClass = 'status-pending';
-                                    break;
-                                default:
-                                    $statusLabel = $status ? ucfirst($status) : 'Non défini';
-                                    $statusClass = 'status-default';
-                                    break;
-                            }
-                        @endphp
-                        <tr>
-                            <td>{{ $index + 1 }}</td>
-                            <td>{{ $formatDate($paiement->date_paiement ?? null) }}</td>
-                            <td>{{ $paiement->etudiant->matricule ?? 'N/A' }}</td>
-                            <td>{{ trim(($paiement->etudiant->prenoms ?? '') . ' ' . ($paiement->etudiant->nom ?? '')) ?: 'N/A' }}</td>
-                            <td>{{ optional(optional($paiement->inscription)->classe)->name ?? 'N/A' }}</td>
-                            <td>{{ $paiement->fraisCategory->name ?? ($paiement->categorie->nom ?? ($paiement->motif ?? 'N/A')) }}</td>
-                            <td>{{ $formatMontant($paiement->montant ?? 0) }}</td>
-                            <td>{{ $paiement->mode_paiement ?? 'N/A' }}</td>
-                            <td><span class="status-badge {{ $statusClass }}">{{ $statusLabel }}</span></td>
-                            <td>{{ $paiement->numero_recu ?? '-' }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @else
-            <div class="empty-state">
-                Aucun paiement correspondant aux critères sélectionnés n'a été trouvé.
-            </div>
-        @endif
-
-        <div class="section-title">Statistiques détaillées</div>
-        <div class="stats-section">
-            <div class="stats-grid">
-                <div class="stats-item">
-                    <div class="stats-item-title">Total des paiements</div>
-                    <div class="stats-item-value">{{ $totalPaiements }}</div>
-                </div>
-                <div class="stats-item">
-                    <div class="stats-item-title">Montant total encaissé</div>
-                    <div class="stats-item-value">{{ $formatMontant($montantTotal) }}</div>
-                </div>
-                <div class="stats-item">
-                    <div class="stats-item-title">Paiements validés</div>
-                    <div class="stats-item-value">{{ $valides }} &nbsp;|&nbsp; {{ $formatMontant($montantValide) }}</div>
-                </div>
-                <div class="stats-item">
-                    <div class="stats-item-title">Paiements en attente</div>
-                    <div class="stats-item-value">{{ $enAttente }} &nbsp;|&nbsp; {{ $formatMontant($montantEnAttente) }}</div>
-                </div>
-                @if(!is_null($recoveryRate))
-                    <div class="stats-item">
-                        <div class="stats-item-title">Taux de recouvrement</div>
-                        <div class="stats-item-value">{{ $recoveryRate }}%</div>
-                    </div>
-                @endif
-            </div>
-        </div>
-
-        <div class="section-title">Filtres appliqués</div>
-        <div class="filters-section">
-            <div class="filters-grid">
-                @foreach($filterItems as $filter)
-                    <div class="filter-chip">
-                        <div class="filter-label">{{ $filter['label'] }}</div>
-                        <div class="filter-value">{{ $filter['value'] ?: 'N/A' }}</div>
-                    </div>
                 @endforeach
-            </div>
+            </tbody>
+        </table>
+    @else
+        <div style="background:#fef3c7; border:1px solid #fcd34d; border-radius:6px; padding:14px; text-align:center; color:#92400e; margin-top:10px; font-size:10px;">
+            Aucun paiement correspondant aux critères sélectionnés.
         </div>
+    @endif
 
-        <div class="export-info">
-            <strong>Export généré automatiquement le {{ $formatDate($dateExport ?? now(), true) }}</strong><br>
-            {{ $settings['school_name'] ?? 'Établissement' }} &nbsp;|&nbsp; Gestion intégrée des paiements
-        </div>
+    {{-- ═══ FILTRES APPLIQUÉS ═══ --}}
+    @if(count($filterItems) > 0)
+    <div class="section-title">Filtres appliqués</div>
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border:1px solid #e5e7eb; border-radius:4px;">
+        @foreach($filterItems as $filter)
+        <tr class="filter-row">
+            <td width="25%" style="background:#f8fafc;"><span class="filter-label">{{ $filter['label'] }}</span></td>
+            <td width="75%"><span class="filter-value">{{ $filter['value'] ?: 'N/A' }}</span></td>
+        </tr>
+        @endforeach
+    </table>
+    @endif
+
+    {{-- ═══ FOOTER ═══ --}}
+    <div class="export-footer">
+        <strong>Export généré le {{ $formatDate($dateExport ?? now(), true) }}</strong>
+        &nbsp;—&nbsp; {{ $etab['nom'] ?? $settings['school_name'] ?? 'KLASSCI' }}
     </div>
+
 </div>
 </body>
 </html>
