@@ -32,8 +32,10 @@ class ESBTPClasse extends Model
         'places_occupees',
         'description',
         'is_active',
+        'systeme_academique',   // BTS|LMD
+        'parcours_id',          // FK vers esbtp_lmd_parcours (si LMD)
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     /**
@@ -92,6 +94,35 @@ class ESBTPClasse extends Model
     public function anneeUniversitaire()
     {
         return $this->annee();
+    }
+
+    /**
+     * Parcours LMD associe (si systeme_academique = LMD).
+     */
+    public function parcours()
+    {
+        return $this->belongsTo(ESBTPLMDParcours::class, 'parcours_id');
+    }
+
+    /**
+     * Verifie si la classe utilise le systeme LMD.
+     */
+    public function isLMD(): bool
+    {
+        return $this->systeme_academique === 'LMD';
+    }
+
+    /**
+     * Verifie si la classe utilise le systeme BTS.
+     */
+    public function isBTS(): bool
+    {
+        return $this->systeme_academique !== 'LMD';
+    }
+
+    public function scopeLmd($query)
+    {
+        return $query->where('systeme_academique', 'LMD');
     }
 
     /**

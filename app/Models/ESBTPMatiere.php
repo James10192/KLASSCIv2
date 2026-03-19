@@ -41,7 +41,10 @@ class ESBTPMatiere extends Model
         'created_by',
         'updated_by',
         'coefficient_default',
-        'total_heures_default'
+        'total_heures_default',
+        'unite_enseignement_id',
+        'credit_ecue',
+        'coefficient_ecue',
     ];
 
     /**
@@ -172,17 +175,20 @@ class ESBTPMatiere extends Model
     }
 
     /**
-     * Récupère l'unité d'enseignement associée à la matière.
-     * TEMPORAIREMENT COMMENTÉ - Table esbtp_unites_enseignement n'existe pas
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     * UE parente de cette matiere (ECUE en systeme LMD).
      */
-    /*
     public function uniteEnseignement()
     {
         return $this->belongsTo(ESBTPUniteEnseignement::class, 'unite_enseignement_id');
     }
-    */
+
+    /**
+     * Verifie si cette matiere est un ECUE (liee a une UE).
+     */
+    public function isECUE(): bool
+    {
+        return $this->unite_enseignement_id !== null;
+    }
 
     /**
      * Relation avec les niveaux d'études associés à cette matière.

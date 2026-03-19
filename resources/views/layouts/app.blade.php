@@ -1767,6 +1767,41 @@
                         @endcan
                     @endif
 
+                    <!-- LMD Section (Licence-Master-Doctorat) -->
+                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur')))
+                        <div class="menu-category">Système LMD</div>
+
+                        <div class="menu-accordion">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.lmd.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-graduation-cap"></i></div>
+                                <div class="menu-text">LMD</div>
+                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
+                            </button>
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.lmd.*') ? 'show' : '' }}">
+                                <a href="{{ route('esbtp.lmd.parcours-domain.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.parcours-domain.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Domaines & Parcours</span>
+                                </a>
+                                <a href="{{ route('esbtp.lmd.ue.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.ue.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Unités d'Enseignement</span>
+                                </a>
+                                <a href="{{ route('esbtp.lmd.notes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.notes.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Notes LMD</span>
+                                </a>
+                                <a href="{{ route('esbtp.lmd.resultats.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.resultats.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Résultats LMD</span>
+                                </a>
+                                <a href="{{ route('esbtp.lmd.bulletins.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.bulletins.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Bulletins LMD</span>
+                                </a>
+                            </div>
+                        </div>
+                    @endif
+
                     <!-- Administration Section -->
                     @if(auth()->check() && auth()->user() && auth()->user()->hasRole('superAdmin'))
                         <div class="menu-category">Administration</div>

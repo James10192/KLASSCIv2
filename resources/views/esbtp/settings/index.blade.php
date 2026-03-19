@@ -442,6 +442,11 @@
                     <i class="fas fa-bell"></i> Notifications et Rappels
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="lmd-tab" data-bs-toggle="tab" data-bs-target="#lmd" type="button" role="tab">
+                    <i class="fas fa-graduation-cap"></i> Système LMD
+                </button>
+            </li>
         </ul>
 
         <form action="{{ route('esbtp.settings.update') }}" method="POST" enctype="multipart/form-data">
@@ -1459,6 +1464,212 @@
 
                 </div>
                 <!-- End Tab 3: Notifications et Rappels -->
+
+                <!-- ══════════════════════════════════════════════ -->
+                <!-- Tab 6: Système LMD -->
+                <!-- ══════════════════════════════════════════════ -->
+                <div class="tab-pane fade" id="lmd" role="tabpanel">
+                    @php
+                        $lmdSettings = \App\Models\Setting::where('group', 'lmd')->get()->keyBy('key');
+                        $lmdVal = fn($key, $default = '') => old("setting_{$key}", $lmdSettings[$key]->value ?? $default);
+                    @endphp
+
+                    {{-- Section: Crédits CECT --}}
+                    <div class="settings-section">
+                        <h5 class="settings-section-title">
+                            <i class="fas fa-award" style="color: #10b981;"></i> Crédits CECT
+                        </h5>
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
+                            Configuration des crédits selon la norme UEMOA. Ces valeurs s'appliquent à tous les étudiants LMD.
+                        </p>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Crédits par semestre</label>
+                                <input type="number" class="form-control" name="setting_lmd_credits_per_semester"
+                                       value="{{ $lmdVal('lmd_credits_per_semester', 30) }}" min="1" max="60">
+                                <small class="text-muted">Standard UEMOA : 30</small>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Total Licence</label>
+                                <input type="number" class="form-control" name="setting_lmd_credits_licence_total"
+                                       value="{{ $lmdVal('lmd_credits_licence_total', 180) }}" min="1">
+                                <small class="text-muted">6 semestres × 30 = 180</small>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Total Master</label>
+                                <input type="number" class="form-control" name="setting_lmd_credits_master_total"
+                                       value="{{ $lmdVal('lmd_credits_master_total', 120) }}" min="1">
+                                <small class="text-muted">4 semestres × 30 = 120</small>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Total Doctorat</label>
+                                <input type="number" class="form-control" name="setting_lmd_credits_doctorat_total"
+                                       value="{{ $lmdVal('lmd_credits_doctorat_total', 180) }}" min="1">
+                                <small class="text-muted">6 semestres × 30 = 180</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Section: Validation & Compensation --}}
+                    <div class="settings-section" style="margin-top: 2rem;">
+                        <h5 class="settings-section-title">
+                            <i class="fas fa-check-double" style="color: #0453cb;"></i> Validation & Compensation
+                        </h5>
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
+                            Règles de validation des UE et compensation. Conforme à la directive UEMOA par défaut (pas de note éliminatoire).
+                        </p>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Seuil validation UE (/20)</label>
+                                <input type="number" class="form-control" name="setting_lmd_validation_threshold"
+                                       value="{{ $lmdVal('lmd_validation_threshold', 10) }}" min="0" max="20" step="0.5">
+                                <small class="text-muted">Standard : 10/20</small>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Note éliminatoire (/20)</label>
+                                <input type="number" class="form-control" name="setting_lmd_note_eliminatoire"
+                                       value="{{ $lmdVal('lmd_note_eliminatoire', 0) }}" min="0" max="10" step="0.5">
+                                <small class="text-muted">0 = pas de note éliminatoire (UEMOA)</small>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check form-switch mt-4">
+                                    <input class="form-check-input" type="checkbox" id="lmd_compensation_inter_ue"
+                                           name="setting_lmd_compensation_inter_ue" value="1"
+                                           {{ $lmdVal('lmd_compensation_inter_ue', '1') == '1' ? 'checked' : '' }}>
+                                    <label class="form-check-label fw-semibold" for="lmd_compensation_inter_ue">
+                                        Compensation inter-UE
+                                    </label>
+                                </div>
+                                <small class="text-muted">APC : UE < 10 compensée si moy. gén. ≥ 10</small>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-check form-switch mt-4">
+                                    <input class="form-check-input" type="checkbox" id="lmd_compensation_intra_ue"
+                                           name="setting_lmd_compensation_intra_ue" value="1"
+                                           {{ $lmdVal('lmd_compensation_intra_ue', '1') == '1' ? 'checked' : '' }}>
+                                    <label class="form-check-label fw-semibold" for="lmd_compensation_intra_ue">
+                                        Compensation intra-UE
+                                    </label>
+                                </div>
+                                <small class="text-muted">ECUE se compensent dans la même UE</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Section: Évaluations --}}
+                    <div class="settings-section" style="margin-top: 2rem;">
+                        <h5 class="settings-section-title">
+                            <i class="fas fa-clipboard-check" style="color: #f59e0b;"></i> Évaluations
+                        </h5>
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
+                            Pondération entre Contrôle Continu et Examen. Chaque établissement peut définir sa propre répartition.
+                        </p>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Pondération CC (%)</label>
+                                <input type="number" class="form-control" name="setting_lmd_cc_weight"
+                                       value="{{ $lmdVal('lmd_cc_weight', 40) }}" min="0" max="100">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Pondération Examen (%)</label>
+                                <input type="number" class="form-control" name="setting_lmd_exam_weight"
+                                       value="{{ $lmdVal('lmd_exam_weight', 60) }}" min="0" max="100">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Portée du rattrapage</label>
+                                <select class="form-select" name="setting_lmd_rattrapage_scope">
+                                    <option value="ecue" {{ $lmdVal('lmd_rattrapage_scope', 'ecue') === 'ecue' ? 'selected' : '' }}>
+                                        ECUE ratés uniquement
+                                    </option>
+                                    <option value="ue" {{ $lmdVal('lmd_rattrapage_scope', 'ecue') === 'ue' ? 'selected' : '' }}>
+                                        Toute l'UE non acquise
+                                    </option>
+                                </select>
+                                <small class="text-muted">Standard UEMOA : ECUE des UE non acquises</small>
+                            </div>
+                        </div>
+                        <div class="alert alert-info mt-3" style="border-radius: 10px; font-size: 0.85rem;">
+                            <i class="fas fa-info-circle me-1"></i>
+                            <strong>Note :</strong> CC + Examen doivent totaliser 100%. Si vous modifiez l'un, ajustez l'autre.
+                        </div>
+                    </div>
+
+                    {{-- Section: Mentions UE --}}
+                    <div class="settings-section" style="margin-top: 2rem;">
+                        <h5 class="settings-section-title">
+                            <i class="fas fa-medal" style="color: #8b5cf6;"></i> Mentions UE
+                        </h5>
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
+                            Seuils pour les mentions attribuées aux UE sur le bulletin. TB = Très Bien, B = Bien, AB = Assez Bien, P = Passable.
+                        </p>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">
+                                    <span style="color: #059669;">TB</span> — Très Bien (≥)
+                                </label>
+                                <input type="number" class="form-control" name="setting_lmd_mention_tb_threshold"
+                                       value="{{ $lmdVal('lmd_mention_tb_threshold', 16) }}" min="0" max="20" step="0.5">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">
+                                    <span style="color: #0453cb;">B</span> — Bien (≥)
+                                </label>
+                                <input type="number" class="form-control" name="setting_lmd_mention_b_threshold"
+                                       value="{{ $lmdVal('lmd_mention_b_threshold', 14) }}" min="0" max="20" step="0.5">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">
+                                    <span style="color: #f59e0b;">AB</span> — Assez Bien (≥)
+                                </label>
+                                <input type="number" class="form-control" name="setting_lmd_mention_ab_threshold"
+                                       value="{{ $lmdVal('lmd_mention_ab_threshold', 12) }}" min="0" max="20" step="0.5">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">
+                                    <span style="color: #64748b;">P</span> — Passable (≥)
+                                </label>
+                                <input type="number" class="form-control" name="setting_lmd_mention_p_threshold"
+                                       value="{{ $lmdVal('lmd_mention_p_threshold', 10) }}" min="0" max="20" step="0.5">
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Section: Délibération --}}
+                    <div class="settings-section" style="margin-top: 2rem;">
+                        <h5 class="settings-section-title">
+                            <i class="fas fa-gavel" style="color: #dc2626;"></i> Décisions de Délibération
+                        </h5>
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
+                            Liste des décisions possibles lors du conseil de délibération. Séparez chaque décision par une virgule.
+                        </p>
+                        @php
+                            $decisions = json_decode($lmdVal('lmd_deliberation_decisions', '[]'), true) ?? [];
+                            $decisionsText = implode(', ', $decisions);
+                        @endphp
+                        <textarea class="form-control" name="setting_lmd_deliberation_decisions" rows="3"
+                                  style="font-size: 0.9rem;"
+                                  placeholder="Félicitations du jury, Tableau d'honneur, Encouragement, Passage, Ajourné(e), Exclusion">{{ $decisionsText }}</textarea>
+                        <small class="text-muted">
+                            Séparez par des virgules. Ces décisions apparaîtront dans le menu déroulant lors de la génération des bulletins.
+                        </small>
+                    </div>
+
+                    {{-- Info UEMOA --}}
+                    <div style="margin-top: 2rem; padding: 1rem 1.25rem; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px;">
+                        <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                            <i class="fas fa-globe-africa" style="color: #0284c7; font-size: 1.2rem; margin-top: 2px;"></i>
+                            <div>
+                                <strong style="color: #0c4a6e;">Conformité UEMOA</strong>
+                                <p style="font-size: 0.82rem; color: #475569; margin: 0.25rem 0 0;">
+                                    Les valeurs par défaut respectent la Directive 03/2007/CM/UEMOA portant adoption du système LMD
+                                    dans l'espace UEMOA : 30 crédits/semestre, validation à 10/20, compensation sans note éliminatoire,
+                                    crédits capitalisables et transférables.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- End Tab 6: Système LMD -->
 
             </div>
             <!-- End Tab Content -->

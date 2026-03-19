@@ -2039,3 +2039,48 @@ Route::middleware(['auth'])->prefix('chatbot')->name('chatbot.')->group(function
     Route::get('/forms/inscriptions-filter', [App\Http\Controllers\ChatbotController::class, 'getInscriptionsFilterForm'])->name('forms.inscriptions-filter');
     Route::post('/forms/inscriptions-filter', [App\Http\Controllers\ChatbotController::class, 'storeInscriptionsFilter'])->name('forms.inscriptions-filter.store');
 });
+
+// ============================================================
+// Routes LMD (Licence-Master-Doctorat)
+// ============================================================
+Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'role:superAdmin|secretaire|coordinateur|enseignant|teacher', 'paywall'])->group(function () {
+
+    // --- Domaines / Mentions / Parcours ---
+    Route::get('parcours-domain', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'index'])->name('parcours-domain.index');
+    Route::post('domaines', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'storeDomaine'])->name('domaines.store');
+    Route::put('domaines/{domaine}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'updateDomaine'])->name('domaines.update');
+    Route::delete('domaines/{domaine}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'destroyDomaine'])->name('domaines.destroy');
+    Route::post('mentions', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'storeMention'])->name('mentions.store');
+    Route::put('mentions/{mention}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'updateMention'])->name('mentions.update');
+    Route::delete('mentions/{mention}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'destroyMention'])->name('mentions.destroy');
+    Route::post('parcours', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'storeParcours'])->name('parcours.store');
+    Route::put('parcours/{parcours}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'updateParcours'])->name('parcours.update');
+    Route::delete('parcours/{parcours}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'destroyParcours'])->name('parcours.destroy');
+
+    // --- Unites d'Enseignement ---
+    Route::resource('ue', \App\Http\Controllers\ESBTPLMDUEController::class)->parameters(['ue' => 'ue']);
+    Route::get('ue/{ue}/json', [\App\Http\Controllers\ESBTPLMDUEController::class, 'getJson'])->name('ue.json');
+    Route::post('ue/{ue}/ecue', [\App\Http\Controllers\ESBTPLMDUEController::class, 'storeECUE'])->name('ue.ecue.store');
+    Route::put('ue/{ue}/ecue/{ecue}', [\App\Http\Controllers\ESBTPLMDUEController::class, 'updateECUE'])->name('ue.ecue.update');
+    Route::delete('ue/{ue}/ecue/{ecue}', [\App\Http\Controllers\ESBTPLMDUEController::class, 'destroyECUE'])->name('ue.ecue.destroy');
+
+    // --- Notes LMD ---
+    Route::get('notes', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'index'])->name('notes.index');
+    Route::get('notes/saisie/{evaluation}', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'saisieRapide'])->name('notes.saisie');
+    Route::post('notes/save-bulk', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'saveBulk'])->name('notes.save-bulk');
+
+    // --- Resultats LMD ---
+    Route::get('resultats', [\App\Http\Controllers\ESBTPLMDResultatController::class, 'index'])->name('resultats.index');
+    Route::get('resultats/classe/{classe}', [\App\Http\Controllers\ESBTPLMDResultatController::class, 'classe'])->name('resultats.classe');
+    Route::get('resultats/etudiant/{etudiant}', [\App\Http\Controllers\ESBTPLMDResultatController::class, 'etudiant'])->name('resultats.etudiant');
+
+    // --- Bulletins LMD ---
+    Route::get('bulletins', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'index'])->name('bulletins.index');
+    Route::get('bulletins/select', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'select'])->name('bulletins.select');
+    Route::post('bulletins/generer', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'generer'])->name('bulletins.generer');
+    Route::post('bulletins/generer-classe', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'genererClasse'])->name('bulletins.generer-classe');
+    Route::get('bulletins/{bulletin}', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'show'])->name('bulletins.show');
+    Route::get('bulletins/{bulletin}/pdf', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'pdf'])->name('bulletins.pdf');
+    Route::put('bulletins/{bulletin}/toggle-publication', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'togglePublication'])->name('bulletins.toggle-publication');
+    Route::delete('bulletins/{bulletin}', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'destroy'])->name('bulletins.destroy');
+});

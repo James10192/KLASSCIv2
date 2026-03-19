@@ -1,0 +1,123 @@
+/* ===== KLASSCI LMD — Common Styles ===== */
+/* Shared across all /esbtp/lmd/* pages */
+
+/* --- Page wrapper --- */
+.lmd-page {
+    padding: 0 1rem 2rem;
+    max-width: 1440px;
+    margin: 0 auto;
+}
+
+/* --- Hero (KLASSCI blue gradient) --- */
+.lmd-hero {
+    background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
+    border-radius: 18px;
+    padding: 2rem 2.25rem;
+    color: white;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+}
+.lmd-hero::before {
+    content: '';
+    position: absolute;
+    top: -40%;
+    right: -10%;
+    width: 340px;
+    height: 340px;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+.lmd-hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+.lmd-hero-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.lmd-hero-title i {
+    font-size: 1.25rem;
+    opacity: 0.85;
+}
+.lmd-hero-subtitle {
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.75);
+    margin-top: 0.25rem;
+}
+.lmd-hero-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+.lmd-hero-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #0453cb;
+    background: rgba(255,255,255,0.95);
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+.lmd-hero-btn:hover {
+    background: #fff;
+    color: #0453cb;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.lmd-hero-kpis {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.lmd-hero-kpi {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 0.75rem 1.25rem;
+    min-width: 120px;
+}
+.lmd-hero-kpi-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+.lmd-hero-kpi-label {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.85);
+    margin-top: 2px;
+}
+
+/* --- Main card --- */
+.lmd-card {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    .lmd-page { padding: 0 0.5rem 1.5rem; }
+    .lmd-hero { padding: 1.25rem; border-radius: 14px; }
+    .lmd-hero-top { flex-direction: column; }
+    .lmd-hero-title { font-size: 1.2rem; }
+    .lmd-hero-kpis { gap: 0.75rem; }
+    .lmd-hero-kpi { min-width: 90px; padding: 0.5rem 0.75rem; }
+}

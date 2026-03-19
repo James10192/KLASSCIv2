@@ -27,11 +27,14 @@ class ESBTPUniteEnseignement extends Model
         'code',
         'description',
         'credit',
+        'semestre',
+        'type_ue',          // fondamentale|methodologique|decouverte|transversale
         'filiere_id',
         'niveau_id',
+        'parcours_id',
         'is_active',
         'created_by',
-        'updated_by'
+        'updated_by',
     ];
 
     /**
@@ -41,8 +44,15 @@ class ESBTPUniteEnseignement extends Model
      */
     protected $casts = [
         'credit' => 'integer',
+        'semestre' => 'integer',
         'is_active' => 'boolean',
     ];
+
+    // Types d'UE dans le systeme LMD
+    const TYPE_FONDAMENTALE  = 'fondamentale';
+    const TYPE_METHODOLOGIQUE = 'methodologique';
+    const TYPE_DECOUVERTE    = 'decouverte';
+    const TYPE_TRANSVERSALE  = 'transversale';
 
     /**
      * Relation avec les matières appartenant à cette UE.
@@ -72,6 +82,42 @@ class ESBTPUniteEnseignement extends Model
     public function niveau()
     {
         return $this->belongsTo(ESBTPNiveauEtude::class, 'niveau_id');
+    }
+
+    public function parcours()
+    {
+        return $this->belongsTo(ESBTPLMDParcours::class, 'parcours_id');
+    }
+
+    /**
+     * Parcours associes via table pivot (many-to-many).
+     */
+    public function parcoursMultiple()
+    {
+        return $this->belongsToMany(
+            ESBTPLMDParcours::class,
+            'esbtp_lmd_parcours_ue',
+            'unite_enseignement_id',
+            'parcours_id'
+        )->withPivot('semestre', 'is_optional')->withTimestamps();
+    }
+
+    /**
+     * Resultats UE pour les bulletins LMD.
+     */
+    public function resultatsLMD()
+    {
+        return $this->hasMany(ESBTPLMDResultatUE::class, 'unite_enseignement_id');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeBySemestre($query, int $semestre)
+    {
+        return $query->where('semestre', $semestre);
     }
 
     /**
