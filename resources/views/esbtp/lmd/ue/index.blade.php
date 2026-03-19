@@ -401,7 +401,7 @@
                     </div>
                     <div class="lu-field-group">
                         <div class="lu-field-group-title"><i class="fas fa-circle"></i> Paramètres académiques</div>
-                        <div class="lu-field-row-3">
+                        <div class="lu-field-row">
                             <div>
                                 <label for="ue_credit"><i class="fas fa-award"></i> Crédits CECT <span class="text-danger">*</span></label>
                                 <input type="number" class="form-control" id="ue_credit" name="credit" required min="1" max="30" value="3">
@@ -415,37 +415,9 @@
                                     <option value="transversale">Transversale</option>
                                 </select>
                             </div>
-                            <div>
-                                <label for="ue_semestre"><i class="fas fa-calendar-alt"></i> Semestre <span class="text-danger">*</span></label>
-                                <select class="form-select" id="ue_semestre" name="semestre" required>
-                                    @for($s = 1; $s <= 10; $s++)
-                                        <option value="{{ $s }}">S{{ $s }}</option>
-                                    @endfor
-                                </select>
-                            </div>
                         </div>
-                    </div>
-                    <div class="lu-field-group">
-                        <div class="lu-field-group-title"><i class="fas fa-circle"></i> Rattachement</div>
-                        <div class="lu-field-row">
-                            <div>
-                                <label for="ue_filiere_id"><i class="fas fa-graduation-cap"></i> Filière</label>
-                                <select class="form-select" id="ue_filiere_id" name="filiere_id">
-                                    <option value="">— Aucune —</option>
-                                    @foreach($filieres as $f)
-                                        <option value="{{ $f->id }}">{{ $f->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div>
-                                <label for="ue_niveau_id"><i class="fas fa-layer-group"></i> Niveau</label>
-                                <select class="form-select" id="ue_niveau_id" name="niveau_id">
-                                    <option value="">— Aucun —</option>
-                                    @foreach($niveaux as $n)
-                                        <option value="{{ $n->id }}">{{ $n->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+                        <div class="form-text" style="margin-top:.5rem;">
+                            <i class="fas fa-info-circle me-1"></i>Le semestre, la filière et le niveau sont définis via la liaison au parcours (bouton <i class="fas fa-route" style="color:#4338ca;"></i>).
                         </div>
                     </div>
                     <div class="lu-field-group">
@@ -724,10 +696,7 @@ function ueManager() {
                 document.getElementById('ue_name').value = data.name || '';
                 document.getElementById('ue_code').value = data.code || '';
                 document.getElementById('ue_credit').value = data.credit || '';
-                document.getElementById('ue_semestre').value = data.semestre || '1';
                 document.getElementById('ue_type_ue').value = data.type_ue || 'fondamentale';
-                document.getElementById('ue_filiere_id').value = data.filiere_id || '';
-                document.getElementById('ue_niveau_id').value = data.niveau_id || '';
                 document.getElementById('ue_description').value = data.description || '';
             } catch (e) { console.error(e); }
 
@@ -972,7 +941,16 @@ async function loadMatieresDisponibles() {
             sel.appendChild(opt);
         });
         if ($.fn.select2) {
-            $(sel).select2({ theme: 'bootstrap-5', language: 'fr', placeholder: '— Rechercher une matière —', allowClear: true, dropdownParent: $('#modalECUE .modal-content'), width: '100%' })
+            $(sel).select2({
+                theme: 'bootstrap-5',
+                language: 'fr',
+                placeholder: '— Rechercher une matière —',
+                allowClear: true,
+                dropdownParent: $('#modalECUE .modal-content'),
+                width: '100%',
+                templateResult: formatMatiereResult,
+                templateSelection: formatMatiereSelection
+            })
             .off('select2:select select2:clear')
             .on('select2:select', e => onMatiereSelected(e.params.data.element))
             .on('select2:clear', () => onMatiereCleared());

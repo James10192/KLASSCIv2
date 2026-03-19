@@ -143,7 +143,7 @@ class ESBTPLMDUEController extends Controller
             'code'        => 'required|string|max:50|unique:esbtp_unites_enseignement,code',
             'description' => 'nullable|string',
             'credit'      => 'nullable|integer|min:1',
-            'semestre'    => 'required|integer|min:1|max:10',
+            'semestre'    => 'nullable|integer|min:1|max:10',
             'type_ue'     => 'required|in:' . implode(',', [
                 \App\Models\ESBTPUniteEnseignement::TYPE_FONDAMENTALE,
                 \App\Models\ESBTPUniteEnseignement::TYPE_METHODOLOGIQUE,
@@ -216,7 +216,7 @@ class ESBTPLMDUEController extends Controller
             'code'        => 'required|string|max:50|unique:esbtp_unites_enseignement,code,' . $ue->id,
             'description' => 'nullable|string',
             'credit'      => 'nullable|integer|min:1',
-            'semestre'    => 'required|integer|min:1|max:10',
+            'semestre'    => 'nullable|integer|min:1|max:10',
             'type_ue'     => 'required|in:' . implode(',', [
                 \App\Models\ESBTPUniteEnseignement::TYPE_FONDAMENTALE,
                 \App\Models\ESBTPUniteEnseignement::TYPE_METHODOLOGIQUE,

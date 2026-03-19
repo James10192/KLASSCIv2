@@ -984,7 +984,7 @@ async function loadEvaluationsAndBuildGrid(classeId, matiereId) {
     document.getElementById('autosaveInfo').style.display = 'none';
 
     try {
-        const resp = await fetch(`/api/evaluations/by-class-matiere/${classeId}/${matiereId}`, {
+        const resp = await fetch(`/esbtp/notes/api/evaluations/by-class-matiere/${classeId}/${matiereId}`, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         });
         const data = await resp.json();
