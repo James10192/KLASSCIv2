@@ -437,16 +437,18 @@
 </div>
 
 {{-- ══ MODAL ECUE — Create new / Link existing (restored from original) ══ --}}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css">
 <style>
     #modalECUE.modal { overflow: visible !important; }
     #modalECUE .modal-dialog { overflow: visible !important; }
     #modalECUE .modal-content { overflow: visible !important; }
+    #ecue_matiere_select { display: none; }
     #modalECUE .select2-container { width: 100% !important; }
     #modalECUE .select2-container--bootstrap-5 .select2-selection { border-radius: 10px; border: 1.5px solid #e2e8f0; padding: .45rem .75rem; font-size: .88rem; min-height: 42px; }
-    #modalECUE .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered { line-height: 1.6; color: #1e293b; font-weight: 500; padding-right: 2.5rem; }
-    #modalECUE .select2-container--bootstrap-5 .select2-selection--single .select2-selection__clear { position: absolute; right: 2rem; top: 50%; transform: translateY(-50%); font-size: 1.1rem; color: #94a3b8; }
-    #modalECUE .select2-container--bootstrap-5 .select2-selection--single .select2-selection__clear:hover { color: #dc2626; }
+    #modalECUE .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered { line-height: 1.6; color: #1e293b; font-weight: 500; padding-right: 3.5rem; }
+    #modalECUE .select2-container--bootstrap-5 .select2-selection--single .select2-selection__clear { position: absolute; right: 1.8rem; top: 50%; transform: translateY(-50%); font-size: .9rem; color: #94a3b8; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #f1f5f9; line-height: 1; padding: 0; }
+    #modalECUE .select2-container--bootstrap-5 .select2-selection--single .select2-selection__clear:hover { color: #fff; background: #dc2626; }
     #modalECUE .select2-container--bootstrap-5.select2-container--focus .select2-selection,
     #modalECUE .select2-container--bootstrap-5.select2-container--open .select2-selection { border-color: #059669; box-shadow: 0 0 0 3px rgba(5,150,105,.08); }
     .select2-container--bootstrap-5 .select2-dropdown { border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 12px 40px rgba(0,0,0,.14); padding: 6px; }
@@ -617,6 +619,7 @@
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/fr.js"></script>
 <script>
 const CSRF = '{{ csrf_token() }}';
 const BASE = '/esbtp/lmd/ue';
@@ -921,6 +924,44 @@ function switchEcueTab(tab) {
     }
 }
 
+function formatMatiereResult(data) {
+    if (!data.id) return data.text;
+    var el = data.element;
+    var name = el.dataset.name || data.text;
+    var code = el.dataset.code || '';
+
+    var $row = $('<div class="d-flex align-items-center gap-2 py-1"></div>');
+    var initial = (name || '?')[0].toUpperCase();
+    var $icon = $('<div></div>').text(initial).css({
+        width: '34px', height: '34px', borderRadius: '8px',
+        background: 'linear-gradient(135deg, #059669, #34d399)',
+        color: '#fff', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', fontWeight: '700', fontSize: '0.82rem',
+        flexShrink: '0'
+    });
+    var $info = $('<div class="flex-grow-1 min-w-0"></div>');
+    $info.append($('<div class="fw-semibold text-truncate" style="font-size:.84rem;line-height:1.3;"></div>').text(name));
+    if (code) {
+        $info.append($('<span style="font-size:.72rem;color:#64748b;background:#f1f5f9;padding:1px 6px;border-radius:4px;font-weight:500;"></span>').text(code));
+    }
+    $row.append($icon, $info);
+    return $row;
+}
+
+function formatMatiereSelection(data) {
+    if (!data.id) return data.text;
+    var el = data.element;
+    var name = el.dataset.name || data.text;
+    var code = el.dataset.code || '';
+
+    var $sel = $('<span class="d-inline-flex align-items-center gap-1"></span>');
+    $sel.append($('<span class="fw-semibold"></span>').text(name));
+    if (code) {
+        $sel.append($('<span style="font-size:.75rem;color:#059669;font-weight:600;"></span>').text('(' + code + ')'));
+    }
+    return $sel;
+}
+
 async function loadMatieresDisponibles() {
     if (!ecueCurrentUeId) return;
     if (lastLoadedUeId === ecueCurrentUeId && select2Initialized) return;
@@ -958,7 +999,11 @@ async function loadMatieresDisponibles() {
         }
         lastLoadedUeId = ecueCurrentUeId;
         loading.style.display = 'none';
-    } catch (err) { loading.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Erreur'; }
+    } catch (err) {
+        console.error('loadMatieresDisponibles error:', err);
+        loading.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Erreur';
+        sel.style.display = 'block';
+    }
 }
 
 function onMatiereSelected(option) {
