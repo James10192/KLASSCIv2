@@ -1466,206 +1466,466 @@
                 <!-- End Tab 3: Notifications et Rappels -->
 
                 <!-- ══════════════════════════════════════════════ -->
-                <!-- Tab 6: Système LMD -->
+                <!-- Tab 6: Système LMD — Premium Redesign -->
                 <!-- ══════════════════════════════════════════════ -->
+                <style>
+                    /* ── LMD Settings Tab — Prefix: ls- ── */
+                    .ls-section {
+                        background: #fff;
+                        border-radius: 14px;
+                        border: 1px solid #e8ecf1;
+                        box-shadow: 0 1px 3px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.03);
+                        padding: 1.5rem;
+                        margin-bottom: 1.25rem;
+                        border-left: 4px solid transparent;
+                        transition: box-shadow .2s;
+                    }
+                    .ls-section:hover { box-shadow: 0 4px 16px rgba(4,83,203,.06); }
+                    .ls-section--credits { border-left-color: #10b981; }
+                    .ls-section--validation { border-left-color: #0453cb; }
+                    .ls-section--evals { border-left-color: #0891b2; }
+                    .ls-section--mentions { border-left-color: #3b7ddb; }
+                    .ls-section--deliberation { border-left-color: #334155; }
+
+                    .ls-head { display: flex; align-items: center; gap: .75rem; margin-bottom: .4rem; }
+                    .ls-icon {
+                        width: 38px; height: 38px; border-radius: 10px;
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: .95rem; color: #fff; flex-shrink: 0;
+                    }
+                    .ls-icon--credits { background: linear-gradient(135deg, #10b981, #059669); }
+                    .ls-icon--validation { background: linear-gradient(135deg, #0453cb, #3b82f6); }
+                    .ls-icon--evals { background: linear-gradient(135deg, #0891b2, #0e7490); }
+                    .ls-icon--mentions { background: linear-gradient(135deg, #0453cb, #3b7ddb); }
+                    .ls-icon--deliberation { background: linear-gradient(135deg, #334155, #1e293b); }
+
+                    .ls-title { font-size: 1.05rem; font-weight: 700; color: #1e293b; }
+                    .ls-desc { font-size: .82rem; color: #94a3b8; margin-bottom: 1.15rem; line-height: 1.5; }
+
+                    .ls-field { margin-bottom: .15rem; }
+                    .ls-label {
+                        font-size: .72rem; font-weight: 700; color: #94a3b8;
+                        text-transform: uppercase; letter-spacing: .06em; margin-bottom: .3rem;
+                    }
+                    .ls-input {
+                        border: 1.5px solid #e2e8f0; border-radius: 9px;
+                        padding: .5rem .75rem; font-size: .88rem; color: #1e293b;
+                        background: #f8fafc; transition: all .2s; width: 100%;
+                    }
+                    .ls-input:focus {
+                        outline: none; border-color: #0453cb; background: #fff;
+                        box-shadow: 0 0 0 3px rgba(4,83,203,.08);
+                    }
+                    .ls-hint { font-size: .72rem; color: #94a3b8; margin-top: .25rem; }
+
+                    /* Toggle switches */
+                    .ls-toggle {
+                        display: flex; align-items: center; gap: .75rem;
+                        padding: .85rem 1rem; border-radius: 10px;
+                        background: #f8fafc; border: 1px solid #e8ecf1;
+                        transition: all .2s; cursor: pointer;
+                    }
+                    .ls-toggle:hover { background: #f0f5ff; border-color: #c7d6f0; }
+                    .ls-toggle-text { flex: 1; }
+                    .ls-toggle-label { font-size: .88rem; font-weight: 600; color: #1e293b; }
+                    .ls-toggle-hint { font-size: .72rem; color: #94a3b8; margin-top: .1rem; }
+
+                    /* Mention cards */
+                    .ls-mentions-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .75rem; }
+                    .ls-mention-card {
+                        border-radius: 12px; padding: 1rem; text-align: center;
+                        border: 1.5px solid; transition: all .2s;
+                    }
+                    .ls-mention-card:hover { transform: translateY(-1px); }
+                    .ls-mention-card--tb { background: #ecfdf5; border-color: #a7f3d0; }
+                    .ls-mention-card--b  { background: #eff6ff; border-color: #bfdbfe; }
+                    .ls-mention-card--ab { background: #fffbeb; border-color: #fde68a; }
+                    .ls-mention-card--p  { background: #fef2f2; border-color: #fecaca; }
+                    .ls-mention-badge {
+                        display: inline-flex; align-items: center; justify-content: center;
+                        width: 36px; height: 36px; border-radius: 50%;
+                        font-size: .82rem; font-weight: 800; margin-bottom: .5rem;
+                    }
+                    .ls-mention-card--tb .ls-mention-badge { background: #059669; color: #fff; }
+                    .ls-mention-card--b  .ls-mention-badge { background: #0453cb; color: #fff; }
+                    .ls-mention-card--ab .ls-mention-badge { background: #d97706; color: #fff; }
+                    .ls-mention-card--p  .ls-mention-badge { background: #dc2626; color: #fff; }
+                    .ls-mention-name { font-size: .78rem; font-weight: 600; color: #475569; margin-bottom: .5rem; }
+
+                    /* Info banner */
+                    .ls-info-banner {
+                        display: flex; align-items: flex-start; gap: .85rem;
+                        padding: 1.15rem 1.25rem; border-radius: 12px;
+                        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+                        border: 1px solid #bae6fd; margin-top: .25rem;
+                    }
+                    .ls-info-icon {
+                        width: 36px; height: 36px; border-radius: 9px;
+                        background: #0284c7; display: flex; align-items: center;
+                        justify-content: center; color: #fff; font-size: .9rem; flex-shrink: 0;
+                    }
+                    .ls-info-title { font-size: .9rem; font-weight: 700; color: #0c4a6e; margin-bottom: .2rem; }
+                    .ls-info-text { font-size: .8rem; color: #475569; line-height: 1.5; margin: 0; }
+
+                    /* Alert */
+                    .ls-alert {
+                        display: flex; align-items: center; gap: .6rem;
+                        padding: .75rem 1rem; border-radius: 9px;
+                        background: #eff6ff; border: 1px solid #bfdbfe;
+                        font-size: .82rem; color: #1e40af; margin-top: .85rem;
+                    }
+                    .ls-alert i { color: #3b82f6; flex-shrink: 0; }
+
+                    @media (max-width: 768px) {
+                        .ls-mentions-grid { grid-template-columns: 1fr 1fr; }
+                    }
+                </style>
+
                 <div class="tab-pane fade" id="lmd" role="tabpanel">
                     @php
                         $lmdSettings = \App\Models\Setting::where('group', 'lmd')->get()->keyBy('key');
                         $lmdVal = fn($key, $default = '') => old("setting_{$key}", $lmdSettings[$key]->value ?? $default);
                     @endphp
 
-                    {{-- Section: Crédits CECT --}}
-                    <div class="settings-section">
-                        <h5 class="settings-section-title">
-                            <i class="fas fa-award" style="color: #10b981;"></i> Crédits CECT
-                        </h5>
-                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
+                    {{-- Section 1: Crédits CECT --}}
+                    <div class="ls-section ls-section--credits">
+                        <div class="ls-head">
+                            <div class="ls-icon ls-icon--credits"><i class="fas fa-award"></i></div>
+                            <div class="ls-title">Crédits CECT</div>
+                        </div>
+                        <div class="ls-desc">
                             Configuration des crédits selon la norme UEMOA. Ces valeurs s'appliquent à tous les étudiants LMD.
-                        </p>
+                        </div>
                         <div class="row g-3">
                             <div class="col-md-3">
-                                <label class="form-label fw-semibold">Crédits par semestre</label>
-                                <input type="number" class="form-control" name="setting_lmd_credits_per_semester"
-                                       value="{{ $lmdVal('lmd_credits_per_semester', 30) }}" min="1" max="60">
-                                <small class="text-muted">Standard UEMOA : 30</small>
+                                <div class="ls-field">
+                                    <div class="ls-label">Crédits par semestre</div>
+                                    <input type="number" class="ls-input" name="setting_lmd_credits_per_semester"
+                                           value="{{ $lmdVal('lmd_credits_per_semester', 30) }}" min="1" max="60">
+                                    <div class="ls-hint">Standard UEMOA : 30</div>
+                                </div>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label fw-semibold">Total Licence</label>
-                                <input type="number" class="form-control" name="setting_lmd_credits_licence_total"
-                                       value="{{ $lmdVal('lmd_credits_licence_total', 180) }}" min="1">
-                                <small class="text-muted">6 semestres × 30 = 180</small>
+                                <div class="ls-field">
+                                    <div class="ls-label">Total Licence</div>
+                                    <input type="number" class="ls-input" name="setting_lmd_credits_licence_total"
+                                           value="{{ $lmdVal('lmd_credits_licence_total', 180) }}" min="1">
+                                    <div class="ls-hint">6 semestres x 30 = 180</div>
+                                </div>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label fw-semibold">Total Master</label>
-                                <input type="number" class="form-control" name="setting_lmd_credits_master_total"
-                                       value="{{ $lmdVal('lmd_credits_master_total', 120) }}" min="1">
-                                <small class="text-muted">4 semestres × 30 = 120</small>
+                                <div class="ls-field">
+                                    <div class="ls-label">Total Master</div>
+                                    <input type="number" class="ls-input" name="setting_lmd_credits_master_total"
+                                           value="{{ $lmdVal('lmd_credits_master_total', 120) }}" min="1">
+                                    <div class="ls-hint">4 semestres x 30 = 120</div>
+                                </div>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label fw-semibold">Total Doctorat</label>
-                                <input type="number" class="form-control" name="setting_lmd_credits_doctorat_total"
-                                       value="{{ $lmdVal('lmd_credits_doctorat_total', 180) }}" min="1">
-                                <small class="text-muted">6 semestres × 30 = 180</small>
+                                <div class="ls-field">
+                                    <div class="ls-label">Total Doctorat</div>
+                                    <input type="number" class="ls-input" name="setting_lmd_credits_doctorat_total"
+                                           value="{{ $lmdVal('lmd_credits_doctorat_total', 180) }}" min="1">
+                                    <div class="ls-hint">6 semestres x 30 = 180</div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {{-- Section: Validation & Compensation --}}
-                    <div class="settings-section" style="margin-top: 2rem;">
-                        <h5 class="settings-section-title">
-                            <i class="fas fa-check-double" style="color: #0453cb;"></i> Validation & Compensation
-                        </h5>
-                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
-                            Règles de validation des UE et compensation. Conforme à la directive UEMOA par défaut (pas de note éliminatoire).
-                        </p>
+                    {{-- Section 2: Validation & Compensation --}}
+                    <div class="ls-section ls-section--validation">
+                        <div class="ls-head">
+                            <div class="ls-icon ls-icon--validation"><i class="fas fa-check-double"></i></div>
+                            <div class="ls-title">Validation & Compensation</div>
+                        </div>
+                        <div class="ls-desc">
+                            Règles de validation des UE et compensation. Conforme à la directive UEMOA par défaut.
+                        </div>
                         <div class="row g-3">
                             <div class="col-md-3">
-                                <label class="form-label fw-semibold">Seuil validation UE (/20)</label>
-                                <input type="number" class="form-control" name="setting_lmd_validation_threshold"
-                                       value="{{ $lmdVal('lmd_validation_threshold', 10) }}" min="0" max="20" step="0.5">
-                                <small class="text-muted">Standard : 10/20</small>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-semibold">Note éliminatoire (/20)</label>
-                                <input type="number" class="form-control" name="setting_lmd_note_eliminatoire"
-                                       value="{{ $lmdVal('lmd_note_eliminatoire', 0) }}" min="0" max="10" step="0.5">
-                                <small class="text-muted">0 = pas de note éliminatoire (UEMOA)</small>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-check form-switch mt-4">
-                                    <input class="form-check-input" type="checkbox" id="lmd_compensation_inter_ue"
-                                           name="setting_lmd_compensation_inter_ue" value="1"
-                                           {{ $lmdVal('lmd_compensation_inter_ue', '1') == '1' ? 'checked' : '' }}>
-                                    <label class="form-check-label fw-semibold" for="lmd_compensation_inter_ue">
-                                        Compensation inter-UE
-                                    </label>
+                                <div class="ls-field">
+                                    <div class="ls-label">Seuil validation UE (/20)</div>
+                                    <input type="number" class="ls-input" name="setting_lmd_validation_threshold"
+                                           value="{{ $lmdVal('lmd_validation_threshold', 10) }}" min="0" max="20" step="0.5">
+                                    <div class="ls-hint">Standard : 10/20</div>
                                 </div>
-                                <small class="text-muted">APC : UE < 10 compensée si moy. gén. ≥ 10</small>
                             </div>
                             <div class="col-md-3">
-                                <div class="form-check form-switch mt-4">
-                                    <input class="form-check-input" type="checkbox" id="lmd_compensation_intra_ue"
-                                           name="setting_lmd_compensation_intra_ue" value="1"
-                                           {{ $lmdVal('lmd_compensation_intra_ue', '1') == '1' ? 'checked' : '' }}>
-                                    <label class="form-check-label fw-semibold" for="lmd_compensation_intra_ue">
-                                        Compensation intra-UE
-                                    </label>
+                                <div class="ls-field">
+                                    <div class="ls-label">Note éliminatoire (/20)</div>
+                                    <input type="number" class="ls-input" name="setting_lmd_note_eliminatoire"
+                                           value="{{ $lmdVal('lmd_note_eliminatoire', 0) }}" min="0" max="10" step="0.5">
+                                    <div class="ls-hint">0 = pas de note éliminatoire (UEMOA)</div>
                                 </div>
-                                <small class="text-muted">ECUE se compensent dans la même UE</small>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="ls-toggle" for="lmd_compensation_inter_ue">
+                                    <div class="ls-toggle-text">
+                                        <div class="ls-toggle-label">Compensation inter-UE</div>
+                                        <div class="ls-toggle-hint">APC : UE &lt; 10 compensée si moy. gén. &ge; 10</div>
+                                    </div>
+                                    <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
+                                        <input class="form-check-input" type="checkbox" id="lmd_compensation_inter_ue"
+                                               name="setting_lmd_compensation_inter_ue" value="1"
+                                               {{ $lmdVal('lmd_compensation_inter_ue', '1') == '1' ? 'checked' : '' }}>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="ls-toggle" for="lmd_compensation_intra_ue">
+                                    <div class="ls-toggle-text">
+                                        <div class="ls-toggle-label">Compensation intra-UE</div>
+                                        <div class="ls-toggle-hint">ECUE se compensent dans la même UE</div>
+                                    </div>
+                                    <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
+                                        <input class="form-check-input" type="checkbox" id="lmd_compensation_intra_ue"
+                                               name="setting_lmd_compensation_intra_ue" value="1"
+                                               {{ $lmdVal('lmd_compensation_intra_ue', '1') == '1' ? 'checked' : '' }}>
+                                    </div>
+                                </label>
                             </div>
                         </div>
                     </div>
 
-                    {{-- Section: Évaluations --}}
-                    <div class="settings-section" style="margin-top: 2rem;">
-                        <h5 class="settings-section-title">
-                            <i class="fas fa-clipboard-check" style="color: #f59e0b;"></i> Évaluations
-                        </h5>
-                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
+                    {{-- Section 3: Évaluations --}}
+                    <div class="ls-section ls-section--evals">
+                        <div class="ls-head">
+                            <div class="ls-icon ls-icon--evals"><i class="fas fa-clipboard-check"></i></div>
+                            <div class="ls-title">Évaluations</div>
+                        </div>
+                        <div class="ls-desc">
                             Pondération entre Contrôle Continu et Examen. Chaque établissement peut définir sa propre répartition.
-                        </p>
+                        </div>
                         <div class="row g-3">
                             <div class="col-md-3">
-                                <label class="form-label fw-semibold">Pondération CC (%)</label>
-                                <input type="number" class="form-control" name="setting_lmd_cc_weight"
-                                       value="{{ $lmdVal('lmd_cc_weight', 40) }}" min="0" max="100">
+                                <div class="ls-field">
+                                    <div class="ls-label">Pondération CC (%)</div>
+                                    <input type="number" class="ls-input" name="setting_lmd_cc_weight"
+                                           value="{{ $lmdVal('lmd_cc_weight', 40) }}" min="0" max="100">
+                                </div>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label fw-semibold">Pondération Examen (%)</label>
-                                <input type="number" class="form-control" name="setting_lmd_exam_weight"
-                                       value="{{ $lmdVal('lmd_exam_weight', 60) }}" min="0" max="100">
+                                <div class="ls-field">
+                                    <div class="ls-label">Pondération Examen (%)</div>
+                                    <input type="number" class="ls-input" name="setting_lmd_exam_weight"
+                                           value="{{ $lmdVal('lmd_exam_weight', 60) }}" min="0" max="100">
+                                </div>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label fw-semibold">Portée du rattrapage</label>
-                                <select class="form-select" name="setting_lmd_rattrapage_scope">
-                                    <option value="ecue" {{ $lmdVal('lmd_rattrapage_scope', 'ecue') === 'ecue' ? 'selected' : '' }}>
-                                        ECUE ratés uniquement
-                                    </option>
-                                    <option value="ue" {{ $lmdVal('lmd_rattrapage_scope', 'ecue') === 'ue' ? 'selected' : '' }}>
-                                        Toute l'UE non acquise
-                                    </option>
-                                </select>
-                                <small class="text-muted">Standard UEMOA : ECUE des UE non acquises</small>
+                                <div class="ls-field">
+                                    <div class="ls-label">Portée du rattrapage</div>
+                                    <select class="ls-input" name="setting_lmd_rattrapage_scope">
+                                        <option value="ecue" {{ $lmdVal('lmd_rattrapage_scope', 'ecue') === 'ecue' ? 'selected' : '' }}>
+                                            ECUE ratés uniquement
+                                        </option>
+                                        <option value="ue" {{ $lmdVal('lmd_rattrapage_scope', 'ecue') === 'ue' ? 'selected' : '' }}>
+                                            Toute l'UE non acquise
+                                        </option>
+                                    </select>
+                                    <div class="ls-hint">Standard UEMOA : ECUE des UE non acquises</div>
+                                </div>
                             </div>
                         </div>
-                        <div class="alert alert-info mt-3" style="border-radius: 10px; font-size: 0.85rem;">
-                            <i class="fas fa-info-circle me-1"></i>
-                            <strong>Note :</strong> CC + Examen doivent totaliser 100%. Si vous modifiez l'un, ajustez l'autre.
-                        </div>
-                    </div>
-
-                    {{-- Section: Mentions UE --}}
-                    <div class="settings-section" style="margin-top: 2rem;">
-                        <h5 class="settings-section-title">
-                            <i class="fas fa-medal" style="color: #8b5cf6;"></i> Mentions UE
-                        </h5>
-                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
-                            Seuils pour les mentions attribuées aux UE sur le bulletin. TB = Très Bien, B = Bien, AB = Assez Bien, P = Passable.
-                        </p>
-                        <div class="row g-3">
-                            <div class="col-md-3">
-                                <label class="form-label fw-semibold">
-                                    <span style="color: #059669;">TB</span> — Très Bien (≥)
-                                </label>
-                                <input type="number" class="form-control" name="setting_lmd_mention_tb_threshold"
-                                       value="{{ $lmdVal('lmd_mention_tb_threshold', 16) }}" min="0" max="20" step="0.5">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-semibold">
-                                    <span style="color: #0453cb;">B</span> — Bien (≥)
-                                </label>
-                                <input type="number" class="form-control" name="setting_lmd_mention_b_threshold"
-                                       value="{{ $lmdVal('lmd_mention_b_threshold', 14) }}" min="0" max="20" step="0.5">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-semibold">
-                                    <span style="color: #f59e0b;">AB</span> — Assez Bien (≥)
-                                </label>
-                                <input type="number" class="form-control" name="setting_lmd_mention_ab_threshold"
-                                       value="{{ $lmdVal('lmd_mention_ab_threshold', 12) }}" min="0" max="20" step="0.5">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-semibold">
-                                    <span style="color: #64748b;">P</span> — Passable (≥)
-                                </label>
-                                <input type="number" class="form-control" name="setting_lmd_mention_p_threshold"
-                                       value="{{ $lmdVal('lmd_mention_p_threshold', 10) }}" min="0" max="20" step="0.5">
-                            </div>
+                        <div class="ls-alert">
+                            <i class="fas fa-info-circle"></i>
+                            <span><strong>Note :</strong> CC + Examen doivent totaliser 100%. Si vous modifiez l'un, ajustez l'autre.</span>
                         </div>
                     </div>
 
-                    {{-- Section: Délibération --}}
-                    <div class="settings-section" style="margin-top: 2rem;">
-                        <h5 class="settings-section-title">
-                            <i class="fas fa-gavel" style="color: #dc2626;"></i> Décisions de Délibération
-                        </h5>
-                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
+                    {{-- Section 4: Mentions UE --}}
+                    <div class="ls-section ls-section--mentions">
+                        <div class="ls-head">
+                            <div class="ls-icon ls-icon--mentions"><i class="fas fa-medal"></i></div>
+                            <div class="ls-title">Mentions UE</div>
+                        </div>
+                        <div class="ls-desc">
+                            Seuils de notes pour les mentions attribuées aux UE sur le bulletin semestriel.
+                        </div>
+                        <div class="ls-mentions-grid">
+                            <div class="ls-mention-card ls-mention-card--tb">
+                                <div class="ls-mention-badge">TB</div>
+                                <div class="ls-mention-name">Très Bien (&ge;)</div>
+                                <input type="number" class="ls-input" name="setting_lmd_mention_tb_threshold"
+                                       value="{{ $lmdVal('lmd_mention_tb_threshold', 16) }}" min="0" max="20" step="0.5"
+                                       style="text-align:center; font-weight:700; font-size:1rem;">
+                            </div>
+                            <div class="ls-mention-card ls-mention-card--b">
+                                <div class="ls-mention-badge">B</div>
+                                <div class="ls-mention-name">Bien (&ge;)</div>
+                                <input type="number" class="ls-input" name="setting_lmd_mention_b_threshold"
+                                       value="{{ $lmdVal('lmd_mention_b_threshold', 14) }}" min="0" max="20" step="0.5"
+                                       style="text-align:center; font-weight:700; font-size:1rem;">
+                            </div>
+                            <div class="ls-mention-card ls-mention-card--ab">
+                                <div class="ls-mention-badge">AB</div>
+                                <div class="ls-mention-name">Assez Bien (&ge;)</div>
+                                <input type="number" class="ls-input" name="setting_lmd_mention_ab_threshold"
+                                       value="{{ $lmdVal('lmd_mention_ab_threshold', 12) }}" min="0" max="20" step="0.5"
+                                       style="text-align:center; font-weight:700; font-size:1rem;">
+                            </div>
+                            <div class="ls-mention-card ls-mention-card--p">
+                                <div class="ls-mention-badge">P</div>
+                                <div class="ls-mention-name">Passable (&ge;)</div>
+                                <input type="number" class="ls-input" name="setting_lmd_mention_p_threshold"
+                                       value="{{ $lmdVal('lmd_mention_p_threshold', 10) }}" min="0" max="20" step="0.5"
+                                       style="text-align:center; font-weight:700; font-size:1rem;">
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Section 5: Délibération --}}
+                    <div class="ls-section ls-section--deliberation">
+                        <div class="ls-head">
+                            <div class="ls-icon ls-icon--deliberation"><i class="fas fa-gavel"></i></div>
+                            <div class="ls-title">Décisions de Délibération</div>
+                        </div>
+                        <div class="ls-desc">
                             Liste des décisions possibles lors du conseil de délibération. Séparez chaque décision par une virgule.
-                        </p>
+                        </div>
                         @php
                             $decisions = json_decode($lmdVal('lmd_deliberation_decisions', '[]'), true) ?? [];
                             $decisionsText = implode(', ', $decisions);
                         @endphp
-                        <textarea class="form-control" name="setting_lmd_deliberation_decisions" rows="3"
-                                  style="font-size: 0.9rem;"
-                                  placeholder="Félicitations du jury, Tableau d'honneur, Encouragement, Passage, Ajourné(e), Exclusion">{{ $decisionsText }}</textarea>
-                        <small class="text-muted">
+                        <textarea class="ls-input" name="setting_lmd_deliberation_decisions" rows="3"
+                                  placeholder="Félicitations du jury, Tableau d'honneur, Encouragement, Passage, Ajourné(e), Exclusion"
+                                  style="resize:vertical;">{{ $decisionsText }}</textarea>
+                        <div class="ls-hint">
                             Séparez par des virgules. Ces décisions apparaîtront dans le menu déroulant lors de la génération des bulletins.
-                        </small>
+                        </div>
+                    </div>
+
+                    {{-- Section 6: Champs Bulletin LMD --}}
+                    <div class="ls-section ls-section--bulletin-fields">
+                        <div class="ls-head">
+                            <div class="ls-icon ls-icon--mentions"><i class="fas fa-id-card"></i></div>
+                            <div class="ls-title">Champs Bulletin LMD</div>
+                        </div>
+                        <div class="ls-desc">
+                            Configurez quels champs afficher sur le bulletin semestriel et personnalisez leurs libellés.
+                            Selon la hiérarchie UEMOA : Domaine → Mention → (Spécialité) → Parcours.
+                        </div>
+
+                        <div class="row g-3">
+                            {{-- Domaine --}}
+                            <div class="col-md-6">
+                                <label class="ls-toggle" for="lmd_bulletin_show_domaine">
+                                    <div class="ls-toggle-text">
+                                        <div class="ls-toggle-label">Domaine</div>
+                                        <div class="ls-toggle-hint">Ex: Sciences et Technologies, Lettres et Sciences Humaines</div>
+                                    </div>
+                                    <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
+                                        <input class="form-check-input" type="checkbox" id="lmd_bulletin_show_domaine"
+                                               name="setting_lmd_bulletin_show_domaine" value="1"
+                                               {{ $lmdVal('lmd_bulletin_show_domaine', '1') == '1' ? 'checked' : '' }}>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="ls-field">
+                                    <div class="ls-label">Libellé "Domaine"</div>
+                                    <input type="text" class="ls-input" name="setting_lmd_bulletin_label_domaine"
+                                           value="{{ $lmdVal('lmd_bulletin_label_domaine', 'DOMAINE') }}" placeholder="DOMAINE">
+                                </div>
+                            </div>
+
+                            {{-- Mention --}}
+                            <div class="col-md-6">
+                                <label class="ls-toggle" for="lmd_bulletin_show_mention">
+                                    <div class="ls-toggle-text">
+                                        <div class="ls-toggle-label">Mention</div>
+                                        <div class="ls-toggle-hint">Ex: Génie Civil, Informatique</div>
+                                    </div>
+                                    <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
+                                        <input class="form-check-input" type="checkbox" id="lmd_bulletin_show_mention"
+                                               name="setting_lmd_bulletin_show_mention" value="1"
+                                               {{ $lmdVal('lmd_bulletin_show_mention', '1') == '1' ? 'checked' : '' }}>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="ls-field">
+                                    <div class="ls-label">Libellé "Mention"</div>
+                                    <input type="text" class="ls-input" name="setting_lmd_bulletin_label_mention"
+                                           value="{{ $lmdVal('lmd_bulletin_label_mention', 'MENTION') }}" placeholder="MENTION">
+                                </div>
+                            </div>
+
+                            {{-- Spécialité --}}
+                            <div class="col-md-6">
+                                <label class="ls-toggle" for="lmd_bulletin_show_specialite">
+                                    <div class="ls-toggle-text">
+                                        <div class="ls-toggle-label">Spécialité</div>
+                                        <div class="ls-toggle-hint">Optionnel — niveau intermédiaire entre Mention et Parcours</div>
+                                    </div>
+                                    <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
+                                        <input class="form-check-input" type="checkbox" id="lmd_bulletin_show_specialite"
+                                               name="setting_lmd_bulletin_show_specialite" value="1"
+                                               {{ $lmdVal('lmd_bulletin_show_specialite', '0') == '1' ? 'checked' : '' }}>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="ls-field">
+                                    <div class="ls-label">Libellé "Spécialité"</div>
+                                    <input type="text" class="ls-input" name="setting_lmd_bulletin_label_specialite"
+                                           value="{{ $lmdVal('lmd_bulletin_label_specialite', 'SPÉCIALITÉ') }}" placeholder="SPÉCIALITÉ">
+                                </div>
+                            </div>
+
+                            {{-- Parcours --}}
+                            <div class="col-md-6">
+                                <label class="ls-toggle" for="lmd_bulletin_show_parcours">
+                                    <div class="ls-toggle-text">
+                                        <div class="ls-toggle-label">Parcours</div>
+                                        <div class="ls-toggle-hint">Ex: LICENCE 3 GCV BATIMENT & URBANISME</div>
+                                    </div>
+                                    <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
+                                        <input class="form-check-input" type="checkbox" id="lmd_bulletin_show_parcours"
+                                               name="setting_lmd_bulletin_show_parcours" value="1"
+                                               {{ $lmdVal('lmd_bulletin_show_parcours', '1') == '1' ? 'checked' : '' }}>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="ls-field">
+                                    <div class="ls-label">Libellé "Parcours"</div>
+                                    <input type="text" class="ls-input" name="setting_lmd_bulletin_label_parcours"
+                                           value="{{ $lmdVal('lmd_bulletin_label_parcours', 'PARCOURS') }}" placeholder="PARCOURS">
+                                </div>
+                            </div>
+
+                            {{-- Parcours auto --}}
+                            <div class="col-md-12">
+                                <label class="ls-toggle" for="lmd_bulletin_parcours_auto">
+                                    <div class="ls-toggle-text">
+                                        <div class="ls-toggle-label">Parcours auto-généré</div>
+                                        <div class="ls-toggle-hint">Compose automatiquement le parcours depuis Niveau + Filière (ex: "LICENCE 3 GCV BATIMENT & URBANISME")</div>
+                                    </div>
+                                    <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
+                                        <input class="form-check-input" type="checkbox" id="lmd_bulletin_parcours_auto"
+                                               name="setting_lmd_bulletin_parcours_auto" value="1"
+                                               {{ $lmdVal('lmd_bulletin_parcours_auto', '1') == '1' ? 'checked' : '' }}>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="ls-alert" style="margin-top: 1rem;">
+                            <i class="fas fa-info-circle"></i>
+                            <span><strong>Hiérarchie UEMOA :</strong> Domaine → Mention → Spécialité (optionnel) → Parcours. Activez uniquement les niveaux utilisés par votre établissement.</span>
+                        </div>
                     </div>
 
                     {{-- Info UEMOA --}}
-                    <div style="margin-top: 2rem; padding: 1rem 1.25rem; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px;">
-                        <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
-                            <i class="fas fa-globe-africa" style="color: #0284c7; font-size: 1.2rem; margin-top: 2px;"></i>
-                            <div>
-                                <strong style="color: #0c4a6e;">Conformité UEMOA</strong>
-                                <p style="font-size: 0.82rem; color: #475569; margin: 0.25rem 0 0;">
-                                    Les valeurs par défaut respectent la Directive 03/2007/CM/UEMOA portant adoption du système LMD
-                                    dans l'espace UEMOA : 30 crédits/semestre, validation à 10/20, compensation sans note éliminatoire,
-                                    crédits capitalisables et transférables.
-                                </p>
-                            </div>
+                    <div class="ls-info-banner">
+                        <div class="ls-info-icon"><i class="fas fa-globe-africa"></i></div>
+                        <div>
+                            <div class="ls-info-title">Conformité UEMOA</div>
+                            <p class="ls-info-text">
+                                Les valeurs par défaut respectent la Directive 03/2007/CM/UEMOA portant adoption du système LMD
+                                dans l'espace UEMOA : 30 crédits/semestre, validation à 10/20, compensation sans note éliminatoire,
+                                crédits capitalisables et transférables.
+                            </p>
                         </div>
                     </div>
                 </div>

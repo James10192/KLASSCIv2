@@ -6,6 +6,7 @@
 
 ## ⚠️ RÈGLES IA
 
+- **Migrations** → TOUJOURS utiliser `php artisan make:migration nom_migration` pour créer les fichiers. Ne JAMAIS créer les fichiers de migration manuellement avec Write/cat/echo. La commande artisan génère le bon timestamp et le bon format.
 - **Docs API REST** → toujours dans `docs/api/NOM_API.md`
 - Nouvelle API → créer le fichier. API modifiée → mettre à jour + section "Historique" + marquer breaking changes.
 

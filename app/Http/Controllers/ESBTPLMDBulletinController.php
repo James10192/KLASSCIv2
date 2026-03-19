@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPLMDBulletin;
+use App\Models\Setting;
 use App\Services\LMDBulletinService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -141,14 +143,70 @@ class ESBTPLMDBulletinController extends Controller
     {
         $data = $this->service->preparerDonneesBulletin($bulletin);
 
+        // Etablissement depuis Settings (même pattern que liste-complete-pdf)
+        $data['etablissement'] = [
+            'nom' => Setting::get('school_name', 'KLASSCI'),
+            'adresse' => Setting::get('school_address', ''),
+            'telephone' => Setting::get('school_phone', ''),
+            'email' => Setting::get('school_email', ''),
+            'logo' => Setting::get('school_logo', ''),
+            'ville' => Setting::get('school_city', 'Abidjan'),
+            'directeur' => Setting::get('director_name', ''),
+        ];
+
+        // Couleurs PDF depuis SettingsHelper
+        $data['pdfCfg'] = SettingsHelper::getPdfSettings();
+
+        // Settings bulletin LMD (clés propres lmd_bulletin_*)
+        $data['bulletinCfg'] = [
+            'show_republic_info' => SettingsHelper::get('lmd_bulletin_show_republic_info', '1') == '1',
+            'show_ministry_info' => SettingsHelper::get('lmd_bulletin_show_ministry_info', '1') == '1',
+            'republic_text' => SettingsHelper::get('lmd_bulletin_republic_text', 'REPUBLIQUE DE COTE D\'IVOIRE'),
+            'union_text' => SettingsHelper::get('lmd_bulletin_union_text', 'Union - Discipline - Travail'),
+            'ministry_text' => SettingsHelper::get('lmd_bulletin_ministry_text', 'MINISTERE DE L\'ENSEIGNEMENT SUPERIEUR ET DE LA RECHERCHE SCIENTIFIQUE'),
+            'show_etablissement_box' => SettingsHelper::get('lmd_bulletin_show_etablissement_box', '1') == '1',
+            'code_etablissement' => SettingsHelper::get('lmd_bulletin_code_etablissement', ''),
+            'statut' => SettingsHelper::get('lmd_bulletin_statut', 'Privé'),
+            'direction' => SettingsHelper::get('lmd_bulletin_direction', ''),
+            'notice_text' => SettingsHelper::get('lmd_bulletin_notice_text', 'Pour les UE non acquises il vous sera délivré une attestation de réussite après validation de celles-ci. Un ECUE n\'est ni transférable ni capitalisable.'),
+            'bottom_text' => SettingsHelper::get('lmd_bulletin_bottom_text', 'Conservez soigneusement ce bulletin de notes. Aucun duplicata ne sera délivré.'),
+        ];
+
+        // Logo base64 pour DomPDF
+        $data['logoBase64'] = $this->prepareLogoBase64($data['etablissement']['logo']);
+
         $pdf = Pdf::loadView('esbtp.lmd.bulletins.pdf', $data)
-            ->setPaper('a4', 'portrait');
+            ->setPaper('a4', 'portrait')
+            ->setOptions([
+                'dpi' => 150,
+                'defaultFont' => 'DejaVu Sans',
+                'isHtml5ParserEnabled' => true,
+                'isFontSubsettingEnabled' => true,
+            ]);
 
         $matricule = $bulletin->etudiant->matricule ?? 'unknown';
         $semestre = $bulletin->semestre;
         $filename = "bulletin_lmd_{$matricule}_S{$semestre}.pdf";
 
         return $pdf->stream($filename);
+    }
+
+    private function prepareLogoBase64(?string $logoPath): ?string
+    {
+        $paths = [
+            $logoPath ? storage_path('app/public/' . $logoPath) : null,
+            public_path('images/esbtp_logo.png'),
+            public_path('images/logo.png'),
+        ];
+
+        foreach (array_filter($paths) as $path) {
+            if (file_exists($path)) {
+                $mime = mime_content_type($path);
+                $data = base64_encode(file_get_contents($path));
+                return "data:{$mime};base64,{$data}";
+            }
+        }
+        return null;
     }
 
     /**

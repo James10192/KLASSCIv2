@@ -624,6 +624,14 @@ class LMDBulletinService
             'deliberation',
         ]);
 
+        // Bulletin field visibility & labels (configurable per tenant)
+        $bulletinFields = [
+            ['key' => 'domaine', 'show' => $this->getSetting('lmd_bulletin_show_domaine', '1') == '1', 'label' => $this->getSetting('lmd_bulletin_label_domaine', 'DOMAINE'), 'value' => $bulletin->domaine_label],
+            ['key' => 'mention', 'show' => $this->getSetting('lmd_bulletin_show_mention', '1') == '1', 'label' => $this->getSetting('lmd_bulletin_label_mention', 'MENTION'), 'value' => $bulletin->mention_label],
+            ['key' => 'specialite', 'show' => $this->getSetting('lmd_bulletin_show_specialite', '0') == '1', 'label' => $this->getSetting('lmd_bulletin_label_specialite', 'SPÉCIALITÉ'), 'value' => $bulletin->specialite_label ?? ''],
+            ['key' => 'parcours', 'show' => $this->getSetting('lmd_bulletin_show_parcours', '1') == '1', 'label' => $this->getSetting('lmd_bulletin_label_parcours', 'PARCOURS'), 'value' => $bulletin->parcours_label],
+        ];
+
         return [
             'bulletin' => $bulletin,
             'etudiant' => $bulletin->etudiant,
@@ -644,6 +652,7 @@ class LMDBulletinService
             'effectif' => $bulletin->effectif,
             'decision' => $bulletin->decision_deliberation,
             'deliberation' => $bulletin->deliberation,
+            'bulletin_fields' => $bulletinFields,
         ];
     }
 }

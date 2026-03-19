@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ClasseManagementService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -9,6 +10,22 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class ESBTPClasse extends Model
 {
     use HasFactory, SoftDeletes;
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $classe) {
+            // Auto-determiner systeme_academique depuis le niveau d'etudes
+            if ($classe->isDirty('niveau_etude_id') || !$classe->systeme_academique) {
+                $niveau = $classe->relationLoaded('niveau')
+                    ? $classe->niveau
+                    : ESBTPNiveauEtude::find($classe->niveau_etude_id);
+
+                if ($niveau) {
+                    $classe->systeme_academique = ClasseManagementService::determinerSystemeAcademique($niveau->type ?? '');
+                }
+            }
+        });
+    }
 
     /**
      * La table associée au modèle.

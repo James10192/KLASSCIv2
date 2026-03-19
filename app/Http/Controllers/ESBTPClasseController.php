@@ -295,6 +295,8 @@ class ESBTPClasseController extends Controller
                 "places_totales" => "required|integer|min:1",
                 "description" => "nullable|string",
                 "is_active" => "boolean",
+                "systeme_academique" => "nullable|in:BTS,LMD",
+                "parcours_id" => "nullable|exists:esbtp_lmd_parcours,id",
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Si c'est une requête AJAX, retourner les erreurs en JSON
@@ -313,6 +315,8 @@ class ESBTPClasseController extends Controller
         // Ajouter les champs de traçabilité
         $validatedData["created_by"] = Auth::id();
         $validatedData["updated_by"] = Auth::id();
+
+        // systeme_academique est auto-determine par le model event saving
 
         // Créer la nouvelle classe
         $classe = ESBTPClasse::create($validatedData);
@@ -828,6 +832,8 @@ class ESBTPClasseController extends Controller
                 "places_totales" => "required|integer|min:1",
                 "description" => "nullable|string",
                 "is_active" => "boolean",
+                "systeme_academique" => "nullable|in:BTS,LMD",
+                "parcours_id" => "nullable|exists:esbtp_lmd_parcours,id",
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Si c'est une requête AJAX, retourner les erreurs en JSON
@@ -845,6 +851,8 @@ class ESBTPClasseController extends Controller
 
         // Mettre à jour les champs de traçabilité
         $validatedData["updated_by"] = Auth::id();
+
+        // systeme_academique est auto-determine par le model event saving
 
         // Mettre à jour la classe
         $classe->update($validatedData);
@@ -1455,10 +1463,10 @@ class ESBTPClasseController extends Controller
     {
         $etudiants = $classe
             ->etudiants()
-            ->select("id", "nom", "prenoms", "matricule")
-            ->where("is_active", true)
-            ->orderBy("nom")
-            ->orderBy("prenoms")
+            ->select("esbtp_etudiants.id", "esbtp_etudiants.nom", "esbtp_etudiants.prenoms", "esbtp_etudiants.matricule")
+            ->where("esbtp_inscriptions.status", "active")
+            ->orderBy("esbtp_etudiants.nom")
+            ->orderBy("esbtp_etudiants.prenoms")
             ->get();
 
         return response()->json([
@@ -2671,5 +2679,26 @@ class ESBTPClasseController extends Controller
             \Log::error('Erreur studentTableHtml: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Erreur serveur.'], 500);
         }
+    }
+
+    /**
+     * Synchroniser le systeme academique de toutes les classes
+     * depuis leur niveau d'etudes (Licence/Master/Doctorat → LMD, sinon BTS).
+     */
+    public function syncSystemeAcademique()
+    {
+        $service = app(\App\Services\ClasseManagementService::class);
+        $result = $service->syncSystemeAcademique();
+
+        if ($result['updated'] > 0) {
+            $names = collect($result['details'])->pluck('name')->implode(', ');
+            return redirect()->back()->with('success',
+                "{$result['updated']} classe(s) mise(s) à jour : {$names}"
+            );
+        }
+
+        return redirect()->back()->with('info',
+            "Toutes les {$result['total']} classe(s) sont déjà correctement configurées."
+        );
     }
 }

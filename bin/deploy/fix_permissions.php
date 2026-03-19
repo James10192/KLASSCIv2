@@ -219,6 +219,7 @@ try {
         'module.notes_evaluations.access',
         'module.emploi_temps.access',
         'module.presences.access',
+        'module.lmd.access',
 
         // Permissions Service Technique (African Digit Consulting)
         'paywall.configure',
@@ -313,6 +314,7 @@ try {
         'module.notes_evaluations.access',
         'module.emploi_temps.access',
         'module.presences.access',
+        'module.lmd.access',
     ];
     $secretaireRole->syncPermissions($secretairePermissions);
     echo '✓ Secrétaire: '.count($secretairePermissions)." permissions accordées\n";
@@ -350,6 +352,7 @@ try {
         'module.notes_evaluations.access',
         'module.emploi_temps.access',
         'module.presences.access',
+        'module.lmd.access',
     ];
     $coordinateurRole->syncPermissions($coordinateurPermissions);
     echo '✓ Coordinateur: '.count($coordinateurPermissions)." permissions accordées\n";

@@ -1554,7 +1554,20 @@ class ESBTPBulletinController extends Controller
                 'bulletin_show_director_signature',
             ];
 
-            // Liste de tous les paramètres de bulletin
+            // Checkboxes LMD
+            $lmdCheckboxFields = [
+                'lmd_bulletin_show_republic_info',
+                'lmd_bulletin_show_ministry_info',
+                'lmd_bulletin_show_etablissement_box',
+                'lmd_bulletin_show_domaine',
+                'lmd_bulletin_show_mention',
+                'lmd_bulletin_show_specialite',
+                'lmd_bulletin_show_parcours',
+            ];
+
+            $checkboxFields = array_merge($checkboxFields, $lmdCheckboxFields);
+
+            // Liste de tous les paramètres de bulletin (BTS + LMD)
             $allBulletinFields = array_merge($checkboxFields, [
                 'bulletin_font_size',
                 'bulletin_school_name_custom',
@@ -1564,6 +1577,19 @@ class ESBTPBulletinController extends Controller
                 'bulletin_cycle_text',
                 'bulletin_cycle_abbreviation',
                 'bulletin_table_border_style',
+                // LMD text fields
+                'lmd_bulletin_republic_text',
+                'lmd_bulletin_union_text',
+                'lmd_bulletin_ministry_text',
+                'lmd_bulletin_code_etablissement',
+                'lmd_bulletin_statut',
+                'lmd_bulletin_direction',
+                'lmd_bulletin_label_domaine',
+                'lmd_bulletin_label_mention',
+                'lmd_bulletin_label_specialite',
+                'lmd_bulletin_label_parcours',
+                'lmd_bulletin_notice_text',
+                'lmd_bulletin_bottom_text',
             ]);
 
             // Récupérer tous les paramètres de bulletin avec gestion des checkboxes

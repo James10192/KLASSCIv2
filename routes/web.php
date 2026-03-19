@@ -1747,6 +1747,9 @@ Route::get('/esbtp/bulletins/preview', [ESBTPBulletinController::class, 'preview
 // Route pour générer tous les bulletins d'une classe
 Route::post('/esbtp/bulletins/generer-classe', [ESBTPBulletinController::class, 'genererClasseBulletins'])->name('esbtp.bulletins.generer-classe');
 
+// Synchroniser systeme_academique (BTS/LMD) depuis les niveaux d'études
+Route::post('/esbtp/classes/sync-systeme-academique', [ESBTPClasseController::class, 'syncSystemeAcademique'])->name('esbtp.classes.sync-systeme-academique');
+
 // Route AJAX pour récupérer les étudiants d'une classe
 Route::get('/esbtp/classes/{classe}/etudiants', [ESBTPClasseController::class, 'getEtudiants'])->name('esbtp.classes.etudiants');
 
@@ -2043,7 +2046,7 @@ Route::middleware(['auth'])->prefix('chatbot')->name('chatbot.')->group(function
 // ============================================================
 // Routes LMD (Licence-Master-Doctorat)
 // ============================================================
-Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'role:superAdmin|secretaire|coordinateur|enseignant|teacher', 'paywall'])->group(function () {
+Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'role:superAdmin|secretaire|coordinateur|enseignant|teacher', 'permission:module.lmd.access', 'paywall'])->group(function () {
 
     // --- Domaines / Mentions / Parcours ---
     Route::get('parcours-domain', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'index'])->name('parcours-domain.index');

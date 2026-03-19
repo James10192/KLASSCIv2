@@ -17,6 +17,12 @@
             </div>
             <div class="header-actions">
                 @if(auth()->user()->hasRole('superAdmin'))
+                <form action="{{ route('esbtp.classes.sync-systeme-academique') }}" method="POST" style="display:inline;">
+                    @csrf
+                    <button type="submit" class="btn-acasi secondary" title="Synchroniser BTS/LMD depuis les niveaux d'études">
+                        <i class="fas fa-sync-alt"></i>Sync BTS/LMD
+                    </button>
+                </form>
                 <button type="button" class="btn-acasi primary" id="btn-open-create-modal">
                     <i class="fas fa-plus-circle"></i>Nouvelle Classe
                 </button>

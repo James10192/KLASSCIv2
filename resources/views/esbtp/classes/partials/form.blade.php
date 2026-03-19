@@ -134,6 +134,45 @@
 
                     <div class="row">
                         <div class="col-md-4 mb-3">
+                            <label class="form-label">Système académique</label>
+                            <div id="{{ $formId }}_systeme_badge" class="form-control-plaintext">
+                                @if($isEdit)
+                                    <span class="badge {{ $classe->systeme_academique === 'LMD' ? 'bg-primary' : 'bg-secondary' }}" style="font-size: 0.85rem; padding: 0.4em 0.8em;">
+                                        {{ $classe->systeme_academique ?? 'BTS' }}
+                                    </span>
+                                @else
+                                    <span class="badge bg-secondary" style="font-size: 0.85rem; padding: 0.4em 0.8em;">—</span>
+                                @endif
+                            </div>
+                            <small class="form-text text-muted">Déterminé automatiquement par le niveau d'études (Licence/Master/Doctorat → LMD, sinon BTS)</small>
+                        </div>
+                        <div class="col-md-4 mb-3" id="{{ $formId }}_parcours_group"
+                             style="{{ ($isEdit && ($classe->systeme_academique ?? 'BTS') === 'LMD') ? '' : 'display:none;' }}">
+                            <label for="{{ $formId }}_parcours_id" class="form-label">Parcours LMD</label>
+                            <select class="form-select @error('parcours_id') is-invalid @enderror"
+                                    id="{{ $formId }}_parcours_id"
+                                    name="parcours_id">
+                                <option value="">— Aucun parcours —</option>
+                                @foreach(\App\Models\ESBTPLMDParcours::with('mention.domaine', 'filiere')->orderBy('name')->get() as $p)
+                                    <option value="{{ $p->id }}"
+                                            {{ old('parcours_id', $isEdit ? $classe->parcours_id : '') == $p->id ? 'selected' : '' }}>
+                                        {{ $p->name }}
+                                        @if($p->filiere) ({{ $p->filiere->name }}) @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('parcours_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <small class="form-text text-muted">Associer à un parcours pour la hiérarchie Domaine/Mention/Parcours</small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <!-- Vide pour l'alignement -->
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
                             <label for="{{ $formId }}_places_totales" class="form-label">Capacité maximale <span class="text-danger">*</span></label>
                             <input type="number"
                                    min="1"
@@ -206,6 +245,37 @@
         </div>
     @endif
 </form>
+
+{{-- JavaScript pour auto-détection système académique + toggle parcours LMD --}}
+@php
+    // Map niveau types pour le JS
+    $niveauTypes = $niveaux->mapWithKeys(fn($n) => [$n->id => $n->type])->toJson();
+@endphp
+<script>
+(function() {
+    var niveauTypes_{{ str_replace('-', '_', $formId) }} = {!! $niveauTypes !!};
+
+    var niveauSelect = document.getElementById('{{ $formId }}_niveau_etude_id');
+    if (niveauSelect) {
+        niveauSelect.addEventListener('change', function() {
+            var type = niveauTypes_{{ str_replace('-', '_', $formId) }}[this.value] || '';
+            var isLMD = (type === 'Licence' || type === 'Master' || type === 'Doctorat');
+            var badge = document.getElementById('{{ $formId }}_systeme_badge');
+            if (badge) {
+                badge.innerHTML = '<span class="badge ' + (isLMD ? 'bg-primary' : 'bg-secondary') + '" style="font-size:0.85rem;padding:0.4em 0.8em;">' + (isLMD ? 'LMD' : (type ? 'BTS' : '—')) + '</span>';
+            }
+            var parcoursGroup = document.getElementById('{{ $formId }}_parcours_group');
+            if (parcoursGroup) {
+                parcoursGroup.style.display = isLMD ? '' : 'none';
+                if (!isLMD) {
+                    var sel = document.getElementById('{{ $formId }}_parcours_id');
+                    if (sel) sel.value = '';
+                }
+            }
+        });
+    }
+})();
+</script>
 
 {{-- JavaScript pour auto-génération code et Select2 (seulement si non-modal) --}}
 @if(!$isModal)

@@ -1769,6 +1769,7 @@
 
                     <!-- LMD Section (Licence-Master-Doctorat) -->
                     @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur')))
+                        @can('module.lmd.access')
                         <div class="menu-category">Système LMD</div>
 
                         <div class="menu-accordion">
@@ -1800,6 +1801,7 @@
                                 </a>
                             </div>
                         </div>
+                        @endcan
                     @endif
 
                     <!-- Administration Section -->
