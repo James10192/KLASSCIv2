@@ -153,6 +153,7 @@
     .ln-empty-text { font-size: .88rem; color: #94a3b8; max-width: 380px; margin: 0 auto; }
 
     /* ── Premium Modal ── */
+    .ln-modal .modal-dialog { max-width: 95vw !important; width: 95vw !important; margin: 1rem auto; }
     .ln-modal .modal-content {
         border-radius: 18px; border: none;
         box-shadow: 0 25px 80px rgba(0,0,0,.2), 0 8px 24px rgba(4,83,203,.1);
@@ -238,7 +239,7 @@
 
     /* ── Notes grid (BTS-like premium) ── */
     .ln-grid-wrap {
-        overflow-x: auto; max-height: 520px; overflow-y: auto;
+        overflow-x: auto; max-height: 60vh; overflow-y: auto;
         border-bottom: 1px solid #e8ecf1;
     }
     .ln-grid {
@@ -579,7 +580,7 @@
 {{-- ══ MODAL — Gestion des notes (pattern BTS avec UE → ECUE) ══ --}}
 {{-- ══════════════════════════════════════════════════════════ --}}
 <div class="modal fade ln-modal" id="modalNotes" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <div class="ln-modal-hero w-100">
@@ -814,6 +815,7 @@ let evaluationsData = {};
 let notesData = {};
 let evalParamsCache = {};
 let classeSemestres = []; // Dynamic semesters from class level
+const canEditExistingNotes = @json(auth()->user()->can('edit_existing_notes'));
 
 document.addEventListener('DOMContentLoaded', function() {
     notesModal = new bootstrap.Modal(document.getElementById('modalNotes'));
@@ -1103,21 +1105,25 @@ function buildNotesGrid() {
         evals.forEach(ev => {
             const noteVal = stuNotes[ev.id] ?? '';
             const isAbsent = stuNotes[ev.id + '_absent'] || false;
+            const hasExistingNote = noteVal !== '' && noteVal !== null;
+            const isLocked = hasExistingNote && !canEditExistingNotes;
+            const isDisabled = isAbsent || isLocked;
             const bareme = ev.bareme || 20;
             const uid = stu.id + '-' + ev.id;
             bodyHtml += `<td><div class="ln-note-cell">
                 <input type="number" class="ln-note-input" step="0.25" min="0" max="${bareme}"
                        value="${isAbsent ? '' : noteVal}"
                        data-student-id="${stu.id}" data-eval-id="${ev.id}"
-                       ${isAbsent ? 'disabled' : ''}
+                       ${isDisabled ? 'disabled' : ''}
+                       ${isLocked ? 'title="Vous n\'avez pas la permission de modifier les notes existantes"' : ''}
                        onchange="saveNote(${stu.id}, ${ev.id}, this.value)">
                 <div class="ln-abs-wrap">
                     <input type="checkbox" class="ln-abs-check" id="abs-${uid}"
                            data-student-id="${stu.id}" data-eval-id="${ev.id}"
-                           ${isAbsent ? 'checked' : ''}
+                           ${isAbsent ? 'checked' : ''} ${isLocked ? 'disabled' : ''}
                            onchange="toggleAbsence(${stu.id}, ${ev.id}, this.checked)">
-                    <label class="ln-abs-label" for="abs-${uid}" title="Absent">
-                        <i class="fas fa-user-slash"></i>
+                    <label class="ln-abs-label" for="abs-${uid}" title="${isLocked ? 'Verrouillé' : 'Absent'}">
+                        <i class="fas fa-${isLocked ? 'lock' : 'user-slash'}"></i>
                     </label>
                 </div>
             </div></td>`;

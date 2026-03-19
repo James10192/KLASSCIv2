@@ -40,6 +40,22 @@ class LMDBulletinService
     {
         return (float) $this->getSetting('lmd_validation_threshold', 10);
     }
+
+    /**
+     * Get all possible periode label variants for a given semestre number.
+     * Evaluations may store periode as '3', 'semestre3', 'S3', 'Semestre 3', etc.
+     */
+    protected function getPeriodeVariants(int $semestre): array
+    {
+        return [
+            (string) $semestre,
+            'semestre' . $semestre,
+            'S' . $semestre,
+            'Semestre ' . $semestre,
+            'semestre ' . $semestre,
+        ];
+    }
+
     /**
      * Generer le bulletin LMD complet pour un etudiant.
      *
@@ -343,12 +359,19 @@ class LMDBulletinService
         if ($preloadedNotes !== null) {
             $notes = $preloadedNotes;
         } else {
-            $periodeLabel = 'semestre' . $semestre;
+            // Match both formats: '3', 'semestre3', 'S3', 'Semestre 3'
+            $periodeVariants = [
+                (string) $semestre,
+                'semestre' . $semestre,
+                'S' . $semestre,
+                'Semestre ' . $semestre,
+                'semestre ' . $semestre,
+            ];
             $notes = ESBTPNote::where('etudiant_id', $etudiantId)
                 ->where('matiere_id', $matiereId)
                 ->where('classe_id', $classeId)
-                ->whereHas('evaluation', function ($q) use ($periodeLabel, $anneeUniversitaireId) {
-                    $q->where('periode', $periodeLabel)
+                ->whereHas('evaluation', function ($q) use ($periodeVariants, $anneeUniversitaireId) {
+                    $q->whereIn('periode', $periodeVariants)
                       ->where('annee_universitaire_id', $anneeUniversitaireId)
                       ->where('status', ESBTPEvaluation::STATUS_COMPLETED);
                 })
