@@ -38,7 +38,64 @@ class ESBTPLMDUEController extends Controller
             $query->where('semestre', $request->semestre);
         }
 
-        $ues = $query->orderBy('semestre')->orderBy('name')->paginate(20)->withQueryString();
+        // Also filter by search (name or code)
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(fn($q) => $q->where('name', 'like', "%{$s}%")->orWhere('code', 'like', "%{$s}%"));
+        }
+
+        // Also filter by parcours via pivot
+        if ($request->filled('parcours_id')) {
+            $pId = $request->parcours_id;
+            $query->whereHas('parcoursMultiple', fn($q) => $q->where('esbtp_lmd_parcours.id', $pId));
+        }
+
+        if ($request->filled('type_ue')) {
+            $query->where('type_ue', $request->type_ue);
+        }
+
+        $perPage = $request->integer('per_page', 20);
+        $ues = $query->orderBy('code')->orderBy('name')->paginate($perPage)->withQueryString();
+
+        // JSON response for AJAX
+        if ($request->ajax() || $request->wantsJson() || $request->format === 'json') {
+            return response()->json([
+                'ues' => $ues->map(function ($ue) {
+                    $ecues = $ue->getEcuesEffectifs();
+                    return [
+                        'id' => $ue->id,
+                        'code' => $ue->code,
+                        'name' => $ue->name,
+                        'type_ue' => $ue->type_ue,
+                        'credit' => $ue->credit,
+                        'description' => $ue->description,
+                        'filiere_id' => $ue->filiere_id,
+                        'niveau_id' => $ue->niveau_id,
+                        'matieres_count' => $ue->matieres_count,
+                        'parcours' => $ue->parcoursMultiple->groupBy('id')->map(fn($pivots) => [
+                            'id' => $pivots->first()->id,
+                            'code' => $pivots->first()->code,
+                            'name' => $pivots->first()->name,
+                            'semestres' => $pivots->pluck('pivot.semestre')->sort()->values(),
+                        ])->values(),
+                        'ecues' => $ecues->map(fn($e) => [
+                            'id' => $e->id,
+                            'code' => $e->code,
+                            'name' => $e->name,
+                            'coefficient' => $e->pivot->coefficient_ecue ?? $e->coefficient_ecue ?? null,
+                            'credit' => $e->pivot->credit_ecue ?? $e->credit_ecue ?? null,
+                            'ordre' => $e->pivot->ordre_bulletin ?? $e->ordre_bulletin ?? 0,
+                        ]),
+                    ];
+                }),
+                'pagination' => [
+                    'current_page' => $ues->currentPage(),
+                    'last_page' => $ues->lastPage(),
+                    'per_page' => $ues->perPage(),
+                    'total' => $ues->total(),
+                ],
+            ]);
+        }
 
         // Données pour les filtres
         $parcours = ESBTPLMDParcours::orderBy('name')->get();
@@ -204,19 +261,24 @@ class ESBTPLMDUEController extends Controller
     /**
      * Supprimer une UE (si aucun résultat attaché).
      */
-    public function destroy(ESBTPUniteEnseignement $ue)
+    public function destroy(Request $request, ESBTPUniteEnseignement $ue)
     {
         // Vérifier qu'aucun résultat LMD n'est attaché
         if ($ue->resultatsLMD()->exists()) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Impossible de supprimer cette UE : des résultats y sont rattachés.'], 422);
+            }
             return redirect()->route('esbtp.lmd.ue.index')
                 ->with('error', 'Impossible de supprimer cette UE : des résultats y sont rattachés.');
         }
 
         // Détacher les ECUEs (matières) avant suppression
         $ue->matieres()->update(['unite_enseignement_id' => null]);
-
         $ue->delete();
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'UE supprimée avec succès.']);
+        }
         return redirect()->route('esbtp.lmd.ue.index')
             ->with('success', 'Unité d\'Enseignement supprimée avec succès.');
     }
@@ -339,14 +401,20 @@ class ESBTPLMDUEController extends Controller
     /**
      * Détacher un ECUE de l'UE (ne supprime pas la matière).
      */
-    public function destroyECUE(ESBTPUniteEnseignement $ue, ESBTPMatiere $ecue)
+    public function destroyECUE(Request $request, ESBTPUniteEnseignement $ue, ESBTPMatiere $ecue)
     {
-        $ecue->update([
-            'unite_enseignement_id' => null,
-            'updated_by'            => auth()->id(),
-        ]);
+        // Détacher du pivot many-to-many
+        $ue->ecues()->detach($ecue->id);
 
-        return redirect()->route('esbtp.lmd.ue.show', $ue)
+        // Aussi nettoyer le FK direct si c'est cette UE
+        if ($ecue->unite_enseignement_id === $ue->id) {
+            $ecue->update(['unite_enseignement_id' => null, 'updated_by' => auth()->id()]);
+        }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'ECUE détaché avec succès.']);
+        }
+        return redirect()->route('esbtp.lmd.ue.index')
             ->with('success', 'ECUE détaché de l\'UE avec succès.');
     }
 
