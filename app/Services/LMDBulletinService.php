@@ -190,28 +190,31 @@ class LMDBulletinService
      */
     protected function getUEsForSemestre(ESBTPClasse $classe, int $semestre): \Illuminate\Support\Collection
     {
-        $query = ESBTPUniteEnseignement::active()
-            ->with(['matieres' => fn($q) => $q->where('is_active', true)])
-            ->where('semestre', $semestre);
-
         if ($classe->parcours_id) {
-            // Via la table pivot parcours_ue
-            $ueIds = DB::table('esbtp_lmd_parcours_ue')
+            // Via la table pivot parcours_ue — triee par ordre puis code
+            $pivotData = DB::table('esbtp_lmd_parcours_ue')
                 ->where('parcours_id', $classe->parcours_id)
                 ->where('semestre', $semestre)
-                ->pluck('unite_enseignement_id');
+                ->orderBy('ordre')
+                ->get();
 
-            if ($ueIds->isNotEmpty()) {
-                return ESBTPUniteEnseignement::active()
-                    ->with(['matieres' => fn($q) => $q->where('is_active', true)])
+            if ($pivotData->isNotEmpty()) {
+                $ueIds = $pivotData->pluck('unite_enseignement_id');
+                $ues = ESBTPUniteEnseignement::active()
+                    ->with(['matieres' => fn($q) => $q->where('is_active', true)->orderBy('ordre_bulletin')->orderBy('code')])
                     ->whereIn('id', $ueIds)
-                    ->orderBy('code')
-                    ->get();
+                    ->get()
+                    ->keyBy('id');
+
+                // Retourner dans l'ordre du pivot
+                return $pivotData->map(fn($p) => $ues->get($p->unite_enseignement_id))->filter()->values();
             }
         }
 
         // Fallback: UEs liees a la filiere + niveau + semestre
-        return $query
+        return ESBTPUniteEnseignement::active()
+            ->with(['matieres' => fn($q) => $q->where('is_active', true)->orderBy('ordre_bulletin')->orderBy('code')])
+            ->where('semestre', $semestre)
             ->where('filiere_id', $classe->filiere_id)
             ->where('niveau_id', $classe->niveau_etude_id)
             ->orderBy('code')

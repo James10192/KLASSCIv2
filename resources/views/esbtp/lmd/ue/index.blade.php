@@ -655,6 +655,14 @@
                                 </td>
                                 <td @click.stop>
                                     <div class="lu-actions">
+                                        <button type="button" class="lu-act" title="Ajouter un ECUE" style="color:#059669;"
+                                                onclick="openEcueModal({{ $ue->id }}, '{{ addslashes($ue->name) }}')">
+                                            <i class="fas fa-plus-circle"></i>
+                                        </button>
+                                        <button type="button" class="lu-act" title="Lier à des parcours" style="color:#4338ca;"
+                                                onclick="openLinkParcoursModal({{ $ue->id }}, '{{ addslashes($ue->name) }}')">
+                                            <i class="fas fa-route"></i>
+                                        </button>
                                         <button type="button" class="lu-act lu-act--edit" title="Modifier" onclick="openEditModal({{ $ue->id }})">
                                             <i class="fas fa-edit"></i>
                                         </button>
@@ -681,14 +689,32 @@
                                         <td>
                                             <span class="lu-ecue-indent">{{ $ecue->name }}</span>
                                         </td>
-                                        <td colspan="2">
-                                            <span class="lu-ecue-coeff">Coeff. {{ $ecue->pivot->coefficient_ecue ?? $ecue->coefficient ?? '—' }}</span>
+                                        <td>
+                                            <span class="lu-ecue-coeff">Coeff. {{ $ecue->coefficient_ecue ?? $ecue->coefficient ?? '—' }}</span>
                                         </td>
                                         <td style="text-align:center;">
-                                            <span class="lu-credit-pill" style="background:#f1f5f9; color:#334155;">{{ $ecue->pivot->credit_ecue ?? $ecue->credit ?? '—' }}</span>
+                                            <span class="lu-credit-pill" style="background:#f1f5f9; color:#334155;">{{ $ecue->credit_ecue ?? '—' }}</span>
                                         </td>
-                                        <td></td>
-                                        <td></td>
+                                        <td style="text-align:center;">
+                                            @if($ecue->ordre_bulletin > 0)
+                                                <span style="font-size:.75rem; color:#94a3b8;">#{{ $ecue->ordre_bulletin }}</span>
+                                            @endif
+                                        </td>
+                                        <td @click.stop>
+                                            <div class="lu-actions">
+                                                <button type="button" class="lu-act lu-act--edit" title="Modifier ECUE"
+                                                        onclick="openEcueEditModal({{ $ue->id }}, {{ json_encode($ecue->only(['id','name','code','coefficient_ecue','credit_ecue','ordre_bulletin'])) }})">
+                                                    <i class="fas fa-pen" style="font-size:.7rem;"></i>
+                                                </button>
+                                                <form action="{{ route('esbtp.lmd.ue.ecue.destroy', [$ue, $ecue]) }}" method="POST" style="display:inline;"
+                                                      onsubmit="return confirm('Détacher cet ECUE ?')">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" class="lu-act lu-act--delete" title="Détacher">
+                                                        <i class="fas fa-unlink" style="font-size:.7rem;"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
                                     </tr>
                                 @endforeach
                             @else
@@ -724,116 +750,276 @@
 </div>
 
 {{-- ══════════════════════════════════════════════════════════ --}}
-{{-- ══ MODAL UE — Create / Edit ══ --}}
+{{-- ══ MODAL UE — Create / Edit (Premium XL) ══ --}}
 {{-- ══════════════════════════════════════════════════════════ --}}
-<div class="modal fade" id="modalUE" tabindex="-1" aria-labelledby="modalUELabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content" style="border-radius: 14px; border: none; box-shadow: 0 20px 60px rgba(0,0,0,0.15);">
+<style>
+    /* ── Premium Modal UE ── */
+    .lu-modal .modal-content {
+        border-radius: 18px; border: none;
+        box-shadow: 0 25px 80px rgba(0,0,0,.18), 0 8px 24px rgba(4,83,203,.08);
+        overflow: hidden;
+    }
+    .lu-modal .modal-header { position: relative; padding: 0; border: none; }
+    .lu-modal-hero {
+        padding: 1.75rem 2rem 1.5rem;
+        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 50%, #3b7ddb 100%);
+        color: #fff; position: relative; overflow: hidden;
+    }
+    .lu-modal-hero::before {
+        content: ''; position: absolute; top: -50%; right: -15%;
+        width: 320px; height: 320px;
+        background: radial-gradient(circle, rgba(255,255,255,.08) 0%, transparent 70%);
+        pointer-events: none;
+    }
+    .lu-modal-hero-top {
+        display: flex; align-items: center; justify-content: space-between;
+        position: relative; z-index: 1;
+    }
+    .lu-modal-hero-left { display: flex; align-items: center; gap: .85rem; }
+    .lu-modal-icon {
+        width: 46px; height: 46px; border-radius: 12px;
+        background: rgba(255,255,255,.15); backdrop-filter: blur(6px);
+        border: 1px solid rgba(255,255,255,.2);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; color: #fff; flex-shrink: 0;
+    }
+    .lu-modal-title { font-size: 1.2rem; font-weight: 700; margin: 0; color: #fff; }
+    .lu-modal-subtitle { font-size: .8rem; opacity: .7; margin-top: .15rem; }
+    .lu-modal .btn-close { filter: brightness(0) invert(1); opacity: .7; position: relative; z-index: 2; }
+    .lu-modal .btn-close:hover { opacity: 1; }
+
+    .lu-modal .modal-body { padding: 1.75rem 2rem; }
+
+    .lu-field-group {
+        background: #f8fafc; border-radius: 12px; border: 1px solid #e8ecf1;
+        padding: 1.25rem; margin-bottom: 1rem;
+    }
+    .lu-field-group:last-child { margin-bottom: 0; }
+    .lu-field-group-title {
+        font-size: .72rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: .06em; color: #0453cb; margin-bottom: .85rem;
+        display: flex; align-items: center; gap: .4rem;
+    }
+    .lu-field-group-title i { font-size: .65rem; }
+    .lu-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem 1.25rem; }
+    .lu-field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .75rem 1.25rem; }
+    .lu-field-full { grid-column: 1 / -1; }
+
+    .lu-modal label {
+        font-size: .82rem; font-weight: 600; color: #334155;
+        margin-bottom: .3rem; display: flex; align-items: center; gap: .3rem;
+    }
+    .lu-modal label i { font-size: .7rem; color: #94a3b8; }
+    .lu-modal .form-control, .lu-modal .form-select {
+        border-radius: 10px; border: 1.5px solid #e2e8f0; padding: .55rem .85rem;
+        font-size: .88rem; transition: all .2s; background: #fff;
+    }
+    .lu-modal .form-control:focus, .lu-modal .form-select:focus {
+        border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.08); background: #fff;
+    }
+    .lu-modal textarea.form-control { min-height: 70px; resize: vertical; }
+    .lu-modal .form-text { font-size: .76rem; color: #94a3b8; margin-top: .25rem; }
+
+    .lu-modal .modal-footer {
+        border-top: 1px solid #e8ecf1; padding: 1rem 2rem;
+        background: #fafbfc; display: flex; gap: .5rem; justify-content: flex-end;
+    }
+    .lu-modal-btn {
+        display: inline-flex; align-items: center; gap: .4rem;
+        padding: .55rem 1.2rem; border-radius: 10px; font-size: .85rem;
+        font-weight: 600; border: none; cursor: pointer; transition: all .2s;
+    }
+    .lu-modal-btn--cancel { background: #fff; color: #64748b; border: 1.5px solid #e2e8f0; }
+    .lu-modal-btn--cancel:hover { background: #f1f5f9; border-color: #cbd5e1; }
+    .lu-modal-btn--submit { background: #0453cb; color: #fff; box-shadow: 0 2px 8px rgba(4,83,203,.2); }
+    .lu-modal-btn--submit:hover { background: #0340a0; }
+
+    .lu-modal.fade .modal-dialog { transform: translateY(20px) scale(.98); transition: transform .25s ease-out, opacity .2s; }
+    .lu-modal.show .modal-dialog { transform: translateY(0) scale(1); }
+
+    @media (max-width: 768px) {
+        .lu-field-row, .lu-field-row-3 { grid-template-columns: 1fr; }
+        .lu-modal .modal-body { padding: 1.25rem; }
+        .lu-modal-hero { padding: 1.25rem 1.25rem 1rem; }
+    }
+</style>
+
+<div class="modal fade lu-modal" id="modalUE" tabindex="-1" aria-labelledby="modalUELabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
             <form id="formUE" method="POST">
                 @csrf
                 <input type="hidden" name="_method" id="ue_method" value="POST">
 
-                <div class="modal-header" style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: #fff; border-radius: 14px 14px 0 0; padding: 1rem 1.5rem;">
-                    <h5 class="modal-title" id="modalUELabel">
-                        <i class="fas fa-cubes me-2"></i><span id="modalUETitleText">Nouvelle Unité d'Enseignement</span>
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter: brightness(0) invert(1);"></button>
+                <div class="modal-header">
+                    <div class="lu-modal-hero w-100">
+                        <div class="lu-modal-hero-top">
+                            <div class="lu-modal-hero-left">
+                                <div class="lu-modal-icon"><i class="fas fa-cubes"></i></div>
+                                <div>
+                                    <h5 class="lu-modal-title" id="modalUELabel"><span id="modalUETitleText">Nouvelle Unité d'Enseignement</span></h5>
+                                    <div class="lu-modal-subtitle">Configurer les paramètres de l'UE et son rattachement</div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="modal-body" style="padding: 1.5rem;">
-                    {{-- Row 1: Name + Code --}}
-                    <div class="row mb-3">
-                        <div class="col-md-8">
-                            <label class="form-label fw-semibold">Intitulé <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="ue_name" name="name" required
-                                   placeholder="Ex: Technologie de Construction du Bâtiment"
-                                   style="border-radius: 8px;">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Code <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="ue_code" name="code" required
-                                   placeholder="Ex: UE:BTCB1"
-                                   style="border-radius: 8px; font-family: monospace;">
-                        </div>
-                    </div>
-
-                    {{-- Row 2: Credits + Semestre + Type --}}
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">Crédits CECT <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" id="ue_credit" name="credit" required
-                                   min="1" max="30" value="3"
-                                   style="border-radius: 8px;">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold">Semestre <span class="text-danger">*</span></label>
-                            <select class="form-select" id="ue_semestre" name="semestre" required style="border-radius: 8px;">
-                                @for($s = 1; $s <= 10; $s++)
-                                    <option value="{{ $s }}">S{{ $s }}</option>
-                                @endfor
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Type UE <span class="text-danger">*</span></label>
-                            <select class="form-select" id="ue_type_ue" name="type_ue" required style="border-radius: 8px;">
-                                <option value="fondamentale">Fondamentale</option>
-                                <option value="methodologique">Méthodologique</option>
-                                <option value="decouverte">Découverte</option>
-                                <option value="transversale">Transversale</option>
-                            </select>
+                <div class="modal-body">
+                    {{-- Groupe 1: Identité --}}
+                    <div class="lu-field-group">
+                        <div class="lu-field-group-title"><i class="fas fa-circle"></i> Identité de l'UE</div>
+                        <div class="lu-field-row">
+                            <div>
+                                <label for="ue_name"><i class="fas fa-font"></i> Intitulé <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="ue_name" name="name" required placeholder="Ex: Technologie de Construction du Bâtiment">
+                            </div>
+                            <div>
+                                <label for="ue_code"><i class="fas fa-hashtag"></i> Code <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="ue_code" name="code" required placeholder="Ex: UE:BTCB1" style="font-family: 'SF Mono', 'Consolas', monospace;">
+                                <div class="form-text">Code unique de l'unité</div>
+                            </div>
                         </div>
                     </div>
 
-                    {{-- Row 3: Parcours + Filiere + Niveau --}}
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Parcours</label>
-                            <select class="form-select" id="ue_parcours_id" name="parcours_id" style="border-radius: 8px;">
-                                <option value="">— Aucun —</option>
-                                @foreach($parcours as $p)
-                                    <option value="{{ $p->id }}">{{ $p->code }} — {{ $p->name }}</option>
-                                @endforeach
-                            </select>
+                    {{-- Groupe 2: Paramètres académiques --}}
+                    <div class="lu-field-group">
+                        <div class="lu-field-group-title"><i class="fas fa-circle"></i> Paramètres académiques</div>
+                        <div class="lu-field-row" style="margin-bottom:.75rem;">
+                            <div>
+                                <label for="ue_credit"><i class="fas fa-award"></i> Crédits CECT <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="ue_credit" name="credit" required min="1" max="30" value="3">
+                            </div>
+                            <div>
+                                <label for="ue_semestre"><i class="fas fa-calendar-alt"></i> Semestre <span class="text-danger">*</span></label>
+                                <select class="form-select" id="ue_semestre" name="semestre" required>
+                                    @for($s = 1; $s <= 10; $s++)
+                                        <option value="{{ $s }}">S{{ $s }}</option>
+                                    @endfor
+                                </select>
+                            </div>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Filière</label>
-                            <select class="form-select" id="ue_filiere_id" name="filiere_id" style="border-radius: 8px;">
-                                <option value="">— Aucune —</option>
-                                @foreach($filieres as $f)
-                                    <option value="{{ $f->id }}">{{ $f->name }}</option>
-                                @endforeach
-                            </select>
+                        <div class="lu-field-row">
+                            <div>
+                                <label for="ue_type_ue"><i class="fas fa-tag"></i> Type UE <span class="text-danger">*</span></label>
+                                <select class="form-select" id="ue_type_ue" name="type_ue" required>
+                                    <option value="fondamentale">Fondamentale</option>
+                                    <option value="methodologique">Méthodologique</option>
+                                    <option value="decouverte">Découverte</option>
+                                    <option value="transversale">Transversale</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="ue_ordre"><i class="fas fa-sort-numeric-up"></i> Ordre sur le bulletin</label>
+                                <input type="number" class="form-control" id="ue_ordre" name="ordre" min="0" value="0" placeholder="0">
+                                <div class="form-text">Position de l'UE sur le bulletin (via le parcours)</div>
+                            </div>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Niveau</label>
-                            <select class="form-select" id="ue_niveau_id" name="niveau_id" style="border-radius: 8px;">
-                                <option value="">— Aucun —</option>
-                                @foreach($niveaux as $n)
-                                    <option value="{{ $n->id }}">{{ $n->name }}</option>
-                                @endforeach
-                            </select>
+                    </div>
+
+                    {{-- Groupe 3: Rattachement --}}
+                    <div class="lu-field-group">
+                        <div class="lu-field-group-title"><i class="fas fa-circle"></i> Rattachement</div>
+                        <div class="lu-field-row-3">
+                            <div>
+                                <label for="ue_parcours_id"><i class="fas fa-route"></i> Parcours</label>
+                                <select class="form-select" id="ue_parcours_id" name="parcours_id">
+                                    <option value="">— Aucun —</option>
+                                    @foreach($parcours as $p)
+                                        <option value="{{ $p->id }}">{{ $p->code }} — {{ $p->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label for="ue_filiere_id"><i class="fas fa-graduation-cap"></i> Filière</label>
+                                <select class="form-select" id="ue_filiere_id" name="filiere_id">
+                                    <option value="">— Aucune —</option>
+                                    @foreach($filieres as $f)
+                                        <option value="{{ $f->id }}">{{ $f->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label for="ue_niveau_id"><i class="fas fa-layer-group"></i> Niveau</label>
+                                <select class="form-select" id="ue_niveau_id" name="niveau_id">
+                                    <option value="">— Aucun —</option>
+                                    @foreach($niveaux as $n)
+                                        <option value="{{ $n->id }}">{{ $n->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
                     </div>
 
                     {{-- Description --}}
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Description</label>
-                        <textarea class="form-control" id="ue_description" name="description" rows="2"
-                                  placeholder="Description optionnelle..."
-                                  style="border-radius: 8px;"></textarea>
+                    <div class="lu-field-group">
+                        <div class="lu-field-group-title"><i class="fas fa-circle"></i> Informations complémentaires</div>
+                        <div>
+                            <label for="ue_description"><i class="fas fa-align-left"></i> Description</label>
+                            <textarea class="form-control" id="ue_description" name="description" rows="2" placeholder="Description optionnelle de l'UE..."></textarea>
+                        </div>
                     </div>
 
                     {{-- Validation errors --}}
-                    <div id="ue_errors" class="alert alert-danger d-none" style="border-radius: 8px;"></div>
+                    <div id="ue_errors" class="alert alert-danger d-none" style="border-radius: 10px; margin-top: 1rem;"></div>
                 </div>
 
-                <div class="modal-footer" style="border-top: 1px solid #e2e8f0; padding: 1rem 1.5rem;">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">Annuler</button>
-                    <button type="submit" class="btn-acasi primary" id="ue_submit_btn" style="border-radius: 8px;">
-                        <i class="fas fa-save me-1"></i><span id="ue_submit_text">Enregistrer</span>
+                <div class="modal-footer">
+                    <button type="button" class="lu-modal-btn lu-modal-btn--cancel" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Annuler
+                    </button>
+                    <button type="submit" class="lu-modal-btn lu-modal-btn--submit" id="ue_submit_btn">
+                        <i class="fas fa-save"></i> <span id="ue_submit_text">Enregistrer</span>
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal: Lier à des Parcours --}}
+<div class="modal fade lu-modal" id="modalLinkParcours" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="lu-modal-hero w-100" style="background: linear-gradient(135deg, #312e81 0%, #4338ca 50%, #6366f1 100%);">
+                    <div class="lu-modal-hero-top">
+                        <div class="lu-modal-hero-left">
+                            <div class="lu-modal-icon"><i class="fas fa-route"></i></div>
+                            <div>
+                                <h5 class="lu-modal-title">Lier à des Parcours</h5>
+                                <div class="lu-modal-subtitle">UE : <strong id="lp_ue_label">—</strong></div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body" style="padding:1.5rem;">
+                <div id="lp_error" style="display:none; padding:.65rem 1rem; border-radius:10px; background:#fef2f2; color:#dc2626; font-size:.85rem; margin-bottom:1rem; border:1px solid #fecaca;">
+                    <i class="fas fa-exclamation-triangle me-1"></i>Erreur de chargement.
+                </div>
+                <div id="lp_loading" style="padding:2rem; text-align:center; color:#94a3b8;">
+                    <i class="fas fa-spinner fa-spin fa-2x"></i>
+                    <div style="margin-top:.75rem; font-size:.88rem;">Chargement des parcours...</div>
+                </div>
+                <div id="lp_content" style="display:none;">
+                    <p style="font-size:.82rem; color:#64748b; margin-bottom:1rem;">
+                        <i class="fas fa-info-circle me-1"></i>Cochez les parcours auxquels rattacher cette UE. Indiquez le semestre.
+                    </p>
+                    <div id="lp_checkboxes" style="display:flex; flex-direction:column; gap:.4rem; max-height:400px; overflow-y:auto; padding-right:.25rem;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="lu-modal-btn lu-modal-btn--cancel" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Annuler
+                </button>
+                <button type="button" class="lu-modal-btn lu-modal-btn--submit" id="lp_submit" onclick="saveLinkParcours()" style="background:#4338ca;">
+                    <i class="fas fa-check"></i> <span id="lp_submit_text">Enregistrer</span>
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -852,6 +1038,7 @@ function resetForm() {
     document.getElementById('ue_credit').value = '3';
     document.getElementById('ue_semestre').value = '1';
     document.getElementById('ue_type_ue').value = 'fondamentale';
+    document.getElementById('ue_ordre').value = '0';
     errorsDiv.classList.add('d-none');
 }
 
@@ -885,6 +1072,7 @@ async function openEditModal(ueId) {
         document.getElementById('ue_filiere_id').value = ue.filiere_id || '';
         document.getElementById('ue_niveau_id').value = ue.niveau_id || '';
         document.getElementById('ue_description').value = ue.description || '';
+        document.getElementById('ue_ordre').value = ue.ordre || 0;
 
         modalUE.show();
     } catch (err) {
@@ -943,5 +1131,239 @@ formUE.addEventListener('submit', async function(e) {
         btn.innerHTML = '<i class="fas fa-save me-1"></i>Enregistrer';
     }
 });
+
+// ================================================================
+//  MODAL ECUE — Ajouter / Modifier un ECUE (matière)
+// ================================================================
+function openEcueModal(ueId, ueName) {
+    document.getElementById('ecue_form').action = '/esbtp/lmd/ue/' + ueId + '/ecue';
+    document.getElementById('ecue_method').value = 'POST';
+    document.getElementById('ecue_ue_label').textContent = ueName;
+    document.getElementById('ecue_modal_title').textContent = 'Nouvel ECUE';
+    document.getElementById('ecue_submit_text').textContent = 'Créer l\'ECUE';
+    document.getElementById('ecue_form').reset();
+    document.getElementById('ecue_method').value = 'POST';
+    document.getElementById('ecue_error').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('modalECUE')).show();
+}
+
+function openEcueEditModal(ueId, ecue) {
+    document.getElementById('ecue_form').action = '/esbtp/lmd/ue/' + ueId + '/ecue/' + ecue.id;
+    document.getElementById('ecue_method').value = 'PUT';
+    document.getElementById('ecue_modal_title').textContent = 'Modifier l\'ECUE';
+    document.getElementById('ecue_submit_text').textContent = 'Mettre à jour';
+    document.getElementById('ecue_name').value = ecue.name || '';
+    document.getElementById('ecue_code').value = ecue.code || '';
+    document.getElementById('ecue_coefficient').value = ecue.coefficient_ecue || '';
+    document.getElementById('ecue_credit').value = ecue.credit_ecue || '';
+    document.getElementById('ecue_ordre').value = ecue.ordre_bulletin || 0;
+    document.getElementById('ecue_error').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('modalECUE')).show();
+}
+
+document.getElementById('ecue_form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const form = this;
+    const btn = document.getElementById('ecue_submit');
+    const errBox = document.getElementById('ecue_error');
+    btn.disabled = true;
+    errBox.style.display = 'none';
+
+    const formData = new FormData(form);
+    const body = {};
+    formData.forEach((v, k) => body[k] = v);
+
+    try {
+        const resp = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        });
+
+        if (resp.redirected) {
+            window.location.href = resp.url;
+            return;
+        }
+
+        const data = await resp.json();
+        if (resp.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('modalECUE')).hide();
+            window.location.reload();
+        } else {
+            const msgs = data.errors ? Object.values(data.errors).flat().join('<br>') : (data.message || 'Erreur');
+            errBox.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>' + msgs;
+            errBox.style.display = 'block';
+        }
+    } catch (err) {
+        errBox.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Erreur réseau';
+        errBox.style.display = 'block';
+    }
+    btn.disabled = false;
+});
+
+// ================================================================
+//  MODAL: Lier/Délier UE à des Parcours
+// ================================================================
+let linkParcoursUeId = null;
+
+async function openLinkParcoursModal(ueId, ueName) {
+    linkParcoursUeId = ueId;
+    document.getElementById('lp_ue_label').textContent = ueName;
+    document.getElementById('lp_loading').style.display = 'block';
+    document.getElementById('lp_content').style.display = 'none';
+    document.getElementById('lp_error').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('modalLinkParcours')).show();
+
+    try {
+        const resp = await fetch(`/esbtp/lmd/ue/${ueId}/parcours-disponibles`);
+        const data = await resp.json();
+        const container = document.getElementById('lp_checkboxes');
+        container.innerHTML = '';
+
+        // Parcours liés (checked)
+        data.lies.forEach(p => {
+            container.insertAdjacentHTML('beforeend', buildParcoursCheckbox(p, true));
+        });
+        // Parcours disponibles (unchecked)
+        data.disponibles.forEach(p => {
+            container.insertAdjacentHTML('beforeend', buildParcoursCheckbox(p, false));
+        });
+
+        if (data.lies.length === 0 && data.disponibles.length === 0) {
+            container.innerHTML = '<div style="padding:1.5rem; text-align:center; color:#94a3b8;"><i class="fas fa-info-circle me-1"></i>Aucun parcours trouvé. Créez d\'abord des parcours dans Parcours LMD.</div>';
+        }
+
+        document.getElementById('lp_loading').style.display = 'none';
+        document.getElementById('lp_content').style.display = 'block';
+    } catch (err) {
+        document.getElementById('lp_loading').style.display = 'none';
+        document.getElementById('lp_error').style.display = 'block';
+    }
+}
+
+function buildParcoursCheckbox(p, checked) {
+    const sem = p.semestre || 1;
+    return `<label style="display:flex; align-items:center; gap:.65rem; padding:.6rem .85rem; border-radius:10px; background:${checked ? '#eef2ff' : '#f8fafc'}; border:1.5px solid ${checked ? '#4338ca' : '#e8ecf1'}; cursor:pointer; transition:all .2s;">
+        <input type="checkbox" class="lp-parcours-check" value="${p.id}" ${checked ? 'checked' : ''} style="width:1.1em; height:1.1em; accent-color:#4338ca; cursor:pointer;">
+        <div style="flex:1;">
+            <div style="font-size:.88rem; font-weight:600; color:#1e293b;">${p.code || ''} — ${p.name}</div>
+        </div>
+        <select class="lp-sem-select" data-parcours-id="${p.id}" style="width:70px; padding:.25rem .4rem; border-radius:6px; border:1px solid #e2e8f0; font-size:.78rem; font-weight:600; background:#fff;">
+            ${[1,2,3,4,5,6,7,8,9,10].map(s => `<option value="${s}" ${s == sem ? 'selected' : ''}>S${s}</option>`).join('')}
+        </select>
+    </label>`;
+}
+
+async function saveLinkParcours() {
+    const btn = document.getElementById('lp_submit');
+    btn.disabled = true;
+    document.getElementById('lp_submit_text').textContent = 'Enregistrement...';
+
+    const checkboxes = document.querySelectorAll('#lp_checkboxes .lp-parcours-check:checked');
+    const parcours = Array.from(checkboxes).map(cb => {
+        const semSelect = document.querySelector(`.lp-sem-select[data-parcours-id="${cb.value}"]`);
+        return { id: cb.value, semestre: semSelect ? semSelect.value : 1 };
+    });
+
+    try {
+        const resp = await fetch(`/esbtp/lmd/ue/${linkParcoursUeId}/sync-parcours`, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ parcours: parcours })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalLinkParcours')).hide();
+            window.location.reload();
+        }
+    } catch (err) {
+        document.getElementById('lp_error').style.display = 'block';
+    }
+    btn.disabled = false;
+    document.getElementById('lp_submit_text').textContent = 'Enregistrer';
+}
 </script>
+
+{{-- Modal ECUE --}}
+<div class="modal fade" id="modalECUE" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:18px; border:none; box-shadow:0 25px 80px rgba(0,0,0,.18); overflow:hidden;">
+            <form id="ecue_form" method="POST" action="">
+                @csrf
+                <input type="hidden" name="_method" id="ecue_method" value="POST">
+                <div class="modal-header" style="padding:0; border:none;">
+                    <div style="width:100%; padding:1.5rem 1.75rem 1.25rem; background:linear-gradient(135deg, #065f46 0%, #059669 50%, #34d399 100%); color:#fff; position:relative; overflow:hidden;">
+                        <div style="position:absolute; top:-50%; right:-15%; width:280px; height:280px; background:radial-gradient(circle, rgba(255,255,255,.08) 0%, transparent 70%); pointer-events:none;"></div>
+                        <div style="display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1;">
+                            <div style="display:flex; align-items:center; gap:.75rem;">
+                                <div style="width:42px; height:42px; border-radius:11px; background:rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center; font-size:1rem;">
+                                    <i class="fas fa-puzzle-piece"></i>
+                                </div>
+                                <div>
+                                    <h5 style="font-size:1.1rem; font-weight:700; margin:0;" id="ecue_modal_title">Nouvel ECUE</h5>
+                                    <div style="font-size:.78rem; opacity:.7;">UE : <strong id="ecue_ue_label">—</strong></div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter:brightness(0) invert(1); opacity:.7;"></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-body" style="padding:1.5rem 1.75rem;">
+                    <div id="ecue_error" style="display:none; padding:.6rem 1rem; border-radius:10px; background:#fef2f2; color:#dc2626; font-size:.85rem; margin-bottom:1rem; border:1px solid #fecaca;"></div>
+                    <div style="background:#f8fafc; border-radius:12px; border:1px solid #e8ecf1; padding:1.25rem;">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:.75rem 1.25rem;">
+                            <div>
+                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;">
+                                    <i class="fas fa-tag" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Nom
+                                </label>
+                                <input type="text" class="form-control" name="name" id="ecue_name" required placeholder="Ex: Résistance des Matériaux"
+                                       style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
+                            </div>
+                            <div>
+                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;">
+                                    <i class="fas fa-barcode" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Code
+                                </label>
+                                <input type="text" class="form-control" name="code" id="ecue_code" required placeholder="Ex: RDM101"
+                                       style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
+                            </div>
+                            <div>
+                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;">
+                                    <i class="fas fa-balance-scale" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Coefficient
+                                </label>
+                                <input type="number" class="form-control" name="coefficient_ecue" id="ecue_coefficient" min="0" step="0.5" placeholder="1"
+                                       style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
+                            </div>
+                            <div>
+                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;">
+                                    <i class="fas fa-award" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Crédits
+                                </label>
+                                <input type="number" class="form-control" name="credit_ecue" id="ecue_credit" min="0" placeholder="2"
+                                       style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
+                            </div>
+                            <div>
+                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;">
+                                    <i class="fas fa-sort-numeric-up" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Ordre dans l'UE
+                                </label>
+                                <input type="number" class="form-control" name="ordre_bulletin" id="ecue_ordre" min="0" value="0" placeholder="0"
+                                       style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #e8ecf1; padding:1rem 1.75rem; background:#fafbfc;">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:.85rem; padding:.5rem 1.1rem;">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                    <button type="submit" id="ecue_submit" style="border-radius:10px; font-weight:600; font-size:.85rem; padding:.5rem 1.1rem; background:#059669; color:#fff; border:none; box-shadow:0 2px 8px rgba(5,150,105,.2);">
+                        <i class="fas fa-check me-1"></i><span id="ecue_submit_text">Créer l'ECUE</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endpush

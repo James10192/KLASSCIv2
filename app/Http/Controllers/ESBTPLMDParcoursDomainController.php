@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ESBTPClasse;
 use App\Models\ESBTPLMDDomaine;
+use App\Models\ESBTPUniteEnseignement;
 use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
+use App\Models\ESBTPNiveauEtude;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -15,7 +19,11 @@ class ESBTPLMDParcoursDomainController extends Controller
      */
     public function index()
     {
-        $domaines = ESBTPLMDDomaine::with(['mentions.parcours', 'mentions.domaine'])
+        $domaines = ESBTPLMDDomaine::with([
+                'mentions.parcours.classes',
+                'mentions.parcours.unitesEnseignement',
+                'mentions.domaine',
+            ])
             ->orderBy('name')
             ->get();
 
@@ -302,5 +310,168 @@ class ESBTPLMDParcoursDomainController extends Controller
             return redirect()->route('esbtp.lmd.parcours-domain.index')
                 ->with('error', 'Erreur lors de la suppression du parcours : Une erreur est survenue. Veuillez réessayer.');
         }
+    }
+
+    // =========================================================================
+    // CLASSES — Lier/Délier + Créer rapide
+    // =========================================================================
+
+    /**
+     * Retourner les classes LMD non liées à un parcours (pour le modal lier).
+     */
+    public function getClassesDisponibles(ESBTPLMDParcours $parcours)
+    {
+        $classesLiees = ESBTPClasse::where('parcours_id', $parcours->id)
+            ->select('id', 'name', 'code')
+            ->orderBy('name')
+            ->get();
+
+        $classesDisponibles = ESBTPClasse::where('systeme_academique', 'LMD')
+            ->where(function ($q) use ($parcours) {
+                $q->whereNull('parcours_id')
+                  ->orWhere('parcours_id', '!=', $parcours->id);
+            })
+            ->select('id', 'name', 'code')
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'liees' => $classesLiees,
+            'disponibles' => $classesDisponibles,
+        ]);
+    }
+
+    /**
+     * Lier/délier des classes à un parcours (AJAX).
+     */
+    public function syncClasses(Request $request, ESBTPLMDParcours $parcours)
+    {
+        $validated = $request->validate([
+            'classe_ids' => 'present|array',
+            'classe_ids.*' => 'exists:esbtp_classes,id',
+        ]);
+
+        $classeIds = $validated['classe_ids'];
+
+        // Délier les classes précédemment liées à ce parcours mais absentes de la nouvelle liste
+        ESBTPClasse::where('parcours_id', $parcours->id)
+            ->whereNotIn('id', $classeIds)
+            ->update(['parcours_id' => null]);
+
+        // Lier les nouvelles classes
+        if (!empty($classeIds)) {
+            ESBTPClasse::whereIn('id', $classeIds)
+                ->where('systeme_academique', 'LMD')
+                ->update(['parcours_id' => $parcours->id]);
+        }
+
+        $count = count($classeIds);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => "{$count} classe(s) liée(s) au parcours."]);
+        }
+
+        return redirect()->route('esbtp.lmd.parcours-domain.index')
+            ->with('success', "{$count} classe(s) liée(s) au parcours {$parcours->name}.");
+    }
+
+    /**
+     * Créer une classe LMD rapidement depuis le parcours (AJAX).
+     */
+    public function storeClasseRapide(Request $request, ESBTPLMDParcours $parcours)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'code' => 'required|string|max:50|unique:esbtp_classes,code',
+            'niveau_etude_id' => 'required|exists:esbtp_niveau_etudes,id',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'places_totales' => 'required|integer|min:1',
+        ]);
+
+        $validated['parcours_id'] = $parcours->id;
+        $validated['filiere_id'] = $parcours->filiere_id;
+        // systeme_academique sera auto-set par le model event booted()
+        $validated['created_by'] = auth()->id();
+        $validated['updated_by'] = auth()->id();
+
+        $classe = ESBTPClasse::create($validated);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Classe {$classe->name} créée et liée au parcours {$parcours->name}.",
+                'classe' => $classe,
+            ]);
+        }
+
+        return redirect()->route('esbtp.lmd.parcours-domain.index')
+            ->with('success', "Classe {$classe->name} créée et liée au parcours {$parcours->name}.");
+    }
+
+    /**
+     * Liste des UEs disponibles pour un parcours (liées + non liées).
+     */
+    public function getUesDisponibles(ESBTPLMDParcours $parcours)
+    {
+        // Get all pivot rows for this parcours, grouped by UE
+        $pivotRows = $parcours->unitesEnseignement()
+            ->select('esbtp_unites_enseignement.id', 'esbtp_unites_enseignement.code', 'esbtp_unites_enseignement.name')
+            ->get();
+
+        // Group by UE id → collect semestres
+        $lieesMap = [];
+        foreach ($pivotRows as $ue) {
+            if (!isset($lieesMap[$ue->id])) {
+                $lieesMap[$ue->id] = [
+                    'id' => $ue->id,
+                    'code' => $ue->code,
+                    'name' => $ue->name,
+                    'semestres' => [],
+                ];
+            }
+            $lieesMap[$ue->id]['semestres'][] = $ue->pivot->semestre;
+        }
+        $liees = array_values($lieesMap);
+        $lieesIds = array_keys($lieesMap);
+
+        $disponibles = ESBTPUniteEnseignement::whereNotIn('id', $lieesIds)
+            ->orderBy('code')
+            ->get(['id', 'code', 'name'])
+            ->map(fn($ue) => [
+                'id' => $ue->id,
+                'code' => $ue->code,
+                'name' => $ue->name,
+                'semestres' => [],
+            ])->values();
+
+        return response()->json(['liees' => $liees, 'disponibles' => $disponibles]);
+    }
+
+    /**
+     * Synchroniser les UEs d'un parcours (multi-semestres via pivot).
+     */
+    public function syncUes(Request $request, ESBTPLMDParcours $parcours)
+    {
+        $items = $request->input('ues', []);
+
+        // Detach all existing, then re-attach with multi-semestres
+        $parcours->unitesEnseignement()->detach();
+
+        $count = 0;
+        foreach ($items as $item) {
+            $ueId = $item['id'] ?? null;
+            $semestres = $item['semestres'] ?? [];
+            if (!$ueId || empty($semestres)) continue;
+
+            foreach ($semestres as $sem) {
+                $parcours->unitesEnseignement()->attach($ueId, [
+                    'semestre' => $sem,
+                    'ordre' => $item['ordre'] ?? 0,
+                ]);
+                $count++;
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => $count . ' lien(s) UE-semestre créé(s).']);
     }
 }

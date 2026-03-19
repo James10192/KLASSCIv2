@@ -45,6 +45,7 @@ class ESBTPMatiere extends Model
         'unite_enseignement_id',
         'credit_ecue',
         'coefficient_ecue',
+        'ordre_bulletin',
     ];
 
     /**

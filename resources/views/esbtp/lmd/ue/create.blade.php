@@ -238,6 +238,15 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Ordre sur le bulletin</label>
+                    <input type="number" name="ordre" class="form-control @error('ordre') is-invalid @enderror"
+                           value="{{ old('ordre', 0) }}" min="0" placeholder="0">
+                    @error('ordre')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                    <small class="text-muted">Ordre de l'UE sur le bulletin (via le parcours)</small>
+                </div>
                 <div class="col-md-4">
                     <label class="form-label fw-semibold">Filiere</label>
                     <select name="filiere_id" class="form-select @error('filiere_id') is-invalid @enderror">
@@ -302,10 +311,11 @@
                         <thead>
                             <tr>
                                 <th style="width: 5%;">#</th>
-                                <th style="width: 30%;">Nom</th>
-                                <th style="width: 20%;">Code</th>
-                                <th style="width: 15%;">Coefficient</th>
-                                <th style="width: 15%;">Credits</th>
+                                <th style="width: 27%;">Nom</th>
+                                <th style="width: 17%;">Code</th>
+                                <th style="width: 13%;">Coefficient</th>
+                                <th style="width: 13%;">Credits</th>
+                                <th style="width: 10%;">Ordre</th>
                                 <th style="width: 10%; text-align: center;">Actions</th>
                             </tr>
                         </thead>
@@ -340,6 +350,14 @@
                                                x-model="ecue.credit_ecue"
                                                min="0"
                                                placeholder="2">
+                                    </td>
+                                    <td>
+                                        <input type="number"
+                                               :name="'ecues[' + index + '][ordre_bulletin]'"
+                                               x-model="ecue.ordre_bulletin"
+                                               min="0"
+                                               placeholder="0"
+                                               style="width:60px;">
                                     </td>
                                     <td style="text-align: center;">
                                         <button type="button" class="lmd-remove-btn" @click="removeEcue(index)" title="Retirer cet ECUE">
@@ -377,6 +395,7 @@
                 'code' => $m->code ?? '',
                 'coefficient_ecue' => $m->coefficient_ecue ?? $m->coefficient ?? '',
                 'credit_ecue' => $m->credit_ecue ?? '',
+                'ordre_bulletin' => $m->ordre_bulletin ?? 0,
             ];
         })->values()->toArray();
     }
@@ -406,7 +425,8 @@
                     name: '',
                     code: '',
                     coefficient_ecue: '',
-                    credit_ecue: ''
+                    credit_ecue: '',
+                    ordre_bulletin: 0
                 });
             },
 

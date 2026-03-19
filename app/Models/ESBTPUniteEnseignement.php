@@ -99,7 +99,7 @@ class ESBTPUniteEnseignement extends Model
             'esbtp_lmd_parcours_ue',
             'unite_enseignement_id',
             'parcours_id'
-        )->withPivot('semestre', 'is_optional')->withTimestamps();
+        )->withPivot('semestre', 'is_optional', 'ordre')->withTimestamps();
     }
 
     /**

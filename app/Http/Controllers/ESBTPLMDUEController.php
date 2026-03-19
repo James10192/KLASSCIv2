@@ -64,8 +64,15 @@ class ESBTPLMDUEController extends Controller
      */
     public function getJson(ESBTPUniteEnseignement $ue)
     {
-        $ue->load('matieres');
-        return response()->json($ue);
+        $ue->load('matieres', 'parcoursMultiple');
+
+        $data = $ue->toArray();
+
+        // Ajouter l'ordre du pivot (premier parcours lié)
+        $pivot = $ue->parcoursMultiple->first();
+        $data['ordre'] = $pivot?->pivot?->ordre ?? 0;
+
+        return response()->json($data);
     }
 
     /**
@@ -88,14 +95,28 @@ class ESBTPLMDUEController extends Controller
             'filiere_id'  => 'nullable|exists:esbtp_filieres,id',
             'niveau_id'   => 'nullable|exists:esbtp_niveau_etudes,id',
             'parcours_id' => 'nullable|exists:esbtp_lmd_parcours,id',
+            'ordre'       => 'nullable|integer|min:0',
             'is_active'   => 'nullable|boolean',
         ]);
+
+        $parcoursId = $validated['parcours_id'] ?? null;
+        $ordre = $validated['ordre'] ?? 0;
+        unset($validated['ordre']); // ordre is on the pivot, not on the UE table
 
         $validated['created_by'] = auth()->id();
         $validated['updated_by'] = auth()->id();
         $validated['is_active'] = $request->boolean('is_active', true);
 
         $ue = ESBTPUniteEnseignement::create($validated);
+
+        // Lier au parcours via pivot si parcours_id fourni
+        if ($parcoursId) {
+            $ue->parcoursMultiple()->attach($parcoursId, [
+                'semestre' => $validated['semestre'],
+                'is_optional' => false,
+                'ordre' => $ordre,
+            ]);
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'UE créée avec succès.', 'ue' => $ue]);
@@ -147,13 +168,29 @@ class ESBTPLMDUEController extends Controller
             'filiere_id'  => 'nullable|exists:esbtp_filieres,id',
             'niveau_id'   => 'nullable|exists:esbtp_niveau_etudes,id',
             'parcours_id' => 'nullable|exists:esbtp_lmd_parcours,id',
+            'ordre'       => 'nullable|integer|min:0',
             'is_active'   => 'nullable|boolean',
         ]);
+
+        $parcoursId = $validated['parcours_id'] ?? null;
+        $ordre = $validated['ordre'] ?? 0;
+        unset($validated['ordre']);
 
         $validated['updated_by'] = auth()->id();
         $validated['is_active'] = $request->boolean('is_active', true);
 
         $ue->update($validated);
+
+        // Sync pivot parcours
+        if ($parcoursId) {
+            $ue->parcoursMultiple()->syncWithoutDetaching([
+                $parcoursId => [
+                    'semestre' => $validated['semestre'],
+                    'is_optional' => false,
+                    'ordre' => $ordre,
+                ],
+            ]);
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'message' => 'UE mise à jour avec succès.', 'ue' => $ue]);
@@ -202,6 +239,7 @@ class ESBTPLMDUEController extends Controller
             'code'             => 'required_without:matiere_id|nullable|string|max:50',
             'credit_ecue'     => 'nullable|integer|min:1',
             'coefficient_ecue' => 'nullable|numeric|min:0',
+            'ordre_bulletin'  => 'nullable|integer|min:0',
         ]);
 
         if (!empty($validated['matiere_id'])) {
@@ -211,6 +249,7 @@ class ESBTPLMDUEController extends Controller
                 'unite_enseignement_id' => $ue->id,
                 'credit_ecue'           => $validated['credit_ecue'] ?? $matiere->credit_ecue,
                 'coefficient_ecue'      => $validated['coefficient_ecue'] ?? $matiere->coefficient_ecue,
+                'ordre_bulletin'        => $validated['ordre_bulletin'] ?? $matiere->ordre_bulletin ?? 0,
                 'updated_by'            => auth()->id(),
             ]);
         } else {
@@ -221,6 +260,7 @@ class ESBTPLMDUEController extends Controller
                 'unite_enseignement_id' => $ue->id,
                 'credit_ecue'           => $validated['credit_ecue'] ?? null,
                 'coefficient_ecue'      => $validated['coefficient_ecue'] ?? null,
+                'ordre_bulletin'        => $validated['ordre_bulletin'] ?? 0,
                 'is_active'             => true,
                 'created_by'            => auth()->id(),
                 'updated_by'            => auth()->id(),
@@ -241,6 +281,7 @@ class ESBTPLMDUEController extends Controller
             'code'             => 'sometimes|required|string|max:50',
             'credit_ecue'     => 'nullable|integer|min:1',
             'coefficient_ecue' => 'nullable|numeric|min:0',
+            'ordre_bulletin'  => 'nullable|integer|min:0',
         ]);
 
         $validated['updated_by'] = auth()->id();
@@ -263,5 +304,55 @@ class ESBTPLMDUEController extends Controller
 
         return redirect()->route('esbtp.lmd.ue.show', $ue)
             ->with('success', 'ECUE détaché de l\'UE avec succès.');
+    }
+
+    /**
+     * Liste des parcours disponibles pour une UE (liés + non liés).
+     */
+    public function parcoursDisponibles(ESBTPUniteEnseignement $ue)
+    {
+        $lies = $ue->parcoursMultiple()
+            ->select('esbtp_lmd_parcours.id', 'esbtp_lmd_parcours.code', 'esbtp_lmd_parcours.name')
+            ->get()
+            ->map(fn($p) => [
+                'id' => $p->id,
+                'code' => $p->code,
+                'name' => $p->name,
+                'semestre' => $p->pivot->semestre,
+            ]);
+
+        $liesIds = $lies->pluck('id')->toArray();
+
+        $disponibles = ESBTPLMDParcours::whereNotIn('id', $liesIds)
+            ->orderBy('code')
+            ->get(['id', 'code', 'name'])
+            ->map(fn($p) => [
+                'id' => $p->id,
+                'code' => $p->code,
+                'name' => $p->name,
+            ]);
+
+        return response()->json(['lies' => $lies, 'disponibles' => $disponibles]);
+    }
+
+    /**
+     * Synchroniser les parcours d'une UE (pivot esbtp_lmd_parcours_ue).
+     */
+    public function syncParcours(Request $request, ESBTPUniteEnseignement $ue)
+    {
+        $items = $request->input('parcours', []);
+
+        $syncData = [];
+        foreach ($items as $item) {
+            $pId = $item['id'] ?? null;
+            if (!$pId) continue;
+            $syncData[$pId] = [
+                'semestre' => $item['semestre'] ?? ($ue->semestre ?? 1),
+            ];
+        }
+
+        $ue->parcoursMultiple()->sync($syncData);
+
+        return response()->json(['success' => true, 'message' => count($syncData) . ' parcours lié(s).']);
     }
 }

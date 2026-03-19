@@ -1515,6 +1515,7 @@ tr[data-matiere-id] {
             });
     }
 
+    window.updateCombinationsPreview = updateCombinationsPreview;
     function updateCombinationsPreview() {
         const combinationsPreview = document.getElementById('combinations-preview');
         if (!combinationsPreview) {

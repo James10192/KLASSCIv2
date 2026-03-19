@@ -2060,17 +2060,27 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'role:superA
     Route::put('parcours/{parcours}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'updateParcours'])->name('parcours.update');
     Route::delete('parcours/{parcours}', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'destroyParcours'])->name('parcours.destroy');
 
+    // --- Classes liées au parcours ---
+    Route::get('parcours/{parcours}/classes-disponibles', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'getClassesDisponibles'])->name('parcours.classes-disponibles');
+    Route::post('parcours/{parcours}/sync-classes', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'syncClasses'])->name('parcours.sync-classes');
+    Route::post('parcours/{parcours}/classe-rapide', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'storeClasseRapide'])->name('parcours.classe-rapide');
+    Route::get('parcours/{parcours}/ues-disponibles', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'getUesDisponibles'])->name('parcours.ues-disponibles');
+    Route::post('parcours/{parcours}/sync-ues', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'syncUes'])->name('parcours.sync-ues');
+
     // --- Unites d'Enseignement ---
     Route::resource('ue', \App\Http\Controllers\ESBTPLMDUEController::class)->parameters(['ue' => 'ue']);
     Route::get('ue/{ue}/json', [\App\Http\Controllers\ESBTPLMDUEController::class, 'getJson'])->name('ue.json');
     Route::post('ue/{ue}/ecue', [\App\Http\Controllers\ESBTPLMDUEController::class, 'storeECUE'])->name('ue.ecue.store');
     Route::put('ue/{ue}/ecue/{ecue}', [\App\Http\Controllers\ESBTPLMDUEController::class, 'updateECUE'])->name('ue.ecue.update');
     Route::delete('ue/{ue}/ecue/{ecue}', [\App\Http\Controllers\ESBTPLMDUEController::class, 'destroyECUE'])->name('ue.ecue.destroy');
+    Route::get('ue/{ue}/parcours-disponibles', [\App\Http\Controllers\ESBTPLMDUEController::class, 'parcoursDisponibles'])->name('ue.parcours-disponibles');
+    Route::post('ue/{ue}/sync-parcours', [\App\Http\Controllers\ESBTPLMDUEController::class, 'syncParcours'])->name('ue.sync-parcours');
 
     // --- Notes LMD ---
     Route::get('notes', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'index'])->name('notes.index');
     Route::get('notes/saisie/{evaluation}', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'saisieRapide'])->name('notes.saisie');
     Route::post('notes/save-bulk', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'saveBulk'])->name('notes.save-bulk');
+    Route::get('notes/classe/{classe}/data', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'classeData'])->name('notes.classe-data');
 
     // --- Resultats LMD ---
     Route::get('resultats', [\App\Http\Controllers\ESBTPLMDResultatController::class, 'index'])->name('resultats.index');

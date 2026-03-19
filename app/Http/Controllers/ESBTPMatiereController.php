@@ -22,7 +22,9 @@ class ESBTPMatiereController extends Controller
         $listing = $this->prepareMatieresListing($request);
 
         $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
-        $niveaux = ESBTPNiveauEtude::where('is_active', true)->orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::where('is_active', true)
+            ->whereNotIn('type', ['Licence', 'Master', 'Doctorat']) // Exclure niveaux LMD
+            ->orderBy('name')->get();
 
         if ($request->ajax()) {
             return response()->json([
@@ -126,6 +128,7 @@ class ESBTPMatiereController extends Controller
         $totalHeuresExpression = 'COALESCE(heures_cm, 0) + COALESCE(heures_td, 0) + COALESCE(heures_tp, 0) + COALESCE(heures_stage, 0) + COALESCE(heures_perso, 0)';
 
         $query = ESBTPMatiere::query()
+            ->whereNull('unite_enseignement_id') // Exclure les ECUE LMD (gérés dans ue.index)
             ->with([
                 'filieres:id,name,code',
                 'niveaux:id,name,code',
@@ -208,7 +211,7 @@ class ESBTPMatiereController extends Controller
         $this->authorize('create', ESBTPMatiere::class);
 
         $filieres = ESBTPFiliere::where('is_active', true)->get();
-        $niveauxEtudes = ESBTPNiveauEtude::all();
+        $niveauxEtudes = ESBTPNiveauEtude::whereNotIn('type', ['Licence', 'Master', 'Doctorat'])->get();
         $unitesEnseignement = collect(); // Collection vide temporaire
 
         // Récupérer les paramètres de pré-sélection depuis l'URL
@@ -411,7 +414,7 @@ class ESBTPMatiereController extends Controller
         // $this->authorize('update', $matiere); // Temporairement désactivé pour test
 
         $filieres = ESBTPFiliere::where('is_active', true)->get();
-        $niveauxEtudes = ESBTPNiveauEtude::all();
+        $niveauxEtudes = ESBTPNiveauEtude::whereNotIn('type', ['Licence', 'Master', 'Doctorat'])->get();
         $unitesEnseignement = collect(); // Collection vide temporaire
 
         return view('esbtp.matieres.edit', compact('matiere', 'filieres', 'niveauxEtudes', 'unitesEnseignement'));
