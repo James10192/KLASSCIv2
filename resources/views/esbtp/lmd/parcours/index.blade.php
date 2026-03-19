@@ -339,6 +339,19 @@
     @keyframes lp-fadeDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes lp-fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
+    /* Sem chips for link modal */
+    .lu-sem-chip {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 28px; padding: .15rem .35rem; border-radius: 5px;
+        font-size: .7rem; font-weight: 700; cursor: pointer; transition: all .15s;
+        border: 1px solid #e2e8f0; background: #f8fafc; color: #94a3b8;
+        user-select: none;
+    }
+    .lu-sem-chip--on {
+        border-color: #4338ca; background: #4338ca; color: #fff;
+    }
+    .lu-sem-chip:hover:not(.lu-sem-chip--on) { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+
     /* ── Responsive ── */
     @media (max-width: 768px) {
         .lp-hero { padding: 1.5rem; border-radius: 14px; }
@@ -1259,16 +1272,20 @@
     }
 
     function buildUeCheckbox(ue, checked) {
-        const sem = ue.semestre || 1;
-        return `<label style="display:flex; align-items:center; gap:.65rem; padding:.6rem .85rem; border-radius:10px; background:${checked ? '#eef2ff' : '#f8fafc'}; border:1.5px solid ${checked ? '#4338ca' : '#e8ecf1'}; cursor:pointer; transition:all .2s;">
-            <input type="checkbox" class="lu-ue-check" value="${ue.id}" ${checked ? 'checked' : ''} style="width:1.1em; height:1.1em; accent-color:#4338ca; cursor:pointer;">
-            <div style="flex:1;">
-                <div style="font-size:.88rem; font-weight:600; color:#1e293b;">${ue.code || ''} — ${ue.name}</div>
+        const activeSems = ue.semestres || [];
+        const hasAnySem = activeSems.length > 0;
+        const semChips = [1,2,3,4,5,6,7,8,9,10].map(s => {
+            const active = activeSems.includes(s);
+            return `<span class="lu-sem-chip ${active ? 'lu-sem-chip--on' : ''}" data-ue-id="${ue.id}" data-sem="${s}" onclick="this.classList.toggle('lu-sem-chip--on')">S${s}</span>`;
+        }).join('');
+
+        return `<div style="display:flex; align-items:center; gap:.65rem; padding:.6rem .85rem; border-radius:10px; background:${hasAnySem ? '#eef2ff' : '#f8fafc'}; border:1.5px solid ${hasAnySem ? '#4338ca' : '#e8ecf1'}; transition:all .2s; margin-bottom:.1rem;">
+            <input type="checkbox" class="lu-ue-check" value="${ue.id}" ${hasAnySem ? 'checked' : ''} style="width:1.1em; height:1.1em; accent-color:#4338ca; cursor:pointer; flex-shrink:0;">
+            <div style="flex:1; min-width:0;">
+                <div style="font-size:.86rem; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${ue.code || ''} — ${ue.name}</div>
+                <div style="display:flex; gap:.25rem; flex-wrap:wrap; margin-top:.35rem;">${semChips}</div>
             </div>
-            <select class="lu-sem-select" data-ue-id="${ue.id}" style="width:70px; padding:.25rem .4rem; border-radius:6px; border:1px solid #e2e8f0; font-size:.78rem; font-weight:600; background:#fff;">
-                ${[1,2,3,4,5,6,7,8,9,10].map(s => `<option value="${s}" ${s == sem ? 'selected' : ''}>S${s}</option>`).join('')}
-            </select>
-        </label>`;
+        </div>`;
     }
 
     async function saveLinkUes() {
@@ -1278,8 +1295,9 @@
 
         const checkboxes = document.querySelectorAll('#lu_checkboxes .lu-ue-check:checked');
         const ues = Array.from(checkboxes).map(cb => {
-            const semSelect = document.querySelector(`.lu-sem-select[data-ue-id="${cb.value}"]`);
-            return { id: cb.value, semestre: semSelect ? semSelect.value : 1 };
+            const semChips = document.querySelectorAll(`.lu-sem-chip--on[data-ue-id="${cb.value}"]`);
+            const semestres = Array.from(semChips).map(chip => parseInt(chip.dataset.sem));
+            return { id: cb.value, semestres: semestres.length > 0 ? semestres : [1] };
         });
 
         try {

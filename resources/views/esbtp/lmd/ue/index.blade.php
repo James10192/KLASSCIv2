@@ -620,10 +620,10 @@
                             <th>Code</th>
                             <th>Intitulé</th>
                             <th>Type UE</th>
-                            <th style="text-align:center;">Sem.</th>
+                            <th>Parcours</th>
                             <th style="text-align:center;">Crédits</th>
                             <th style="text-align:center;">ECUEs</th>
-                            <th style="text-align:right; width:100px;">Actions</th>
+                            <th style="text-align:right; width:120px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -644,8 +644,17 @@
                                         <span style="color:#94a3b8;">—</span>
                                     @endif
                                 </td>
-                                <td style="text-align:center;">
-                                    <span class="lu-semestre-tag">S{{ $ue->semestre ?? '—' }}</span>
+                                <td>
+                                    @if($ue->parcoursMultiple->isNotEmpty())
+                                        <div class="lu-parcours-badges">
+                                            @foreach($ue->parcoursMultiple->groupBy('id') as $pId => $pivots)
+                                                @php $p = $pivots->first(); $sems = $pivots->pluck('pivot.semestre')->sort()->map(fn($s) => 'S'.$s)->join(','); @endphp
+                                                <span class="lu-parcours-badge">{{ $p->code }} <span class="lu-parcours-badge-sem">({{ $sems }})</span></span>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <span style="color:#94a3b8; font-size:.8rem;">—</span>
+                                    @endif
                                 </td>
                                 <td style="text-align:center;">
                                     <span class="lu-credit-pill">{{ $ue->credit ?? 0 }}</span>
@@ -837,6 +846,28 @@
     .lu-modal.fade .modal-dialog { transform: translateY(20px) scale(.98); transition: transform .25s ease-out, opacity .2s; }
     .lu-modal.show .modal-dialog { transform: translateY(0) scale(1); }
 
+    /* Sem chips for link modal */
+    .lp-sem-chip {
+        display: inline-flex; align-items: center; justify-content: center;
+        min-width: 28px; padding: .15rem .35rem; border-radius: 5px;
+        font-size: .7rem; font-weight: 700; cursor: pointer; transition: all .15s;
+        border: 1px solid #e2e8f0; background: #f8fafc; color: #94a3b8;
+        user-select: none;
+    }
+    .lp-sem-chip--on {
+        border-color: #4338ca; background: #4338ca; color: #fff;
+    }
+    .lp-sem-chip:hover:not(.lp-sem-chip--on) { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+
+    /* Parcours badges in table */
+    .lu-parcours-badges { display: flex; gap: .25rem; flex-wrap: wrap; }
+    .lu-parcours-badge {
+        display: inline-flex; align-items: center; gap: .2rem;
+        padding: .12rem .4rem; border-radius: 5px; font-size: .7rem; font-weight: 600;
+        background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe;
+    }
+    .lu-parcours-badge-sem { font-size: .6rem; color: #818cf8; }
+
     @media (max-width: 768px) {
         .lu-field-row, .lu-field-row-3 { grid-template-columns: 1fr; }
         .lu-modal .modal-body { padding: 1.25rem; }
@@ -886,21 +917,11 @@
                     {{-- Groupe 2: Paramètres académiques --}}
                     <div class="lu-field-group">
                         <div class="lu-field-group-title"><i class="fas fa-circle"></i> Paramètres académiques</div>
-                        <div class="lu-field-row" style="margin-bottom:.75rem;">
+                        <div class="lu-field-row-3">
                             <div>
                                 <label for="ue_credit"><i class="fas fa-award"></i> Crédits CECT <span class="text-danger">*</span></label>
                                 <input type="number" class="form-control" id="ue_credit" name="credit" required min="1" max="30" value="3">
                             </div>
-                            <div>
-                                <label for="ue_semestre"><i class="fas fa-calendar-alt"></i> Semestre <span class="text-danger">*</span></label>
-                                <select class="form-select" id="ue_semestre" name="semestre" required>
-                                    @for($s = 1; $s <= 10; $s++)
-                                        <option value="{{ $s }}">S{{ $s }}</option>
-                                    @endfor
-                                </select>
-                            </div>
-                        </div>
-                        <div class="lu-field-row">
                             <div>
                                 <label for="ue_type_ue"><i class="fas fa-tag"></i> Type UE <span class="text-danger">*</span></label>
                                 <select class="form-select" id="ue_type_ue" name="type_ue" required>
@@ -911,26 +932,19 @@
                                 </select>
                             </div>
                             <div>
-                                <label for="ue_ordre"><i class="fas fa-sort-numeric-up"></i> Ordre sur le bulletin</label>
+                                <label for="ue_ordre"><i class="fas fa-sort-numeric-up"></i> Ordre bulletin</label>
                                 <input type="number" class="form-control" id="ue_ordre" name="ordre" min="0" value="0" placeholder="0">
-                                <div class="form-text">Position de l'UE sur le bulletin (via le parcours)</div>
                             </div>
+                        </div>
+                        <div class="form-text" style="margin-top:.5rem;">
+                            <i class="fas fa-info-circle me-1"></i>Le semestre est défini lors de la liaison au parcours (bouton <i class="fas fa-route" style="color:#4338ca;"></i> sur chaque UE).
                         </div>
                     </div>
 
                     {{-- Groupe 3: Rattachement --}}
                     <div class="lu-field-group">
                         <div class="lu-field-group-title"><i class="fas fa-circle"></i> Rattachement</div>
-                        <div class="lu-field-row-3">
-                            <div>
-                                <label for="ue_parcours_id"><i class="fas fa-route"></i> Parcours</label>
-                                <select class="form-select" id="ue_parcours_id" name="parcours_id">
-                                    <option value="">— Aucun —</option>
-                                    @foreach($parcours as $p)
-                                        <option value="{{ $p->id }}">{{ $p->code }} — {{ $p->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+                        <div class="lu-field-row">
                             <div>
                                 <label for="ue_filiere_id"><i class="fas fa-graduation-cap"></i> Filière</label>
                                 <select class="form-select" id="ue_filiere_id" name="filiere_id">
@@ -971,6 +985,80 @@
                     </button>
                     <button type="submit" class="lu-modal-btn lu-modal-btn--submit" id="ue_submit_btn">
                         <i class="fas fa-save"></i> <span id="ue_submit_text">Enregistrer</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal ECUE (must be in content section for JS to find it) --}}
+<div class="modal fade" id="modalECUE" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:18px; border:none; box-shadow:0 25px 80px rgba(0,0,0,.18); overflow:hidden;">
+            <form id="ecue_form" method="POST" action="">
+                @csrf
+                <input type="hidden" name="_method" id="ecue_method" value="POST">
+                <div class="modal-header" style="padding:0; border:none;">
+                    <div style="width:100%; padding:1.5rem 1.75rem 1.25rem; background:linear-gradient(135deg, #065f46 0%, #059669 50%, #34d399 100%); color:#fff; position:relative; overflow:hidden;">
+                        <div style="position:absolute; top:-50%; right:-15%; width:280px; height:280px; background:radial-gradient(circle, rgba(255,255,255,.08) 0%, transparent 70%); pointer-events:none;"></div>
+                        <div style="display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1;">
+                            <div style="display:flex; align-items:center; gap:.75rem;">
+                                <div style="width:42px; height:42px; border-radius:11px; background:rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center; font-size:1rem;">
+                                    <i class="fas fa-puzzle-piece"></i>
+                                </div>
+                                <div>
+                                    <h5 style="font-size:1.1rem; font-weight:700; margin:0;" id="ecue_modal_title">Nouvel ECUE</h5>
+                                    <div style="font-size:.78rem; opacity:.7;">UE : <strong id="ecue_ue_label">—</strong></div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter:brightness(0) invert(1); opacity:.7;"></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-body" style="padding:1.5rem 1.75rem;">
+                    <div id="ecue_error" style="display:none; padding:.6rem 1rem; border-radius:10px; background:#fef2f2; color:#dc2626; font-size:.85rem; margin-bottom:1rem; border:1px solid #fecaca;"></div>
+                    <div style="background:#f8fafc; border-radius:12px; border:1px solid #e8ecf1; padding:1.25rem;">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:.75rem 1.25rem;">
+                            <div>
+                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;">
+                                    <i class="fas fa-tag" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Nom
+                                </label>
+                                <input type="text" class="form-control" name="name" id="ecue_name" required placeholder="Ex: Résistance des Matériaux" style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
+                            </div>
+                            <div>
+                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;">
+                                    <i class="fas fa-barcode" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Code
+                                </label>
+                                <input type="text" class="form-control" name="code" id="ecue_code" required placeholder="Ex: RDM101" style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
+                            </div>
+                            <div>
+                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;">
+                                    <i class="fas fa-balance-scale" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Coefficient
+                                </label>
+                                <input type="number" class="form-control" name="coefficient_ecue" id="ecue_coefficient" min="0" step="0.5" placeholder="1" style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
+                            </div>
+                            <div>
+                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;">
+                                    <i class="fas fa-award" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Crédits
+                                </label>
+                                <input type="number" class="form-control" name="credit_ecue" id="ecue_credit" min="0" placeholder="2" style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
+                            </div>
+                            <div>
+                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;">
+                                    <i class="fas fa-sort-numeric-up" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Ordre dans l'UE
+                                </label>
+                                <input type="number" class="form-control" name="ordre_bulletin" id="ecue_ordre" min="0" value="0" placeholder="0" style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #e8ecf1; padding:1rem 1.75rem; background:#fafbfc;">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:.85rem; padding:.5rem 1.1rem;">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                    <button type="submit" id="ecue_submit" style="border-radius:10px; font-weight:600; font-size:.85rem; padding:.5rem 1.1rem; background:#059669; color:#fff; border:none; box-shadow:0 2px 8px rgba(5,150,105,.2);">
+                        <i class="fas fa-check me-1"></i><span id="ecue_submit_text">Créer l'ECUE</span>
                     </button>
                 </div>
             </form>
@@ -1036,7 +1124,6 @@ function resetForm() {
     formUE.reset();
     document.getElementById('ue_method').value = 'POST';
     document.getElementById('ue_credit').value = '3';
-    document.getElementById('ue_semestre').value = '1';
     document.getElementById('ue_type_ue').value = 'fondamentale';
     document.getElementById('ue_ordre').value = '0';
     errorsDiv.classList.add('d-none');
@@ -1066,9 +1153,7 @@ async function openEditModal(ueId) {
         document.getElementById('ue_name').value = ue.name || '';
         document.getElementById('ue_code').value = ue.code || '';
         document.getElementById('ue_credit').value = ue.credit || '';
-        document.getElementById('ue_semestre').value = ue.semestre || '1';
         document.getElementById('ue_type_ue').value = ue.type_ue || 'fondamentale';
-        document.getElementById('ue_parcours_id').value = ue.parcours_id || '';
         document.getElementById('ue_filiere_id').value = ue.filiere_id || '';
         document.getElementById('ue_niveau_id').value = ue.niveau_id || '';
         document.getElementById('ue_description').value = ue.description || '';
@@ -1219,17 +1304,20 @@ async function openLinkParcoursModal(ueId, ueName) {
     new bootstrap.Modal(document.getElementById('modalLinkParcours')).show();
 
     try {
-        const resp = await fetch(`/esbtp/lmd/ue/${ueId}/parcours-disponibles`);
+        const resp = await fetch(`/esbtp/lmd/ue/${ueId}/parcours-disponibles`, {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
         const container = document.getElementById('lp_checkboxes');
         container.innerHTML = '';
 
         // Parcours liés (checked)
-        data.lies.forEach(p => {
+        (data.lies || []).forEach(p => {
             container.insertAdjacentHTML('beforeend', buildParcoursCheckbox(p, true));
         });
         // Parcours disponibles (unchecked)
-        data.disponibles.forEach(p => {
+        (data.disponibles || []).forEach(p => {
             container.insertAdjacentHTML('beforeend', buildParcoursCheckbox(p, false));
         });
 
@@ -1246,16 +1334,20 @@ async function openLinkParcoursModal(ueId, ueName) {
 }
 
 function buildParcoursCheckbox(p, checked) {
-    const sem = p.semestre || 1;
-    return `<label style="display:flex; align-items:center; gap:.65rem; padding:.6rem .85rem; border-radius:10px; background:${checked ? '#eef2ff' : '#f8fafc'}; border:1.5px solid ${checked ? '#4338ca' : '#e8ecf1'}; cursor:pointer; transition:all .2s;">
-        <input type="checkbox" class="lp-parcours-check" value="${p.id}" ${checked ? 'checked' : ''} style="width:1.1em; height:1.1em; accent-color:#4338ca; cursor:pointer;">
-        <div style="flex:1;">
-            <div style="font-size:.88rem; font-weight:600; color:#1e293b;">${p.code || ''} — ${p.name}</div>
+    const activeSems = p.semestres || [];
+    const hasAnySem = activeSems.length > 0;
+    const semChips = [1,2,3,4,5,6,7,8,9,10].map(s => {
+        const active = activeSems.includes(s);
+        return `<span class="lp-sem-chip ${active ? 'lp-sem-chip--on' : ''}" data-parcours-id="${p.id}" data-sem="${s}" onclick="this.classList.toggle('lp-sem-chip--on')">S${s}</span>`;
+    }).join('');
+
+    return `<div style="display:flex; align-items:center; gap:.65rem; padding:.6rem .85rem; border-radius:10px; background:${hasAnySem ? '#eef2ff' : '#f8fafc'}; border:1.5px solid ${hasAnySem ? '#4338ca' : '#e8ecf1'}; transition:all .2s; margin-bottom:.1rem;">
+        <input type="checkbox" class="lp-parcours-check" value="${p.id}" ${hasAnySem ? 'checked' : ''} style="width:1.1em; height:1.1em; accent-color:#4338ca; cursor:pointer; flex-shrink:0;">
+        <div style="flex:1; min-width:0;">
+            <div style="font-size:.86rem; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.code || ''} — ${p.name}</div>
+            <div style="display:flex; gap:.25rem; flex-wrap:wrap; margin-top:.35rem;">${semChips}</div>
         </div>
-        <select class="lp-sem-select" data-parcours-id="${p.id}" style="width:70px; padding:.25rem .4rem; border-radius:6px; border:1px solid #e2e8f0; font-size:.78rem; font-weight:600; background:#fff;">
-            ${[1,2,3,4,5,6,7,8,9,10].map(s => `<option value="${s}" ${s == sem ? 'selected' : ''}>S${s}</option>`).join('')}
-        </select>
-    </label>`;
+    </div>`;
 }
 
 async function saveLinkParcours() {
@@ -1265,8 +1357,9 @@ async function saveLinkParcours() {
 
     const checkboxes = document.querySelectorAll('#lp_checkboxes .lp-parcours-check:checked');
     const parcours = Array.from(checkboxes).map(cb => {
-        const semSelect = document.querySelector(`.lp-sem-select[data-parcours-id="${cb.value}"]`);
-        return { id: cb.value, semestre: semSelect ? semSelect.value : 1 };
+        const semChips = document.querySelectorAll(`.lp-sem-chip--on[data-parcours-id="${cb.value}"]`);
+        const semestres = Array.from(semChips).map(chip => parseInt(chip.dataset.sem));
+        return { id: cb.value, semestres: semestres.length > 0 ? semestres : [1] };
     });
 
     try {
@@ -1288,82 +1381,4 @@ async function saveLinkParcours() {
 }
 </script>
 
-{{-- Modal ECUE --}}
-<div class="modal fade" id="modalECUE" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius:18px; border:none; box-shadow:0 25px 80px rgba(0,0,0,.18); overflow:hidden;">
-            <form id="ecue_form" method="POST" action="">
-                @csrf
-                <input type="hidden" name="_method" id="ecue_method" value="POST">
-                <div class="modal-header" style="padding:0; border:none;">
-                    <div style="width:100%; padding:1.5rem 1.75rem 1.25rem; background:linear-gradient(135deg, #065f46 0%, #059669 50%, #34d399 100%); color:#fff; position:relative; overflow:hidden;">
-                        <div style="position:absolute; top:-50%; right:-15%; width:280px; height:280px; background:radial-gradient(circle, rgba(255,255,255,.08) 0%, transparent 70%); pointer-events:none;"></div>
-                        <div style="display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1;">
-                            <div style="display:flex; align-items:center; gap:.75rem;">
-                                <div style="width:42px; height:42px; border-radius:11px; background:rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center; font-size:1rem;">
-                                    <i class="fas fa-puzzle-piece"></i>
-                                </div>
-                                <div>
-                                    <h5 style="font-size:1.1rem; font-weight:700; margin:0;" id="ecue_modal_title">Nouvel ECUE</h5>
-                                    <div style="font-size:.78rem; opacity:.7;">UE : <strong id="ecue_ue_label">—</strong></div>
-                                </div>
-                            </div>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter:brightness(0) invert(1); opacity:.7;"></button>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-body" style="padding:1.5rem 1.75rem;">
-                    <div id="ecue_error" style="display:none; padding:.6rem 1rem; border-radius:10px; background:#fef2f2; color:#dc2626; font-size:.85rem; margin-bottom:1rem; border:1px solid #fecaca;"></div>
-                    <div style="background:#f8fafc; border-radius:12px; border:1px solid #e8ecf1; padding:1.25rem;">
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:.75rem 1.25rem;">
-                            <div>
-                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;">
-                                    <i class="fas fa-tag" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Nom
-                                </label>
-                                <input type="text" class="form-control" name="name" id="ecue_name" required placeholder="Ex: Résistance des Matériaux"
-                                       style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
-                            </div>
-                            <div>
-                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;">
-                                    <i class="fas fa-barcode" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Code
-                                </label>
-                                <input type="text" class="form-control" name="code" id="ecue_code" required placeholder="Ex: RDM101"
-                                       style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
-                            </div>
-                            <div>
-                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;">
-                                    <i class="fas fa-balance-scale" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Coefficient
-                                </label>
-                                <input type="number" class="form-control" name="coefficient_ecue" id="ecue_coefficient" min="0" step="0.5" placeholder="1"
-                                       style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
-                            </div>
-                            <div>
-                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;">
-                                    <i class="fas fa-award" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Crédits
-                                </label>
-                                <input type="number" class="form-control" name="credit_ecue" id="ecue_credit" min="0" placeholder="2"
-                                       style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
-                            </div>
-                            <div>
-                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;">
-                                    <i class="fas fa-sort-numeric-up" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Ordre dans l'UE
-                                </label>
-                                <input type="number" class="form-control" name="ordre_bulletin" id="ecue_ordre" min="0" value="0" placeholder="0"
-                                       style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer" style="border-top:1px solid #e8ecf1; padding:1rem 1.75rem; background:#fafbfc;">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:.85rem; padding:.5rem 1.1rem;">
-                        <i class="fas fa-times me-1"></i>Annuler
-                    </button>
-                    <button type="submit" id="ecue_submit" style="border-radius:10px; font-weight:600; font-size:.85rem; padding:.5rem 1.1rem; background:#059669; color:#fff; border:none; box-shadow:0 2px 8px rgba(5,150,105,.2);">
-                        <i class="fas fa-check me-1"></i><span id="ecue_submit_text">Créer l'ECUE</span>
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 @endpush

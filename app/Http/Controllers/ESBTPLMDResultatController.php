@@ -24,7 +24,10 @@ class ESBTPLMDResultatController extends Controller
             ->where('is_active', true)
             ->when($anneeId, fn($q, $id) => $q->where('annee_universitaire_id', $id))
             ->withCount([
-                'inscriptions as total_etudiants' => fn($q) => $q->where('status', 'active'),
+                'inscriptions as total_etudiants' => fn($q) => $q
+                    ->where('status', 'active')
+                    ->where('workflow_step', 'etudiant_cree')
+                    ->when($anneeId, fn($q2, $id) => $q2->where('annee_universitaire_id', $id)),
             ])
             ->orderBy('name')
             ->get();

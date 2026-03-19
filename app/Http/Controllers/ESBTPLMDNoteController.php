@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
@@ -16,22 +17,98 @@ class ESBTPLMDNoteController extends Controller
      */
     public function index(Request $request)
     {
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeId = $anneeCourante?->id;
+
         $classes = ESBTPClasse::where('systeme_academique', 'LMD')
             ->where('is_active', true)
-            ->withCount('inscriptions')
+            ->with(['filiere', 'niveau'])
+            ->withCount([
+                'inscriptions as etudiants_count' => fn($q) => $q
+                    ->where('status', 'active')
+                    ->where('workflow_step', 'etudiant_cree')
+                    ->when($anneeId, fn($q2, $id) => $q2->where('annee_universitaire_id', $id)),
+            ])
             ->when($request->search, fn($q, $s) => $q->where('name', 'like', "%{$s}%"))
             ->orderBy('name')
-            ->paginate(20);
-
-        // Charger les evaluations recentes pour les classes LMD
-        $evaluationsRecentes = ESBTPEvaluation::whereHas('classe', fn($q) => $q->where('systeme_academique', 'LMD'))
-            ->with(['classe', 'matiere.uniteEnseignement'])
-            ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
-            ->orderByDesc('date_evaluation')
-            ->limit(20)
             ->get();
 
-        return view('esbtp.lmd.notes.index', compact('classes', 'evaluationsRecentes'));
+        // Nombre d'évaluations par classe
+        $evalCounts = ESBTPEvaluation::whereHas('classe', fn($q) => $q->where('systeme_academique', 'LMD'))
+            ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
+            ->select('classe_id')
+            ->selectRaw('COUNT(*) as total')
+            ->groupBy('classe_id')
+            ->pluck('total', 'classe_id');
+
+        return view('esbtp.lmd.notes.index', compact('classes', 'evalCounts', 'anneeCourante'));
+    }
+
+    /**
+     * Données JSON d'une classe pour le modal de gestion de notes.
+     */
+    public function classeData(ESBTPClasse $classe)
+    {
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        // Étudiants actifs de cette classe (même pattern que classes.show)
+        $etudiants = $classe->inscriptions()
+            ->where('status', 'active')
+            ->where('workflow_step', 'etudiant_cree')
+            ->when($anneeCourante, fn($q) => $q->where('annee_universitaire_id', $anneeCourante->id))
+            ->with('etudiant:id,nom,prenoms,matricule')
+            ->get()
+            ->map(fn($i) => $i->etudiant)
+            ->filter()
+            ->sortBy('nom')
+            ->values();
+
+        // Évaluations de cette classe (LMD uniquement)
+        $evaluations = ESBTPEvaluation::where('classe_id', $classe->id)
+            ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
+            ->with(['matiere:id,name,code,unite_enseignement_id', 'matiere.uniteEnseignement:id,name,code'])
+            ->orderByDesc('date_evaluation')
+            ->get()
+            ->map(fn($e) => [
+                'id' => $e->id,
+                'titre' => $e->titre ?? $e->type_evaluation,
+                'type' => $e->type_evaluation,
+                'date' => $e->date_evaluation?->format('d/m/Y'),
+                'matiere' => $e->matiere?->name,
+                'matiere_code' => $e->matiere?->code,
+                'ue' => $e->matiere?->uniteEnseignement?->name,
+                'ue_code' => $e->matiere?->uniteEnseignement?->code,
+                'status' => $e->status,
+                'notes_count' => $e->notes()->count(),
+                'saisie_url' => route('esbtp.lmd.notes.saisie', $e),
+            ]);
+
+        // Matières (ECUEs) disponibles pour cette classe via parcours
+        $matieres = collect();
+        if ($classe->parcours) {
+            $matieres = $classe->parcours->unitesEnseignement()
+                ->with('matieres:id,name,code,unite_enseignement_id')
+                ->get()
+                ->flatMap(fn($ue) => $ue->matieres->map(fn($m) => [
+                    'id' => $m->id,
+                    'name' => $m->name,
+                    'code' => $m->code,
+                    'ue_name' => $ue->name,
+                    'ue_code' => $ue->code,
+                ]));
+        }
+
+        return response()->json([
+            'classe' => [
+                'id' => $classe->id,
+                'name' => $classe->name,
+                'filiere' => $classe->filiere?->name,
+                'niveau' => $classe->niveau?->name,
+            ],
+            'etudiants' => $etudiants,
+            'evaluations' => $evaluations,
+            'matieres' => $matieres,
+        ]);
     }
 
     /**

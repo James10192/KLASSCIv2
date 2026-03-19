@@ -49,6 +49,7 @@ class ESBTPNoteController extends Controller
         $isAjax = $request->ajax() || $request->wantsJson();
 
         $classesQuery = ESBTPClasse::query()
+            ->where(fn($q) => $q->whereNull('systeme_academique')->orWhere('systeme_academique', '!=', 'LMD'))
             ->withCount(['inscriptions' => function ($query) use ($anneeCourante) {
                 $query->where('status', 'active');
                 if ($anneeCourante) {

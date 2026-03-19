@@ -18,7 +18,7 @@ class ESBTPLMDUEController extends Controller
     {
         $query = ESBTPUniteEnseignement::query()
             ->withCount('matieres')
-            ->with(['filiere', 'niveau', 'parcours']);
+            ->with(['filiere', 'niveau', 'parcours', 'parcoursMultiple']);
 
         // Filtres optionnels
         if ($request->filled('parcours_id')) {
@@ -311,17 +311,25 @@ class ESBTPLMDUEController extends Controller
      */
     public function parcoursDisponibles(ESBTPUniteEnseignement $ue)
     {
-        $lies = $ue->parcoursMultiple()
+        $pivotRows = $ue->parcoursMultiple()
             ->select('esbtp_lmd_parcours.id', 'esbtp_lmd_parcours.code', 'esbtp_lmd_parcours.name')
-            ->get()
-            ->map(fn($p) => [
-                'id' => $p->id,
-                'code' => $p->code,
-                'name' => $p->name,
-                'semestre' => $p->pivot->semestre,
-            ]);
+            ->get();
 
-        $liesIds = $lies->pluck('id')->toArray();
+        // Group by parcours id → collect semestres
+        $liesMap = [];
+        foreach ($pivotRows as $p) {
+            if (!isset($liesMap[$p->id])) {
+                $liesMap[$p->id] = [
+                    'id' => $p->id,
+                    'code' => $p->code,
+                    'name' => $p->name,
+                    'semestres' => [],
+                ];
+            }
+            $liesMap[$p->id]['semestres'][] = $p->pivot->semestre;
+        }
+        $lies = array_values($liesMap);
+        $liesIds = array_keys($liesMap);
 
         $disponibles = ESBTPLMDParcours::whereNotIn('id', $liesIds)
             ->orderBy('code')
@@ -330,29 +338,33 @@ class ESBTPLMDUEController extends Controller
                 'id' => $p->id,
                 'code' => $p->code,
                 'name' => $p->name,
-            ]);
+                'semestres' => [],
+            ])->values();
 
         return response()->json(['lies' => $lies, 'disponibles' => $disponibles]);
     }
 
     /**
-     * Synchroniser les parcours d'une UE (pivot esbtp_lmd_parcours_ue).
+     * Synchroniser les parcours d'une UE (multi-semestres via pivot).
      */
     public function syncParcours(Request $request, ESBTPUniteEnseignement $ue)
     {
         $items = $request->input('parcours', []);
 
-        $syncData = [];
+        $ue->parcoursMultiple()->detach();
+
+        $count = 0;
         foreach ($items as $item) {
             $pId = $item['id'] ?? null;
-            if (!$pId) continue;
-            $syncData[$pId] = [
-                'semestre' => $item['semestre'] ?? ($ue->semestre ?? 1),
-            ];
+            $semestres = $item['semestres'] ?? [];
+            if (!$pId || empty($semestres)) continue;
+
+            foreach ($semestres as $sem) {
+                $ue->parcoursMultiple()->attach($pId, ['semestre' => $sem]);
+                $count++;
+            }
         }
 
-        $ue->parcoursMultiple()->sync($syncData);
-
-        return response()->json(['success' => true, 'message' => count($syncData) . ' parcours lié(s).']);
+        return response()->json(['success' => true, 'message' => $count . ' lien(s) parcours-semestre créé(s).']);
     }
 }
