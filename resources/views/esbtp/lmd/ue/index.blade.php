@@ -464,54 +464,141 @@
     </div>
 </div>
 
-{{-- ══ MODAL ECUE — Create / Edit ══ --}}
-<div class="modal fade lu-modal" id="modalECUE" tabindex="-1" aria-hidden="true">
+{{-- ══ MODAL ECUE — Create new / Link existing (restored from original) ══ --}}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css">
+<style>
+    #modalECUE.modal { overflow: visible !important; }
+    #modalECUE .modal-dialog { overflow: visible !important; }
+    #modalECUE .modal-content { overflow: visible !important; }
+    #modalECUE .select2-container { width: 100% !important; }
+    #modalECUE .select2-container--bootstrap-5 .select2-selection { border-radius: 10px; border: 1.5px solid #e2e8f0; padding: .45rem .75rem; font-size: .88rem; min-height: 42px; }
+    #modalECUE .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered { line-height: 1.6; color: #1e293b; font-weight: 500; padding-right: 2.5rem; }
+    #modalECUE .select2-container--bootstrap-5 .select2-selection--single .select2-selection__clear { position: absolute; right: 2rem; top: 50%; transform: translateY(-50%); font-size: 1.1rem; color: #94a3b8; }
+    #modalECUE .select2-container--bootstrap-5 .select2-selection--single .select2-selection__clear:hover { color: #dc2626; }
+    #modalECUE .select2-container--bootstrap-5.select2-container--focus .select2-selection,
+    #modalECUE .select2-container--bootstrap-5.select2-container--open .select2-selection { border-color: #059669; box-shadow: 0 0 0 3px rgba(5,150,105,.08); }
+    .select2-container--bootstrap-5 .select2-dropdown { border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 12px 40px rgba(0,0,0,.14); padding: 6px; }
+    .select2-container--bootstrap-5 .select2-results__option { border-radius: 8px; padding: .5rem .75rem; font-weight: 500; font-size: .86rem; }
+    .select2-container--bootstrap-5 .select2-results__option--highlighted[aria-selected] { background: linear-gradient(135deg, #059669, #34d399) !important; color: #fff; }
+    .ecue-tab-btn { flex: 1; padding: .6rem .5rem; border: none; background: transparent; font-size: .82rem; font-weight: 600; color: #94a3b8; cursor: pointer; border-bottom: 2.5px solid transparent; transition: all .2s; border-radius: 0; }
+    .ecue-tab-btn:hover { color: #334155; background: #f8fafc; }
+    .ecue-tab-btn.active { color: #059669; border-bottom-color: #059669; }
+    .ecue-tab-content { display: none; }
+    .ecue-tab-content.active { display: block; }
+    .ecue-matiere-preview { display: none; margin-top: .6rem; padding: .6rem .85rem; border-radius: 10px; background: #ecfdf5; border: 1px solid #a7f3d0; font-size: .82rem; }
+    .ecue-matiere-preview strong { color: #065f46; }
+</style>
+<div class="modal fade" id="modalECUE" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
+        <div class="modal-content" style="border-radius:18px; border:none; box-shadow:0 25px 80px rgba(0,0,0,.18); overflow:hidden;">
             <form id="ecue_form" method="POST" action="">
                 @csrf
                 <input type="hidden" name="_method" id="ecue_method" value="POST">
-                <div class="modal-header">
-                    <div class="lu-modal-hero w-100" style="background: linear-gradient(135deg, #065f46 0%, #059669 50%, #34d399 100%);">
-                        <div class="lu-modal-hero-top">
-                            <div class="lu-modal-hero-left">
-                                <div class="lu-modal-icon"><i class="fas fa-puzzle-piece"></i></div>
+                <input type="hidden" name="matiere_id" id="ecue_matiere_id" value="">
+                <div style="padding:1.5rem 1.75rem 1.25rem; background:linear-gradient(135deg, #065f46 0%, #059669 50%, #34d399 100%); color:#fff; position:relative; overflow:hidden;">
+                    <div style="position:absolute; top:-50%; right:-15%; width:280px; height:280px; background:radial-gradient(circle, rgba(255,255,255,.08) 0%, transparent 70%); pointer-events:none;"></div>
+                    <div style="display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1;">
+                        <div style="display:flex; align-items:center; gap:.75rem;">
+                            <div style="width:42px; height:42px; border-radius:11px; background:rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center; font-size:1rem;">
+                                <i class="fas fa-puzzle-piece"></i>
+                            </div>
+                            <div>
+                                <h5 style="font-size:1.1rem; font-weight:700; margin:0;" id="ecue_modal_title">Nouvel ECUE</h5>
+                                <div style="font-size:.78rem; opacity:.7;">UE : <strong id="ecue_ue_label">—</strong></div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter:brightness(0) invert(1); opacity:.7; flex-shrink:0; margin:0;"></button>
+                    </div>
+                </div>
+                <div class="modal-body" style="padding:1.5rem 1.75rem;">
+                    <div id="ecue_error" style="display:none; padding:.6rem 1rem; border-radius:10px; background:#fef2f2; color:#dc2626; font-size:.85rem; margin-bottom:1rem; border:1px solid #fecaca;"></div>
+
+                    {{-- Jauge crédits --}}
+                    <div id="ecue_credit_gauge" style="display:none; margin-bottom:1rem; padding:.65rem .85rem; border-radius:10px; border:1px solid #e8ecf1; background:#f8fafc;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:.4rem;">
+                            <span style="font-size:.78rem; font-weight:600; color:#334155;"><i class="fas fa-award" style="color:#059669; margin-right:.3rem;"></i>Crédits de l'UE</span>
+                            <span id="ecue_credit_label" style="font-size:.82rem; font-weight:700; color:#1e293b;">0 / 0</span>
+                        </div>
+                        <div style="height:6px; border-radius:3px; background:#e5e7eb; overflow:hidden;">
+                            <div id="ecue_credit_bar" style="height:100%; border-radius:3px; background:#059669; transition:width .3s, background .3s; width:0%;"></div>
+                        </div>
+                        <div id="ecue_credit_warning" style="display:none; margin-top:.35rem; font-size:.74rem; color:#dc2626; font-weight:600;">
+                            <i class="fas fa-exclamation-triangle me-1"></i><span id="ecue_credit_warning_text"></span>
+                        </div>
+                    </div>
+
+                    {{-- Tabs: Créer / Lier existant --}}
+                    <div id="ecue_tabs" style="display:flex; border-bottom:1.5px solid #e8ecf1; margin-bottom:1rem;">
+                        <button type="button" class="ecue-tab-btn active" onclick="switchEcueTab('create')">
+                            <i class="fas fa-plus me-1"></i>Créer un ECUE
+                        </button>
+                        <button type="button" class="ecue-tab-btn" onclick="switchEcueTab('link')">
+                            <i class="fas fa-link me-1"></i>Lier un existant
+                        </button>
+                    </div>
+
+                    {{-- TAB 1: Créer --}}
+                    <div id="ecue_tab_create" class="ecue-tab-content active">
+                        <div style="background:#f8fafc; border-radius:12px; border:1px solid #e8ecf1; padding:1.25rem;">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:.75rem 1.25rem;">
                                 <div>
-                                    <h5 class="lu-modal-title" id="ecue_modal_title">Nouvel ECUE</h5>
-                                    <div class="lu-modal-subtitle">UE : <strong id="ecue_ue_label">—</strong></div>
+                                    <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;"><i class="fas fa-tag" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Nom</label>
+                                    <input type="text" class="form-control" name="name" id="ecue_name" placeholder="Ex: Résistance des Matériaux" style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
+                                </div>
+                                <div>
+                                    <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;"><i class="fas fa-barcode" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Code</label>
+                                    <input type="text" class="form-control" name="code" id="ecue_code" placeholder="Ex: RDM101" style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
                                 </div>
                             </div>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                     </div>
-                </div>
-                <div class="modal-body">
-                    <div id="ecue_error" style="display:none; padding:.6rem 1rem; border-radius:10px; background:#fef2f2; color:#dc2626; font-size:.85rem; margin-bottom:1rem; border:1px solid #fecaca;"></div>
-                    <div class="lu-field-group">
-                        <div class="lu-field-row">
-                            <div>
-                                <label><i class="fas fa-tag"></i> Nom <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" name="name" id="ecue_name" required placeholder="Ex: Résistance des Matériaux">
+
+                    {{-- TAB 2: Lier existant --}}
+                    <div id="ecue_tab_link" class="ecue-tab-content">
+                        <div style="background:#f8fafc; border-radius:12px; border:1px solid #e8ecf1; padding:1.25rem;">
+                            <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;"><i class="fas fa-search" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Rechercher une matière existante</label>
+                            <select id="ecue_matiere_select" style="width:100%;"><option value="">— Sélectionner une matière —</option></select>
+                            <div id="ecue_matiere_preview" class="ecue-matiere-preview">
+                                <strong id="ecue_preview_name"></strong>
+                                <span id="ecue_preview_code" style="color:#64748b; font-size:.78rem; margin-left:.5rem;"></span>
                             </div>
-                            <div>
-                                <label><i class="fas fa-barcode"></i> Code <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" name="code" id="ecue_code" required placeholder="Ex: RDM101">
-                            </div>
-                            <div>
-                                <label><i class="fas fa-balance-scale"></i> Coefficient</label>
-                                <input type="number" class="form-control" name="coefficient_ecue" id="ecue_coefficient" min="0" step="0.5" placeholder="1">
-                            </div>
-                            <div>
-                                <label><i class="fas fa-award"></i> Crédits</label>
-                                <input type="number" class="form-control" name="credit_ecue" id="ecue_credit" min="0" placeholder="2">
+                            <div id="ecue_link_loading" style="display:none; padding:1rem; text-align:center; color:#94a3b8; font-size:.84rem;">
+                                <i class="fas fa-spinner fa-spin me-1"></i>Chargement des matières...
                             </div>
                         </div>
                     </div>
+
+                    {{-- Champs pivot communs --}}
+                    <div style="background:#f8fafc; border-radius:12px; border:1px solid #e8ecf1; padding:1.25rem; margin-top:.75rem;">
+                        <div style="font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#059669; margin-bottom:.65rem;">
+                            <i class="fas fa-sliders-h" style="font-size:.65rem; margin-right:.3rem;"></i>Paramètres dans cette UE
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:.75rem;">
+                            <div>
+                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;"><i class="fas fa-balance-scale" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Coefficient</label>
+                                <input type="number" class="form-control" name="coefficient_ecue" id="ecue_coefficient" min="0" step="0.5" placeholder="1" style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
+                            </div>
+                            <div>
+                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;"><i class="fas fa-award" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Crédits</label>
+                                <input type="number" class="form-control" name="credit_ecue" id="ecue_credit" min="0" placeholder="2" oninput="updateCreditGauge()" style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
+                            </div>
+                            <div>
+                                <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;"><i class="fas fa-sort-numeric-up" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Ordre</label>
+                                <input type="number" class="form-control" name="ordre_bulletin" id="ecue_ordre" min="0" value="0" placeholder="0" style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
+                            </div>
+                        </div>
+                        <div style="margin-top:.6rem; padding:.45rem .65rem; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; font-size:.72rem; color:#92400e; display:flex; align-items:flex-start; gap:.35rem;">
+                            <i class="fas fa-info-circle" style="margin-top:1px; flex-shrink:0;"></i>
+                            <span>Valeurs contextuelles à cette UE. Un même ECUE peut avoir des valeurs différentes dans une autre UE.</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="lu-modal-btn lu-modal-btn--cancel" data-bs-dismiss="modal"><i class="fas fa-times"></i> Annuler</button>
-                    <button type="submit" id="ecue_submit" class="lu-modal-btn lu-modal-btn--submit" style="background:#059669;">
-                        <i class="fas fa-check"></i> <span id="ecue_submit_text">Créer l'ECUE</span>
+                <div class="modal-footer" style="border-top:1px solid #e8ecf1; padding:1rem 1.75rem; background:#fafbfc;">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:.85rem; padding:.5rem 1.1rem;">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                    <button type="submit" id="ecue_submit" style="border-radius:10px; font-weight:600; font-size:.85rem; padding:.5rem 1.1rem; background:#059669; color:#fff; border:none; box-shadow:0 2px 8px rgba(5,150,105,.2);">
+                        <i class="fas fa-check me-1"></i><span id="ecue_submit_text">Créer l'ECUE</span>
                     </button>
                 </div>
             </form>
@@ -557,6 +644,7 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 const CSRF = '{{ csrf_token() }}';
 const BASE = '/esbtp/lmd/ue';
@@ -665,35 +753,23 @@ function ueManager() {
             } catch (e) { this.showToast('Erreur réseau', 'error'); }
         },
 
-        // ── ECUE modals ──
-        _currentEcueUeId: null,
-
+        // ── ECUE modals (delegate to full standalone functions) ──
         openEcueModal(ue) {
-            this._currentEcueUeId = ue.id;
-            document.getElementById('ecue_form').action = `${BASE}/${ue.id}/ecue`;
-            document.getElementById('ecue_method').value = 'POST';
-            document.getElementById('ecue_modal_title').textContent = 'Nouvel ECUE';
-            document.getElementById('ecue_ue_label').textContent = ue.name;
-            document.getElementById('ecue_submit_text').textContent = 'Créer l\'ECUE';
-            document.getElementById('ecue_form').reset();
-            document.getElementById('ecue_method').value = 'POST';
-            document.getElementById('ecue_error').style.display = 'none';
-            new bootstrap.Modal(document.getElementById('modalECUE')).show();
+            // Calculate credits used by existing ECUEs
+            const creditsUsed = (ue.ecues || []).reduce((s, e) => s + (parseInt(e.credit) || 0), 0);
+            openEcueCreateModal(ue.id, ue.name, ue.credit || 0, creditsUsed);
         },
 
         openEcueEditModal(ue, ecue) {
-            this._currentEcueUeId = ue.id;
-            document.getElementById('ecue_form').action = `${BASE}/${ue.id}/ecue/${ecue.id}`;
-            document.getElementById('ecue_method').value = 'PUT';
-            document.getElementById('ecue_modal_title').textContent = 'Modifier l\'ECUE';
-            document.getElementById('ecue_ue_label').textContent = ue.name;
-            document.getElementById('ecue_submit_text').textContent = 'Mettre à jour';
-            document.getElementById('ecue_name').value = ecue.name || '';
-            document.getElementById('ecue_code').value = ecue.code || '';
-            document.getElementById('ecue_coefficient').value = ecue.coefficient || '';
-            document.getElementById('ecue_credit').value = ecue.credit || '';
-            document.getElementById('ecue_error').style.display = 'none';
-            new bootstrap.Modal(document.getElementById('modalECUE')).show();
+            const creditsUsed = (ue.ecues || []).reduce((s, e) => s + (parseInt(e.credit) || 0), 0);
+            openEcueEditModalFn(ue.id, {
+                id: ecue.id,
+                name: ecue.name,
+                code: ecue.code,
+                coefficient_ecue: ecue.coefficient,
+                credit_ecue: ecue.credit,
+                ordre_bulletin: ecue.ordre || 0,
+            }, ue.credit || 0, creditsUsed, ue.name);
         },
 
         // ── Delete ECUE ──
@@ -829,23 +905,166 @@ document.getElementById('formUE').addEventListener('submit', async function(e) {
     }
 });
 
-// ── ECUE Form submit (create/edit) ──
+// ================================================================
+//  MODAL ECUE — Full credit gauge, tabs, Select2 (restored)
+// ================================================================
+let ecueUeCredit = 0, ecueCreditsUsed = 0, ecueOwnCredit = 0, ecueCurrentUeId = null;
+let ecueActiveTab = 'create', ecueIsEditMode = false, select2Initialized = false, lastLoadedUeId = null;
+
+function updateCreditGauge() {
+    const gauge = document.getElementById('ecue_credit_gauge');
+    const submitBtn = document.getElementById('ecue_submit');
+    if (!ecueUeCredit) { gauge.style.display = 'none'; submitBtn.disabled = false; submitBtn.style.opacity = '1'; return; }
+    gauge.style.display = 'block';
+    const inputVal = parseInt(document.getElementById('ecue_credit').value) || 0;
+    const othersUsed = ecueCreditsUsed - ecueOwnCredit;
+    const total = othersUsed + inputVal;
+    const pct = Math.min(100, Math.round(total / ecueUeCredit * 100));
+    const restant = ecueUeCredit - othersUsed;
+    document.getElementById('ecue_credit_label').textContent = total + ' / ' + ecueUeCredit;
+    const bar = document.getElementById('ecue_credit_bar');
+    bar.style.width = pct + '%';
+    bar.style.background = total > ecueUeCredit ? '#dc2626' : (pct >= 80 ? '#f59e0b' : '#059669');
+    const warning = document.getElementById('ecue_credit_warning');
+    if (total > ecueUeCredit) {
+        warning.style.display = 'block';
+        document.getElementById('ecue_credit_warning_text').textContent = 'Dépassement de ' + (total - ecueUeCredit) + ' crédit(s). Maximum restant : ' + restant;
+        submitBtn.disabled = true; submitBtn.style.opacity = '.5';
+    } else {
+        warning.style.display = 'none'; submitBtn.disabled = false; submitBtn.style.opacity = '1';
+    }
+}
+
+function switchEcueTab(tab) {
+    ecueActiveTab = tab;
+    document.querySelectorAll('.ecue-tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.ecue-tab-content').forEach(c => c.classList.remove('active'));
+    if (tab === 'create') {
+        document.querySelector('.ecue-tab-btn:first-child').classList.add('active');
+        document.getElementById('ecue_tab_create').classList.add('active');
+        document.getElementById('ecue_matiere_id').value = '';
+        document.getElementById('ecue_submit_text').textContent = 'Créer l\'ECUE';
+    } else {
+        document.querySelector('.ecue-tab-btn:last-child').classList.add('active');
+        document.getElementById('ecue_tab_link').classList.add('active');
+        document.getElementById('ecue_submit_text').textContent = 'Lier l\'ECUE';
+        loadMatieresDisponibles();
+    }
+}
+
+async function loadMatieresDisponibles() {
+    if (!ecueCurrentUeId) return;
+    if (lastLoadedUeId === ecueCurrentUeId && select2Initialized) return;
+    const loading = document.getElementById('ecue_link_loading');
+    const sel = document.getElementById('ecue_matiere_select');
+    loading.style.display = 'block';
+    try {
+        const resp = await fetch(`${BASE}/${ecueCurrentUeId}/matieres-disponibles`, { headers: { 'Accept': 'application/json' } });
+        const matieres = await resp.json();
+        if (select2Initialized && $.fn.select2) { $(sel).select2('destroy'); select2Initialized = false; }
+        sel.innerHTML = '<option value="">— Sélectionner une matière —</option>';
+        matieres.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = (m.code ? m.code + ' — ' : '') + m.name;
+            opt.dataset.name = m.name; opt.dataset.code = m.code || '';
+            opt.dataset.coeff = m.coefficient_ecue || ''; opt.dataset.credit = m.credit_ecue || '';
+            sel.appendChild(opt);
+        });
+        if ($.fn.select2) {
+            $(sel).select2({ theme: 'bootstrap-5', language: 'fr', placeholder: '— Rechercher une matière —', allowClear: true, dropdownParent: $('#modalECUE .modal-content'), width: '100%' })
+            .off('select2:select select2:clear')
+            .on('select2:select', e => onMatiereSelected(e.params.data.element))
+            .on('select2:clear', () => onMatiereCleared());
+            select2Initialized = true;
+        }
+        lastLoadedUeId = ecueCurrentUeId;
+        loading.style.display = 'none';
+    } catch (err) { loading.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Erreur'; }
+}
+
+function onMatiereSelected(option) {
+    document.getElementById('ecue_matiere_id').value = option.value;
+    const preview = document.getElementById('ecue_matiere_preview');
+    document.getElementById('ecue_preview_name').textContent = option.dataset.name || '';
+    document.getElementById('ecue_preview_code').textContent = option.dataset.code ? '(' + option.dataset.code + ')' : '';
+    preview.style.display = 'block';
+    if (option.dataset.coeff && !document.getElementById('ecue_coefficient').value) document.getElementById('ecue_coefficient').value = option.dataset.coeff;
+    if (option.dataset.credit && !document.getElementById('ecue_credit').value) { document.getElementById('ecue_credit').value = option.dataset.credit; updateCreditGauge(); }
+}
+
+function onMatiereCleared() {
+    document.getElementById('ecue_matiere_id').value = '';
+    document.getElementById('ecue_matiere_preview').style.display = 'none';
+}
+
+function openEcueCreateModal(ueId, ueName, ueCredit, creditsUsed) {
+    ecueUeCredit = ueCredit; ecueCreditsUsed = creditsUsed; ecueOwnCredit = 0; ecueCurrentUeId = ueId; ecueIsEditMode = false;
+    document.getElementById('ecue_form').action = `${BASE}/${ueId}/ecue`;
+    document.getElementById('ecue_form').reset();
+    document.getElementById('ecue_method').value = 'POST';
+    document.getElementById('ecue_matiere_id').value = '';
+    document.getElementById('ecue_ue_label').textContent = ueName;
+    document.getElementById('ecue_modal_title').textContent = 'Ajouter un ECUE';
+    document.getElementById('ecue_error').style.display = 'none';
+    document.getElementById('ecue_matiere_preview').style.display = 'none';
+    document.getElementById('ecue_tabs').style.display = 'flex';
+    switchEcueTab('create');
+    updateCreditGauge();
+    new bootstrap.Modal(document.getElementById('modalECUE')).show();
+}
+
+function openEcueEditModalFn(ueId, ecue, ueCredit, creditsUsed, ueName) {
+    ecueUeCredit = ueCredit; ecueCreditsUsed = creditsUsed;
+    ecueOwnCredit = ecue.credit_ecue === '—' ? 0 : (parseInt(ecue.credit_ecue) || 0);
+    ecueCurrentUeId = ueId; ecueIsEditMode = true;
+    document.getElementById('ecue_form').action = `${BASE}/${ueId}/ecue/${ecue.id}`;
+    document.getElementById('ecue_method').value = 'PUT';
+    document.getElementById('ecue_matiere_id').value = '';
+    document.getElementById('ecue_modal_title').textContent = 'Modifier l\'ECUE';
+    document.getElementById('ecue_ue_label').textContent = ueName || '—';
+    document.getElementById('ecue_submit_text').textContent = 'Mettre à jour';
+    document.getElementById('ecue_name').value = ecue.name || '';
+    document.getElementById('ecue_code').value = ecue.code || '';
+    document.getElementById('ecue_coefficient').value = ecue.coefficient_ecue === '—' ? '' : (ecue.coefficient_ecue || '');
+    document.getElementById('ecue_credit').value = ecue.credit_ecue === '—' ? '' : (ecue.credit_ecue || '');
+    document.getElementById('ecue_ordre').value = ecue.ordre_bulletin || 0;
+    document.getElementById('ecue_error').style.display = 'none';
+    document.getElementById('ecue_tabs').style.display = 'none';
+    document.getElementById('ecue_tab_create').classList.add('active');
+    document.getElementById('ecue_tab_link').classList.remove('active');
+    ecueActiveTab = 'create';
+    updateCreditGauge();
+    new bootstrap.Modal(document.getElementById('modalECUE')).show();
+}
+
 document.getElementById('ecue_form').addEventListener('submit', async function(e) {
     e.preventDefault();
-    const errBox = document.getElementById('ecue_error');
+    const form = this;
     const btn = document.getElementById('ecue_submit');
-    btn.disabled = true;
-    errBox.style.display = 'none';
+    const errBox = document.getElementById('ecue_error');
 
-    const formData = new FormData(this);
-    const isPut = document.getElementById('ecue_method').value === 'PUT';
+    // Tab validation
+    if (ecueActiveTab === 'link' && !document.getElementById('ecue_matiere_id').value) {
+        errBox.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Veuillez sélectionner une matière existante.';
+        errBox.style.display = 'block'; return;
+    }
+    if (ecueActiveTab === 'create' && !ecueIsEditMode) {
+        if (!document.getElementById('ecue_name').value.trim() || !document.getElementById('ecue_code').value.trim()) {
+            errBox.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Le nom et le code sont requis.';
+            errBox.style.display = 'block'; return;
+        }
+    }
 
-    // Build body without _method (we'll use actual HTTP method or query param)
+    btn.disabled = true; errBox.style.display = 'none';
+    const formData = new FormData(form);
     const body = {};
-    formData.forEach((v, k) => { if (k !== '_method') body[k] = v; });
+    formData.forEach((v, k) => { if (v !== '' && k !== '_method') body[k] = v; });
+    if (ecueActiveTab === 'link') { delete body.name; delete body.code; }
 
+    const isPut = document.getElementById('ecue_method').value === 'PUT';
     try {
-        const url = isPut ? this.action + '?_method=PUT' : this.action;
+        const url = isPut ? form.action + '?_method=PUT' : form.action;
         const resp = await fetch(url, {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' },
@@ -867,6 +1086,7 @@ document.getElementById('ecue_form').addEventListener('submit', async function(e
         errBox.style.display = 'block';
     }
     btn.disabled = false;
+    updateCreditGauge();
 });
 </script>
 @endpush

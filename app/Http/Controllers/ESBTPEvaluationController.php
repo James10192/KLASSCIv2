@@ -352,7 +352,7 @@ class ESBTPEvaluationController extends Controller
             'coefficient' => 'required|numeric|min:0.1|max:10',
             'duree_minutes' => 'nullable|integer|min:0',
             'is_published' => 'nullable|boolean',
-            'periode' => 'required|in:1,2,semestre1,semestre2,Semestre 1,Semestre 2',
+            'periode' => 'required|in:1,2,3,4,5,6,7,8,9,10,semestre1,semestre2,semestre3,semestre4,semestre5,semestre6,semestre7,semestre8,semestre9,semestre10,Semestre 1,Semestre 2,Semestre 3,Semestre 4,Semestre 5,Semestre 6,Semestre 7,Semestre 8,Semestre 9,Semestre 10',
         ], [
             'titre.required' => 'Le titre est obligatoire',
             'type.required' => 'Le type d\'évaluation est obligatoire',
@@ -625,7 +625,7 @@ $evaluation = new ESBTPEvaluation;
                 'matiere_id' => 'required|exists:esbtp_matieres,id',
                 'bareme' => 'required|numeric|min:0',
                 'duree_minutes' => 'nullable|integer|min:0',
-                'periode' => 'required|in:1,2,semestre1,semestre2,Semestre 1,Semestre 2',
+                'periode' => 'required|in:1,2,3,4,5,6,7,8,9,10,semestre1,semestre2,semestre3,semestre4,semestre5,semestre6,semestre7,semestre8,semestre9,semestre10,Semestre 1,Semestre 2,Semestre 3,Semestre 4,Semestre 5,Semestre 6,Semestre 7,Semestre 8,Semestre 9,Semestre 10',
             ], [
                 'titre.required' => 'Le titre est obligatoire',
                 'type.required' => 'Le type d\'évaluation est obligatoire',
