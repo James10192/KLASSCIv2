@@ -242,6 +242,7 @@ class ESBTPClasse extends Model
 
         $count = $this->inscriptions()
                     ->where('status', 'active')
+                    ->where('workflow_step', 'etudiant_cree')
                     ->where('annee_universitaire_id', $anneeCourante->id)
                     ->count();
 

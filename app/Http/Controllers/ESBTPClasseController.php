@@ -72,11 +72,11 @@ class ESBTPClasseController extends Controller
         if ($request->filled("capacite")) {
             if ($request->capacite === "disponible") {
                 $query->whereRaw(
-                    'places_totales > (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status != "annulée")',
+                    'places_totales > (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status = "active" AND esbtp_inscriptions.workflow_step = "etudiant_cree")',
                 );
             } elseif ($request->capacite === "pleine") {
                 $query->whereRaw(
-                    'places_totales <= (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status != "annulée")',
+                    'places_totales <= (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status = "active" AND esbtp_inscriptions.workflow_step = "etudiant_cree")',
                 );
             }
         }
@@ -136,7 +136,8 @@ class ESBTPClasseController extends Controller
                     $q->where(
                         "annee_universitaire_id",
                         $anneeCourante->id,
-                    )->where("status", "active");
+                    )->where("status", "active")
+                      ->where("workflow_step", "etudiant_cree");
                 },
             ]);
         }
@@ -1418,7 +1419,8 @@ class ESBTPClasseController extends Controller
             $inscriptions_count = $classe
                 ->inscriptions()
                 ->where("annee_universitaire_id", $anneeActive->id)
-                ->where("status", "!=", "annulée")
+                ->where("status", "active")
+                ->where("workflow_step", "etudiant_cree")
                 ->count();
             \Log::info(
                 "Nombre d'inscriptions pour l'année active {$anneeActive->name}: {$inscriptions_count}",
@@ -1465,6 +1467,7 @@ class ESBTPClasseController extends Controller
             ->etudiants()
             ->select("esbtp_etudiants.id", "esbtp_etudiants.nom", "esbtp_etudiants.prenoms", "esbtp_etudiants.matricule")
             ->where("esbtp_inscriptions.status", "active")
+            ->where("esbtp_inscriptions.workflow_step", "etudiant_cree")
             ->orderBy("esbtp_etudiants.nom")
             ->orderBy("esbtp_etudiants.prenoms")
             ->get();
@@ -1691,6 +1694,7 @@ class ESBTPClasseController extends Controller
             ->inscriptions()
             ->with(["etudiant"])
             ->where("status", "active")
+            ->where("workflow_step", "etudiant_cree")
             ->when($anneeCourante, function ($query) use ($anneeCourante) {
                 return $query->where(
                     "annee_universitaire_id",
@@ -1743,6 +1747,7 @@ class ESBTPClasseController extends Controller
             ->inscriptions()
             ->with(["etudiant"])
             ->where("status", "active")
+            ->where("workflow_step", "etudiant_cree")
             ->when($anneeCourante, function ($query) use ($anneeCourante) {
                 return $query->where(
                     "annee_universitaire_id",
@@ -1804,6 +1809,7 @@ class ESBTPClasseController extends Controller
             ->inscriptions()
             ->with(["etudiant"])
             ->where("status", "active")
+            ->where("workflow_step", "etudiant_cree")
             ->when($anneeCourante, function ($query) use ($anneeCourante) {
                 return $query->where(
                     "annee_universitaire_id",
@@ -1852,6 +1858,7 @@ class ESBTPClasseController extends Controller
             ->inscriptions()
             ->with(["etudiant"])
             ->where("status", "active")
+            ->where("workflow_step", "etudiant_cree")
             ->when($anneeCourante, function ($query) use ($anneeCourante) {
                 return $query->where(
                     "annee_universitaire_id",
@@ -1909,6 +1916,7 @@ class ESBTPClasseController extends Controller
             ->inscriptions()
             ->with(["etudiant"])
             ->where("status", "active")
+            ->where("workflow_step", "etudiant_cree")
             ->when($anneeCourante, function ($query) use ($anneeCourante) {
                 return $query->where(
                     "annee_universitaire_id",
@@ -1972,11 +1980,11 @@ class ESBTPClasseController extends Controller
         if ($request->filled("capacite")) {
             if ($request->capacite === "disponible") {
                 $query->whereRaw(
-                    'places_totales > (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status != "annulée")',
+                    'places_totales > (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status = "active" AND esbtp_inscriptions.workflow_step = "etudiant_cree")',
                 );
             } elseif ($request->capacite === "pleine") {
                 $query->whereRaw(
-                    'places_totales <= (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status != "annulée")',
+                    'places_totales <= (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status = "active" AND esbtp_inscriptions.workflow_step = "etudiant_cree")',
                 );
             }
         }
@@ -2209,6 +2217,7 @@ class ESBTPClasseController extends Controller
                     FROM esbtp_inscriptions
                     WHERE esbtp_inscriptions.classe_id = esbtp_classes.id
                     AND esbtp_inscriptions.status = "active"
+                    AND esbtp_inscriptions.workflow_step = "etudiant_cree"
                     AND esbtp_inscriptions.annee_universitaire_id = ?
                 ) as inscriptions_actives',
                     [$anneeCourante->id],
@@ -2222,6 +2231,7 @@ class ESBTPClasseController extends Controller
                                 FROM esbtp_inscriptions
                                 WHERE esbtp_inscriptions.classe_id = esbtp_classes.id
                                 AND esbtp_inscriptions.status = "active"
+                                AND esbtp_inscriptions.workflow_step = "etudiant_cree"
                                 AND esbtp_inscriptions.annee_universitaire_id = ?
                             ) * 100.0 / places_totales, 1)
                         ELSE 0

@@ -92,7 +92,9 @@ class ESBTPLMDNoteController extends Controller
             $uesDisponibles = $classe->parcours->unitesEnseignement()
                 ->wherePivotIn('semestre', $semestresAutorises)
                 ->with(['matieres' => fn($q) => $q->where('is_active', true)->orderBy('ordre_bulletin')->orderBy('code')])
-                ->get();
+                ->get()
+                ->unique('id')
+                ->values();
 
             $matieres = $uesDisponibles
                 ->flatMap(fn($ue) => $ue->matieres->map(fn($m) => [
@@ -101,7 +103,9 @@ class ESBTPLMDNoteController extends Controller
                     'code' => $m->code,
                     'ue_name' => $ue->name,
                     'ue_code' => $ue->code,
-                ]));
+                ]))
+                ->unique('id')
+                ->values();
         }
 
         return response()->json([
