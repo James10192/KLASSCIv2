@@ -447,7 +447,42 @@ class ESBTPEtudiantController extends Controller
         // Catégories de frais pour la modal de paiement
         $categoriesfrais = \App\Models\ESBTPFraisCategory::where('is_active', true)->orderBy('name')->get();
 
-        return view('esbtp.etudiants.show', compact('etudiant', 'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais'));
+        // ── Détection LMD et chargement des données spécifiques ──
+        $isLMD = false;
+        $bulletinLMD = null;
+        $parcours = null;
+        $lmdCredits = null;
+
+        $classeCourante = $statistiques['inscription_active']?->classe
+            ?? $statistiques['derniere_inscription']?->classe;
+
+        if ($classeCourante && $classeCourante->isLMD()) {
+            $isLMD = true;
+            $parcours = $classeCourante->parcours?->load('mention.domaine');
+
+            // Charger le dernier bulletin LMD publié pour cet étudiant dans cette classe
+            $bulletinLMD = \App\Models\ESBTPLMDBulletin::where('etudiant_id', $etudiant->id)
+                ->where('classe_id', $classeCourante->id)
+                ->with(['resultatsUEs.uniteEnseignement', 'resultatsECUEs.matiere', 'deliberation'])
+                ->orderByDesc('semestre')
+                ->first();
+
+            // Crédits capitalisés : somme de tous les bulletins publiés de cet étudiant
+            $allBulletinsLMD = \App\Models\ESBTPLMDBulletin::where('etudiant_id', $etudiant->id)
+                ->where('classe_id', $classeCourante->id)
+                ->get();
+
+            $lmdCredits = [
+                'capitalises' => $allBulletinsLMD->sum('credits_capitalises'),
+                'totaux' => $allBulletinsLMD->sum('credits_totaux') ?: 30,
+                'semestres' => $classeCourante->getSemestresLMD(),
+            ];
+        }
+
+        return view('esbtp.etudiants.show', compact(
+            'etudiant', 'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais',
+            'isLMD', 'bulletinLMD', 'parcours', 'lmdCredits'
+        ));
     }
 
     /**

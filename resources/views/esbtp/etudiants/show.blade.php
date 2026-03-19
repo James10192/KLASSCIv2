@@ -394,10 +394,10 @@
 .acad-kpi-block:hover { background: rgba(255,255,255,.11); }
 
 /* SVG ring */
-.acad-ring-wrap { position: relative; width: 72px; height: 72px; margin-bottom: 10px; }
-.acad-ring-wrap svg { width: 72px; height: 72px; transform: rotate(-90deg); }
-.acad-ring-wrap .acad-ring-bg { fill: none; stroke: rgba(255,255,255,.12); stroke-width: 5; }
-.acad-ring-wrap .acad-ring-fg { fill: none; stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset .8s cubic-bezier(.4,0,.2,1); }
+.acad-ring-wrap { position: relative; width: 90px; height: 90px; margin-bottom: 10px; }
+.acad-ring-wrap svg { width: 90px; height: 90px; transform: rotate(-90deg); }
+.acad-ring-wrap .acad-ring-bg { fill: none; stroke: rgba(255,255,255,.12); stroke-width: 4; }
+.acad-ring-wrap .acad-ring-fg { fill: none; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset .8s cubic-bezier(.4,0,.2,1); }
 .acad-ring-center {
     position: absolute; inset: 0;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -421,7 +421,7 @@
 
 /* Rang display (no ring) */
 .acad-rang-display {
-    width: 72px; height: 72px; margin-bottom: 10px;
+    width: 90px; height: 90px; margin-bottom: 10px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     background: rgba(255,255,255,.08); border-radius: 50%;
     border: 2px solid rgba(255,255,255,.15);
@@ -434,7 +434,7 @@
 
 /* Mention badge (no ring) */
 .acad-mention-display {
-    width: 72px; height: 72px; margin-bottom: 10px;
+    width: 90px; height: 90px; margin-bottom: 10px;
     display: flex; align-items: center; justify-content: center;
     border-radius: 50%;
 }
@@ -1664,14 +1664,22 @@
         : null;
     // Vrai "actif" = statut actif ET inscrit pour l'année courante
     $estInscritCetteAnnee = $inscCourante !== null;
+
+    // Defaults LMD (safety fallback)
+    $isLMD = $isLMD ?? false;
+    $bulletinLMD = $bulletinLMD ?? null;
+    $bulletinsLMD = $bulletinsLMD ?? collect();
+    $lmdMoyenneAnnuelle = $lmdMoyenneAnnuelle ?? null;
+    $parcours = $parcours ?? null;
+    $lmdCredits = $lmdCredits ?? null;
 @endphp
 <div class="fiche-hero">
     <div class="hero-inner">
         {{-- Avatar avec badge statut --}}
         <div class="hero-avatar-wrap">
             <div class="hero-avatar" id="heroAvatarDisplay">
-                @if($etudiant->photo)
-                    <img src="{{ asset('storage/photos/etudiants/' . $etudiant->photo) }}"
+                @if($etudiant->photo && $etudiant->photo_url)
+                    <img src="{{ $etudiant->photo_url }}"
                          alt="{{ $etudiant->nom_complet }}"
                          onerror="this.parentElement.innerHTML='<i class=\'fas fa-user-graduate\'></i>'">
                 @else
@@ -1698,15 +1706,33 @@
             <p class="hero-sub">
                 @if($inscCourante && $inscCourante->classe)
                     {{ $inscCourante->classe->name }}
-                    @if($inscCourante->classe->filiere) · {{ $inscCourante->classe->filiere->name }} @endif
-                    @if($inscCourante->classe->niveau) · {{ $inscCourante->classe->niveau->name ?? $inscCourante->classe->niveau->nom ?? '' }} @endif
+                    @if($isLMD && $parcours)
+                        · {{ $parcours->name }}
+                        @if($inscCourante->classe->niveau) · {{ $inscCourante->classe->niveau->name ?? $inscCourante->classe->niveau->nom ?? '' }} @endif
+                        @php $sems = $lmdCredits['semestres'] ?? []; @endphp
+                        @if(count($sems) === 2) · <span style="opacity:.8">S{{ $sems[0] }}-S{{ $sems[1] }}</span> @endif
+                    @else
+                        @if($inscCourante->classe->filiere) · {{ $inscCourante->classe->filiere->name }} @endif
+                        @if($inscCourante->classe->niveau) · {{ $inscCourante->classe->niveau->name ?? $inscCourante->classe->niveau->nom ?? '' }} @endif
+                    @endif
                 @elseif($anneeCourante)
                     <span style="color:rgba(255,255,255,0.75); font-style:italic;">Non réinscrit pour {{ $anneeCourante->name }}</span>
                 @else
                     Étudiant
                 @endif
             </p>
+            @if($isLMD && $parcours && $parcours->mention && $parcours->mention->domaine)
+                <p style="font-size:.78rem; color:rgba(255,255,255,.65); margin:-.1rem 0 .4rem; letter-spacing:.02em;">
+                    <i class="fas fa-sitemap" style="font-size:.65rem; margin-right:.25rem;"></i>
+                    {{ $parcours->mention->domaine->name }} <span style="opacity:.5">›</span> {{ $parcours->mention->name }}
+                </p>
+            @endif
             <div class="hero-pills">
+                @if($isLMD || $lmdCredits)
+                    <span class="hero-pill" style="background:rgba(16,185,129,.25); color:#6ee7b7; border-color:rgba(16,185,129,.4);"><i class="fas fa-graduation-cap" style="font-size:.65rem;"></i> LMD</span>
+                @else
+                    <span class="hero-pill" style="background:rgba(59,130,246,.25); color:#93c5fd; border-color:rgba(59,130,246,.4);"><i class="fas fa-graduation-cap" style="font-size:.65rem;"></i> BTS</span>
+                @endif
                 <span class="hero-pill"><i class="fas fa-id-card"></i> {{ $etudiant->matricule ?? 'Non attribué' }}</span>
                 @if($estInscritCetteAnnee)
                     <span class="hero-pill green"><i class="fas fa-circle" style="font-size:.45rem"></i> Inscrit {{ $anneeCourante->name ?? '' }}</span>
@@ -1958,58 +1984,61 @@
         }
         $kpiPaiDu = max(0, $kpiTotalAttendu - ($kpiPaiTotal ?? 0));
 
-        // Moyenne : 1) chercher bulletins officiels de l'inscription de référence
-        $kpiBulletins = $kpiInscActive
-            ? \App\Models\ESBTPBulletin::where('etudiant_id', $etudiant->id)
-                ->where('annee_universitaire_id', $kpiInscActive->annee_universitaire_id)
-                ->get()
-            : collect();
-
-        $kpiBulletinsCalcueles = $kpiBulletins->filter(fn($b) => $b->moyenne_generale !== null && $b->moyenne_generale > 0);
-        if ($kpiBulletinsCalcueles->count()) {
-            // Moyenne pondérée des bulletins officiels calculés
-            $kpiMoyenneGen    = round($kpiBulletinsCalcueles->avg('moyenne_generale'), 2);
+        // Moyenne : LMD → depuis bulletinLMD, BTS → depuis ESBTPBulletin/ESBTPResultat
+        if ($isLMD && $lmdMoyenneAnnuelle) {
+            // ── LMD : moyenne annuelle pondérée (tous semestres) ──
+            $kpiMoyenneGen    = $lmdMoyenneAnnuelle;
             $kpiMoyenneIsLive = false;
-        } else {
-            // Fallback : calculer depuis ESBTPResultat (résultats bruts, bulletin non généré)
-            $kpiResultats = $kpiInscActive
-                ? \App\Models\ESBTPResultat::where('etudiant_id', $etudiant->id)
+        } else if (!$isLMD) {
+            // ── BTS : logique existante ──
+            $kpiBulletins = $kpiInscActive
+                ? \App\Models\ESBTPBulletin::where('etudiant_id', $etudiant->id)
                     ->where('annee_universitaire_id', $kpiInscActive->annee_universitaire_id)
-                    ->whereNotNull('moyenne')
                     ->get()
                 : collect();
 
-            if ($kpiResultats->count()) {
-                // Pondération S1/S2 depuis les settings (même logique que les bulletins)
-                $_kpiPoidS1 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester1_weight', 1));
-                $_kpiPoidS2 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester2_weight', 1));
-                if ($_kpiPoidS1 + $_kpiPoidS2 <= 0) { $_kpiPoidS1 = 1; $_kpiPoidS2 = 1; }
+            $kpiBulletinsCalcueles = $kpiBulletins->filter(fn($b) => $b->moyenne_generale !== null && $b->moyenne_generale > 0);
+            if ($kpiBulletinsCalcueles->count()) {
+                $kpiMoyenneGen    = round($kpiBulletinsCalcueles->avg('moyenne_generale'), 2);
+                $kpiMoyenneIsLive = false;
+            } else {
+                $kpiResultats = $kpiInscActive
+                    ? \App\Models\ESBTPResultat::where('etudiant_id', $etudiant->id)
+                        ->where('annee_universitaire_id', $kpiInscActive->annee_universitaire_id)
+                        ->whereNotNull('moyenne')
+                        ->get()
+                    : collect();
 
-                $_kpiCalcSem = function($group) {
-                    $sp = 0; $sc = 0;
-                    foreach ($group as $_r) {
-                        $c = $_r->coefficient ?? 1;
-                        $sp += $_r->moyenne * $c;
-                        $sc += $c;
+                if ($kpiResultats->count()) {
+                    $_kpiPoidS1 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester1_weight', 1));
+                    $_kpiPoidS2 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester2_weight', 1));
+                    if ($_kpiPoidS1 + $_kpiPoidS2 <= 0) { $_kpiPoidS1 = 1; $_kpiPoidS2 = 1; }
+
+                    $_kpiCalcSem = function($group) {
+                        $sp = 0; $sc = 0;
+                        foreach ($group as $_r) {
+                            $c = $_r->coefficient ?? 1;
+                            $sp += $_r->moyenne * $c;
+                            $sc += $c;
+                        }
+                        return $sc > 0 ? $sp / $sc : null;
+                    };
+
+                    $_kpiS1 = $_kpiCalcSem($kpiResultats->where('periode', 'semestre1'));
+                    $_kpiS2 = $_kpiCalcSem($kpiResultats->where('periode', 'semestre2'));
+
+                    if ($_kpiS1 !== null && $_kpiS2 !== null) {
+                        $_kpiTot = $_kpiPoidS1 + $_kpiPoidS2;
+                        $kpiMoyenneGen = round(($_kpiS1 * $_kpiPoidS1 + $_kpiS2 * $_kpiPoidS2) / $_kpiTot, 2);
+                    } elseif ($_kpiS1 !== null) {
+                        $kpiMoyenneGen = round($_kpiS1, 2);
+                    } elseif ($_kpiS2 !== null) {
+                        $kpiMoyenneGen = round($_kpiS2, 2);
+                    } else {
+                        $kpiMoyenneGen = $_kpiCalcSem($kpiResultats) !== null ? round($_kpiCalcSem($kpiResultats), 2) : null;
                     }
-                    return $sc > 0 ? $sp / $sc : null;
-                };
-
-                $_kpiS1 = $_kpiCalcSem($kpiResultats->where('periode', 'semestre1'));
-                $_kpiS2 = $_kpiCalcSem($kpiResultats->where('periode', 'semestre2'));
-
-                if ($_kpiS1 !== null && $_kpiS2 !== null) {
-                    $_kpiTot = $_kpiPoidS1 + $_kpiPoidS2;
-                    $kpiMoyenneGen = round(($_kpiS1 * $_kpiPoidS1 + $_kpiS2 * $_kpiPoidS2) / $_kpiTot, 2);
-                } elseif ($_kpiS1 !== null) {
-                    $kpiMoyenneGen = round($_kpiS1, 2);
-                } elseif ($_kpiS2 !== null) {
-                    $kpiMoyenneGen = round($_kpiS2, 2);
-                } else {
-                    // Fallback toutes périodes confondues si periode non renseignée
-                    $kpiMoyenneGen = $_kpiCalcSem($kpiResultats) !== null ? round($_kpiCalcSem($kpiResultats), 2) : null;
+                    $kpiMoyenneIsLive = true;
                 }
-                $kpiMoyenneIsLive = true; // Signaler que c'est provisoire
             }
         }
     @endphp
@@ -2067,27 +2096,52 @@
             </div>
         </div>
 
-        {{-- Absences --}}
-        @php
-            $ac   = $kpiAbsTotal !== null ? ($kpiAbsTotal > 20 ? '#ef4444' : ($kpiAbsTotal > 10 ? '#f59e0b' : '#10b981')) : '#94a3b8';
-            $apct = $kpiAbsTotal !== null ? min(100, $kpiAbsTotal * 2) : 0;
-        @endphp
-        <div class="kpi-card">
-            <div class="kpi-ring">
-                <svg viewBox="0 0 52 52">
-                    <circle class="ring-bg" cx="26" cy="26" r="22"/>
-                    <circle class="ring-fg" cx="26" cy="26" r="22"
-                        stroke="{{ $ac }}"
-                        stroke-dasharray="{{ round(2*3.14159*22,1) }}"
-                        stroke-dashoffset="{{ round(2*3.14159*22 * (1 - $apct/100),1) }}"/>
-                </svg>
-                <span class="ring-icon" style="color:{{ $ac }}"><i class="fas fa-calendar-times" style="font-size:.75rem"></i></span>
+        {{-- Absences / Crédits LMD (capitalisés à vie, même si pas inscrit cette année) --}}
+        @if($lmdCredits)
+            @php
+                $credCap = $lmdCredits['capitalises'] ?? 0;
+                $credTot = $lmdCredits['totaux'] ?? 30;
+                $credPct = $credTot > 0 ? min(100, round($credCap / $credTot * 100)) : 0;
+                $credColor = $credPct >= 80 ? '#10b981' : ($credPct >= 50 ? '#f59e0b' : '#ef4444');
+            @endphp
+            <div class="kpi-card">
+                <div class="kpi-ring">
+                    <svg viewBox="0 0 52 52">
+                        <circle class="ring-bg" cx="26" cy="26" r="22"/>
+                        <circle class="ring-fg" cx="26" cy="26" r="22"
+                            stroke="{{ $credColor }}"
+                            stroke-dasharray="{{ round(2*3.14159*22,1) }}"
+                            stroke-dashoffset="{{ round(2*3.14159*22 * (1 - $credPct/100),1) }}"/>
+                    </svg>
+                    <span class="ring-icon" style="color:{{ $credColor }}"><i class="fas fa-award" style="font-size:.75rem"></i></span>
+                </div>
+                <div class="kpi-body">
+                    <div class="kpi-val" style="color:{{ $credColor }}">{{ $credCap }}/{{ $credTot }}</div>
+                    <div class="kpi-lbl">Crédits CECT</div>
+                </div>
             </div>
-            <div class="kpi-body">
-                <div class="kpi-val" style="color:{{ $ac }}">{{ $kpiAbsTotal !== null ? $kpiAbsTotal : '—' }}</div>
-                <div class="kpi-lbl">Absences totales</div>
+        @else
+            @php
+                $ac   = $kpiAbsTotal !== null ? ($kpiAbsTotal > 20 ? '#ef4444' : ($kpiAbsTotal > 10 ? '#f59e0b' : '#10b981')) : '#94a3b8';
+                $apct = $kpiAbsTotal !== null ? min(100, $kpiAbsTotal * 2) : 0;
+            @endphp
+            <div class="kpi-card">
+                <div class="kpi-ring">
+                    <svg viewBox="0 0 52 52">
+                        <circle class="ring-bg" cx="26" cy="26" r="22"/>
+                        <circle class="ring-fg" cx="26" cy="26" r="22"
+                            stroke="{{ $ac }}"
+                            stroke-dasharray="{{ round(2*3.14159*22,1) }}"
+                            stroke-dashoffset="{{ round(2*3.14159*22 * (1 - $apct/100),1) }}"/>
+                    </svg>
+                    <span class="ring-icon" style="color:{{ $ac }}"><i class="fas fa-calendar-times" style="font-size:.75rem"></i></span>
+                </div>
+                <div class="kpi-body">
+                    <div class="kpi-val" style="color:{{ $ac }}">{{ $kpiAbsTotal !== null ? $kpiAbsTotal : '—' }}</div>
+                    <div class="kpi-lbl">Absences totales</div>
+                </div>
             </div>
-        </div>
+        @endif
 
         {{-- Paiements --}}
         @php
@@ -2142,6 +2196,26 @@
                 <span class="info-lbl">Filière</span>
                 <span class="info-val">{{ $kpiInscActive?->classe?->filiere?->name ?? '—' }}</span>
             </div>
+            @if($parcours || $lmdCredits)
+                @if($parcours && $parcours->mention && $parcours->mention->domaine)
+                    <div class="info-row">
+                        <span class="info-lbl">Domaine</span>
+                        <span class="info-val">{{ $parcours->mention->domaine->name }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-lbl">Mention</span>
+                        <span class="info-val">{{ $parcours->mention->name }}</span>
+                    </div>
+                @endif
+                <div class="info-row">
+                    <span class="info-lbl">Parcours</span>
+                    <span class="info-val">{{ $parcours->name ?? '—' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-lbl">Crédits capitalisés</span>
+                    <span class="info-val mono" style="font-weight:600; color:#059669;">{{ $lmdCredits['capitalises'] ?? 0 }} / {{ $lmdCredits['totaux'] ?? 30 }} CECT</span>
+                </div>
+            @endif
             <div class="info-row">
                 <span class="info-lbl">Email</span>
                 <span class="info-val">
@@ -2513,6 +2587,199 @@
 
 @if($acadInscs->count())
 
+    {{-- ══ BLOC LMD — Résultats par UE/ECUE avec onglets semestres ══ --}}
+    @if($isLMD && $bulletinsLMD->count())
+        <div class="fin-hero" style="margin-bottom:16px;">
+            <div class="fin-hero-year-badge">
+                <i class="fas fa-calendar-check"></i>
+                Année en cours : <strong>{{ $acadAnnee }}</strong>
+                @if($acadClasse) &middot; {{ $acadClasse }} @endif
+                @if($bulletinsLMD->count() === 1)
+                    &middot; <span style="color:#6ee7b7;">Semestre {{ $bulletinsLMD->first()->semestre }}</span>
+                @else
+                    &middot; <span style="color:#6ee7b7;">{{ $bulletinsLMD->count() }} semestres</span>
+                @endif
+            </div>
+        </div>
+
+        {{-- Onglets semestres si plusieurs --}}
+        @if($bulletinsLMD->count() > 1)
+        <div style="display:flex; gap:6px; margin-bottom:12px;">
+            @foreach($bulletinsLMD as $idx => $bul)
+                <button class="lmd-sem-tab {{ $idx === $bulletinsLMD->count() - 1 ? 'active' : '' }}"
+                        onclick="switchLmdSem({{ $bul->semestre }})"
+                        data-sem="{{ $bul->semestre }}"
+                        style="flex:1; padding:8px 12px; border:2px solid {{ $idx === $bulletinsLMD->count() - 1 ? '#059669' : '#e2e8f0' }}; background:{{ $idx === $bulletinsLMD->count() - 1 ? '#ecfdf5' : '#fff' }}; border-radius:10px; font-size:.82rem; font-weight:600; color:{{ $idx === $bulletinsLMD->count() - 1 ? '#059669' : '#64748b' }}; cursor:pointer; transition:all .2s;">
+                    <i class="fas fa-book-open" style="margin-right:4px; font-size:.7rem;"></i>
+                    S{{ $bul->semestre }}
+                    @if($bul->moyenne_generale) — {{ number_format($bul->moyenne_generale, 2) }}/20 @endif
+                </button>
+            @endforeach
+        </div>
+        @endif
+
+        {{-- Contenu de chaque semestre --}}
+        @foreach($bulletinsLMD as $idx => $_bul)
+        <div class="lmd-sem-panel" data-sem="{{ $_bul->semestre }}" style="{{ $idx !== $bulletinsLMD->count() - 1 ? 'display:none;' : '' }}">
+        <div class="acad-hero">
+            <div class="acad-hero-top">
+                <div>
+                    <div class="acad-hero-label"><i class="fas fa-graduation-cap" style="margin-right:5px;"></i>Bilan LMD</div>
+                    <div class="acad-hero-title">{{ $acadAnnee }}</div>
+                    <div class="acad-hero-subtitle">{{ $acadClasse }} · S{{ $_bul->semestre }}</div>
+                </div>
+            </div>
+            <div class="acad-kpi-row">
+                {{-- Moyenne --}}
+                @php
+                    $lmdMg = $_bul->moyenne_generale;
+                    $lmdCirc = 2 * 3.14159 * 35;
+                    $lmdMgPct = $lmdMg ? min(100, round($lmdMg / 20 * 100)) : 0;
+                    $lmdMgOff = $lmdCirc - ($lmdMgPct / 100 * $lmdCirc);
+                    $lmdMgStroke = !$lmdMg ? '#64748b' : ($lmdMg >= 14 ? '#10b981' : ($lmdMg >= 12 ? '#34d399' : ($lmdMg >= 10 ? '#f59e0b' : '#ef4444')));
+                @endphp
+                <div class="acad-kpi-block">
+                    <div class="acad-kpi-label">Moyenne</div>
+                    <div class="acad-ring-wrap">
+                        <svg viewBox="0 0 80 80">
+                            <circle class="acad-ring-bg" cx="40" cy="40" r="35"/>
+                            <circle class="acad-ring-fg" cx="40" cy="40" r="35" stroke="{{ $lmdMgStroke }}" stroke-dasharray="{{ $lmdCirc }}" stroke-dashoffset="{{ $lmdMg ? $lmdMgOff : $lmdCirc }}"/>
+                        </svg>
+                        <div class="acad-ring-center">
+                            <span class="acad-ring-val" style="color:{{ $lmdMgStroke }};">{{ $lmdMg ? number_format($lmdMg, 2) : '—' }}</span>
+                            <span class="acad-ring-sub">/20</span>
+                        </div>
+                    </div>
+                    @if($lmdMg) <div class="acad-kpi-mention">{{ $_bul->mention_generale }}</div> @endif
+                </div>
+
+                {{-- Crédits --}}
+                @php
+                    $lmdCred = $_bul->credits_capitalises ?? 0;
+                    $lmdCredTot = $_bul->credits_totaux ?? 30;
+                    $lmdCredPct = $lmdCredTot > 0 ? min(100, round($lmdCred / $lmdCredTot * 100)) : 0;
+                    $lmdCredOff = $lmdCirc - ($lmdCredPct / 100 * $lmdCirc);
+                    $lmdCredStroke = $lmdCredPct >= 80 ? '#10b981' : ($lmdCredPct >= 50 ? '#f59e0b' : '#ef4444');
+                @endphp
+                <div class="acad-kpi-block">
+                    <div class="acad-kpi-label">Crédits</div>
+                    <div class="acad-ring-wrap">
+                        <svg viewBox="0 0 80 80">
+                            <circle class="acad-ring-bg" cx="40" cy="40" r="35"/>
+                            <circle class="acad-ring-fg" cx="40" cy="40" r="35" stroke="{{ $lmdCredStroke }}" stroke-dasharray="{{ $lmdCirc }}" stroke-dashoffset="{{ $lmdCredOff }}"/>
+                        </svg>
+                        <div class="acad-ring-center">
+                            <span class="acad-ring-val" style="color:{{ $lmdCredStroke }};">{{ $lmdCred }}/{{ $lmdCredTot }}</span>
+                            <span class="acad-ring-sub">CECT</span>
+                        </div>
+                    </div>
+                    <div class="acad-kpi-mention" style="font-size:.72rem; color:rgba(255,255,255,.6);">{{ $lmdCredPct }}% capitalisés</div>
+                </div>
+
+                {{-- Classement --}}
+                <div class="acad-kpi-block">
+                    <div class="acad-kpi-label">Classement</div>
+                    <div class="acad-ring-wrap">
+                        <svg viewBox="0 0 80 80"><circle class="acad-ring-bg" cx="40" cy="40" r="35"/></svg>
+                        <div class="acad-ring-center">
+                            @if($_bul->rang)
+                                <span class="acad-ring-val">{{ $_bul->rang }}<sup style="font-size:.5em;">e</sup></span>
+                                <span class="acad-ring-sub">/ {{ $_bul->effectif ?? '—' }}</span>
+                            @else
+                                <span class="acad-ring-val" style="color:#64748b;">—</span>
+                                <span class="acad-ring-sub">Non classé</span>
+                            @endif
+                        </div>
+                    </div>
+                    @if($_bul->decision_deliberation)
+                        <div class="acad-kpi-mention" style="font-size:.72rem;">{{ $_bul->decision_deliberation }}</div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        {{-- Tableau UE --}}
+        @if($_bul->resultatsUEs && $_bul->resultatsUEs->count())
+        <div class="s-card" style="margin-top:16px;">
+            <div class="s-card-header">
+                <div class="s-card-title">
+                    <div class="s-card-title-icon"><i class="fas fa-layer-group"></i></div>
+                    Résultats par Unité d'Enseignement — S{{ $_bul->semestre }}
+                </div>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="table-modern" style="width:100%; font-size:.84rem;">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left; padding:.6rem .75rem;">UE / ECUE</th>
+                            <th style="text-align:center; width:80px;">Moyenne</th>
+                            <th style="text-align:center; width:80px;">Crédits</th>
+                            <th style="text-align:center; width:80px;">Statut</th>
+                            <th style="text-align:center; width:120px;">Stats promo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach($_bul->resultatsUEs->sortBy(fn($r) => $r->uniteEnseignement?->code ?? '') as $resUE)
+                        @php
+                            $ue = $resUE->uniteEnseignement;
+                            $statutColor = match($resUE->statut) { 'AQ' => '#10b981', 'APC' => '#f59e0b', default => '#ef4444' };
+                            $statutLabel = match($resUE->statut) { 'AQ' => 'Acquis', 'APC' => 'Compensé', 'NAQ' => 'Non acquis', default => $resUE->statut ?? '—' };
+                        @endphp
+                        <tr style="background:#f0fdf4; font-weight:600;">
+                            <td style="padding:.55rem .75rem;">
+                                <i class="fas fa-folder-open" style="color:#059669; font-size:.7rem; margin-right:.35rem;"></i>
+                                {{ $ue?->code ?? '' }} — {{ $ue?->name ?? 'UE inconnue' }}
+                            </td>
+                            <td style="text-align:center; font-weight:700; color:{{ $resUE->moyenne >= 10 ? '#059669' : '#ef4444' }};">{{ $resUE->moyenne !== null ? number_format($resUE->moyenne, 2) : '—' }}</td>
+                            <td style="text-align:center; font-weight:700;">{{ $resUE->credit ?? '—' }}</td>
+                            <td style="text-align:center;"><span style="display:inline-block; padding:2px 8px; border-radius:6px; font-size:.72rem; font-weight:600; color:#fff; background:{{ $statutColor }};">{{ $statutLabel }}</span></td>
+                            <td style="text-align:center; font-size:.75rem; color:#64748b;">@if($resUE->stat_min !== null){{ number_format($resUE->stat_min, 1) }} / {{ number_format($resUE->stat_moy, 1) }} / {{ number_format($resUE->stat_max, 1) }}@else — @endif</td>
+                        </tr>
+                        @foreach($_bul->resultatsECUEs->where('resultat_ue_id', $resUE->id)->sortBy(fn($e) => $e->matiere?->code ?? '') as $resECUE)
+                            <tr style="font-size:.8rem;">
+                                <td style="padding:.4rem .75rem .4rem 2.5rem; color:#475569;"><i class="fas fa-file-alt" style="font-size:.6rem; color:#94a3b8; margin-right:.3rem;"></i>{{ $resECUE->matiere?->code ?? '' }} — {{ $resECUE->matiere?->name ?? '—' }}</td>
+                                <td style="text-align:center; color:{{ ($resECUE->moyenne ?? 0) >= 10 ? '#059669' : '#ef4444' }}; font-weight:600;">{{ $resECUE->moyenne !== null ? number_format($resECUE->moyenne, 2) : '—' }}</td>
+                                <td style="text-align:center;">{{ $resECUE->credit ?? '—' }}</td>
+                                <td style="text-align:center; font-size:.72rem; color:#94a3b8;">—</td>
+                                <td style="text-align:center; font-size:.72rem; color:#64748b;">@if($resECUE->stat_min !== null){{ number_format($resECUE->stat_min, 1) }} / {{ number_format($resECUE->stat_moy, 1) }} / {{ number_format($resECUE->stat_max, 1) }}@else — @endif</td>
+                            </tr>
+                        @endforeach
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @else
+            <div class="s-card" style="margin-top:16px; text-align:center; padding:2rem; color:#94a3b8;">
+                <i class="fas fa-info-circle" style="font-size:1.5rem; margin-bottom:.5rem; display:block;"></i>
+                Aucun résultat UE enregistré pour S{{ $_bul->semestre }}.
+            </div>
+        @endif
+        </div>{{-- /lmd-sem-panel --}}
+        @endforeach
+
+    @elseif($isLMD && $bulletinsLMD->isEmpty())
+        {{-- LMD mais pas encore de bulletin --}}
+        <div class="fin-hero" style="margin-bottom:16px;">
+            <div class="fin-hero-year-badge">
+                <i class="fas fa-calendar-check"></i>
+                Année en cours : <strong>{{ $acadAnnee }}</strong>
+                @if($acadClasse) &middot; {{ $acadClasse }} @endif
+            </div>
+        </div>
+        <div class="s-card" style="text-align:center; padding:2rem; color:#94a3b8;">
+            <i class="fas fa-graduation-cap" style="font-size:2rem; margin-bottom:.75rem; display:block; color:#059669;"></i>
+            <div style="font-weight:600; color:#334155; margin-bottom:.25rem;">Étudiant LMD</div>
+            <div style="font-size:.84rem;">Aucun bulletin LMD n'a encore été généré pour cette année. Les résultats apparaîtront ici après la génération du bulletin.</div>
+            @if($parcours)
+                <div style="margin-top:.75rem; font-size:.8rem; color:#059669;">
+                    <i class="fas fa-sitemap" style="margin-right:.25rem;"></i>
+                    {{ $parcours->mention?->domaine?->name ?? '' }} › {{ $parcours->mention?->name ?? '' }} › {{ $parcours->name }}
+                </div>
+            @endif
+        </div>
+    @else
+
     {{-- ══ BLOC ANNÉE EN COURS (toujours plat, jamais collapsible) ══ --}}
     @if($acadIsNotCurrentYear)
         {{-- Pas de données pour l'année courante --}}
@@ -2556,17 +2823,17 @@
             {{-- KPI 1 : Moyenne générale --}}
             @php
                 $mgPct = $acadMg !== null ? min(100, round($acadMg / 20 * 100)) : 0;
-                $circumference = 2 * 3.14159 * 28; // r=28
+                $circumference = 2 * 3.14159 * 35; // r=35
                 $mgOffset = $circumference - ($mgPct / 100 * $circumference);
                 $mgStroke = $acadMg === null ? '#64748b' : ($acadMg >= 14 ? '#10b981' : ($acadMg >= 12 ? '#34d399' : ($acadMg >= 10 ? '#f59e0b' : '#ef4444')));
             @endphp
             <div class="acad-kpi-block">
                 <div class="acad-kpi-label">Moyenne</div>
                 <div class="acad-ring-wrap">
-                    <svg viewBox="0 0 64 64">
-                        <circle class="acad-ring-bg" cx="32" cy="32" r="28"/>
+                    <svg viewBox="0 0 80 80">
+                        <circle class="acad-ring-bg" cx="40" cy="40" r="35"/>
                         <circle class="acad-ring-fg"
-                            cx="32" cy="32" r="28"
+                            cx="40" cy="40" r="35"
                             stroke="{{ $mgStroke }}"
                             stroke-dasharray="{{ $circumference }}"
                             stroke-dashoffset="{{ $acadMg !== null ? $mgOffset : $circumference }}"/>
@@ -2860,6 +3127,7 @@
     @endif
 
     @endif {{-- fin @else acadIsNotCurrentYear --}}
+    @endif {{-- fin @else isLMD --}}
 
     {{-- ══ AUTRES ANNÉES ══════════════════════════════════════ --}}
     @php
@@ -2878,22 +3146,53 @@
 
     @foreach($acadInscsPrec as $autreInsc)
     @php
-        $autreBuls = \App\Models\ESBTPBulletin::where('etudiant_id', $etudiant->id)
-            ->where('annee_universitaire_id', optional($autreInsc->anneeUniversitaire)->id)
-            ->orderBy('periode')->get();
-        $autreMention = $autreBuls->last()?->mention;
+        $autreIsLMD = optional($autreInsc->classe)->systeme_academique === 'LMD';
+
+        // Charger les bulletins selon le système académique
+        if ($autreIsLMD) {
+            $autreBulsLMD = \App\Models\ESBTPLMDBulletin::where('etudiant_id', $etudiant->id)
+                ->where('classe_id', optional($autreInsc->classe)->id)
+                ->with(['resultatsUEs.uniteEnseignement', 'resultatsECUEs.matiere'])
+                ->orderBy('semestre')->get();
+            $autreBuls = collect(); // pas de BTS bulletins
+        } else {
+            $autreBulsLMD = collect();
+            $autreBuls = \App\Models\ESBTPBulletin::where('etudiant_id', $etudiant->id)
+                ->where('annee_universitaire_id', optional($autreInsc->anneeUniversitaire)->id)
+                ->orderBy('periode')->get();
+        }
+        $autreMention = $autreIsLMD
+            ? ($autreBulsLMD->last()?->mention_generale ?? null)
+            : ($autreBuls->last()?->mention ?? null);
         $autreAnneeLabel = optional($autreInsc->anneeUniversitaire)->name ?? 'Année N/A';
         $autreClasseLabel = optional($autreInsc->classe)->name ?? '';
         $autreArchKey = 'acad-arch-' . $autreInsc->id;
 
-        /* Résultats bruts pour calcul pondéré : utilisés si bulletins sans moyenne_generale */
-        $autreResultatsBruts = \App\Models\ESBTPResultat::where('etudiant_id', $etudiant->id)
-            ->where('annee_universitaire_id', optional($autreInsc->anneeUniversitaire)->id)
-            ->with(['matiere'])->get();
+        /* Calcul moyenne générale selon le système */
+        if ($autreIsLMD) {
+            // LMD : moyenne pondérée des bulletins LMD par crédits
+            $autreBulsValides = $autreBulsLMD->filter(fn($b) => ($b->moyenne_generale ?? 0) > 0);
+            if ($autreBulsValides->count() > 1) {
+                $atc = $autreBulsValides->sum('credits_totaux');
+                $autreMg = $atc > 0
+                    ? round($autreBulsValides->sum(fn($b) => $b->moyenne_generale * $b->credits_totaux) / $atc, 2)
+                    : round($autreBulsValides->avg('moyenne_generale'), 2);
+            } elseif ($autreBulsValides->count() === 1) {
+                $autreMg = round($autreBulsValides->first()->moyenne_generale, 2);
+            } else {
+                $autreMg = null;
+            }
+            $autreResultatsBruts = collect(); // pas de résultats BTS bruts pour LMD
+        } else {
+            // BTS : logique existante
+            $autreResultatsBruts = \App\Models\ESBTPResultat::where('etudiant_id', $etudiant->id)
+                ->where('annee_universitaire_id', optional($autreInsc->anneeUniversitaire)->id)
+                ->with(['matiere'])->get();
 
-        /* Calcul moyenne générale : bulletins officiels si disponibles, sinon pondéré depuis ESBTPResultat */
-        $autreBulsValides = $autreBuls->filter(fn($b) => ($b->moyenne_generale ?? 0) > 0);
-        if ($autreBulsValides->count()) {
+            $autreBulsValides = $autreBuls->filter(fn($b) => ($b->moyenne_generale ?? 0) > 0);
+        }
+
+        if (!$autreIsLMD && $autreBulsValides->count()) {
             $autreMg = round($autreBulsValides->avg('moyenne_generale'), 2);
         } elseif ($autreResultatsBruts->whereNotNull('moyenne')->count()) {
             /* Pondération S1/S2 depuis settings (cohérence avec bulletins) */
@@ -2925,7 +3224,7 @@
         $autreMgColor = $autreMg === null ? 'var(--k-muted)' : ($autreMg >= 12 ? 'var(--k-success)' : ($autreMg >= 10 ? '#d97706' : 'var(--k-danger)'));
 
         /* Résultats groupés par période pour affichage dans le body */
-        $autreResultats = !$autreBuls->count()
+        $autreResultats = (!$autreIsLMD && !$autreBuls->count())
             ? $autreResultatsBruts->groupBy(fn($r) => $r->periode ?? 'N/A')
             : collect();
     @endphp
@@ -2960,7 +3259,27 @@
         </button>
         <div class="collapse" id="{{ $autreArchKey }}">
             <div class="acad-arch-body">
-                @if($autreBuls->count())
+                @if($autreIsLMD && $autreBulsLMD->count())
+                    {{-- Rendu LMD pour années précédentes --}}
+                    @foreach($autreBulsLMD as $abLmd)
+                    <div class="acad-arch-sem-row">
+                        <span class="acad-arch-sem-name">
+                            <span style="display:inline-block; padding:1px 6px; border-radius:4px; font-size:.65rem; font-weight:600; color:#fff; background:#059669; margin-right:4px;">LMD</span>
+                            Semestre {{ $abLmd->semestre }}
+                        </span>
+                        <div class="acad-arch-sem-info">
+                            @if($abLmd->rang)
+                                <span style="font-size:.75rem; color:var(--k-muted);"><i class="fas fa-trophy" style="color:#f59e0b; font-size:.65rem;"></i> {{ $abLmd->rang }}</span>
+                            @endif
+                            @if($abLmd->moyenne_generale)
+                                @php $abLmdMgC = $abLmd->moyenne_generale >= 12 ? 'var(--k-success)' : ($abLmd->moyenne_generale >= 10 ? '#d97706' : 'var(--k-danger)'); @endphp
+                                <span style="font-size:.8rem; font-weight:700; color:{{ $abLmdMgC }};">{{ number_format($abLmd->moyenne_generale, 2) }}/20</span>
+                            @endif
+                            <span style="font-size:.72rem; color:var(--k-muted);">{{ $abLmd->credits_capitalises ?? 0 }}/{{ $abLmd->credits_totaux ?? 30 }} CECT</span>
+                        </div>
+                    </div>
+                    @endforeach
+                @elseif($autreBuls->count())
                     @foreach($autreBuls as $ab)
                     @php
                         $abMgRaw = $ab->moyenne_generale;
@@ -3384,8 +3703,19 @@
             try { $finTotalAttendu = $finInscActive->fraisSubscriptions->sum('amount'); } catch(\Exception $e) {}
         }
 
-        $finSolde  = $finTotalAttendu - $finTotalPaye;
-        $finTaux   = $finTotalAttendu > 0 ? min(100, round($finTotalPaye / $finTotalAttendu * 100)) : 0;
+        // Reliquats entrants pour l'inscription active
+        $finReliquatsActifs = isset($reliquatsEntrants) ? $reliquatsEntrants->filter(fn($r) =>
+            $finInscActive && $r->inscription_destination_id == $finInscActive->id
+        ) : collect();
+        $finTotalReliquat = $finReliquatsActifs->sum('montant_reliquat');
+        $finReliquatPaye  = $finReliquatsActifs->sum('montant_regle');
+        $finReliquatSolde = $finReliquatsActifs->sum('solde_restant');
+
+        // Total global = frais inscrits + reliquats
+        $finTotalAttenduGlobal = $finTotalAttendu + $finTotalReliquat;
+        $finTotalPayeGlobal    = $finTotalPaye + $finReliquatPaye;
+        $finSolde  = $finTotalAttenduGlobal - $finTotalPayeGlobal;
+        $finTaux   = $finTotalAttenduGlobal > 0 ? min(100, round($finTotalPayeGlobal / $finTotalAttenduGlobal * 100)) : 0;
     @endphp
 
     {{-- ── HERO FINANCIER ─────────────────────────────────────── --}}
@@ -3413,11 +3743,14 @@
                     Total attendu
                 </div>
                 <div class="fin-kpi-amount neutral">
-                    {{ number_format($finTotalAttendu, 0, ',', ' ') }}
+                    {{ number_format($finTotalAttenduGlobal, 0, ',', ' ') }}
                     <span class="fin-kpi-currency">FCFA</span>
                 </div>
                 <div class="fin-kpi-sub">
-                    {{ $finNbPaiements }} transaction(s) enregistrée(s)
+                    {{ $finNbPaiements }} transaction(s)
+                    @if($finTotalReliquat > 0)
+                        · <span style="color:#f59e0b;">Reliquat {{ number_format($finTotalReliquat, 0, ',', ' ') }}</span>
+                    @endif
                 </div>
             </div>
 
@@ -3431,7 +3764,7 @@
                     Total payé
                 </div>
                 <div class="fin-kpi-amount paid">
-                    {{ number_format($finTotalPaye, 0, ',', ' ') }}
+                    {{ number_format($finTotalPayeGlobal, 0, ',', ' ') }}
                     <span class="fin-kpi-currency">FCFA</span>
                 </div>
                 @if($finEnAttente > 0)
@@ -3480,7 +3813,7 @@
             <div class="fin-progress-track">
                 {{-- Segment en attente --}}
                 @php
-                    $finAttenteW = $finTotalAttendu > 0 ? min(100, round(($finTotalPaye + $finEnAttente) / $finTotalAttendu * 100)) : 0;
+                    $finAttenteW = $finTotalAttenduGlobal > 0 ? min(100, round(($finTotalPayeGlobal + $finEnAttente) / $finTotalAttenduGlobal * 100)) : 0;
                 @endphp
                 @if($finEnAttente > 0 && $finTotalAttendu > 0)
                 <div class="fin-progress-segment attente" style="width:{{ $finAttenteW }}%"></div>
@@ -3489,7 +3822,7 @@
                 <div class="fin-progress-segment valide" style="width:{{ $finTaux }}%"></div>
             </div>
             <div class="fin-progress-legend">
-                <span><span class="fin-legend-dot valide"></span>Validé ({{ number_format($finTotalPaye, 0, ',', ' ') }} FCFA)</span>
+                <span><span class="fin-legend-dot valide"></span>Validé ({{ number_format($finTotalPayeGlobal, 0, ',', ' ') }} FCFA)</span>
                 @if($finEnAttente > 0)<span><span class="fin-legend-dot attente"></span>En attente ({{ number_format($finEnAttente, 0, ',', ' ') }} FCFA)</span>@endif
                 @if($finReliquats > 0)<span><span class="fin-legend-dot reliquat"></span>Reliquat ({{ number_format($finReliquats, 0, ',', ' ') }} FCFA)</span>@endif
             </div>
@@ -3624,6 +3957,39 @@
                             </button>
                             @else
                             <span style="font-size:.75rem; color:#10b981; font-weight:600;"><i class="fas fa-check-circle"></i> Soldé</span>
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+                {{-- ── Lignes reliquats ── --}}
+                @foreach($finReliquatsActifs as $reliquat)
+                    @php
+                        $relSolde = $reliquat->solde_restant ?? 0;
+                        $relTaux  = $reliquat->montant_reliquat > 0 ? min(100, round(($reliquat->montant_regle ?? 0) / $reliquat->montant_reliquat * 100)) : 0;
+                        $relAnnee = $reliquat->inscriptionSource?->anneeUniversitaire?->name ?? '—';
+                        $relCatName = $reliquat->fraisSubscription?->fraisCategory?->name ?? 'Reliquat';
+                    @endphp
+                    <tr style="background:#fffbeb;">
+                        <td>
+                            <span class="fin-cat-name">{{ $relCatName }}</span>
+                            <span style="display:inline-block; margin-left:6px; padding:1px 6px; border-radius:4px; font-size:.68rem; font-weight:600; color:#92400e; background:#fef3c7;">Reliquat {{ $relAnnee }}</span>
+                        </td>
+                        <td style="text-align:right; font-weight:600; color:var(--k-text);">{{ number_format($reliquat->montant_reliquat ?? 0, 0, ',', ' ') }}</td>
+                        <td style="text-align:right; font-weight:700; color:#10b981;">{{ number_format($reliquat->montant_regle ?? 0, 0, ',', ' ') }}</td>
+                        <td style="text-align:right; font-weight:700; color:{{ $relSolde > 0 ? '#f59e0b' : '#10b981' }};">
+                            {{ $relSolde > 0 ? number_format($relSolde, 0, ',', ' ') : '✓' }}
+                        </td>
+                        <td style="text-align:center; min-width:100px;">
+                            <div class="fin-mini-track">
+                                <div class="fin-mini-fill" style="width:{{ $relTaux }}%; background:{{ $relTaux >= 100 ? '#10b981' : '#f59e0b' }};"></div>
+                            </div>
+                            <span style="font-size:.72rem; color:var(--k-muted);">{{ $relTaux }}%</span>
+                        </td>
+                        <td style="text-align:center;">
+                            @if($relSolde > 0)
+                                <span style="font-size:.72rem; color:#f59e0b; font-weight:600;"><i class="fas fa-clock"></i> En cours</span>
+                            @else
+                                <span style="font-size:.75rem; color:#10b981; font-weight:600;"><i class="fas fa-check-circle"></i> Soldé</span>
                             @endif
                         </td>
                     </tr>
@@ -3886,6 +4252,24 @@
                 @else
                 <div style="text-align:center; padding:16px; color:var(--k-muted); font-size:.83rem;">Aucun paiement</div>
                 @endif
+
+                {{-- Boutons actions financières (autres années) --}}
+                <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap; margin-top:14px; padding-top:14px; border-top:1px solid rgba(0,0,0,.06);">
+                    <a href="{{ route('esbtp.inscriptions.situation-financiere.preview', $autreInsc->id) }}"
+                       style="display:inline-flex; align-items:center; gap:6px; padding:7px 16px; font-size:.8rem; border-radius:8px; background:linear-gradient(135deg, #059669, #10b981); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 2px 8px rgba(5,150,105,.25); text-decoration:none;">
+                        <i class="fas fa-chart-line"></i> Situation Financière
+                    </a>
+                    <a href="{{ route('esbtp.inscriptions.situation-financiere.pdf', $autreInsc->id) }}"
+                       style="display:inline-flex; align-items:center; gap:6px; padding:7px 16px; font-size:.8rem; border-radius:8px; background:linear-gradient(135deg, #dc2626, #ef4444); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 2px 8px rgba(220,38,38,.25); text-decoration:none;">
+                        <i class="fas fa-file-pdf"></i> PDF Situation
+                    </a>
+                    <button {{ $autreSolde <= 0 ? 'disabled' : '' }}
+                            style="display:inline-flex; align-items:center; gap:6px; padding:7px 16px; font-size:.8rem; border-radius:8px; background:linear-gradient(135deg, var(--k-blue, #0453cb), var(--k-blue-2, #5e91de)); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 2px 8px rgba(4,83,203,.25);{{ $autreSolde <= 0 ? ' opacity:.5; cursor:not-allowed;' : '' }}"
+                            @if($autreSolde > 0) data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal" onclick="prepareEtudiantPaymentModal({{ $autreInsc->id }})" @endif>
+                        <i class="fas fa-{{ $autreSolde <= 0 ? 'check-circle' : 'plus-circle' }}"></i>
+                        {{ $autreSolde <= 0 ? 'Soldé' : 'Enregistrer un paiement' }}
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -3896,6 +4280,36 @@
 
 {{-- ─── TAB: PROFIL ─────────────────────────────────────────────── --}}
 <div class="tab-panel" id="tab-profil">
+
+    {{-- Parcours LMD (visible même si pas inscrit cette année — crédits capitalisés à vie) --}}
+    @if($parcours)
+    <div class="s-card" style="margin-bottom:16px;">
+        <div class="s-card-header">
+            <div class="s-card-title">
+                <div class="s-card-title-icon" style="background:#ecfdf5; color:#059669;"><i class="fas fa-sitemap"></i></div>
+                Parcours académique LMD
+            </div>
+            <span style="display:inline-block; padding:3px 10px; border-radius:6px; font-size:.72rem; font-weight:600; color:#fff; background:linear-gradient(135deg, #059669, #34d399);">LMD</span>
+        </div>
+        <div class="info-grid">
+            @if($parcours->mention && $parcours->mention->domaine)
+                <div class="info-row"><span class="info-lbl">Domaine</span><span class="info-val" style="font-weight:600;">{{ $parcours->mention->domaine->name }}</span></div>
+                <div class="info-row"><span class="info-lbl">Mention</span><span class="info-val" style="font-weight:600;">{{ $parcours->mention->name }}</span></div>
+            @endif
+            <div class="info-row"><span class="info-lbl">Parcours</span><span class="info-val" style="font-weight:600; color:#059669;">{{ $parcours->name }}</span></div>
+            <div class="info-row"><span class="info-lbl">Filière</span><span class="info-val">{{ $parcours->filiere?->name ?? $kpiInscActive?->classe?->filiere?->name ?? '—' }}</span></div>
+            @if($lmdCredits)
+                <div class="info-row"><span class="info-lbl">Crédits capitalisés</span><span class="info-val mono" style="font-weight:600; color:#059669;">{{ $lmdCredits['capitalises'] }} / {{ $lmdCredits['totaux'] }} CECT</span></div>
+                @if(count($lmdCredits['semestres']) === 2)
+                    <div class="info-row"><span class="info-lbl">Semestres en cours</span><span class="info-val">S{{ $lmdCredits['semestres'][0] }} — S{{ $lmdCredits['semestres'][1] }}</span></div>
+                @endif
+            @endif
+            @if($parcours->responsable)
+                <div class="info-row"><span class="info-lbl">Responsable parcours</span><span class="info-val">{{ $parcours->responsable->name ?? '—' }}</span></div>
+            @endif
+        </div>
+    </div>
+    @endif
 
     {{-- Infos personnelles --}}
     <div class="s-card">
@@ -4280,6 +4694,26 @@
 
 @push('scripts')
 <script>
+// Switch LMD semester tabs
+function switchLmdSem(sem) {
+    document.querySelectorAll('.lmd-sem-panel').forEach(p => p.style.display = 'none');
+    document.querySelectorAll('.lmd-sem-tab').forEach(t => {
+        t.style.borderColor = '#e2e8f0';
+        t.style.background = '#fff';
+        t.style.color = '#64748b';
+        t.classList.remove('active');
+    });
+    const panel = document.querySelector('.lmd-sem-panel[data-sem="' + sem + '"]');
+    if (panel) panel.style.display = 'block';
+    const tab = document.querySelector('.lmd-sem-tab[data-sem="' + sem + '"]');
+    if (tab) {
+        tab.style.borderColor = '#059669';
+        tab.style.background = '#ecfdf5';
+        tab.style.color = '#059669';
+        tab.classList.add('active');
+    }
+}
+
 // Upload photo étudiant via AJAX
 function uploadEtudiantPhoto(input) {
     if (!input.files || !input.files[0]) return;
@@ -4577,13 +5011,44 @@ function prepareEtudiantPaymentModal(inscriptionId) {
     form.reset();
     const dateInput = form.querySelector('#etd_date_paiement');
     if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
-    // Reset validation message
     const msgDiv = document.getElementById('etd-montant-validation-message');
     if (msgDiv) msgDiv.style.display = 'none';
     const montantInput = form.querySelector('#etd_montant');
-    if (montantInput) { montantInput.removeAttribute('disabled'); montantInput.value = ''; montantInput.removeAttribute('max'); }
+    if (montantInput) { montantInput.setAttribute('disabled', 'disabled'); montantInput.value = ''; montantInput.removeAttribute('max'); }
     window._etdInscriptionId = inscriptionId;
     window._etdIsSubscribed = false;
+
+    // Charger les catégories de frais via AJAX
+    const sel = document.getElementById('etd_fee_category_id');
+    if (sel) {
+        sel.innerHTML = '<option value="">Chargement...</option>';
+        sel.disabled = true;
+    }
+    fetch(`/esbtp/inscriptions/${inscriptionId}/frais-restants`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success || !sel) return;
+            // Mettre à jour le header du modal (classe + année)
+            const classeSpan = document.getElementById('etd-modal-classe-info');
+            if (classeSpan) {
+                let info = '';
+                if (data.classe) info += ' · ' + data.classe;
+                if (data.annee) info += ' · ' + data.annee;
+                classeSpan.textContent = info;
+            }
+            // Repeupler le select
+            sel.innerHTML = '<option value="">Sélectionnez une catégorie</option>';
+            data.categories.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.category_id;
+                opt.textContent = c.name + ' — reste ' + Number(c.montant_restant).toLocaleString('fr-FR') + ' FCFA';
+                sel.appendChild(opt);
+            });
+            sel.disabled = false;
+        })
+        .catch(() => {
+            if (sel) { sel.innerHTML = '<option value="">Erreur de chargement</option>'; sel.disabled = false; }
+        });
 }
 
 function prepareEtudiantPaymentModalForCategory(inscriptionId, categoryId) {
@@ -4801,7 +5266,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div style="color:#084298;font-weight:500;margin-bottom:.25rem;">{{ $etudiant->nom_complet }}</div>
                                 <div style="color:#052c65;font-size:.9rem;">
                                     Matricule : <strong>{{ $etudiant->matricule ?? 'N/A' }}</strong>
-                                    @if($finInscActive->classe) · {{ $finInscActive->classe->name }} @endif
+                                    <span id="etd-modal-classe-info">@if($finInscActive->classe) · {{ $finInscActive->classe->name }} @endif</span>
                                 </div>
                             </div>
                         </div>
@@ -4817,23 +5282,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <select class="form-select" id="etd_fee_category_id" name="fee_category_id" required
                                     style="border:2px solid #dee2e6;border-radius:8px;font-weight:500;"
                                     onchange="etdUpdateMontantRestant()">
-                                <option value="">Sélectionnez une catégorie</option>
-                                @if(isset($finInscActive) && $finInscActive)
-                                    @foreach($finInscActive->fraisSubscriptions as $sub)
-                                        @php
-                                            $subCatName = $sub->fraisCategory->name ?? 'Catégorie #'.$sub->frais_category_id;
-                                            $subPayeOuAttente = $finPaiementsActive->filter(fn($p) =>
-                                                ($p->frais_category_id ?? null) == ($sub->frais_category_id ?? null) &&
-                                                (str_contains(strtolower($p->status ?? $p->statut ?? ''), 'valid') ||
-                                                 str_contains(strtolower($p->status ?? $p->statut ?? ''), 'attente'))
-                                            )->sum('montant');
-                                            $subRestant = max(0, $sub->amount - $subPayeOuAttente);
-                                        @endphp
-                                        @if($subRestant > 0)
-                                        <option value="{{ $sub->frais_category_id }}">{{ $subCatName }} — reste {{ number_format($subRestant, 0, ',', ' ') }} FCFA</option>
-                                        @endif
-                                    @endforeach
-                                @endif
+                                <option value="">Chargement...</option>
                             </select>
                         </div>
                         <div class="col-md-6">

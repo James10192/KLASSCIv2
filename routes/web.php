@@ -916,6 +916,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('/inscriptions/{inscription}/changer-classe-rapide', [ESBTPInscriptionController::class, 'changerClasseRapide'])->name('inscriptions.changer-classe-rapide');
 
             // Route API pour validation montant paiement (AJAX)
+            Route::get('/inscriptions/{inscription}/frais-restants', [ESBTPInscriptionPaiementController::class, 'getFraisRestants'])->name('inscriptions.frais-restants');
             Route::get('/inscriptions/{inscription}/frais/{category}/montant-restant', [ESBTPInscriptionPaiementController::class, 'getMontantRestant'])->name('inscriptions.frais.montant-restant');
             Route::get('/inscriptions/{inscription}/refresh-ligne', [ESBTPInscriptionController::class, 'refreshLigne'])->name('inscriptions.refresh-ligne');
 

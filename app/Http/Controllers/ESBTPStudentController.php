@@ -350,16 +350,114 @@ class ESBTPStudentController extends Controller
         $etudiant->load([
             'user',
             'parents' => fn($q) => $q->with('etudiants'),
-            'inscriptions' => fn($q) => $q->with(['filiere', 'niveauEtude', 'classe', 'anneeUniversitaire'])
-                                          ->orderByDesc('created_at'),
-            'paiements' => fn($q) => $q->with(['fraisCategory', 'validatedBy'])
+            'inscriptions' => fn($q) => $q->with([
+                    'filiere', 'niveauEtude', 'anneeUniversitaire',
+                    'paiements', 'fraisSubscriptions.fraisCategory',
+                    'classe' => fn($cq) => $cq->with(['filiere', 'niveauEtude']),
+                ])
+                ->orderByDesc('created_at'),
+            'paiements' => fn($q) => $q->with(['inscription', 'fraisCategory', 'categorie', 'validatedBy'])
                                        ->orderByDesc('date_paiement'),
+            'absences',
+            'documents' => fn($q) => $q->with('uploadedBy')->orderByDesc('created_at'),
         ]);
 
         $dossier       = $dossierService->buildDossier($etudiant);
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        return view('esbtp.etudiants.show', compact('etudiant', 'dossier', 'anneeCourante'));
+        // ── Reliquats ──
+        $inscriptionIds = $etudiant->inscriptions->pluck('id');
+        $reliquatsEntrants = \App\Models\ESBTPReliquatDetail::whereIn('inscription_destination_id', $inscriptionIds)
+            ->with(['inscriptionSource.anneeUniversitaire', 'fraisSubscription.fraisCategory', 'fraisSubscription.selectedOption'])
+            ->actifs()
+            ->get();
+        $reliquatsSortants = \App\Models\ESBTPReliquatDetail::whereIn('inscription_source_id', $inscriptionIds)
+            ->with(['inscriptionDestination.anneeUniversitaire', 'fraisSubscription.fraisCategory', 'fraisSubscription.selectedOption'])
+            ->get();
+
+        // ── Statistiques ──
+        $statistiques = [
+            'total_paiements' => $etudiant->paiements->sum('montant'),
+            'paiements_valides' => $etudiant->paiements->where('status', 'validé')->sum('montant'),
+            'paiements_en_attente' => $etudiant->paiements->where('status', 'en_attente')->sum('montant'),
+            'nombre_paiements' => $etudiant->paiements->count(),
+            'inscription_active' => $etudiant->inscriptions->where('status', 'active')->first(),
+            'derniere_inscription' => $etudiant->inscriptions->first(),
+            'total_reliquats_entrants' => $reliquatsEntrants->sum('solde_restant'),
+            'total_reliquats_sortants' => $reliquatsSortants->sum('solde_restant'),
+            'nombre_reliquats_actifs' => $reliquatsEntrants->where('statut', 'actif')->count(),
+        ];
+
+        $categoriesfrais = \App\Models\ESBTPFraisCategory::where('is_active', true)->orderBy('name')->get();
+
+        // ── Détection LMD ──
+        $isLMD = false;
+        $bulletinLMD = null;
+        $parcours = null;
+        $lmdCredits = null;
+
+        $inscActive = $anneeCourante
+            ? $etudiant->inscriptions->first(fn($i) => $i->annee_universitaire_id === $anneeCourante->id && $i->status === 'active')
+            : null;
+        // Classe courante = UNIQUEMENT si inscrit dans l'année courante
+        $classeCourante = $inscActive?->classe;
+
+        $bulletinsLMD = collect();
+        $lmdMoyenneAnnuelle = null;
+
+        // ── isLMD = inscrit cette année dans classe LMD (pour KPIs courants) ──
+        if ($classeCourante && $classeCourante->isLMD()) {
+            $isLMD = true;
+            $parcours = $classeCourante->parcours?->load('mention.domaine');
+
+            // Bulletins LMD de cette classe pour L'ANNÉE COURANTE uniquement
+            $bulletinsLMD = \App\Models\ESBTPLMDBulletin::where('etudiant_id', $etudiant->id)
+                ->where('classe_id', $classeCourante->id)
+                ->where('annee_universitaire_id', $anneeCourante->id)
+                ->with(['resultatsUEs.uniteEnseignement', 'resultatsECUEs.matiere', 'deliberation'])
+                ->orderBy('semestre')
+                ->get();
+
+            $bulletinLMD = $bulletinsLMD->last();
+
+            // Moyenne annuelle pondérée par crédits
+            $bulletinsAvecMoyenne = $bulletinsLMD->filter(fn($b) => $b->moyenne_generale > 0);
+            if ($bulletinsAvecMoyenne->count() > 1) {
+                $totalCredits = $bulletinsAvecMoyenne->sum('credits_totaux');
+                $lmdMoyenneAnnuelle = $totalCredits > 0
+                    ? round($bulletinsAvecMoyenne->sum(fn($b) => $b->moyenne_generale * $b->credits_totaux) / $totalCredits, 2)
+                    : round($bulletinsAvecMoyenne->avg('moyenne_generale'), 2);
+            } elseif ($bulletinsAvecMoyenne->count() === 1) {
+                $lmdMoyenneAnnuelle = round($bulletinsAvecMoyenne->first()->moyenne_generale, 2);
+            }
+        }
+
+        // ── Crédits CECT cumulés = TOUTES les inscriptions LMD (capitalisés à vie) ──
+        $allLmdInscs = $etudiant->inscriptions->filter(fn($i) => optional($i->classe)->systeme_academique === 'LMD');
+        if ($allLmdInscs->count()) {
+            $allLmdClasseIds = $allLmdInscs->pluck('classe_id')->unique()->filter();
+            $allLmdBulletins = \App\Models\ESBTPLMDBulletin::where('etudiant_id', $etudiant->id)
+                ->whereIn('classe_id', $allLmdClasseIds)
+                ->get();
+
+            // Parcours : depuis l'inscription LMD la plus récente (même si pas année courante)
+            if (!$parcours) {
+                $lastLmdInsc = $allLmdInscs->first(); // déjà triée desc par created_at
+                $parcours = $lastLmdInsc?->classe?->parcours?->load('mention.domaine');
+            }
+
+            $lmdCredits = [
+                'capitalises' => $allLmdBulletins->sum('credits_capitalises'),
+                'totaux' => $allLmdBulletins->sum('credits_totaux') ?: 30,
+                'semestres' => $classeCourante ? $classeCourante->getSemestresLMD() : [],
+            ];
+        }
+
+        return view('esbtp.etudiants.show', compact(
+            'etudiant', 'dossier', 'anneeCourante',
+            'isLMD', 'bulletinLMD', 'bulletinsLMD', 'lmdMoyenneAnnuelle', 'parcours', 'lmdCredits',
+            'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais'
+        ));
     }
 
     public function edit(Request $request, ESBTPEtudiant $etudiant)

@@ -1046,6 +1046,39 @@ class ESBTPInscriptionPaiementController extends Controller
 
 
     /**
+     * Lister les catégories de frais d'une inscription avec montants restants.
+     */
+    public function getFraisRestants(ESBTPInscription $inscription)
+    {
+        $inscription->load(['fraisSubscriptions.fraisCategory', 'classe', 'anneeUniversitaire']);
+
+        $categories = $inscription->fraisSubscriptions->map(function ($sub) use ($inscription) {
+            $totalPaye = \App\Models\ESBTPPaiement::where('inscription_id', $inscription->id)
+                ->where('frais_category_id', $sub->frais_category_id)
+                ->whereIn('status', ['validé', 'en_attente'])
+                ->whereNull('deleted_at')
+                ->sum('montant');
+
+            $restant = max(0, $sub->amount - $totalPaye);
+
+            return [
+                'category_id' => $sub->frais_category_id,
+                'name' => $sub->fraisCategory->name ?? 'Catégorie #' . $sub->frais_category_id,
+                'montant_total' => $sub->amount,
+                'montant_paye' => $totalPaye,
+                'montant_restant' => $restant,
+            ];
+        })->filter(fn($c) => $c['montant_restant'] > 0)->values();
+
+        return response()->json([
+            'success' => true,
+            'classe' => $inscription->classe?->name,
+            'annee' => $inscription->anneeUniversitaire?->name,
+            'categories' => $categories,
+        ]);
+    }
+
+    /**
      * Calculer le solde d'une catégorie de frais pour une inscription.
      */
     private function calculerSoldeCategorie(

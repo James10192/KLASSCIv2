@@ -469,13 +469,15 @@ class LMDBulletinService
             ->get();
 
         $effectif = $bulletins->count();
+        $position = 0;
         $rang = 0;
         $lastMoyenne = null;
 
         foreach ($bulletins as $bulletin) {
+            $position++;
             $moy = (float) $bulletin->moyenne_generale;
             if ($moy !== $lastMoyenne) {
-                $rang++;
+                $rang = $position;
                 $lastMoyenne = $moy;
             }
             $bulletin->update([
@@ -546,12 +548,14 @@ class LMDBulletinService
                 ->orderByDesc('moyenne')
                 ->get();
 
+            $position = 0;
             $rang = 0;
             $lastMoy = null;
             foreach ($resultats as $r) {
+                $position++;
                 $m = (float) $r->moyenne;
                 if ($m !== $lastMoy) {
-                    $rang++;
+                    $rang = $position;
                     $lastMoy = $m;
                 }
                 $r->update(['rang' => $rang]);

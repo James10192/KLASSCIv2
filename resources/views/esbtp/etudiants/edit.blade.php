@@ -237,8 +237,8 @@
 <div class="se-hero">
     <div class="se-hero-inner">
         <div class="se-hero-avatar">
-            @if($etudiant->photo)
-                <img src="{{ asset('storage/photos/etudiants/' . $etudiant->photo) }}" alt="{{ $etudiant->nom_complet }}"
+            @if($etudiant->photo && $etudiant->photo_url)
+                <img src="{{ $etudiant->photo_url }}" alt="{{ $etudiant->nom_complet }}"
                      onerror="this.parentElement.innerHTML='<i class=\'fas fa-user-graduate\'></i>'">
             @else
                 {{ strtoupper(substr($etudiant->prenoms ?? 'E', 0, 1)) }}{{ strtoupper(substr($etudiant->nom, 0, 1)) }}
