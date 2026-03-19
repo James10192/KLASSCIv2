@@ -19,7 +19,7 @@ class ESBTPLMDUEController extends Controller
     {
         $query = ESBTPUniteEnseignement::query()
             ->withCount('matieres')
-            ->with(['filiere', 'niveau', 'parcours', 'parcoursMultiple']);
+            ->with(['filiere', 'niveau', 'parcours', 'parcoursMultiple', 'ecues']);
 
         // Filtres optionnels
         if ($request->filled('parcours_id')) {
@@ -243,32 +243,46 @@ class ESBTPLMDUEController extends Controller
             'ordre_bulletin'  => 'nullable|integer|min:0',
         ]);
 
+        $coeffEcue = $validated['coefficient_ecue'] ?? null;
+        $creditEcue = $validated['credit_ecue'] ?? null;
+        $ordreBulletin = $validated['ordre_bulletin'] ?? 0;
+
         if (!empty($validated['matiere_id'])) {
-            // Rattacher une matière existante
             $matiere = ESBTPMatiere::findOrFail($validated['matiere_id']);
-            $matiere->update([
-                'unite_enseignement_id' => $ue->id,
-                'credit_ecue'           => $validated['credit_ecue'] ?? $matiere->credit_ecue,
-                'coefficient_ecue'      => $validated['coefficient_ecue'] ?? $matiere->coefficient_ecue,
-                'ordre_bulletin'        => $validated['ordre_bulletin'] ?? $matiere->ordre_bulletin ?? 0,
-                'updated_by'            => auth()->id(),
-            ]);
         } else {
-            // Créer une nouvelle matière rattachée à cette UE
-            ESBTPMatiere::create([
+            // Créer une nouvelle matière
+            $matiere = ESBTPMatiere::create([
                 'name'                  => $validated['name'],
                 'code'                  => $validated['code'],
-                'unite_enseignement_id' => $ue->id,
-                'credit_ecue'           => $validated['credit_ecue'] ?? null,
-                'coefficient_ecue'      => $validated['coefficient_ecue'] ?? null,
-                'ordre_bulletin'        => $validated['ordre_bulletin'] ?? 0,
+                'unite_enseignement_id' => $ue->id, // FK direct (rétro-compat)
+                'credit_ecue'           => $creditEcue,
+                'coefficient_ecue'      => $coeffEcue,
+                'ordre_bulletin'        => $ordreBulletin,
                 'is_active'             => true,
                 'created_by'            => auth()->id(),
                 'updated_by'            => auth()->id(),
             ]);
         }
 
-        return redirect()->route('esbtp.lmd.ue.show', $ue)
+        // Toujours garder le FK direct (rétro-compat)
+        if ($matiere->unite_enseignement_id !== $ue->id) {
+            $matiere->update(['unite_enseignement_id' => $ue->id, 'updated_by' => auth()->id()]);
+        }
+
+        // Écrire dans le pivot (many-to-many) avec coeff/credit contextuels
+        $ue->ecues()->syncWithoutDetaching([
+            $matiere->id => [
+                'coefficient_ecue' => $coeffEcue,
+                'credit_ecue' => $creditEcue,
+                'ordre_bulletin' => $ordreBulletin,
+            ],
+        ]);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'ECUE ajouté avec succès.']);
+        }
+
+        return redirect()->route('esbtp.lmd.ue.index')
             ->with('success', 'ECUE ajouté avec succès à l\'UE.');
     }
 
@@ -285,11 +299,30 @@ class ESBTPLMDUEController extends Controller
             'ordre_bulletin'  => 'nullable|integer|min:0',
         ]);
 
-        $validated['updated_by'] = auth()->id();
+        // Mettre à jour la matière en un seul UPDATE (nom, code, coeff, credit, ordre)
+        $ecue->update([
+            'name' => $validated['name'] ?? $ecue->name,
+            'code' => $validated['code'] ?? $ecue->code,
+            'coefficient_ecue' => $validated['coefficient_ecue'] ?? $ecue->coefficient_ecue,
+            'credit_ecue' => $validated['credit_ecue'] ?? $ecue->credit_ecue,
+            'ordre_bulletin' => $validated['ordre_bulletin'] ?? $ecue->ordre_bulletin,
+            'updated_by' => auth()->id(),
+        ]);
 
-        $ecue->update($validated);
+        // Mettre à jour le pivot avec les valeurs contextuelles à cette UE
+        $ue->ecues()->syncWithoutDetaching([
+            $ecue->id => [
+                'coefficient_ecue' => $validated['coefficient_ecue'] ?? null,
+                'credit_ecue' => $validated['credit_ecue'] ?? null,
+                'ordre_bulletin' => $validated['ordre_bulletin'] ?? 0,
+            ],
+        ]);
 
-        return redirect()->route('esbtp.lmd.ue.show', $ue)
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'ECUE mis à jour.']);
+        }
+
+        return redirect()->route('esbtp.lmd.ue.index')
             ->with('success', 'ECUE mis à jour avec succès.');
     }
 

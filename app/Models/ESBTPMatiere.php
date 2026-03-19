@@ -188,7 +188,19 @@ class ESBTPMatiere extends Model
      */
     public function isECUE(): bool
     {
-        return $this->unite_enseignement_id !== null;
+        // Vérifier FK direct OU pivot eager-loaded (pas de query DB)
+        return $this->unite_enseignement_id !== null
+            || ($this->relationLoaded('unitesEnseignementMultiple') && $this->unitesEnseignementMultiple->isNotEmpty());
+    }
+
+    /**
+     * UEs parentes via pivot (many-to-many) — un ECUE peut appartenir à plusieurs UEs.
+     */
+    public function unitesEnseignementMultiple()
+    {
+        return $this->belongsToMany(ESBTPUniteEnseignement::class, 'esbtp_ue_matiere', 'matiere_id', 'unite_enseignement_id')
+            ->withPivot('coefficient_ecue', 'credit_ecue', 'ordre_bulletin')
+            ->withTimestamps();
     }
 
     /**

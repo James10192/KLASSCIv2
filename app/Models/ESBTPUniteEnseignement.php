@@ -59,9 +59,36 @@ class ESBTPUniteEnseignement extends Model
      *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
+    /**
+     * ECUEs via pivot (many-to-many) — avec coefficient/credit contextuels.
+     * Prioritaire pour le bulletin quand le pivot existe.
+     */
+    public function ecues()
+    {
+        return $this->belongsToMany(ESBTPMatiere::class, 'esbtp_ue_matiere', 'unite_enseignement_id', 'matiere_id')
+            ->withPivot('coefficient_ecue', 'credit_ecue', 'ordre_bulletin')
+            ->withTimestamps();
+    }
+
+    /**
+     * Matières liées par FK direct (rétro-compat HasMany).
+     * Fallback quand le pivot n'est pas rempli.
+     */
     public function matieres()
     {
         return $this->hasMany(ESBTPMatiere::class, 'unite_enseignement_id');
+    }
+
+    /**
+     * Retourne les ECUEs : pivot si disponible, sinon fallback HasMany.
+     */
+    public function getEcuesEffectifs(): \Illuminate\Support\Collection
+    {
+        $pivotEcues = $this->ecues;
+        if ($pivotEcues->isNotEmpty()) {
+            return $pivotEcues;
+        }
+        return $this->matieres->where('is_active', true);
     }
 
     /**

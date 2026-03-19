@@ -687,9 +687,18 @@
                                 </td>
                             </tr>
 
-                            {{-- ECUE sub-rows --}}
-                            @if($ue->matieres->count())
-                                @foreach($ue->matieres as $ecue)
+                            {{-- ECUE sub-rows (pivot prioritaire, fallback matieres) --}}
+                            @php $ecuesEffectifs = $ue->getEcuesEffectifs(); @endphp
+                            @if($ecuesEffectifs->count())
+                                @foreach($ecuesEffectifs as $ecue)
+                                    @php
+                                        $pivotCoeff = $ecue->pivot->coefficient_ecue ?? null;
+                                        $pivotCredit = $ecue->pivot->credit_ecue ?? null;
+                                        $pivotOrdre = $ecue->pivot->ordre_bulletin ?? null;
+                                        $displayCoeff = $pivotCoeff ?? $ecue->coefficient_ecue ?? $ecue->coefficient ?? '—';
+                                        $displayCredit = $pivotCredit ?? $ecue->credit_ecue ?? '—';
+                                        $displayOrdre = $pivotOrdre ?? $ecue->ordre_bulletin ?? 0;
+                                    @endphp
                                     <tr class="lu-sub-row" x-show="openRow === {{ $ue->id }}" x-cloak>
                                         <td></td>
                                         <td>
@@ -699,20 +708,20 @@
                                             <span class="lu-ecue-indent">{{ $ecue->name }}</span>
                                         </td>
                                         <td>
-                                            <span class="lu-ecue-coeff">Coeff. {{ $ecue->coefficient_ecue ?? $ecue->coefficient ?? '—' }}</span>
+                                            <span class="lu-ecue-coeff">Coeff. {{ $displayCoeff }}</span>
                                         </td>
                                         <td style="text-align:center;">
-                                            <span class="lu-credit-pill" style="background:#f1f5f9; color:#334155;">{{ $ecue->credit_ecue ?? '—' }}</span>
+                                            <span class="lu-credit-pill" style="background:#f1f5f9; color:#334155;">{{ $displayCredit }}</span>
                                         </td>
                                         <td style="text-align:center;">
-                                            @if($ecue->ordre_bulletin > 0)
-                                                <span style="font-size:.75rem; color:#94a3b8;">#{{ $ecue->ordre_bulletin }}</span>
+                                            @if($displayOrdre > 0)
+                                                <span style="font-size:.75rem; color:#94a3b8;">#{{ $displayOrdre }}</span>
                                             @endif
                                         </td>
                                         <td @click.stop>
                                             <div class="lu-actions">
                                                 <button type="button" class="lu-act lu-act--edit" title="Modifier ECUE"
-                                                        onclick="openEcueEditModal({{ $ue->id }}, {{ json_encode($ecue->only(['id','name','code','coefficient_ecue','credit_ecue','ordre_bulletin'])) }})">
+                                                        onclick="openEcueEditModal({{ $ue->id }}, {{ json_encode(['id' => $ecue->id, 'name' => $ecue->name, 'code' => $ecue->code, 'coefficient_ecue' => $displayCoeff, 'credit_ecue' => $displayCredit, 'ordre_bulletin' => $displayOrdre]) }})">
                                                     <i class="fas fa-pen" style="font-size:.7rem;"></i>
                                                 </button>
                                                 <form action="{{ route('esbtp.lmd.ue.ecue.destroy', [$ue, $ecue]) }}" method="POST" style="display:inline;"

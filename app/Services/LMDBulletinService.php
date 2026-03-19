@@ -190,8 +190,13 @@ class LMDBulletinService
      */
     protected function getUEsForSemestre(ESBTPClasse $classe, int $semestre): \Illuminate\Support\Collection
     {
+        // Eager-load ECUEs via pivot (prioritaire) ET matieres HasMany (fallback)
+        $eagerLoad = [
+            'ecues' => fn($q) => $q->where('esbtp_matieres.is_active', true)->orderBy('esbtp_ue_matiere.ordre_bulletin')->orderBy('esbtp_matieres.code'),
+            'matieres' => fn($q) => $q->where('is_active', true)->orderBy('ordre_bulletin')->orderBy('code'),
+        ];
+
         if ($classe->parcours_id) {
-            // Via la table pivot parcours_ue — triee par ordre puis code
             $pivotData = DB::table('esbtp_lmd_parcours_ue')
                 ->where('parcours_id', $classe->parcours_id)
                 ->where('semestre', $semestre)
@@ -201,19 +206,17 @@ class LMDBulletinService
             if ($pivotData->isNotEmpty()) {
                 $ueIds = $pivotData->pluck('unite_enseignement_id');
                 $ues = ESBTPUniteEnseignement::active()
-                    ->with(['matieres' => fn($q) => $q->where('is_active', true)->orderBy('ordre_bulletin')->orderBy('code')])
+                    ->with($eagerLoad)
                     ->whereIn('id', $ueIds)
                     ->get()
                     ->keyBy('id');
 
-                // Retourner dans l'ordre du pivot
                 return $pivotData->map(fn($p) => $ues->get($p->unite_enseignement_id))->filter()->values();
             }
         }
 
-        // Fallback: UEs liees a la filiere + niveau + semestre
         return ESBTPUniteEnseignement::active()
-            ->with(['matieres' => fn($q) => $q->where('is_active', true)->orderBy('ordre_bulletin')->orderBy('code')])
+            ->with($eagerLoad)
             ->where('semestre', $semestre)
             ->where('filiere_id', $classe->filiere_id)
             ->where('niveau_id', $classe->niveau_etude_id)
@@ -246,8 +249,8 @@ class LMDBulletinService
             ]
         );
 
-        // Calculer les resultats de chaque ECUE (matiere) de cette UE
-        $ecues = $ue->matieres;
+        // Calculer les resultats de chaque ECUE — pivot prioritaire, fallback HasMany
+        $ecues = $ue->getEcuesEffectifs();
         $totalPoints = 0;
         $totalCoefficients = 0;
 
@@ -257,9 +260,10 @@ class LMDBulletinService
             );
 
             if ($resultatECUE->moyenne !== null) {
-                $coeff = $ecue->coefficient_ecue ?? $ecue->coefficient ?? 1;
-                $totalPoints += (float) $resultatECUE->moyenne * $coeff;
-                $totalCoefficients += $coeff;
+                // Priorité: pivot coefficient > matière coefficient_ecue > matière coefficient > 1
+                $coeff = $ecue->pivot?->coefficient_ecue ?? $ecue->coefficient_ecue ?? $ecue->coefficient ?? 1;
+                $totalPoints += (float) $resultatECUE->moyenne * (float) $coeff;
+                $totalCoefficients += (float) $coeff;
             }
         }
 
@@ -316,7 +320,7 @@ class LMDBulletinService
                 'resultat_ue_id' => $resultatUE->id,
                 'etudiant_id' => $etudiantId,
                 'moyenne' => $moyenneECUE,
-                'credit' => $ecue->credit_ecue ?? 0,
+                'credit' => $ecue->pivot?->credit_ecue ?? $ecue->credit_ecue ?? 0,
                 'enseignant_id' => $enseignantId,
                 'updated_by' => auth()->id(),
             ]
