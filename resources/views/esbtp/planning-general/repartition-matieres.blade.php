@@ -6,58 +6,19 @@
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 <style>
-    .repartition-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: var(--space-xl);
-        border-radius: var(--radius-large);
-        margin-bottom: var(--space-xl);
-    }
-    
-    .planning-nav {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-md);
-        margin-bottom: var(--space-lg);
-        box-shadow: var(--shadow-card);
-    }
-    
-    .planning-nav .nav-tabs {
-        border: none;
-        background: rgba(var(--primary-rgb), 0.05);
-        border-radius: var(--radius-small);
-        padding: var(--space-xs);
-    }
-    
-    .planning-nav .nav-link {
-        border: none;
-        color: var(--text-secondary);
-        background: transparent;
-        border-radius: var(--radius-small);
-        padding: var(--space-sm) var(--space-md);
-        margin: 0 var(--space-xs);
-        transition: all 0.3s ease;
-    }
-    
-    .planning-nav .nav-link.active {
-        background: var(--primary);
-        color: white;
-        box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.3);
-    }
-    
-    .chart-container {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-lg);
-        box-shadow: var(--shadow-card);
-        position: relative;
-    }
+    .rm-page { max-width: 1440px; margin: 0 auto; }
 
-    .chart-container .chart-area {
-        width: 100%;
-        height: 400px;
+    .chart-container {
+        background: #fff; border-radius: 14px; border: 1px solid #e8ecf1;
+        padding: 1.25rem; margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,.04); position: relative;
     }
+    .chart-container h5 {
+        font-size: .92rem; font-weight: 700; color: #1e293b;
+        display: flex; align-items: center; gap: .5rem;
+    }
+    .chart-container h5 i { color: #0453cb; font-size: .82rem; }
+    .chart-container .chart-area { width: 100%; height: 350px; }
     
     /* =============================================
        MATIÈRE CARDS — Modern 2-column layout
@@ -225,54 +186,39 @@
     }
     
     .filters-section {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-xl);
-        box-shadow: var(--shadow-card);
+        background: #fff; border-radius: 14px; border: 1px solid #e8ecf1;
+        padding: 1.25rem; margin-bottom: 1.25rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,.04);
     }
 
     .filters-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: var(--space-md);
-        margin-bottom: var(--space-md);
+        display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: .75rem;
     }
 
+    .filters-grid > div { flex: 1; min-width: 150px; }
+
     .filters-grid label {
-        display: block;
-        margin-bottom: var(--space-sm);
-        font-weight: 600;
-        font-size: var(--text-small);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--text-secondary);
+        display: block; margin-bottom: .3rem;
+        font-weight: 600; font-size: .72rem;
+        text-transform: uppercase; letter-spacing: .04em;
+        color: #64748b;
+    }
+
+    .filters-grid .form-control {
+        border-radius: 10px; border: 1px solid #e2e8f0; font-size: .85rem;
+        padding: .45rem .75rem;
     }
 
     .filters-actions {
-        display: flex;
-        gap: var(--space-md);
-        align-items: center;
-        flex-wrap: wrap;
+        display: flex; gap: .5rem; align-items: center; flex-wrap: wrap;
     }
 
     .filters-count {
-        margin-left: auto;
-        font-size: var(--text-small);
-        color: var(--text-muted);
+        margin-left: auto; font-size: .78rem; color: #94a3b8;
     }
 
-    .filter-loading {
-        display: none;
-        align-items: center;
-        gap: var(--space-sm);
-        font-size: var(--text-small);
-        color: var(--text-secondary);
-    }
-
-    .filter-loading.active {
-        display: flex;
-    }
+    .filter-loading { display: none; align-items: center; gap: .35rem; font-size: .78rem; color: #64748b; }
+    .filter-loading.active { display: flex; }
     
     /* =============================================
        KPI SUMMARY CARDS — Modern KLASSCI Design
@@ -573,11 +519,15 @@
         />
 
         <div id="pg-tab-content">
+        <div class="rm-page">
 
         <!-- Filtres de recherche -->
         <div class="filters-section">
-            <div class="section-title mb-md">
-                <i class="fas fa-filter me-2"></i>Filtres de recherche
+            <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:.75rem;">
+                <div style="width:32px; height:32px; border-radius:8px; background:rgba(4,83,203,.08); display:flex; align-items:center; justify-content:center; color:#0453cb; font-size:.8rem;">
+                    <i class="fas fa-filter"></i>
+                </div>
+                <div style="font-size:.92rem; font-weight:700; color:#1e293b;">Filtres</div>
             </div>
             <form method="GET" id="repartitionFiltersForm">
                 <div class="filters-grid">
@@ -733,10 +683,12 @@
         <script type="application/json" id="repartition-chart-data">@json($chartData)</script>
 
         <!-- Détail par classe et matière -->
-        <div class="card-moderne">
-            <div class="card-header">
-                <h5><i class="fas fa-layer-group me-2"></i>Détail par classe et matière</h5>
-                <p class="text-muted mb-0">
+        <div style="background:#fff; border-radius:14px; border:1px solid #e8ecf1; box-shadow:0 1px 3px rgba(0,0,0,.04); overflow:hidden;">
+            <div style="padding:1rem 1.25rem; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; justify-content:space-between;">
+                <div style="font-size:.92rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:.5rem;">
+                    <i class="fas fa-layer-group" style="color:#0453cb; font-size:.82rem;"></i>Détail par classe et matière
+                </div>
+                <div style="font-size:.78rem; color:#94a3b8;">
                     @if(request('classe_id'))
                         @php
                             $classeHeader = $classes->find(request('classe_id'));
@@ -751,9 +703,9 @@
                     @if(request('annee_id'))
                         - Année : {{ $annees->find(request('annee_id'))->name ?? 'N/A' }}
                     @endif
-                </p>
+                </div>
             </div>
-            <div class="card-body">
+            <div style="padding:1.25rem;">
                 @if($repartition->count() > 0)
                     @foreach($repartition as $classeData)
                         @php
@@ -952,6 +904,7 @@
             </div>
         </div>
         </div>
+        </div>{{-- .rm-page --}}
         </div>{{-- #pg-tab-content --}}
     </div>
 </div>
