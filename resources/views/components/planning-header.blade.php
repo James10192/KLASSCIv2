@@ -146,8 +146,8 @@
         <div class="ph-hero-left">
             <div class="ph-hero-icon"><i class="fas fa-calendar-alt"></i></div>
             <div class="ph-hero-info">
-                <h1>{{ $title }}</h1>
-                <p>{{ $subtitle ?: 'Vue d\'ensemble du planning académique et organisation des cours' }}</p>
+                <h1 id="ph-hero-title">{{ $title }}</h1>
+                <p id="ph-hero-subtitle">{{ $subtitle ?: 'Vue d\'ensemble du planning académique et organisation des cours' }}</p>
             </div>
         </div>
         <div class="ph-hero-actions">
@@ -387,6 +387,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                         document.body.appendChild(newScript);
                     });
+
+                    // Mettre à jour le titre et sous-titre du hero
+                    const newTitle = doc.getElementById('ph-hero-title');
+                    const newSubtitle = doc.getElementById('ph-hero-subtitle');
+                    if (newTitle) document.getElementById('ph-hero-title').textContent = newTitle.textContent;
+                    if (newSubtitle) document.getElementById('ph-hero-subtitle').textContent = newSubtitle.textContent;
 
                     // Restaurer l'affichage
                     container.style.opacity = '1';
