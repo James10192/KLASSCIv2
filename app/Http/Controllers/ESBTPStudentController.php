@@ -447,8 +447,8 @@ class ESBTPStudentController extends Controller
             }
 
             $lmdCredits = [
-                'capitalises' => $allLmdBulletins->sum('credits_capitalises'),
-                'totaux' => $allLmdBulletins->sum('credits_totaux') ?: 30,
+                'capitalises' => $allLmdBulletins->count() ? $allLmdBulletins->sum('credits_capitalises') : null,
+                'totaux' => $allLmdBulletins->count() ? ($allLmdBulletins->sum('credits_totaux') ?: 30) : null,
                 'semestres' => $classeCourante ? $classeCourante->getSemestresLMD() : [],
             ];
         }

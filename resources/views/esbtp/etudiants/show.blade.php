@@ -2099,10 +2099,11 @@
         {{-- Absences / Crédits LMD (capitalisés à vie, même si pas inscrit cette année) --}}
         @if($lmdCredits)
             @php
-                $credCap = $lmdCredits['capitalises'] ?? 0;
-                $credTot = $lmdCredits['totaux'] ?? 30;
-                $credPct = $credTot > 0 ? min(100, round($credCap / $credTot * 100)) : 0;
-                $credColor = $credPct >= 80 ? '#10b981' : ($credPct >= 50 ? '#f59e0b' : '#ef4444');
+                $credCap = $lmdCredits['capitalises'];
+                $credTot = $lmdCredits['totaux'];
+                $hasCredits = $credCap !== null && $credTot !== null;
+                $credPct = $hasCredits && $credTot > 0 ? min(100, round($credCap / $credTot * 100)) : 0;
+                $credColor = $hasCredits ? ($credPct >= 80 ? '#10b981' : ($credPct >= 50 ? '#f59e0b' : '#ef4444')) : '#94a3b8';
             @endphp
             <div class="kpi-card">
                 <div class="kpi-ring">
@@ -2116,7 +2117,7 @@
                     <span class="ring-icon" style="color:{{ $credColor }}"><i class="fas fa-award" style="font-size:.75rem"></i></span>
                 </div>
                 <div class="kpi-body">
-                    <div class="kpi-val" style="color:{{ $credColor }}">{{ $credCap }}/{{ $credTot }}</div>
+                    <div class="kpi-val" style="color:{{ $credColor }}">{{ $hasCredits ? $credCap.'/'.$credTot : '—/—' }}</div>
                     <div class="kpi-lbl">Crédits CECT</div>
                 </div>
             </div>
@@ -2209,11 +2210,15 @@
                 @endif
                 <div class="info-row">
                     <span class="info-lbl">Parcours</span>
-                    <span class="info-val">{{ $parcours->name ?? '—' }}</span>
+                    @if($parcours && $parcours->name)
+                        <span class="info-val" style="font-weight:600; color:#059669;">{{ $parcours->name }}</span>
+                    @else
+                        <span class="info-val" style="color:#94a3b8; font-style:italic; font-size:.82rem;"><i class="fas fa-unlink" style="font-size:.65rem; margin-right:4px;"></i>Classe non rattachée à un parcours</span>
+                    @endif
                 </div>
                 <div class="info-row">
                     <span class="info-lbl">Crédits capitalisés</span>
-                    <span class="info-val mono" style="font-weight:600; color:#059669;">{{ $lmdCredits['capitalises'] ?? 0 }} / {{ $lmdCredits['totaux'] ?? 30 }} CECT</span>
+                    <span class="info-val mono" style="font-weight:600; color:{{ $lmdCredits['capitalises'] !== null ? '#059669' : '#94a3b8' }};">{{ $lmdCredits['capitalises'] !== null ? $lmdCredits['capitalises'].' / '.$lmdCredits['totaux'] : '— / —' }} CECT</span>
                 </div>
             @endif
             <div class="info-row">
