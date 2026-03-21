@@ -173,7 +173,7 @@
     .pa-cal-day {
         padding: .75rem 0; display: flex; align-items: center; justify-content: center;
         font-size: .85rem; font-weight: 500; color: #334155;
-        border-radius: 8px; cursor: default; position: relative;
+        border-radius: 8px; cursor: pointer; position: relative;
         transition: all .15s; min-height: 48px;
     }
     .pa-cal-day.autre-mois { color: #cbd5e1; }
@@ -263,38 +263,6 @@
             </div>
         </div>
 
-        {{-- Timeline des événements --}}
-        <div class="pa-timeline-section">
-            <div class="pa-section-head">
-                <div class="pa-section-title">
-                    <i class="fas fa-stream"></i>Événements Académiques
-                </div>
-                <span class="pa-section-count">{{ count($evenementsAcademiques) }} événement{{ count($evenementsAcademiques) > 1 ? 's' : '' }}</span>
-            </div>
-
-            <div class="pa-timeline">
-                @forelse($evenementsAcademiques as $evenement)
-                <div class="pa-event" data-type="{{ $evenement['type'] }}">
-                    <div class="pa-event-date">
-                        <div class="pa-event-day">{{ \Carbon\Carbon::createFromFormat('d/m/Y', $evenement['date'])->format('d') }}</div>
-                        <div class="pa-event-month">{{ \Carbon\Carbon::createFromFormat('d/m/Y', $evenement['date'])->translatedFormat('M Y') }}</div>
-                    </div>
-                    <div class="pa-event-icon"><i class="fas fa-{{ $evenement['icon'] }}"></i></div>
-                    <div class="pa-event-info">
-                        <div class="pa-event-title">{{ $evenement['titre'] }}</div>
-                        <div class="pa-event-desc">{{ $evenement['description'] }}</div>
-                    </div>
-                    <div class="pa-event-badge">{{ ucfirst($evenement['type']) }}</div>
-                </div>
-                @empty
-                <div style="text-align:center; padding:2rem; color:#94a3b8;">
-                    <i class="fas fa-calendar-times" style="font-size:1.5rem; margin-bottom:.5rem; display:block;"></i>
-                    Aucun événement académique configuré
-                </div>
-                @endforelse
-            </div>
-        </div>
-
         {{-- Calendrier interactif --}}
         <div class="pa-cal-section">
             {{-- Légende --}}
@@ -338,19 +306,33 @@
                             @foreach($moisData['semaines'] as $semaine)
                                 @foreach($semaine as $jour)
                                 @php
+                                    $jourDate = $jour['date']->startOfDay();
                                     $dateJour = $jour['date']->format('d/m/Y');
-                                    $evenementsJour = collect($evenementsAcademiques)->filter(fn($evt) => $evt['date'] === $dateJour);
-                                    $aEvenement = $evenementsJour->count() > 0;
+                                    // Chercher événements qui couvrent ce jour (multi-jours)
+                                    $evtsJour = ($evenementsModels ?? collect())->filter(function($e) use ($jourDate) {
+                                        $start = $e->date_debut?->startOfDay();
+                                        $end = ($e->date_fin ?? $e->date_debut)?->startOfDay();
+                                        return $start && $jourDate->between($start, $end);
+                                    });
+                                    $aEvenement = $evtsJour->count() > 0;
+                                    $evtType = $aEvenement ? $evtsJour->first()->type : null;
+                                    $typeColorMap = ['rentree'=>'#10b981','examens'=>'#f59e0b','ceremonie'=>'#0453cb','vacances'=>'#94a3b8','fermeture'=>'#64748b','reprise'=>'#10b981','soutenances'=>'#6366f1','stage'=>'#06b6d4','reunion'=>'#8b5cf6','orientation'=>'#06b6d4'];
+                                    $evtColor = $typeColorMap[$evtType] ?? '#f59e0b';
+                                    $evtTitles = $aEvenement ? $evtsJour->pluck('titre')->join(', ') : '';
                                 @endphp
                                 <div class="pa-cal-day
                                     {{ !$jour['dans_mois'] ? 'autre-mois' : '' }}
                                     {{ $jour['est_aujourd_hui'] ? 'aujourd-hui' : '' }}
                                     {{ $aEvenement ? 'avec-evenement' : '' }}"
-                                    title="{{ $dateJour }}{{ $aEvenement ? ' — ' . $evenementsJour->count() . ' événement(s)' : '' }}"
+                                    @if($aEvenement && !$jour['est_aujourd_hui'])
+                                    style="background:{{ $evtColor }}12; color:{{ $evtColor }}; font-weight:600; border:1px solid {{ $evtColor }}30;"
+                                    @endif
+                                    title="{{ $dateJour }}{{ $aEvenement ? ' — ' . $evtTitles : '' }}"
                                     data-date="{{ $dateJour }}"
-                                    data-events="{{ $evenementsJour->count() }}">
+                                    data-events="{{ $evtsJour->count() }}"
+                                    onclick="onCalDayClick('{{ $jour['date']->format('Y-m-d') }}')">
                                     {{ $jour['date']->day }}
-                                    @if($aEvenement)<div class="pa-cal-dot"></div>@endif
+                                    @if($aEvenement)<div class="pa-cal-dot" style="background:{{ $jour['est_aujourd_hui'] ? '#fff' : $evtColor }};"></div>@endif
                                 </div>
                                 @endforeach
                             @endforeach
@@ -511,6 +493,16 @@
                 </div>
 
                 <div class="modal-body" style="padding:1.25rem 1.5rem;">
+                    <div style="margin-bottom:1rem;" id="qe-type-select-row">
+                        <label style="font-size:.75rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.4rem; display:block;">Type</label>
+                        <select id="qe-type-select" onchange="$('#qe-type').val(this.value)"
+                            style="width:100%; padding:.5rem .75rem; border-radius:9px; border:1px solid #e2e8f0; font-size:.85rem;">
+                            @foreach(\App\Models\ESBTPEvenementAcademique::TYPES as $key => $label)
+                                <option value="{{ $key }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
                     <div style="margin-bottom:1rem;">
                         <label style="font-size:.75rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.4rem; display:block;">Titre</label>
                         <input type="text" name="titre" id="qe-titre" required
@@ -530,7 +522,7 @@
                         </div>
                     </div>
 
-                    <div style="background:#f0f4ff; border-radius:9px; padding:.6rem .85rem; display:flex; align-items:center; gap:.5rem; cursor:pointer;" id="qe-sync-btn">
+                    <div style="background:#f0f4ff; border-radius:9px; padding:.6rem .85rem; display:flex; align-items:center; gap:.5rem; cursor:pointer;" id="qe-sync-row">
                         <input type="checkbox" id="qe-sync" checked style="accent-color:#0453cb;">
                         <label for="qe-sync" style="font-size:.78rem; color:#334155; cursor:pointer; margin:0;">
                             <span style="font-weight:600;">Synchroniser</span> avec la période de l'année universitaire
@@ -561,25 +553,39 @@
 const anneeStart = '{{ $anneeSelectionnee->start_date }}';
 const anneeEnd = '{{ $anneeSelectionnee->end_date }}';
 
-function openQuickEventModal(type) {
+function openQuickEventModal(type, prefillDate) {
     const titles = { rentree: 'Rentrée académique', fermeture: 'Fermeture de l\'année' };
     const modalTitles = { rentree: 'Créer la Rentrée', fermeture: 'Créer la Fermeture' };
 
-    $('#qe-type').val(type);
+    $('#qe-type').val(type || '');
     $('#qe-titre').val(titles[type] || '');
-    $('#qe-modal-title').text(modalTitles[type] || 'Créer événement');
+    $('#qe-modal-title').text(modalTitles[type] || 'Nouvel événement');
 
-    // Sync dates avec l'année universitaire
+    // Sync dates
     if (type === 'rentree') {
         $('#qe-date-debut').val(anneeStart);
         $('#qe-date-fin').val(anneeStart);
+        $('#qe-sync-row').show();
+        $('#qe-type-select-row').hide();
     } else if (type === 'fermeture') {
         $('#qe-date-debut').val(anneeEnd);
         $('#qe-date-fin').val(anneeEnd);
+        $('#qe-sync-row').show();
+        $('#qe-type-select-row').hide();
+    } else {
+        $('#qe-date-debut').val(prefillDate || '');
+        $('#qe-date-fin').val(prefillDate || '');
+        $('#qe-sync-row').hide();
+        $('#qe-type-select-row').show();
+        $('#qe-type-select').val('examens');
+        $('#qe-type').val('examens');
     }
 
-    $('#qe-sync').prop('checked', true);
     new bootstrap.Modal(document.getElementById('quickEventModal')).show();
+}
+
+function onCalDayClick(dateStr) {
+    openQuickEventModal(null, dateStr);
 }
 
 $('#qe-sync').on('change', function() {
