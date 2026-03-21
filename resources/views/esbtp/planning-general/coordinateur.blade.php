@@ -1,244 +1,189 @@
 @extends('layouts.app')
 
-@section('title', 'Dashboard Pédagogie - KLASSCI')
+@section('title', 'Coordinateur — KLASSCI')
 
-@section('styles')
+@push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    
-    .dashboard-cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: var(--space-lg);
-        margin-bottom: var(--space-xl);
+    /* ══════════════════════════════════════════════
+       Coordinateur — Premium Redesign
+       Prefix: co- (coordinateur)
+       ══════════════════════════════════════════════ */
+
+    .co-page { max-width: 1440px; margin: 0 auto; }
+
+    /* ── Filters bar ── */
+    .co-filters {
+        background: #fff; border-radius: 14px; border: 1px solid #e8ecf1;
+        padding: 1rem 1.25rem; margin-bottom: 1.25rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,.04);
+        display: flex; gap: .75rem; align-items: center; flex-wrap: wrap;
+        animation: co-fadeUp .4s ease-out;
     }
-    
-    .stat-card {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        border: 1px solid var(--border);
-        transition: all 0.3s ease;
-        cursor: pointer;
+    .co-filter-select {
+        border-radius: 10px; border: 1px solid #e2e8f0; font-size: .85rem;
+        padding: .45rem .75rem; min-width: 180px;
     }
-    
-    .stat-card:hover {
-        box-shadow: var(--shadow-hover);
-        transform: translateY(-2px);
+    .co-filter-label {
+        font-size: .72rem; font-weight: 600; color: #64748b;
+        text-transform: uppercase; letter-spacing: .04em;
     }
-    
-    .stat-card .stat-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        margin-bottom: var(--space-md);
+
+    /* ── Quick actions strip ── */
+    .co-actions {
+        display: flex; gap: .5rem; margin-bottom: 1.25rem; flex-wrap: wrap;
+        animation: co-fadeUp .4s ease-out .05s both;
     }
-    
-    .stat-card .stat-number {
-        font-size: 2rem;
-        font-weight: bold;
-        color: var(--primary);
+    .co-action {
+        display: flex; align-items: center; gap: .5rem;
+        padding: .65rem 1.15rem; border-radius: 12px;
+        background: #fff; border: 1px solid #e8ecf1;
+        text-decoration: none; color: #1e293b; font-size: .82rem;
+        font-weight: 500; transition: all .2s; flex: 1; min-width: 200px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.04);
     }
-    
-    .stat-card .stat-label {
-        color: var(--text-secondary);
-        font-size: 0.9rem;
+    .co-action:hover { border-color: #0453cb; color: #0453cb; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(4,83,203,.08); }
+    .co-action-icon {
+        width: 36px; height: 36px; border-radius: 9px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: .85rem; flex-shrink: 0;
     }
-    
-    .slider-container {
-        position: relative;
-        overflow: hidden;
-        border-radius: var(--radius-medium);
-        background: var(--surface);
-        box-shadow: var(--shadow-card);
+    .co-action--codes .co-action-icon    { background: rgba(4,83,203,.08); color: #0453cb; }
+    .co-action--teachers .co-action-icon { background: rgba(16,185,129,.08); color: #10b981; }
+    .co-action--students .co-action-icon { background: rgba(129,140,248,.08); color: #6366f1; }
+
+    /* ── Section card ── */
+    .co-card {
+        background: #fff; border-radius: 14px; border: 1px solid #e8ecf1;
+        box-shadow: 0 1px 3px rgba(0,0,0,.04); overflow: hidden;
+        margin-bottom: 1.25rem;
     }
-    
-    .slider-content {
-        display: flex;
-        transition: transform 0.3s ease;
+    .co-card-head {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 1rem 1.25rem; border-bottom: 1px solid #f1f5f9;
     }
-    
-    .slider-panel {
-        min-width: 100%;
-        padding: var(--space-lg);
+    .co-card-title {
+        font-size: .92rem; font-weight: 700; color: #1e293b;
+        display: flex; align-items: center; gap: .5rem;
     }
-    
-    .slider-controls {
-        display: flex;
-        justify-content: center;
-        gap: var(--space-sm);
-        margin-bottom: var(--space-md);
+    .co-card-title i { color: #0453cb; font-size: .82rem; }
+    .co-card-sub { font-size: .72rem; color: #94a3b8; }
+    .co-card-body { padding: 1.15rem 1.25rem; }
+
+    /* ── Grid layout ── */
+    .co-grid { display: grid; gap: 1.25rem; }
+    .co-grid--2 { grid-template-columns: 1fr 2fr; }
+    .co-grid--half { grid-template-columns: 1fr 1fr; }
+
+    /* ── Allocation items ── */
+    .co-alloc {
+        display: flex; align-items: center; gap: .75rem;
+        padding: .7rem 0; border-bottom: 1px solid #f8fafc;
     }
-    
-    .slider-btn {
-        padding: var(--space-sm) var(--space-md);
-        border: none;
-        background: rgba(var(--primary-rgb), 0.1);
-        color: var(--primary);
-        border-radius: var(--radius-small);
-        cursor: pointer;
-        transition: all 0.3s ease;
+    .co-alloc:last-child { border-bottom: none; }
+    .co-alloc-icon {
+        width: 34px; height: 34px; border-radius: 8px;
+        background: rgba(4,83,203,.06); color: #0453cb;
+        display: flex; align-items: center; justify-content: center;
+        font-size: .75rem; flex-shrink: 0;
     }
-    
-    .slider-btn.active {
-        background: var(--primary);
-        color: white;
+    .co-alloc-name { font-size: .85rem; font-weight: 600; color: #1e293b; }
+    .co-alloc-desc { font-size: .72rem; color: #94a3b8; }
+    .co-alloc-hours {
+        margin-left: auto; font-size: .95rem; font-weight: 700; color: #0453cb;
+        white-space: nowrap;
     }
-    
-    .quick-actions {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: var(--space-md);
-        margin-bottom: var(--space-xl);
+
+    /* ── Schedule grid ── */
+    .co-schedule {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: .65rem;
     }
-    
-    .quick-action {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-medium);
-        padding: var(--space-md);
-        text-align: center;
-        text-decoration: none;
-        color: var(--text-primary);
-        transition: all 0.3s ease;
+    .co-day {
+        background: #f8fafc; border-radius: 10px; padding: .75rem;
+        border: 1px solid #f1f5f9; min-height: 100px;
     }
-    
-    .quick-action:hover {
-        background: var(--primary);
-        color: white;
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-hover);
+    .co-day-name {
+        font-size: .72rem; font-weight: 700; color: #0453cb;
+        text-transform: uppercase; letter-spacing: .04em; margin-bottom: .5rem;
     }
-    
-    .quick-action .action-icon {
-        font-size: 2rem;
-        margin-bottom: var(--space-sm);
+    .co-seance {
+        background: #fff; border-radius: 7px; padding: .4rem .55rem;
+        border: 1px solid #e8ecf1; margin-bottom: .35rem; font-size: .72rem;
     }
-    
-    .content-panel {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-lg);
-        box-shadow: var(--shadow-card);
+    .co-seance-mat { font-weight: 600; color: #1e293b; }
+    .co-seance-info { color: #94a3b8; font-size: .65rem; }
+    .co-day-empty { color: #cbd5e1; font-size: .75rem; text-align: center; padding: 1rem 0; }
+
+    /* ── Emargement codes ── */
+    .co-code {
+        display: flex; align-items: center; gap: .75rem;
+        padding: .7rem 0; border-bottom: 1px solid #f8fafc;
     }
-    
-    .allocation-card {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-md);
-        border: 1px solid var(--border);
-        transition: all 0.3s ease;
+    .co-code:last-child { border-bottom: none; }
+    .co-code-badge {
+        font-family: 'Courier New', monospace; font-size: .85rem; font-weight: 700;
+        padding: .3rem .6rem; border-radius: 7px; letter-spacing: .08em;
     }
-    
-    .allocation-card:hover {
-        box-shadow: var(--shadow-hover);
-        transform: translateY(-2px);
+    .co-code.active .co-code-badge  { background: rgba(16,185,129,.1); color: #059669; }
+    .co-code.expire .co-code-badge  { background: rgba(239,68,68,.08); color: #dc2626; }
+    .co-code-info { flex: 1; }
+    .co-code-cours { font-size: .8rem; font-weight: 500; color: #1e293b; }
+    .co-code-expire { font-size: .7rem; }
+
+    /* ── Presence bars ── */
+    .co-presence {
+        padding: .65rem 0; border-bottom: 1px solid #f8fafc;
     }
-    
-    .programmation-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: var(--space-lg);
-        margin-bottom: var(--space-xl);
+    .co-presence:last-child { border-bottom: none; }
+    .co-presence-top {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: .35rem;
     }
-    
-    .jour-programmation {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-md);
-        border: 1px solid var(--border);
+    .co-presence-name { font-size: .82rem; font-weight: 600; color: #1e293b; }
+    .co-presence-eff { font-size: .7rem; color: #94a3b8; }
+    .co-presence-taux { font-size: .9rem; font-weight: 700; }
+    .co-bar {
+        height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden;
     }
-    
-    .jour-programmation h6 {
-        color: var(--primary);
-        margin-bottom: var(--space-md);
-        font-weight: 600;
+    .co-bar-fill {
+        height: 100%; border-radius: 3px; transition: width .6s ease-out;
     }
-    
-    .seance-item {
-        background: var(--background);
-        border-radius: var(--radius-small);
-        padding: var(--space-sm);
-        margin-bottom: var(--space-xs);
-        border-left: 4px solid var(--primary);
+
+    /* ── Quick links grid ── */
+    .co-links {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: .5rem;
     }
-    
-    .seance-item:last-child {
-        margin-bottom: 0;
+    .co-link {
+        display: flex; align-items: center; gap: .5rem;
+        padding: .55rem .85rem; border-radius: 9px;
+        background: #f8fafc; border: 1px solid #f1f5f9;
+        text-decoration: none; color: #334155; font-size: .78rem;
+        font-weight: 500; transition: all .2s;
     }
-    
-    .code-emargement {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-medium);
-        padding: var(--space-md);
-        margin-bottom: var(--space-sm);
-        position: relative;
+    .co-link:hover { background: #f0f4ff; border-color: #0453cb; color: #0453cb; }
+    .co-link i { color: #0453cb; font-size: .75rem; width: 16px; text-align: center; }
+
+    @keyframes co-fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+    @media (max-width: 992px) {
+        .co-grid--2, .co-grid--half { grid-template-columns: 1fr; }
+        .co-schedule { grid-template-columns: repeat(3, 1fr); }
     }
-    
-    .code-emargement.expire {
-        background: #fff5f5;
-        border-color: #fed7d7;
-    }
-    
-    .code-emargement.active {
-        background: #f0fff4;
-        border-color: #9ae6b4;
-    }
-    
-    .code-badge {
-        font-family: 'Courier New', monospace;
-        font-size: 1.2rem;
-        font-weight: bold;
-        color: var(--primary);
-        background: var(--background);
-        padding: var(--space-xs) var(--space-sm);
-        border-radius: var(--radius-small);
-        border: 1px solid var(--border);
-    }
-    
-    .progress-bar-custom {
-        height: 8px;
-        background: var(--border);
-        border-radius: var(--radius-full);
-        overflow: hidden;
-        margin-top: var(--space-xs);
-    }
-    
-    .progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, var(--success), #48bb78);
-        transition: width 0.3s ease;
-    }
-    
-    .presence-card {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-md);
-        margin-bottom: var(--space-sm);
-        border: 1px solid var(--border);
-    }
-    
-    .presence-card .taux {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: var(--primary);
+    @media (max-width: 576px) {
+        .co-schedule { grid-template-columns: 1fr 1fr; }
+        .co-actions { flex-direction: column; }
+        .co-action { min-width: unset; }
     }
 </style>
-@endsection
+@endpush
 
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header et navigation du planning -->
-        <x-planning-header 
-            title="Interface Coordinateur" 
+        <x-planning-header
+            title="Interface Coordinateur"
             subtitle="Gestion avancée du planning et supervision académique"
             active-tab="coordinateur"
             :annee-selectionnee="$anneeSelectionnee"
@@ -247,333 +192,195 @@
         />
 
         <div id="pg-tab-content">
+        <div class="co-page">
 
-        <!-- Sélection du mois -->
-        <div class="card-moderne mb-lg">
-            <div class="p-md">
-                <form method="GET" class="row align-items-center">
-                    <div class="col-md-3">
-                        <label for="annee_id" class="form-label">Année Universitaire</label>
-                        <select name="annee_id" id="annee_id" class="form-select" onchange="this.form.submit()">
-                            @foreach($annees as $annee)
-                                <option value="{{ $annee->id }}" {{ request('annee_id') == $annee->id ? 'selected' : '' }}>
-                                    {{ $annee->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="mois" class="form-label">Mois</label>
-                        <select name="mois" id="mois" class="form-select" onchange="this.form.submit()">
-                            @for($i = 1; $i <= 12; $i++)
-                                <option value="{{ $i }}" {{ $mois == $i ? 'selected' : '' }}>
-                                    {{ \Carbon\Carbon::create(null, $i)->translatedFormat('F') }}
-                                </option>
-                            @endfor
-                        </select>
-                    </div>
-                    <div class="col-md-6 text-end">
-                        <span class="text-muted">
-                            Période : {{ $anneeSelectionnee ? $anneeSelectionnee->name : 'Aucune année sélectionnée' }}
-                        </span>
-                    </div>
-                </form>
-            </div>
+        {{-- Filters --}}
+        <div class="co-filters">
+            <form method="GET" style="display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; flex:1;">
+                <div>
+                    <div class="co-filter-label">Année</div>
+                    <select name="annee_id" class="form-select co-filter-select" onchange="this.form.submit()">
+                        @foreach($annees as $annee)
+                            <option value="{{ $annee->id }}" {{ request('annee_id') == $annee->id ? 'selected' : '' }}>{{ $annee->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <div class="co-filter-label">Mois</div>
+                    <select name="mois" class="form-select co-filter-select" onchange="this.form.submit()">
+                        @for($i = 1; $i <= 12; $i++)
+                            <option value="{{ $i }}" {{ $mois == $i ? 'selected' : '' }}>{{ \Carbon\Carbon::create(null, $i)->translatedFormat('F') }}</option>
+                        @endfor
+                    </select>
+                </div>
+                <div style="margin-left:auto; font-size:.8rem; color:#94a3b8;">
+                    {{ $anneeSelectionnee ? $anneeSelectionnee->name : '—' }}
+                </div>
+            </form>
         </div>
 
-        <!-- Actions rapides -->
-        <div class="card-moderne mb-lg">
-            <div class="p-md">
-                <h5 class="mb-md"><i class="fas fa-bolt me-2"></i>Actions Rapides</h5>
-                <div class="row">
-                    <div class="col-md-3">
-                        <a href="{{ route('esbtp.admin.attendance.index') }}" class="btn-acasi primary w-100 mb-sm">
-                            <i class="fas fa-qrcode me-2"></i>
-                            <div>
-                                <strong>Codes d'Émargement</strong>
-                                <small class="d-block">Générer et gérer les codes</small>
-                            </div>
-                        </a>
+        {{-- Quick actions --}}
+        <div class="co-actions">
+            <a href="{{ route('esbtp.admin.attendance.index') }}" class="co-action co-action--codes">
+                <div class="co-action-icon"><i class="fas fa-qrcode"></i></div>
+                <div>
+                    <div style="font-weight:600;">Codes d'Émargement</div>
+                    <div style="font-size:.72rem; color:#94a3b8;">Générer et gérer</div>
+                </div>
+            </a>
+            <a href="{{ route('esbtp.admin.attendance.report') }}" class="co-action co-action--teachers">
+                <div class="co-action-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                <div>
+                    <div style="font-weight:600;">Suivi Enseignants</div>
+                    <div style="font-size:.72rem; color:#94a3b8;">Émargements</div>
+                </div>
+            </a>
+            <a href="{{ route('esbtp.attendances.index') }}" class="co-action co-action--students">
+                <div class="co-action-icon"><i class="fas fa-clipboard-list"></i></div>
+                <div>
+                    <div style="font-weight:600;">Appels Étudiants</div>
+                    <div style="font-size:.72rem; color:#94a3b8;">Consulter les présences</div>
+                </div>
+            </a>
+        </div>
+
+        {{-- Main grid: Allocation + Schedule --}}
+        <div class="co-grid co-grid--2">
+            {{-- Allocation horaire --}}
+            <div class="co-card">
+                <div class="co-card-head">
+                    <div class="co-card-title"><i class="fas fa-clock"></i>Allocation Horaire</div>
+                </div>
+                <div class="co-card-body">
+                    @forelse($allocationHoraire as $allocation)
+                    <div class="co-alloc">
+                        <div class="co-alloc-icon"><i class="fas fa-book"></i></div>
+                        <div>
+                            <div class="co-alloc-name">{{ $allocation['module'] }}</div>
+                            <div class="co-alloc-desc">{{ $allocation['description'] }}</div>
+                        </div>
+                        <div class="co-alloc-hours">{{ $allocation['heures'] }}h</div>
                     </div>
-                    <div class="col-md-3">
-                        <a href="{{ route('esbtp.admin.attendance.report') }}" class="btn-acasi secondary w-100 mb-sm">
-                            <i class="fas fa-chalkboard-teacher me-2"></i>
-                            <div>
-                                <strong>Suivi Enseignants</strong>
-                                <small class="d-block">Voir les émargements</small>
-                            </div>
-                        </a>
+                    @empty
+                    <div style="text-align:center; padding:1.5rem; color:#94a3b8; font-size:.85rem;">
+                        <i class="fas fa-clock" style="font-size:1.2rem; display:block; margin-bottom:.4rem;"></i>
+                        Aucune allocation
                     </div>
-                    <div class="col-md-3">
-                        <a href="{{ route('esbtp.attendances.index') }}" class="btn-acasi info w-100 mb-sm">
-                            <i class="fas fa-clipboard-list me-2"></i>
-                            <div>
-                                <strong>Appels Étudiants</strong>
-                                <small class="d-block">Consulter les présences</small>
-                            </div>
-                        </a>
-                    </div>
+                    @endforelse
                 </div>
             </div>
-        </div>
 
-        <div class="row">
-            <!-- Allocation Horaire par Module -->
-            <div class="col-md-4">
-                <div class="card-moderne">
-                    <div class="card-header">
-                        <h5><i class="fas fa-clock me-2"></i>Allocation Horaire par Module</h5>
-                    </div>
-                    <div class="card-body">
-                        @foreach($allocationHoraire as $allocation)
-                        <div class="allocation-card">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <h6 class="mb-1">{{ $allocation['module'] }}</h6>
-                                    <p class="text-muted small mb-2">{{ $allocation['description'] }}</p>
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-clock text-primary me-2"></i>
-                                        <span class="fw-bold">{{ $allocation['heures'] }}h</span>
-                                    </div>
+            {{-- Programmation hebdomadaire --}}
+            <div class="co-card">
+                <div class="co-card-head">
+                    <div class="co-card-title"><i class="fas fa-calendar-week"></i>Programmation Hebdomadaire</div>
+                    <div class="co-card-sub">{{ \Carbon\Carbon::create(null, $mois)->translatedFormat('F') }}</div>
+                </div>
+                <div class="co-card-body">
+                    <div class="co-schedule">
+                        @foreach($programmationHebdomadaire as $jour => $seances)
+                        <div class="co-day">
+                            <div class="co-day-name">{{ ucfirst($jour) }}</div>
+                            @if(count($seances) > 0)
+                                @foreach($seances as $seance)
+                                <div class="co-seance">
+                                    <div class="co-seance-mat">{{ $seance['matiere'] }}</div>
+                                    <div class="co-seance-info">{{ $seance['horaire'] }} · {{ $seance['classe'] }}</div>
                                 </div>
-                                <div class="text-end">
-                                    <button class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                </div>
-                            </div>
+                                @endforeach
+                            @else
+                                <div class="co-day-empty"><i class="fas fa-moon"></i></div>
+                            @endif
                         </div>
                         @endforeach
-                        
-                        <div class="text-center mt-3">
-                            <button class="btn-acasi primary btn-sm">
-                                <i class="fas fa-plus me-1"></i>Ajouter Module
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Programmation Hebdomadaire -->
-            <div class="col-md-8">
-                <div class="card-moderne">
-                    <div class="card-header">
-                        <h5><i class="fas fa-calendar-week me-2"></i>Programmation Hebdomadaire</h5>
-                        <p class="text-muted mb-0">Mois de {{ \Carbon\Carbon::create(null, $mois)->translatedFormat('F') }}</p>
-                    </div>
-                    <div class="card-body">
-                        <div class="programmation-grid">
-                            @foreach($programmationHebdomadaire as $jour => $seances)
-                            <div class="jour-programmation">
-                                <h6>{{ ucfirst($jour) }}</h6>
-                                @if(count($seances) > 0)
-                                    @foreach($seances as $seance)
-                                    <div class="seance-item">
-                                        <div class="d-flex justify-content-between">
-                                            <span class="fw-bold">{{ $seance['matiere'] }}</span>
-                                            <span class="text-muted">{{ $seance['horaire'] }}</span>
-                                        </div>
-                                        <small class="text-muted">{{ $seance['classe'] }}</small>
-                                    </div>
-                                    @endforeach
-                                @else
-                                    <p class="text-muted text-center py-3">
-                                        <i class="fas fa-calendar-times"></i><br>
-                                        Aucune séance programmée
-                                    </p>
-                                @endif
-                            </div>
-                            @endforeach
-                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="row mt-4">
-            <!-- Codes d'Émargement Actifs -->
-            <div class="col-md-6">
-                <div class="card-moderne">
-                    <div class="card-header">
-                        <h5><i class="fas fa-qrcode me-2"></i>Codes d'Émargement Actifs</h5>
-                        <p class="text-muted mb-0">Supervision des présences enseignants</p>
-                    </div>
-                    <div class="card-body">
-                        @foreach($codesEmargement as $code)
-                        <div class="code-emargement {{ $code['expire'] ? 'expire' : 'active' }}">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <div class="code-badge">{{ $code['code'] }}</div>
-                                    <div class="mt-2">
-                                        <small class="text-muted">{{ $code['cours'] }}</small>
-                                    </div>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-{{ $code['expire'] ? 'danger' : 'success' }}">
-                                        {{ $code['expire_dans'] }}
-                                    </span>
-                                    <div class="mt-1">
-                                        <button class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-sync"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        @endforeach
-                        
-                        <div class="text-center mt-3">
-                            <button class="btn-acasi success btn-sm">
-                                <i class="fas fa-plus me-1"></i>Nouveau Code
-                            </button>
+        {{-- Bottom grid: Émargement + Présences --}}
+        <div class="co-grid co-grid--half">
+            {{-- Codes émargement --}}
+            <div class="co-card">
+                <div class="co-card-head">
+                    <div class="co-card-title"><i class="fas fa-qrcode"></i>Codes Émargement</div>
+                    <div class="co-card-sub">Actifs</div>
+                </div>
+                <div class="co-card-body">
+                    @forelse($codesEmargement as $code)
+                    <div class="co-code {{ $code['expire'] ? 'expire' : 'active' }}">
+                        <div class="co-code-badge">{{ $code['code'] }}</div>
+                        <div class="co-code-info">
+                            <div class="co-code-cours">{{ $code['cours'] }}</div>
+                            <div class="co-code-expire" style="color:{{ $code['expire'] ? '#ef4444' : '#10b981' }};">{{ $code['expire_dans'] }}</div>
                         </div>
                     </div>
+                    @empty
+                    <div style="text-align:center; padding:1.5rem; color:#94a3b8; font-size:.85rem;">
+                        <i class="fas fa-qrcode" style="font-size:1.2rem; display:block; margin-bottom:.4rem;"></i>
+                        Aucun code actif
+                    </div>
+                    @endforelse
                 </div>
             </div>
 
-            <!-- Taux de Présence par Classe -->
-            <div class="col-md-6">
-                <div class="card-moderne">
-                    <div class="card-header">
-                        <h5><i class="fas fa-chart-line me-2"></i>Taux de Présence par Classe</h5>
-                        <p class="text-muted mb-0">Suivi de l'assiduité des étudiants</p>
-                    </div>
-                    <div class="card-body">
-                        @foreach($tauxPresenceClasses as $classe)
-                        <div class="presence-card">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">{{ $classe['nom'] }}</h6>
-                                    <small class="text-muted">{{ $classe['effectif'] }} étudiants</small>
-                                </div>
-                                <div class="text-end">
-                                    <div class="taux">{{ $classe['taux'] }}%</div>
-                                </div>
+            {{-- Taux de présence --}}
+            <div class="co-card">
+                <div class="co-card-head">
+                    <div class="co-card-title"><i class="fas fa-chart-line"></i>Taux de Présence</div>
+                    <div class="co-card-sub">Par classe</div>
+                </div>
+                <div class="co-card-body">
+                    @forelse($tauxPresenceClasses as $classe)
+                    @php
+                        $taux = $classe['taux'];
+                        $barColor = $taux >= 80 ? '#10b981' : ($taux >= 60 ? '#f59e0b' : '#ef4444');
+                    @endphp
+                    <div class="co-presence">
+                        <div class="co-presence-top">
+                            <div>
+                                <div class="co-presence-name">{{ $classe['nom'] }}</div>
+                                <div class="co-presence-eff">{{ $classe['effectif'] }} étudiants</div>
                             </div>
-                            <div class="progress-bar-custom">
-                                <div class="progress-fill" style="width: {{ $classe['taux'] }}%"></div>
-                            </div>
+                            <div class="co-presence-taux" style="color:{{ $barColor }};">{{ $taux }}%</div>
                         </div>
-                        @endforeach
-                        
-                        <div class="text-center mt-3">
-                            <button class="btn-acasi info btn-sm">
-                                <i class="fas fa-chart-bar me-1"></i>Rapport Détaillé
-                            </button>
+                        <div class="co-bar">
+                            <div class="co-bar-fill" style="width:{{ $taux }}%; background:{{ $barColor }};"></div>
                         </div>
                     </div>
+                    @empty
+                    <div style="text-align:center; padding:1.5rem; color:#94a3b8; font-size:.85rem;">
+                        <i class="fas fa-chart-line" style="font-size:1.2rem; display:block; margin-bottom:.4rem;"></i>
+                        Aucune donnée
+                    </div>
+                    @endforelse
                 </div>
             </div>
         </div>
 
-        <!-- Actions Rapides -->
-        <div class="card-moderne mt-4">
-            <div class="card-header">
-                <h5><i class="fas fa-bolt me-2"></i>Actions Rapides</h5>
+        {{-- Quick links --}}
+        <div class="co-card">
+            <div class="co-card-head">
+                <div class="co-card-title"><i class="fas fa-bolt"></i>Accès Rapides</div>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ route('esbtp.planning-general.annuel', ['annee_id' => request('annee_id')]) }}" class="btn-acasi primary w-100">
-                            <i class="fas fa-calendar-alt me-2"></i>Planning Annuel
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ route('esbtp.planning-general.repartition-matieres', ['annee_id' => request('annee_id')]) }}" class="btn-acasi info w-100">
-                            <i class="fas fa-chart-pie me-2"></i>Répartition Matières
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ route('esbtp.evenements-academiques.index') }}" class="btn-acasi success w-100">
-                            <i class="fas fa-calendar-check me-2"></i>Événements
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ route('esbtp.emploi-temps.index') }}" class="btn-acasi warning w-100">
-                            <i class="fas fa-table me-2"></i>Emplois du Temps
-                        </a>
-                    </div>
-                </div>
-                <div class="row mt-3">
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ route('esbtp.etudiants.index') }}" class="btn-acasi secondary w-100">
-                            <i class="fas fa-user-graduate me-2"></i>Gestion Étudiants
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn-acasi secondary w-100">
-                            <i class="fas fa-chalkboard-teacher me-2"></i>Gestion Personnel
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ route('esbtp.attendances.index') }}" class="btn-acasi secondary w-100">
-                            <i class="fas fa-user-check me-2"></i>Présences/Absences
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-2">
-                        <a href="{{ route('esbtp.annonces.index') }}" class="btn-acasi secondary w-100">
-                            <i class="fas fa-bullhorn me-2"></i>Annonces
-                        </a>
-                    </div>
-                </div>
-                <div class="row mt-2">
-                    <div class="col-md-4 mb-2">
-                        <a href="{{ route('esbtp.evaluations.index') }}" class="btn-acasi secondary w-100">
-                            <i class="fas fa-clipboard-list me-2"></i>Évaluations
-                        </a>
-                    </div>
-                    <div class="col-md-4 mb-2">
-                        <a href="{{ route('esbtp.notes.index') }}" class="btn-acasi secondary w-100">
-                            <i class="fas fa-edit me-2"></i>Notes
-                        </a>
-                    </div>
-                    <div class="col-md-4 mb-2">
-                        <a href="{{ route('esbtp.bulletins.index') }}" class="btn-acasi secondary w-100">
-                            <i class="fas fa-trophy me-2"></i>Bulletins/Résultats
-                        </a>
-                    </div>
+            <div class="co-card-body">
+                <div class="co-links">
+                    <a href="{{ route('esbtp.planning-general.annuel', ['annee_id' => request('annee_id')]) }}" class="co-link"><i class="fas fa-calendar-alt"></i>Planning Annuel</a>
+                    <a href="{{ route('esbtp.planning-general.repartition-matieres', ['annee_id' => request('annee_id')]) }}" class="co-link"><i class="fas fa-chart-pie"></i>Répartition Matières</a>
+                    <a href="{{ route('esbtp.emploi-temps.index') }}" class="co-link"><i class="fas fa-table"></i>Emplois du Temps</a>
+                    <a href="{{ route('esbtp.etudiants.index') }}" class="co-link"><i class="fas fa-user-graduate"></i>Étudiants</a>
+                    <a href="{{ route('esbtp.personnel.unified.index') }}" class="co-link"><i class="fas fa-chalkboard-teacher"></i>Personnel</a>
+                    <a href="{{ route('esbtp.attendances.index') }}" class="co-link"><i class="fas fa-user-check"></i>Présences</a>
+                    <a href="{{ route('esbtp.evaluations.index') }}" class="co-link"><i class="fas fa-clipboard-list"></i>Évaluations</a>
+                    <a href="{{ route('esbtp.notes.index') }}" class="co-link"><i class="fas fa-edit"></i>Notes</a>
+                    <a href="{{ route('esbtp.bulletins.index') }}" class="co-link"><i class="fas fa-trophy"></i>Bulletins</a>
+                    <a href="{{ route('esbtp.annonces.index') }}" class="co-link"><i class="fas fa-bullhorn"></i>Annonces</a>
                 </div>
             </div>
+        </div>
+
         </div>
         </div>{{-- #pg-tab-content --}}
     </div>
 </div>
 @endsection
-
-@push('scripts')
-<script>
-// Fonction pour changer d'année
-function changeAnnee(anneeId) {
-    const url = new URL(window.location);
-    url.searchParams.set('annee_id', anneeId);
-    window.location.href = url.toString();
-}
-
-$(document).ready(function() {
-    // Animation des cartes d'allocation
-    $('.allocation-card').each(function(index) {
-        $(this).css('transform', 'translateY(20px)');
-        $(this).css('opacity', '0');
-        
-        setTimeout(() => {
-            $(this).animate({
-                'transform': 'translateY(0)',
-                'opacity': '1'
-            }, 300);
-        }, index * 100);
-    });
-    
-    // Animation des barres de progression
-    $('.progress-fill').each(function() {
-        const width = $(this).css('width');
-        $(this).css('width', '0');
-        
-        setTimeout(() => {
-            $(this).animate({
-                'width': width
-            }, 800);
-        }, 500);
-    });
-});
-</script>
-@endpush
