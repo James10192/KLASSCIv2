@@ -1722,9 +1722,6 @@
                 </div>
             </div>
         @endif
-        </div>{{-- #pg-tab-content --}}
-    </div>
-</div>
 
 <!-- Modal de Configuration des Volumes Horaires -->
 <div class="modal fade" id="volumeConfigModal" tabindex="-1" aria-labelledby="volumeConfigModalLabel" aria-hidden="true">
@@ -2038,107 +2035,139 @@
     </div>
 </div>
 
-<!-- Modal d'ajout de matières aux combinaisons vides -->
+<!-- Modal d'ajout de matières aux combinaisons -->
 <div class="modal fade" id="addMatieresModal" tabindex="-1" aria-labelledby="addMatieresModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content" style="border: none; border-radius: 12px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);">
-            <div class="modal-header" style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; border-radius: 12px 12px 0 0; padding: 1.5rem;">
-                <div>
-                    <h4 class="modal-title mb-1" id="addMatieresModalLabel" style="font-weight: 600;">
-                        <i class="fas fa-plus me-2"></i>Ajouter matières à la combinaison
-                    </h4>
-                    <p class="mb-0" style="opacity: 0.9; font-size: 0.9rem;">
-                        Matière : <span id="modal-matiere-name" style="font-weight: 500;"></span>
-                    </p>
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border:none; border-radius:16px; overflow:hidden; box-shadow:0 25px 60px rgba(0,0,0,.15);">
+            <div class="modal-header" style="background:linear-gradient(135deg,#0a3d8f 0%,#0453cb 40%,#3b7ddb 100%); border:none; padding:1.25rem 1.5rem;">
+                <div style="position:relative; z-index:1;">
+                    <h5 class="modal-title" id="addMatieresModalLabel" style="color:#fff; font-weight:700; font-size:1.05rem; margin:0; display:flex; align-items:center; gap:.5rem;">
+                        <i class="fas fa-link" style="font-size:.85rem;"></i>Configurer les liaisons
+                    </h5>
+                    <div style="font-size:.78rem; color:rgba(255,255,255,.7); margin-top:.15rem;">
+                        Sélectionnez les combinaisons filière/niveau
+                    </div>
                 </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" style="filter: brightness(0) invert(1);"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter:brightness(0) invert(1); opacity:.7;"></button>
             </div>
-            <div class="modal-body" style="padding: 2rem;">
+            <div class="modal-body" style="padding:1.25rem 1.5rem; background:#f8fafc;">
                 <form id="configureLiaisonsForm">
                     @csrf
                     <input type="hidden" id="modal-matiere-id" name="matiere_id">
 
-                    <div class="row">
-                        <!-- Filières disponibles -->
-                        <div class="col-md-6">
-                            <div class="card-moderne">
-                                <div class="main-card-header">
-                                    <h3 class="main-card-title">
-                                        <i class="fas fa-graduation-cap"></i>Filières
-                                    </h3>
-                                    <p class="main-card-subtitle" id="filiere-subtitle">Sélectionnez les filières concernées</p>
-                                </div>
-                                <div class="main-card-body">
-                                    <div class="form-group">
-                                        <div id="filieres-list" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-light); border-radius: 8px; padding: 1rem; background: var(--bg-light);">
-                                            @foreach(\App\Models\ESBTPFiliere::where('is_active', true)->get() as $filiere)
-                                            <div class="form-check mb-3 p-2" style="border-radius: 6px; transition: all 0.2s ease;">
-                                                <input class="form-check-input filiere-checkbox" type="checkbox"
-                                                       value="{{ $filiere->id }}" id="filiere-{{ $filiere->id }}" name="filieres[]"
-                                                       style="margin-top: 0.35rem;">
-                                                <label class="form-check-label" for="filiere-{{ $filiere->id }}" style="cursor: pointer; width: 100%;">
-                                                    <div class="d-flex justify-content-between align-items-center">
-                                                        <div>
-                                                            <span class="font-semibold color-dark">{{ $filiere->name }}</span>
-                                                            @if($filiere->code)
-                                                                <span class="badge secondary ms-2">{{ $filiere->code }}</span>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                </label>
-                                            </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    <style>
+                        .am-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:.75rem; }
+                        .am-fcard { background:#fff; border-radius:12px; border:1px solid #e8ecf1; padding:.85rem 1rem; }
+                        .am-fcard-head { display:flex; align-items:center; gap:.5rem; margin-bottom:.6rem; }
+                        .am-fcard-dot { width:8px; height:8px; border-radius:50%; background:#0453cb; flex-shrink:0; }
+                        .am-fcard-name { font-size:.85rem; font-weight:700; color:#1e293b; }
+                        .am-fcard-code { font-size:.65rem; color:#94a3b8; background:#f1f5f9; padding:.1rem .4rem; border-radius:4px; }
+                        .am-fcard-actions { margin-bottom:.5rem; }
+                        .am-selectall { font-size:.68rem; color:#0453cb; cursor:pointer; border:none; background:none; padding:0; font-weight:600; }
+                        .am-selectall:hover { text-decoration:underline; }
+                        .am-pills { display:flex; flex-wrap:wrap; gap:.35rem; }
+                        .am-pill {
+                            display:inline-flex; align-items:center; gap:.3rem;
+                            padding:.35rem .7rem; border-radius:8px; font-size:.75rem; font-weight:500;
+                            background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0;
+                            cursor:pointer; transition:all .2s; user-select:none;
+                        }
+                        .am-pill:hover { border-color:#0453cb; color:#0453cb; }
+                        .am-pill.active {
+                            background:linear-gradient(135deg,#0453cb,#3b7ddb); color:#fff;
+                            border-color:#0453cb; box-shadow:0 2px 8px rgba(4,83,203,.25);
+                        }
+                        .am-pill .am-pill-check { display:none; font-size:.6rem; }
+                        .am-pill.active .am-pill-check { display:inline; }
+                        .am-pill-code { font-size:.6rem; opacity:.6; }
+                        .am-counter { font-size:.75rem; color:#94a3b8; font-weight:500; background:#f1f5f9; padding:.2rem .55rem; border-radius:20px; }
+                    </style>
 
-                        <!-- Niveaux disponibles -->
-                        <div class="col-md-6">
-                            <div class="card-moderne">
-                                <div class="main-card-header">
-                                    <h3 class="main-card-title">
-                                        <i class="fas fa-layer-group"></i>Niveaux d'étude
-                                    </h3>
-                                    <p class="main-card-subtitle" id="niveau-subtitle">Sélectionnez les niveaux concernés</p>
-                                </div>
-                                <div class="main-card-body">
-                                    <div class="form-group">
-                                        <div id="niveaux-list" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-light); border-radius: 8px; padding: 1rem; background: var(--bg-light);">
-                                            @foreach(\App\Models\ESBTPNiveauEtude::where('is_active', true)->get() as $niveau)
-                                            <div class="form-check mb-3 p-2" style="border-radius: 6px; transition: all 0.2s ease;">
-                                                <input class="form-check-input niveau-checkbox" type="checkbox"
-                                                       value="{{ $niveau->id }}" id="niveau-{{ $niveau->id }}" name="niveaux[]"
-                                                       style="margin-top: 0.35rem;">
-                                                <label class="form-check-label" for="niveau-{{ $niveau->id }}" style="cursor: pointer; width: 100%;">
-                                                    <div class="d-flex justify-content-between align-items-center">
-                                                        <div>
-                                                            <span class="font-semibold color-dark">{{ $niveau->name }}</span>
-                                                            @if($niveau->code)
-                                                                <span class="badge secondary ms-2">{{ $niveau->code }}</span>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                </label>
-                                            </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                </div>
+                    {{-- Section header --}}
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:.75rem;">
+                        <div style="display:flex; align-items:center; gap:.5rem;">
+                            <div style="width:30px; height:30px; border-radius:8px; background:rgba(4,83,203,.08); display:flex; align-items:center; justify-content:center; color:#0453cb; font-size:.75rem;">
+                                <i class="fas fa-graduation-cap"></i>
+                            </div>
+                            <div>
+                                <div style="font-size:.85rem; font-weight:700; color:#1e293b;">Filières & Niveaux</div>
+                                <div style="font-size:.7rem; color:#94a3b8;">Cliquez sur un niveau pour activer la liaison</div>
                             </div>
                         </div>
+                        <span class="am-counter" id="am-global-counter">0 sélection</span>
                     </div>
 
+                    {{-- Grid des filières avec pills niveaux --}}
+                    <div class="am-grid" id="am-filieres-grid">
+                        @php
+                            $amFilieres = \App\Models\ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
+                            $amNiveaux = \App\Models\ESBTPNiveauEtude::where('is_active', true)->orderBy('year')->get();
+                        @endphp
+                        @foreach($amFilieres as $filiere)
+                        <div class="am-fcard" data-filiere-id="{{ $filiere->id }}">
+                            <div class="am-fcard-head">
+                                <span class="am-fcard-dot"></span>
+                                <span class="am-fcard-name">{{ $filiere->name }}</span>
+                                @if($filiere->code)<span class="am-fcard-code">{{ $filiere->code }}</span>@endif
+                            </div>
+                            <div class="am-fcard-actions">
+                                <button type="button" class="am-selectall" onclick="amToggleAll({{ $filiere->id }}, this)">
+                                    <i class="fas fa-check-double" style="font-size:.6rem;"></i> Tout sélectionner
+                                </button>
+                            </div>
+                            <div class="am-pills">
+                                @foreach($amNiveaux as $niveau)
+                                <span class="am-pill" onclick="amTogglePill(this)" data-filiere-id="{{ $filiere->id }}" data-niveau-id="{{ $niveau->id }}">
+                                    <span class="am-pill-check"><i class="fas fa-check"></i></span>
+                                    {{ $niveau->name }}
+                                    @if($niveau->code)<span class="am-pill-code">{{ $niveau->code }}</span>@endif
+                                    <input type="checkbox" class="niveau-filiere-checkbox" name="liaisons[]"
+                                           value="{{ $filiere->id }}-{{ $niveau->id }}"
+                                           data-filiere-id="{{ $filiere->id }}" data-niveau-id="{{ $niveau->id }}"
+                                           data-filiere-label="{{ $filiere->name }}" data-niveau-label="{{ $niveau->name }}"
+                                           style="display:none;">
+                                </span>
+                                @endforeach
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+
+                    <script>
+                    function amTogglePill(pill) {
+                        pill.classList.toggle('active');
+                        const cb = pill.querySelector('input[type=checkbox]');
+                        if (cb) cb.checked = pill.classList.contains('active');
+                        amUpdateCounter();
+                    }
+                    function amToggleAll(filiereId, btn) {
+                        const card = btn.closest('.am-fcard');
+                        const pills = card.querySelectorAll('.am-pill');
+                        const allActive = [...pills].every(p => p.classList.contains('active'));
+                        pills.forEach(p => {
+                            if (allActive) { p.classList.remove('active'); }
+                            else { p.classList.add('active'); }
+                            const cb = p.querySelector('input[type=checkbox]');
+                            if (cb) cb.checked = !allActive;
+                        });
+                        btn.innerHTML = allActive
+                            ? '<i class="fas fa-check-double" style="font-size:.6rem;"></i> Tout sélectionner'
+                            : '<i class="fas fa-times" style="font-size:.6rem;"></i> Tout désélectionner';
+                        amUpdateCounter();
+                    }
+                    function amUpdateCounter() {
+                        const count = document.querySelectorAll('#am-filieres-grid .am-pill.active').length;
+                        document.getElementById('am-global-counter').textContent = count + ' sélection' + (count > 1 ? 's' : '');
+                    }
+                    </script>
+
                     <!-- Sélection des matières (pour les combinaisons vides) -->
-                    <div class="row mt-4" id="matieres-selection-container" style="display: none;">
-                        <div class="col-12">
-                            <div class="card-moderne">
-                                <div class="main-card-header d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <h3 class="main-card-title">
-                                            <i class="fas fa-book"></i>Matières disponibles
-                                        </h3>
+                    <div class="mt-3" id="matieres-selection-container" style="display: none;">
+                        <div style="background:#fff; border-radius:12px; border:1px solid #e8ecf1; padding:1rem 1.15rem;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:.5rem;">
+                                <div style="font-size:.85rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:.4rem;">
+                                    <i class="fas fa-book" style="color:#0453cb; font-size:.78rem;"></i>Matières disponibles
+                                </div>
                                         <p class="main-card-subtitle">Sélectionnez les matières à ajouter à cette combinaison</p>
                                     </div>
                                     <div class="d-flex gap-2">
@@ -2175,44 +2204,26 @@
                         </div>
                     </div>
 
-                    <!-- Aperçu des combinaisons -->
-                    <div class="row mt-4">
-                        <div class="col-12">
-                            <div class="card-moderne">
-                                <div class="main-card-header">
-                                    <h3 class="main-card-title">
-                                        <i class="fas fa-eye"></i>Aperçu des combinaisons
-                                    </h3>
-                                    <p class="main-card-subtitle">Combinaisons filières/niveaux sélectionnées</p>
-                                </div>
-                                <div class="main-card-body">
-                                    <div id="combinations-preview" class="card-moderne" style="background: #e7f3ff; border: 1px solid #0ea5e9; padding: 1.5rem; border-radius: 8px;">
-                                        <div class="d-flex align-items-center" style="color: #0369a1;">
-                                            <i class="fas fa-info-circle me-2"></i>
-                                            <span>Sélectionnez des filières et des niveaux pour voir les combinaisons possibles.</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                    {{-- Aperçu des combinaisons sélectionnées --}}
+                    <div style="background:#fff; border-radius:12px; border:1px solid #e8ecf1; padding:1rem 1.15rem; margin-top:.85rem;">
+                        <div style="font-size:.78rem; font-weight:600; color:#64748b; margin-bottom:.5rem;">
+                            <i class="fas fa-eye" style="color:#0453cb; font-size:.7rem;"></i> Aperçu des combinaisons
+                        </div>
+                        <div id="combinations-preview" style="font-size:.82rem; color:#94a3b8;">
+                            Cliquez sur les niveaux ci-dessus pour voir les combinaisons.
                         </div>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer" style="border-top: 1px solid var(--border-light); padding: 1.5rem 2rem; background: var(--bg-light); border-radius: 0 0 12px 12px;">
-                <div class="d-flex justify-content-between align-items-center w-100">
-                    <div class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        <small>Les modifications seront sauvegardées immédiatement</small>
-                    </div>
-                    <div>
-                        <button type="button" class="btn-acasi secondary me-2" data-bs-dismiss="modal">
-                            <i class="fas fa-times me-1"></i>Annuler
-                        </button>
-                        <button type="button" class="btn-acasi primary" id="save-liaisons-btn">
-                            <i class="fas fa-save me-1"></i>Enregistrer les liaisons
-                        </button>
-                    </div>
-                </div>
+            <div class="modal-footer" style="border-top:1px solid #e8ecf1; padding:.85rem 1.5rem; background:#fff; gap:.4rem;">
+                <button type="button" class="btn" data-bs-dismiss="modal"
+                    style="border-radius:9px; padding:.45rem 1rem; font-size:.82rem; font-weight:600; color:#64748b; background:#f1f5f9; border:1px solid #e2e8f0;">
+                    Annuler
+                </button>
+                <button type="button" class="btn" id="save-liaisons-btn"
+                    style="border-radius:9px; padding:.45rem 1rem; font-size:.82rem; font-weight:600; color:#fff; background:linear-gradient(135deg,#0453cb,#3b7ddb); border:none; box-shadow:0 2px 6px rgba(4,83,203,.25);">
+                    <i class="fas fa-save me-1" style="font-size:.7rem;"></i>Enregistrer
+                </button>
             </div>
         </div>
     </div>
@@ -2312,6 +2323,9 @@
                 </div>
             </form>
         </div>
+    </div>
+</div>
+        </div>{{-- #pg-tab-content --}}
     </div>
 </div>
 @endsection
