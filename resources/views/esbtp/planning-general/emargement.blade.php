@@ -1,206 +1,159 @@
 @extends('layouts.app')
 
-@section('title', 'Gestion des Codes d\'Émargement - Planning')
+@section('title', 'Émargement — KLASSCI')
 
-@section('styles')
+@push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    .code-display-large {
-        font-family: 'Courier New', monospace;
-        font-size: 4rem;
-        font-weight: 900;
-        background: linear-gradient(135deg, var(--primary), var(--accent-blue));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        text-align: center;
-        padding: var(--space-xl);
-        border: 3px dashed var(--primary);
-        border-radius: var(--radius-medium);
-        margin: var(--space-lg) 0;
-        box-shadow: var(--shadow-elevated);
-        background-color: white;
-    }
+    /* ══════════════════════════════════════════════
+       Émargement — Premium Redesign
+       Prefix: em- (emargement)
+       ══════════════════════════════════════════════ */
+    .em-page { max-width: 1440px; margin: 0 auto; }
 
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: var(--space-lg);
-        margin: var(--space-xl) 0;
+    /* Stats row */
+    .em-stats {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: .75rem; margin-bottom: 1.25rem;
+        animation: em-fadeUp .4s ease-out;
     }
+    .em-stat {
+        background: #fff; border-radius: 14px; border: 1px solid #e8ecf1;
+        padding: 1rem 1.15rem; display: flex; align-items: center; gap: .75rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,.04); transition: all .2s;
+    }
+    .em-stat:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(4,83,203,.06); }
+    .em-stat-icon {
+        width: 40px; height: 40px; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: .9rem; flex-shrink: 0;
+    }
+    .em-stat:nth-child(1) .em-stat-icon { background: rgba(4,83,203,.08); color: #0453cb; }
+    .em-stat:nth-child(2) .em-stat-icon { background: rgba(16,185,129,.08); color: #10b981; }
+    .em-stat:nth-child(3) .em-stat-icon { background: rgba(251,191,36,.08); color: #f59e0b; }
+    .em-stat:nth-child(4) .em-stat-icon { background: rgba(129,140,248,.08); color: #6366f1; }
+    .em-stat-value { font-size: 1.35rem; font-weight: 700; color: #1e293b; line-height: 1; }
+    .em-stat-label { font-size: .72rem; color: #64748b; margin-top: .1rem; }
 
-    .stat-item {
-        text-align: center;
-        padding: var(--space-lg);
-        border-radius: var(--radius-medium);
-        background: var(--surface);
-        border: 1px solid var(--border);
-        box-shadow: var(--shadow-card);
-        transition: all 0.3s ease;
+    /* Cards */
+    .em-card {
+        background: #fff; border-radius: 14px; border: 1px solid #e8ecf1;
+        box-shadow: 0 1px 3px rgba(0,0,0,.04); overflow: hidden; margin-bottom: 1.25rem;
     }
+    .em-card-head {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 1rem 1.25rem; border-bottom: 1px solid #f1f5f9;
+    }
+    .em-card-title {
+        font-size: .92rem; font-weight: 700; color: #1e293b;
+        display: flex; align-items: center; gap: .5rem;
+    }
+    .em-card-title i { color: #0453cb; font-size: .82rem; }
+    .em-card-sub { font-size: .72rem; color: #94a3b8; }
+    .em-card-body { padding: 1.15rem 1.25rem; }
 
-    .stat-item:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-hover);
+    /* Active code display */
+    .em-code-display {
+        text-align: center; padding: 1.5rem;
+        background: linear-gradient(135deg, rgba(4,83,203,.03), rgba(59,125,219,.05));
+        border-radius: 12px; margin-bottom: 1rem;
     }
+    .em-code-value {
+        font-family: 'Courier New', monospace; font-size: 2.5rem; font-weight: 900;
+        color: #0453cb; letter-spacing: .1em;
+    }
+    .em-code-meta { display: flex; justify-content: center; gap: 1.5rem; margin-top: .75rem; }
+    .em-code-meta-item { font-size: .78rem; color: #64748b; display: flex; align-items: center; gap: .3rem; }
+    .em-code-meta-item i { font-size: .7rem; color: #0453cb; }
 
-    .stat-value {
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: var(--primary);
-        margin-bottom: var(--space-xs);
+    /* Multi codes grid */
+    .em-codes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .65rem; }
+    .em-code-card {
+        background: #f8fafc; border-radius: 10px; padding: .85rem;
+        border: 1px solid #e8ecf1; text-align: center;
     }
+    .em-code-card-value {
+        font-family: 'Courier New', monospace; font-size: 1.3rem; font-weight: 700;
+        color: #0453cb; margin-bottom: .3rem;
+    }
+    .em-code-card-info { font-size: .72rem; color: #64748b; }
+    .em-code-card-expire { font-size: .68rem; color: #10b981; margin-top: .2rem; }
 
-    .stat-label {
-        font-size: var(--text-small);
-        color: var(--text-secondary);
-        text-transform: uppercase;
-        font-weight: 500;
-        letter-spacing: 0.05em;
+    /* Séances list */
+    .em-seance {
+        display: flex; align-items: center; gap: .85rem;
+        padding: .7rem .85rem; border-radius: 10px;
+        border: 1px solid #f1f5f9; margin-bottom: .5rem;
+        transition: all .15s; cursor: pointer; background: #fff;
     }
+    .em-seance:hover { background: #f8fafc; border-color: #e2e8f0; }
+    .em-seance-time {
+        min-width: 65px; text-align: center; flex-shrink: 0;
+    }
+    .em-seance-hours { font-size: .82rem; font-weight: 700; color: #1e293b; }
+    .em-seance-day { font-size: .65rem; color: #94a3b8; }
+    .em-seance-info { flex: 1; min-width: 0; }
+    .em-seance-mat { font-size: .82rem; font-weight: 600; color: #1e293b; }
+    .em-seance-class { font-size: .72rem; color: #64748b; }
+    .em-seance-teacher { font-size: .68rem; color: #94a3b8; }
+    .em-seance-action {
+        padding: .3rem .6rem; border-radius: 6px; font-size: .68rem; font-weight: 600;
+        background: rgba(16,185,129,.08); color: #059669; border: none; white-space: nowrap;
+    }
+    .em-seance.passed { opacity: .5; pointer-events: none; }
+    .em-seance.passed .em-seance-action { background: #f1f5f9; color: #94a3b8; }
 
-    .action-buttons {
-        display: flex;
-        gap: var(--space-md);
-        justify-content: center;
-        margin: var(--space-lg) 0;
-        flex-wrap: wrap;
+    /* Quick actions */
+    .em-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+    .em-action-btn {
+        display: flex; align-items: center; gap: .4rem;
+        padding: .55rem 1rem; border-radius: 10px;
+        font-size: .82rem; font-weight: 600;
+        text-decoration: none; border: none; cursor: pointer; transition: all .2s;
     }
+    .em-action-btn--primary { background: linear-gradient(135deg,#0453cb,#3b7ddb); color: #fff; box-shadow: 0 2px 6px rgba(4,83,203,.2); }
+    .em-action-btn--primary:hover { background: linear-gradient(135deg,#0347b0,#2d6bc4); color: #fff; }
+    .em-action-btn--secondary { background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; }
+    .em-action-btn--secondary:hover { background: #e2e8f0; color: #1e293b; }
 
-    .status-badge-modern {
-        display: inline-flex;
-        align-items: center;
-        gap: var(--space-xs);
-        padding: var(--space-xs) var(--space-sm);
-        border-radius: var(--radius-full);
-        font-size: var(--text-small);
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+    /* History items */
+    .em-history-item {
+        display: flex; align-items: center; gap: .75rem;
+        padding: .65rem 0; border-bottom: 1px solid #f8fafc;
     }
+    .em-history-item:last-child { border-bottom: none; }
+    .em-history-code {
+        font-family: 'Courier New', monospace; font-size: .85rem; font-weight: 700;
+        color: #0453cb; min-width: 60px;
+    }
+    .em-history-info { flex: 1; min-width: 0; }
+    .em-history-desc { font-size: .8rem; font-weight: 500; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .em-history-meta { font-size: .7rem; color: #94a3b8; }
+    .em-history-badge {
+        font-size: .65rem; font-weight: 600; padding: .2rem .5rem; border-radius: 5px;
+    }
+    .em-history-badge.active { background: rgba(16,185,129,.1); color: #059669; }
+    .em-history-badge.expired { background: rgba(239,68,68,.08); color: #dc2626; }
+    .em-history-badge.neutral { background: #f1f5f9; color: #64748b; }
 
-    .status-badge-modern.active {
-        background: rgba(34, 197, 94, 0.1);
-        color: var(--success);
-        border: 1px solid rgba(34, 197, 94, 0.3);
-    }
+    /* Grid layout */
+    .em-grid { display: grid; gap: 1.25rem; grid-template-columns: 1fr 1fr; }
+    .em-grid--full { grid-column: 1 / -1; }
 
-    .status-badge-modern.expired {
-        background: rgba(239, 68, 68, 0.1);
-        color: var(--danger);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-    }
+    /* Empty state */
+    .em-empty { text-align: center; padding: 2rem; color: #94a3b8; }
+    .em-empty i { font-size: 1.3rem; display: block; margin-bottom: .5rem; }
 
-    .status-badge-modern.used {
-        background: rgba(156, 163, 175, 0.1);
-        color: var(--text-muted);
-        border: 1px solid rgba(156, 163, 175, 0.3);
-    }
-
-    .code-history {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        box-shadow: var(--shadow-card);
-    }
-
-    .code-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: var(--space-md);
-        border-bottom: 1px solid var(--border);
-        transition: all 0.2s ease;
-    }
-
-    .code-item:last-child {
-        border-bottom: none;
-    }
-
-    .code-item:hover {
-        background: var(--background);
-        border-radius: var(--radius-small);
-    }
-
-    .code-value {
-        font-family: 'Courier New', monospace;
-        font-size: var(--text-large);
-        font-weight: 700;
-        color: var(--primary);
-    }
-
-    .code-meta {
-        font-size: var(--text-small);
-        color: var(--text-secondary);
-    }
-
-    .no-code-state {
-        text-align: center;
-        padding: var(--space-xl);
-        color: var(--text-secondary);
-    }
-
-    .no-code-icon {
-        font-size: 3rem;
-        margin-bottom: var(--space-md);
-        color: var(--text-muted);
-    }
-
-    .expired-warning {
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        border-radius: var(--radius-medium);
-        padding: var(--space-md);
-        margin: var(--space-md) 0;
-        color: var(--danger);
-        text-align: center;
-    }
-
-    .emargement-header {
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        color: white;
-        padding: var(--space-xl);
-        border-radius: var(--radius-medium);
-        margin-bottom: var(--space-lg);
-        text-align: center;
-    }
-
-    .emargement-header h2 {
-        margin: 0;
-        font-size: var(--title-main);
-        font-weight: 700;
-    }
-
-    .emargement-header p {
-        margin: var(--space-sm) 0 0 0;
-        opacity: 0.9;
-        font-size: var(--text-normal);
-    }
-
-    @media (max-width: 768px) {
-        .code-display-large {
-            font-size: 2.5rem;
-            padding: var(--space-lg);
-        }
-        
-        .stats-grid {
-            grid-template-columns: 1fr;
-        }
-        
-        .action-buttons {
-            flex-direction: column;
-            align-items: center;
-        }
-    }
+    @keyframes em-fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    @media (max-width: 768px) { .em-grid { grid-template-columns: 1fr; } .em-code-value { font-size: 1.8rem; } }
 </style>
-@endsection
+@endpush
 
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header et navigation du planning -->
-        <x-planning-header 
-            title="Codes d'Émargement" 
+        <x-planning-header
+            title="Codes d'Émargement"
             subtitle="Génération et gestion des codes d'émargement pour le suivi des présences"
             active-tab="emargement"
             :annee-selectionnee="$anneeSelectionnee"
@@ -209,663 +162,246 @@
         />
 
         <div id="pg-tab-content">
+        <div class="em-page">
 
-        <!-- En-tête de la section émargement -->
-        <div class="emargement-header">
-            <h2>
-                <i class="fas fa-qrcode me-3"></i>
-                Gestion des Codes d'Émargement
-            </h2>
-            <p>Interface de génération et de suivi des codes d'émargement quotidiens</p>
-        </div>
-
-        <!-- Statistiques d'émargement -->
-        <div class="stats-grid">
-            <div class="stat-item">
-                <div class="stat-value">{{ $stats['total_emargements_aujourd_hui'] }}</div>
-                <div class="stat-label">Émargements Aujourd'hui</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">{{ $stats['enseignants_emarges_aujourd_hui'] }}</div>
-                <div class="stat-label">Enseignants Émargés</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">{{ $stats['codes_generes_semaine'] }}</div>
-                <div class="stat-label">Codes Cette Semaine</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value">{{ $stats['taux_emargement_semaine'] }}%</div>
-                <div class="stat-label">Taux d'Émargement</div>
-            </div>
-        </div>
-
-        <!-- Grille principale pour les codes d'émargement -->
-        <div class="dashboard-main-grid">
-            <!-- Code d'émargement actuel -->
-            <div class="main-card">
-                <div class="main-card-header">
-                    <div class="main-card-title">
-                        <i class="fas fa-qrcode"></i>
-                        Code d'Émargement Actuel
-                    </div>
-                    <p class="main-card-subtitle">Code actif pour les émargements enseignants</p>
+        {{-- Stats --}}
+        <div class="em-stats">
+            <div class="em-stat">
+                <div class="em-stat-icon"><i class="fas fa-check-circle"></i></div>
+                <div>
+                    <div class="em-stat-value">{{ $stats['total_emargements_aujourd_hui'] }}</div>
+                    <div class="em-stat-label">Émargements aujourd'hui</div>
                 </div>
-                <div class="main-card-body">
+            </div>
+            <div class="em-stat">
+                <div class="em-stat-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                <div>
+                    <div class="em-stat-value">{{ $stats['enseignants_emarges_aujourd_hui'] }}</div>
+                    <div class="em-stat-label">Enseignants émargés</div>
+                </div>
+            </div>
+            <div class="em-stat">
+                <div class="em-stat-icon"><i class="fas fa-key"></i></div>
+                <div>
+                    <div class="em-stat-value">{{ $stats['codes_generes_semaine'] }}</div>
+                    <div class="em-stat-label">Codes cette semaine</div>
+                </div>
+            </div>
+            <div class="em-stat">
+                <div class="em-stat-icon"><i class="fas fa-chart-line"></i></div>
+                <div>
+                    <div class="em-stat-value">{{ $stats['taux_emargement_semaine'] }}%</div>
+                    <div class="em-stat-label">Taux d'émargement</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="em-grid">
+            {{-- Code actuel --}}
+            <div class="em-card">
+                <div class="em-card-head">
+                    <div class="em-card-title"><i class="fas fa-qrcode"></i>Code Actuel</div>
+                    <div class="em-card-sub">{{ $activeCodes->count() }} actif(s)</div>
+                </div>
+                <div class="em-card-body">
                     @if($activeCodes->isNotEmpty())
                         @if($activeCodes->count() == 1)
-                            <!-- Code unique actif -->
-                            <div class="text-center mb-lg">
-                                <div class="badge primary" style="font-size: 1.5rem; padding: var(--space-md) var(--space-lg);">
-                                    <i class="fas fa-circle me-2" style="color: var(--success);"></i>
-                                    {{ $activeCodes->first()->code }}
+                            @php $ac = $activeCodes->first(); @endphp
+                            <div class="em-code-display">
+                                <div class="em-code-value">{{ $ac->code }}</div>
+                                <div class="em-code-meta">
+                                    <div class="em-code-meta-item"><i class="fas fa-calendar-plus"></i>{{ $ac->created_at->format('d/m/Y H:i') }}</div>
+                                    <div class="em-code-meta-item"><i class="fas fa-clock"></i>Jusqu'à {{ $ac->valid_until->format('H:i') }}</div>
+                                    <div class="em-code-meta-item"><i class="fas fa-user"></i>{{ $ac->generator->name ?? 'Système' }}</div>
                                 </div>
                             </div>
-                            
-                            <div class="form-grid-2">
-                                <div class="info-item">
-                                    <div class="info-label">
-                                        <i class="fas fa-calendar-plus me-1"></i>
-                                        Créé le
-                                    </div>
-                                    <div class="info-value">{{ $activeCodes->first()->created_at->format('d/m/Y à H:i') }}</div>
-                                </div>
-                                <div class="info-item">
-                                    <div class="info-label">
-                                        <i class="fas fa-clock me-1"></i>
-                                        Valide jusqu'à
-                                    </div>
-                                    <div class="info-value">{{ $activeCodes->first()->valid_until->format('d/m/Y à H:i') }}</div>
-                                </div>
+                            @if($ac->seance)
+                            <div style="font-size:.82rem; color:#64748b; text-align:center;">
+                                <i class="fas fa-link" style="font-size:.7rem; color:#0453cb;"></i>
+                                {{ $ac->seance->matiere?->name }} — {{ $ac->seance->classe?->nom }}
                             </div>
-                            
-                            <div class="info-item">
-                                <div class="info-label">
-                                    <i class="fas fa-user me-1"></i>
-                                    Générateur
-                                </div>
-                                <div class="info-value">
-                                    {{ $activeCodes->first()->generator->name ?? 'Système' }}
-                                    @if($activeCodes->first()->description)
-                                        - {{ $activeCodes->first()->description }}
-                                    @endif
-                                </div>
-                            </div>
-                            
-                            @if($activeCodes->first()->seance)
-                                <div class="info-item">
-                                    <div class="info-label">
-                                        <i class="fas fa-calendar-check me-1"></i>
-                                        Séance liée
-                                    </div>
-                                    <div class="info-value">
-                                        {{ $activeCodes->first()->seance->matiere?->name }} - {{ $activeCodes->first()->seance->classe?->nom }}
-                                    </div>
-                                </div>
                             @endif
                         @else
-                            <!-- Plusieurs codes actifs -->
-                            <div class="kpi-grid">
+                            <div class="em-codes-grid">
                                 @foreach($activeCodes as $code)
-                                    <div class="kpi-card">
-                                        <div class="kpi-title">
-                                            @if($code->seance)
-                                                <i class="fas fa-calendar-check me-1"></i>
-                                                {{ $code->seance->matiere?->name ?? 'Séance' }}
-                                            @else
-                                                <i class="fas fa-globe me-1"></i>
-                                                Code général
-                                            @endif
-                                        </div>
-                                        <div class="kpi-value color-primary">{{ $code->code }}</div>
-                                        <div class="kpi-trend">
-                                            <i class="fas fa-clock me-1"></i>
-                                            Jusqu'à {{ $code->valid_until->format('H:i') }}
-                                        </div>
+                                <div class="em-code-card">
+                                    <div class="em-code-card-value">{{ $code->code }}</div>
+                                    <div class="em-code-card-info">
+                                        @if($code->seance) {{ $code->seance->matiere?->name ?? 'Séance' }}
+                                        @else Code général @endif
                                     </div>
+                                    <div class="em-code-card-expire"><i class="fas fa-clock" style="font-size:.6rem;"></i> Jusqu'à {{ $code->valid_until->format('H:i') }}</div>
+                                </div>
                                 @endforeach
                             </div>
                         @endif
                     @else
-                        <div class="empty-state">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <p>Aucun code d'émargement actif. Générez un nouveau code pour permettre aux enseignants de s'émarger.</p>
-                        </div>
-                    @endif
-
-                    <!-- Séances de cours disponibles -->
-                    @if($seancesAVenir->isNotEmpty())
-                        @php
-                            // Filtrer les vraies séances à venir (pas celles qui sont passées)
-                            $now = \Carbon\Carbon::now();
-                            $vraiSeancesAVenir = $seancesAVenir->filter(function($seance) use ($now) {
-                                // Si date_seance existe, utiliser cette date
-                                if ($seance->date_seance) {
-                                    // heure_debut peut être un datetime complet, extraire juste l'heure
-                                    $heureDebut = \Carbon\Carbon::parse($seance->heure_debut)->format('H:i:s');
-                                    $seanceDateTime = \Carbon\Carbon::parse($seance->date_seance . ' ' . $heureDebut);
-                                    return $seanceDateTime->gt($now);
-                                }
-                                
-                                // Sinon, pour les séances récurrentes, vérifier si l'heure n'est pas passée aujourd'hui
-                                $heureDebut = \Carbon\Carbon::parse($seance->heure_debut)->format('H:i:s');
-                                $today = \Carbon\Carbon::today();
-                                $seanceToday = $today->copy()->setTimeFromTimeString($heureDebut);
-                                
-                                // Si c'est aujourd'hui et que l'heure est passée, ne pas inclure
-                                if ($now->isToday() && $seanceToday->lt($now)) {
-                                    return false;
-                                }
-                                
-                                return true;
-                            });
-                        @endphp
-                        
-                        @if($vraiSeancesAVenir->isNotEmpty())
-                            <div class="section-header mt-lg">
-                                <div class="section-title">
-                                    <i class="fas fa-calendar-plus me-2"></i>
-                                    Séances de cours disponibles
-                                </div>
-                                <small class="text-muted">{{ $vraiSeancesAVenir->count() }} séance(s) à venir pour générer des codes</small>
-                            </div>
-                            
-                            <div class="course-list">
-                                @foreach($vraiSeancesAVenir->take(6) as $seance)
-                                    @php
-                                        $now = \Carbon\Carbon::now();
-                                        $isUpcoming = true;
-                                        
-                                        if ($seance->date_seance) {
-                                            $heureDebut = \Carbon\Carbon::parse($seance->heure_debut)->format('H:i:s');
-                                            $seanceDateTime = \Carbon\Carbon::parse($seance->date_seance . ' ' . $heureDebut);
-                                            $isUpcoming = $seanceDateTime->gt($now);
-                                        } else {
-                                            $heureDebut = \Carbon\Carbon::parse($seance->heure_debut)->format('H:i:s');
-                                            $seanceTime = \Carbon\Carbon::today()->setTimeFromTimeString($heureDebut);
-                                            $isUpcoming = $seanceTime->gt($now);
-                                        }
-                                    @endphp
-                                    
-                                    @if($isUpcoming)
-                                        <form method="POST" action="{{ route('esbtp.planning-general.generer-code-emargement') }}" style="display: contents;">
-                                            @csrf
-                                            <input type="hidden" name="annee_id" value="{{ $anneeSelectionnee?->id }}">
-                                            <input type="hidden" name="type" value="session">
-                                            <input type="hidden" name="seance_id" value="{{ $seance->id }}">
-                                            <input type="hidden" name="duree" value="{{ ceil($seance->getDuration() / 60) }}">
-                                            <input type="hidden" name="activation" value="immediate">
-                                            <input type="hidden" name="description" value="Code pour {{ $seance->matiere?->name }} - {{ $seance->classe?->nom }}">
-                                            
-                                            <button type="submit" class="course-item" style="background: none; border: none; width: 100%; text-align: left;"
-                                                    onclick="return confirm('Générer un code d\'émargement pour cette séance ?')">
-                                                <div class="course-time">
-                                                    <div class="time-display">{{ $seance->heure_debut->format('H:i') }} - {{ $seance->heure_fin->format('H:i') }}</div>
-                                                    <div class="course-day">
-                                                        @if($seance->date_seance)
-                                                            {{ \Carbon\Carbon::parse($seance->date_seance)->format('d/m') }}
-                                                        @else
-                                                            Prochaine fois
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                                <div class="course-info">
-                                                    <div class="course-subject">{{ $seance->matiere?->name ?? 'Matière inconnue' }}</div>
-                                                    <div class="course-class">{{ $seance->classe?->nom ?? 'Classe inconnue' }}</div>
-                                                    @if($seance->teacher)
-                                                        <div class="course-type">{{ $seance->teacher->name }}</div>
-                                                    @endif
-                                                </div>
-                                                <div class="course-status">
-                                                    <div class="badge success">
-                                                        <i class="fas fa-plus-circle me-1"></i>
-                                                        Générer Code
-                                                    </div>
-                                                </div>
-                                            </button>
-                                        </form>
-                                    @else
-                                        <!-- Cours passé - non cliquable -->
-                                        <div class="course-item" style="opacity: 0.5; background-color: rgba(156, 163, 175, 0.1);">
-                                            <div class="course-time">
-                                                <div class="time-display">{{ $seance->heure_debut->format('H:i') }} - {{ $seance->heure_fin->format('H:i') }}</div>
-                                                <div class="course-day">
-                                                    @if($seance->date_seance)
-                                                        {{ \Carbon\Carbon::parse($seance->date_seance)->format('d/m') }}
-                                                    @else
-                                                        Aujourd'hui
-                                                    @endif
-                                                </div>
-                                            </div>
-                                            <div class="course-info">
-                                                <div class="course-subject">{{ $seance->matiere?->name ?? 'Matière inconnue' }}</div>
-                                                <div class="course-class">{{ $seance->classe?->nom ?? 'Classe inconnue' }}</div>
-                                                @if($seance->teacher)
-                                                    <div class="course-type">{{ $seance->teacher->name }}</div>
-                                                @endif
-                                            </div>
-                                            <div class="course-status">
-                                                <div class="badge neutral">
-                                                    <i class="fas fa-clock me-1"></i>
-                                                    Cours passé
-                                                </div>
-                                            </div>
-                                        </div>
-                                    @endif
-                                @endforeach
-                            </div>
-                            
-                            @if($vraiSeancesAVenir->count() > 6)
-                                <div class="text-center mt-md">
-                                    <small style="color: var(--text-muted);">{{ $vraiSeancesAVenir->count() - 6 }} autre(s) séance(s) disponible(s)...</small>
-                                </div>
-                            @endif
-                        @else
-                            <div class="empty-state mt-lg">
-                                <i class="fas fa-info-circle"></i>
-                                <p>Aucune séance de cours à venir trouvée.</p>
-                            </div>
-                        @endif
-                    @else
-                        <div class="empty-state mt-lg">
-                            <i class="fas fa-info-circle"></i>
-                            <p>Aucune séance de cours trouvée pour aujourd'hui et les prochains jours.</p>
+                        <div class="em-empty">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <div style="font-size:.85rem;">Aucun code actif</div>
+                            <div style="font-size:.75rem; margin-top:.2rem;">Générez un code pour les émargements</div>
                         </div>
                     @endif
                 </div>
             </div>
 
-            <!-- Actions rapides et historique -->
-            <div class="main-card">
-                <div class="main-card-header">
-                    <div class="main-card-title">
-                        <i class="fas fa-bolt"></i>
-                        Actions Rapides
-                    </div>
-                    <p class="main-card-subtitle">Génération de codes d'émargement</p>
+            {{-- Actions rapides --}}
+            <div class="em-card">
+                <div class="em-card-head">
+                    <div class="em-card-title"><i class="fas fa-bolt"></i>Actions Rapides</div>
                 </div>
-                <div class="main-card-body">
-                    <div class="quick-actions-grid">
-                        <form method="POST" action="{{ route('esbtp.planning-general.generer-code-emargement') }}" style="display: contents;">
+                <div class="em-card-body">
+                    <div class="em-actions" style="margin-bottom:1rem;">
+                        <form method="POST" action="{{ route('esbtp.planning-general.generer-code-emargement') }}" style="display:contents;">
                             @csrf
                             <input type="hidden" name="annee_id" value="{{ $anneeSelectionnee?->id }}">
                             <input type="hidden" name="type" value="journee">
                             <input type="hidden" name="duree" value="8">
                             <input type="hidden" name="activation" value="immediate">
-                            <button type="submit" class="quick-action-card" 
-                                    onclick="return confirm('Générer un code général pour la journée (8h) ?')">
-                                <i class="fas fa-sun"></i>
-                                <span>Code Journée</span>
+                            <button type="submit" class="em-action-btn em-action-btn--primary" onclick="return confirm('Générer un code journée (8h) ?')">
+                                <i class="fas fa-sun"></i>Code Journée
                             </button>
                         </form>
-                        
-                        <button type="button" class="quick-action-card" data-bs-toggle="modal" data-bs-target="#codeModal">
-                            <i class="fas fa-cogs"></i>
-                            <span>Code Personnalisé</span>
+                        <button type="button" class="em-action-btn em-action-btn--secondary" data-bs-toggle="modal" data-bs-target="#codeModal">
+                            <i class="fas fa-cogs"></i>Personnalisé
                         </button>
-                        
-                        <a href="{{ route('esbtp.attendance-codes.index') }}" class="quick-action-card">
-                            <i class="fas fa-external-link-alt"></i>
-                            <span>Interface Complète</span>
+                        <a href="{{ route('esbtp.attendance-codes.index') }}" class="em-action-btn em-action-btn--secondary">
+                            <i class="fas fa-external-link-alt"></i>Interface complète
                         </a>
                     </div>
+
+                    {{-- Séances à venir --}}
+                    @if($seancesAVenir->isNotEmpty())
+                        @php
+                            $now = \Carbon\Carbon::now();
+                            $vraiSeancesAVenir = $seancesAVenir->filter(function($seance) use ($now) {
+                                if ($seance->date_seance) {
+                                    $heureDebut = \Carbon\Carbon::parse($seance->heure_debut)->format('H:i:s');
+                                    return \Carbon\Carbon::parse($seance->date_seance . ' ' . $heureDebut)->gt($now);
+                                }
+                                $heureDebut = \Carbon\Carbon::parse($seance->heure_debut)->format('H:i:s');
+                                $seanceToday = \Carbon\Carbon::today()->setTimeFromTimeString($heureDebut);
+                                return !($now->isToday() && $seanceToday->lt($now));
+                            });
+                        @endphp
+                        @if($vraiSeancesAVenir->isNotEmpty())
+                        <div style="font-size:.78rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.5rem;">
+                            <i class="fas fa-calendar-plus" style="color:#0453cb;"></i> Séances disponibles ({{ $vraiSeancesAVenir->count() }})
+                        </div>
+                        @foreach($vraiSeancesAVenir->take(5) as $seance)
+                            <form method="POST" action="{{ route('esbtp.planning-general.generer-code-emargement') }}" style="display:contents;">
+                                @csrf
+                                <input type="hidden" name="annee_id" value="{{ $anneeSelectionnee?->id }}">
+                                <input type="hidden" name="type" value="session">
+                                <input type="hidden" name="seance_id" value="{{ $seance->id }}">
+                                <input type="hidden" name="duree" value="{{ ceil($seance->getDuration() / 60) }}">
+                                <input type="hidden" name="activation" value="immediate">
+                                <input type="hidden" name="description" value="Code pour {{ $seance->matiere?->name }} - {{ $seance->classe?->nom }}">
+                                <button type="submit" class="em-seance" onclick="return confirm('Générer un code pour cette séance ?')">
+                                    <div class="em-seance-time">
+                                        <div class="em-seance-hours">{{ $seance->heure_debut->format('H:i') }}</div>
+                                        <div class="em-seance-day">{{ $seance->date_seance ? \Carbon\Carbon::parse($seance->date_seance)->format('d/m') : 'Récurrent' }}</div>
+                                    </div>
+                                    <div class="em-seance-info">
+                                        <div class="em-seance-mat">{{ $seance->matiere?->name ?? 'Matière' }}</div>
+                                        <div class="em-seance-class">{{ $seance->classe?->nom ?? 'Classe' }}</div>
+                                        @if($seance->teacher)<div class="em-seance-teacher">{{ $seance->teacher->name }}</div>@endif
+                                    </div>
+                                    <div class="em-seance-action"><i class="fas fa-plus-circle" style="font-size:.6rem;"></i> Code</div>
+                                </button>
+                            </form>
+                        @endforeach
+                        @endif
+                    @endif
                 </div>
             </div>
 
-            <!-- Historique des codes récents -->
-            <div class="main-card">
-                <div class="main-card-header">
-                    <div class="main-card-title">
-                        <i class="fas fa-history"></i>
-                        Codes Récents
-                    </div>
-                    <p class="main-card-subtitle">Historique des derniers codes générés</p>
+            {{-- Historique --}}
+            <div class="em-card em-grid--full">
+                <div class="em-card-head">
+                    <div class="em-card-title"><i class="fas fa-history"></i>Codes Récents</div>
+                    <div class="em-card-sub">{{ $recentCodes->count() }} dernier(s)</div>
                 </div>
-                <div class="main-card-body">
+                <div class="em-card-body">
                     @forelse($recentCodes as $code)
-                        <div class="course-item" style="grid-template-columns: auto 1fr auto;">
-                            <div style="text-align: center;">
-                                <div class="time-display" style="font-size: 1rem;">{{ $code->code }}</div>
-                                <div class="course-day">{{ $code->created_at->format('d/m') }}</div>
+                    <div class="em-history-item">
+                        <div class="em-history-code">{{ $code->code }}</div>
+                        <div class="em-history-info">
+                            <div class="em-history-desc">
+                                @if($code->seance) {{ $code->seance->matiere?->name }} — {{ $code->seance->classe?->nom }}
+                                @else {{ $code->description ?? 'Code général' }} @endif
                             </div>
-                            <div class="course-info">
-                                <div class="course-subject">
-                                    @if($code->seance)
-                                        {{ $code->seance->matiere?->name }} - {{ $code->seance->classe?->nom }}
-                                    @else
-                                        {{ $code->description ?? 'Code général' }}
-                                    @endif
-                                </div>
-                                <div class="course-class">{{ $code->created_at->format('d/m/Y H:i') }}</div>
-                                @if($code->generator)
-                                    <div class="course-type">par {{ $code->generator->name }}</div>
-                                @endif
-                            </div>
-                            <div class="course-status">
-                                @if($code->status === 'active' && $code->valid_until > now())
-                                    <div class="badge success">
-                                        <i class="fas fa-circle me-1"></i>
-                                        Actif
-                                    </div>
-                                @elseif($code->status === 'active' && $code->valid_until <= now())
-                                    <div class="badge danger">
-                                        <i class="fas fa-clock me-1"></i>
-                                        Expiré
-                                    </div>
-                                @elseif($code->status === 'expired')
-                                    <div class="badge danger">
-                                        <i class="fas fa-times-circle me-1"></i>
-                                        Expiré
-                                    </div>
-                                @else
-                                    <div class="badge neutral">
-                                        <i class="fas fa-check-circle me-1"></i>
-                                        {{ ucfirst($code->status) }}
-                                    </div>
-                                @endif
-                            </div>
+                            <div class="em-history-meta">{{ $code->created_at->format('d/m/Y H:i') }}@if($code->generator) · {{ $code->generator->name }}@endif</div>
                         </div>
+                        @if($code->status === 'active' && $code->valid_until > now())
+                            <span class="em-history-badge active">Actif</span>
+                        @elseif($code->status === 'active' || $code->status === 'expired')
+                            <span class="em-history-badge expired">Expiré</span>
+                        @else
+                            <span class="em-history-badge neutral">{{ ucfirst($code->status) }}</span>
+                        @endif
+                    </div>
                     @empty
-                        <div class="empty-state">
-                            <i class="fas fa-inbox"></i>
-                            <p>Aucun code généré récemment</p>
-                        </div>
+                    <div class="em-empty"><i class="fas fa-inbox"></i>Aucun code récent</div>
                     @endforelse
                 </div>
             </div>
         </div>
+
+        </div>
         </div>{{-- #pg-tab-content --}}
 
-        <!-- Modal pour code personnalisé -->
-        <div class="modal fade" id="codeModal" tabindex="-1" aria-labelledby="codeModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg modal-dialog-centered">
-                <div class="modal-content modal-moderne">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="codeModalLabel">
-                            <i class="fas fa-cogs me-2"></i>
-                            Génération de Code Personnalisé
-                        </h5>
-                        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
+        {{-- Modal code personnalisé --}}
+        <div class="modal fade" id="codeModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content" style="border:none; border-radius:16px; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,.15);">
                     <form method="POST" action="{{ route('esbtp.planning-general.generer-code-emargement') }}">
                         @csrf
                         <input type="hidden" name="annee_id" value="{{ $anneeSelectionnee?->id }}">
                         <input type="hidden" name="type" value="personnalise">
-                        
-                        <div class="modal-body">
-                            <div class="form-grid-2">
-                                <div class="form-group-moderne">
-                                    <label for="duree_heures" class="form-label-moderne">
-                                        <i class="fas fa-clock me-1"></i>
-                                        Durée de validité
-                                    </label>
-                                    <select class="form-select-moderne" id="duree_heures" name="duree" required>
-                                        <option value="1">1 heure</option>
-                                        <option value="2" selected>2 heures (séance standard)</option>
-                                        <option value="3">3 heures</option>
-                                        <option value="4">4 heures (demi-journée)</option>
-                                        <option value="8">8 heures (journée complète)</option>
-                                        <option value="12">12 heures</option>
-                                        <option value="24">24 heures</option>
-                                        <option value="48">48 heures (2 jours)</option>
-                                        <option value="72">72 heures (3 jours)</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="form-group-moderne">
-                                    <label for="activation_retardee" class="form-label-moderne">
-                                        <i class="fas fa-play me-1"></i>
-                                        Activation
-                                    </label>
-                                    <select class="form-select-moderne" id="activation_retardee" name="activation">
-                                        <option value="immediate" selected>Immédiate</option>
-                                        <option value="1">Dans 1 heure</option>
-                                        <option value="2">Dans 2 heures</option>
-                                        <option value="4">Dans 4 heures</option>
-                                        <option value="24">Dans 24 heures (demain)</option>
-                                    </select>
-                                    <small style="color: var(--text-muted); font-style: italic;">
-                                        Le code sera activé automatiquement au moment choisi
-                                    </small>
-                                </div>
+
+                        <div class="modal-header" style="background:linear-gradient(135deg,#0a3d8f,#0453cb,#3b7ddb); border:none; padding:1.25rem 1.5rem;">
+                            <div>
+                                <h5 style="color:#fff; font-weight:700; font-size:1rem; margin:0;">Code Personnalisé</h5>
+                                <div style="font-size:.75rem; color:rgba(255,255,255,.7);">Paramètres de génération</div>
                             </div>
-                            
-                            <div class="form-group-moderne">
-                                <label for="seance_personnalisee" class="form-label-moderne">
-                                    <i class="fas fa-calendar-check me-1"></i>
-                                    Séance de cours
-                                </label>
-                                <select class="form-select-moderne" id="seance_personnalisee" name="seance_id">
-                                    <option value="">Aucune séance spécifique</option>
-                                    @if($seancesAVenir->isNotEmpty())
-                                        <optgroup label="Séances à venir">
-                                            @foreach($seancesAVenir as $seance)
-                                                <option value="{{ $seance->id }}" 
-                                                        data-duree="{{ ceil($seance->getDuration() / 60) }}"
-                                                        data-description="Code pour {{ $seance->matiere?->name }} - {{ $seance->classe?->nom }}">
-                                                    {{ $seance->heure_debut->format('H:i') }} - {{ $seance->heure_fin->format('H:i') }} : 
-                                                    {{ $seance->matiere?->name ?? 'Matière inconnue' }} 
-                                                    ({{ $seance->classe?->nom ?? 'Classe inconnue' }})
-                                                    @if($seance->date_seance)
-                                                        - {{ \Carbon\Carbon::parse($seance->date_seance)->format('d/m/Y') }}
-                                                    @else
-                                                        - {{ $seance->jour_semaine_texte }}
-                                                    @endif
-                                                </option>
-                                            @endforeach
-                                        </optgroup>
-                                    @endif
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter:brightness(0) invert(1); opacity:.7;"></button>
+                        </div>
+
+                        <div class="modal-body" style="padding:1.25rem 1.5rem;">
+                            <div style="margin-bottom:1rem;">
+                                <label style="font-size:.75rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.35rem; display:block;">Durée de validité (heures)</label>
+                                <input type="number" name="duree" value="2" min="1" max="24" required
+                                    style="width:100%; padding:.5rem .75rem; border-radius:9px; border:1px solid #e2e8f0; font-size:.88rem;">
+                            </div>
+                            <div style="margin-bottom:1rem;">
+                                <label style="font-size:.75rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.35rem; display:block;">Description (optionnel)</label>
+                                <input type="text" name="description" placeholder="Ex: Cours de rattrapage..."
+                                    style="width:100%; padding:.5rem .75rem; border-radius:9px; border:1px solid #e2e8f0; font-size:.88rem;">
+                            </div>
+                            <div>
+                                <label style="font-size:.75rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.35rem; display:block;">Activation</label>
+                                <select name="activation" style="width:100%; padding:.5rem .75rem; border-radius:9px; border:1px solid #e2e8f0; font-size:.88rem;">
+                                    <option value="immediate">Immédiate</option>
+                                    <option value="planifiee">Planifiée</option>
                                 </select>
-                                <small style="color: var(--text-muted); font-style: italic;">
-                                    Si vous sélectionnez une séance, la durée et la description seront automatiquement ajustées
-                                </small>
-                            </div>
-                            
-                            <div class="form-group-moderne">
-                                <label for="description_code" class="form-label-moderne">
-                                    <i class="fas fa-tag me-1"></i>
-                                    Description
-                                </label>
-                                <input type="text" class="form-input-moderne" id="description_code" name="description" 
-                                       placeholder="Ex: Code pour TP Électronique - Groupe A" maxlength="255">
-                                <small style="color: var(--text-muted); font-style: italic;">
-                                    Cette description apparaîtra dans l'historique pour identifier le code
-                                </small>
-                            </div>
-                            
-                            <div style="background-color: rgba(59, 130, 246, 0.1); padding: var(--space-md); border-radius: var(--radius-small); border-left: 4px solid #3b82f6;">
-                                <div style="display: flex; align-items: center; gap: var(--space-sm);">
-                                    <i class="fas fa-info-circle" style="color: #3b82f6;"></i>
-                                    <strong style="color: #3b82f6;">Rappel :</strong>
-                                    <span style="color: var(--text-primary);">Seuls les codes du même type seront invalidés (séance ou général).</span>
-                                </div>
                             </div>
                         </div>
-                        
-                        <div class="modal-footer">
-                            <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">
-                                <i class="fas fa-times me-2"></i>
+
+                        <div class="modal-footer" style="border-top:1px solid #e8ecf1; padding:.85rem 1.5rem; gap:.4rem;">
+                            <button type="button" class="btn" data-bs-dismiss="modal"
+                                style="border-radius:9px; padding:.45rem 1rem; font-size:.82rem; font-weight:600; color:#64748b; background:#f1f5f9; border:1px solid #e2e8f0;">
                                 Annuler
                             </button>
-                            <button type="submit" class="btn-acasi primary">
-                                <i class="fas fa-qrcode me-2"></i>
-                                Générer le Code
+                            <button type="submit" class="btn"
+                                style="border-radius:9px; padding:.45rem 1rem; font-size:.82rem; font-weight:600; color:#fff; background:linear-gradient(135deg,#0453cb,#3b7ddb); border:none; box-shadow:0 2px 6px rgba(4,83,203,.25);">
+                                <i class="fas fa-key me-1" style="font-size:.7rem;"></i>Générer
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
-
-        <!-- Section rapide pour les liens d'interface -->
-        {{-- 
-        <div class="quick-actions-section">
-            <div class="quick-actions-grid">
-                <a href="{{ route('esbtp.attendance-codes.report') }}" class="quick-action-card">
-                    <i class="fas fa-chart-bar"></i>
-                    <span>Rapports d'Émargement</span>
-                </a>
-                <a href="{{ route('esbtp.attendance-codes.settings') }}" class="quick-action-card">
-                    <i class="fas fa-cog"></i>
-                    <span>Paramètres</span>
-                </a>
-                <a href="{{ route('esbtp.planning-general.coordinateur', ['annee_id' => $anneeSelectionnee?->id]) }}" class="quick-action-card">
-                    <i class="fas fa-user-tie"></i>
-                    <span>Interface Coordinateur</span>
-                </a>
-                <a href="{{ route('teacher.attendance') }}" class="quick-action-card">
-                    <i class="fas fa-mobile-alt"></i>
-                    <span>Interface Enseignant</span>
-                </a>
-            </div>
-        </div>
-        --}}
     </div>
 </div>
 @endsection
-
-
-@push('scripts')
-<script>
-$(document).ready(function() {
-    // Gestion de la sélection de séance dans le modal personnalisé
-    $('#seance_personnalisee').on('change', function() {
-        const selectedOption = $(this).find(':selected');
-        const duree = selectedOption.data('duree');
-        const description = selectedOption.data('description');
-        
-        if (duree) {
-            $('#duree_heures').val(duree);
-        }
-        
-        if (description) {
-            $('#description_code').val(description);
-        } else {
-            $('#description_code').val('');
-        }
-    });
-
-    // Auto-refresh de la page toutes les 2 minutes pour actualiser les statuts des cours
-    setInterval(function() {
-        // Ne pas rafraîchir si l'utilisateur est en train d'interagir ou si un modal est ouvert
-        const modals = document.querySelectorAll('.modal.show');
-        const activeInputs = document.querySelectorAll('input:focus, textarea:focus, select:focus');
-        
-        if (!document.hidden && modals.length === 0 && activeInputs.length === 0) {
-            window.location.reload();
-        }
-    }, 120000); // 2 minutes
-    
-    // Mise à jour en temps réel des statuts de cours toutes les minutes
-    setInterval(function() {
-        updateCourseStatuses();
-    }, 60000); // 1 minute
-    
-    function updateCourseStatuses() {
-        const now = new Date();
-        
-        $('.course-item').each(function() {
-            const timeDisplay = $(this).find('.time-display').text();
-            const badge = $(this).find('.badge');
-            
-            if (timeDisplay && timeDisplay.includes(' - ')) {
-                const [startTime, endTime] = timeDisplay.split(' - ');
-                
-                // Parse time
-                const today = new Date();
-                const [startHour, startMin] = startTime.split(':');
-                
-                const courseStart = new Date(today);
-                courseStart.setHours(parseInt(startHour), parseInt(startMin), 0, 0);
-                
-                // Si le cours est passé et que le badge dit encore "Générer Code"
-                if (now > courseStart && badge.hasClass('success') && badge.text().includes('Générer Code')) {
-                    badge.removeClass('success').addClass('neutral');
-                    badge.html('<i class="fas fa-clock me-1"></i> Cours passé');
-                    
-                    // Désactiver le bouton parent si c'est un bouton
-                    const button = $(this).closest('button');
-                    if (button.length) {
-                        button.prop('disabled', true);
-                        button.css('opacity', '0.5');
-                        button.css('cursor', 'not-allowed');
-                        button.off('click');
-                    }
-                }
-            }
-        });
-    }
-
-    // Affichage du temps restant pour le code actif
-    @if($activeCode && !$activeCode->valid_until->isPast())
-        function updateTimeRemaining() {
-            const validUntil = new Date('{{ $activeCode->valid_until->toISOString() }}');
-            const now = new Date();
-            const timeLeft = validUntil - now;
-            
-            if (timeLeft <= 0) {
-                $('#time-remaining-display').removeClass('alert-info').addClass('alert-danger');
-                $('#time-remaining').html('<i class="fas fa-exclamation-triangle me-2"></i>Code expiré');
-                setTimeout(() => location.reload(), 2000);
-                return;
-            }
-            
-            const hours = Math.floor(timeLeft / (1000 * 60 * 60));
-            const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-            
-            let display = '';
-            if (hours > 0) {
-                display = hours + 'h ' + minutes + 'm ' + seconds + 's';
-            } else if (minutes > 0) {
-                display = minutes + 'm ' + seconds + 's';
-            } else {
-                display = seconds + 's';
-                $('#time-remaining-display').removeClass('alert-info').addClass('alert-warning');
-            }
-            
-            const timeDisplay = document.getElementById('time-remaining');
-            if (timeDisplay) {
-                timeDisplay.innerHTML = '<i class="fas fa-hourglass-half me-2"></i>Expire dans : ' + display;
-            }
-            
-            // Changer la couleur si moins de 10 minutes restantes
-            if (timeLeft < 600000) { // 10 minutes
-                $('#time-remaining-display').removeClass('alert-info').addClass('alert-warning');
-            }
-            
-            // Changer la couleur si moins de 2 minutes restantes
-            if (timeLeft < 120000) { // 2 minutes
-                $('#time-remaining-display').removeClass('alert-warning').addClass('alert-danger');
-            }
-        }
-        
-        // Mettre à jour toutes les secondes
-        setInterval(updateTimeRemaining, 1000);
-        updateTimeRemaining();
-    @else
-        $('#time-remaining-display').hide();
-    @endif
-
-    // Validation du formulaire personnalisé
-    $('#codeModal form').on('submit', function(e) {
-        const duree = parseInt($('#duree_heures').val());
-        const activation = $('#activation_retardee').val();
-        
-        let confirmMessage = `Générer un code valide pendant ${duree}h`;
-        
-        if (activation !== 'immediate') {
-            const heures = parseInt(activation);
-            confirmMessage += ` avec activation dans ${heures}h`;
-        }
-        
-        confirmMessage += ' ?';
-        
-        if (!confirm(confirmMessage)) {
-            e.preventDefault();
-        }
-    });
-});
-</script>
-@endpush
