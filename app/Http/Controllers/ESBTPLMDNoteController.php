@@ -33,8 +33,9 @@ class ESBTPLMDNoteController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Nombre d'évaluations par classe
+        // Nombre d'évaluations par classe (uniquement celles liées à des ECUEs LMD)
         $evalCounts = ESBTPEvaluation::whereHas('classe', fn($q) => $q->where('systeme_academique', 'LMD'))
+            ->whereHas('matiere', fn($q) => $q->whereNotNull('unite_enseignement_id'))
             ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
             ->select('classe_id')
             ->selectRaw('COUNT(*) as total')
@@ -63,8 +64,9 @@ class ESBTPLMDNoteController extends Controller
             ->sortBy('nom')
             ->values();
 
-        // Évaluations de cette classe (LMD uniquement)
+        // Évaluations de cette classe (uniquement celles liées à des ECUEs LMD)
         $evaluations = ESBTPEvaluation::where('classe_id', $classe->id)
+            ->whereHas('matiere', fn($q) => $q->whereNotNull('unite_enseignement_id'))
             ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
             ->with(['matiere:id,name,code,unite_enseignement_id', 'matiere.uniteEnseignement:id,name,code'])
             ->withCount('notes')
