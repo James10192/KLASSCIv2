@@ -330,7 +330,7 @@
                     <div class="co-card-title"><i class="fas fa-chart-line"></i>Taux de Présence</div>
                     <div class="co-card-sub">Par classe</div>
                 </div>
-                <div class="co-card-body">
+                <div class="co-card-body" style="max-height:400px; overflow-y:auto;">
                     @forelse($tauxPresenceClasses as $classe)
                     @php
                         $taux = $classe['taux'];
