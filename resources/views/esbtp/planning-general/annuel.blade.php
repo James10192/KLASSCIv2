@@ -112,40 +112,41 @@
         animation: pa-fadeUp .5s ease-out .2s both;
     }
 
-    /* Légende */
+    /* Légende — compact centered */
     .pa-legend {
-        display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap;
+        display: flex; gap: .75rem; margin-bottom: 1rem; flex-wrap: wrap;
+        justify-content: center;
     }
     .pa-legend-item {
-        display: flex; align-items: center; gap: .35rem; font-size: .75rem; color: #64748b;
+        display: flex; align-items: center; gap: .3rem; font-size: .7rem; color: #64748b;
     }
     .pa-legend-dot {
-        width: 10px; height: 10px; border-radius: 3px;
+        width: 8px; height: 8px; border-radius: 2px;
     }
 
-    /* Controls */
+    /* Controls — compact centered */
     .pa-cal-controls {
-        display: flex; align-items: center; justify-content: space-between;
-        margin-bottom: 1rem; flex-wrap: wrap; gap: .5rem;
+        display: flex; align-items: center; justify-content: center;
+        margin-bottom: .75rem; gap: 1.5rem; flex-wrap: wrap;
     }
     .pa-cal-nav {
-        display: flex; align-items: center; gap: .5rem;
+        display: flex; align-items: center; gap: .4rem;
     }
     .pa-cal-nav-btn {
-        width: 34px; height: 34px; border-radius: 9px;
+        width: 30px; height: 30px; border-radius: 8px;
         border: 1px solid #e2e8f0; background: #fff; color: #64748b;
         display: flex; align-items: center; justify-content: center;
-        cursor: pointer; transition: all .2s; font-size: .8rem;
+        cursor: pointer; transition: all .2s; font-size: .72rem;
     }
     .pa-cal-nav-btn:hover:not(:disabled) { background: #f1f5f9; color: #0453cb; border-color: #0453cb; }
     .pa-cal-nav-btn:disabled { opacity: .4; cursor: default; }
     .pa-cal-month {
-        font-size: 1.05rem; font-weight: 700; color: #1e293b;
-        min-width: 180px; text-align: center; text-transform: capitalize;
+        font-size: .95rem; font-weight: 700; color: #1e293b;
+        min-width: 160px; text-align: center; text-transform: capitalize;
     }
     .pa-cal-meta {
-        display: flex; align-items: center; gap: .5rem;
-        font-size: .78rem; color: #94a3b8;
+        display: flex; align-items: center; gap: .4rem;
+        font-size: .72rem; color: #94a3b8;
     }
 
     /* Viewport & Slider */
@@ -159,46 +160,48 @@
         min-width: 100%; flex-shrink: 0;
     }
 
-    /* Grid */
+    /* Grid — balanced */
     .pa-cal-grid {
         display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+        max-width: 900px; margin: 0 auto;
     }
     .pa-cal-header {
-        padding: .5rem; text-align: center;
-        font-size: .7rem; font-weight: 600; color: #94a3b8;
+        padding: .45rem .25rem; text-align: center;
+        font-size: .68rem; font-weight: 600; color: #94a3b8;
         text-transform: uppercase; letter-spacing: .06em;
     }
     .pa-cal-day {
-        aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-        font-size: .82rem; font-weight: 500; color: #334155;
+        padding: .75rem 0; display: flex; align-items: center; justify-content: center;
+        font-size: .85rem; font-weight: 500; color: #334155;
         border-radius: 8px; cursor: default; position: relative;
-        transition: all .15s;
+        transition: all .15s; min-height: 48px;
     }
     .pa-cal-day.autre-mois { color: #cbd5e1; }
     .pa-cal-day.aujourd-hui {
         background: #0453cb; color: #fff; font-weight: 700;
-        box-shadow: 0 2px 8px rgba(4,83,203,.3);
+        box-shadow: 0 2px 6px rgba(4,83,203,.3);
     }
     .pa-cal-day.avec-evenement:not(.aujourd-hui) {
         background: rgba(245,158,11,.08); color: #92400e; font-weight: 600;
     }
     .pa-cal-day.avec-evenement .pa-cal-dot {
-        position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
-        width: 4px; height: 4px; border-radius: 50%; background: #f59e0b;
+        position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+        width: 3px; height: 3px; border-radius: 50%; background: #f59e0b;
     }
     .pa-cal-day.aujourd-hui .pa-cal-dot { background: #fff; }
     .pa-cal-day.avec-evenement:hover {
         background: rgba(245,158,11,.15);
     }
 
-    /* Shortcuts */
+    /* Shortcuts — compact centered */
     .pa-cal-shortcuts {
-        display: flex; gap: .4rem; margin-top: 1rem; flex-wrap: wrap;
+        display: flex; gap: .35rem; margin-top: .75rem; flex-wrap: wrap;
+        justify-content: center;
     }
     .pa-shortcut {
-        padding: .4rem .85rem; border-radius: 8px;
+        padding: .3rem .7rem; border-radius: 6px;
         border: 1px solid #e2e8f0; background: #fff;
-        font-size: .75rem; font-weight: 500; color: #64748b;
+        font-size: .7rem; font-weight: 500; color: #64748b;
         cursor: pointer; transition: all .2s;
     }
     .pa-shortcut:hover, .pa-shortcut.active {
