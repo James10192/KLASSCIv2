@@ -1,6 +1,42 @@
-# Guide d'Intégration LMS ↔ KLASSCI
+# Guide d'Intégration LMS ↔ KLASSCI — Login Unifié Multi-Établissements
 
-> Document à destination de l'équipe LMS pour intégrer le login unifié multi-établissements.
+> Document à destination de l'équipe LMS pour intégrer le login unifié.
+
+---
+
+## Comment ça fonctionne (résumé)
+
+Le LMS n'a besoin que d'**un seul token** : celui du master (`admin.klassci.com`).
+Ensuite, chaque utilisateur (étudiant, enseignant) se connecte lui-même via le login
+et obtient son propre token. **Pas besoin de tokens permanents par tenant.**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         FLOW COMPLET                            │
+│                                                                 │
+│  1. LMS démarre                                                 │
+│     GET admin.klassci.com/api/lms/tenants                       │
+│     → liste des écoles [{code, name, login_url, ...}]           │
+│                                                                 │
+│  2. Utilisateur arrive sur le LMS                               │
+│     → choisit son école (dropdown) OU entre son email           │
+│     → si email : check-user en parallèle sur chaque tenant     │
+│                                                                 │
+│  3. Login                                                       │
+│     POST {tenant}/api/lms/auth/login                            │
+│     → token Sanctum de l'utilisateur                            │
+│                                                                 │
+│  4. Appels API avec le token de l'utilisateur                   │
+│     GET {tenant}/api/lms/classes    (Authorization: Bearer ...)  │
+│     GET {tenant}/api/lms/matieres   (Authorization: Bearer ...)  │
+│     etc.                                                        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Aucun token permanent par tenant n'est nécessaire.**
+Le token de l'utilisateur connecté donne accès à toutes les données
+filtrées selon son rôle (étudiant voit sa classe, enseignant voit ses matières,
+coordinateur/superAdmin voit tout).
 
 ---
 
@@ -30,51 +66,21 @@ KLASSCI fonctionne en **multi-tenant isolé** : chaque établissement a sa propr
 
 ---
 
-## 2. Accès Backend (Tokens Machine-to-Machine)
+## 2. Le seul token dont le LMS a besoin
 
-Pour que le backend LMS lise les données de chaque tenant (classes, matières, enseignants, évaluations), il faut **un token Sanctum permanent par tenant**.
+Le LMS n'a besoin que du **token master** pour appeler `GET /api/lms/tenants` sur `admin.klassci.com`. Ce token est fourni par l'équipe KLASSCI.
 
-### Générer un token
-
-Sur chaque serveur tenant, exécuter :
-
-```bash
-php artisan tinker
+```env
+# .env côté LMS — seules variables nécessaires
+KLASSCI_MASTER_URL=https://admin.klassci.com/api
+KLASSCI_MASTER_TOKEN=token_fourni_par_klassci
 ```
 
-```php
-$user = \App\Models\User::role('superAdmin')->first();
-$token = $user->createToken('LMS-Backend-Permanent', ['lms:access']);
-echo $token->plainTextToken;
-// Exemple: 3|abc123def456...
-```
+Tout le reste passe par le **login utilisateur** : l'étudiant ou l'enseignant entre ses identifiants, obtient un token, et ce token sert pour tous les appels API.
 
-### Utiliser le token
-
-```bash
-# Lire les classes
-curl -H "Authorization: Bearer 3|abc123def456..." \
-     https://esbtp-abidjan.klassci.com/api/lms/classes
-
-# Lire les matières
-curl -H "Authorization: Bearer 3|abc123def456..." \
-     https://esbtp-abidjan.klassci.com/api/lms/matieres
-
-# Lire les enseignants
-curl -H "Authorization: Bearer 3|abc123def456..." \
-     https://esbtp-abidjan.klassci.com/api/lms/enseignants
-
-# Lire les évaluations
-curl -H "Authorization: Bearer 3|abc123def456..." \
-     https://esbtp-abidjan.klassci.com/api/lms/evaluations
-```
-
-### Sécurité
-
-- Les tokens **n'expirent pas** (config Sanctum `expiration: null`)
-- Scope limité à `lms:access`
-- Stocker les tokens côté LMS dans des **variables d'environnement**, jamais en dur dans le code
-- Un token par tenant → si un token est compromis, seul ce tenant est affecté
+> **Pas besoin de demander un token permanent par école.**
+> Pas besoin de stocker de credentials KLASSCI dans le backend LMS.
+> Pas besoin d'accès SSH aux serveurs KLASSCI.
 
 ---
 
@@ -295,9 +301,9 @@ Les API KLASSCI acceptent les requêtes cross-origin. Si le LMS est un SPA front
 - Si le LMS fait du check-user sur 4 tenants en parallèle, ça compte comme 1 requête par tenant (IPs différentes = pas de problème)
 
 ### Tokens
-- Les tokens Sanctum ne portent **pas** d'information tenant. Un token créé sur `esbtp-abidjan` ne fonctionne que sur `esbtp-abidjan`.
-- Le token backend (machine-to-machine) est lié à un user. Si ce user est désactivé, le token ne fonctionnera plus.
-- Recommandation : créer un user dédié "LMS Bot" avec le rôle `superAdmin` pour les tokens backend.
+- Les tokens Sanctum ne portent **pas** d'information tenant. Un token créé sur `esbtp-abidjan` ne fonctionne **que** sur `esbtp-abidjan`.
+- Après le login, le LMS doit stocker le `token` ET le `tenant_url` ensemble en session. Si l'utilisateur change de page, le LMS doit savoir vers quel tenant envoyer les requêtes.
+- Si un utilisateur se déconnecte côté KLASSCI (token révoqué), le LMS recevra un 401. Rediriger vers la page de login.
 
 ### Cache
 - Cacher la liste des tenants (master) pendant au moins 1 heure
@@ -314,14 +320,18 @@ Les API KLASSCI acceptent les requêtes cross-origin. Si le LMS est un SPA front
 
 ## 7. Checklist d'Intégration
 
-- [ ] Stocker les tokens backend (1 par tenant) en variables d'environnement
-- [ ] Appeler `GET /api/lms/tenants` (master) au démarrage du LMS
-- [ ] Implémenter la page de login avec sélection d'école
-- [ ] Stocker `token` + `tenant_url` en session après login
-- [ ] Utiliser `{tenant_url}/api/lms/*` pour tous les appels data
-- [ ] Gérer les erreurs 401 (token expiré → rediriger vers login)
-- [ ] Gérer l'erreur 403 `NO_ACTIVE_ENROLLMENT` (étudiant non réinscrit)
-- [ ] Tester avec le tenant `presentation.klassci.com` (environnement de test)
+### Prérequis (une seule fois)
+- [ ] Recevoir le token master de l'équipe KLASSCI (`KLASSCI_MASTER_TOKEN`)
+- [ ] Configurer `KLASSCI_MASTER_URL` et `KLASSCI_MASTER_TOKEN` dans le `.env` du LMS
+
+### Implémentation
+- [ ] Au démarrage : appeler `GET /api/lms/tenants` (master) et cacher la liste 1h
+- [ ] Page de login : dropdown des écoles OU détection auto par identifiant
+- [ ] Login : `POST {tenant}/api/lms/auth/login` → stocker `token` + `tenant_url` en session
+- [ ] Appels API : utiliser `{tenant_url}/api/lms/*` avec le token de l'utilisateur
+- [ ] Gérer 401 (token expiré → rediriger vers login)
+- [ ] Gérer 403 `NO_ACTIVE_ENROLLMENT` (étudiant non réinscrit → message explicite)
+- [ ] Tester avec `presentation.klassci.com` (login: `superadmin` / `password123`)
 
 ---
 

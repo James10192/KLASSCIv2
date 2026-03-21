@@ -95,17 +95,21 @@ curl -X GET "https://admin.klassci.com/api/lms/tenants" \
 
 ## Authentification
 
-Le token d'acces est genere par la commande artisan sur le serveur master :
+Cet endpoint est protege par un token master fourni par l'equipe KLASSCI.
+Vous n'avez pas besoin de le generer vous-meme — il vous sera communique.
 
-```bash
-php artisan tenant:generate-token {tenant_code}
-```
-
-Ce token est stocke dans la colonne `api_token` de la table `tenants` et doit etre configure dans le `.env` du LMS :
+Configurer dans le `.env` du LMS :
 
 ```env
-KLASSCI_MASTER_API_URL=https://admin.klassci.com/api
-KLASSCI_MASTER_API_TOKEN=your_token_here
+KLASSCI_MASTER_URL=https://admin.klassci.com/api
+KLASSCI_MASTER_TOKEN=token_fourni_par_klassci
+```
+
+Utilisation :
+
+```bash
+curl -H "Authorization: Bearer {KLASSCI_MASTER_TOKEN}" \
+     https://admin.klassci.com/api/lms/tenants
 ```
 
 ---
