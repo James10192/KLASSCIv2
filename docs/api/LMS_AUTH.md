@@ -100,7 +100,6 @@ curl -X POST "https://esbtp-abidjan.klassci.com/api/lms/auth/check-user" \
     "tenant_url": "https://esbtp-abidjan.klassci.com",
     "user_hint": {
       "display_name": "Jean D.",
-      "role": "etudiant",
       "role_display": "Etudiant"
     }
   },
