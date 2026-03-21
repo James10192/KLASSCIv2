@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use App\Models\User;
+use App\Models\ESBTPEtudiant;
 use App\Helpers\RoleHelper;
 
 /**
@@ -86,13 +87,12 @@ class AuthController extends BaseApiController
         }
 
         // Vérifier que l'utilisateur a un rôle autorisé pour le LMS
-        $rolesAutorises = ['enseignant', 'coordinateur', 'etudiant', 'superAdmin'];
         $userRole = $user->getRoleNames()->first();
 
-        if (!RoleHelper::hasAnyRole($userRole, $rolesAutorises)) {
+        if (!RoleHelper::hasAnyRole($userRole, RoleHelper::LMS_ALLOWED_ROLES)) {
             Auth::logout();
             return $this->errorResponse(
-                'Accès non autorisé au LMS. Rôles requis: ' . implode(', ', $rolesAutorises),
+                'Accès non autorisé au LMS. Rôles requis: ' . implode(', ', RoleHelper::LMS_ALLOWED_ROLES),
                 [],
                 403
             );
@@ -384,6 +384,18 @@ class AuthController extends BaseApiController
     }
 
     /**
+     * Retourne le contexte tenant (code, nom, URL) depuis la config
+     */
+    private function getTenantContext(): array
+    {
+        return [
+            'code' => config('app.tenant_code', 'default'),
+            'name' => config('app.name', 'KLASSCI'),
+            'url' => config('app.url'),
+        ];
+    }
+
+    /**
      * Recherche un utilisateur par email, username ou matricule
      * Utilisé par le LMS pour détecter le tenant d'un utilisateur (login unifié)
      *
@@ -404,12 +416,11 @@ class AuthController extends BaseApiController
         }
 
         $identifier = trim($request->input('identifier'));
-        $tenantCode = config('app.tenant_code', 'default');
-        $tenantName = config('app.name', 'KLASSCI');
-        $tenantUrl = config('app.url');
+        $tenant = $this->getTenantContext();
 
-        // Chercher par email ou username dans users
-        $user = User::where('is_active', true)
+        // Chercher par email ou username dans users (avec roles eager-loaded)
+        $user = User::with('roles')
+            ->where('is_active', true)
             ->where(function ($q) use ($identifier) {
                 $q->where('email', $identifier)
                   ->orWhere('username', $identifier);
@@ -418,36 +429,32 @@ class AuthController extends BaseApiController
 
         // Si pas trouvé, chercher par matricule dans esbtp_etudiants
         if (!$user) {
-            $etudiant = \App\Models\ESBTPEtudiant::where('matricule', $identifier)
+            $etudiant = ESBTPEtudiant::where('matricule', $identifier)
                 ->whereNotNull('user_id')
+                ->with(['user' => fn ($q) => $q->with('roles')->where('is_active', true)])
                 ->first();
 
-            if ($etudiant) {
-                $user = User::where('id', $etudiant->user_id)
-                    ->where('is_active', true)
-                    ->first();
-            }
+            $user = $etudiant?->user;
         }
 
         if (!$user) {
             return $this->successResponse([
                 'found' => false,
-                'tenant_code' => $tenantCode,
+                'tenant_code' => $tenant['code'],
             ], 'Utilisateur non trouvé sur ce tenant');
         }
 
         // Vérifier que l'utilisateur a un rôle LMS
-        $rolesAutorises = ['enseignant', 'coordinateur', 'etudiant', 'superAdmin'];
         $userRole = $user->getRoleNames()->first();
 
-        if (!$userRole || !RoleHelper::hasAnyRole($userRole, $rolesAutorises)) {
+        if (!$userRole || !RoleHelper::hasAnyRole($userRole, RoleHelper::LMS_ALLOWED_ROLES)) {
             return $this->successResponse([
                 'found' => false,
-                'tenant_code' => $tenantCode,
-            ], 'Utilisateur non autorisé pour le LMS');
+                'tenant_code' => $tenant['code'],
+            ], 'Utilisateur non trouvé sur ce tenant');
         }
 
-        // Retour minimal pour limiter la fuite d'info
+        // Retour minimal pour limiter la fuite d'info (pas de rôle exact)
         $displayName = $user->first_name;
         if ($user->last_name) {
             $displayName .= ' ' . mb_strtoupper(mb_substr($user->last_name, 0, 1)) . '.';
@@ -455,12 +462,11 @@ class AuthController extends BaseApiController
 
         return $this->successResponse([
             'found' => true,
-            'tenant_code' => $tenantCode,
-            'tenant_name' => $tenantName,
-            'tenant_url' => $tenantUrl,
+            'tenant_code' => $tenant['code'],
+            'tenant_name' => $tenant['name'],
+            'tenant_url' => $tenant['url'],
             'user_hint' => [
                 'display_name' => $displayName,
-                'role' => $userRole,
                 'role_display' => RoleHelper::getRoleDisplayName($userRole),
             ],
         ], 'Utilisateur trouvé');
@@ -491,7 +497,7 @@ class AuthController extends BaseApiController
         }
 
         $result = [
-            'tenant_code' => config('app.tenant_code', 'default'),
+            'tenant_code' => $this->getTenantContext()['code'],
         ];
 
         if ($request->email) {
@@ -514,13 +520,13 @@ class AuthController extends BaseApiController
      */
     public function tenantInfo(): JsonResponse
     {
-        $tenantCode = config('app.tenant_code', 'default');
+        $tenant = $this->getTenantContext();
         $annee = $this->getAnneeCouraante();
 
         return $this->successResponse([
-            'tenant_code' => $tenantCode,
-            'tenant_name' => config('app.name', 'KLASSCI'),
-            'tenant_url' => config('app.url'),
+            'tenant_code' => $tenant['code'],
+            'tenant_name' => $tenant['name'],
+            'tenant_url' => $tenant['url'],
             'api_base_url' => url('/api/lms'),
             'api_version' => '1.0',
             'annee_universitaire' => $annee ? [
@@ -591,7 +597,7 @@ class AuthController extends BaseApiController
                 'header' => 'Authorization: Bearer {your_token}',
                 'scopes' => ['lms:access']
             ],
-            'roles_autorises' => ['enseignant', 'coordinateur', 'etudiant', 'superAdmin']
+            'roles_autorises' => RoleHelper::LMS_ALLOWED_ROLES
         ]);
     }
 }

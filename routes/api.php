@@ -118,8 +118,8 @@ Route::prefix('lms/auth')->group(function () {
     });
 });
 
-// Informations publiques du tenant (sans auth)
-Route::get('lms/tenant-info', [App\Http\Controllers\API\AuthController::class, 'tenantInfo'])
+// Informations publiques du tenant (sans auth, rate-limited)
+Route::middleware('throttle:api')->get('lms/tenant-info', [App\Http\Controllers\API\AuthController::class, 'tenantInfo'])
     ->name('api.lms.tenant-info');
 
 // Routes LMS protégées par authentification Sanctum

@@ -31,6 +31,11 @@ class RoleHelper
     const STUDENT_ROLES = ['etudiant'];
 
     /**
+     * Rôles autorisés pour l'accès LMS
+     */
+    const LMS_ALLOWED_ROLES = ['enseignant', 'coordinateur', 'etudiant', 'superAdmin'];
+
+    /**
      * Vérifie si un rôle est équivalent au coordinateur
      *
      * @param string $role Le rôle à vérifier
