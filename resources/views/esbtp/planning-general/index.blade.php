@@ -1486,185 +1486,75 @@
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header et navigation du planning -->
+        <!-- Header avec hero + KPIs + tabs -->
         <x-planning-header
             title="Planning Général"
             subtitle="Vue d'ensemble du planning académique et organisation des cours"
             active-tab="overview"
             :annee-selectionnee="$anneeSelectionnee"
             :annees="$annees"
+            :stats="$anneeSelectionnee ? $stats : null"
         />
 
         @if(!$anneeSelectionnee)
-            <div class="alert alert-warning">
+            <div class="alert alert-warning" style="border-radius:12px; border:none; background:#fef3c7; color:#92400e;">
                 <i class="fas fa-exclamation-triangle me-2"></i>
                 Aucune année universitaire sélectionnée. Veuillez en choisir une pour afficher le planning.
             </div>
         @else
-            <!-- Statistiques du planning -->
-            <div class="stats-planning">
-                <div class="card-moderne stat-planning primary">
-                    <div class="p-lg">
-                        <div class="stat-icon-planning">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <div class="stat-value">{{ number_format($stats['total_seances']) }}</div>
-                        <div class="stat-label">Séances programmées</div>
-                    </div>
-                </div>
-
-                <div class="card-moderne stat-planning success">
-                    <div class="p-lg">
-                        <div class="stat-icon-planning">
-                            <i class="fas fa-hourglass-half"></i>
-                        </div>
-                        <div class="stat-value">{{ number_format($stats['total_heures'], 0) }}h</div>
-                        <div class="stat-label">Heures de cours</div>
-                    </div>
-                </div>
-
-                <div class="card-moderne stat-planning warning">
-                    <div class="p-lg">
-                        <div class="stat-icon-planning">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="stat-value">{{ $stats['total_classes'] }}</div>
-                        <div class="stat-label">Classes actives</div>
-                    </div>
-                </div>
-
-                <div class="card-moderne stat-planning info">
-                    <div class="p-lg">
-                        <div class="stat-icon-planning">
-                            <i class="fas fa-book"></i>
-                        </div>
-                        <div class="stat-value">{{ $stats['total_matieres'] }}</div>
-                        <div class="stat-label">Matières enseignées</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Informations de l'année sélectionnée -->
-            <div class="card-moderne mb-lg">
-                <div class="p-lg">
-                    <div class="section-title mb-md">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Informations Année {{ $anneeSelectionnee->name }}
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="info-item">
-                                <strong>Période :</strong>
-                                {{ \Carbon\Carbon::parse($anneeSelectionnee->start_date)->format('d/m/Y') }} -
-                                {{ \Carbon\Carbon::parse($anneeSelectionnee->end_date)->format('d/m/Y') }}
-                            </div>
-                            <div class="info-item mt-2">
-                                <strong>Statut :</strong>
-                                @if(optional($anneeSelectionnee)->is_current)
-                                    <span class="badge bg-success">Année en cours</span>
-                                @else
-                                    <span class="badge bg-secondary">Année archivée</span>
-                                @endif
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="info-item">
-                                <strong>Total enseignants :</strong>
-                                {{ $stats['total_enseignants'] }} enseignants actifs
-                            </div>
-                            <div class="info-item mt-2">
-                                <strong>Charge globale :</strong>
-                                {{ number_format($stats['total_heures'], 0) }} heures planifiées
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Configuration des Volumes Horaires par Combinaison -->
-            <div class="card-moderne mb-lg">
-                <div class="card-header">
-                    <h5><i class="fas fa-th-large me-2"></i>Configuration des Volumes Horaires</h5>
-                    <p class="text-muted mb-0">Configurer les volumes horaires des matières par combinaison filière/niveau</p>
-                </div>
-                <div class="card-body">
-
-                    <!-- Filtres et légende -->
-                    <div class="mb-4">
-                        <form method="GET" action="{{ route('esbtp.planning-general.index') }}" id="filters-form">
-                            <div class="row align-items-end">
-                                <div class="col-md-3">
-                                    <label for="annee_selector" class="form-label">
-                                        <i class="fas fa-calendar-alt me-2"></i>Année Universitaire
-                                    </label>
-                                    <select name="annee_id" id="annee_selector" class="form-select" onchange="document.getElementById('filters-form').submit()">
-                                        @foreach($annees as $annee)
-                                            <option value="{{ $annee->id }}" {{ ($anneeSelectionnee && $anneeSelectionnee->id == $annee->id) ? 'selected' : '' }}>
-                                                {{ $annee->name }}
-                                                @if(optional($annee)->is_current) (En cours) @endif
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="filiere_filter" class="form-label">
-                                        <i class="fas fa-graduation-cap me-2"></i>Filière
-                                    </label>
-                                    <select name="filiere_filter" id="filiere_filter" class="form-select" onchange="document.getElementById('filters-form').submit()">
-                                        <option value="">Toutes les filières</option>
-                                        @php
-                                            $filieres = \App\Models\ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
-                                        @endphp
-                                        @foreach($filieres as $filiere)
-                                            <option value="{{ $filiere->id }}" {{ request('filiere_filter') == $filiere->id ? 'selected' : '' }}>
-                                                {{ $filiere->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="niveau_filter" class="form-label">
-                                        <i class="fas fa-layer-group me-2"></i>Niveau
-                                    </label>
-                                    <select name="niveau_filter" id="niveau_filter" class="form-select" onchange="document.getElementById('filters-form').submit()">
-                                        <option value="">Tous les niveaux</option>
-                                        @php
-                                            $niveaux = \App\Models\ESBTPNiveauEtude::where('is_active', true)->orderBy('year')->get();
-                                        @endphp
-                                        @foreach($niveaux as $niveau)
-                                            <option value="{{ $niveau->id }}" {{ request('niveau_filter') == $niveau->id ? 'selected' : '' }}>
-                                                {{ $niveau->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Légende</label>
-                                    <div class="d-flex flex-wrap gap-2">
-                                        <div class="legend-item">
-                                            <span class="legend-badge configured">
-                                                <i class="fas fa-check-circle"></i>
-                                            </span>
-                                            <small>Complet</small>
-                                        </div>
-                                        <div class="legend-item">
-                                            <span class="legend-badge partial">
-                                                <i class="fas fa-exclamation-triangle"></i>
-                                            </span>
-                                            <small>Partiel</small>
-                                        </div>
-                                        <div class="legend-item">
-                                            <span class="legend-badge not-configured">
-                                                <i class="fas fa-plus-circle"></i>
-                                            </span>
-                                            <small>Non configuré</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </form>
+            <div class="pg-section" style="background:#fff; border-radius:14px; border:1px solid #e8ecf1; box-shadow:0 1px 3px rgba(0,0,0,.04); padding:1.5rem; margin-bottom:1.25rem;">
+                {{-- Section header --}}
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; flex-wrap:wrap; gap:.75rem;">
+                    <div style="display:flex; align-items:center; gap:.75rem;">
+                        <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#0453cb,#3b7ddb); display:flex; align-items:center; justify-content:center; color:#fff; font-size:.95rem; flex-shrink:0;">
+                            <i class="fas fa-th-large"></i>
+                        </div>
+                        <div>
+                            <div style="font-size:1.05rem; font-weight:700; color:#1e293b;">Configuration des Volumes Horaires</div>
+                            <div style="font-size:.8rem; color:#64748b;">Par combinaison filière / niveau — {{ $anneeSelectionnee->name }}</div>
+                        </div>
                     </div>
+                    <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
+                        <span style="display:inline-flex; align-items:center; gap:.3rem; font-size:.72rem; color:#10b981;"><i class="fas fa-check-circle" style="font-size:.65rem;"></i> Complet</span>
+                        <span style="display:inline-flex; align-items:center; gap:.3rem; font-size:.72rem; color:#f59e0b;"><i class="fas fa-exclamation-triangle" style="font-size:.65rem;"></i> Partiel</span>
+                        <span style="display:inline-flex; align-items:center; gap:.3rem; font-size:.72rem; color:#94a3b8;"><i class="fas fa-plus-circle" style="font-size:.65rem;"></i> Non configuré</span>
+                    </div>
+                </div>
+
+                {{-- Filtres inline --}}
+                <form method="GET" action="{{ route('esbtp.planning-general.index') }}" id="filters-form">
+                    <div style="display:flex; gap:.75rem; margin-bottom:1.25rem; flex-wrap:wrap;">
+                        <div style="flex:1; min-width:180px;">
+                            <select name="annee_id" id="annee_selector" class="form-select" style="border-radius:10px; border-color:#e2e8f0; font-size:.85rem;" onchange="document.getElementById('filters-form').submit()">
+                                @foreach($annees as $annee)
+                                    <option value="{{ $annee->id }}" {{ ($anneeSelectionnee && $anneeSelectionnee->id == $annee->id) ? 'selected' : '' }}>
+                                        {{ $annee->name }}
+                                        @if(optional($annee)->is_current) (En cours) @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div style="flex:1; min-width:180px;">
+                            <select name="filiere_filter" id="filiere_filter" class="form-select" style="border-radius:10px; border-color:#e2e8f0; font-size:.85rem;" onchange="document.getElementById('filters-form').submit()">
+                                <option value="">Toutes les filières</option>
+                                @php $filieres = \App\Models\ESBTPFiliere::where('is_active', true)->orderBy('name')->get(); @endphp
+                                @foreach($filieres as $filiere)
+                                    <option value="{{ $filiere->id }}" {{ request('filiere_filter') == $filiere->id ? 'selected' : '' }}>{{ $filiere->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div style="flex:1; min-width:180px;">
+                            <select name="niveau_filter" id="niveau_filter" class="form-select" style="border-radius:10px; border-color:#e2e8f0; font-size:.85rem;" onchange="document.getElementById('filters-form').submit()">
+                                <option value="">Tous les niveaux</option>
+                                @php $niveaux = \App\Models\ESBTPNiveauEtude::where('is_active', true)->orderBy('year')->get(); @endphp
+                                @foreach($niveaux as $niveau)
+                                    <option value="{{ $niveau->id }}" {{ request('niveau_filter') == $niveau->id ? 'selected' : '' }}>{{ $niveau->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </form>
 
                     <!-- Cards des combinaisons filière/niveau -->
                     <div class="combinaisons-grid">
@@ -1765,7 +1655,6 @@
                         @endforeach
                     </div>
 
-                </div>
             </div>
 
             <!-- Actions rapides -->
@@ -1838,53 +1727,67 @@
 <!-- Modal de Configuration des Volumes Horaires -->
 <div class="modal fade" id="volumeConfigModal" tabindex="-1" aria-labelledby="volumeConfigModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="volumeConfigModalLabel">
-                    <i class="fas fa-cog me-2"></i>
-                    Configuration des Volumes Horaires
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="config-header mb-4">
-                    <h6 class="mb-1">Combinaison sélectionnée</h6>
-                    <p class="text-muted mb-0" id="config-combination-name">-</p>
+        <div class="modal-content" style="border:none; border-radius:18px; overflow:hidden; box-shadow:0 25px 60px rgba(0,0,0,.15);">
+            {{-- Header premium --}}
+            <div class="modal-header" style="background:linear-gradient(135deg,#0a3d8f 0%,#0453cb 40%,#3b7ddb 100%); border:none; padding:1.5rem 1.75rem 1.25rem; position:relative;">
+                <div style="position:relative; z-index:1;">
+                    <div style="display:flex; align-items:center; gap:.75rem;">
+                        <div style="width:38px; height:38px; border-radius:10px; background:rgba(255,255,255,.12); display:flex; align-items:center; justify-content:center; font-size:.9rem; color:#fff; border:1px solid rgba(255,255,255,.15);">
+                            <i class="fas fa-sliders-h"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title" id="volumeConfigModalLabel" style="color:#fff; font-weight:700; font-size:1.1rem; margin:0;">
+                                Configuration des Volumes Horaires
+                            </h5>
+                            <div style="font-size:.78rem; color:rgba(255,255,255,.7); margin-top:.15rem;" id="config-combination-name">—</div>
+                        </div>
+                    </div>
                 </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter:brightness(0) invert(1); opacity:.7;"></button>
+            </div>
 
+            {{-- Body --}}
+            <div class="modal-body" style="padding:1.5rem 1.75rem; background:#f8fafc;">
                 <form id="volume-config-form">
                     <input type="hidden" id="config-filiere-id" name="filiere_id">
                     <input type="hidden" id="config-niveau-id" name="niveau_id">
                     <input type="hidden" id="config-annee-id" name="annee_id" value="{{ $anneeSelectionnee ? $anneeSelectionnee->id : '' }}">
-                    <div class="row g-3 mb-3">
-                        <div class="col-12 col-md-6">
-                            <label for="config-semestre" class="form-label">
-                                <i class="fas fa-calendar-alt me-1"></i>Semestre
-                            </label>
-                            <select id="config-semestre" name="semestre" class="form-select">
+
+                    {{-- Semestre selector --}}
+                    <div style="background:#fff; border-radius:12px; border:1px solid #e8ecf1; padding:1rem 1.25rem; margin-bottom:1.25rem;">
+                        <label for="config-semestre" style="font-size:.78rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; display:flex; align-items:center; gap:.4rem; margin-bottom:.5rem;">
+                            <i class="fas fa-calendar-alt" style="color:#0453cb;"></i>Semestre
+                        </label>
+                        <div style="display:flex; gap:.5rem;">
+                            <select id="config-semestre" name="semestre" class="form-select" style="border-radius:10px; border-color:#e2e8f0; font-size:.88rem; max-width:200px;">
                                 <option value="1" selected>Semestre 1</option>
                                 <option value="2">Semestre 2</option>
                             </select>
-                            <small class="text-muted">Par défaut, la configuration s'applique au semestre 1.</small>
                         </div>
+                        <div style="font-size:.72rem; color:#94a3b8; margin-top:.4rem;">La configuration s'applique au semestre sélectionné</div>
                     </div>
 
+                    {{-- Loading --}}
                     <div class="config-loading text-center py-4" id="config-loading" style="display: none;">
-                        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
-                        <p>Chargement des matières...</p>
+                        <div style="width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg,#0453cb,#3b7ddb); display:inline-flex; align-items:center; justify-content:center; color:#fff; margin-bottom:.75rem;">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </div>
+                        <p style="color:#64748b; font-size:.88rem; margin:0;">Chargement des matières...</p>
                     </div>
 
+                    {{-- Matières container (AJAX) --}}
                     <div id="matieres-container">
-                        <!-- Les matières seront chargées ici via AJAX -->
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Annuler
+
+            {{-- Footer premium --}}
+            <div class="modal-footer" style="border-top:1px solid #e8ecf1; padding:1rem 1.75rem; background:#fff; gap:.5rem;">
+                <button type="button" class="btn" data-bs-dismiss="modal" style="border-radius:10px; padding:.55rem 1.25rem; font-size:.85rem; font-weight:600; color:#64748b; background:#f1f5f9; border:1px solid #e2e8f0; transition:all .2s;">
+                    <i class="fas fa-times me-1" style="font-size:.75rem;"></i>Annuler
                 </button>
-                <button type="button" class="btn btn-primary" id="save-volume-config">
-                    <i class="fas fa-save me-1"></i>Sauvegarder
+                <button type="button" class="btn" id="save-volume-config" style="border-radius:10px; padding:.55rem 1.25rem; font-size:.85rem; font-weight:600; color:#fff; background:linear-gradient(135deg,#0453cb,#3b7ddb); border:none; box-shadow:0 2px 8px rgba(4,83,203,.25); transition:all .2s;">
+                    <i class="fas fa-save me-1" style="font-size:.75rem;"></i>Sauvegarder
                 </button>
             </div>
         </div>
