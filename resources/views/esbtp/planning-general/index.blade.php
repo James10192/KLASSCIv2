@@ -63,13 +63,12 @@
         text-align: center;
         position: relative;
         overflow: hidden;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: box-shadow 0.2s ease;
         cursor: pointer;
     }
 
     .stat-planning:hover {
-        transform: translateY(-8px) scale(1.02);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
 
     .stat-planning::before {
@@ -78,15 +77,8 @@
         top: 0;
         left: 0;
         right: 0;
-        height: 6px;
+        height: 4px;
         border-radius: var(--radius-medium) var(--radius-medium) 0 0;
-        transform: scaleX(0);
-        transform-origin: left;
-        transition: transform 0.6s ease;
-    }
-
-    .stat-planning:hover::before {
-        transform: scaleX(1);
     }
 
     .stat-planning.primary::before { background: linear-gradient(90deg, var(--primary), #60a5fa); }
@@ -103,15 +95,8 @@
         justify-content: center;
         margin: 0 auto var(--space-md);
         font-size: 28px;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
-        backdrop-filter: blur(20px);
+        background: rgba(255, 255, 255, 0.85);
         border: 1px solid rgba(255, 255, 255, 0.3);
-        transition: all 0.3s ease;
-    }
-
-    .stat-planning:hover .stat-icon-planning {
-        transform: scale(1.1);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
     }
 
     .stat-planning.primary .stat-icon-planning { color: var(--primary); }
@@ -126,11 +111,6 @@
         color: var(--text-primary);
         line-height: 1;
         margin-bottom: var(--space-sm);
-        transition: all 0.3s ease;
-    }
-
-    .stat-planning:hover .stat-value {
-        transform: scale(1.05);
     }
 
     .stat-label {
@@ -171,7 +151,7 @@
 
     .action-card {
         position: relative;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: box-shadow 0.2s ease;
         cursor: pointer;
         overflow: hidden;
         text-decoration: none;
@@ -180,8 +160,7 @@
     }
 
     .action-card:hover {
-        transform: translateY(-12px) scale(1.02);
-        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
         text-decoration: none;
         color: inherit;
     }
@@ -205,7 +184,7 @@
     /* Sélecteurs améliorés */
     .filter-card {
         background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
-        backdrop-filter: blur(20px);
+        /* backdrop-filter removed for performance */
         border: 1px solid rgba(255, 255, 255, 0.3);
         border-radius: var(--radius-medium);
         padding: var(--space-lg);
@@ -918,8 +897,8 @@
     .combinaison-card {
         background: white;
         border-radius: 16px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.05);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        transition: box-shadow 0.2s ease;
         overflow: hidden;
         position: relative;
         min-height: 220px;
@@ -928,8 +907,7 @@
     }
 
     .combinaison-card:hover {
-        transform: translateY(-12px);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
     }
 
     /* Header section avec logo et statut */
@@ -2364,34 +2342,7 @@ $(function() {
         }
     }
 
-    // ================================
-    // ANIMATION DES CARTES AU SCROLL
-    // ================================
-    const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    };
-
-    const observer = new IntersectionObserver(function(entries) {
-        entries.forEach((entry, index) => {
-            if (entry.isIntersecting) {
-                setTimeout(() => {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }, index * 100);
-            }
-        });
-    }, observerOptions);
-
-    // Observer toutes les cartes
-    $('.card-moderne').each(function() {
-        $(this).css({
-            'opacity': '0',
-            'transform': 'translateY(20px)',
-            'transition': 'all 0.6s ease-out'
-        });
-        observer.observe(this);
-    });
+    // Cards visibles immédiatement (pas d'animation scroll pour la performance)
 
     // ================================
     // CONFIGURATION DES VOLUMES HORAIRES
