@@ -335,17 +335,7 @@ body.modal-open {
     animation: none !important;
 }
 
-/* DÉSACTIVER TOUS LES HOVER EFFECTS QUAND UNE MODALE EST OUVERTE */
-/* Quand body a la classe modal-open, désactiver tous les hovers */
-body.modal-open * {
-    pointer-events: none !important;
-}
-
-/* Mais permettre les interactions dans la modale elle-même */
-body.modal-open .modal,
-body.modal-open .modal * {
-    pointer-events: auto !important;
-}
+/* Bootstrap gère nativement le backdrop — pas besoin de bloquer pointer-events */
 
 /* Spécifiquement pour les modales, empêcher tous les changements visuels */
 body.modal-open .modal *:hover,

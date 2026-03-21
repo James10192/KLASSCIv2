@@ -124,47 +124,14 @@ class ESBTPPlanningGeneralController extends Controller
 
                 $planifications = $planifications->with("matiere")->get();
 
-                // Filtrer les planifications valides (matières réellement liées)
-                $planificationsValides = $planifications->filter(function (
-                    $planification,
-                ) use ($filiere, $niveau) {
-                    // Ignorer si matière supprimée
-                    if (!$planification->matiere) {
-                        return false;
-                    }
+                // Pré-charger les matière IDs liées à cette combinaison (1 requête au lieu de N)
+                $linkedMatiereIds = \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($filiere->id, $niveau->id);
 
-                    // Vérifier si la matière est réellement liée à cette combinaison
-                    return ESBTPMatiere::where(
-                        "id",
-                        $planification->matiere->id,
-                    )
-                        ->where("is_active", true)
-                        ->whereHas("filieres", function ($query) use (
-                            $filiere,
-                        ) {
-                            $query->where("esbtp_filieres.id", $filiere->id);
-                        })
-                        ->whereHas("niveaux", function ($query) use ($niveau) {
-                            $query->where(
-                                "esbtp_niveau_etudes.id",
-                                $niveau->id,
-                            );
-                        })
-                        ->exists();
+                $planificationsValides = $planifications->filter(function ($planification) use ($linkedMatiereIds) {
+                    return $planification->matiere && $linkedMatiereIds->contains($planification->matiere->id);
                 });
 
-                // CORRECTION : Compter d'abord toutes les matières liées à cette combinaison
-                $matieresLieesALaCombinaisonCount = ESBTPMatiere::where(
-                    "is_active",
-                    true,
-                )
-                    ->whereHas("filieres", function ($query) use ($filiere) {
-                        $query->where("esbtp_filieres.id", $filiere->id);
-                    })
-                    ->whereHas("niveaux", function ($query) use ($niveau) {
-                        $query->where("esbtp_niveau_etudes.id", $niveau->id);
-                    })
-                    ->count();
+                $matieresLieesALaCombinaisonCount = \App\Models\ESBTPMatiereFilierNiveau::activeMatiereCountForCombo($filiere->id, $niveau->id);
 
                 // Calculer les statistiques
                 $totalMatieres = $matieresLieesALaCombinaisonCount; // Toutes les matières liées à cette combinaison

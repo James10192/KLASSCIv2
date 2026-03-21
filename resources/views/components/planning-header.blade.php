@@ -264,7 +264,7 @@
 </div>
 
 {{-- Tabs AJAX navigation --}}
-<script>
+<script data-ph-tab-nav="1">
 document.addEventListener('DOMContentLoaded', function() {
     const tabs = document.querySelectorAll('.ph-tab');
     const container = document.getElementById('pg-tab-content');
@@ -285,6 +285,13 @@ document.addEventListener('DOMContentLoaded', function() {
             container.style.opacity = '0.5';
             container.style.pointerEvents = 'none';
             container.style.transition = 'opacity .2s';
+
+            // Supprimer les modals déplacés par un chargement AJAX précédent
+            document.querySelectorAll('.modal[data-ph-tab-modal]').forEach(function(m) {
+                var instance = bootstrap.Modal.getInstance(m);
+                if (instance) instance.dispose();
+                m.remove();
+            });
 
             // Mettre à jour l'URL sans reload
             history.pushState(null, '', href);
@@ -325,6 +332,13 @@ document.addEventListener('DOMContentLoaded', function() {
                             return;
                         }
                     }
+
+                    // Déplacer les modals Bootstrap vers <body> pour éviter le clipping
+                    // par .main-content { overflow-y: auto }
+                    container.querySelectorAll('.modal').forEach(function(modal) {
+                        modal.setAttribute('data-ph-tab-modal', '1');
+                        document.body.appendChild(modal);
+                    });
 
                     // Injecter les styles de la page fetchée (CSS dans <head>)
                     // Supprimer les anciens styles injectés par tab
@@ -369,8 +383,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     doc.querySelectorAll('script').forEach(function(script) {
                         // Ignorer les scripts externes déjà chargés (jQuery, Bootstrap, etc.)
                         if (script.src && document.querySelector('script[src="' + script.src + '"]')) return;
-                        // Ignorer le script du planning-header tabs
-                        if (script.textContent.includes('ph-tab') && script.textContent.includes('pg-tab-content')) return;
+                        // Ignorer le script du planning-header tabs (identifié par data-ph-tab-nav)
+                        if (script.hasAttribute('data-ph-tab-nav')) return;
                         // Ignorer les scripts très courts ou vides
                         if (!script.src && script.textContent.trim().length < 10) return;
 

@@ -851,21 +851,17 @@ class ESBTPMatiereController extends Controller
                 ], 400);
             }
 
-            // Récupérer TOUTES les matières actives avec leur statut de liaison
+            // Récupérer les IDs des matières déjà liées en une seule requête
+            $linkedMatiereIds = \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($filiereId, $niveauId)->toArray();
+
+            // Récupérer TOUTES les matières actives
             $matieres = ESBTPMatiere::where('is_active', true)
                 ->select('id', 'name', 'code', 'description', 'coefficient', 'heures_cm', 'heures_td', 'heures_tp')
                 ->orderBy('name')
                 ->get()
-                ->map(function ($matiere) use ($filiereId, $niveauId) {
-                    // Calculer le total des heures
+                ->map(function ($matiere) use ($linkedMatiereIds) {
                     $matiere->total_heures = $matiere->heures_cm + $matiere->heures_td + $matiere->heures_tp;
-
-                    // Vérifier si la matière est déjà liée à cette combinaison
-                    $isLinkedToFiliere = $matiere->filieres()->where('esbtp_filieres.id', $filiereId)->exists();
-                    $isLinkedToNiveau = $matiere->niveaux()->where('esbtp_niveau_etudes.id', $niveauId)->exists();
-
-                    $matiere->is_already_linked = $isLinkedToFiliere && $isLinkedToNiveau;
-
+                    $matiere->is_already_linked = in_array($matiere->id, $linkedMatiereIds);
                     return $matiere;
                 });
 
@@ -894,36 +890,35 @@ class ESBTPMatiereController extends Controller
         $request->validate([
             'matiere_ids' => 'required|array',
             'matiere_ids.*' => 'exists:esbtp_matieres,id',
-            'filiere_ids' => 'required|array',
-            'filiere_ids.*' => 'exists:esbtp_filieres,id',
-            'niveau_ids' => 'required|array',
-            'niveau_ids.*' => 'exists:esbtp_niveau_etudes,id',
+            'combinations' => 'required|array|min:1',
+            'combinations.*.filiere_id' => 'required|exists:esbtp_filieres,id',
+            'combinations.*.niveau_id' => 'required|exists:esbtp_niveau_etudes,id',
         ]);
 
         try {
             $matiereIds = $request->matiere_ids;
-            $filiereIds = $request->filiere_ids;
-            $niveauIds = $request->niveau_ids;
-
+            $combinations = $request->combinations;
             $addedCount = 0;
 
-            foreach ($matiereIds as $matiereId) {
-                $matiere = ESBTPMatiere::find($matiereId);
+            \DB::transaction(function () use ($matiereIds, $combinations, &$addedCount) {
+                $matieres = ESBTPMatiere::whereIn('id', $matiereIds)->get()->keyBy('id');
 
-                if ($matiere) {
-                    // Ajouter les liaisons avec les filières
-                    foreach ($filiereIds as $filiereId) {
-                        $matiere->filieres()->syncWithoutDetaching([$filiereId]);
+                foreach ($matiereIds as $matiereId) {
+                    $matiere = $matieres->get($matiereId);
+                    if (!$matiere) continue;
+
+                    foreach ($combinations as $combo) {
+                        \App\Models\ESBTPMatiereFilierNiveau::firstOrCreate([
+                            'matiere_id' => $matiereId,
+                            'filiere_id' => $combo['filiere_id'],
+                            'niveau_etude_id' => $combo['niveau_id'],
+                        ]);
+                        $matiere->filieres()->syncWithoutDetaching([$combo['filiere_id']]);
+                        $matiere->niveaux()->syncWithoutDetaching([$combo['niveau_id']]);
                     }
-
-                    // Ajouter les liaisons avec les niveaux
-                    foreach ($niveauIds as $niveauId) {
-                        $matiere->niveaux()->syncWithoutDetaching([$niveauId]);
-                    }
-
                     $addedCount++;
                 }
-            }
+            });
 
             return response()->json([
                 'success' => true,

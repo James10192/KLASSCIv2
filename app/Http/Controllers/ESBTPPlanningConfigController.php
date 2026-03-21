@@ -50,14 +50,10 @@ class ESBTPPlanningConfigController extends Controller
             ]);
         }
 
-        // Récupérer les matières liées à cette combinaison filière/niveau
+        // Récupérer les matières liées à cette combinaison exacte
+        $matiereIds = \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($filiereId, $niveauId);
         $matieresLiees = ESBTPMatiere::where("is_active", true)
-            ->whereHas("filieres", function ($query) use ($filiereId) {
-                $query->where("esbtp_filieres.id", $filiereId);
-            })
-            ->whereHas("niveaux", function ($query) use ($niveauId) {
-                $query->where("esbtp_niveau_etudes.id", $niveauId);
-            })
+            ->whereIn("id", $matiereIds)
             ->orderBy("name")
             ->get();
 
@@ -1021,20 +1017,14 @@ class ESBTPPlanningConfigController extends Controller
             ->with('matiere')
             ->get();
 
-        // Filtrer les planifications valides
-        $valides = $planifications->filter(function ($p) use ($filiere, $niveau) {
-            if (!$p->matiere) return false;
-            return ESBTPMatiere::where('id', $p->matiere->id)
-                ->where('is_active', true)
-                ->whereHas('filieres', fn($q) => $q->where('esbtp_filieres.id', $filiere->id))
-                ->whereHas('niveaux', fn($q) => $q->where('esbtp_niveau_etudes.id', $niveau->id))
-                ->exists();
+        // Pré-charger les matière IDs liées (1 requête au lieu de N)
+        $linkedMatiereIds = \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($filiereId, $niveauId);
+
+        $valides = $planifications->filter(function ($p) use ($linkedMatiereIds) {
+            return $p->matiere && $linkedMatiereIds->contains($p->matiere->id);
         });
 
-        $totalMatieres = ESBTPMatiere::where('is_active', true)
-            ->whereHas('filieres', fn($q) => $q->where('esbtp_filieres.id', $filiereId))
-            ->whereHas('niveaux', fn($q) => $q->where('esbtp_niveau_etudes.id', $niveauId))
-            ->count();
+        $totalMatieres = \App\Models\ESBTPMatiereFilierNiveau::activeMatiereCountForCombo($filiereId, $niveauId);
 
         $s1 = $valides->where('semestre', 1);
         $s2 = $valides->where('semestre', 2);

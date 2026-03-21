@@ -28,4 +28,21 @@ class ESBTPMatiereFilierNiveau extends Model
     {
         return $this->belongsTo(ESBTPMatiere::class, 'matiere_id');
     }
+
+    public function scopeForCombo($query, $filiereId, $niveauId)
+    {
+        return $query->where('filiere_id', $filiereId)->where('niveau_etude_id', $niveauId);
+    }
+
+    public static function matiereIdsForCombo($filiereId, $niveauId)
+    {
+        return static::forCombo($filiereId, $niveauId)->pluck('matiere_id');
+    }
+
+    public static function activeMatiereCountForCombo($filiereId, $niveauId)
+    {
+        return static::forCombo($filiereId, $niveauId)
+            ->whereHas('matiere', fn($q) => $q->where('is_active', true))
+            ->count();
+    }
 }

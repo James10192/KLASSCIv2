@@ -1725,7 +1725,7 @@
 
 <!-- Modal de Configuration des Volumes Horaires -->
 <div class="modal fade" id="volumeConfigModal" tabindex="-1" aria-labelledby="volumeConfigModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content" style="border:none; border-radius:18px; overflow:hidden; box-shadow:0 25px 60px rgba(0,0,0,.15);">
             {{-- Header premium --}}
             <div class="modal-header" style="background:linear-gradient(135deg,#0a3d8f 0%,#0453cb 40%,#3b7ddb 100%); border:none; padding:1.5rem 1.75rem 1.25rem; position:relative;">
@@ -1795,7 +1795,7 @@
 
 <!-- Modal de Gestion de Disponibilité Enseignant -->
 <div class="modal fade" id="teacherAvailabilityModal" tabindex="-1" aria-labelledby="teacherAvailabilityModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="teacherAvailabilityModalLabel">
@@ -2037,7 +2037,7 @@
 
 <!-- Modal d'ajout de matières aux combinaisons -->
 <div class="modal fade" id="addMatieresModal" tabindex="-1" aria-labelledby="addMatieresModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content" style="border:none; border-radius:16px; overflow:hidden; box-shadow:0 25px 60px rgba(0,0,0,.15);">
             <div class="modal-header" style="background:linear-gradient(135deg,#0a3d8f 0%,#0453cb 40%,#3b7ddb 100%); border:none; padding:1.25rem 1.5rem;">
                 <div style="position:relative; z-index:1;">
@@ -2081,6 +2081,7 @@
                         .am-pill.active .am-pill-check { display:inline; }
                         .am-pill-code { font-size:.6rem; opacity:.6; }
                         .am-counter { font-size:.75rem; color:#94a3b8; font-weight:500; background:#f1f5f9; padding:.2rem .55rem; border-radius:20px; }
+                        .matiere-item-label:hover { border-color:#0453cb !important; box-shadow:0 2px 8px rgba(4,83,203,.08); }
                     </style>
 
                     {{-- Section header --}}
@@ -2163,49 +2164,42 @@
 
                     <!-- Sélection des matières (pour les combinaisons vides) -->
                     <div class="mt-3" id="matieres-selection-container" style="display: none;">
-                        <div style="background:#fff; border-radius:12px; border:1px solid #e8ecf1; padding:1rem 1.15rem;">
-                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:.5rem;">
-                                <div style="font-size:.85rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:.4rem;">
-                                    <i class="fas fa-book" style="color:#0453cb; font-size:.78rem;"></i>Matières disponibles
+                        <div style="background:#fff; border-radius:12px; border:1px solid #e8ecf1; padding:1.15rem 1.25rem;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:.85rem; flex-wrap:wrap; gap:.5rem;">
+                                <div style="font-size:.88rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:.5rem;">
+                                    <div style="width:28px; height:28px; border-radius:7px; background:rgba(4,83,203,.08); display:flex; align-items:center; justify-content:center; color:#0453cb; font-size:.72rem;">
+                                        <i class="fas fa-book"></i>
+                                    </div>
+                                    Matières disponibles
                                 </div>
-                                        <p class="main-card-subtitle">Sélectionnez les matières à ajouter à cette combinaison</p>
-                                    </div>
-                                    <div class="d-flex gap-2">
-                                        <button type="button" class="btn btn-outline-primary btn-sm" id="btn-view-details">
-                                            <i class="fas fa-eye me-1"></i>Vue détaillée des matières
-                                        </button>
-                                        <button type="button" class="btn btn-success btn-sm" id="btn-create-new">
-                                            <i class="fas fa-plus me-1"></i>Créer nouvelle matière
-                                        </button>
-                                    </div>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" id="btn-view-details" style="border-radius:8px; font-size:.75rem;">
+                                        <i class="fas fa-eye me-1"></i>Vue détaillée
+                                    </button>
+                                    <button type="button" class="btn btn-success btn-sm" id="btn-create-new" style="border-radius:8px; font-size:.75rem;">
+                                        <i class="fas fa-plus me-1"></i>Créer matière
+                                    </button>
                                 </div>
-                                <div class="main-card-body">
-                                    <div id="matieres-list" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-light); border-radius: 8px; padding: 1rem; background: var(--bg-light);">
-                                        <!-- Les matières seront chargées ici dynamiquement -->
-                                    </div>
-
-                                    <!-- Actions de sélection rapide -->
-                                    <div class="mt-3 d-flex justify-content-between align-items-center">
-                                        <div class="text-muted">
-                                            <i class="fas fa-info-circle me-1"></i>
-                                            <small>Les matières déjà assignées sont marquées en vert</small>
-                                        </div>
-                                        <div>
-                                            <button type="button" class="btn btn-outline-secondary btn-sm me-2" id="btn-select-all">
-                                                <i class="fas fa-check-square me-1"></i>Tout sélectionner
-                                            </button>
-                                            <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-select-none">
-                                                <i class="fas fa-square me-1"></i>Tout désélectionner
-                                            </button>
-                                        </div>
-                                    </div>
+                            </div>
+                            <div id="matieres-list" style="max-height: 350px; overflow-y: auto; border: 1px solid #e8ecf1; border-radius: 10px; padding: .5rem; background: #f8fafc;">
+                                <!-- Les matières seront chargées ici dynamiquement -->
+                            </div>
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-top:.75rem; padding-top:.65rem; border-top:1px solid #f1f5f9;">
+                                <small style="color:#94a3b8; font-size:.72rem;"><i class="fas fa-info-circle me-1"></i>Les matières déjà assignées sont marquées en vert</small>
+                                <div style="display:flex; gap:.35rem;">
+                                    <button type="button" class="btn btn-sm" id="btn-select-all" style="border-radius:7px; font-size:.72rem; padding:.3rem .6rem; background:#f1f5f9; border:1px solid #e2e8f0; color:#64748b;">
+                                        <i class="fas fa-check-square me-1"></i>Tout
+                                    </button>
+                                    <button type="button" class="btn btn-sm" id="btn-select-none" style="border-radius:7px; font-size:.72rem; padding:.3rem .6rem; background:#f1f5f9; border:1px solid #e2e8f0; color:#64748b;">
+                                        <i class="fas fa-square me-1"></i>Aucun
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {{-- Aperçu des combinaisons sélectionnées --}}
-                    <div style="background:#fff; border-radius:12px; border:1px solid #e8ecf1; padding:1rem 1.15rem; margin-top:.85rem;">
+                    <div id="combinations-preview-wrapper" style="background:#fff; border-radius:12px; border:1px solid #e8ecf1; padding:1rem 1.15rem; margin-top:.85rem;">
                         <div style="font-size:.78rem; font-weight:600; color:#64748b; margin-bottom:.5rem;">
                             <i class="fas fa-eye" style="color:#0453cb; font-size:.7rem;"></i> Aperçu des combinaisons
                         </div>
@@ -2333,6 +2327,43 @@
 @push('scripts')
 <script>
 $(function() {
+    // ================================
+    // DÉPLACER LES MODALS VERS <body>
+    // Évite le clipping par .main-content { overflow-y: auto }
+    // ================================
+    $('#pg-tab-content .modal').each(function() {
+        $(this).attr('data-ph-tab-modal', '1').appendTo('body');
+    });
+
+    // ================================
+    // HALO VERT SUR LA CARD MISE À JOUR
+    // ================================
+    const updatedCombo = sessionStorage.getItem('pg-updated-combo');
+    if (updatedCombo) {
+        sessionStorage.removeItem('pg-updated-combo');
+        const [fId, nId] = updatedCombo.split('-');
+        const card = $(`.combinaison-card[data-filiere-id="${fId}"][data-niveau-id="${nId}"]`);
+        if (card.length) {
+            card.css({
+                boxShadow: '0 0 0 3px #10b981, 0 8px 25px rgba(16,185,129,.3)',
+                transform: 'scale(1.02)',
+                transition: 'all .4s ease',
+                position: 'relative',
+                zIndex: '10'
+            });
+            card[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(function() {
+                card.css({
+                    boxShadow: '',
+                    transform: '',
+                    transition: 'all 1s ease',
+                    position: '',
+                    zIndex: ''
+                });
+            }, 4000);
+        }
+    }
+
     // ================================
     // ANIMATION DES CARTES AU SCROLL
     // ================================
@@ -2778,8 +2809,8 @@ $(function() {
         });
     }
 
-    // Sauvegarde de la configuration
-    $('#save-volume-config').on('click', function() {
+    // Sauvegarde de la configuration (délégation pour survivre aux AJAX reloads)
+    $(document).on('click', '#save-volume-config', function() {
         const $btn = $(this);
         const originalText = $btn.html();
 
@@ -3282,18 +3313,16 @@ $(function() {
             $('#modal-matiere-id').val('empty-combo');
             // Ce modal a déjà le bon titre, pas besoin de le changer
 
-            // Pré-sélectionner et DÉSACTIVER la filière et le niveau (combinaison fixe)
-            $('.filiere-checkbox, .niveau-checkbox').prop('checked', false).prop('disabled', true);
-            if (filiereId) {
-                $(`#filiere-${filiereId}`).prop('checked', true);
+            // Pré-sélectionner le pill correspondant à la combinaison filière/niveau
+            $('#am-filieres-grid .am-pill').removeClass('active').each(function() {
+                $(this).find('input[type=checkbox]').prop('checked', false);
+            });
+            if (filiereId && niveauId) {
+                const pill = $(`#am-filieres-grid .am-pill[data-filiere-id="${filiereId}"][data-niveau-id="${niveauId}"]`);
+                pill.addClass('active');
+                pill.find('input[type=checkbox]').prop('checked', true);
+                amUpdateCounter();
             }
-            if (niveauId) {
-                $(`#niveau-${niveauId}`).prop('checked', true);
-            }
-
-            // Changer les textes et sous-titres
-            $('#filiere-subtitle').text('Filière sélectionnée (fixe)');
-            $('#niveau-subtitle').text('Niveau sélectionné (fixe)');
             $('#addMatieresModalLabel').html('<i class="fas fa-plus me-2"></i>Ajouter matières à la combinaison');
             $('#save-liaisons-btn').html('<i class="fas fa-plus me-1"></i>Ajouter les matières sélectionnées');
 
@@ -3301,7 +3330,7 @@ $(function() {
             loadAvailableMatieres(filiereId, niveauId);
 
             // Masquer l'aperçu des combinaisons (pas nécessaire en mode fixe)
-            $('#combinations-preview').parent().parent().hide();
+            $('#combinations-preview-wrapper').hide();
 
             // Stocker les IDs pour les boutons d'action
             window.currentFiliereId = filiereId;
@@ -3310,6 +3339,19 @@ $(function() {
             window.currentNiveauName = niveauName;
         }
     });
+
+    // Helper pour toggle l'état visuel d'un item matière
+    function setMatiereItemState(label, checked) {
+        label.find('input.matiere-checkbox').prop('checked', checked);
+        const icon = label.find('.matiere-check-icon');
+        if (checked) {
+            icon.css({background:'linear-gradient(135deg,#10b981,#059669)',border:'none'}).html('<i class="fas fa-check" style="color:#fff;font-size:.6rem;"></i>');
+            label.css({borderColor:'#10b981',background:'#f0fdf4'});
+        } else {
+            icon.css({background:'#fff',border:'2px solid #cbd5e1'}).html('');
+            label.css({borderColor:'#e8ecf1',background:'#fff'});
+        }
+    }
 
     // Fonction pour charger les matières disponibles pour une combinaison vide
     function loadAvailableMatieres(filiereId, niveauId) {
@@ -3336,32 +3378,48 @@ $(function() {
                     let matieresHtml = '';
                     data.matieres.forEach(matiere => {
                         const isLinked = matiere.is_already_linked;
-                        const cardClass = isLinked ? 'border-success bg-light-success' : '';
-                        const statusBadge = isLinked ? '<span class="badge bg-success ms-2"><i class="fas fa-check"></i> Déjà assignée</span>' : '';
+                        const borderColor = isLinked ? '#10b981' : '#e8ecf1';
+                        const bgColor = isLinked ? '#f0fdf4' : '#fff';
+                        const checkIcon = isLinked
+                            ? '<div class="matiere-check-icon" style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fas fa-check" style="color:#fff;font-size:.6rem;"></i></div>'
+                            : '<div class="matiere-check-icon" style="width:22px;height:22px;border-radius:6px;border:2px solid #cbd5e1;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#fff;"></div>';
+                        const linkedBadge = isLinked
+                            ? '<span style="font-size:.6rem;font-weight:600;color:#10b981;background:#ecfdf5;padding:.15rem .45rem;border-radius:20px;border:1px solid #bbf7d0;">Liée</span>'
+                            : '';
+                        const coefBadge = matiere.coefficient
+                            ? `<span style="font-size:.65rem;color:#64748b;background:#f1f5f9;padding:.15rem .4rem;border-radius:4px;">C${matiere.coefficient}</span>`
+                            : '';
+                        const heuresBadge = matiere.total_heures
+                            ? `<span style="font-size:.65rem;color:#0453cb;background:rgba(4,83,203,.06);padding:.15rem .4rem;border-radius:4px;font-weight:600;">${matiere.total_heures}h</span>`
+                            : '';
 
                         matieresHtml += `
-                            <div class="form-check mb-3 p-2 ${cardClass}" style="border-radius: 6px; transition: all 0.2s ease; border: 1px solid ${isLinked ? '#198754' : 'var(--border-light)'};">
-                                <input class="form-check-input matiere-checkbox" type="checkbox"
-                                       value="${matiere.id}" id="matiere-${matiere.id}" name="selected_matieres[]"
-                                       style="margin-top: 0.35rem;" ${isLinked ? 'checked' : ''}>
-                                <label class="form-check-label" for="matiere-${matiere.id}" style="cursor: pointer; width: 100%;">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <span class="font-semibold color-dark">${matiere.name}</span>
-                                            ${matiere.code ? `<span class="badge secondary ms-2">${matiere.code}</span>` : ''}
-                                            ${statusBadge}
-                                        </div>
-                                        <div class="text-muted small">
-                                            ${matiere.coefficient ? `Coeff: ${matiere.coefficient}` : ''}
-                                            ${matiere.total_heures ? `• ${matiere.total_heures}h` : ''}
-                                        </div>
+                            <label for="matiere-${matiere.id}" class="matiere-item-label" style="display:flex;align-items:center;gap:.75rem;padding:.7rem .85rem;border-radius:10px;border:1px solid ${borderColor};background:${bgColor};cursor:pointer;transition:all .15s;margin-bottom:.4rem;">
+                                <input class="matiere-checkbox" type="checkbox" value="${matiere.id}" id="matiere-${matiere.id}" name="selected_matieres[]" ${isLinked ? 'checked' : ''} style="display:none;">
+                                ${checkIcon}
+                                <div style="flex:1;min-width:0;">
+                                    <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;">
+                                        <span style="font-size:.82rem;font-weight:600;color:#1e293b;">${matiere.name}</span>
+                                        ${matiere.code ? `<span style="font-size:.6rem;color:#94a3b8;background:#f8fafc;padding:.1rem .35rem;border-radius:3px;border:1px solid #e8ecf1;">${matiere.code}</span>` : ''}
+                                        ${linkedBadge}
                                     </div>
-                                    ${matiere.description ? `<small class="text-muted d-block mt-1">${matiere.description}</small>` : ''}
-                                </label>
-                            </div>
+                                    ${matiere.description ? `<div style="font-size:.7rem;color:#94a3b8;margin-top:.15rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${matiere.description}</div>` : ''}
+                                </div>
+                                <div style="display:flex;gap:.3rem;align-items:center;flex-shrink:0;">
+                                    ${coefBadge}
+                                    ${heuresBadge}
+                                </div>
+                            </label>
                         `;
                     });
                     matieresListDiv.html(matieresHtml);
+
+                    // Toggle check icon on click
+                    matieresListDiv.find('label').on('click', function(e) {
+                        e.preventDefault();
+                        const isNowChecked = !$(this).find('input.matiere-checkbox').prop('checked');
+                        setMatiereItemState($(this), isNowChecked);
+                    });
                 } else {
                     matieresListDiv.html(`
                         <div class="d-flex align-items-center justify-content-center py-4 text-muted">
@@ -3383,74 +3441,6 @@ $(function() {
     }
 
     // Mise à jour de l'aperçu des combinaisons
-    function updateCombinationsPreview() {
-        const selectedFilieres = [];
-        const selectedNiveaux = [];
-
-        $('.filiere-checkbox:checked').each(function() {
-            const label = $(this).next('label').find('span.font-semibold').text();
-            selectedFilieres.push({
-                id: $(this).val(),
-                name: label
-            });
-        });
-
-        $('.niveau-checkbox:checked').each(function() {
-            const label = $(this).next('label').find('span.font-semibold').text();
-            selectedNiveaux.push({
-                id: $(this).val(),
-                name: label
-            });
-        });
-
-        const previewDiv = $('#combinations-preview');
-
-        if (selectedFilieres.length === 0 || selectedNiveaux.length === 0) {
-            previewDiv.html(`
-                <div class="d-flex align-items-center" style="color: #0369a1;">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <span>Sélectionnez au moins une filière et un niveau pour voir les combinaisons possibles.</span>
-                </div>
-            `).css({
-                'background': '#e7f3ff',
-                'border': '1px solid #0ea5e9',
-                'padding': '1.5rem',
-                'border-radius': '8px'
-            });
-            return;
-        }
-
-        let combinationsHtml = `
-            <div class="d-flex align-items-center mb-3">
-                <i class="fas fa-check-circle me-2" style="color: #059669;"></i>
-                <strong style="color: #047857;">${selectedFilieres.length * selectedNiveaux.length} combinaison(s) sélectionnée(s)</strong>
-            </div>
-            <div class="d-flex flex-wrap gap-2">
-        `;
-
-        selectedFilieres.forEach(filiere => {
-            selectedNiveaux.forEach(niveau => {
-                combinationsHtml += `
-                    <span class="badge text-bg-success px-3 py-2">
-                        ${filiere.name} + ${niveau.name}
-                    </span>
-                `;
-            });
-        });
-
-        combinationsHtml += '</div>';
-
-        previewDiv.html(combinationsHtml).css({
-            'background': '#f0f9f0',
-            'border': '1px solid #059669',
-            'padding': '1.5rem',
-            'border-radius': '8px'
-        });
-    }
-
-    // Écouter les changements dans les checkboxes
-    $(document).on('change', '.filiere-checkbox, .niveau-checkbox', updateCombinationsPreview);
-
     // Sauvegarde des liaisons
     $('#save-liaisons-btn').on('click', function() {
         const matiereId = $('#modal-matiere-id').val();
@@ -3462,20 +3452,23 @@ $(function() {
             const selectedMatieres = $('.matiere-checkbox:checked').map(function() {
                 return $(this).val();
             }).get();
-            const selectedFilieres = $('.filiere-checkbox:checked').map(function() {
-                return $(this).val();
-            }).get();
-            const selectedNiveaux = $('.niveau-checkbox:checked').map(function() {
-                return $(this).val();
-            }).get();
+
+            // Récupérer les paires filière/niveau depuis les pills sélectionnés
+            const combinations = [];
+            $('#am-filieres-grid .am-pill.active').each(function() {
+                combinations.push({
+                    filiere_id: String($(this).data('filiere-id')),
+                    niveau_id: String($(this).data('niveau-id'))
+                });
+            });
 
             if (selectedMatieres.length === 0) {
                 alert('Veuillez sélectionner au moins une matière.');
                 return;
             }
 
-            if (selectedFilieres.length === 0 || selectedNiveaux.length === 0) {
-                alert('Veuillez sélectionner au moins une filière et un niveau.');
+            if (combinations.length === 0) {
+                alert('Veuillez sélectionner au moins une combinaison filière/niveau.');
                 return;
             }
 
@@ -3490,21 +3483,41 @@ $(function() {
                 },
                 body: JSON.stringify({
                     matiere_ids: selectedMatieres,
-                    filiere_ids: selectedFilieres,
-                    niveau_ids: selectedNiveaux
+                    combinations: combinations
                 })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Fermer le modal
-                    $('#addMatieresModal').modal('hide');
+                    // Stocker la combinaison mise à jour pour le halo vert
+                    const updatedFiliereId = window.currentFiliereId;
+                    const updatedNiveauId = window.currentNiveauId;
 
-                    // Afficher message de succès et recharger la page
-                    showAlert('success', data.message);
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
+                    // Fermer le modal proprement
+                    const modalEl = document.getElementById('addMatieresModal');
+                    const modalInst = bootstrap.Modal.getInstance(modalEl);
+                    if (modalInst) modalInst.hide();
+
+                    // Attendre la fermeture complète du modal avant de recharger
+                    $(modalEl).one('hidden.bs.modal', function() {
+                        // Nettoyer backdrop et body.modal-open au cas où
+                        $('body').removeClass('modal-open').css('overflow', '');
+                        $('.modal-backdrop').remove();
+
+                        showAlert('success', data.message);
+
+                        // Recharger via le système de tabs AJAX existant
+                        // Stocker les IDs dans sessionStorage pour le halo vert après reload
+                        if (updatedFiliereId && updatedNiveauId) {
+                            sessionStorage.setItem('pg-updated-combo', updatedFiliereId + '-' + updatedNiveauId);
+                        }
+                        const activeTab = document.querySelector('.ph-tab.active');
+                        if (activeTab) {
+                            activeTab.click();
+                        } else {
+                            window.location.reload();
+                        }
+                    });
                 } else {
                     throw new Error(data.message || 'Erreur lors de l\'ajout');
                 }
@@ -3535,37 +3548,25 @@ $(function() {
 
     // Gestionnaires pour la sélection rapide des matières (MODAL)
     $(document).on('click', '#btn-select-all', function() {
-        const $checkboxes = $('.matiere-checkbox');
-        debugLog('🔍 Matières - Tout sélectionner clicked');
-        debugLog('  📊 Total matiere checkboxes:', $checkboxes.length);
-        debugLog('  ✅ Checked before:', $checkboxes.filter(':checked').length);
-
-        $checkboxes.prop('checked', true);
-
-        debugLog('  ✅ Checked after:', $checkboxes.filter(':checked').length);
+        $('#matieres-list label').each(function() { setMatiereItemState($(this), true); });
     });
 
     $(document).on('click', '#btn-select-none', function() {
-        const $checkboxes = $('.matiere-checkbox');
-        debugLog('🔍 Matières - Tout désélectionner clicked');
-        debugLog('  📊 Total matiere checkboxes:', $checkboxes.length);
-        debugLog('  ✅ Checked before:', $checkboxes.filter(':checked').length);
-
-        $checkboxes.prop('checked', false);
-
-        debugLog('  ✅ Checked after:', $checkboxes.filter(':checked').length);
+        $('#matieres-list label').each(function() { setMatiereItemState($(this), false); });
     });
 
     // Reset du modal à la fermeture
     $('#addMatieresModal').on('hidden.bs.modal', function() {
         $('#matieres-selection-container').hide();
         $('#matieres-list').empty();
-        $('.filiere-checkbox, .niveau-checkbox, .matiere-checkbox').prop('checked', false).prop('disabled', false);
+        // Reset pills
+        $('#am-filieres-grid .am-pill').removeClass('active').each(function() {
+            $(this).find('input[type=checkbox]').prop('checked', false);
+        });
+        if (typeof amUpdateCounter === 'function') amUpdateCounter();
+        $('.matiere-checkbox').prop('checked', false);
         $('#modal-matiere-id').val('');
-        $('#filiere-subtitle').text('Sélectionnez les filières concernées');
-        $('#niveau-subtitle').text('Sélectionnez les niveaux concernés');
-        $('#combinations-preview').parent().parent().show();
-        updateCombinationsPreview();
+        $('#combinations-preview-wrapper').show();
     });
 });
 </script>

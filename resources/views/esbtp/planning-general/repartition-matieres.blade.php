@@ -1320,9 +1320,15 @@ $(document).ready(function() {
     }
 
     // ==========================================
-    // Initialisation
+    // Initialisation (attendre echarts si chargé via AJAX)
     // ==========================================
-    renderCharts();
+    (function waitForEcharts(attempts) {
+        if (typeof echarts !== 'undefined') {
+            renderCharts();
+        } else if (attempts < 50) {
+            setTimeout(function() { waitForEcharts(attempts + 1); }, 100);
+        }
+    })(0);
 
     // ==========================================
     // Modal de configuration rapide
