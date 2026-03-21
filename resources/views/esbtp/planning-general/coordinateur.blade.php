@@ -221,14 +221,14 @@
 
         {{-- Quick actions --}}
         <div class="co-actions">
-            <a href="{{ route('esbtp.admin.attendance.index') }}" class="co-action co-action--codes">
+            <a href="{{ url('esbtp/attendance-codes') }}" class="co-action co-action--codes">
                 <div class="co-action-icon"><i class="fas fa-qrcode"></i></div>
                 <div>
                     <div style="font-weight:600;">Codes d'Émargement</div>
                     <div style="font-size:.72rem; color:#94a3b8;">Générer et gérer</div>
                 </div>
             </a>
-            <a href="{{ route('esbtp.admin.attendance.report') }}" class="co-action co-action--teachers">
+            <a href="{{ url('esbtp/teacher-attendance/report') }}" class="co-action co-action--teachers">
                 <div class="co-action-icon"><i class="fas fa-chalkboard-teacher"></i></div>
                 <div>
                     <div style="font-weight:600;">Suivi Enseignants</div>
