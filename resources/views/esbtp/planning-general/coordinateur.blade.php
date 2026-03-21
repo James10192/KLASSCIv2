@@ -245,6 +245,8 @@
             :annees="$annees"
         />
 
+        <div id="pg-tab-content">
+
         <!-- Sélection du mois -->
         <div class="card-moderne mb-lg">
             <div class="p-md">
@@ -532,6 +534,7 @@
                 </div>
             </div>
         </div>
+        </div>{{-- #pg-tab-content --}}
     </div>
 </div>
 @endsection

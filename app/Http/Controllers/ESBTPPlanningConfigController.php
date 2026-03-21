@@ -635,9 +635,17 @@ class ESBTPPlanningConfigController extends Controller
                 "========== FIN SAUVEGARDE PLANNING GÉNÉRAL (SUCCESS) ==========",
             );
 
+            // Recalculer les stats de la card pour mise à jour AJAX
+            $cardStats = $this->getCombinaisonCardStats(
+                $request->input('filiere_id'),
+                $request->input('niveau_id'),
+                $request->input('annee_id')
+            );
+
             return response()->json([
                 "success" => true,
                 "message" => $message,
+                "card_stats" => $cardStats,
             ]);
         } catch (\Exception $e) {
             DB::rollback();
@@ -993,6 +1001,70 @@ class ESBTPPlanningConfigController extends Controller
                 ];
             })
             ->toArray();
+    }
+
+    /**
+     * Recalculer les stats d'une card combinaison filière/niveau après sauvegarde.
+     */
+    private function getCombinaisonCardStats($filiereId, $niveauId, $anneeId): array
+    {
+        $filiere = ESBTPFiliere::find($filiereId);
+        $niveau = ESBTPNiveauEtude::find($niveauId);
+
+        if (!$filiere || !$niveau) {
+            return [];
+        }
+
+        $planifications = ESBTPPlanificationAcademique::where('filiere_id', $filiereId)
+            ->where('niveau_etude_id', $niveauId)
+            ->when($anneeId, fn($q) => $q->where('annee_universitaire_id', $anneeId))
+            ->with('matiere')
+            ->get();
+
+        // Filtrer les planifications valides
+        $valides = $planifications->filter(function ($p) use ($filiere, $niveau) {
+            if (!$p->matiere) return false;
+            return ESBTPMatiere::where('id', $p->matiere->id)
+                ->where('is_active', true)
+                ->whereHas('filieres', fn($q) => $q->where('esbtp_filieres.id', $filiere->id))
+                ->whereHas('niveaux', fn($q) => $q->where('esbtp_niveau_etudes.id', $niveau->id))
+                ->exists();
+        });
+
+        $totalMatieres = ESBTPMatiere::where('is_active', true)
+            ->whereHas('filieres', fn($q) => $q->where('esbtp_filieres.id', $filiereId))
+            ->whereHas('niveaux', fn($q) => $q->where('esbtp_niveau_etudes.id', $niveauId))
+            ->count();
+
+        $s1 = $valides->where('semestre', 1);
+        $s2 = $valides->where('semestre', 2);
+
+        $matieresConfigureesS1 = $s1->where('volume_horaire_total', '>', 0)->count();
+        $matieresConfigureesS2 = $s2->where('volume_horaire_total', '>', 0)->count();
+        $totalHeuresS1 = $s1->sum('volume_horaire_total');
+        $totalHeuresS2 = $s2->sum('volume_horaire_total');
+        $matieresConfigurees = $valides->where('volume_horaire_total', '>', 0)->count();
+
+        if ($totalMatieres == 0) {
+            $statusClass = 'not-configured';
+            $statusIcon = 'fa-plus-circle';
+        } elseif ($matieresConfigurees == $totalMatieres) {
+            $statusClass = 'configured';
+            $statusIcon = 'fa-check-circle';
+        } else {
+            $statusClass = 'partial';
+            $statusIcon = 'fa-exclamation-triangle';
+        }
+
+        return [
+            'total_matieres' => $totalMatieres,
+            'matieres_configurees_s1' => $matieresConfigureesS1,
+            'matieres_configurees_s2' => $matieresConfigureesS2,
+            'total_heures_s1' => $totalHeuresS1,
+            'total_heures_s2' => $totalHeuresS2,
+            'status_class' => $statusClass,
+            'status_icon' => $statusIcon,
+        ];
     }
 
 }

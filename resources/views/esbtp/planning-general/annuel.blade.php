@@ -598,6 +598,8 @@
             :annees="$annees"
         />
 
+        <div id="pg-tab-content">
+
         <!-- Header avec design modernisé -->
         <div class="calendrier-academique">
             <div class="calendrier-header">
@@ -819,6 +821,7 @@
                 <button class="shortcut-btn" data-action="ceremonie">Cérémonie</button>
             </div>
         </div>
+        </div>{{-- #pg-tab-content --}}
     </div>
 </div>
 @endsection

@@ -207,6 +207,8 @@
             :annees="$annees"
         />
 
+        <div id="pg-tab-content">
+
         <!-- En-tête de la section émargement -->
         <div class="emargement-header">
             <h2>
@@ -570,6 +572,7 @@
                 </div>
             </div>
         </div>
+        </div>{{-- #pg-tab-content --}}
 
         <!-- Modal pour code personnalisé -->
         <div class="modal fade" id="codeModal" tabindex="-1" aria-labelledby="codeModalLabel" aria-hidden="true">

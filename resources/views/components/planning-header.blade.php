@@ -266,3 +266,97 @@
     </a>
     @endcanany
 </div>
+
+{{-- Tabs AJAX navigation --}}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('.ph-tab');
+    const container = document.getElementById('pg-tab-content');
+    if (!container || !tabs.length) return;
+
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function(e) {
+            const href = this.getAttribute('href');
+            if (!href || href === '#') return;
+
+            e.preventDefault();
+
+            // Marquer le tab actif
+            tabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+
+            // Loading state
+            container.style.opacity = '0.5';
+            container.style.pointerEvents = 'none';
+            container.style.transition = 'opacity .2s';
+
+            // Mettre à jour l'URL sans reload
+            history.pushState(null, '', href);
+
+            // Fetch la page cible
+            fetch(href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(r => r.text())
+                .then(html => {
+                    // Parser le HTML de la page complète
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const newContent = doc.getElementById('pg-tab-content');
+
+                    if (newContent) {
+                        container.innerHTML = newContent.innerHTML;
+                    } else {
+                        // Fallback : extraire le contenu principal
+                        const mainContent = doc.querySelector('.main-content');
+                        if (mainContent) {
+                            // Trouver le contenu après les tabs (après ph-tabs)
+                            const allChildren = mainContent.children;
+                            let afterTabs = false;
+                            let contentHtml = '';
+                            for (let i = 0; i < allChildren.length; i++) {
+                                if (afterTabs) {
+                                    contentHtml += allChildren[i].outerHTML;
+                                }
+                                if (allChildren[i].classList && allChildren[i].classList.contains('ph-tabs')) {
+                                    afterTabs = true;
+                                }
+                            }
+                            if (contentHtml) {
+                                container.innerHTML = contentHtml;
+                            } else {
+                                // Dernier fallback : full page reload
+                                window.location.href = href;
+                                return;
+                            }
+                        } else {
+                            window.location.href = href;
+                            return;
+                        }
+                    }
+
+                    // Exécuter les scripts inline du nouveau contenu
+                    container.querySelectorAll('script').forEach(function(oldScript) {
+                        const newScript = document.createElement('script');
+                        if (oldScript.src) {
+                            newScript.src = oldScript.src;
+                        } else {
+                            newScript.textContent = oldScript.textContent;
+                        }
+                        oldScript.parentNode.replaceChild(newScript, oldScript);
+                    });
+
+                    // Restaurer l'affichage
+                    container.style.opacity = '1';
+                    container.style.pointerEvents = '';
+                })
+                .catch(function() {
+                    // En cas d'erreur, fallback au comportement normal
+                    window.location.href = href;
+                });
+        });
+    });
+
+    // Gérer le bouton retour du navigateur
+    window.addEventListener('popstate', function() {
+        window.location.reload();
+    });
+});
+</script>

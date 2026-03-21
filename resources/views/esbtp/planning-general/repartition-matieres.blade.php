@@ -571,6 +571,8 @@
             :annees="$annees"
         />
 
+        <div id="pg-tab-content">
+
         <!-- Filtres de recherche -->
         <div class="filters-section">
             <div class="section-title mb-md">
@@ -949,6 +951,7 @@
             </div>
         </div>
         </div>
+        </div>{{-- #pg-tab-content --}}
     </div>
 </div>
 

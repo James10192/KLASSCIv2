@@ -1496,6 +1496,7 @@
             :stats="$anneeSelectionnee ? $stats : null"
         />
 
+        <div id="pg-tab-content">
         @if(!$anneeSelectionnee)
             <div class="alert alert-warning" style="border-radius:12px; border:none; background:#fef3c7; color:#92400e;">
                 <i class="fas fa-exclamation-triangle me-2"></i>
@@ -1721,6 +1722,7 @@
                 </div>
             </div>
         @endif
+        </div>{{-- #pg-tab-content --}}
     </div>
 </div>
 
@@ -2876,11 +2878,33 @@ $(function() {
                     // Fermer le modal
                     $('#volumeConfigModal').modal('hide');
 
-                    // Recharger la page pour mettre à jour les cartes
-                    debugLog('🔄 Rechargement de la page dans 1 seconde...');
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
+                    // Mise à jour AJAX de la card concernée (sans reload)
+                    if (response.card_stats) {
+                        const s = response.card_stats;
+                        const $card = $(`.combinaison-card[data-filiere-id="${currentFiliereId}"][data-niveau-id="${currentNiveauId}"]`);
+                        if ($card.length) {
+                            // Mettre à jour les stats S1/S2
+                            const $stats = $card.find('.stat-number-lines');
+                            if ($stats.length >= 2) {
+                                // Matières configurées
+                                $stats.eq(0).find('.stat-line').eq(0).find('span:last').text(s.matieres_configurees_s1 + '/' + s.total_matieres);
+                                $stats.eq(0).find('.stat-line').eq(1).find('span:last').text(s.matieres_configurees_s2 + '/' + s.total_matieres);
+                                // Volume horaire
+                                $stats.eq(1).find('.stat-line').eq(0).find('span:last').text(s.total_heures_s1 + 'h');
+                                $stats.eq(1).find('.stat-line').eq(1).find('span:last').text(s.total_heures_s2 + 'h');
+                            }
+                            // Mettre à jour le badge statut
+                            $card.removeClass('configured partial not-configured').addClass(s.status_class);
+                            $card.find('.status-badge').removeClass('configured partial not-configured').addClass(s.status_class)
+                                 .find('i').attr('class', 'fas ' + s.status_icon);
+
+                            // Animation flash de confirmation
+                            $card.css('transition', 'box-shadow .3s').css('box-shadow', '0 0 0 3px rgba(16,185,129,.4)');
+                            setTimeout(() => $card.css('box-shadow', ''), 1500);
+
+                            debugLog('✅ Card mise à jour sans rechargement');
+                        }
+                    }
                 } else {
                     debugError('❌ Sauvegarde échouée (success=false):', response.message);
                     showAlert('error', response.message || 'Erreur lors de la sauvegarde');
