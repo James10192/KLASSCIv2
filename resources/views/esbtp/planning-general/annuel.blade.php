@@ -228,6 +228,7 @@
             active-tab="annuel"
             :annee-selectionnee="$anneeSelectionnee"
             :annees="$annees"
+            :stats="$stats ?? null"
         />
 
         <div id="pg-tab-content">
@@ -368,14 +369,232 @@
             </div>
         </div>
 
+        {{-- ══ Gestion des événements (fusionné depuis tab Événements) ══ --}}
+        <div class="pa-timeline-section" style="margin-top:1.25rem;">
+            <div class="pa-section-head">
+                <div class="pa-section-title">
+                    <i class="fas fa-calendar-check"></i>Gestion des Événements
+                </div>
+                <a href="{{ route('esbtp.evenements-academiques.create', ['annee_id' => $anneeSelectionnee->id]) }}"
+                   style="display:inline-flex; align-items:center; gap:.4rem; padding:.45rem 1rem; border-radius:9px; font-size:.8rem; font-weight:600; color:#fff; background:linear-gradient(135deg,#0453cb,#3b7ddb); text-decoration:none; border:none; box-shadow:0 2px 6px rgba(4,83,203,.2); transition:all .2s;">
+                    <i class="fas fa-plus" style="font-size:.7rem;"></i>Nouvel événement
+                </a>
+            </div>
+
+            {{-- Alerte événements manquants --}}
+            @php
+                $hasRentree = ($evenementsModels ?? collect())->where('type', 'rentree')->count() > 0;
+                $hasFermeture = ($evenementsModels ?? collect())->where('type', 'fermeture')->count() > 0;
+            @endphp
+            @if(!$hasRentree || !$hasFermeture)
+            <div style="background:#fef3c7; border:1px solid #fcd34d; border-radius:10px; padding:.75rem 1rem; margin-bottom:1rem; display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;">
+                <i class="fas fa-exclamation-triangle" style="color:#d97706; font-size:.85rem;"></i>
+                <span style="font-size:.82rem; color:#92400e; flex:1;">
+                    @if(!$hasRentree && !$hasFermeture) Rentrée et fermeture non définies
+                    @elseif(!$hasRentree) Rentrée non définie
+                    @else Fermeture non définie @endif
+                    pour {{ $anneeSelectionnee->name }}
+                </span>
+                <div style="display:flex; gap:.35rem;">
+                    @if(!$hasRentree)
+                    <button type="button" onclick="openQuickEventModal('rentree')"
+                       style="padding:.3rem .7rem; border-radius:6px; font-size:.72rem; font-weight:600; color:#fff; background:#10b981; border:none; cursor:pointer;">
+                        <i class="fas fa-plus" style="font-size:.6rem;"></i> Rentrée
+                    </button>
+                    @endif
+                    @if(!$hasFermeture)
+                    <button type="button" onclick="openQuickEventModal('fermeture')"
+                       style="padding:.3rem .7rem; border-radius:6px; font-size:.72rem; font-weight:600; color:#64748b; background:#f1f5f9; border:1px solid #e2e8f0; cursor:pointer;">
+                        <i class="fas fa-plus" style="font-size:.6rem;"></i> Fermeture
+                    </button>
+                    @endif
+                </div>
+            </div>
+            @endif
+
+            {{-- Table des événements --}}
+            @if(($evenementsModels ?? collect())->count() > 0)
+            <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:separate; border-spacing:0;">
+                    <thead>
+                        <tr>
+                            <th style="padding:.6rem .75rem; font-size:.7rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; border-bottom:1px solid #e8ecf1; text-align:left;">Événement</th>
+                            <th style="padding:.6rem .75rem; font-size:.7rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; border-bottom:1px solid #e8ecf1; text-align:left;">Type</th>
+                            <th style="padding:.6rem .75rem; font-size:.7rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; border-bottom:1px solid #e8ecf1; text-align:left;">Date</th>
+                            <th style="padding:.6rem .75rem; font-size:.7rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; border-bottom:1px solid #e8ecf1; text-align:left;">Statut</th>
+                            <th style="padding:.6rem .75rem; font-size:.7rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; border-bottom:1px solid #e8ecf1; text-align:right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($evenementsModels as $evt)
+                        @php
+                            $typeColors = ['rentree'=>'#10b981','examens'=>'#f59e0b','ceremonie'=>'#0453cb','vacances'=>'#94a3b8','fermeture'=>'#64748b','reprise'=>'#10b981','soutenances'=>'#6366f1','stage'=>'#06b6d4','reunion'=>'#8b5cf6','orientation'=>'#06b6d4'];
+                            $statutColors = ['planifie'=>'#f59e0b','confirme'=>'#10b981','annule'=>'#ef4444','reporte'=>'#f97316','termine'=>'#64748b'];
+                            $tc = $typeColors[$evt->type] ?? '#64748b';
+                            $sc = $statutColors[$evt->statut] ?? '#94a3b8';
+                        @endphp
+                        <tr style="transition:background .15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                            <td style="padding:.7rem .75rem; border-bottom:1px solid #f1f5f9;">
+                                <div style="font-size:.85rem; font-weight:600; color:#1e293b;">{{ $evt->titre }}</div>
+                                @if($evt->description)
+                                <div style="font-size:.72rem; color:#94a3b8; margin-top:.1rem; max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ $evt->description }}</div>
+                                @endif
+                            </td>
+                            <td style="padding:.7rem .75rem; border-bottom:1px solid #f1f5f9;">
+                                <span style="display:inline-flex; align-items:center; gap:.3rem; padding:.2rem .5rem; border-radius:5px; font-size:.7rem; font-weight:600; background:{{ $tc }}15; color:{{ $tc }};">
+                                    <i class="fas fa-{{ \App\Models\ESBTPEvenementAcademique::ICONES_TYPES[$evt->type] ?? 'calendar' }}" style="font-size:.6rem;"></i>
+                                    {{ $evt->type_libelle }}
+                                </span>
+                            </td>
+                            <td style="padding:.7rem .75rem; border-bottom:1px solid #f1f5f9; font-size:.82rem; color:#334155; white-space:nowrap;">
+                                {{ $evt->date_debut?->format('d/m/Y') }}
+                                @if($evt->date_fin && $evt->date_fin->ne($evt->date_debut))
+                                    <span style="color:#94a3b8;">→</span> {{ $evt->date_fin->format('d/m/Y') }}
+                                @endif
+                            </td>
+                            <td style="padding:.7rem .75rem; border-bottom:1px solid #f1f5f9;">
+                                <span style="padding:.2rem .5rem; border-radius:5px; font-size:.68rem; font-weight:600; background:{{ $sc }}15; color:{{ $sc }};">
+                                    {{ $evt->statut_libelle }}
+                                </span>
+                            </td>
+                            <td style="padding:.7rem .75rem; border-bottom:1px solid #f1f5f9; text-align:right;">
+                                <div style="display:flex; gap:.3rem; justify-content:flex-end;">
+                                    <a href="{{ route('esbtp.evenements-academiques.edit', $evt) }}" title="Modifier"
+                                       style="width:28px; height:28px; border-radius:6px; border:1px solid #e2e8f0; background:#fff; display:inline-flex; align-items:center; justify-content:center; color:#64748b; font-size:.7rem; text-decoration:none; transition:all .15s;"
+                                       onmouseover="this.style.borderColor='#0453cb';this.style.color='#0453cb'" onmouseout="this.style.borderColor='#e2e8f0';this.style.color='#64748b'">
+                                        <i class="fas fa-pen"></i>
+                                    </a>
+                                    <form method="POST" action="{{ route('esbtp.evenements-academiques.destroy', $evt) }}" style="display:inline;" onsubmit="return confirm('Supprimer cet événement ?')">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" title="Supprimer"
+                                            style="width:28px; height:28px; border-radius:6px; border:1px solid #e2e8f0; background:#fff; display:inline-flex; align-items:center; justify-content:center; color:#64748b; font-size:.7rem; cursor:pointer; transition:all .15s;"
+                                            onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'" onmouseout="this.style.borderColor='#e2e8f0';this.style.color='#64748b'">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @else
+            <div style="text-align:center; padding:1.5rem; color:#94a3b8;">
+                <i class="fas fa-calendar-plus" style="font-size:1.2rem; margin-bottom:.4rem; display:block;"></i>
+                <div style="font-size:.85rem;">Aucun événement pour cette année</div>
+                <div style="font-size:.75rem; margin-top:.2rem;">Utilisez le bouton ci-dessus pour en créer</div>
+            </div>
+            @endif
+        </div>
+
         </div>
         </div>{{-- #pg-tab-content --}}
     </div>
 </div>
+{{-- Modal rapide rentrée/fermeture --}}
+<div class="modal fade" id="quickEventModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content" style="border:none; border-radius:16px; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,.15);">
+            <form method="POST" action="{{ route('esbtp.evenements-academiques.store') }}">
+                @csrf
+                <input type="hidden" name="annee_universitaire_id" value="{{ $anneeSelectionnee->id }}">
+                <input type="hidden" name="type" id="qe-type">
+                <input type="hidden" name="statut" value="confirme">
+
+                <div class="modal-header" style="background:linear-gradient(135deg,#0a3d8f,#0453cb,#3b7ddb); border:none; padding:1.25rem 1.5rem;">
+                    <div>
+                        <h5 class="modal-title" style="color:#fff; font-weight:700; font-size:1rem; margin:0;" id="qe-modal-title">Créer événement</h5>
+                        <div style="font-size:.75rem; color:rgba(255,255,255,.7); margin-top:.15rem;">{{ $anneeSelectionnee->name }}</div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter:brightness(0) invert(1); opacity:.7;"></button>
+                </div>
+
+                <div class="modal-body" style="padding:1.25rem 1.5rem;">
+                    <div style="margin-bottom:1rem;">
+                        <label style="font-size:.75rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.4rem; display:block;">Titre</label>
+                        <input type="text" name="titre" id="qe-titre" required
+                            style="width:100%; padding:.5rem .75rem; border-radius:9px; border:1px solid #e2e8f0; font-size:.88rem;">
+                    </div>
+
+                    <div style="display:flex; gap:.75rem; margin-bottom:1rem;">
+                        <div style="flex:1;">
+                            <label style="font-size:.75rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.4rem; display:block;">Date début</label>
+                            <input type="date" name="date_debut" id="qe-date-debut" required
+                                style="width:100%; padding:.5rem .75rem; border-radius:9px; border:1px solid #e2e8f0; font-size:.85rem;">
+                        </div>
+                        <div style="flex:1;">
+                            <label style="font-size:.75rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.4rem; display:block;">Date fin</label>
+                            <input type="date" name="date_fin" id="qe-date-fin"
+                                style="width:100%; padding:.5rem .75rem; border-radius:9px; border:1px solid #e2e8f0; font-size:.85rem;">
+                        </div>
+                    </div>
+
+                    <div style="background:#f0f4ff; border-radius:9px; padding:.6rem .85rem; display:flex; align-items:center; gap:.5rem; cursor:pointer;" id="qe-sync-btn">
+                        <input type="checkbox" id="qe-sync" checked style="accent-color:#0453cb;">
+                        <label for="qe-sync" style="font-size:.78rem; color:#334155; cursor:pointer; margin:0;">
+                            <span style="font-weight:600;">Synchroniser</span> avec la période de l'année universitaire
+                        </label>
+                    </div>
+                </div>
+
+                <div class="modal-footer" style="border-top:1px solid #e8ecf1; padding:.85rem 1.5rem; background:#fff; gap:.4rem;">
+                    <button type="button" class="btn" data-bs-dismiss="modal"
+                        style="border-radius:9px; padding:.45rem 1rem; font-size:.82rem; font-weight:600; color:#64748b; background:#f1f5f9; border:1px solid #e2e8f0;">
+                        Annuler
+                    </button>
+                    <button type="submit" class="btn"
+                        style="border-radius:9px; padding:.45rem 1rem; font-size:.82rem; font-weight:600; color:#fff; background:linear-gradient(135deg,#0453cb,#3b7ddb); border:none; box-shadow:0 2px 6px rgba(4,83,203,.25);">
+                        <i class="fas fa-check me-1" style="font-size:.7rem;"></i>Créer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
 <script>
+// Quick event modal
+const anneeStart = '{{ $anneeSelectionnee->start_date }}';
+const anneeEnd = '{{ $anneeSelectionnee->end_date }}';
+
+function openQuickEventModal(type) {
+    const titles = { rentree: 'Rentrée académique', fermeture: 'Fermeture de l\'année' };
+    const modalTitles = { rentree: 'Créer la Rentrée', fermeture: 'Créer la Fermeture' };
+
+    $('#qe-type').val(type);
+    $('#qe-titre').val(titles[type] || '');
+    $('#qe-modal-title').text(modalTitles[type] || 'Créer événement');
+
+    // Sync dates avec l'année universitaire
+    if (type === 'rentree') {
+        $('#qe-date-debut').val(anneeStart);
+        $('#qe-date-fin').val(anneeStart);
+    } else if (type === 'fermeture') {
+        $('#qe-date-debut').val(anneeEnd);
+        $('#qe-date-fin').val(anneeEnd);
+    }
+
+    $('#qe-sync').prop('checked', true);
+    new bootstrap.Modal(document.getElementById('quickEventModal')).show();
+}
+
+$('#qe-sync').on('change', function() {
+    if (this.checked) {
+        const type = $('#qe-type').val();
+        if (type === 'rentree') {
+            $('#qe-date-debut').val(anneeStart);
+            $('#qe-date-fin').val(anneeStart);
+        } else if (type === 'fermeture') {
+            $('#qe-date-debut').val(anneeEnd);
+            $('#qe-date-fin').val(anneeEnd);
+        }
+    }
+});
+
 $(function() {
     const slider = $('#calendarSlider');
     const prevBtn = $('#prevMonth');

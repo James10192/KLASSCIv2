@@ -418,6 +418,14 @@ class ESBTPPlanningGeneralController extends Controller
         // Toutes les années pour le sélecteur
         $annees = ESBTPAnneeUniversitaire::orderBy("start_date", "desc")->get();
 
+        // Événements Eloquent pour la table CRUD
+        $evenementsModels = \App\Models\ESBTPEvenementAcademique::where('annee_universitaire_id', $anneeSelectionnee->id)
+            ->orderBy('date_debut', 'asc')
+            ->get();
+
+        // Stats globales pour le hero header
+        $stats = $this->calculerStatistiquesGenerales($anneeSelectionnee->id);
+
         return view(
             "esbtp.planning-general.annuel",
             compact(
@@ -426,6 +434,8 @@ class ESBTPPlanningGeneralController extends Controller
                 "evenementsAcademiques",
                 "statistiquesMensuelles",
                 "annees",
+                "evenementsModels",
+                "stats",
             ),
         );
     }
@@ -504,6 +514,8 @@ class ESBTPPlanningGeneralController extends Controller
             $anneeIdPourCalcul,
         );
 
+        $stats = $this->calculerStatistiquesGenerales($anneeSelectionnee?->id);
+
         return view(
             "esbtp.planning-general.repartition-matieres",
             compact(
@@ -521,6 +533,7 @@ class ESBTPPlanningGeneralController extends Controller
                 "search",
                 "statsRepartition",
                 "chartData",
+                "stats",
             ),
         );
     }
@@ -557,6 +570,8 @@ class ESBTPPlanningGeneralController extends Controller
         // Taux de présence par classe
         $tauxPresenceClasses = $this->calculerTauxPresenceClasses($anneeId);
 
+        $stats = $this->calculerStatistiquesGenerales($anneeSelectionnee?->id);
+
         return view(
             "esbtp.planning-general.coordinateur",
             compact(
@@ -567,6 +582,7 @@ class ESBTPPlanningGeneralController extends Controller
                 "codesEmargement",
                 "tauxPresenceClasses",
                 "mois",
+                "stats",
             ),
         );
     }
@@ -953,6 +969,9 @@ class ESBTPPlanningGeneralController extends Controller
         // Statistiques des émargements
         $stats = $this->calculerStatsEmargement($anneeSelectionnee);
 
+        // Stats globales pour le hero header
+        $heroStats = $this->calculerStatistiquesGenerales($anneeSelectionnee?->id);
+
         return view(
             "esbtp.planning-general.emargement",
             compact(
@@ -963,6 +982,7 @@ class ESBTPPlanningGeneralController extends Controller
                 "recentCodes",
                 "stats",
                 "seancesAVenir",
+                "heroStats",
             ),
         );
     }

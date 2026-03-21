@@ -251,10 +251,6 @@
        href="{{ route('esbtp.planning-general.repartition-matieres', ['annee_id' => $anneeSelectionnee?->id]) }}">
         <i class="fas fa-layer-group"></i>Charge par classe
     </a>
-    <a class="ph-tab {{ $activeTab === 'evenements' ? 'active' : '' }}"
-       href="{{ route('esbtp.evenements-academiques.index', ['annee_id' => $anneeSelectionnee?->id]) }}">
-        <i class="fas fa-calendar-check"></i>Événements
-    </a>
     <a class="ph-tab {{ $activeTab === 'emargement' ? 'active' : '' }}"
        href="{{ route('esbtp.planning-general.emargement', ['annee_id' => $anneeSelectionnee?->id]) }}">
         <i class="fas fa-qrcode"></i>Émargement

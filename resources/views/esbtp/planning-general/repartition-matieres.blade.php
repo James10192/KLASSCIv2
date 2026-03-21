@@ -569,6 +569,7 @@
             active-tab="repartition"
             :annee-selectionnee="$anneeSelectionnee"
             :annees="$annees"
+            :stats="$stats ?? null"
         />
 
         <div id="pg-tab-content">

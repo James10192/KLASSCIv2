@@ -205,6 +205,7 @@
             active-tab="emargement"
             :annee-selectionnee="$anneeSelectionnee"
             :annees="$annees"
+            :stats="$heroStats ?? null"
         />
 
         <div id="pg-tab-content">

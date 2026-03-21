@@ -243,6 +243,7 @@
             active-tab="coordinateur"
             :annee-selectionnee="$anneeSelectionnee"
             :annees="$annees"
+            :stats="$stats ?? null"
         />
 
         <div id="pg-tab-content">
