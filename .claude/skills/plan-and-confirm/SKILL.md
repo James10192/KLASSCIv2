@@ -66,36 +66,49 @@ Once OKAY is received:
 
 ## Phase 5 — Workflow GitHub (après implémentation)
 
-Une fois le code implémenté et validé localement, suivre ce workflow dans l'ordre :
+Une fois le code implémenté et validé, suivre ce cycle complet. Chaque étape a un skill dédié :
 
-1. **Créer une issue GitHub** si elle n'existe pas encore :
-   ```bash
-   gh issue create --title "feat/fix: description" --body-file /tmp/issue_body.md --label enhancement
-   ```
+```
+/create-issue → /worktree-start → code → /commit → /create-pr → merge → /worktree-finish
+      ↑                                    │                                     │
+      └────────────── next issue ──────────┘                                     │
+      └────────────── epic still open? ──────────────────────────────────────────┘
+```
 
-2. **Créer le worktree** via `/git:worktree-start <N>` (N = numéro d'issue) :
-   - Worktree créé dans `../KLASSCIv2-issue-<N>` (répertoire sibling)
-   - Branche : `issue-<N>-<slug>` basée sur `presentation`
+### Étape 1 — Créer ou identifier l'issue
+- Si pas d'issue existante : `/create-issue` (crée avec labels, scope, lien epic)
+- Si issue existe déjà : noter le numéro `#N`
+- Si c'est un lot d'un epic : lier avec `Parent: #P` dans le body
 
-3. **Coder dans le worktree** `../KLASSCIv2-issue-<N>/`
+### Étape 2 — Créer le worktree
+- `/worktree-start <N>` → crée `../KLASSCIv2-issue-<N>` basé sur `origin/presentation`
+- Si quick fix (< 30 min) : rester sur `presentation`, committer avec `Refs #N`
 
-4. **Committer** via `/commit` :
-   - Auteur : `James10192 <djedjelipatrick@gmail.com>`
-   - Format : `type(scope): description en impératif présent`
-   - JAMAIS `git add .` ou `git add -A` — toujours des fichiers explicites
+### Étape 3 — Coder dans le worktree
+- Tous les fichiers dans `../KLASSCIv2-issue-<N>/`
 
-5. **Créer la PR** via `/workflow:create-pr` :
-   - Base toujours : `presentation`
-   - Tester sur le serveur après deploy si applicable
+### Étape 4 — Committer
+- `/commit` → détecte l'issue `#N` automatiquement, ajoute `Refs #N`
+- Si lot d'un epic : ajoute `Lot X/Y: description` dans le body
+- Si dernier lot : utilise `Closes #N` au lieu de `Refs #N`
 
-6. **Nettoyer** via `/git:worktree-finish <N>` après merge de la PR :
-   - Supprimer worktree, branche locale, branche distante
-   - Revenir sur `presentation` et pull
+### Étape 5 — Créer la PR
+- `/create-pr` → base `presentation`, lien issue, tableau epic si applicable
+- Tester sur le serveur après deploy si applicable
 
-7. **Fermer l'issue** :
-   ```bash
-   gh issue close <N> --comment "Fermé via merge de la PR #<PR>"
-   ```
+### Étape 6 — Nettoyer après merge
+- `/worktree-finish <N>` → supprime worktree + branches, ferme l'issue
+- Vérifie si l'epic parent est encore ouvert → propose la suite
+
+### Decision tree : nouvelle issue ou continuer ?
+
+| Situation | Action |
+|-----------|--------|
+| Nouvelle feature, nouveau scope | `/create-issue` → `/worktree-start` |
+| Prochain lot d'un epic existant | `/create-issue` (avec `Parent: #P`) → `/worktree-start` |
+| Bug critique trouvé pendant le dev | `/create-issue` (priority:high) → `/worktree-start` |
+| Bug mineur dans le même scope | Fixer dans le PR actuel, `Refs #N` dans le commit |
+| Petit fix (< 30 min) | Pas de worktree, committer directement sur `presentation` |
 
 ---
 

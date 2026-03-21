@@ -56,7 +56,7 @@ git checkout presentation
 git pull origin presentation
 ```
 
-## Step 7 — Close the GitHub issue (if applicable)
+## Step 7 — Close the GitHub issue
 
 ```bash
 gh issue close <N> --comment "Fermé via merge de la PR #<PR number>"
@@ -64,12 +64,44 @@ gh issue close <N> --comment "Fermé via merge de la PR #<PR number>"
 
 To find open issues: `gh issue list --state open`
 
-## Step 8 — Verify
+## Step 8 — Check for related epic / next steps
+
+```bash
+gh issue view <N> --json body 2>/dev/null
+```
+
+Look for "Parent: #P" in the body. If found:
+
+```bash
+gh issue view <P> --json title,body,state
+```
+
+**Suggest next steps:**
+
+| Situation | Suggestion |
+|-----------|------------|
+| Parent epic still open, more lots | "Epic #P still open. Prochaine issue : `/create-issue`" |
+| Parent epic fully done | "Tous les lots terminés ! Fermer l'epic : `gh issue close <P>`" |
+| No parent epic | "Cleanup terminé. Prêt pour la suite." |
+| Other open issues | Show `gh issue list --state open --limit 5` |
+
+## Step 9 — Verify
 
 ```bash
 git worktree list          # must show only the main repo
 git log --oneline -3       # must show the merge commit at top
 git branch -a | grep issue-<N>   # must return nothing
+```
+
+Output:
+```
+Cleanup terminé:
+  Worktree supprimé : ../KLASSCIv2-issue-<N>
+  Branche supprimée : issue-<N>-<slug> (local + remote)
+  Issue fermée      : #<N>
+  Presentation      : à jour
+
+Prochaine étape: [suggestion basée sur Step 8]
 ```
 
 ## Rules
@@ -80,5 +112,6 @@ git branch -a | grep issue-<N>   # must return nothing
 - **Always use `-D` (uppercase) on `branch` delete** — branch is not merged locally
 - **Always return to `presentation`** at the end (never `main`, never `develop`)
 - **Always delete the remote branch** with `git push origin --delete`
+- **Always suggest next steps** — guide the user to the next piece of work
 
 $ARGUMENTS

@@ -7,6 +7,19 @@ description: Start work on a GitHub issue using a git worktree. Use when startin
 
 Follow these steps to start working on a GitHub issue.
 
+## Step 0 — Should you use a worktree?
+
+| Situation | Use worktree? | Why |
+|-----------|---------------|-----|
+| New feature (> 1 hour of work) | YES | Isolate from presentation |
+| Bug fix that needs separate PR | YES | Clean diff, easy review |
+| Hotfix while mid-feature | YES | Don't stash, don't lose context |
+| Next lot of an epic (e.g. #158) | YES | Each lot = separate branch/PR |
+| Quick fix (< 30 min, same scope) | NO | Commit directly on presentation |
+| Minor bug in same PR scope | NO | Fix in current PR, `Refs #N` |
+
+If NO → inform the user and suggest committing directly with `Refs #N`.
+
 ## Step 1 — Fetch issue info
 
 ```bash
@@ -16,6 +29,8 @@ gh issue view $ARGUMENTS
 Extract:
 - The **title** to name the branch (slug en kebab-case)
 - The **type**: feat / fix / refactor / test / chore
+- The **labels** for context
+- Check if this issue mentions a **parent epic** (e.g. "Parent: #158")
 
 ## Step 2 — Update presentation locally
 
@@ -53,7 +68,13 @@ git config user.name "James10192"
 git config user.email "djedjelipatrick@gmail.com"
 ```
 
-## Step 5 — Confirm to user
+## Step 5 — Copy .env if it exists
+
+```bash
+cp ../KLASSCIv2/.env ../KLASSCIv2-issue-<N>/.env 2>/dev/null || true
+```
+
+## Step 6 — Confirm to user
 
 Output:
 ```
@@ -62,9 +83,14 @@ Worktree created:
   Branch : issue-<N>-<slug>
   Base   : origin/presentation
   Author : James10192 <djedjelipatrick@gmail.com>
+  Issue  : #<N> — <title>
+  Epic   : #<P> — <parent title> (if linked)
 
-All files to modify are in: ../KLASSCIv2-issue-<N>/
-Once done: /commit then /workflow:create-pr then /git:worktree-finish <N>
+Workflow:
+  1. Code in ../KLASSCIv2-issue-<N>/
+  2. /commit (auto-adds Refs #<N>)
+  3. /create-pr (links to issue + epic)
+  4. /worktree-finish <N>
 ```
 
 ## Rules
