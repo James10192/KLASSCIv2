@@ -1,597 +1,226 @@
 @extends('layouts.app')
 
-@section('title', 'Calendrier Académique')
+@section('title', 'Planning Annuel — KLASSCI')
 
-@section('styles')
+@push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    .calendrier-academique {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: var(--radius-large);
-        padding: var(--space-xl);
-        color: white;
-        margin-bottom: var(--space-xl);
-        position: relative;
-        overflow: hidden;
+    /* ══════════════════════════════════════════════
+       Planning Annuel — Premium Redesign
+       Prefix: pa- (planning-annuel)
+       KLASSCI palette: #0453cb primary, #10b981 success
+       ══════════════════════════════════════════════ */
+
+    .pa-page { max-width: 1440px; margin: 0 auto; }
+
+    /* ── Stats row ── */
+    .pa-stats {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: .75rem; margin-bottom: 1.25rem;
+        animation: pa-fadeUp .5s ease-out;
     }
-    
-    .calendrier-academique::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="1" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-        opacity: 0.1;
+    .pa-stat {
+        background: #fff; border-radius: 14px; border: 1px solid #e8ecf1;
+        padding: 1.15rem 1.25rem; display: flex; align-items: center; gap: .85rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,.04); transition: all .25s;
     }
-    
-    .calendrier-header {
-        position: relative;
-        z-index: 1;
-        text-align: center;
+    .pa-stat:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(4,83,203,.08); }
+    .pa-stat-icon {
+        width: 44px; height: 44px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem; flex-shrink: 0;
     }
-    
-    .calendrier-title {
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin-bottom: var(--space-sm);
-        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    .pa-stat--seances .pa-stat-icon { background: rgba(4,83,203,.08); color: #0453cb; }
+    .pa-stat--heures .pa-stat-icon  { background: rgba(16,185,129,.08); color: #10b981; }
+    .pa-stat--planif .pa-stat-icon  { background: rgba(251,191,36,.08); color: #f59e0b; }
+    .pa-stat--events .pa-stat-icon  { background: rgba(129,140,248,.08); color: #6366f1; }
+    .pa-stat-value { font-size: 1.45rem; font-weight: 700; color: #1e293b; line-height: 1; }
+    .pa-stat-label { font-size: .75rem; color: #64748b; margin-top: .15rem; }
+    .pa-stat-sub { font-size: .7rem; color: #94a3b8; margin-top: .2rem; }
+
+    /* ── Timeline ── */
+    .pa-timeline-section {
+        background: #fff; border-radius: 14px; border: 1px solid #e8ecf1;
+        padding: 1.5rem; margin-bottom: 1.25rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,.04);
+        animation: pa-fadeUp .5s ease-out .1s both;
     }
-    
-    .calendrier-subtitle {
-        font-size: 1.1rem;
-        opacity: 0.9;
-        margin-bottom: var(--space-lg);
+    .pa-section-head {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 1.25rem;
     }
-    
-    .timeline-evenements {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-lg);
-        margin-bottom: var(--space-xl);
+    .pa-section-title {
+        font-size: 1rem; font-weight: 700; color: #1e293b;
+        display: flex; align-items: center; gap: .5rem;
     }
-    
-    .evenement-timeline {
-        display: flex;
-        align-items: center;
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        box-shadow: var(--shadow-card);
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .evenement-timeline:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-    }
-    
-    .evenement-timeline::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        background: var(--couleur-evenement);
-    }
-    
-    .evenement-date {
-        min-width: 120px;
-        text-align: center;
-        margin-right: var(--space-lg);
-    }
-    
-    .evenement-jour {
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        line-height: 1;
-    }
-    
-    .evenement-mois {
-        font-size: 0.9rem;
-        color: var(--text-secondary);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .evenement-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: var(--radius-circle);
-        background: var(--couleur-evenement);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        margin-right: var(--space-lg);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    
-    .evenement-contenu {
-        flex: 1;
-    }
-    
-    .evenement-titre {
-        font-size: 1.2rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin-bottom: var(--space-xs);
-    }
-    
-    .evenement-description {
-        color: var(--text-secondary);
-        line-height: 1.5;
-    }
-    
-    .evenement-badge {
-        margin-left: auto;
-        padding: var(--space-xs) var(--space-sm);
-        border-radius: var(--radius-small);
-        font-size: 0.8rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        background: var(--couleur-evenement);
-        color: white;
-    }
-    
-    /* Couleurs par type d'événement */
-    .evenement-timeline[data-type="rentree"] { --couleur-evenement: #10b981; }
-    .evenement-timeline[data-type="orientation"] { --couleur-evenement: #3b82f6; }
-    .evenement-timeline[data-type="examens"] { --couleur-evenement: #f59e0b; }
-    .evenement-timeline[data-type="vacances"] { --couleur-evenement: #6b7280; }
-    .evenement-timeline[data-type="reprise"] { --couleur-evenement: #10b981; }
-    .evenement-timeline[data-type="soutenances"] { --couleur-evenement: #5e91de; }
-    .evenement-timeline[data-type="ceremonie"] { --couleur-evenement: #f59e0b; }
-    .evenement-timeline[data-type="fermeture"] { --couleur-evenement: #374151; }
-    
-    .calendrier-interactif {
-        background: var(--surface);
-        border-radius: var(--radius-large);
-        overflow: hidden;
-        box-shadow: var(--shadow-card);
-        margin-bottom: var(--space-xl);
-        max-width: 100%;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    
-    .calendrier-controls {
-        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-        color: white;
-        padding: var(--space-lg);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        position: relative;
-    }
-    
-    .calendrier-nav {
-        display: flex;
-        align-items: center;
-        gap: var(--space-lg);
-    }
-    
-    .nav-btn {
-        background: rgba(255, 255, 255, 0.2);
-        border: none;
-        color: white;
-        width: 40px;
-        height: 40px;
-        border-radius: var(--radius-circle);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        font-size: 16px;
-    }
-    
-    .nav-btn:hover {
-        background: rgba(255, 255, 255, 0.3);
-        transform: scale(1.1);
-    }
-    
-    .nav-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        transform: none;
-    }
-    
-    .mois-actuel {
-        font-size: 1.5rem;
-        font-weight: 600;
-        margin: 0 var(--space-md);
-        min-width: 200px;
-        text-align: center;
-    }
-    
-    .calendrier-info {
-        font-size: 0.9rem;
-        opacity: 0.9;
-        display: flex;
-        align-items: center;
-        gap: var(--space-md);
-    }
-    
-    .calendrier-viewport {
-        position: relative;
-        overflow: hidden;
-        height: 300px;
-        max-width: 100%;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    
-    .calendrier-slider {
-        display: flex;
-        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        height: 100%;
-    }
-    
-    .calendrier-slide {
-        min-width: 100%;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-    }
-    
-    .calendrier-grid {
-        display: grid;
-        grid-template-columns: repeat(7, 1fr);
-        height: 100%;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    
-    .jour-header {
-        background: var(--background-muted);
-        padding: var(--space-sm);
-        text-align: center;
-        font-weight: 600;
-        font-size: 0.9rem;
-        color: var(--text-secondary);
-        border-bottom: 2px solid var(--border-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .jour-cellule {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.9rem;
-        border: 1px solid var(--border-color);
-        cursor: pointer;
-        transition: all 0.2s ease;
-        position: relative;
-        background: var(--surface);
-        min-height: 35px;
-        max-width: 100%;
-        overflow: hidden;
-        box-sizing: border-box;
-    }
-    
-    .jour-cellule:hover {
-        background: rgba(var(--primary-rgb), 0.1);
-        transform: scale(1.02);
-    }
-    
-    .jour-cellule.autre-mois {
-        color: var(--text-muted);
-        background: var(--background-muted);
-        opacity: 0.5;
-    }
-    
-    .jour-cellule.aujourd-hui {
-        background: var(--primary);
-        color: white;
-        font-weight: 600;
-        box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
-    }
-    
-    .jour-cellule.avec-evenement {
-        background: linear-gradient(135deg, rgba(var(--warning-rgb), 0.1), rgba(var(--warning-rgb), 0.05));
-        color: var(--warning);
-        font-weight: 600;
-        border-left: 3px solid var(--warning);
-    }
-    
-    .jour-cellule.avec-evenement::after {
-        content: '';
-        position: absolute;
-        bottom: 4px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 8px;
-        height: 8px;
-        background: var(--warning);
-        border-radius: 50%;
-        box-shadow: 0 2px 4px rgba(var(--warning-rgb), 0.4);
-    }
-    
-    .jour-cellule.avec-evenement.multiple::after {
-        background: linear-gradient(45deg, var(--warning), var(--danger));
-        animation: pulse 2s infinite;
-    }
-    
-    .evenement-preview {
-        position: absolute;
-        top: 2px;
-        right: 2px;
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: var(--info);
-        opacity: 0.7;
-    }
-    
-    .calendrier-loading {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        color: var(--text-muted);
-        font-size: 1.2rem;
-    }
-    
-    .calendrier-shortcuts {
-        padding: var(--space-md);
-        background: var(--background-muted);
-        display: flex;
-        justify-content: center;
-        gap: var(--space-sm);
-        border-top: 1px solid var(--border-color);
-    }
-    
-    .shortcut-btn {
-        padding: var(--space-xs) var(--space-sm);
-        border: none;
-        background: transparent;
-        color: var(--text-secondary);
-        border-radius: var(--radius-small);
-        cursor: pointer;
-        transition: all 0.2s ease;
-        font-size: 0.8rem;
-    }
-    
-    .shortcut-btn:hover {
-        background: var(--primary);
-        color: white;
-    }
-    
-    .shortcut-btn.active {
-        background: var(--primary);
-        color: white;
-    }
-    
-    @keyframes pulse {
-        0%, 100% { transform: translateX(-50%) scale(1); }
-        50% { transform: translateX(-50%) scale(1.2); }
-    }
-    
-    @media (max-width: 768px) {
-        .calendrier-controls {
-            flex-direction: column;
-            gap: var(--space-md);
-        }
-        
-        .calendrier-nav {
-            order: 2;
-        }
-        
-        .mois-actuel {
-            font-size: 1.2rem;
-            margin: 0;
-        }
-        
-        .calendrier-info {
-            order: 3;
-            justify-content: center;
-        }
-        
-        .calendrier-viewport {
-            height: 280px;
-        }
-        
-        .jour-cellule {
-            min-height: 30px;
-            font-size: 0.75rem;
-        }
-    }
-    
-    /* Très petits écrans */
-    @media (max-width: 480px) {
-        .calendrier-viewport {
-            height: 240px;
-        }
-        
-        .jour-cellule {
-            min-height: 25px;
-            font-size: 0.7rem;
-        }
-        
-        .jour-header {
-            font-size: 0.75rem;
-            padding: 0.25rem;
-        }
-        
-        .mois-actuel {
-            font-size: 1.2rem;
-            min-width: 150px;
-        }
-        
-        .nav-btn {
-            width: 35px;
-            height: 35px;
-            font-size: 0.9rem;
-        }
+    .pa-section-title i { color: #0453cb; font-size: .9rem; }
+    .pa-section-count {
+        font-size: .75rem; color: #94a3b8; font-weight: 500;
+        background: #f1f5f9; padding: .25rem .65rem; border-radius: 20px;
     }
 
-    /* Forcer le calendrier à rester dans ses limites */
-    .calendrier-interactif * {
-        box-sizing: border-box;
-    }
-    
-    .calendrier-grid {
-        min-width: 0;
-        table-layout: fixed;
-        width: 100%;
-    }
-    
-    .calendrier-interactif .jour-cellule {
-        min-width: 0;
-        word-wrap: break-word;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        flex-shrink: 1;
-    }
-    
-    .calendrier-interactif .jour-header {
-        min-width: 0;
-        word-wrap: break-word;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        flex-shrink: 1;
-    }
-    
-    /* Assurer que le conteneur global ne déborde pas */
-    .container-fluid {
-        max-width: 100%;
-        overflow-x: hidden;
-    }
-    
-    .stats-academiques {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: var(--space-lg);
-        margin-bottom: var(--space-xl);
-    }
-    
-    .stat-academique {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        text-align: center;
-        box-shadow: var(--shadow-card);
-        transition: all 0.3s ease;
+    .pa-timeline { display: flex; flex-direction: column; gap: .65rem; }
+    .pa-event {
+        display: flex; align-items: center; gap: 1rem;
+        padding: .85rem 1rem; border-radius: 12px;
+        border: 1px solid #f1f5f9; transition: all .2s;
         position: relative;
-        overflow: hidden;
     }
-    
-    .stat-academique::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: var(--couleur-stat);
+    .pa-event:hover { background: #f8fafc; border-color: #e2e8f0; }
+    .pa-event::before {
+        content: ''; position: absolute; left: 0; top: .5rem; bottom: .5rem;
+        width: 3px; border-radius: 3px;
     }
-    
-    .stat-academique:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    .pa-event[data-type="rentree"]::before   { background: #10b981; }
+    .pa-event[data-type="examens"]::before   { background: #f59e0b; }
+    .pa-event[data-type="ceremonie"]::before { background: #0453cb; }
+    .pa-event[data-type="vacances"]::before  { background: #94a3b8; }
+
+    .pa-event-date {
+        min-width: 52px; text-align: center; flex-shrink: 0;
     }
-    
-    .stat-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: var(--radius-circle);
-        background: var(--couleur-stat);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        margin: 0 auto var(--space-md);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    .pa-event-day { font-size: 1.35rem; font-weight: 700; color: #1e293b; line-height: 1; }
+    .pa-event-month { font-size: .65rem; color: #64748b; text-transform: uppercase; letter-spacing: .04em; margin-top: .15rem; }
+
+    .pa-event-icon {
+        width: 36px; height: 36px; border-radius: 9px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: .85rem; flex-shrink: 0;
     }
-    
-    .stat-nombre {
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin-bottom: var(--space-xs);
+    .pa-event[data-type="rentree"] .pa-event-icon   { background: rgba(16,185,129,.1); color: #10b981; }
+    .pa-event[data-type="examens"] .pa-event-icon   { background: rgba(245,158,11,.1); color: #f59e0b; }
+    .pa-event[data-type="ceremonie"] .pa-event-icon { background: rgba(4,83,203,.08); color: #0453cb; }
+    .pa-event[data-type="vacances"] .pa-event-icon  { background: rgba(148,163,184,.1); color: #64748b; }
+
+    .pa-event-info { flex: 1; min-width: 0; }
+    .pa-event-title { font-size: .88rem; font-weight: 600; color: #1e293b; }
+    .pa-event-desc { font-size: .78rem; color: #64748b; margin-top: .1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .pa-event-badge {
+        font-size: .65rem; font-weight: 600; padding: .2rem .55rem;
+        border-radius: 6px; text-transform: capitalize; flex-shrink: 0;
     }
-    
-    .stat-libelle {
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+    .pa-event[data-type="rentree"] .pa-event-badge   { background: rgba(16,185,129,.1); color: #059669; }
+    .pa-event[data-type="examens"] .pa-event-badge   { background: rgba(245,158,11,.1); color: #d97706; }
+    .pa-event[data-type="ceremonie"] .pa-event-badge { background: rgba(4,83,203,.08); color: #0453cb; }
+    .pa-event[data-type="vacances"] .pa-event-badge  { background: rgba(148,163,184,.1); color: #64748b; }
+
+    /* ── Calendar ── */
+    .pa-cal-section {
+        background: #fff; border-radius: 14px; border: 1px solid #e8ecf1;
+        padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,.04);
+        animation: pa-fadeUp .5s ease-out .2s both;
     }
-    
-    .stat-academique[data-type="total"] { --couleur-stat: #3b82f6; }
-    .stat-academique[data-type="examens"] { --couleur-stat: #f59e0b; }
-    .stat-academique[data-type="ceremonies"] { --couleur-stat: #0453cb; }
-    .stat-academique[data-type="vacances"] { --couleur-stat: #10b981; }
-    
-    .legende-academique {
-        display: flex;
-        flex-wrap: wrap;
-        gap: var(--space-lg);
-        justify-content: center;
-        padding: var(--space-lg);
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        box-shadow: var(--shadow-card);
-        margin-bottom: var(--space-xl);
+
+    /* Légende */
+    .pa-legend {
+        display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap;
     }
-    
-    .legende-item {
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-        font-size: 0.9rem;
+    .pa-legend-item {
+        display: flex; align-items: center; gap: .35rem; font-size: .75rem; color: #64748b;
     }
-    
-    .legende-couleur {
-        width: 16px;
-        height: 16px;
-        border-radius: var(--radius-small);
+    .pa-legend-dot {
+        width: 10px; height: 10px; border-radius: 3px;
     }
-    
+
+    /* Controls */
+    .pa-cal-controls {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-bottom: 1rem; flex-wrap: wrap; gap: .5rem;
+    }
+    .pa-cal-nav {
+        display: flex; align-items: center; gap: .5rem;
+    }
+    .pa-cal-nav-btn {
+        width: 34px; height: 34px; border-radius: 9px;
+        border: 1px solid #e2e8f0; background: #fff; color: #64748b;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; transition: all .2s; font-size: .8rem;
+    }
+    .pa-cal-nav-btn:hover:not(:disabled) { background: #f1f5f9; color: #0453cb; border-color: #0453cb; }
+    .pa-cal-nav-btn:disabled { opacity: .4; cursor: default; }
+    .pa-cal-month {
+        font-size: 1.05rem; font-weight: 700; color: #1e293b;
+        min-width: 180px; text-align: center; text-transform: capitalize;
+    }
+    .pa-cal-meta {
+        display: flex; align-items: center; gap: .5rem;
+        font-size: .78rem; color: #94a3b8;
+    }
+
+    /* Viewport & Slider */
+    .pa-cal-viewport {
+        overflow: hidden; border-radius: 12px;
+    }
+    .pa-cal-slider {
+        display: flex; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .pa-cal-slide {
+        min-width: 100%; flex-shrink: 0;
+    }
+
+    /* Grid */
+    .pa-cal-grid {
+        display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+    }
+    .pa-cal-header {
+        padding: .5rem; text-align: center;
+        font-size: .7rem; font-weight: 600; color: #94a3b8;
+        text-transform: uppercase; letter-spacing: .06em;
+    }
+    .pa-cal-day {
+        aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+        font-size: .82rem; font-weight: 500; color: #334155;
+        border-radius: 8px; cursor: default; position: relative;
+        transition: all .15s;
+    }
+    .pa-cal-day.autre-mois { color: #cbd5e1; }
+    .pa-cal-day.aujourd-hui {
+        background: #0453cb; color: #fff; font-weight: 700;
+        box-shadow: 0 2px 8px rgba(4,83,203,.3);
+    }
+    .pa-cal-day.avec-evenement:not(.aujourd-hui) {
+        background: rgba(245,158,11,.08); color: #92400e; font-weight: 600;
+    }
+    .pa-cal-day.avec-evenement .pa-cal-dot {
+        position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+        width: 4px; height: 4px; border-radius: 50%; background: #f59e0b;
+    }
+    .pa-cal-day.aujourd-hui .pa-cal-dot { background: #fff; }
+    .pa-cal-day.avec-evenement:hover {
+        background: rgba(245,158,11,.15);
+    }
+
+    /* Shortcuts */
+    .pa-cal-shortcuts {
+        display: flex; gap: .4rem; margin-top: 1rem; flex-wrap: wrap;
+    }
+    .pa-shortcut {
+        padding: .4rem .85rem; border-radius: 8px;
+        border: 1px solid #e2e8f0; background: #fff;
+        font-size: .75rem; font-weight: 500; color: #64748b;
+        cursor: pointer; transition: all .2s;
+    }
+    .pa-shortcut:hover, .pa-shortcut.active {
+        background: #0453cb; color: #fff; border-color: #0453cb;
+    }
+
+    /* Animations */
+    @keyframes pa-fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
     @media (max-width: 768px) {
-        .calendrier-title {
-            font-size: 2rem;
-        }
-        
-        .evenement-timeline {
-            flex-direction: column;
-            text-align: center;
-        }
-        
-        .evenement-date {
-            margin-right: 0;
-            margin-bottom: var(--space-md);
-        }
-        
-        .evenement-icon {
-            margin-right: 0;
-            margin-bottom: var(--space-md);
-        }
-        
-        .calendrier-mensuel {
-            grid-template-columns: 1fr;
-        }
+        .pa-stats { grid-template-columns: repeat(2, 1fr); }
+        .pa-event { flex-wrap: wrap; }
+        .pa-cal-month { min-width: 120px; font-size: .9rem; }
     }
 </style>
-@endsection
+@endpush
 
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header et navigation du planning -->
-        <x-planning-header 
-            title="Planning Annuel" 
+        <x-planning-header
+            title="Planning Annuel"
             subtitle="Calendrier académique et répartition annuelle des cours"
             active-tab="annuel"
             :annee-selectionnee="$anneeSelectionnee"
@@ -599,207 +228,125 @@
         />
 
         <div id="pg-tab-content">
+        <div class="pa-page">
 
-        <!-- Header avec design modernisé -->
-        <div class="calendrier-academique">
-            <div class="calendrier-header">
-                <h1 class="calendrier-title">📅 Calendrier Académique</h1>
-                <p class="calendrier-subtitle">Année {{ $anneeSelectionnee->name }}</p>
-            </div>
-        </div>
-
-
-        <!-- Statistiques mensuelles avec vraies données -->
-        @if(!empty($statistiquesMensuelles))
-        <div class="stats-academiques">
-            @foreach(array_slice($statistiquesMensuelles, 0, 3) as $index => $stat)
-            <div class="stat-academique" data-type="{{ $index === 0 ? 'total' : ($index === 1 ? 'examens' : 'ceremonies') }}">
-                <div class="stat-icon">
-                    <i class="fas fa-{{ $index === 0 ? 'calendar-check' : ($index === 1 ? 'clock' : 'graduation-cap') }}"></i>
-                </div>
-                <div class="stat-nombre">{{ $stat['total_seances'] }}</div>
-                <div class="stat-libelle">Séances - {{ $stat['mois'] }}</div>
-                <div class="text-muted mt-1" style="font-size: 0.8rem;">
-                    {{ $stat['total_heures'] }}h • {{ $stat['total_planifications'] }} planifications
-                </div>
-            </div>
-            @endforeach
-            
-            <div class="stat-academique" data-type="vacances">
-                <div class="stat-icon">
-                    <i class="fas fa-star"></i>
-                </div>
-                <div class="stat-nombre">{{ count($evenementsAcademiques) }}</div>
-                <div class="stat-libelle">Événements Majeurs</div>
-                <div class="text-muted mt-1" style="font-size: 0.8rem;">
-                    {{ collect($evenementsAcademiques)->where('type', 'examens')->count() }} examens • 
-                    {{ collect($evenementsAcademiques)->whereIn('type', ['ceremonie', 'rentree'])->count() }} cérémonies
-                </div>
-                <div class="mt-2">
-                    <a href="{{ route('esbtp.evenements-academiques.index', ['annee_id' => $anneeSelectionnee->id]) }}" 
-                       class="btn btn-sm btn-primary">
-                        <i class="fas fa-cog me-1"></i>Gérer
-                    </a>
-                </div>
-            </div>
-        </div>
-        @else
-        <!-- Statistiques académiques de base -->
-        <div class="stats-academiques">
-            <div class="stat-academique" data-type="total">
-                <div class="stat-icon">
-                    <i class="fas fa-calendar-check"></i>
-                </div>
-                <div class="stat-nombre">{{ count($evenementsAcademiques) }}</div>
-                <div class="stat-libelle">Événements Majeurs</div>
-            </div>
-            
-            <div class="stat-academique" data-type="examens">
-                <div class="stat-icon">
-                    <i class="fas fa-file-alt"></i>
-                </div>
-                <div class="stat-nombre">{{ collect($evenementsAcademiques)->where('type', 'examens')->count() }}</div>
-                <div class="stat-libelle">Périodes d'Examens</div>
-            </div>
-            
-            <div class="stat-academique" data-type="ceremonies">
-                <div class="stat-icon">
-                    <i class="fas fa-trophy"></i>
-                </div>
-                <div class="stat-nombre">{{ collect($evenementsAcademiques)->whereIn('type', ['ceremonie', 'rentree'])->count() }}</div>
-                <div class="stat-libelle">Cérémonies</div>
-            </div>
-            
-            <div class="stat-academique" data-type="vacances">
-                <div class="stat-icon">
-                    <i class="fas fa-calendar-times"></i>
-                </div>
-                <div class="stat-nombre">{{ collect($evenementsAcademiques)->where('type', 'vacances')->count() }}</div>
-                <div class="stat-libelle">Périodes de Vacances</div>
-            </div>
-        </div>
-        @endif
-
-        <!-- Timeline des événements académiques -->
-        <div class="card-moderne mb-xl">
-            <div class="p-lg">
-                <div class="section-title mb-lg">
-                    <i class="fas fa-star me-2"></i>
-                    Événements Académiques Majeurs
-                </div>
-                
-                <div class="timeline-evenements">
-                    @foreach($evenementsAcademiques as $evenement)
-                    <div class="evenement-timeline" data-type="{{ $evenement['type'] }}">
-                        <div class="evenement-date">
-                            <div class="evenement-jour">{{ \Carbon\Carbon::createFromFormat('d/m/Y', $evenement['date'])->format('d') }}</div>
-                            <div class="evenement-mois">{{ \Carbon\Carbon::createFromFormat('d/m/Y', $evenement['date'])->translatedFormat('M Y') }}</div>
-                        </div>
-                        
-                        <div class="evenement-icon">
-                            <i class="fas fa-{{ $evenement['icon'] }}"></i>
-                        </div>
-                        
-                        <div class="evenement-contenu">
-                            <div class="evenement-titre">{{ $evenement['titre'] }}</div>
-                            <div class="evenement-description">{{ $evenement['description'] }}</div>
-                        </div>
-                        
-                        <div class="evenement-badge">
-                            {{ ucfirst($evenement['type']) }}
-                        </div>
+        {{-- Stats row --}}
+        <div class="pa-stats">
+            @if(!empty($statistiquesMensuelles))
+                @foreach(array_slice($statistiquesMensuelles, 0, 3) as $index => $stat)
+                <div class="pa-stat pa-stat--{{ $index === 0 ? 'seances' : ($index === 1 ? 'heures' : 'planif') }}">
+                    <div class="pa-stat-icon">
+                        <i class="fas fa-{{ $index === 0 ? 'calendar-check' : ($index === 1 ? 'clock' : 'graduation-cap') }}"></i>
                     </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-
-        <!-- Légende du calendrier -->
-        <div class="legende-academique">
-            <div class="legende-item">
-                <div class="legende-couleur" style="background: var(--primary);"></div>
-                <span>Aujourd'hui</span>
-            </div>
-            <div class="legende-item">
-                <div class="legende-couleur" style="background: rgba(var(--warning-rgb), 0.3);"></div>
-                <span>Événements académiques</span>
-            </div>
-            <div class="legende-item">
-                <div class="legende-couleur" style="background: #10b981;"></div>
-                <span>Rentrée / Reprise</span>
-            </div>
-            <div class="legende-item">
-                <div class="legende-couleur" style="background: #f59e0b;"></div>
-                <span>Examens</span>
-            </div>
-            <div class="legende-item">
-                <div class="legende-couleur" style="background: #0453cb;"></div>
-                <span>Cérémonies</span>
-            </div>
-            <div class="legende-item">
-                <div class="legende-couleur" style="background: #6b7280;"></div>
-                <span>Vacances</span>
-            </div>
-        </div>
-
-        <!-- Calendrier interactif modernisé -->
-        <div class="calendrier-interactif">
-            <div class="calendrier-controls">
-                <div class="calendrier-nav">
-                    <button class="nav-btn" id="prevMonth">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <div class="mois-actuel" id="currentMonth">
-                        {{ $calendrierMensuel[0]['nom'] ?? 'Chargement...' }}
+                    <div>
+                        <div class="pa-stat-value">{{ $stat['total_seances'] }}</div>
+                        <div class="pa-stat-label">Séances — {{ $stat['mois'] }}</div>
+                        <div class="pa-stat-sub">{{ $stat['total_heures'] }}h &middot; {{ $stat['total_planifications'] }} planif.</div>
                     </div>
-                    <button class="nav-btn" id="nextMonth">
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
                 </div>
-                
-                <div class="calendrier-info">
+                @endforeach
+            @endif
+            <div class="pa-stat pa-stat--events">
+                <div class="pa-stat-icon"><i class="fas fa-star"></i></div>
+                <div>
+                    <div class="pa-stat-value">{{ count($evenementsAcademiques) }}</div>
+                    <div class="pa-stat-label">Événements majeurs</div>
+                    <div class="pa-stat-sub">
+                        {{ collect($evenementsAcademiques)->where('type', 'examens')->count() }} examens &middot;
+                        {{ collect($evenementsAcademiques)->whereIn('type', ['ceremonie', 'rentree'])->count() }} cérémonies
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Timeline des événements --}}
+        <div class="pa-timeline-section">
+            <div class="pa-section-head">
+                <div class="pa-section-title">
+                    <i class="fas fa-stream"></i>Événements Académiques
+                </div>
+                <span class="pa-section-count">{{ count($evenementsAcademiques) }} événement{{ count($evenementsAcademiques) > 1 ? 's' : '' }}</span>
+            </div>
+
+            <div class="pa-timeline">
+                @forelse($evenementsAcademiques as $evenement)
+                <div class="pa-event" data-type="{{ $evenement['type'] }}">
+                    <div class="pa-event-date">
+                        <div class="pa-event-day">{{ \Carbon\Carbon::createFromFormat('d/m/Y', $evenement['date'])->format('d') }}</div>
+                        <div class="pa-event-month">{{ \Carbon\Carbon::createFromFormat('d/m/Y', $evenement['date'])->translatedFormat('M Y') }}</div>
+                    </div>
+                    <div class="pa-event-icon"><i class="fas fa-{{ $evenement['icon'] }}"></i></div>
+                    <div class="pa-event-info">
+                        <div class="pa-event-title">{{ $evenement['titre'] }}</div>
+                        <div class="pa-event-desc">{{ $evenement['description'] }}</div>
+                    </div>
+                    <div class="pa-event-badge">{{ ucfirst($evenement['type']) }}</div>
+                </div>
+                @empty
+                <div style="text-align:center; padding:2rem; color:#94a3b8;">
+                    <i class="fas fa-calendar-times" style="font-size:1.5rem; margin-bottom:.5rem; display:block;"></i>
+                    Aucun événement académique configuré
+                </div>
+                @endforelse
+            </div>
+        </div>
+
+        {{-- Calendrier interactif --}}
+        <div class="pa-cal-section">
+            {{-- Légende --}}
+            <div class="pa-legend">
+                <div class="pa-legend-item"><div class="pa-legend-dot" style="background:#0453cb;"></div>Aujourd'hui</div>
+                <div class="pa-legend-item"><div class="pa-legend-dot" style="background:rgba(245,158,11,.3);"></div>Événements</div>
+                <div class="pa-legend-item"><div class="pa-legend-dot" style="background:#10b981;"></div>Rentrée</div>
+                <div class="pa-legend-item"><div class="pa-legend-dot" style="background:#f59e0b;"></div>Examens</div>
+                <div class="pa-legend-item"><div class="pa-legend-dot" style="background:#0453cb;"></div>Cérémonies</div>
+                <div class="pa-legend-item"><div class="pa-legend-dot" style="background:#94a3b8;"></div>Vacances</div>
+            </div>
+
+            {{-- Controls --}}
+            <div class="pa-cal-controls">
+                <div class="pa-cal-nav">
+                    <button class="pa-cal-nav-btn" id="prevMonth"><i class="fas fa-chevron-left"></i></button>
+                    <div class="pa-cal-month" id="currentMonth">{{ $calendrierMensuel[0]['nom'] ?? '' }}</div>
+                    <button class="pa-cal-nav-btn" id="nextMonth"><i class="fas fa-chevron-right"></i></button>
+                </div>
+                <div class="pa-cal-meta">
                     <span id="monthEvents">0 événement</span>
-                    <span>•</span>
+                    <span>&middot;</span>
                     <span id="monthProgress">0%</span>
                 </div>
             </div>
-            
-            <div class="calendrier-viewport">
-                <div class="calendrier-slider" id="calendarSlider">
+
+            {{-- Slider --}}
+            <div class="pa-cal-viewport">
+                <div class="pa-cal-slider" id="calendarSlider">
                     @foreach($calendrierMensuel as $index => $moisData)
-                    <div class="calendrier-slide" data-month="{{ $index }}" data-month-id="{{ $moisData['mois'] }}">
-                        <div class="calendrier-grid">
-                            <!-- En-têtes des jours -->
-                            <div class="jour-header">Lun</div>
-                            <div class="jour-header">Mar</div>
-                            <div class="jour-header">Mer</div>
-                            <div class="jour-header">Jeu</div>
-                            <div class="jour-header">Ven</div>
-                            <div class="jour-header">Sam</div>
-                            <div class="jour-header">Dim</div>
-                            
+                    <div class="pa-cal-slide" data-month="{{ $index }}" data-month-id="{{ $moisData['mois'] }}">
+                        <div class="pa-cal-grid">
+                            <div class="pa-cal-header">Lun</div>
+                            <div class="pa-cal-header">Mar</div>
+                            <div class="pa-cal-header">Mer</div>
+                            <div class="pa-cal-header">Jeu</div>
+                            <div class="pa-cal-header">Ven</div>
+                            <div class="pa-cal-header">Sam</div>
+                            <div class="pa-cal-header">Dim</div>
+
                             @foreach($moisData['semaines'] as $semaine)
                                 @foreach($semaine as $jour)
                                 @php
                                     $dateJour = $jour['date']->format('d/m/Y');
-                                    $evenementsJour = collect($evenementsAcademiques)->filter(function($evt) use ($dateJour) {
-                                        return $evt['date'] === $dateJour;
-                                    });
+                                    $evenementsJour = collect($evenementsAcademiques)->filter(fn($evt) => $evt['date'] === $dateJour);
                                     $aEvenement = $evenementsJour->count() > 0;
-                                    $multipleEvenements = $evenementsJour->count() > 1;
                                 @endphp
-                                <div class="jour-cellule
+                                <div class="pa-cal-day
                                     {{ !$jour['dans_mois'] ? 'autre-mois' : '' }}
                                     {{ $jour['est_aujourd_hui'] ? 'aujourd-hui' : '' }}
-                                    {{ $aEvenement ? 'avec-evenement' : '' }}
-                                    {{ $multipleEvenements ? 'multiple' : '' }}"
-                                    title="{{ $jour['date']->format('d/m/Y') }}{{ $aEvenement ? ' - ' . $evenementsJour->count() . ' événement' . ($evenementsJour->count() > 1 ? 's' : '') : '' }}"
+                                    {{ $aEvenement ? 'avec-evenement' : '' }}"
+                                    title="{{ $dateJour }}{{ $aEvenement ? ' — ' . $evenementsJour->count() . ' événement(s)' : '' }}"
                                     data-date="{{ $dateJour }}"
                                     data-events="{{ $evenementsJour->count() }}">
                                     {{ $jour['date']->day }}
-                                    @if($aEvenement)
-                                        <div class="evenement-preview"></div>
-                                    @endif
+                                    @if($aEvenement)<div class="pa-cal-dot"></div>@endif
                                 </div>
                                 @endforeach
                             @endforeach
@@ -807,19 +354,17 @@
                     </div>
                     @endforeach
                 </div>
-                
-                <div class="calendrier-loading" id="calendarLoading" style="display: none;">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    Chargement...
-                </div>
             </div>
-            
-            <div class="calendrier-shortcuts">
-                <button class="shortcut-btn" data-action="today">Aujourd'hui</button>
-                <button class="shortcut-btn" data-action="rentree">Rentrée</button>
-                <button class="shortcut-btn" data-action="examens">Examens</button>
-                <button class="shortcut-btn" data-action="ceremonie">Cérémonie</button>
+
+            {{-- Shortcuts --}}
+            <div class="pa-cal-shortcuts">
+                <button class="pa-shortcut" data-action="today">Aujourd'hui</button>
+                <button class="pa-shortcut" data-action="rentree">Rentrée</button>
+                <button class="pa-shortcut" data-action="examens">Examens</button>
+                <button class="pa-shortcut" data-action="ceremonie">Cérémonie</button>
             </div>
+        </div>
+
         </div>
         </div>{{-- #pg-tab-content --}}
     </div>
@@ -829,250 +374,105 @@
 @push('scripts')
 <script>
 $(function() {
-    // Variables du calendrier interactif
     const slider = $('#calendarSlider');
     const prevBtn = $('#prevMonth');
     const nextBtn = $('#nextMonth');
     const currentMonthDisplay = $('#currentMonth');
     const monthEventsDisplay = $('#monthEvents');
     const monthProgressDisplay = $('#monthProgress');
-    
+
     let currentMonthIndex = 0;
-    const totalMonths = $('.calendrier-slide').length;
+    const totalMonths = $('.pa-cal-slide').length;
     const evenements = @json($evenementsAcademiques);
-    
-    // Fonction pour obtenir les noms des mois
-    function getMonthNames() {
-        return @json(array_column($calendrierMensuel, 'nom'));
-    }
-    
-    const monthNames = getMonthNames();
-    
-    // Fonction pour mettre à jour l'affichage du mois
+    const monthNames = @json(array_column($calendrierMensuel, 'nom'));
+
     function updateMonthDisplay() {
-        const monthName = monthNames[currentMonthIndex] || 'Mois inconnu';
-        currentMonthDisplay.text(monthName);
-        
-        // Calculer les événements du mois actuel
-        const currentSlide = $(`.calendrier-slide[data-month="${currentMonthIndex}"]`);
+        currentMonthDisplay.text(monthNames[currentMonthIndex] || '');
+        const currentSlide = $(`.pa-cal-slide[data-month="${currentMonthIndex}"]`);
         const monthId = currentSlide.data('month-id');
-        
         const monthEvents = evenements.filter(evt => {
             const eventMonth = evt.date.split('/').reverse().join('-').substring(0, 7);
             return eventMonth === monthId;
         });
-        
-        const eventCount = monthEvents.length;
-        monthEventsDisplay.text(eventCount + ' événement' + (eventCount > 1 ? 's' : ''));
-        
-        // Calculer le pourcentage de progression dans l'année
-        const progress = Math.round((currentMonthIndex / (totalMonths - 1)) * 100);
-        monthProgressDisplay.text(progress + '%');
-        
-        // Mettre à jour les boutons de navigation
+        monthEventsDisplay.text(monthEvents.length + ' événement' + (monthEvents.length > 1 ? 's' : ''));
+        monthProgressDisplay.text(Math.round((currentMonthIndex / Math.max(totalMonths - 1, 1)) * 100) + '%');
         prevBtn.prop('disabled', currentMonthIndex === 0);
         nextBtn.prop('disabled', currentMonthIndex === totalMonths - 1);
     }
-    
-    // Fonction pour naviguer vers un mois
-    function navigateToMonth(index, animate = true) {
+
+    function navigateToMonth(index) {
         if (index < 0 || index >= totalMonths) return;
-        
         currentMonthIndex = index;
-        const translateX = -index * 100;
-        
-        if (animate) {
-            slider.css('transform', `translateX(${translateX}%)`);
-        } else {
-            slider.css({
-                'transform': `translateX(${translateX}%)`,
-                'transition': 'none'
-            });
-            setTimeout(() => {
-                slider.css('transition', 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)');
-            }, 50);
-        }
-        
+        slider.css('transform', `translateX(${-index * 100}%)`);
         updateMonthDisplay();
     }
-    
-    // Gestionnaires d'événements pour la navigation
-    prevBtn.on('click', function() {
-        if (currentMonthIndex > 0) {
-            navigateToMonth(currentMonthIndex - 1);
-        }
-    });
-    
-    nextBtn.on('click', function() {
-        if (currentMonthIndex < totalMonths - 1) {
-            navigateToMonth(currentMonthIndex + 1);
-        }
-    });
-    
-    // Gestionnaires pour les raccourcis
-    $('.shortcut-btn').on('click', function() {
+
+    prevBtn.on('click', () => currentMonthIndex > 0 && navigateToMonth(currentMonthIndex - 1));
+    nextBtn.on('click', () => currentMonthIndex < totalMonths - 1 && navigateToMonth(currentMonthIndex + 1));
+
+    $('.pa-shortcut').on('click', function() {
         const action = $(this).data('action');
-        
-        // Retirer la classe active de tous les boutons
-        $('.shortcut-btn').removeClass('active');
+        $('.pa-shortcut').removeClass('active');
         $(this).addClass('active');
-        
+
         switch(action) {
             case 'today':
-                // Naviguer vers le mois actuel
                 const today = new Date();
-                const currentYear = today.getFullYear();
-                const currentMonth = today.getMonth();
-                
-                // Trouver l'index du mois actuel
-                let targetIndex = 0;
-                $('.calendrier-slide').each(function(index) {
-                    const monthId = $(this).data('month-id');
-                    if (monthId) {
-                        const [year, month] = monthId.split('-');
-                        if (parseInt(year) === currentYear && parseInt(month) === currentMonth + 1) {
-                            targetIndex = index;
-                            return false;
+                let target = 0;
+                $('.pa-cal-slide').each(function(i) {
+                    const mid = $(this).data('month-id');
+                    if (mid) {
+                        const [y, m] = mid.split('-');
+                        if (parseInt(y) === today.getFullYear() && parseInt(m) === today.getMonth() + 1) {
+                            target = i; return false;
                         }
                     }
                 });
-                navigateToMonth(targetIndex);
+                navigateToMonth(target);
                 break;
-                
-            case 'rentree':
-                // Naviguer vers le mois de la rentrée (septembre)
-                navigateToMonth(0);
-                break;
-                
+            case 'rentree': navigateToMonth(0); break;
             case 'examens':
-                // Naviguer vers les examens (décembre)
-                const examensMonth = monthNames.findIndex(name => name.toLowerCase().includes('décembre'));
-                if (examensMonth !== -1) {
-                    navigateToMonth(examensMonth);
-                }
+                const ei = monthNames.findIndex(n => n.toLowerCase().includes('décembre'));
+                if (ei !== -1) navigateToMonth(ei);
                 break;
-                
-            case 'ceremonie':
-                // Naviguer vers la cérémonie (juin)
-                navigateToMonth(totalMonths - 1);
-                break;
+            case 'ceremonie': navigateToMonth(totalMonths - 1); break;
         }
-        
-        // Retirer la classe active après un délai
-        setTimeout(() => {
-            $(this).removeClass('active');
-        }, 1000);
+        setTimeout(() => $(this).removeClass('active'), 1000);
     });
-    
-    // Gestion des touches du clavier
+
+    // Keyboard
     $(document).on('keydown', function(e) {
-        if (e.key === 'ArrowLeft') {
-            prevBtn.click();
-        } else if (e.key === 'ArrowRight') {
-            nextBtn.click();
-        }
+        if (e.key === 'ArrowLeft') prevBtn.click();
+        else if (e.key === 'ArrowRight') nextBtn.click();
     });
-    
-    // Gestion du swipe sur mobile
+
+    // Swipe
     let startX = 0;
-    let endX = 0;
-    
-    $('.calendrier-viewport').on('touchstart', function(e) {
-        startX = e.originalEvent.touches[0].clientX;
+    $('.pa-cal-viewport').on('touchstart', e => startX = e.originalEvent.touches[0].clientX);
+    $('.pa-cal-viewport').on('touchmove', e => e.preventDefault());
+    $('.pa-cal-viewport').on('touchend', function(e) {
+        const diff = startX - e.originalEvent.changedTouches[0].clientX;
+        if (Math.abs(diff) > 50) { diff > 0 ? nextBtn.click() : prevBtn.click(); }
     });
-    
-    $('.calendrier-viewport').on('touchmove', function(e) {
-        e.preventDefault();
-    });
-    
-    $('.calendrier-viewport').on('touchend', function(e) {
-        endX = e.originalEvent.changedTouches[0].clientX;
-        const diff = startX - endX;
-        
-        if (Math.abs(diff) > 50) {
-            if (diff > 0) {
-                nextBtn.click();
-            } else {
-                prevBtn.click();
-            }
-        }
-    });
-    
-    // Améliorer les tooltips des jours avec événements
-    $('.jour-cellule.avec-evenement').each(function() {
+
+    // Tooltips
+    $('.pa-cal-day.avec-evenement').each(function() {
         const date = $(this).data('date');
-        const eventCount = $(this).data('events');
-        
-        if (eventCount > 0) {
-            const dayEvents = evenements.filter(evt => evt.date === date);
-            let tooltipText = `${date}\\n`;
-            
-            dayEvents.forEach(evt => {
-                tooltipText += `• ${evt.titre}\\n`;
-            });
-            
-            $(this).attr('title', tooltipText);
-            
-            // Améliorer le tooltip avec Bootstrap si disponible
-            if (typeof $.fn.tooltip !== 'undefined') {
-                $(this).tooltip({
-                    placement: 'top',
-                    html: true,
-                    title: function() {
-                        const dayEvents = evenements.filter(evt => evt.date === date);
-                        let html = `<strong>${date}</strong><br>`;
-                        dayEvents.forEach(evt => {
-                            html += `<small>• ${evt.titre}</small><br>`;
-                        });
-                        return html;
-                    }
-                });
-            }
-        }
+        const dayEvents = evenements.filter(evt => evt.date === date);
+        let tt = date + '\n';
+        dayEvents.forEach(evt => tt += '• ' + evt.titre + '\n');
+        $(this).attr('title', tt);
     });
-    
-    // Animation des événements de la timeline
-    $('.evenement-timeline').each(function(index) {
-        $(this).css({
-            'opacity': '0',
-            'transform': 'translateX(-50px)'
-        });
-        
+
+    // Stagger timeline entries
+    $('.pa-event').each(function(i) {
+        $(this).css({ opacity: 0, transform: 'translateX(-20px)' });
         setTimeout(() => {
-            $(this).css({
-                'opacity': '1',
-                'transform': 'translateX(0)',
-                'transition': 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
-            });
-        }, index * 150);
+            $(this).css({ opacity: 1, transform: 'translateX(0)', transition: 'all .4s ease-out' });
+        }, i * 80);
     });
-    
-    // Effet de survol sur les statistiques
-    $('.stat-academique').hover(
-        function() {
-            $(this).find('.stat-icon').css('transform', 'scale(1.1)');
-        },
-        function() {
-            $(this).find('.stat-icon').css('transform', 'scale(1)');
-        }
-    );
-    
-    // Initialisation
+
     updateMonthDisplay();
-    
-    // Animation d'entrée du calendrier
-    $('.calendrier-interactif').css({
-        'opacity': '0',
-        'transform': 'translateY(30px)'
-    });
-    
-    setTimeout(() => {
-        $('.calendrier-interactif').css({
-            'opacity': '1',
-            'transform': 'translateY(0)',
-            'transition': 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
-        });
-    }, 500);
 });
 </script>
 @endpush

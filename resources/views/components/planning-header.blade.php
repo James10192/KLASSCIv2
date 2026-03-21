@@ -307,7 +307,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Fallback : extraire le contenu principal
                         const mainContent = doc.querySelector('.main-content');
                         if (mainContent) {
-                            // Trouver le contenu après les tabs (après ph-tabs)
                             const allChildren = mainContent.children;
                             let afterTabs = false;
                             let contentHtml = '';
@@ -322,7 +321,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (contentHtml) {
                                 container.innerHTML = contentHtml;
                             } else {
-                                // Dernier fallback : full page reload
                                 window.location.href = href;
                                 return;
                             }
@@ -332,15 +330,62 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     }
 
-                    // Exécuter les scripts inline du nouveau contenu
-                    container.querySelectorAll('script').forEach(function(oldScript) {
-                        const newScript = document.createElement('script');
-                        if (oldScript.src) {
-                            newScript.src = oldScript.src;
-                        } else {
-                            newScript.textContent = oldScript.textContent;
+                    // Injecter les styles de la page fetchée (CSS dans <head>)
+                    // Supprimer les anciens styles injectés par tab
+                    document.querySelectorAll('style[data-ph-tab-style]').forEach(s => s.remove());
+                    document.querySelectorAll('link[data-ph-tab-style]').forEach(s => s.remove());
+
+                    // Extraire et injecter les <style> inline du <head> et du <body>
+                    doc.querySelectorAll('style').forEach(function(style) {
+                        // Ignorer les styles du planning-header (déjà présents dans la page)
+                        if (style.textContent.includes('ph-hero') || style.textContent.includes('ph-tab{') || style.textContent.includes('.ph-tab ')) return;
+                        // Ignorer les styles déjà dans la page courante (vérifier un snippet unique)
+                        const snippet = style.textContent.substring(0, 80).trim();
+                        let alreadyExists = false;
+                        document.querySelectorAll('style:not([data-ph-tab-style])').forEach(function(existing) {
+                            if (existing.textContent.substring(0, 80).trim() === snippet) alreadyExists = true;
+                        });
+                        if (alreadyExists) return;
+
+                        const newStyle = document.createElement('style');
+                        newStyle.textContent = style.textContent;
+                        newStyle.setAttribute('data-ph-tab-style', '1');
+                        document.head.appendChild(newStyle);
+                    });
+
+                    // Extraire et injecter les <link stylesheet> spécifiques
+                    doc.querySelectorAll('head link[rel="stylesheet"]').forEach(function(link) {
+                        const href = link.getAttribute('href');
+                        // Ne pas re-injecter les CSS déjà présentes
+                        if (!document.querySelector('link[href="' + href + '"]')) {
+                            const newLink = document.createElement('link');
+                            newLink.rel = 'stylesheet';
+                            newLink.href = href;
+                            newLink.setAttribute('data-ph-tab-style', '1');
+                            document.head.appendChild(newLink);
                         }
-                        oldScript.parentNode.replaceChild(newScript, oldScript);
+                    });
+
+                    // Supprimer les anciens scripts injectés par tab
+                    document.querySelectorAll('script[data-ph-tab-script]').forEach(s => s.remove());
+
+                    // Extraire et exécuter les scripts de la page
+                    doc.querySelectorAll('script').forEach(function(script) {
+                        // Ignorer les scripts externes déjà chargés (jQuery, Bootstrap, etc.)
+                        if (script.src && document.querySelector('script[src="' + script.src + '"]')) return;
+                        // Ignorer le script du planning-header tabs
+                        if (script.textContent.includes('ph-tab') && script.textContent.includes('pg-tab-content')) return;
+                        // Ignorer les scripts très courts ou vides
+                        if (!script.src && script.textContent.trim().length < 10) return;
+
+                        const newScript = document.createElement('script');
+                        newScript.setAttribute('data-ph-tab-script', '1');
+                        if (script.src) {
+                            newScript.src = script.src;
+                        } else {
+                            newScript.textContent = script.textContent;
+                        }
+                        document.body.appendChild(newScript);
                     });
 
                     // Restaurer l'affichage
