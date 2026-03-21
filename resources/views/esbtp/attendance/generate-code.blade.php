@@ -638,65 +638,82 @@
 </div>
 
 {{-- ── Modal Code Personnalisé ──────────────────────────────── --}}
-<div class="modal fade acode-modal" id="customCodeModal" tabindex="-1" aria-labelledby="customCodeModalLabel" aria-hidden="true">
+<div class="modal fade" id="customCodeModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius:var(--radius-large);overflow:hidden;border:none;">
-            <div class="modal-header">
-                <h5 class="modal-title" id="customCodeModalLabel">
-                    <i class="fas fa-sliders-h"></i>Code Personnalisé
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
+        <div class="modal-content" style="border:none; border-radius:16px; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,.15);">
             <form action="{{ route('esbtp.attendance-codes.generate') }}" method="POST">
                 @csrf
-                <div class="modal-body p-4">
+                <div class="modal-header" style="background:linear-gradient(135deg,#0a3d8f,#0453cb,#3b7ddb); border:none; padding:1.25rem 1.5rem;">
+                    <div>
+                        <h5 style="color:#fff; font-weight:700; font-size:1rem; margin:0; display:flex; align-items:center; gap:.5rem;">
+                            <i class="fas fa-sliders-h" style="font-size:.85rem;"></i>Code Personnalisé
+                        </h5>
+                        <div style="font-size:.75rem; color:rgba(255,255,255,.7); margin-top:.15rem;">Paramètres de génération du code d'émargement</div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter:brightness(0) invert(1); opacity:.7;"></button>
+                </div>
 
-                    <div class="mb-3">
-                        <label for="custom_description" class="form-label">Description</label>
+                <div class="modal-body" style="padding:1.25rem 1.5rem; background:#f8fafc;">
+                    <div style="background:#fff; border-radius:12px; border:1px solid #e8ecf1; padding:1rem 1.15rem; margin-bottom:.85rem;">
+                        <label for="custom_description" style="font-size:.72rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.35rem; display:block;">
+                            Description
+                        </label>
                         <input type="text" class="form-control" id="custom_description" name="description"
-                               placeholder="Ex: Code pour cours de mathématiques" maxlength="255">
-                        <div class="form-text mt-1" style="font-size:0.75rem;color:var(--text-secondary);">Description optionnelle pour identifier ce code</div>
+                               placeholder="Ex: Code pour cours de mathématiques" maxlength="255"
+                               style="border-radius:9px; border:1px solid #e2e8f0; font-size:.88rem;">
+                        <div style="font-size:.68rem; color:#94a3b8; margin-top:.25rem;">Optionnel — pour identifier ce code</div>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="custom_duration" class="form-label">Durée de validité</label>
-                        <select class="form-select" id="custom_duration" name="duration_minutes">
-                            <option value="30">30 minutes</option>
-                            <option value="60" selected>1 heure</option>
-                            <option value="90">1h30</option>
-                            <option value="120">2 heures</option>
-                            <option value="180">3 heures</option>
-                            <option value="240">4 heures</option>
-                            <option value="480">8 heures (journée)</option>
-                        </select>
+                    <div style="display:flex; gap:.75rem; margin-bottom:.85rem;">
+                        <div style="flex:1; background:#fff; border-radius:12px; border:1px solid #e8ecf1; padding:1rem 1.15rem;">
+                            <label for="custom_duration" style="font-size:.72rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.35rem; display:block;">
+                                <i class="fas fa-clock" style="color:#0453cb; font-size:.65rem;"></i> Durée
+                            </label>
+                            <select class="form-select" id="custom_duration" name="duration_minutes"
+                                    style="border-radius:9px; border:1px solid #e2e8f0; font-size:.85rem;">
+                                <option value="30">30 min</option>
+                                <option value="60" selected>1 heure</option>
+                                <option value="90">1h30</option>
+                                <option value="120">2 heures</option>
+                                <option value="180">3 heures</option>
+                                <option value="240">4 heures</option>
+                                <option value="480">Journée (8h)</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <div class="mb-1">
-                        <label for="seance_select" class="form-label">Séance de cours <span style="font-weight:400;text-transform:none;letter-spacing:0;">(optionnel)</span></label>
-                        <select class="form-select" id="seance_select" name="seance_id">
+                    <div style="background:#fff; border-radius:12px; border:1px solid #e8ecf1; padding:1rem 1.15rem;">
+                        <label for="seance_select" style="font-size:.72rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.35rem; display:block;">
+                            <i class="fas fa-calendar-check" style="color:#0453cb; font-size:.65rem;"></i> Séance à venir
+                            <span style="font-weight:400; text-transform:none; letter-spacing:0; color:#94a3b8;">(optionnel)</span>
+                        </label>
+                        <select class="form-select" id="seance_select" name="seance_id"
+                                style="border-radius:9px; border:1px solid #e2e8f0; font-size:.85rem;">
                             <option value="">Aucune séance spécifique</option>
                             @if(isset($seancesAVenir) && $seancesAVenir->count() > 0)
                                 @foreach($seancesAVenir as $seance)
                                 <option value="{{ $seance->id }}"
                                         data-duration="{{ $seance->getDureeEnMinutes() }}"
                                         data-description="{{ ($seance->matiere->name ?? 'Matière') }} - {{ ($seance->classe->name ?? 'Classe') }}">
-                                    {{ $seance->matiere->name ?? 'Matière' }} – {{ $seance->classe->name ?? 'Classe' }}
-                                    ({{ \Carbon\Carbon::parse($seance->date_cours ?? 'today')->format('d/m') }} {{ $seance->heure_debut }}-{{ $seance->heure_fin }})
-                                    @if($seance->teacher) – {{ $seance->teacher->name }}@endif
+                                    {{ $seance->matiere->name ?? 'Matière' }} — {{ $seance->classe->name ?? 'Classe' }}
+                                    ({{ $seance->heure_debut->format('H:i') }}–{{ $seance->heure_fin->format('H:i') }})
+                                    @if($seance->teacher) · {{ $seance->teacher->name }}@endif
                                 </option>
                                 @endforeach
                             @endif
                         </select>
-                        <div class="form-text mt-1" style="font-size:0.75rem;color:var(--text-secondary);">La sélection d'une séance remplit automatiquement la durée et la description</div>
+                        <div style="font-size:.68rem; color:#94a3b8; margin-top:.25rem;">Remplit automatiquement la durée et la description</div>
                     </div>
-
                 </div>
-                <div class="modal-footer" style="border-top:1px solid rgba(0,0,0,0.06);padding:1rem 1.5rem;">
-                    <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-2"></i>Annuler
+
+                <div class="modal-footer" style="border-top:1px solid #e8ecf1; padding:.85rem 1.5rem; background:#fff; gap:.4rem;">
+                    <button type="button" class="btn" data-bs-dismiss="modal"
+                        style="border-radius:9px; padding:.45rem 1rem; font-size:.82rem; font-weight:600; color:#64748b; background:#f1f5f9; border:1px solid #e2e8f0;">
+                        Annuler
                     </button>
-                    <button type="submit" class="btn-acasi primary">
-                        <i class="fas fa-plus-circle me-2"></i>Générer
+                    <button type="submit" class="btn"
+                        style="border-radius:9px; padding:.45rem 1rem; font-size:.82rem; font-weight:600; color:#fff; background:linear-gradient(135deg,#0453cb,#3b7ddb); border:none; box-shadow:0 2px 6px rgba(4,83,203,.25);">
+                        <i class="fas fa-key me-1" style="font-size:.7rem;"></i>Générer le code
                     </button>
                 </div>
             </form>

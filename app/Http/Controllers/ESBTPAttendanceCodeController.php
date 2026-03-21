@@ -33,13 +33,29 @@ class ESBTPAttendanceCodeController extends Controller
             ->take(10)
             ->get();
 
-        // Récupérer les séances à venir pour la sélection
-        $today = Carbon::now();
+        // Récupérer uniquement les séances à venir (aujourd'hui + futures)
+        $now = Carbon::now();
+        $todayDow = $now->dayOfWeek === 0 ? 7 : $now->dayOfWeek;
+        $currentTime = $now->format('H:i:s');
+
         $seancesAVenir = ESBTPSeanceCours::with(['matiere', 'classe', 'teacher', 'emploiTemps'])
             ->whereNotNull('matiere_id')
             ->whereNotNull('classe_id')
+            ->where(function ($q) use ($now, $todayDow, $currentTime) {
+                // Séances avec date spécifique dans le futur
+                $q->where(function ($sub) use ($now) {
+                    $sub->whereNotNull('date_seance')
+                        ->where('date_seance', '>=', $now->toDateString());
+                })
+                // OU séances récurrentes du jour dont l'heure n'est pas passée
+                ->orWhere(function ($sub) use ($todayDow, $currentTime) {
+                    $sub->whereNull('date_seance')
+                        ->where('jour', $todayDow)
+                        ->whereTime('heure_debut', '>=', $currentTime);
+                });
+            })
             ->orderBy('heure_debut')
-            ->limit(20)
+            ->limit(15)
             ->get();
 
         return view('esbtp.attendance.generate-code', compact('activeCode', 'activeCodes', 'recentCodes', 'seancesAVenir'));
