@@ -92,6 +92,9 @@ curl -H "Authorization: Bearer {token}" http://domain/api/...
 | Fichier | Description | Status | Dernière MAJ |
 |---------|-------------|--------|--------------|
 | [LMS_ENSEIGNANTS.md](LMS_ENSEIGNANTS.md) | Gestion enseignants (classes, matières, volume horaire) | ✅ Complet | 25/10/2025 |
+| [LMS_AUTH.md](LMS_AUTH.md) | Authentification + découverte multi-tenant (login, check-user, tenant-info) | ✅ Complet | 21/03/2026 |
+| [LMS_REGISTRY.md](LMS_REGISTRY.md) | Registre des tenants (admin master → liste tenants actifs) | ✅ Complet | 21/03/2026 |
+| [LMS_LOGIN_UNIFIE.md](LMS_LOGIN_UNIFIE.md) | Guide d'intégration login unifié multi-établissements (pour équipe LMS) | ✅ Complet | 21/03/2026 |
 
 ## 🚀 APIs à Documenter
 
@@ -101,7 +104,6 @@ curl -H "Authorization: Bearer {token}" http://domain/api/...
 - [ ] LMS_EMPLOI_TEMPS.md - Planning et séances
 - [ ] PARENT_NOTIFICATIONS.md - Notifications parents
 - [ ] ADMIN_STATS.md - Statistiques et KPIs
-- [ ] AUTH.md - Authentification et gestion tokens
 
 ## 🌐 Site de Documentation (Futur)
 

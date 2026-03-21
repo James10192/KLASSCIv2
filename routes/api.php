@@ -108,7 +108,19 @@ Route::prefix('lms/auth')->group(function () {
         ->name('api.lms.auth.login');
     Route::get('/documentation', [App\Http\Controllers\API\AuthController::class, 'documentation'])
         ->name('api.lms.auth.docs');
+
+    // Découverte multi-tenant (rate-limited, sans auth)
+    Route::middleware('throttle:lms-discovery')->group(function () {
+        Route::post('/check-user', [App\Http\Controllers\API\AuthController::class, 'checkUser'])
+            ->name('api.lms.auth.check-user');
+        Route::post('/check-availability', [App\Http\Controllers\API\AuthController::class, 'checkAvailability'])
+            ->name('api.lms.auth.check-availability');
+    });
 });
+
+// Informations publiques du tenant (sans auth)
+Route::get('lms/tenant-info', [App\Http\Controllers\API\AuthController::class, 'tenantInfo'])
+    ->name('api.lms.tenant-info');
 
 // Routes LMS protégées par authentification Sanctum
 Route::middleware(['auth:sanctum'])->prefix('lms')->name('api.lms.')->group(function () {

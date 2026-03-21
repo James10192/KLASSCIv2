@@ -24,8 +24,10 @@ class AuthController extends BaseApiController
 {
     public function __construct()
     {
-        // Ne pas appliquer l'auth sur les méthodes de connexion
-        $this->middleware('auth:sanctum')->except(['login', 'documentation']);
+        // Ne pas appliquer l'auth sur les méthodes publiques LMS
+        $this->middleware('auth:sanctum')->except([
+            'login', 'documentation', 'checkUser', 'checkAvailability', 'tenantInfo'
+        ]);
     }
 
     /**
@@ -379,6 +381,164 @@ class AuthController extends BaseApiController
             'can_view_all_data' => true,
             'can_generate_reports' => true
         ];
+    }
+
+    /**
+     * Recherche un utilisateur par email, username ou matricule
+     * Utilisé par le LMS pour détecter le tenant d'un utilisateur (login unifié)
+     *
+     * Endpoint: POST /api/lms/auth/check-user
+     * Rate-limited: 10 requêtes/minute par IP
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function checkUser(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'identifier' => 'required|string|min:3|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Identifiant invalide', $validator->errors()->toArray(), 422);
+        }
+
+        $identifier = trim($request->input('identifier'));
+        $tenantCode = config('app.tenant_code', 'default');
+        $tenantName = config('app.name', 'KLASSCI');
+        $tenantUrl = config('app.url');
+
+        // Chercher par email ou username dans users
+        $user = User::where('is_active', true)
+            ->where(function ($q) use ($identifier) {
+                $q->where('email', $identifier)
+                  ->orWhere('username', $identifier);
+            })
+            ->first();
+
+        // Si pas trouvé, chercher par matricule dans esbtp_etudiants
+        if (!$user) {
+            $etudiant = \App\Models\ESBTPEtudiant::where('matricule', $identifier)
+                ->whereNotNull('user_id')
+                ->first();
+
+            if ($etudiant) {
+                $user = User::where('id', $etudiant->user_id)
+                    ->where('is_active', true)
+                    ->first();
+            }
+        }
+
+        if (!$user) {
+            return $this->successResponse([
+                'found' => false,
+                'tenant_code' => $tenantCode,
+            ], 'Utilisateur non trouvé sur ce tenant');
+        }
+
+        // Vérifier que l'utilisateur a un rôle LMS
+        $rolesAutorises = ['enseignant', 'coordinateur', 'etudiant', 'superAdmin'];
+        $userRole = $user->getRoleNames()->first();
+
+        if (!$userRole || !RoleHelper::hasAnyRole($userRole, $rolesAutorises)) {
+            return $this->successResponse([
+                'found' => false,
+                'tenant_code' => $tenantCode,
+            ], 'Utilisateur non autorisé pour le LMS');
+        }
+
+        // Retour minimal pour limiter la fuite d'info
+        $displayName = $user->first_name;
+        if ($user->last_name) {
+            $displayName .= ' ' . mb_strtoupper(mb_substr($user->last_name, 0, 1)) . '.';
+        }
+
+        return $this->successResponse([
+            'found' => true,
+            'tenant_code' => $tenantCode,
+            'tenant_name' => $tenantName,
+            'tenant_url' => $tenantUrl,
+            'user_hint' => [
+                'display_name' => $displayName,
+                'role' => $userRole,
+                'role_display' => RoleHelper::getRoleDisplayName($userRole),
+            ],
+        ], 'Utilisateur trouvé');
+    }
+
+    /**
+     * Vérifie si un email ou username existe sur ce tenant
+     *
+     * Endpoint: POST /api/lms/auth/check-availability
+     * Rate-limited: 10 requêtes/minute par IP
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function checkAvailability(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'nullable|string|email|max:255',
+            'username' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->errorResponse('Données invalides', $validator->errors()->toArray(), 422);
+        }
+
+        if (!$request->email && !$request->username) {
+            return $this->errorResponse('Au moins un champ (email ou username) est requis', [], 422);
+        }
+
+        $result = [
+            'tenant_code' => config('app.tenant_code', 'default'),
+        ];
+
+        if ($request->email) {
+            $result['email_exists'] = User::where('email', $request->email)->where('is_active', true)->exists();
+        }
+
+        if ($request->username) {
+            $result['username_exists'] = User::where('username', $request->username)->where('is_active', true)->exists();
+        }
+
+        return $this->successResponse($result, 'Vérification effectuée');
+    }
+
+    /**
+     * Informations publiques du tenant pour le LMS
+     *
+     * Endpoint: GET /api/lms/tenant-info
+     *
+     * @return JsonResponse
+     */
+    public function tenantInfo(): JsonResponse
+    {
+        $tenantCode = config('app.tenant_code', 'default');
+        $annee = $this->getAnneeCouraante();
+
+        return $this->successResponse([
+            'tenant_code' => $tenantCode,
+            'tenant_name' => config('app.name', 'KLASSCI'),
+            'tenant_url' => config('app.url'),
+            'api_base_url' => url('/api/lms'),
+            'api_version' => '1.0',
+            'annee_universitaire' => $annee ? [
+                'id' => $annee->id,
+                'nom' => $annee->nom ?? "{$annee->annee_debut}-{$annee->annee_fin}",
+            ] : null,
+            'features' => [
+                'login' => true,
+                'classes' => true,
+                'matieres' => true,
+                'enseignants' => true,
+                'evaluations' => true,
+                'emploi_temps' => true,
+                'notes_write' => true,
+                'presences_write' => true,
+                'visio_support' => true,
+            ],
+        ], 'Informations tenant');
     }
 
     /**
