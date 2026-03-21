@@ -359,49 +359,101 @@
                         @csrf
                         <input type="hidden" name="annee_id" value="{{ $anneeSelectionnee?->id }}">
                         <input type="hidden" name="type" value="personnalise">
+                        <input type="hidden" name="activation" value="immediate">
 
                         <div class="modal-header" style="background:linear-gradient(135deg,#0a3d8f,#0453cb,#3b7ddb); border:none; padding:1.25rem 1.5rem;">
                             <div>
-                                <h5 style="color:#fff; font-weight:700; font-size:1rem; margin:0;">Code Personnalisé</h5>
-                                <div style="font-size:.75rem; color:rgba(255,255,255,.7);">Paramètres de génération</div>
+                                <h5 style="color:#fff; font-weight:700; font-size:1rem; margin:0; display:flex; align-items:center; gap:.5rem;">
+                                    <i class="fas fa-sliders-h" style="font-size:.85rem;"></i>Code Personnalisé
+                                </h5>
+                                <div style="font-size:.75rem; color:rgba(255,255,255,.7); margin-top:.15rem;">Paramètres de génération du code d'émargement</div>
                             </div>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" style="filter:brightness(0) invert(1); opacity:.7;"></button>
                         </div>
 
-                        <div class="modal-body" style="padding:1.25rem 1.5rem;">
-                            <div style="margin-bottom:1rem;">
-                                <label style="font-size:.75rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.35rem; display:block;">Durée de validité (heures)</label>
-                                <input type="number" name="duree" value="2" min="1" max="24" required
+                        <div class="modal-body" style="padding:1.25rem 1.5rem; background:#f8fafc;">
+                            <div style="background:#fff; border-radius:12px; border:1px solid #e8ecf1; padding:1rem 1.15rem; margin-bottom:.85rem;">
+                                <label style="font-size:.72rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.35rem; display:block;">Description</label>
+                                <input type="text" name="description" id="em-custom-description" placeholder="Ex: Cours de rattrapage..."
                                     style="width:100%; padding:.5rem .75rem; border-radius:9px; border:1px solid #e2e8f0; font-size:.88rem;">
+                                <div style="font-size:.68rem; color:#94a3b8; margin-top:.25rem;">Optionnel — pour identifier ce code</div>
                             </div>
-                            <div style="margin-bottom:1rem;">
-                                <label style="font-size:.75rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.35rem; display:block;">Description (optionnel)</label>
-                                <input type="text" name="description" placeholder="Ex: Cours de rattrapage..."
-                                    style="width:100%; padding:.5rem .75rem; border-radius:9px; border:1px solid #e2e8f0; font-size:.88rem;">
+
+                            <div style="display:flex; gap:.75rem; margin-bottom:.85rem;">
+                                <div style="flex:1; background:#fff; border-radius:12px; border:1px solid #e8ecf1; padding:1rem 1.15rem;">
+                                    <label style="font-size:.72rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.35rem; display:block;">
+                                        <i class="fas fa-clock" style="color:#0453cb; font-size:.65rem;"></i> Durée
+                                    </label>
+                                    <select name="duree" id="em-custom-duration" style="width:100%; padding:.5rem .75rem; border-radius:9px; border:1px solid #e2e8f0; font-size:.85rem;">
+                                        <option value="1">1 heure</option>
+                                        <option value="2" selected>2 heures</option>
+                                        <option value="3">3 heures</option>
+                                        <option value="4">4 heures</option>
+                                        <option value="8">Journée (8h)</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div>
-                                <label style="font-size:.75rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.35rem; display:block;">Activation</label>
-                                <select name="activation" style="width:100%; padding:.5rem .75rem; border-radius:9px; border:1px solid #e2e8f0; font-size:.88rem;">
-                                    <option value="immediate">Immédiate</option>
-                                    <option value="planifiee">Planifiée</option>
+
+                            <div style="background:#fff; border-radius:12px; border:1px solid #e8ecf1; padding:1rem 1.15rem;">
+                                <label style="font-size:.72rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.04em; margin-bottom:.35rem; display:block;">
+                                    <i class="fas fa-calendar-check" style="color:#0453cb; font-size:.65rem;"></i> Séance à venir
+                                    <span style="font-weight:400; text-transform:none; letter-spacing:0; color:#94a3b8;">(optionnel)</span>
+                                </label>
+                                <select name="seance_id" id="em-seance-select" style="width:100%; padding:.5rem .75rem; border-radius:9px; border:1px solid #e2e8f0; font-size:.85rem;">
+                                    <option value="">Aucune séance spécifique</option>
+                                    @if($seancesAVenir->isNotEmpty())
+                                        @php
+                                            $now = \Carbon\Carbon::now();
+                                            $upcomingOnly = $seancesAVenir->filter(function($s) use ($now) {
+                                                if ($s->date_seance) {
+                                                    $h = \Carbon\Carbon::parse($s->heure_debut)->format('H:i:s');
+                                                    return \Carbon\Carbon::parse($s->date_seance . ' ' . $h)->gt($now);
+                                                }
+                                                $h = \Carbon\Carbon::parse($s->heure_debut)->format('H:i:s');
+                                                return !\Carbon\Carbon::today()->setTimeFromTimeString($h)->lt($now);
+                                            });
+                                        @endphp
+                                        @foreach($upcomingOnly as $seance)
+                                        <option value="{{ $seance->id }}"
+                                                data-duration="{{ ceil($seance->getDuration() / 60) }}"
+                                                data-description="{{ ($seance->matiere->name ?? 'Matière') }} - {{ ($seance->classe->nom ?? 'Classe') }}">
+                                            {{ $seance->matiere->name ?? 'Matière' }} — {{ $seance->classe->nom ?? 'Classe' }}
+                                            ({{ $seance->heure_debut->format('H:i') }}–{{ $seance->heure_fin->format('H:i') }})
+                                            @if($seance->teacher) · {{ $seance->teacher->name }}@endif
+                                        </option>
+                                        @endforeach
+                                    @endif
                                 </select>
+                                <div style="font-size:.68rem; color:#94a3b8; margin-top:.25rem;">Remplit automatiquement la durée et la description</div>
                             </div>
                         </div>
 
-                        <div class="modal-footer" style="border-top:1px solid #e8ecf1; padding:.85rem 1.5rem; gap:.4rem;">
+                        <div class="modal-footer" style="border-top:1px solid #e8ecf1; padding:.85rem 1.5rem; background:#fff; gap:.4rem;">
                             <button type="button" class="btn" data-bs-dismiss="modal"
                                 style="border-radius:9px; padding:.45rem 1rem; font-size:.82rem; font-weight:600; color:#64748b; background:#f1f5f9; border:1px solid #e2e8f0;">
                                 Annuler
                             </button>
                             <button type="submit" class="btn"
                                 style="border-radius:9px; padding:.45rem 1rem; font-size:.82rem; font-weight:600; color:#fff; background:linear-gradient(135deg,#0453cb,#3b7ddb); border:none; box-shadow:0 2px 6px rgba(4,83,203,.25);">
-                                <i class="fas fa-key me-1" style="font-size:.7rem;"></i>Générer
+                                <i class="fas fa-key me-1" style="font-size:.7rem;"></i>Générer le code
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
+
+        <script>
+        document.getElementById('em-seance-select')?.addEventListener('change', function() {
+            const opt = this.options[this.selectedIndex];
+            if (opt.value) {
+                const dur = opt.dataset.duration;
+                const desc = opt.dataset.description;
+                if (dur) document.getElementById('em-custom-duration').value = dur;
+                if (desc) document.getElementById('em-custom-description').value = desc;
+            }
+        });
+        </script>
     </div>
 </div>
 @endsection
