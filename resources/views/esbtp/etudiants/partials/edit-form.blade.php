@@ -250,9 +250,9 @@
 </form>
 
 {{-- Modal HORS du form pour éviter le z-index stacking context --}}
-<div class="modal fade" id="searchParentModal" tabindex="-1" aria-labelledby="searchParentModalLabel" aria-hidden="true">
+<div class="modal" id="searchParentModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="true" aria-labelledby="searchParentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable se-parent-modal">
-        <div class="modal-content" style="border-radius:15px; border:none; box-shadow:0 10px 40px rgba(0,0,0,.2);">
+        <div class="modal-content" style="border-radius:15px; border:none; box-shadow:0 10px 40px rgba(0,0,0,.3);">
             <div class="modal-header" style="background:linear-gradient(135deg, var(--k-blue) 0%, var(--k-blue-2) 100%); color:#fff; border-radius:15px 15px 0 0; padding:1.25rem 1.5rem; border:none;">
                 <h5 class="modal-title fw-bold" id="searchParentModalLabel">
                     <i class="fas fa-user-friends me-2"></i>Sélectionner un Parent Existant

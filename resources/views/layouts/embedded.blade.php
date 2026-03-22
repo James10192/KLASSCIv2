@@ -135,7 +135,16 @@
             background: var(--primary-dark, #0340a0);
         }
 
-        /* Parent modal — prevent hover-induced scrollbar flash */
+        /* Parent modal — prevent flash/jitter */
+        #searchParentModal {
+            animation: none !important;
+            transition: none !important;
+        }
+
+        #searchParentModal .modal-backdrop {
+            animation: none !important;
+        }
+
         .se-parent-modal .modal-body {
             overflow-y: scroll;
         }
@@ -145,7 +154,12 @@
         }
 
         .se-parent-modal .table tbody tr {
-            transition: none;
+            transition: none !important;
+        }
+
+        .se-parent-modal .table-hover > tbody > tr:hover {
+            --bs-table-hover-bg: transparent;
+            background-color: #f0f4ff;
         }
 
         /* Badge overrides inside embedded */
