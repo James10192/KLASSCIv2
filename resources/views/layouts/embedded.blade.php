@@ -135,31 +135,20 @@
             background: var(--primary-dark, #0340a0);
         }
 
-        /* Parent search overlay (replaces Bootstrap modal to avoid iframe z-index flash) */
+        /* Parent search panel — rendered inline, no overlay, no position:fixed */
         .parent-search-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 9999;
-            background: rgba(0,0,0,0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-            overflow-y: auto;
+            display: none;
+        }
+
+        .parent-search-overlay.open {
+            display: block;
+            margin: 1rem 0;
         }
 
         .parent-search-panel {
             background: #fff;
+            border: 2px solid var(--primary, #0453cb);
             border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.25);
-            width: 100%;
-            max-width: 900px;
-            max-height: 80vh;
-            display: flex;
-            flex-direction: column;
             overflow: hidden;
         }
 
@@ -167,7 +156,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 1rem 1.25rem;
+            padding: 0.75rem 1.25rem;
             background: var(--primary, #0453cb);
             color: #fff;
         }
@@ -176,7 +165,7 @@
             background: none;
             border: none;
             color: rgba(255,255,255,0.8);
-            font-size: 1.1rem;
+            font-size: 1rem;
             cursor: pointer;
             padding: 0.25rem 0.5rem;
             border-radius: 6px;
@@ -188,30 +177,13 @@
         }
 
         .parent-search-body {
-            padding: 1.25rem;
+            padding: 1rem;
+            max-height: 350px;
             overflow-y: auto;
-            flex: 1;
         }
 
         .parent-search-body .table tbody tr {
             transition: none !important;
-        }
-
-        /* Kill ALL hover effects inside the parent search panel */
-        .parent-search-body .table-striped > tbody > tr:nth-of-type(odd) > * {
-            --bs-table-striped-bg: transparent;
-        }
-
-        .parent-search-body .table > tbody > tr:hover > * {
-            --bs-table-hover-bg: transparent;
-            --bs-table-accent-bg: transparent;
-            background-color: transparent !important;
-        }
-
-        /* Lock body scroll when panel is open */
-        body.parent-panel-open {
-            overflow: hidden !important;
-            height: 100vh !important;
         }
 
         /* Badge overrides inside embedded */
