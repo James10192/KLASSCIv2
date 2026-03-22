@@ -3410,9 +3410,12 @@
                         </li>
                     </ul>
                 </div>
+                <!-- Overlay that covers the entire parent modal when iframe opens parent search -->
+                <div id="parent-modal-overlay" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.35);z-index:50;border-radius:24px;"></div>
+
                 <div class="tab-content modern-tab-content" id="editStudentTabContent">
                     <div class="tab-pane fade show active" id="tab-etudiant" role="tabpanel">
-                        <div class="modal-iframe-wrapper" style="position:relative;">
+                        <div class="modal-iframe-wrapper" style="position:relative;z-index:60;">
                             <div id="student-edit-loader" class="iframe-loader">
                                 <div class="spinner-border text-primary" role="status" style="width:2rem;height:2rem;"></div>
                                 <span style="font-size:0.85rem;color:#64748b;margin-top:0.5rem;">Chargement du formulaire...</span>
@@ -3966,6 +3969,17 @@
             }
             editModal.show();
         }
+
+        // Listen for iframe messages to show/hide parent overlay
+        window.addEventListener('message', function(e) {
+            var overlay = document.getElementById('parent-modal-overlay');
+            if (!overlay) return;
+            if (e.data === 'parent-search-open') {
+                overlay.style.display = 'block';
+            } else if (e.data === 'parent-search-close') {
+                overlay.style.display = 'none';
+            }
+        });
 
         if (resultsContainer) {
             resultsContainer.addEventListener('click', function (event) {

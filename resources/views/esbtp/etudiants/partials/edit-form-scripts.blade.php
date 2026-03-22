@@ -190,6 +190,7 @@
             // Fermer le panel
             document.getElementById('searchParentModal').style.display = 'none';
             document.body.classList.remove('parent-panel-open');
+            if (window.parent) window.parent.postMessage('parent-search-close', '*');
 
             // Réinitialiser les champs de recherche
             document.getElementById('parent_search_query').value = '';
