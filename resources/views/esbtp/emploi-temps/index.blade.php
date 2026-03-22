@@ -74,7 +74,7 @@
     /* ── KPI Grid ─────────────────────────────────────────────────── */
     .et-kpi-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        grid-template-columns: repeat(4, 1fr);
         gap: var(--space-md);
         margin-bottom: var(--space-lg);
     }
@@ -744,11 +744,13 @@
     }
 
     /* ── Responsive ────────────────────────────────────────────────── */
+    @media (max-width: 992px) {
+        .et-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    }
     @media (max-width: 768px) {
         .et-header-inner { flex-direction: column; text-align: center; }
         .et-header-left { flex-direction: column; }
         .et-header-actions { justify-content: center; }
-        .et-kpi-grid { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 480px) {
         .et-kpi-grid { grid-template-columns: 1fr; }
