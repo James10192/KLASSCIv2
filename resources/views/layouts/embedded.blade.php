@@ -190,7 +190,23 @@
         }
 
         .parent-search-body .table tbody tr {
-            transition: none;
+            transition: none !important;
+        }
+
+        /* Kill ALL hover effects inside the parent search panel */
+        .parent-search-body .table-striped > tbody > tr:nth-of-type(odd) > * {
+            --bs-table-striped-bg: transparent;
+        }
+
+        .parent-search-body .table > tbody > tr:hover > * {
+            --bs-table-hover-bg: transparent;
+            --bs-table-accent-bg: transparent;
+            background-color: transparent !important;
+        }
+
+        /* Lock body scroll when panel is open */
+        body.parent-panel-open {
+            overflow: hidden;
         }
 
         /* Badge overrides inside embedded */
