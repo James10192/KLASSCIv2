@@ -223,7 +223,7 @@
                 <button type="button" class="btn btn-sm btn-primary" id="add-new-parent" style="border-radius:8px 0 0 8px;">
                     <i class="fas fa-plus me-1"></i>Nouveau
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-primary" id="add-existing-parent" onclick="var p=document.getElementById('searchParentModal');p.classList.add('open');p.scrollIntoView({behavior:'smooth'});if(window.parent)window.parent.postMessage('parent-search-open','*')" style="border-radius:0 8px 8px 0;">
+                <button type="button" class="btn btn-sm btn-outline-primary" id="add-existing-parent" onclick="var p=document.getElementById('searchParentModal');p.classList.add('open');p.scrollIntoView({behavior:'smooth',block:'nearest'})" style="border-radius:0 8px 8px 0;">
                     <i class="fas fa-search me-1"></i>Existant
                 </button>
             </div>
@@ -256,7 +256,7 @@
             <h5 style="margin:0;font-weight:700;font-size:1rem;">
                 <i class="fas fa-user-friends me-2"></i>Sélectionner un Parent Existant
             </h5>
-            <button type="button" class="parent-search-close" onclick="document.getElementById('searchParentModal').classList.remove('open');if(window.parent)window.parent.postMessage('parent-search-close','*')"
+            <button type="button" class="parent-search-close" onclick="document.getElementById('searchParentModal').classList.remove('open')"
                 <i class="fas fa-times"></i>
             </button>
         </div>

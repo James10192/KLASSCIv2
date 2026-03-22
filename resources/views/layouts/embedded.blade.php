@@ -142,7 +142,13 @@
 
         .parent-search-overlay.open {
             display: block;
-            margin: 1rem 0;
+            margin: 1.25rem 0;
+            animation: panelSlideIn 0.2s ease-out;
+        }
+
+        @keyframes panelSlideIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .parent-search-panel {
@@ -150,15 +156,20 @@
             border: 2px solid var(--primary, #0453cb);
             border-radius: 12px;
             overflow: hidden;
+            box-shadow: 0 4px 24px rgba(4, 83, 203, 0.12);
         }
 
         .parent-search-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0.75rem 1.25rem;
+            padding: 0.85rem 1.25rem;
             background: var(--primary, #0453cb);
             color: #fff;
+        }
+
+        .parent-search-header h5 {
+            font-size: 0.95rem;
         }
 
         .parent-search-close {
@@ -169,21 +180,61 @@
             cursor: pointer;
             padding: 0.25rem 0.5rem;
             border-radius: 6px;
+            transition: all 0.15s;
         }
 
         .parent-search-close:hover {
             color: #fff;
-            background: rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.2);
         }
 
         .parent-search-body {
-            padding: 1rem;
-            max-height: 350px;
+            padding: 1rem 1.25rem;
+            max-height: 400px;
             overflow-y: auto;
+        }
+
+        .parent-search-body .form-control,
+        .parent-search-body .form-select {
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            font-size: 0.88rem;
+        }
+
+        .parent-search-body .table {
+            margin-bottom: 0;
+            font-size: 0.88rem;
+        }
+
+        .parent-search-body .table thead th {
+            background: var(--primary, #0453cb);
+            color: #fff;
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            padding: 0.6rem 0.75rem;
+            border: none;
+        }
+
+        .parent-search-body .table tbody td {
+            padding: 0.6rem 0.75rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #f0f0f0;
         }
 
         .parent-search-body .table tbody tr {
             transition: none !important;
+        }
+
+        .parent-search-body .table tbody tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .parent-search-body .btn-primary {
+            font-size: 0.8rem;
+            padding: 0.35rem 0.9rem;
+            border-radius: 6px;
         }
 
         /* Badge overrides inside embedded */

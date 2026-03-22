@@ -189,7 +189,6 @@
 
             // Fermer le panel
             document.getElementById('searchParentModal').classList.remove('open');
-            if (window.parent) window.parent.postMessage('parent-search-close', '*');
 
             // Réinitialiser les champs de recherche
             document.getElementById('parent_search_query').value = '';
