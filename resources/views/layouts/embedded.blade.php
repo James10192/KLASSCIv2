@@ -29,6 +29,124 @@
             max-width: 1200px;
             margin: 0 auto;
         }
+
+        /* ─── Student Edit Form (se-*) ─── */
+        .se-section {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            margin-bottom: 1.25rem;
+            overflow: hidden;
+        }
+
+        .se-section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid #f0f0f0;
+            background: #fafbfc;
+        }
+
+        .se-section-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: rgba(4, 83, 203, 0.08);
+            color: #0453cb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .se-section-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #1e293b;
+        }
+
+        .se-section-desc {
+            font-size: 0.78rem;
+            color: #64748b;
+            margin-top: 1px;
+        }
+
+        .se-section-body {
+            padding: 1.25rem;
+        }
+
+        /* Form controls inside embedded */
+        .se-section-body .form-label {
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.3rem;
+        }
+
+        .se-section-body .form-control,
+        .se-section-body .form-select {
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            font-size: 0.88rem;
+            padding: 0.5rem 0.75rem;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .se-section-body .form-control:focus,
+        .se-section-body .form-select:focus {
+            border-color: #0453cb;
+            box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1);
+        }
+
+        .se-section-body .form-text {
+            font-size: 0.72rem;
+        }
+
+        .se-section-body .input-group .btn {
+            border-radius: 0 8px 8px 0;
+            font-size: 0.82rem;
+        }
+
+        /* Submit button */
+        .se-submit-wrap {
+            padding: 1rem 0 0;
+        }
+
+        .se-submit-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            padding: 0.75rem;
+            background: #0453cb;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .se-submit-btn:hover {
+            background: #0340a0;
+        }
+
+        /* Parent modal styling */
+        .se-parent-modal .modal-content {
+            border-radius: 12px;
+        }
+
+        /* Badge overrides inside embedded */
+        .se-section .badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            border-radius: 5px;
+            padding: 3px 8px;
+        }
     </style>
     @stack('styles')
 </head>
