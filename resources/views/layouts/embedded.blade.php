@@ -135,9 +135,17 @@
             background: var(--primary-dark, #0340a0);
         }
 
-        /* Parent modal styling */
-        .se-parent-modal .modal-content {
-            border-radius: 12px;
+        /* Parent modal — prevent hover-induced scrollbar flash */
+        .se-parent-modal .modal-body {
+            overflow-y: scroll;
+        }
+
+        .se-parent-modal .table {
+            margin-bottom: 0;
+        }
+
+        .se-parent-modal .table tbody tr {
+            transition: none;
         }
 
         /* Badge overrides inside embedded */
