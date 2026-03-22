@@ -1975,7 +1975,8 @@
        HERO MARQUEE (screenshots)
     ═══════════════════════ */
     .hero-marquee {
-        margin: 4rem auto 0;
+        margin: 4rem calc(-50vw + 50%) 0;
+        width: 100vw;
         overflow: hidden;
         position: relative;
     }
@@ -2357,7 +2358,6 @@
                         <div class="testimonial-name">Dr. Soro Kouadio</div>
                         <div class="testimonial-role">Directeur</div>
                     </div>
-                    <span class="testimonial-company">ESBTP Abidjan</span>
                 </div>
             </div>
 
@@ -2369,19 +2369,17 @@
                         <div class="testimonial-name">Ama Bamba</div>
                         <div class="testimonial-role">Comptable</div>
                     </div>
-                    <span class="testimonial-company">ESBTP Yamoussoukro</span>
                 </div>
             </div>
 
             <div class="testimonial reveal reveal-d2">
                 <p class="testimonial-text">"L'émargement numérique a <mark>réduit l'absentéisme de 30%</mark>. Les coordinateurs voient en temps réel qui est présent, sans attendre les feuilles de présence."</p>
                 <div class="testimonial-author">
-                    <img src="https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?w=100&h=100&fit=crop&crop=face" alt="Tarek Mehdy" class="testimonial-avatar">
+                    <img src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop&crop=face" alt="Tarek Mehdy" class="testimonial-avatar">
                     <div>
                         <div class="testimonial-name">Tarek Mehdy</div>
                         <div class="testimonial-role">Coordinateur</div>
                     </div>
-                    <span class="testimonial-company">ESBTP Yamoussoukro</span>
                 </div>
             </div>
         </div>
