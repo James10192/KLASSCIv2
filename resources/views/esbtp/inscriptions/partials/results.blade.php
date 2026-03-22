@@ -3,11 +3,11 @@
         <table class="table table-hover align-middle mb-0">
             <thead class="bg-light">
                 <tr>
-                    @if(auth()->user()->hasRole('superAdmin'))
+                    @can('inscriptions.validate')
                     <th style="width: 40px;">
                         <input type="checkbox" id="select-all-inscriptions" class="form-check-input">
                     </th>
-                    @endif
+                    @endcan
                     <th>N° Inscription</th>
                     <th>Matricule</th>
                     <th>Étudiant</th>
@@ -27,7 +27,7 @@
                         $problemeClass = $hasProbleme ? ($problemeInfo['type'] === 'error' ? 'table-danger' : 'table-warning') : '';
                     @endphp
                     <tr class="{{ $problemeClass }}" data-inscription-id="{{ $inscription->id }}">
-                        @if(auth()->user()->hasRole('superAdmin'))
+                        @can('inscriptions.validate')
                         <td>
                             @if($inscription->status == 'pending' || $inscription->status == 'en_attente')
                             <input type="checkbox" class="form-check-input inscription-checkbox"
@@ -35,7 +35,7 @@
                                    data-inscription-id="{{ $inscription->id }}">
                             @endif
                         </td>
-                        @endif
+                        @endcan
                         <td style="max-width: 250px;">
                             @if($hasProbleme)
                                 <div class="d-flex flex-column gap-2">

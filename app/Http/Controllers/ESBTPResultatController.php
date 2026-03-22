@@ -109,6 +109,7 @@ class ESBTPResultatController extends Controller
         // Always load all active classes with relationships, regardless of filters
         $classes = ESBTPClasse::with(['filiere', 'niveau'])
             ->where('is_active', true)
+            ->where(fn($q) => $q->whereNull('systeme_academique')->orWhere('systeme_academique', '!=', 'LMD'))
             ->orderBy('name', 'asc')
             ->get();
 
@@ -204,6 +205,7 @@ class ESBTPResultatController extends Controller
         }
 
         $classesQuery = ESBTPClasse::with(['filiere', 'niveau', 'anneeUniversitaire'])
+            ->where(fn($q) => $q->whereNull('systeme_academique')->orWhere('systeme_academique', '!=', 'LMD'))
             ->withCount(['inscriptions as actifs_count' => function ($query) use ($annee_universitaire_id) {
                 $query->where('status', 'active')
                     ->where('annee_universitaire_id', $annee_universitaire_id);

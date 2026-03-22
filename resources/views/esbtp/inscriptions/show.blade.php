@@ -540,7 +540,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                         <span class="d-none d-md-inline ms-1">Administration</span>
                     </a>
 
-                    @if(auth()->user()->hasRole('superAdmin') && $inscription->status === 'en_attente' && !$inscription->paiement_validation_id)
+                    @if(auth()->user()->can('inscriptions.validate') && $inscription->status === 'en_attente' && !$inscription->paiement_validation_id)
                         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#paymentModal" onclick="preparePaymentModal({{ $inscription->id }})">
                             <i class="fas fa-credit-card"></i>
                             <span class="d-none d-lg-inline ms-1">Valider avec paiement</span>
@@ -1723,12 +1723,12 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                 </td>
                                                 <td>
                                                     <div class="btn-group">
-                                                        @if(auth()->user()->hasRole('superAdmin') && $item['is_configured'] && $item['solde'] > 0)
+                                                        @if(auth()->user()->can('paiements.create') && $item['is_configured'] && $item['solde'] > 0)
                                                             <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#paymentModal" onclick="preparePaymentModalForCategory({{ $inscription->id }}, {{ $item['category']->id }})" title="Effectuer un paiement">
                                                                 <i class="fas fa-credit-card"></i>
                                                             </button>
                                                         @endif
-                                                        @if(auth()->user()->hasRole('superAdmin') && $item['subscription'])
+                                                        @if(auth()->user()->can('inscriptions.edit') && $item['subscription'])
                                                             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editSubscriptionModal" onclick="prepareEditSubscriptionModal({{ $item['subscription']->id }}, {{ json_encode($item['category']->name) }}, {{ $item['subscription']->amount }})" title="Modifier le montant de la souscription">
                                                                 <i class="fas fa-edit"></i>
                                                             </button>
@@ -1984,12 +1984,12 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 
                                         <!-- Actions -->
                                         <div class="financial-actions">
-                                                @if(auth()->user()->hasRole('superAdmin') && $item['is_configured'] && $item['solde'] > 0)
+                                                @if(auth()->user()->can('paiements.create') && $item['is_configured'] && $item['solde'] > 0)
                                                     <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#paymentModal" onclick="preparePaymentModalForCategory({{ $inscription->id }}, {{ $item['category']->id }})" title="Effectuer un paiement">
                                                         <i class="fas fa-credit-card me-1"></i>Payer
                                                     </button>
                                                 @endif
-                                                @if(auth()->user()->hasRole('superAdmin') && $item['subscription'])
+                                                @if(auth()->user()->can('inscriptions.edit') && $item['subscription'])
                                                     <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editSubscriptionModal" onclick="prepareEditSubscriptionModal({{ $item['subscription']->id }}, {{ json_encode($item['category']->name) }}, {{ $item['subscription']->amount }})" title="Modifier le montant">
                                                         <i class="fas fa-edit me-1"></i>Modifier
                                                     </button>
