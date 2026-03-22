@@ -1228,6 +1228,198 @@
     .hero .reveal.visible.reveal-d2 { animation-delay: 200ms; }
     .hero .reveal.visible.reveal-d3 { animation-delay: 300ms; }
 
+    /* ─── PREMIUM ANIMATIONS ─── */
+
+    /* 1. Gradient text shimmer on hero h1 */
+    .hero h1 {
+        background: linear-gradient(
+            90deg,
+            var(--accent) 0%,
+            #5e91de 25%,
+            var(--accent) 50%,
+            #5e91de 75%,
+            var(--accent) 100%
+        );
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: gradientText 4s linear infinite;
+    }
+
+    html.dark .hero h1 {
+        background: linear-gradient(
+            90deg,
+            #4b8af0 0%,
+            #7ab0ff 25%,
+            #4b8af0 50%,
+            #7ab0ff 75%,
+            #4b8af0 100%
+        );
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: gradientText 4s linear infinite;
+    }
+
+    @keyframes gradientText {
+        to { background-position: 200% center; }
+    }
+
+    /* 2. Slide-in from left/right for feature-big sections */
+    .reveal-left {
+        opacity: 0;
+        transform: translateX(-40px);
+        transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+    }
+    .reveal-right {
+        opacity: 0;
+        transform: translateX(40px);
+        transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+    }
+    .reveal-left.visible, .reveal-right.visible {
+        opacity: 1;
+        transform: none;
+    }
+
+    /* 3. Scale-in for hero image */
+    .reveal-scale {
+        opacity: 0;
+        transform: scale(0.92);
+        transition: opacity 0.9s var(--ease-out), transform 0.9s var(--ease-out);
+    }
+    .reveal-scale.visible {
+        opacity: 1;
+        transform: none;
+    }
+
+    /* 4. Floating blobs / decorative shapes behind hero */
+    .hero-blobs {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+        z-index: -1;
+    }
+
+    .blob {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.12;
+        animation: blobFloat 12s ease-in-out infinite alternate;
+    }
+
+    html.dark .blob { opacity: 0.06; }
+
+    .blob-1 {
+        width: 400px; height: 400px;
+        background: var(--accent);
+        top: -10%; right: 10%;
+    }
+    .blob-2 {
+        width: 300px; height: 300px;
+        background: #5e91de;
+        bottom: -5%; left: 5%;
+        animation-delay: -4s;
+        animation-duration: 15s;
+    }
+    .blob-3 {
+        width: 200px; height: 200px;
+        background: var(--accent);
+        top: 40%; left: 60%;
+        animation-delay: -8s;
+        animation-duration: 18s;
+    }
+
+    @keyframes blobFloat {
+        0% { transform: translate(0, 0) scale(1); }
+        33% { transform: translate(30px, -20px) scale(1.05); }
+        66% { transform: translate(-20px, 15px) scale(0.95); }
+        100% { transform: translate(10px, -10px) scale(1.02); }
+    }
+
+    /* 5. Shimmer line separator between sections */
+    .shimmer-line {
+        height: 1px;
+        background: linear-gradient(90deg, transparent 0%, var(--accent) 50%, transparent 100%);
+        background-size: 200% 100%;
+        animation: shimmerSlide 3s ease-in-out infinite;
+        opacity: 0.3;
+    }
+
+    @keyframes shimmerSlide {
+        0%, 100% { background-position: 200% 0; }
+        50% { background-position: -200% 0; }
+    }
+
+    /* 6. Button pulse on hero CTA */
+    .btn-primary {
+        position: relative;
+    }
+
+    .btn-primary::after {
+        content: '';
+        position: absolute;
+        inset: -3px;
+        border-radius: inherit;
+        background: var(--accent);
+        opacity: 0;
+        z-index: -1;
+        animation: btnPulse 2.5s var(--ease-out) infinite;
+    }
+
+    @keyframes btnPulse {
+        0% { opacity: 0.4; transform: scale(1); }
+        100% { opacity: 0; transform: scale(1.15); }
+    }
+
+    /* 7. Pillar cards stagger slide-up */
+    .pillar {
+        opacity: 0;
+        transform: translateY(20px);
+        transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out);
+    }
+    .pillars.in-view .pillar:nth-child(1) { opacity: 1; transform: none; transition-delay: 0ms; }
+    .pillars.in-view .pillar:nth-child(2) { opacity: 1; transform: none; transition-delay: 150ms; }
+    .pillars.in-view .pillar:nth-child(3) { opacity: 1; transform: none; transition-delay: 300ms; }
+
+    /* 8. Testimonial cards tilt on hover */
+    .testimonial {
+        transition: all 0.35s var(--ease-out);
+    }
+    .testimonial:hover {
+        transform: translateY(-4px) rotate(-0.5deg);
+    }
+
+    /* 9. Feature tile icon appear */
+    .feature-tile {
+        position: relative;
+        overflow: hidden;
+    }
+    .feature-tile::after {
+        content: '';
+        position: absolute;
+        top: 0; left: -100%;
+        width: 60%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, var(--accent-light), transparent);
+        transition: left 0.6s var(--ease-out);
+    }
+    .feature-tile:hover::after {
+        left: 100%;
+    }
+
+    /* 10. Pricing card lift on hover */
+    .price-col {
+        transition: all 0.3s var(--ease-out);
+    }
+    .price-col:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(4,83,203,0.1);
+    }
+
     /* Disable transitions briefly during theme switch */
     .no-transitions,
     .no-transitions *,
@@ -1728,7 +1920,12 @@
 </div>
 
 <!-- HERO -->
-<section class="hero">
+<section class="hero" style="position:relative">
+    <div class="hero-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
     <div class="container">
         <h1 class="reveal">Gestion scolaire, repensée.</h1>
         <p class="hero-sub reveal reveal-d1">
@@ -1746,7 +1943,7 @@
         </div>
         <p class="hero-note reveal reveal-d3">Disponible sur navigateur. Aucune installation requise.</p>
 
-        <div class="hero-image reveal">
+        <div class="hero-image reveal-scale">
             <img src="{{ asset('images/landing/hero_section.png') }}" alt="KLASSCI — Tableau de bord Super Admin" loading="eager" width="900" height="auto">
         </div>
     </div>
@@ -1837,25 +2034,25 @@
         <p class="features-intro reveal reveal-d1">Chaque fonctionnalité a été construite en écoutant les besoins réels des établissements que nous accompagnons depuis 2023.</p>
 
         <!-- Big feature 1 -->
-        <div class="feature-big reveal">
-            <div class="feature-big-text">
+        <div class="feature-big">
+            <div class="feature-big-text reveal-left">
                 <h3>Saisie des notes et bulletins</h3>
                 <p>Les enseignants saisissent leurs notes directement depuis leur téléphone. Les moyennes, rangs et appréciations se calculent automatiquement. Les bulletins PDF sont générés en un clic, personnalisés aux couleurs de votre école.</p>
                 <a href="#" class="feat-modal-trigger" data-feature="notes">En savoir plus &gt;</a>
             </div>
-            <div class="feature-big-image">
+            <div class="feature-big-image reveal-right">
                 <img src="{{ asset('images/landing/Saisie_des_notes_et_bulletins.png') }}" alt="Saisie des notes et bulletins — fiche étudiant KLASSCI" loading="lazy">
             </div>
         </div>
 
         <!-- Big feature 2 -->
-        <div class="feature-big reveal">
-            <div class="feature-big-text">
+        <div class="feature-big">
+            <div class="feature-big-text reveal-right">
                 <h3>Suivi financier en temps réel</h3>
                 <p>Visualisez instantanément l'état des paiements de chaque étudiant. Envoyez des relances automatiques, générez des reçus, et exportez vos rapports financiers. Compatible avec le système de frais par catégorie.</p>
                 <a href="#" class="feat-modal-trigger" data-feature="finance">En savoir plus &gt;</a>
             </div>
-            <div class="feature-big-image">
+            <div class="feature-big-image reveal-left">
                 <img src="{{ asset('images/landing/Suivi_financier_en_temps_réel.png') }}" alt="Dashboard Comptabilité — suivi financier en temps réel" loading="lazy">
             </div>
         </div>
@@ -2257,14 +2454,25 @@
     btn.addEventListener('click', function() { mob.classList.toggle('open'); });
     window.closeMobile = function() { mob.classList.remove('open'); };
 
-    // Scroll reveal
-    var els = document.querySelectorAll('.reveal');
+    // Scroll reveal — supports .reveal, .reveal-left, .reveal-right, .reveal-scale
+    var els = document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-scale');
     var obs = new IntersectionObserver(function(entries) {
         entries.forEach(function(e) {
             if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
         });
     }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
     els.forEach(function(el) { obs.observe(el); });
+
+    // Pillar stagger animation
+    var pillars = document.querySelector('.pillars');
+    if (pillars) {
+        var pObs = new IntersectionObserver(function(entries) {
+            entries.forEach(function(e) {
+                if (e.isIntersecting) { e.target.classList.add('in-view'); pObs.unobserve(e.target); }
+            });
+        }, { threshold: 0.2 });
+        pObs.observe(pillars);
+    }
 
     // Video lazy load + play/pause
     var video = document.getElementById('testimonialVideo');
