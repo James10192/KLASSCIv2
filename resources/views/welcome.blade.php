@@ -590,14 +590,16 @@
     /* Testimonials — organic masonry like zed */
     .testimonials-grid {
         display: grid;
-        grid-template-columns: 1fr 1.2fr 1fr;
+        grid-template-columns: repeat(3, 1fr);
         gap: 1.5rem;
-        align-items: start;
+        align-items: stretch;
     }
 
     .testimonial {
         padding: 1.75rem;
         border: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
         border-radius: var(--radius);
         background: var(--bg-card);
         transition: all var(--duration-normal) var(--ease-out);
@@ -629,10 +631,13 @@
         border-radius: 2px;
     }
 
+    .testimonial-text { flex: 1; }
+
     .testimonial-author {
         display: flex;
         align-items: center;
         gap: 0.75rem;
+        margin-top: auto;
     }
 
     .testimonial-avatar {
@@ -1979,46 +1984,27 @@
         box-shadow:
             0 2px 4px rgba(0,0,0,0.04),
             0 12px 40px rgba(0,0,0,0.08);
-        aspect-ratio: 16/10;
     }
 
     .hero-slide {
         position: absolute;
         inset: 0;
         opacity: 0;
-        animation: heroSlide 20s infinite;
+        transition: opacity 0.8s var(--ease-out);
+    }
+
+    .hero-slide:first-child {
+        position: relative;
+    }
+
+    .hero-slide.active {
+        opacity: 1;
+        z-index: 1;
     }
 
     .hero-slide img {
         width: 100%;
-        height: 100%;
-        object-fit: cover;
-        object-position: top left;
-        animation: kenBurns 20s infinite;
-    }
-
-    /* 4 slides — each visible for 4s, fade takes 1s, total cycle = 20s */
-    .hero-slide:nth-child(1) { animation-delay: 0s; }
-    .hero-slide:nth-child(1) img { animation-delay: 0s; }
-    .hero-slide:nth-child(2) { animation-delay: 5s; }
-    .hero-slide:nth-child(2) img { animation-delay: 5s; }
-    .hero-slide:nth-child(3) { animation-delay: 10s; }
-    .hero-slide:nth-child(3) img { animation-delay: 10s; }
-    .hero-slide:nth-child(4) { animation-delay: 15s; }
-    .hero-slide:nth-child(4) img { animation-delay: 15s; }
-
-    @keyframes heroSlide {
-        0%      { opacity: 0; }
-        2%      { opacity: 1; }
-        23%     { opacity: 1; }
-        27%     { opacity: 0; }
-        100%    { opacity: 0; }
-    }
-
-    @keyframes kenBurns {
-        0%      { transform: scale(1) translate(0, 0); }
-        25%     { transform: scale(1.06) translate(-1%, -1%); }
-        100%    { transform: scale(1) translate(0, 0); }
+        display: block;
     }
 
     /* Slide indicator dots */
@@ -2164,23 +2150,37 @@
         <p class="hero-note reveal reveal-d3">Disponible sur navigateur. Aucune installation requise.</p>
 
         <div class="hero-slideshow reveal-scale" id="heroSlideshow">
-            <div class="hero-slide">
-                <img src="{{ asset('images/landing/hero_section.png') }}" alt="Tableau de bord Super Admin" loading="eager">
+            <div class="hero-slide active">
+                <img src="{{ asset('images/landing/hero_section.png') }}" alt="Tableau de bord" loading="eager">
             </div>
             <div class="hero-slide">
                 <img src="{{ asset('images/landing/page-étudiants.png') }}" alt="Gestion des étudiants" loading="lazy">
             </div>
             <div class="hero-slide">
-                <img src="{{ asset('images/landing/resultats.png') }}" alt="Résultats et bulletins" loading="lazy">
-            </div>
-            <div class="hero-slide">
                 <img src="{{ asset('images/landing/nuvelle_inscription.png') }}" alt="Nouvelle inscription" loading="lazy">
             </div>
+            <div class="hero-slide">
+                <img src="{{ asset('images/landing/resultats.png') }}" alt="Résultats" loading="lazy">
+            </div>
+            <div class="hero-slide">
+                <img src="{{ asset('images/landing/planning-général.png') }}" alt="Planning général" loading="lazy">
+            </div>
+            <div class="hero-slide">
+                <img src="{{ asset('images/landing/gestion-presences.png') }}" alt="Gestion des présences" loading="lazy">
+            </div>
+            <div class="hero-slide">
+                <img src="{{ asset('images/landing/parcours-lmd.png') }}" alt="Parcours LMD" loading="lazy">
+            </div>
+            <div class="hero-slide">
+                <img src="{{ asset('images/landing/gestion-personnel.png') }}" alt="Gestion du personnel" loading="lazy">
+            </div>
+            <div class="hero-slide">
+                <img src="{{ asset('images/landing/code-emargement.png') }}" alt="Code d'émargement" loading="lazy">
+            </div>
             <div class="hero-dots">
-                <span class="hero-dot active" data-slide="0"></span>
-                <span class="hero-dot" data-slide="1"></span>
-                <span class="hero-dot" data-slide="2"></span>
-                <span class="hero-dot" data-slide="3"></span>
+                @for($i = 0; $i < 9; $i++)
+                <span class="hero-dot {{ $i === 0 ? 'active' : '' }}" data-slide="{{ $i }}"></span>
+                @endfor
             </div>
         </div>
     </div>
@@ -2227,17 +2227,17 @@
                 <div class="proof-logo-card">
                     <img src="{{ asset('images/landing/institut-pascal-logo.jpeg') }}" alt="Institut Pascal">
                     <div class="proof-logo-name">Institut Pascal</div>
-                    <div class="proof-logo-detail">Établissement partenaire</div>
+                    <div class="proof-logo-detail">1 000+ étudiants · Plan Élite</div>
                 </div>
                 <div class="proof-logo-card">
                     <img src="{{ asset('images/landing/san-andrea-school.jpeg') }}" alt="San Andrea School">
                     <div class="proof-logo-name">San Andrea School</div>
-                    <div class="proof-logo-detail">Établissement partenaire</div>
+                    <div class="proof-logo-detail">1 200+ étudiants · Plan Élite</div>
                 </div>
                 <div class="proof-logo-card">
                     <img src="{{ asset('images/landing/its-logo.jpeg') }}" alt="ITS">
                     <div class="proof-logo-name">ITS</div>
-                    <div class="proof-logo-detail">Établissement partenaire</div>
+                    <div class="proof-logo-detail">800+ étudiants · Plan Pro</div>
                 </div>
                 {{-- Duplicate for seamless loop --}}
                 <div class="proof-logo-card">
@@ -2253,17 +2253,17 @@
                 <div class="proof-logo-card">
                     <img src="{{ asset('images/landing/institut-pascal-logo.jpeg') }}" alt="Institut Pascal">
                     <div class="proof-logo-name">Institut Pascal</div>
-                    <div class="proof-logo-detail">Établissement partenaire</div>
+                    <div class="proof-logo-detail">1 000+ étudiants · Plan Élite</div>
                 </div>
                 <div class="proof-logo-card">
                     <img src="{{ asset('images/landing/san-andrea-school.jpeg') }}" alt="San Andrea School">
                     <div class="proof-logo-name">San Andrea School</div>
-                    <div class="proof-logo-detail">Établissement partenaire</div>
+                    <div class="proof-logo-detail">1 200+ étudiants · Plan Élite</div>
                 </div>
                 <div class="proof-logo-card">
                     <img src="{{ asset('images/landing/its-logo.jpeg') }}" alt="ITS">
                     <div class="proof-logo-name">ITS</div>
-                    <div class="proof-logo-detail">Établissement partenaire</div>
+                    <div class="proof-logo-detail">800+ étudiants · Plan Pro</div>
                 </div>
             </div>
         </div>
@@ -2873,32 +2873,30 @@
         if (e.key === 'Escape' && featOverlay.classList.contains('open')) closeFeatModal();
     });
 
-    // Hero slideshow dots sync
-    var heroDots = document.querySelectorAll('.hero-dot');
+    // Hero slideshow — JS-driven crossfade
     var heroSlides = document.querySelectorAll('.hero-slide');
-    if (heroDots.length && heroSlides.length) {
-        var slideCount = heroSlides.length;
-        var slideDuration = 5000; // 5s per slide, matches CSS 20s / 4 slides
-        var currentSlide = 0;
+    var heroDots = document.querySelectorAll('.hero-dot');
+    if (heroSlides.length > 1) {
+        var current = 0;
+        heroSlides[0].classList.add('active');
 
-        function updateDots(idx) {
-            heroDots.forEach(function(d, i) {
-                d.classList.toggle('active', i === idx);
-            });
+        function goToSlide(idx) {
+            heroSlides[current].classList.remove('active');
+            heroDots[current].classList.remove('active');
+            current = idx % heroSlides.length;
+            heroSlides[current].classList.add('active');
+            heroDots[current].classList.add('active');
         }
 
-        // Auto-sync dots with CSS animation
-        setInterval(function() {
-            currentSlide = (currentSlide + 1) % slideCount;
-            updateDots(currentSlide);
-        }, slideDuration);
+        var autoPlay = setInterval(function() {
+            goToSlide(current + 1);
+        }, 4000);
 
-        // Click on dot to jump (restart CSS animation)
         heroDots.forEach(function(dot) {
             dot.addEventListener('click', function() {
-                var idx = parseInt(this.dataset.slide);
-                currentSlide = idx;
-                updateDots(idx);
+                clearInterval(autoPlay);
+                goToSlide(parseInt(this.dataset.slide));
+                autoPlay = setInterval(function() { goToSlide(current + 1); }, 4000);
             });
         });
     }
