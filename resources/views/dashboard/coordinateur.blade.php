@@ -624,7 +624,7 @@
                 <div class="cd-kpi-icon"><i class="fas fa-chalkboard-teacher"></i></div>
                 <div class="cd-kpi-label">Enseignants</div>
                 <div class="cd-kpi-value" data-kpi="totalTeachers">{{ $totalTeachers ?? 0 }}</div>
-                <a href="{{ route('esbtp.teachers.index') }}" class="cd-kpi-link">
+                <a href="{{ route('esbtp.enseignants.index') }}" class="cd-kpi-link">
                     Gerer <i class="fas fa-arrow-right"></i>
                 </a>
             </div>
@@ -872,7 +872,7 @@
                             <a href="{{ route('esbtp.evaluations.index') }}" class="cd-action-btn"><i class="fas fa-clipboard-list"></i> Evaluations</a>
                             <a href="{{ route('esbtp.notes.index') }}" class="cd-action-btn"><i class="fas fa-edit"></i> Notes</a>
                             <a href="{{ route('esbtp.etudiants.index') }}" class="cd-action-btn"><i class="fas fa-user-graduate"></i> Etudiants</a>
-                            <a href="{{ route('esbtp.teachers.index') }}" class="cd-action-btn"><i class="fas fa-chalkboard-teacher"></i> Enseignants</a>
+                            <a href="{{ route('esbtp.enseignants.index') }}" class="cd-action-btn"><i class="fas fa-chalkboard-teacher"></i> Enseignants</a>
                             <a href="{{ route('esbtp.annonces.index') }}" class="cd-action-btn"><i class="fas fa-bullhorn"></i> Annonces</a>
                             <a href="{{ route('esbtp.attendances.index') }}" class="cd-action-btn"><i class="fas fa-user-check"></i> Presences</a>
                         </div>

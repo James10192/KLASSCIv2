@@ -255,14 +255,16 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Routes pour la gestion du profil coordinateur
+    // Dashboard coordinateur — AJAX data refresh (accessible au superAdmin aussi)
+    Route::middleware(['role:coordinateur|superAdmin'])->group(function () {
+        Route::get('/coordinateur/dashboard-data', [App\Http\Controllers\DashboardController::class, 'coordinateurDashboardData'])->name('coordinateur.dashboard-data');
+    });
+
     Route::middleware(['role:coordinateur'])->group(function () {
         Route::get('/coordinateur/profile', [AdminProfileController::class, 'index'])->name('coordinateur.profile');
         Route::put('/coordinateur/profile/update', [AdminProfileController::class, 'update'])->name('coordinateur.profile.update');
         Route::put('/coordinateur/profile/update-professional', [AdminProfileController::class, 'updateProfessionalInfo'])->name('coordinateur.profile.update.professional');
         Route::put('/coordinateur/profile/update-password', [AdminProfileController::class, 'updatePassword'])->name('coordinateur.password.update');
-
-        // Dashboard coordinateur — AJAX data refresh
-        Route::get('/coordinateur/dashboard-data', [App\Http\Controllers\DashboardController::class, 'coordinateurDashboardData'])->name('coordinateur.dashboard-data');
 
         // Tableau de bord des présences pour coordinateurs
         Route::get('/coordinateur/attendance-dashboard', [App\Http\Controllers\CoordinateurDashboardController::class, 'attendanceDashboard'])->name('coordinateur.attendance-dashboard');

@@ -972,7 +972,7 @@ class DashboardController extends Controller
     public function coordinateurDashboardData()
     {
         $user = Auth::user();
-        if (!$user || !$user->hasRole('coordinateur')) {
+        if (!$user || !$user->hasAnyRole(['coordinateur', 'superAdmin'])) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -1024,7 +1024,7 @@ class DashboardController extends Controller
                     'attendance_rate' => $totalPresent + $totalAbsent > 0 ? round(($totalPresent / ($totalPresent + $totalAbsent)) * 100, 1) : 0,
                 ];
             }
-            $totalClasses = ESBTPClasse::where('is_active', true)->count();
+            $totalClasses = ESBTPClasse::count();
             $totalTeachers = ESBTPTeacher::count();
         } catch (\Exception $e) {
             // Keep defaults
