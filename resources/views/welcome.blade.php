@@ -828,8 +828,8 @@
 
     .info-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 4rem;
+        grid-template-columns: 1fr 1.4fr;
+        gap: 2.5rem;
         align-items: center;
     }
 
@@ -1488,6 +1488,148 @@
     html.dark .theme-toggle .moon { display: none; }
 
     /* ═══════════════════════
+       FEATURE MODAL
+    ═══════════════════════ */
+    .feat-modal-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 200;
+        background: rgba(0,0,0,0.5);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--duration-slow) var(--ease-out);
+    }
+
+    .feat-modal-overlay.open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .feat-modal {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        max-width: 720px;
+        width: 100%;
+        max-height: 85vh;
+        overflow-y: auto;
+        transform: translateY(24px) scale(0.97);
+        transition: transform var(--duration-slow) var(--ease-out);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    }
+
+    .feat-modal-overlay.open .feat-modal {
+        transform: none;
+    }
+
+    .feat-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.5rem 2rem 0;
+    }
+
+    .feat-modal-header h3 {
+        font-family: 'IBM Plex Serif', serif;
+        font-weight: 300;
+        font-size: 1.5rem;
+        color: var(--accent);
+        letter-spacing: -0.02em;
+    }
+
+    .feat-modal-close {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: none;
+        cursor: pointer;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        transition: all var(--duration-normal);
+        flex-shrink: 0;
+    }
+
+    .feat-modal-close:hover {
+        color: var(--text);
+        border-color: var(--border-strong);
+        background: var(--accent-light);
+    }
+
+    .feat-modal-image {
+        margin: 1.5rem 2rem;
+        border-radius: var(--radius);
+        overflow: hidden;
+        border: 1px solid var(--border);
+    }
+
+    .feat-modal-image img {
+        width: 100%;
+        display: block;
+    }
+
+    .feat-modal-body {
+        padding: 0 2rem 2rem;
+    }
+
+    .feat-modal-body p {
+        font-family: 'IBM Plex Sans', sans-serif;
+        font-size: 1rem;
+        color: var(--text-secondary);
+        line-height: 1.65;
+        margin-bottom: 1rem;
+    }
+
+    .feat-modal-body ul {
+        list-style: none;
+        padding: 0;
+        margin: 1rem 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+
+    .feat-modal-body ul li {
+        font-family: 'IBM Plex Sans', sans-serif;
+        font-size: 0.95rem;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: flex-start;
+        gap: 0.6rem;
+    }
+
+    .feat-modal-body ul li::before {
+        content: '✓';
+        color: var(--accent);
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .feat-modal-cta {
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    @media (max-width: 640px) {
+        .feat-modal-overlay { padding: 1rem; }
+        .feat-modal-header, .feat-modal-image, .feat-modal-body { padding-left: 1.25rem; padding-right: 1.25rem; }
+        .feat-modal-image { margin-left: 1.25rem; margin-right: 1.25rem; }
+    }
+
+    /* ═══════════════════════
        BORDER TRANSITION
     ═══════════════════════ */
     .pillars, .proof, .features, .video-section,
@@ -1658,7 +1800,7 @@
             <div class="feature-big-text">
                 <h3>Saisie des notes et bulletins</h3>
                 <p>Les enseignants saisissent leurs notes directement depuis leur téléphone. Les moyennes, rangs et appréciations se calculent automatiquement. Les bulletins PDF sont générés en un clic, personnalisés aux couleurs de votre école.</p>
-                <a href="#">En savoir plus &gt;</a>
+                <a href="#" class="feat-modal-trigger" data-feature="notes">En savoir plus &gt;</a>
             </div>
             <div class="feature-big-image">
                 <img src="{{ asset('images/landing/Saisie_des_notes_et_bulletins.png') }}" alt="Saisie des notes et bulletins — fiche étudiant KLASSCI" loading="lazy">
@@ -1670,7 +1812,7 @@
             <div class="feature-big-text">
                 <h3>Suivi financier en temps réel</h3>
                 <p>Visualisez instantanément l'état des paiements de chaque étudiant. Envoyez des relances automatiques, générez des reçus, et exportez vos rapports financiers. Compatible avec le système de frais par catégorie.</p>
-                <a href="#">En savoir plus &gt;</a>
+                <a href="#" class="feat-modal-trigger" data-feature="finance">En savoir plus &gt;</a>
             </div>
             <div class="feature-big-image">
                 <img src="{{ asset('images/landing/Suivi_financier_en_temps_réel.png') }}" alt="Dashboard Comptabilité — suivi financier en temps réel" loading="lazy">
@@ -1742,8 +1884,7 @@
             </div>
             <div class="info-text">
                 <h2>Sécurité et confiance totales</h2>
-                <p>Nous garantissons la protection optimale de vos données, dans le respect strict des normes RGPD.</p>
-                <p>Notre équipe dédiée à la cybersécurité travaille en continu pour renforcer et améliorer nos dispositifs de protection.</p>
+                <p>Nous garantissons la protection optimale de vos données, dans le respect strict des normes RGPD. Notre équipe dédiée à la cybersécurité travaille en continu pour renforcer nos dispositifs de protection.</p>
                 <p>Chaque établissement dispose de sa propre base de données isolée — aucun partage de données entre écoles.</p>
             </div>
         </div>
@@ -1756,13 +1897,11 @@
         <div class="info-grid reverse reveal">
             <div class="info-text">
                 <h2>Support client disponible 24h/24</h2>
-                <p>Accédez à des informations fiables à tout moment grâce à notre chatbot intégré.</p>
-                <p>Échangez directement avec notre service client par email, WhatsApp ou Telegram.</p>
-                <p>Nos agents maîtrisent parfaitement le français et l'anglais, pour une communication fluide.</p>
-                <p>Temps d'attente minimal : une réponse en moins de 2 minutes dans la majorité des cas.</p>
+                <p>Accédez à des informations fiables à tout moment grâce à notre chatbot intégré. Échangez directement avec notre service client par email, WhatsApp ou Telegram.</p>
+                <p>Nos agents maîtrisent le français et l'anglais. Temps de réponse moyen : moins de 2 minutes.</p>
             </div>
             <div class="info-image">
-                <img src="{{ asset('images/Images landingPage/bulles.png') }}" alt="Support client KLASSCI — chat et assistance" loading="lazy" style="max-width: 350px; margin: 0 auto;">
+                <img src="{{ asset('images/Images landingPage/bulles.png') }}" alt="Support client KLASSCI — chat et assistance" loading="lazy" style="max-width: 320px; margin: 0 auto;">
             </div>
         </div>
     </div>
@@ -1985,6 +2124,20 @@
     </div>
 </section>
 
+<!-- FEATURE MODAL -->
+<div class="feat-modal-overlay" id="featModalOverlay">
+    <div class="feat-modal">
+        <div class="feat-modal-header">
+            <h3 id="featModalTitle"></h3>
+            <button class="feat-modal-close" id="featModalClose" aria-label="Fermer">&times;</button>
+        </div>
+        <div class="feat-modal-image">
+            <img id="featModalImg" src="" alt="" loading="lazy">
+        </div>
+        <div class="feat-modal-body" id="featModalBody"></div>
+    </div>
+</div>
+
 <!-- FOOTER -->
 <footer class="footer">
     <div class="container">
@@ -2117,6 +2270,78 @@
             }
         });
     }
+
+    // Feature modal
+    var featureData = {
+        notes: {
+            title: 'Saisie des notes et bulletins',
+            img: '{{ asset("images/landing/Saisie_des_notes_et_bulletins.png") }}',
+            body: '<p>KLASSCI transforme la gestion des notes en un processus simple et rapide. Fini les tableaux Excel partagés et les erreurs de saisie.</p>' +
+                '<ul>' +
+                '<li>Saisie en ligne depuis téléphone, tablette ou ordinateur</li>' +
+                '<li>Calcul automatique des moyennes, rangs et appréciations</li>' +
+                '<li>Bulletins PDF personnalisés aux couleurs de votre école</li>' +
+                '<li>Gestion des coefficients, crédits et matières par classe</li>' +
+                '<li>Historique complet des notes par étudiant et par semestre</li>' +
+                '<li>Export en lot pour impression ou archivage</li>' +
+                '</ul>' +
+                '<p>Les enseignants saisissent directement — les secrétaires n\'ont plus à recopier. Le temps de production des bulletins passe de 3 semaines à 48 heures.</p>' +
+                '<div class="feat-modal-cta"><a href="#contact" class="btn-primary" onclick="closeFeatModal()">Demander une démo</a><a href="#tarifs" class="btn-outline" onclick="closeFeatModal()">Voir les tarifs</a></div>'
+        },
+        finance: {
+            title: 'Suivi financier en temps réel',
+            img: '{{ asset("images/landing/Suivi_financier_en_temps_réel.png") }}',
+            body: '<p>Le module comptabilité de KLASSCI donne une vision claire et instantanée de la santé financière de votre établissement.</p>' +
+                '<ul>' +
+                '<li>Dashboard avec KPI en temps réel : recettes, créances, taux de recouvrement</li>' +
+                '<li>Suivi des paiements par étudiant avec historique complet</li>' +
+                '<li>Relances automatiques par email avec modèles personnalisables</li>' +
+                '<li>Génération de reçus de paiement et situations financières PDF</li>' +
+                '<li>Rapports financiers par période, classe ou catégorie de frais</li>' +
+                '<li>Système de frais flexible : inscription, scolarité, examens, etc.</li>' +
+                '</ul>' +
+                '<p>Les comptables voient en un coup d\'œil qui a payé, qui est en retard, et peuvent agir immédiatement — sans attendre la fin du mois.</p>' +
+                '<div class="feat-modal-cta"><a href="#contact" class="btn-primary" onclick="closeFeatModal()">Demander une démo</a><a href="#tarifs" class="btn-outline" onclick="closeFeatModal()">Voir les tarifs</a></div>'
+        }
+    };
+
+    var featOverlay = document.getElementById('featModalOverlay');
+    var featTitle = document.getElementById('featModalTitle');
+    var featImg = document.getElementById('featModalImg');
+    var featBody = document.getElementById('featModalBody');
+    var featClose = document.getElementById('featModalClose');
+
+    document.querySelectorAll('.feat-modal-trigger').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            var key = this.dataset.feature;
+            var data = featureData[key];
+            if (!data) return;
+            featTitle.textContent = data.title;
+            featImg.src = data.img;
+            featImg.alt = data.title;
+            featBody.innerHTML = data.body;
+            featOverlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        });
+    });
+
+    window.closeFeatModal = function() {
+        featOverlay.classList.remove('open');
+        document.body.style.overflow = '';
+    };
+
+    if (featClose) {
+        featClose.addEventListener('click', closeFeatModal);
+    }
+
+    featOverlay.addEventListener('click', function(e) {
+        if (e.target === featOverlay) closeFeatModal();
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && featOverlay.classList.contains('open')) closeFeatModal();
+    });
 
     // FAQ toggle
     window.toggleFaq = function(el) {
