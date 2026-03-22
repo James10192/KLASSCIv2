@@ -2006,13 +2006,21 @@
         flex-shrink: 0;
     }
 
+    .hero-slide {
+        background: var(--bg-card);
+    }
+
     .hero-slide img {
         width: 100%;
-        aspect-ratio: 16 / 10;
-        object-fit: cover;
+        height: 480px;
+        object-fit: contain;
         object-position: top center;
         display: block;
         pointer-events: none;
+    }
+
+    @media (max-width: 768px) {
+        .hero-slide img { height: 240px; }
     }
 
     /* Dots */
