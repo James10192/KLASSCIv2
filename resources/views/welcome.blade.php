@@ -2340,8 +2340,8 @@
         <!-- Big feature 4 — image RIGHT -->
         <div class="feature-big">
             <div class="feature-big-text reveal-left">
-                <h3>Émargement et présences</h3>
-                <p>Prise de présence numérique par séance avec code d'émargement unique. Historique complet, taux de présence en temps réel, alertes d'absentéisme automatiques.</p>
+                <h3>Gestion des présences</h3>
+                <p>Tableau de bord complet pour le suivi des présences étudiants. L'enseignant fait l'appel numérique ou l'administration marque les présences. Taux en temps réel, tendances et rapports exportables.</p>
                 <a href="#" class="feat-modal-trigger" data-feature="presences">En savoir plus &gt;</a>
             </div>
             <div class="feature-big-image reveal-right">
@@ -2870,16 +2870,16 @@
                 '<div class="feat-modal-cta"><a href="#contact" class="btn-primary" onclick="closeFeatModal()">Demander une démo</a><a href="#tarifs" class="btn-outline" onclick="closeFeatModal()">Voir les tarifs</a></div>'
         },
         presences: {
-            title: 'Émargement et présences',
+            title: 'Gestion des présences',
             img: '{{ asset("images/landing/gestion-presences.png") }}',
-            body: '<p>Digitalisez complètement la prise de présence avec un système fiable et rapide.</p>' +
+            body: '<p>Suivez les présences de vos étudiants avec un tableau de bord clair et des outils simples.</p>' +
                 '<ul>' +
-                '<li>Code d\'émargement unique par séance</li>' +
-                '<li>Prise de présence depuis mobile ou ordinateur</li>' +
+                '<li>Appel numérique par l\'enseignant ou marquage par l\'administration</li>' +
+                '<li>Tableau de bord avec KPI : présences, absences, retards, excusés</li>' +
                 '<li>Taux de présence en temps réel par classe et par étudiant</li>' +
-                '<li>Alertes automatiques pour absentéisme récurrent</li>' +
-                '<li>Historique complet consultable par l\'administration</li>' +
-                '<li>Émargement enseignant avec suivi des heures</li>' +
+                '<li>Tendances sur 7 jours et présences par classe</li>' +
+                '<li>Génération de rapports et export CSV/PDF</li>' +
+                '<li>Statistiques détaillées et historique complet</li>' +
                 '</ul>' +
                 '<div class="feat-modal-cta"><a href="#contact" class="btn-primary" onclick="closeFeatModal()">Demander une démo</a><a href="#tarifs" class="btn-outline" onclick="closeFeatModal()">Voir les tarifs</a></div>'
         },
