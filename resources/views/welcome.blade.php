@@ -1486,11 +1486,6 @@
         width: 15px;
         height: 15px;
         flex-shrink: 0;
-        transition: transform 0.5s var(--ease-out);
-    }
-
-    .theme-toggle:active svg {
-        transform: rotate(360deg) scale(0.8);
     }
 
     .theme-toggle .sun-group,
@@ -1499,28 +1494,32 @@
         align-items: center;
         gap: 0.4rem;
         position: absolute;
-        transition: opacity 0.3s var(--ease-out), transform 0.3s var(--ease-out);
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out);
     }
 
     .theme-toggle {
         position: relative;
-        min-width: 90px;
+        width: 100px;
+        justify-content: center;
     }
 
-    .theme-toggle .sun-group { opacity: 0; transform: translateY(6px); pointer-events: none; }
-    .theme-toggle .moon-group { opacity: 1; transform: translateY(0); }
-    html.dark .theme-toggle .sun-group { opacity: 1; transform: translateY(0); pointer-events: auto; }
-    html.dark .theme-toggle .moon-group { opacity: 0; transform: translateY(-6px); pointer-events: none; }
+    .theme-toggle .sun-group { opacity: 0; transform: translateX(-50%) translateY(8px); pointer-events: none; }
+    .theme-toggle .moon-group { opacity: 1; transform: translateX(-50%) translateY(0); }
+    html.dark .theme-toggle .sun-group { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+    html.dark .theme-toggle .moon-group { opacity: 0; transform: translateX(-50%) translateY(-8px); pointer-events: none; }
 
     /* Theme switch flash animation */
     @keyframes themeFlash {
         0% { opacity: 1; }
-        50% { opacity: 0.6; }
+        40% { opacity: 0.7; }
         100% { opacity: 1; }
     }
 
     html.theme-switching body {
-        animation: themeFlash 0.4s var(--ease-out);
+        animation: themeFlash 0.8s var(--ease-out);
     }
 
     /* ═══════════════════════
@@ -2248,7 +2247,7 @@
             localStorage.setItem('klassci-theme', html.classList.contains('dark') ? 'dark' : 'light');
             setTimeout(function() {
                 html.classList.remove('theme-switching');
-            }, 450);
+            }, 850);
         });
     }
 
