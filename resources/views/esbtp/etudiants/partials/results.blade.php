@@ -3,23 +3,8 @@
     $currentYearId = $currentYear->id ?? null;
 @endphp
 
-{{-- COMPTEUR D'ÉTUDIANTS AVEC FILTRES --}}
-<div class="students-counter-widget mb-4">
-    <div class="counter-content">
-        <span class="counter-icon">
-            <i class="fas fa-users"></i>
-        </span>
-        <div class="counter-info">
-            <span class="counter-label">Total d'étudiants</span>
-            <span class="counter-value">{{ number_format($etudiants->total(), 0, ',', ' ') }}</span>
-        </div>
-        @if($etudiants->total() > $etudiants->perPage())
-            <span class="counter-context">
-                ({{ $etudiants->count() }} sur cette page)
-            </span>
-        @endif
-    </div>
-</div>
+{{-- Compteur inline (affiché dans le header de section via JS) --}}
+<div id="student-count-inline" style="display:none;" data-total="{{ $etudiants->total() }}" data-page="{{ $etudiants->count() }}" data-has-pages="{{ $etudiants->total() > $etudiants->perPage() ? '1' : '0' }}"></div>
 
 <!-- Vue Desktop : Tableau (visible > 992px) -->
 <div class="table-responsive desktop-view">
@@ -51,7 +36,6 @@
                     </button>
                 </th>
                 <th>Statut d'affectation</th>
-                <th>Statut</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -209,19 +193,12 @@
                         @endif
                     </td>
                     <td>
-                        @if($etudiant->statut == 'actif')
-                            <span class="badge bg-success px-3 py-2">Actif</span>
-                        @else
-                            <span class="badge bg-danger px-3 py-2">Inactif</span>
-                        @endif
-                    </td>
-                    <td>
                         <div class="d-flex flex-wrap gap-1">
-                            <a href="{{ route('esbtp.etudiants.show', $etudiant) }}" class="btn btn-info btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1" title="Voir les détails">
+                            <a href="{{ route('esbtp.etudiants.show', $etudiant) }}" class="btn btn-primary btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1" title="Voir les détails">
                                 <i class="fas fa-eye"></i>
                             </a>
                             <button type="button"
-                                class="btn btn-primary btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 btn-open-edit-modal"
+                                class="btn btn-warning btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 btn-open-edit-modal"
                                 title="Modifier"
                                 data-student='@json($studentDataset, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT)'>
                                 <i class="fas fa-edit"></i>
@@ -417,11 +394,11 @@
 
                 <!-- Footer avec actions -->
                 <div class="student-card-footer">
-                    <a href="{{ route('esbtp.etudiants.show', $etudiant) }}" class="btn btn-sm btn-info">
+                    <a href="{{ route('esbtp.etudiants.show', $etudiant) }}" class="btn btn-sm btn-primary">
                         <i class="fas fa-eye"></i> Voir
                     </a>
                     <button type="button"
-                        class="btn btn-sm btn-primary btn-open-edit-modal"
+                        class="btn btn-sm btn-warning btn-open-edit-modal"
                         data-student='@json($studentDataset, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT)'>
                         <i class="fas fa-edit"></i> Modifier
                     </button>

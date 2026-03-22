@@ -62,8 +62,8 @@
                     <i class="fas fa-bell"></i>
                     Attention! Inscriptions en attente
                 </h5>
-                <p style="margin: 0 0 var(--space-md) 0; color: #64748b;">
-                    Il y a <strong style="color: #1e293b;">{{ $pendingInscriptionsCount }}</strong> inscription(s) en attente de validation.<br>
+                <p style="margin: 0 0 var(--space-md) 0; color: #1e293b;">
+                    Il y a <strong>{{ $pendingInscriptionsCount }}</strong> inscription(s) en attente de validation.<br>
                     Ces inscriptions nécessitent votre vérification pour finaliser le processus d'admission des étudiants.
                 </p>
                 <a href="{{ route('esbtp.inscriptions.index', ['status' => 'en_attente']) }}" class="btn-acasi" style="background-color: var(--warning); color: white;">
@@ -71,7 +71,7 @@
                 </a>
             </div>
         </div>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="color: #d97706; opacity: 0.8;"></button>
     </div>
     @endif
 

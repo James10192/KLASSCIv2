@@ -1218,11 +1218,11 @@ body {
 }
 
 .table th {
-    background: rgba(255, 255, 255, 0.5);
+    background: #0453cb;
     border: none;
     padding: var(--space-4);
     font-weight: 600;
-    color: var(--gray-700);
+    color: #fff;
     font-size: var(--font-size-sm);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1231,7 +1231,7 @@ body {
 .table td {
     padding: var(--space-4);
     border: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid #f0f0f0;
     color: var(--gray-700);
     vertical-align: middle;
 }
@@ -1590,7 +1590,7 @@ body {
     height: 32px;
     border: none;
     border-radius: var(--radius-md);
-    background: rgba(255, 255, 255, 0.8);
+    background: #f0f0f0;
     color: var(--gray-600);
     display: inline-flex;
     align-items: center;
@@ -1598,33 +1598,60 @@ body {
     transition: all var(--transition-normal);
     cursor: pointer;
     margin: 0 var(--space-1);
-    backdrop-filter: blur(10px);
     position: relative;
     z-index: 15;
 }
 
 .table-action-btn:hover {
-    background: var(--primary);
-    color: white;
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
     z-index: 20;
 }
 
-.table-action-btn.btn-danger:hover {
-    background: var(--danger);
+/* View button = primary blue */
+.table-action-btn.btn-primary,
+.table-action-btn.btn-info {
+    background: #0453cb;
+    color: #fff;
+}
+
+.table-action-btn.btn-primary:hover,
+.table-action-btn.btn-info:hover {
+    background: #0340a0;
+    color: #fff;
+}
+
+/* Edit button = warning */
+.table-action-btn.btn-warning {
+    background: #f59e0b;
+    color: #fff;
 }
 
 .table-action-btn.btn-warning:hover {
-    background: var(--warning);
+    background: #d97706;
+    color: #fff;
+}
+
+/* Delete button = danger */
+.table-action-btn.btn-danger {
+    background: #ef4444;
+    color: #fff;
+}
+
+.table-action-btn.btn-danger:hover {
+    background: #dc2626;
+    color: #fff;
+}
+
+/* Success button */
+.table-action-btn.btn-success {
+    background: #10b981;
+    color: #fff;
 }
 
 .table-action-btn.btn-success:hover {
-    background: var(--success);
-}
-
-.table-action-btn.btn-info:hover {
-    background: var(--info);
+    background: #059669;
+    color: #fff;
 }
 
 /* ============= Quick Actions Floating Panel Improvements ============= */

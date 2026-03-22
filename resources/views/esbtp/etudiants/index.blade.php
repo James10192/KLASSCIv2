@@ -3024,10 +3024,12 @@
 
                 <!-- Filtres de recherche (Desktop uniquement) -->
                 <div class="desktop-filters">
-                    <div class="section-title mb-md">
-                        <i class="fas fa-filter me-2"></i>Filtres de recherche
+                    <div class="section-title mb-md" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer;" onclick="var b=document.getElementById('desktop-filter-body');var ic=this.querySelector('.fa-chevron-down,.fa-chevron-up');if(b.style.display==='none'){b.style.display='block';ic.classList.replace('fa-chevron-down','fa-chevron-up');}else{b.style.display='none';ic.classList.replace('fa-chevron-up','fa-chevron-down');}">
+                        <span><i class="fas fa-filter me-2"></i>Filtres avancés</span>
+                        <i class="fas fa-chevron-down" style="font-size:0.8rem; color:#8a8a8a;"></i>
                     </div>
-                    <form method="GET" action="{{ route('esbtp.etudiants.index') }}" id="search-form">
+                    <form method="GET" action="{{ route('esbtp.etudiants.index') }}" id="search-form" id-wrapper="desktop-filter-body">
+                    <div id="desktop-filter-body" style="display:none;">
                                 <div class="row">
                                     <div class="col-md-4 mb-3">
                                         <label for="search" class="form-label">Recherche</label>
@@ -3152,6 +3154,7 @@
                                         </button>
                                     </div>
                                 </div>
+                    </div><!-- /#desktop-filter-body -->
                     </form>
                 </div><!-- /.desktop-filters -->
             </div>
@@ -3335,8 +3338,9 @@
         <!-- Tableau des étudiants -->
         <div class="card-moderne">
             <div class="p-lg">
-                <div class="section-title mb-md">
-                    <i class="fas fa-list"></i>Liste des étudiants
+                <div class="section-title mb-md" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
+                    <span><i class="fas fa-list"></i>Liste des étudiants</span>
+                    <span id="student-count-badge" style="font-size:0.85rem; font-weight:600; color:#0453cb; background:rgba(4,83,203,0.08); padding:0.35rem 1rem; border-radius:20px;"></span>
                 </div>
 
                 <!-- Indicateur filtres actifs -->
@@ -3595,6 +3599,19 @@
     }
 
     debugLog('✅ Fonction searchableSelect définie globalement');
+
+    // Update student count badge from partial data
+    function updateStudentCountBadge() {
+        var el = document.getElementById('student-count-inline');
+        var badge = document.getElementById('student-count-badge');
+        if (el && badge) {
+            var total = el.dataset.total;
+            var page = el.dataset.page;
+            var hasPages = el.dataset.hasPages === '1';
+            badge.textContent = total + ' étudiant' + (parseInt(total) > 1 ? 's' : '') + (hasPages ? ' (' + page + ' sur cette page)' : '');
+        }
+    }
+    document.addEventListener('DOMContentLoaded', function() { updateStudentCountBadge(); });
 
     document.addEventListener('DOMContentLoaded', function () {
         const form = document.getElementById('search-form');
@@ -3928,6 +3945,7 @@
             })
             .then(data => {
                 resultsContainer.innerHTML = data.html;
+                updateStudentCountBadge();
                 if (options.pushState !== false) {
                     window.history.pushState({ url: data.url }, '', data.url);
                 }

@@ -75,14 +75,14 @@
         <div class="inscription-actions-wrapper" data-inscription-actions="{{ $inscription->id }}">
             <div class="d-flex inscription-actions-buttons">
             @can('inscriptions.view')
-            <a href="{{ route('esbtp.inscriptions.show', $inscription->id) }}" class="btn btn-info btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" title="Détails">
+            <a href="{{ route('esbtp.inscriptions.show', $inscription->id) }}" class="btn btn-primary btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" title="Détails">
                 <i class="fas fa-eye"></i>
             </a>
             @endcan
 
             @can('edit inscriptions')
             @if($inscription->status == 'pending')
-            <a href="{{ route('esbtp.inscriptions.edit', $inscription->id) }}" class="btn btn-primary btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" title="Modifier">
+            <a href="{{ route('esbtp.inscriptions.edit', $inscription->id) }}" class="btn btn-warning btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" title="Modifier">
                 <i class="fas fa-edit"></i>
             </a>
             @endif
