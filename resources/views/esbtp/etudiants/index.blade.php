@@ -3024,12 +3024,10 @@
 
                 <!-- Filtres de recherche (Desktop uniquement) -->
                 <div class="desktop-filters">
-                    <div class="section-title mb-md" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer;" onclick="var b=document.getElementById('desktop-filter-body');var ic=this.querySelector('.fa-chevron-down,.fa-chevron-up');if(b.style.display==='none'){b.style.display='block';ic.classList.replace('fa-chevron-down','fa-chevron-up');}else{b.style.display='none';ic.classList.replace('fa-chevron-up','fa-chevron-down');}">
-                        <span><i class="fas fa-filter me-2"></i>Filtres avancés</span>
-                        <i class="fas fa-chevron-down" style="font-size:0.8rem; color:#8a8a8a;"></i>
+                    <div class="section-title mb-md">
+                        <i class="fas fa-filter me-2"></i>Filtres de recherche
                     </div>
-                    <form method="GET" action="{{ route('esbtp.etudiants.index') }}" id="search-form" id-wrapper="desktop-filter-body">
-                    <div id="desktop-filter-body" style="display:none;">
+                    <form method="GET" action="{{ route('esbtp.etudiants.index') }}" id="search-form">
                                 <div class="row">
                                     <div class="col-md-4 mb-3">
                                         <label for="search" class="form-label">Recherche</label>
@@ -3057,6 +3055,15 @@
                                             @endforeach
                                         </select>
                                     </div>
+                                </div>
+                                <!-- Filtres avancés (collapsible) -->
+                                <div style="margin-bottom:0.75rem;">
+                                    <button type="button" onclick="var b=document.getElementById('advanced-filters');var ic=this.querySelector('.fa-chevron-down,.fa-chevron-up');if(b.style.display==='none'){b.style.display='block';ic.classList.replace('fa-chevron-down','fa-chevron-up');}else{b.style.display='none';ic.classList.replace('fa-chevron-up','fa-chevron-down');}" style="background:none;border:1px solid #e0e0e0;border-radius:6px;padding:0.4rem 1rem;font-size:0.85rem;color:#5c5c5c;cursor:pointer;display:inline-flex;align-items:center;gap:0.5rem;">
+                                        <i class="fas fa-sliders-h"></i> Filtres avancés <i class="fas fa-chevron-down" style="font-size:0.65rem;"></i>
+                                    </button>
+                                </div>
+                                <div id="advanced-filters" style="display:none;">
+                                <div class="row">
                                     <div class="col-md-4 mb-3">
                                         <label for="classe" class="form-label">Classe</label>
                                         <div x-data="searchableSelect({
@@ -3154,7 +3161,7 @@
                                         </button>
                                     </div>
                                 </div>
-                    </div><!-- /#desktop-filter-body -->
+                                </div><!-- /#advanced-filters -->
                     </form>
                 </div><!-- /.desktop-filters -->
             </div>
