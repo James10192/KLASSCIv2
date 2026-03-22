@@ -1,1408 +1,1675 @@
 <!DOCTYPE html>
 <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KLASSCI - École Spéciale du Bâtiment et des Travaux Publics</title>
-
-        <!-- Polices Google -->
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-        <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-        <!-- Font Awesome -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-        <!-- AOS - Animation On Scroll -->
-        <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-
-        <style>
-        :root {
-            /* Palette de couleurs */
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --primary-light: rgba(37, 99, 235, 0.1);
-            --secondary: #f97316;
-            --secondary-dark: #ea580c;
-            --secondary-light: rgba(249, 115, 22, 0.1);
-            --dark: #0f172a;
-            --dark-light: #1e293b;
-            --gray: #64748b;
-            --gray-light: #e2e8f0;
-            --light: #f8fafc;
-            --success: #22c55e;
-            --warning: #eab308;
-            --danger: #ef4444;
-            --info: #06b6d4;
-
-            /* Espacement */
-            --spacing-xs: 0.5rem;
-            --spacing-sm: 1rem;
-            --spacing-md: 1.5rem;
-            --spacing-lg: 2rem;
-            --spacing-xl: 3rem;
-            --spacing-2xl: 5rem;
-
-            /* Bordures */
-            --border-radius-sm: 0.25rem;
-            --border-radius-md: 0.5rem;
-            --border-radius-lg: 1rem;
-            --border-radius-xl: 2rem;
-            --border-radius-full: 9999px;
-        }
-
-        /* Base */
-        body {
-            font-family: 'Inter', sans-serif;
-            color: var(--dark);
-            overflow-x: hidden;
-            background-color: var(--light);
-        }
-
-        h1, h2, h3, h4, h5, h6 {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-weight: 700;
-            line-height: 1.2;
-        }
-
-        a {
-            text-decoration: none;
-            color: var(--primary);
-            transition: all 0.3s ease;
-        }
-
-        a:hover {
-            color: var(--primary-dark);
-        }
-
-        .section {
-            padding: var(--spacing-2xl) 0;
-            position: relative;
-        }
-
-        .subtitle {
-            font-weight: 600;
-            color: var(--secondary);
-            margin-bottom: var(--spacing-xs);
-            display: inline-block;
-            font-size: 1rem;
-        }
-
-        .section-title {
-            font-size: 2.5rem;
-            margin-bottom: var(--spacing-md);
-            color: var(--dark);
-        }
-
-        .section-description {
-            font-size: 1.125rem;
-            color: var(--gray);
-            margin-bottom: var(--spacing-lg);
-            max-width: 800px;
-        }
-
-        /* Boutons */
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: var(--border-radius-full);
-            font-weight: 500;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-
-        .btn-primary {
-            background-color: var(--primary);
-            border-color: var(--primary);
-        }
-
-        .btn-primary:hover {
-            background-color: var(--primary-dark);
-            border-color: var(--primary-dark);
-            transform: translateY(-3px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-
-        .btn-secondary {
-            background-color: var(--secondary);
-            border-color: var(--secondary);
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background-color: var(--secondary-dark);
-            border-color: var(--secondary-dark);
-            transform: translateY(-3px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-
-        .btn-outline-light {
-            border: 2px solid rgba(255, 255, 255, 0.7);
-            color: white;
-            background-color: transparent;
-        }
-
-        .btn-outline-light:hover {
-            background-color: white;
-            color: var(--primary);
-            transform: translateY(-3px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-
-        .btn-lg {
-            padding: 1rem 2rem;
-            font-size: 1.125rem;
-        }
-
-        /* Navigation */
-        .navbar {
-            padding: 1rem 0;
-            transition: all 0.3s ease;
-            z-index: 1000;
-        }
-
-        .navbar-brand img {
-            height: 48px;
-            transition: all 0.3s ease;
-        }
-
-        .navbar-scrolled {
-            background-color: white;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            padding: 0.75rem 0;
-        }
-
-        .navbar-scrolled .navbar-brand img {
-            height: 40px;
-        }
-
-        .navbar-scrolled .nav-link {
-            color: var(--dark);
-        }
-
-        .navbar-scrolled .nav-link:hover, 
-        .navbar-scrolled .nav-link.active {
-            color: var(--primary);
-        }
-
-        .nav-link {
-            color: white;
-            font-weight: 500;
-            padding: 0.5rem 1rem;
-            position: relative;
-        }
-
-        .nav-link:hover, .nav-link.active {
-            color: rgba(255, 255, 255, 0.8);
-        }
-
-        .nav-link::after {
-            content: '';
-            position: absolute;
-            width: 0;
-            height: 2px;
-            bottom: 0;
-            left: 50%;
-            background-color: var(--secondary);
-            transform: translateX(-50%);
-            transition: width 0.3s ease;
-        }
-
-        .nav-link:hover::after, 
-        .nav-link.active::after {
-            width: 30px;
-        }
-
-        .navbar-toggler {
-            border: none;
-            padding: 0;
-            outline: none !important;
-            box-shadow: none !important;
-        }
-
-        .navbar-toggler-icon {
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255, 255, 255, 1)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
-            transition: all 0.3s ease;
-        }
-
-        .navbar-scrolled .navbar-toggler-icon {
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(15, 23, 42, 1)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
-        }
-
-        .nav-cta {
-            background-color: var(--secondary);
-            color: white !important;
-            border-radius: var(--border-radius-full);
-            padding: 0.5rem 1.5rem;
-            margin-left: 0.5rem;
-            box-shadow: 0 4px 6px -1px rgba(249, 115, 22, 0.3), 0 2px 4px -1px rgba(249, 115, 22, 0.06);
-        }
-
-        .nav-cta:hover {
-            background-color: var(--secondary-dark);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(249, 115, 22, 0.2), 0 4px 6px -2px rgba(249, 115, 22, 0.1);
-        }
-
-        .nav-cta::after {
-            display: none;
-        }
-
-        /* Hero Section */
-            .hero {
-                position: relative;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.8) 100%), 
-                        url('https://images.unsplash.com/photo-1541888946425-d81bb19240f5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80');
-                background-size: cover;
-            background-position: center;
-                background-attachment: fixed;
-            min-height: 100vh;
-                display: flex;
-                align-items: center;
-            padding: 5rem 0;
-                color: white;
-            overflow: hidden;
-        }
-
-        .hero-content {
-            position: relative;
-            z-index: 2;
-        }
-
-        .hero-subtitle {
-            font-weight: 600;
-            color: var(--secondary);
-            margin-bottom: 1rem;
-            display: inline-block;
-            font-size: 1.25rem;
-        }
-
-        .hero-title {
-            font-size: 3.5rem;
-            font-weight: 800;
-            margin-bottom: 1.5rem;
-            line-height: 1.2;
-        }
-
-        .hero-description {
-            font-size: 1.25rem;
-            margin-bottom: 2.5rem;
-            max-width: 600px;
-            opacity: 0.9;
-        }
-
-        .hero-buttons {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        /* Décorations Hero */
-        .hero-shape {
-            position: absolute;
-            bottom: -5%;
-            left: 0;
-            width: 100%;
-            height: 10rem;
-            background-color: white;
-            clip-path: polygon(0 60%, 100% 0, 100% 100%, 0% 100%);
-                z-index: 1;
-            }
-
-        .hero-circle {
-            position: absolute;
-            height: 300px;
-            width: 300px;
-            border-radius: 50%;
-        }
-
-        .hero-circle-1 {
-            top: 15%;
-            right: -5%;
-            background: radial-gradient(circle, rgba(37, 99, 235, 0.1) 0%, rgba(37, 99, 235, 0) 70%);
-            animation: float 10s ease-in-out infinite;
-        }
-
-        .hero-circle-2 {
-            bottom: 15%;
-            left: -5%;
-            background: radial-gradient(circle, rgba(249, 115, 22, 0.1) 0%, rgba(249, 115, 22, 0) 70%);
-            animation: float 14s ease-in-out infinite reverse;
-        }
-
-        @keyframes float {
-            0% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-20px) rotate(5deg); }
-            100% { transform: translateY(0) rotate(0deg); }
-        }
-
-        .hero-stats {
-            margin-top: 4rem;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 2rem;
-        }
-
-        .hero-stat {
-            text-align: center;
-            min-width: 140px;
-        }
-
-        .hero-stat-value {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            display: block;
-            color: var(--secondary);
-        }
-
-        .hero-stat-label {
-            font-size: 1rem;
-            opacity: 0.8;
-        }
-
-        /* Responsive */
-        @media (max-width: 991.98px) {
-            .hero-title {
-                font-size: 2.5rem;
-            }
-
-            .hero {
-                min-height: 90vh;
-            }
-        }
-
-        @media (max-width: 767.98px) {
-            .hero-title {
-                font-size: 2rem;
-            }
-
-            .hero-description {
-                font-size: 1.125rem;
-            }
-
-            .hero-stats {
-                justify-content: center;
-            }
-        }
-
-        @media (max-width: 575.98px) {
-            .hero-title {
-                font-size: 1.75rem;
-            }
-
-            .nav-cta {
-                margin-left: 0;
-                margin-top: 0.5rem;
-            }
-        }
-
-        .rounded-xl {
-            border-radius: var(--border-radius-lg);
-        }
-        
-        .feature-card {
-            transition: all 0.3s ease;
-        }
-        
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-        }
-        
-        .about-image::before {
-                content: '';
-            position: absolute;
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background-color: var(--secondary-light);
-            top: -20px;
-            left: -20px;
-            z-index: -1;
-        }
-        
-        .about-image::after {
-            content: '';
-            position: absolute;
-            width: 150px;
-            height: 150px;
-            border-radius: 20px;
-            border: 5px solid var(--primary-light);
-            bottom: -30px;
-            left: -30px;
-            z-index: -1;
-        }
-
-        /* Styles pour la section formations */
-        .formations-filter .nav-link {
-            color: var(--dark);
-            border-radius: 50px;
-            padding: 0.5rem 1.5rem;
-            margin: 0 0.25rem 0.5rem;
-            transition: all 0.3s ease;
-        }
-        
-        .formations-filter .nav-link.active {
-            background-color: var(--primary);
-            color: white;
-        }
-        
-        .formations-filter .nav-link:not(.active):hover {
-            background-color: var(--primary-light);
-        }
-        
-        .formation-image {
-            overflow: hidden;
-            height: 200px;
-        }
-        
-        .formation-image img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: all 0.6s ease;
-        }
-        
-        .formation-card:hover .formation-image img {
-            transform: scale(1.1);
-        }
-        
-        .formation-overlay {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-            background-color: rgba(0, 0, 0, 0.6);
-            opacity: 0;
-            transition: all 0.3s ease;
-        }
-        
-        .formation-card:hover .formation-overlay {
-            opacity: 1;
-            }
-
-        .formation-card {
-                transition: all 0.3s ease;
-            }
-
-        .formation-card:hover {
-                transform: translateY(-10px);
-            }
-
-        /* Styles pour la section témoignages */
-        .testimonials {
-            background-color: var(--light);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .testimonials::before {
-            content: '';
-            position: absolute;
-            width: 300px;
-            height: 300px;
-            border-radius: 50%;
-            background-color: rgba(99, 102, 241, 0.05);
-            top: -150px;
-            right: -150px;
-            z-index: 0;
-        }
-        
-        .testimonials::after {
-            content: '';
-            position: absolute;
-            width: 200px;
-            height: 200px;
-            border-radius: 50%;
-            background-color: rgba(236, 72, 153, 0.05);
-            bottom: -100px;
-            left: -100px;
-            z-index: 0;
-        }
-        
-        .testimonial-card {
-            background-color: white;
-            border-radius: var(--border-radius);
-            padding: 2rem;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
-            position: relative;
-            z-index: 1;
-                transition: all 0.3s ease;
-            }
-
-        .testimonial-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            }
-
-        .testimonial-quote {
-            font-size: 3rem;
-            color: var(--primary);
-            line-height: 1;
-            margin-bottom: 1rem;
-            opacity: 0.3;
-            }
-
-        .testimonial-text {
-            font-style: italic;
-            margin-bottom: 1.5rem;
-            font-size: 1.1rem;
-            line-height: 1.6;
-        }
-        
-        .testimonial-author-img {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            overflow: hidden;
-            margin-right: 1rem;
-        }
-        
-        .testimonial-author-img img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .testimonial-author-name {
-            font-weight: 600;
-            font-size: 1.1rem;
-            margin-bottom: 0.25rem;
-        }
-        
-        .testimonial-author-role {
-            font-size: 0.9rem;
-            color: var(--secondary);
-            }
-        </style>
-    </head>
-    <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg fixed-top">
-            <div class="container">
-                <a class="navbar-brand" href="#">
-                <img src="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" alt="KLASSCI Logo">
-                </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-center">
-                        <li class="nav-item">
-                        <a class="nav-link active" href="#home">Accueil</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#about">À propos</a>
-                        </li>
-                        <li class="nav-item">
-                        <a class="nav-link" href="#formations">Formations</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#contact">Contact</a>
-                        </li>
-                        <li class="nav-item">
-                        <a class="nav-link nav-cta" href="{{ route('login') }}">Connexion</a>
-                        </li>
-                    </ul>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KLASSCI — Gestion scolaire, repensée.</title>
+    <meta name="description" content="KLASSCI digitalise la gestion de votre établissement scolaire. Notes, emplois du temps, paiements, bulletins — un seul outil, zéro paperasse.">
+
+    <!-- SEO -->
+    <meta name="keywords" content="gestion scolaire, logiciel école, KLASSCI, notes, bulletins, emploi du temps, paiements, présences, SaaS éducation, Côte d'Ivoire, Afrique">
+    <meta name="author" content="African Digital Consulting">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ url('/') }}">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url('/') }}">
+    <meta property="og:title" content="KLASSCI — Gestion scolaire, repensée.">
+    <meta property="og:description" content="KLASSCI digitalise la gestion de votre établissement. Notes, emplois du temps, paiements, bulletins — un seul outil, zéro paperasse.">
+    <meta property="og:image" content="{{ asset('images/landing/hero_section.png') }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:locale" content="fr_FR">
+    <meta property="og:site_name" content="KLASSCI">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="KLASSCI — Gestion scolaire, repensée.">
+    <meta name="twitter:description" content="KLASSCI digitalise la gestion de votre établissement. Notes, emplois du temps, paiements, bulletins — un seul outil, zéro paperasse.">
+    <meta name="twitter:image" content="{{ asset('images/landing/hero_section.png') }}">
+
+    <!-- Favicon variants -->
+    <link rel="icon" href="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" type="image/png">
+    <link rel="apple-touch-icon" href="{{ asset('images/LOGO-KLASSCI-PNG.png') }}">
+
+    <!-- Theme color -->
+    <meta name="theme-color" content="#0453cb">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+    /* ────────────────────────────────────
+       KLASSCI — Editorial Landing
+       Inspired by zed.dev : warm, serif
+       headings, monospace accents, grain,
+       generous space, real images.
+    ──────────────────────────────────── */
+
+    :root {
+        --bg: #f6f4f0;
+        --bg-alt: #edeae4;
+        --bg-card: #fff;
+        --text: #1a1a1a;
+        --text-secondary: #5c5c5c;
+        --text-muted: #8a8a8a;
+        --accent: #0453cb;
+        --accent-hover: #0340a0;
+        --border: rgba(0,0,0,0.08);
+        --border-strong: rgba(0,0,0,0.14);
+        --radius: 6px;
+        --max-w: 1120px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+        font-family: 'DM Sans', system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+        position: relative;
+    }
+
+    /* Noise texture overlay — like zed.dev */
+    body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        pointer-events: none;
+        opacity: 0.35;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+        background-repeat: repeat;
+        background-size: 256px 256px;
+    }
+
+    /* Dot grid background — like zed.dev's subtle grid */
+    body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        background-image: radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px);
+        background-size: 24px 24px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+
+    a { text-decoration: none; color: var(--accent); transition: color 0.2s; }
+    a:hover { color: var(--accent-hover); }
+
+    img { max-width: 100%; display: block; }
+
+    .container {
+        max-width: var(--max-w);
+        margin: 0 auto;
+        padding: 0 clamp(1.25rem, 5vw, 2.5rem);
+    }
+
+    /* ─── Typography ─── */
+    h1, h2, h3 {
+        font-family: 'Instrument Serif', Georgia, serif;
+        font-weight: 400;
+        color: var(--accent);
+        line-height: 1.15;
+    }
+
+    .mono {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.85rem;
+        letter-spacing: -0.01em;
+    }
+
+    /* ═══════════════════════
+       NAV
+    ═══════════════════════ */
+    .nav {
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        z-index: 100;
+        height: 57px;
+        display: flex;
+        align-items: center;
+        background: rgba(246,244,240,0.8);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .nav-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .nav-logo {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        color: var(--text);
+    }
+
+    .nav-logo img { height: 28px; }
+
+    .nav-logo span {
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 700;
+        font-size: 1.05rem;
+        letter-spacing: -0.02em;
+    }
+
+    .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        list-style: none;
+    }
+
+    .nav-links a {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        padding: 0.4rem 0.75rem;
+        border-radius: var(--radius);
+        transition: all 0.15s;
+    }
+
+    .nav-links a:hover {
+        color: var(--text);
+        background: rgba(0,0,0,0.04);
+    }
+
+    .nav-cta {
+        background: var(--accent) !important;
+        color: #fff !important;
+        padding: 0.4rem 1rem !important;
+        border-radius: var(--radius) !important;
+    }
+
+    .nav-cta:hover {
+        background: var(--accent-hover) !important;
+        color: #fff !important;
+    }
+
+    .nav-hamburger {
+        display: none;
+        background: none; border: none;
+        cursor: pointer; padding: 0.5rem;
+    }
+
+    .nav-hamburger span {
+        display: block; width: 20px; height: 2px;
+        background: var(--text); margin: 4px 0;
+        border-radius: 1px;
+        transition: all 0.2s;
+    }
+
+    .mobile-nav {
+        display: none;
+        position: fixed; inset: 0;
+        background: var(--bg);
+        z-index: 99;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2rem;
+    }
+
+    .mobile-nav.open { display: flex; }
+    .mobile-nav a {
+        font-family: 'Instrument Serif', serif;
+        font-size: 1.75rem;
+        color: var(--text);
+    }
+
+    @media (max-width: 768px) {
+        .nav-links { display: none; }
+        .nav-hamburger { display: block; }
+    }
+
+    /* ═══════════════════════
+       HERO
+    ═══════════════════════ */
+    .hero {
+        padding: 10rem 0 5rem;
+        text-align: center;
+    }
+
+    .hero h1 {
+        font-size: clamp(2.75rem, 7vw, 4.5rem);
+        margin-bottom: 1.25rem;
+        font-style: italic;
+    }
+
+    .hero-sub {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: clamp(0.9rem, 1.5vw, 1rem);
+        color: var(--text-secondary);
+        max-width: 520px;
+        margin: 0 auto 2.5rem;
+        line-height: 1.7;
+    }
+
+    .hero-actions {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--accent);
+        color: #fff;
+        padding: 0.6rem 1.4rem;
+        border-radius: var(--radius);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.85rem;
+        font-weight: 500;
+        border: 1px solid var(--accent);
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .btn-primary:hover {
+        background: var(--accent-hover);
+        border-color: var(--accent-hover);
+        color: #fff;
+    }
+
+    .btn-outline {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: transparent;
+        color: var(--text-secondary);
+        padding: 0.6rem 1.4rem;
+        border-radius: var(--radius);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.85rem;
+        font-weight: 500;
+        border: 1px solid var(--border-strong);
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .btn-outline:hover {
+        border-color: var(--text-secondary);
+        color: var(--text);
+    }
+
+    .hero-note {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    /* ─── Product shot ─── */
+    .hero-image {
+        margin: 4rem auto 0;
+        max-width: 900px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border-strong);
+        box-shadow:
+            0 2px 4px rgba(0,0,0,0.04),
+            0 12px 40px rgba(0,0,0,0.08);
+    }
+
+    .hero-image img {
+        width: 100%;
+        display: block;
+    }
+
+    /* ═══════════════════════
+       3 PILLARS (Fast / Intelligent / Collaborative style)
+    ═══════════════════════ */
+    .pillars {
+        padding: 4rem 0 2rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .pillars-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0;
+    }
+
+    .pillar {
+        padding: 2rem 2.5rem;
+        border-right: 1px solid var(--border);
+    }
+
+    .pillar:last-child { border-right: none; }
+
+    .pillar h3 {
+        font-size: 1.5rem;
+        margin-bottom: 0.75rem;
+        font-style: normal;
+    }
+
+    .pillar p {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        line-height: 1.7;
+    }
+
+    @media (max-width: 768px) {
+        .pillars-grid { grid-template-columns: 1fr; }
+        .pillar { border-right: none; border-bottom: 1px solid var(--border); padding: 1.5rem 0; }
+        .pillar:last-child { border-bottom: none; }
+    }
+
+    /* ═══════════════════════
+       SOCIAL PROOF — logos + testimonials
+    ═══════════════════════ */
+    .proof {
+        padding: 5rem 0;
+        border-top: 1px solid var(--border);
+    }
+
+    .proof h2 {
+        text-align: center;
+        font-size: clamp(1.75rem, 4vw, 2.5rem);
+        font-style: italic;
+        margin-bottom: 3rem;
+    }
+
+    .proof-logos {
+        display: flex;
+        align-items: stretch;
+        justify-content: center;
+        gap: 1.5rem;
+        margin-bottom: 4rem;
+        padding-bottom: 3rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .proof-logo-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        padding: 2rem 3rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .proof-logo-card:hover {
+        border-color: var(--border-strong);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    }
+
+    .proof-logo-card img {
+        height: 56px;
+        width: auto;
+    }
+
+    .proof-logo-card .proof-logo-name {
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--text);
+    }
+
+    .proof-logo-card .proof-logo-detail {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.72rem;
+        color: var(--text-muted);
+    }
+
+    @media (max-width: 480px) {
+        .proof-logos { flex-direction: column; align-items: center; }
+        .proof-logo-card { width: 100%; max-width: 280px; }
+    }
+
+    /* Testimonials — organic masonry like zed */
+    .testimonials-grid {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr 1fr;
+        gap: 1.5rem;
+        align-items: start;
+    }
+
+    .testimonial {
+        padding: 1.75rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-card);
+    }
+
+    .testimonial-featured {
+        border-color: var(--border-strong);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+
+    .testimonial-text {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.82rem;
+        line-height: 1.75;
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+    }
+
+    .testimonial-text mark {
+        background: rgba(4,83,203,0.08);
+        color: var(--accent);
+        padding: 1px 3px;
+        border-radius: 2px;
+    }
+
+    .testimonial-author {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .testimonial-avatar {
+        width: 36px; height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .testimonial-name {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--text);
+    }
+
+    .testimonial-role {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+    }
+
+    .testimonial-company {
+        margin-left: auto;
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 700;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        letter-spacing: 0.02em;
+    }
+
+    @media (max-width: 768px) {
+        .testimonials-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ═══════════════════════
+       FEATURES — grid like zed's feature tiles
+    ═══════════════════════ */
+    .features {
+        padding: 5rem 0;
+        border-top: 1px solid var(--border);
+    }
+
+    .features h2 {
+        font-size: clamp(1.75rem, 4vw, 2.5rem);
+        font-style: italic;
+        margin-bottom: 1rem;
+    }
+
+    .features-intro {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.88rem;
+        color: var(--text-secondary);
+        max-width: 600px;
+        margin-bottom: 3rem;
+        line-height: 1.7;
+    }
+
+    /* Big feature — asymmetric text + image */
+    .feature-big {
+        display: grid;
+        grid-template-columns: 1fr 1.3fr;
+        gap: 3rem;
+        align-items: center;
+        padding: 3rem 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .feature-big:last-of-type { border-bottom: none; }
+
+    .feature-big-text h3 {
+        font-size: 1.75rem;
+        margin-bottom: 0.75rem;
+        font-style: normal;
+    }
+
+    .feature-big-text p {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        line-height: 1.75;
+        margin-bottom: 1.25rem;
+    }
+
+    .feature-big-text a {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.82rem;
+        font-weight: 500;
+    }
+
+    .feature-big-image {
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+
+    .feature-big-image img {
+        width: 100%;
+        display: block;
+    }
+
+    @media (max-width: 768px) {
+        .feature-big { grid-template-columns: 1fr; }
+        .feature-big-image { order: -1; }
+    }
+
+    /* Small features — clean 3-col grid like zed */
+    .features-small {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0;
+        border-top: 1px solid var(--border);
+        margin-top: 2rem;
+    }
+
+    .feature-tile {
+        padding: 2rem 2.5rem;
+        border-right: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .feature-tile:nth-child(3n) { border-right: none; }
+    .feature-tile:nth-last-child(-n+3) { border-bottom: none; }
+
+    .feature-tile h4 {
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 0.4rem;
+        color: var(--text);
+    }
+
+    .feature-tile p {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        line-height: 1.65;
+    }
+
+    @media (max-width: 768px) {
+        .features-small { grid-template-columns: 1fr; }
+        .feature-tile { border-right: none !important; padding: 1.5rem 0; }
+    }
+
+    /* ═══════════════════════
+       PRICING
+    ═══════════════════════ */
+    .pricing {
+        padding: 5rem 0;
+        border-top: 1px solid var(--border);
+    }
+
+    .pricing h2 {
+        text-align: center;
+        font-size: clamp(1.75rem, 4vw, 2.5rem);
+        font-style: italic;
+        margin-bottom: 0.75rem;
+    }
+
+    .pricing-sub {
+        text-align: center;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin-bottom: 3rem;
+    }
+
+    .pricing-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        background: var(--bg-card);
+    }
+
+    .price-col {
+        padding: 2.5rem 2rem;
+        border-right: 1px solid var(--border);
+        position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .price-col:last-child { border-right: none; }
+
+    .price-col.featured {
+        background: rgba(4,83,203,0.03);
+    }
+
+    .price-badge {
+        position: absolute;
+        top: 1rem; right: 1rem;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.65rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        background: var(--accent);
+        color: #fff;
+        padding: 3px 8px;
+        border-radius: 3px;
+    }
+
+    .price-name {
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 700;
+        font-size: 1rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .price-desc {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+    }
+
+    .price-amount {
+        font-family: 'Instrument Serif', serif;
+        font-size: 2.75rem;
+        color: var(--text);
+        line-height: 1;
+        margin-bottom: 0.25rem;
+    }
+
+    .price-amount span {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    .price-period {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.72rem;
+        color: var(--text-muted);
+        margin-bottom: 2rem;
+    }
+
+    .price-features {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        margin-bottom: 2rem;
+        flex: 1;
+    }
+
+    .price-features li {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .price-features li::before {
+        content: '✓';
+        color: var(--accent);
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .price-features li.no::before {
+        content: '—';
+        color: var(--text-muted);
+    }
+
+    .price-features li.no { color: var(--text-muted); }
+
+    .price-btn {
+        display: block;
+        width: 100%;
+        text-align: center;
+        padding: 0.6rem;
+        border-radius: var(--radius);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.8rem;
+        font-weight: 500;
+        border: 1px solid var(--border-strong);
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .price-btn:hover {
+        border-color: var(--text-secondary);
+        color: var(--text);
+    }
+
+    .price-btn-fill {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+    }
+
+    .price-btn-fill:hover {
+        background: var(--accent-hover);
+        border-color: var(--accent-hover);
+        color: #fff;
+    }
+
+    @media (max-width: 1024px) {
+        .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+        .price-col:nth-child(2n) { border-right: none; }
+        .price-col { border-bottom: 1px solid var(--border); }
+    }
+    @media (max-width: 580px) {
+        .pricing-grid { grid-template-columns: 1fr; }
+        .price-col { border-right: none; border-bottom: 1px solid var(--border); }
+        .price-col:last-child { border-bottom: none; }
+    }
+
+    .pricing-footer {
+        text-align: center;
+        margin-top: 1.5rem;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.72rem;
+        color: var(--text-muted);
+    }
+
+    /* ═══════════════════════
+       LETTER / CTA — like zed's "A letter from the team"
+    ═══════════════════════ */
+    .letter {
+        padding: 5rem 0;
+        border-top: 1px solid var(--border);
+    }
+
+    .letter-card {
+        max-width: 680px;
+        margin: 0 auto;
+        padding: 3.5rem;
+        background: var(--bg-alt);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        text-align: center;
+    }
+
+    .letter-label {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--text-muted);
+        margin-bottom: 1.5rem;
+    }
+
+    .letter h2 {
+        font-size: clamp(1.5rem, 3.5vw, 2.25rem);
+        font-style: italic;
+        margin-bottom: 1.25rem;
+    }
+
+    .letter p {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        line-height: 1.75;
+        margin-bottom: 2rem;
+        max-width: 480px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    /* ═══════════════════════
+       FOOTER
+    ═══════════════════════ */
+    .footer {
+        padding: 3rem 0 2rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .footer-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+        gap: 3rem;
+        margin-bottom: 3rem;
+    }
+
+    .footer-brand p {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        line-height: 1.7;
+        margin-top: 1rem;
+        max-width: 260px;
+    }
+
+    .footer-col h4 {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+        margin-bottom: 1rem;
+    }
+
+    .footer-col ul {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .footer-col a {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+
+    .footer-col a:hover { color: var(--text); }
+
+    .footer-bottom {
+        border-top: 1px solid var(--border);
+        padding-top: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .footer-bottom p {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.72rem;
+        color: var(--text-muted);
+    }
+
+    .footer-social {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .footer-social a {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    .footer-social a:hover { color: var(--text); }
+
+    @media (max-width: 768px) {
+        .footer-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
+    }
+    @media (max-width: 480px) {
+        .footer-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ─── Scroll reveal ─── */
+    .reveal {
+        opacity: 0;
+        transform: translateY(20px);
+        transition: opacity 0.6s cubic-bezier(0.22,1,0.36,1), transform 0.6s cubic-bezier(0.22,1,0.36,1);
+    }
+    .reveal.visible {
+        opacity: 1;
+        transform: none;
+    }
+    .reveal-d1 { transition-delay: 60ms; }
+    .reveal-d2 { transition-delay: 120ms; }
+    .reveal-d3 { transition-delay: 180ms; }
+
+    /* ═══════════════════════
+       FAQ
+    ═══════════════════════ */
+    .faq {
+        padding: 5rem 0;
+        border-top: 1px solid var(--border);
+    }
+
+    .faq h2 {
+        text-align: center;
+        font-size: clamp(1.75rem, 4vw, 2.5rem);
+        font-style: italic;
+        margin-bottom: 3rem;
+    }
+
+    .faq-list {
+        max-width: 700px;
+        margin: 0 auto;
+    }
+
+    .faq-item {
+        border-bottom: 1px solid var(--border);
+    }
+
+    .faq-q {
+        padding: 1.25rem 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .faq-q span {
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: var(--text);
+    }
+
+    .faq-q i {
+        color: var(--text-muted);
+        font-size: 0.7rem;
+        transition: transform 0.25s ease;
+        flex-shrink: 0;
+    }
+
+    .faq-item.open .faq-q i { transform: rotate(180deg); }
+
+    .faq-a {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.35s ease;
+    }
+
+    .faq-item.open .faq-a { max-height: 250px; }
+
+    .faq-a-inner {
+        padding: 0 0 1.25rem;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        line-height: 1.75;
+    }
+
+    /* ═══════════════════════
+       CONTACT FORM CTA
+    ═══════════════════════ */
+    .contact {
+        padding: 5rem 0;
+        border-top: 1px solid var(--border);
+    }
+
+    .contact-inner {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr;
+        gap: 4rem;
+        align-items: start;
+    }
+
+    .contact-text h2 {
+        font-size: clamp(1.5rem, 3.5vw, 2.25rem);
+        font-style: italic;
+        margin-bottom: 1rem;
+    }
+
+    .contact-text p {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        line-height: 1.75;
+        margin-bottom: 2rem;
+    }
+
+    .contact-info-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .contact-info-item i {
+        color: var(--accent);
+        margin-top: 0.2rem;
+        font-size: 0.85rem;
+        width: 16px;
+        text-align: center;
+    }
+
+    .contact-info-item span {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+    }
+
+    .contact-form {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 2rem;
+    }
+
+    .contact-form .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .contact-form .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .contact-form label {
+        display: block;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-muted);
+        margin-bottom: 0.4rem;
+    }
+
+    .contact-form input,
+    .contact-form select,
+    .contact-form textarea {
+        width: 100%;
+        padding: 0.6rem 0.75rem;
+        border: 1px solid var(--border-strong);
+        border-radius: var(--radius);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.85rem;
+        color: var(--text);
+        background: var(--bg);
+        transition: border-color 0.15s;
+        outline: none;
+    }
+
+    .contact-form input:focus,
+    .contact-form select:focus,
+    .contact-form textarea:focus {
+        border-color: var(--accent);
+    }
+
+    .contact-form textarea { resize: vertical; min-height: 100px; }
+
+    .contact-form .form-submit {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    .contact-form .form-note {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+    }
+
+    .contact-success {
+        display: none;
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .contact-success.show { display: block; }
+    .contact-success.show + form { display: none; }
+
+    .contact-success i {
+        font-size: 2rem;
+        color: #10b981;
+        margin-bottom: 1rem;
+    }
+
+    .contact-success h3 {
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 0.5rem;
+    }
+
+    .contact-success p {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+    }
+
+    @media (max-width: 768px) {
+        .contact-inner { grid-template-columns: 1fr; gap: 2rem; }
+        .contact-form .form-row { grid-template-columns: 1fr; }
+    }
+
+    </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+    <div class="container nav-inner">
+        <a href="/" class="nav-logo">
+            <img src="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" alt="KLASSCI">
+            <span>KLASSCI</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="#fonctionnalites">Fonctionnalités</a></li>
+            <li><a href="#tarifs">Tarifs</a></li>
+            <li><a href="#faq">FAQ</a></li>
+            <li><a href="#contact">Contact</a></li>
+            <li><a href="{{ route('login') }}" class="nav-cta">Se connecter</a></li>
+        </ul>
+        <button class="nav-hamburger" id="hamburger" aria-label="Menu">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+</nav>
+
+<div class="mobile-nav" id="mobileNav">
+    <a href="#fonctionnalites" onclick="closeMobile()">Fonctionnalités</a>
+    <a href="#tarifs" onclick="closeMobile()">Tarifs</a>
+    <a href="#faq" onclick="closeMobile()">FAQ</a>
+    <a href="#contact" onclick="closeMobile()">Contact</a>
+    <a href="{{ route('login') }}">Se connecter</a>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="container">
+        <h1 class="reveal">Gestion scolaire, repensée.</h1>
+        <p class="hero-sub reveal reveal-d1">
+            KLASSCI est l'outil qui remplace vos fichiers Excel,
+            vos cahiers de notes et vos tableaux d'affichage.
+            Un seul endroit pour tout gérer.
+        </p>
+        <div class="hero-actions reveal reveal-d2">
+            <a href="#contact" class="btn-primary">
+                Essayer gratuitement <span style="opacity:0.6; font-size:0.7rem">— c'est gratuit</span>
+            </a>
+            <a href="#fonctionnalites" class="btn-outline">
+                Voir comment ça marche &gt;
+            </a>
+        </div>
+        <p class="hero-note reveal reveal-d3">Disponible sur navigateur. Aucune installation requise.</p>
+
+        <div class="hero-image reveal">
+            <img src="{{ asset('images/landing/hero_section.png') }}" alt="KLASSCI — Tableau de bord Super Admin" loading="eager" width="900" height="auto">
+        </div>
+    </div>
+</section>
+
+<!-- 3 PILLARS -->
+<section class="pillars">
+    <div class="container">
+        <div class="pillars-grid">
+            <div class="pillar reveal">
+                <h3>Simple</h3>
+                <p>Pensé pour les secrétaires, enseignants et directeurs qui n'ont pas le temps d'apprendre un logiciel complexe. Compte test en 2-3 jours, déploiement complet en 2 semaines.</p>
+            </div>
+            <div class="pillar reveal reveal-d1">
+                <h3>Complet</h3>
+                <p>Notes, bulletins, emplois du temps, paiements, présences, inscriptions — tout est intégré. Zéro outil supplémentaire.</p>
+            </div>
+            <div class="pillar reveal reveal-d2">
+                <h3>Sécurisé</h3>
+                <p>Chaque établissement a sa propre base de données isolée. Vos données ne sont jamais partagées avec d'autres écoles.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- SOCIAL PROOF -->
+<section class="proof">
+    <div class="container">
+        <h2 class="reveal">Adopté par des établissements<br>qui forment des milliers d'étudiants</h2>
+
+        <div class="proof-logos reveal">
+            <div class="proof-logo-card">
+                <img src="{{ asset('images/landing/esbtp_logo.png') }}" alt="ESBTP Abidjan">
+                <div class="proof-logo-name">ESBTP Abidjan</div>
+                <div class="proof-logo-detail">2 600+ étudiants · Plan Élite</div>
+            </div>
+            <div class="proof-logo-card">
+                <img src="{{ asset('images/landing/esbtp_logo.png') }}" alt="ESBTP Yamoussoukro">
+                <div class="proof-logo-name">ESBTP Yamoussoukro</div>
+                <div class="proof-logo-detail">2 000+ étudiants · Plan Élite</div>
+            </div>
+        </div>
+
+        <div class="testimonials-grid">
+            <div class="testimonial reveal">
+                <p class="testimonial-text">"Avant KLASSCI, la saisie des notes prenait 3 semaines. Aujourd'hui, <mark>les bulletins sont prêts en 48 heures</mark>. Les enseignants saisissent directement en ligne."</p>
+                <div class="testimonial-author">
+                    <img src="{{ asset('images/Images landingPage/Sans titre - 2-11.png') }}" alt="" class="testimonial-avatar">
+                    <div>
+                        <div class="testimonial-name">Dr. Soro Kouadio</div>
+                        <div class="testimonial-role">Directeur</div>
+                    </div>
+                    <span class="testimonial-company">ESBTP Abidjan</span>
                 </div>
             </div>
-        </nav>
 
-    <!-- Hero Section -->
-    <section id="home" class="hero">
-            <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-7" data-aos="fade-right" data-aos-duration="1000">
-                    <div class="hero-content">
-                        <span class="hero-subtitle">L'excellence dans la formation technique</span>
-                        <h1 class="hero-title">Former la prochaine génération de professionnels du bâtiment</h1>
-                        <p class="hero-description">L'École Spéciale du Bâtiment et des Travaux Publics vous offre un enseignement de qualité, dispensé par des professionnels expérimentés.</p>
-                    <div class="hero-buttons">
-                            <a href="#formations" class="btn btn-secondary btn-lg">Découvrir nos formations</a>
-                            <a href="#contact" class="btn btn-outline-light btn-lg">Nous contacter</a>
+            <div class="testimonial testimonial-featured reveal reveal-d1">
+                <p class="testimonial-text">"<mark>Le suivi financier a complètement changé.</mark> On voit en temps réel qui a payé, qui doit relancer, et les rapports sont toujours à jour. Plus besoin d'attendre la fin du mois pour avoir une vision claire. C'est devenu indispensable pour nous."</p>
+                <div class="testimonial-author">
+                    <img src="{{ asset('images/testimonial-2.png') }}" alt="" class="testimonial-avatar">
+                    <div>
+                        <div class="testimonial-name">Ama Bamba</div>
+                        <div class="testimonial-role">Comptable</div>
                     </div>
-                        
-                        <div class="hero-stats">
-                            <div class="hero-stat">
-                                <span class="hero-stat-value" data-count="15">15</span>
-                                <span class="hero-stat-label">Années d'excellence</span>
+                    <span class="testimonial-company">ESBTP Yakro</span>
                 </div>
-                            <div class="hero-stat">
-                                <span class="hero-stat-value" data-count="5000">5000+</span>
-                                <span class="hero-stat-label">Diplômés</span>
             </div>
-                            <div class="hero-stat">
-                                <span class="hero-stat-value" data-count="25">25</span>
-                                <span class="hero-stat-label">Partenaires industriels</span>
-                            </div>
-                        </div>
+
+            <div class="testimonial reveal reveal-d2">
+                <p class="testimonial-text">"L'émargement numérique a <mark>réduit l'absentéisme de 30%</mark>. Les coordinateurs voient en temps réel qui est présent, sans attendre les feuilles de présence."</p>
+                <div class="testimonial-author">
+                    <img src="{{ asset('images/testimonial-3.png') }}" alt="" class="testimonial-avatar">
+                    <div>
+                        <div class="testimonial-name">Traoré Nanga</div>
+                        <div class="testimonial-role">Coordinateur</div>
                     </div>
-                </div>
-                <div class="col-lg-5 d-none d-lg-block" data-aos="fade-left" data-aos-duration="1000">
-                    <!-- Espace réservé pour une éventuelle illustration ou vidéo -->
+                    <span class="testimonial-company">ESBTP Yakro</span>
                 </div>
             </div>
         </div>
-        
-        <!-- Éléments décoratifs -->
-        <div class="hero-shape"></div>
-        <div class="hero-circle hero-circle-1"></div>
-        <div class="hero-circle hero-circle-2"></div>
-        </section>
+    </div>
+</section>
 
-        <!-- Section À propos -->
-    <section id="about" class="section">
-            <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-6" data-aos="fade-right" data-aos-duration="1000">
-                    <div class="about-image position-relative">
-                        <img src="https://images.unsplash.com/photo-1503387762-592deb58ef4e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1300&q=80" alt="Chantier de construction" class="img-fluid rounded-xl shadow-lg" style="width: 100%;">
-                        <div class="about-badge position-absolute" style="bottom: -20px; right: 30px; background-color: white; border-radius: var(--border-radius-lg); padding: 1rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);">
-                            <div class="d-flex align-items-center">
-                                <div class="badge-icon" style="background-color: var(--primary-light); color: var(--primary); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 1rem;">
-                                    <i class="fas fa-award fa-lg"></i>
-                        </div>
-                                <div>
-                                    <span class="d-block fw-bold" style="color: var(--dark);">15+ Années</span>
-                                    <span style="color: var(--gray);">d'excellence</span>
-                    </div>
-                            </div>
-                                        </div>
-                                        </div>
-                                    </div>
-                <div class="col-lg-6" data-aos="fade-left" data-aos-duration="1000">
-                    <div class="ps-lg-5 mt-5 mt-lg-0">
-                        <span class="subtitle">À propos de {{ \App\Helpers\SettingsHelper::get('school_name', config('app.name')) }}</span>
-                        <h2 class="section-title">Former la prochaine génération de professionnels du bâtiment</h2>
-                        <p class="section-description">L'École Spéciale du Bâtiment et des Travaux Publics (ESBTP) de Yamoussoukro est un établissement d'enseignement supérieur spécialisé dans la formation aux métiers du bâtiment et des travaux publics. Notre mission est de former des professionnels qualifiés capables de répondre aux défis du secteur de la construction en Côte d'Ivoire et en Afrique.</p>
-                        
-                        <div class="features-grid row g-4 mt-4">
-                            <div class="col-md-6">
-                                <div class="feature-card p-4 rounded-lg h-100" style="background-color: var(--primary-light); border-left: 3px solid var(--primary);">
-                                    <div class="feature-icon mb-3" style="color: var(--primary);">
-                                        <i class="fas fa-graduation-cap fa-2x"></i>
-                                </div>
-                                    <h5 class="feature-title">Enseignement de qualité</h5>
-                                    <p class="feature-text mb-0" style="color: var(--gray);">Des professeurs expérimentés et des méthodes pédagogiques innovantes.</p>
-                                        </div>
-                                        </div>
-                            <div class="col-md-6">
-                                <div class="feature-card p-4 rounded-lg h-100" style="background-color: var(--secondary-light); border-left: 3px solid var(--secondary);">
-                                    <div class="feature-icon mb-3" style="color: var(--secondary);">
-                                        <i class="fas fa-cogs fa-2x"></i>
-                                    </div>
-                                    <h5 class="feature-title">Équipements modernes</h5>
-                                    <p class="feature-text mb-0" style="color: var(--gray);">Des laboratoires et ateliers équipés des dernières technologies.</p>
-                                </div>
-                                        </div>
-                            <div class="col-md-6">
-                                <div class="feature-card p-4 rounded-lg h-100" style="background-color: var(--primary-light); border-left: 3px solid var(--primary);">
-                                    <div class="feature-icon mb-3" style="color: var(--primary);">
-                                        <i class="fas fa-handshake fa-2x"></i>
-                                        </div>
-                                    <h5 class="feature-title">Partenariats professionnels</h5>
-                                    <p class="feature-text mb-0" style="color: var(--gray);">Des liens étroits avec les entreprises du secteur pour des stages et emplois.</p>
-                                    </div>
-                                </div>
-                            <div class="col-md-6">
-                                <div class="feature-card p-4 rounded-lg h-100" style="background-color: var(--secondary-light); border-left: 3px solid var(--secondary);">
-                                    <div class="feature-icon mb-3" style="color: var(--secondary);">
-                                        <i class="fas fa-certificate fa-2x"></i>
-                                        </div>
-                                    <h5 class="feature-title">Diplômes reconnus</h5>
-                                    <p class="feature-text mb-0" style="color: var(--gray);">Des formations certifiées et reconnues au niveau national et international.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                        
-                        <div class="mt-5">
-                            <a href="#formations" class="btn btn-primary">Découvrir nos programmes <i class="fas fa-arrow-right ms-2"></i></a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+<!-- FEATURES -->
+<section class="features" id="fonctionnalites">
+    <div class="container">
+        <h2 class="reveal">Ce que KLASSCI fait pour vous</h2>
+        <p class="features-intro reveal reveal-d1">Chaque fonctionnalité a été construite en écoutant les besoins réels des établissements que nous accompagnons depuis 2023.</p>
 
-    <!-- Section Formations -->
-    <section id="formations" class="section bg-light">
-            <div class="container">
-            <div class="text-center mb-5" data-aos="fade-up">
-                <span class="subtitle">Nos programmes académiques</span>
-                <h2 class="section-title">Formations adaptées aux besoins du marché</h2>
-                <p class="section-description mx-auto">Découvrez nos différentes filières d'études dans le domaine du bâtiment et des travaux publics, conçues pour vous préparer aux défis du monde professionnel.</p>
+        <!-- Big feature 1 -->
+        <div class="feature-big reveal">
+            <div class="feature-big-text">
+                <h3>Saisie des notes et bulletins</h3>
+                <p>Les enseignants saisissent leurs notes directement depuis leur téléphone. Les moyennes, rangs et appréciations se calculent automatiquement. Les bulletins PDF sont générés en un clic, personnalisés aux couleurs de votre école.</p>
+                <a href="#">En savoir plus &gt;</a>
             </div>
-            
-            <!-- Filtres de formations -->
-            <div class="formations-filter mb-5" data-aos="fade-up">
-                <ul class="nav nav-pills justify-content-center flex-wrap">
-                    <li class="nav-item">
-                        <a class="nav-link active" data-filter="all" href="#">Toutes les formations</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" data-filter="licence" href="#">Licences</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" data-filter="master" href="#">Masters</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" data-filter="court" href="#">Formations courtes</a>
-                    </li>
+            <div class="feature-big-image">
+                <img src="{{ asset('images/landing/Saisie_des_notes_et_bulletins.png') }}" alt="Saisie des notes et bulletins — fiche étudiant KLASSCI" loading="lazy">
+            </div>
+        </div>
+
+        <!-- Big feature 2 -->
+        <div class="feature-big reveal">
+            <div class="feature-big-text">
+                <h3>Suivi financier en temps réel</h3>
+                <p>Visualisez instantanément l'état des paiements de chaque étudiant. Envoyez des relances automatiques, générez des reçus, et exportez vos rapports financiers. Compatible avec le système de frais par catégorie.</p>
+                <a href="#">En savoir plus &gt;</a>
+            </div>
+            <div class="feature-big-image">
+                <img src="{{ asset('images/landing/Suivi_financier_en_temps_réel.png') }}" alt="Dashboard Comptabilité — suivi financier en temps réel" loading="lazy">
+            </div>
+        </div>
+
+        <!-- Small features grid -->
+        <div class="features-small">
+            <div class="feature-tile reveal">
+                <h4>Emploi du temps</h4>
+                <p>Génération automatique des plannings avec gestion des conflits de salles et d'enseignants.</p>
+            </div>
+            <div class="feature-tile reveal reveal-d1">
+                <h4>Émargement numérique</h4>
+                <p>Prise de présence par séance, historique complet, taux de présence en temps réel.</p>
+            </div>
+            <div class="feature-tile reveal reveal-d2">
+                <h4>Système LMD</h4>
+                <p>Gestion des UE, ECUE, crédits et semestres conforme aux standards UEMOA.</p>
+            </div>
+            <div class="feature-tile reveal">
+                <h4>Inscriptions en ligne</h4>
+                <p>Workflow complet : de la demande à la validation, avec suivi des documents et pièces requises.</p>
+            </div>
+            <div class="feature-tile reveal reveal-d1">
+                <h4>Tableau de bord par rôle</h4>
+                <p>Directeur, secrétaire, enseignant, comptable, coordinateur — chacun voit ce qui le concerne.</p>
+            </div>
+            <div class="feature-tile reveal reveal-d2">
+                <h4>API et intégrations</h4>
+                <p>Connectez KLASSCI à votre LMS ou système existant via notre API REST documentée.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="tarifs">
+    <div class="container">
+        <h2 class="reveal">Tarification simple</h2>
+        <p class="pricing-sub reveal reveal-d1">Commencez gratuitement. Évoluez quand vous êtes prêt.</p>
+
+        <div class="pricing-grid reveal">
+            <div class="price-col">
+                <div class="price-name">Free</div>
+                <div class="price-desc">Pour découvrir</div>
+                <div class="price-amount">0 <span>FCFA</span></div>
+                <div class="price-period">3 mois d'essai</div>
+                <ul class="price-features">
+                    <li>50 étudiants max</li>
+                    <li>Gestion des notes</li>
+                    <li>Emploi du temps basique</li>
+                    <li>1 administrateur</li>
+                    <li class="no">Comptabilité</li>
+                    <li class="no">Support prioritaire</li>
                 </ul>
-                </div>
-
-                <div class="row g-4">
-                <!-- Formation 1 -->
-                <div class="col-lg-4 col-md-6 formation-item" data-category="licence" data-aos="fade-up" data-aos-delay="100">
-                    <div class="formation-card card border-0 shadow-sm h-100">
-                        <div class="formation-image position-relative">
-                            <img src="https://images.unsplash.com/photo-1581094794329-c8112a89af12?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1400&q=80" class="card-img-top" alt="Génie Civil">
-                            <div class="formation-overlay d-flex align-items-center justify-content-center">
-                                <a href="#" class="btn btn-light btn-sm">Voir détails</a>
-                                </div>
-                            <div class="badge bg-primary position-absolute" style="top: 20px; right: 20px;">Licence</div>
-                        </div>
-                        <div class="card-body p-4">
-                            <h5 class="card-title mb-3">Génie Civil</h5>
-                                <p class="card-text">Formation en conception, analyse et réalisation d'infrastructures civiles comme les ponts, routes et bâtiments.</p>
-                            <hr>
-                            <div class="formation-details">
-                                <div class="row g-4">
-                                    <div class="col-6">
-                                        <div class="d-flex align-items-center">
-                                            <div class="icon-circle me-2" style="min-width: 30px; width: 30px; height: 30px; border-radius: 50%; background-color: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center;">
-                                                <i class="fas fa-clock"></i>
-                                            </div>
-                                            <div>
-                                                <small class="text-muted">Durée</small>
-                                                <p class="mb-0 small">3 ans</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="d-flex align-items-center">
-                                            <div class="icon-circle me-2" style="min-width: 30px; width: 30px; height: 30px; border-radius: 50%; background-color: var(--secondary-light); color: var(--secondary); display: flex; align-items: center; justify-content: center;">
-                                                <i class="fas fa-graduation-cap"></i>
-                                            </div>
-                                            <div>
-                                                <small class="text-muted">Niveau requis</small>
-                                                <p class="mb-0 small">Bac</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="d-flex align-items-center">
-                                            <div class="icon-circle me-2" style="min-width: 30px; width: 30px; height: 30px; border-radius: 50%; background-color: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center;">
-                                                <i class="fas fa-users"></i>
-                                            </div>
-                                            <div>
-                                                <small class="text-muted">Places</small>
-                                                <p class="mb-0 small">40 disponibles</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="d-flex align-items-center">
-                                            <div class="icon-circle me-2" style="min-width: 30px; width: 30px; height: 30px; border-radius: 50%; background-color: var(--secondary-light); color: var(--secondary); display: flex; align-items: center; justify-content: center;">
-                                                <i class="fas fa-calendar-alt"></i>
-                                            </div>
-                                            <div>
-                                                <small class="text-muted">Début</small>
-                                                <p class="mb-0 small">Septembre 2023</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-footer bg-white border-0 p-4">
-                            <a href="#" class="btn btn-primary w-100">Plus de détails</a>
-                            </div>
-                        </div>
-                    </div>
-
-                <!-- Formation 2 -->
-                <div class="col-lg-4 col-md-6 formation-item" data-category="licence" data-aos="fade-up" data-aos-delay="200">
-                    <div class="formation-card card border-0 shadow-sm h-100">
-                        <div class="formation-image position-relative">
-                            <img src="https://images.unsplash.com/photo-1541888946425-d81bb19240f5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80" class="card-img-top" alt="Travaux Publics">
-                            <div class="formation-overlay d-flex align-items-center justify-content-center">
-                                <a href="#" class="btn btn-light btn-sm">Voir détails</a>
-                                </div>
-                            <div class="badge bg-primary position-absolute" style="top: 20px; right: 20px;">Licence</div>
-                        </div>
-                        <div class="card-body p-4">
-                            <h5 class="card-title mb-3">Travaux Publics</h5>
-                                <p class="card-text">Spécialisation dans la construction d'infrastructures publiques comme les autoroutes, barrages et aéroports.</p>
-                            <hr>
-                            <div class="formation-details">
-                                <div class="row g-4">
-                                    <div class="col-6">
-                                        <div class="d-flex align-items-center">
-                                            <div class="icon-circle me-2" style="min-width: 30px; width: 30px; height: 30px; border-radius: 50%; background-color: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center;">
-                                                <i class="fas fa-clock"></i>
-                            </div>
-                                            <div>
-                                                <small class="text-muted">Durée</small>
-                                                <p class="mb-0 small">3 ans</p>
-                        </div>
-                    </div>
-                                </div>
-                                    <div class="col-6">
-                                        <div class="d-flex align-items-center">
-                                            <div class="icon-circle me-2" style="min-width: 30px; width: 30px; height: 30px; border-radius: 50%; background-color: var(--secondary-light); color: var(--secondary); display: flex; align-items: center; justify-content: center;">
-                                                <i class="fas fa-graduation-cap"></i>
-                            </div>
-                                            <div>
-                                                <small class="text-muted">Niveau requis</small>
-                                                <p class="mb-0 small">Bac</p>
-                        </div>
-                    </div>
-                                </div>
-                                    <div class="col-6">
-                                        <div class="d-flex align-items-center">
-                                            <div class="icon-circle me-2" style="min-width: 30px; width: 30px; height: 30px; border-radius: 50%; background-color: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center;">
-                                                <i class="fas fa-users"></i>
-                            </div>
-                                            <div>
-                                                <small class="text-muted">Places</small>
-                                                <p class="mb-0 small">35 disponibles</p>
-                        </div>
-                            </div>
-                                </div>
-                                    <div class="col-6">
-                                        <div class="d-flex align-items-center">
-                                            <div class="icon-circle me-2" style="min-width: 30px; width: 30px; height: 30px; border-radius: 50%; background-color: var(--secondary-light); color: var(--secondary); display: flex; align-items: center; justify-content: center;">
-                                                <i class="fas fa-calendar-alt"></i>
-                            </div>
-                                            <div>
-                                                <small class="text-muted">Début</small>
-                                                <p class="mb-0 small">Septembre 2023</p>
-                        </div>
-                            </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                        <div class="card-footer bg-white border-0 p-4">
-                            <a href="#" class="btn btn-primary w-100">Plus de détails</a>
-                </div>
+                <a href="#contact" class="price-btn">Commencer</a>
             </div>
-                </div>
 
-                <!-- Formation 3 -->
-                <div class="col-lg-4 col-md-6 formation-item" data-category="licence" data-aos="fade-up" data-aos-delay="300">
-                    <div class="formation-card card border-0 shadow-sm h-100">
-                        <div class="formation-image position-relative">
-                            <img src="https://images.unsplash.com/photo-1503387762-592deb58ef4e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1300&q=80" class="card-img-top" alt="Architecture">
-                            <div class="formation-overlay d-flex align-items-center justify-content-center">
-                                <a href="#" class="btn btn-light btn-sm">Voir détails</a>
-                        </div>
-                            <div class="badge bg-primary position-absolute" style="top: 20px; right: 20px;">Licence</div>
-                    </div>
-                        <div class="card-body p-4">
-                            <h5 class="card-title mb-3">Architecture</h5>
-                            <p class="card-text">Formation en conception architecturale, design d'intérieur et planification urbaine pour créer des espaces fonctionnels.</p>
-                            <hr>
-                            <div class="formation-details">
-                        <div class="row g-4">
-                                    <div class="col-6">
-                                        <div class="d-flex align-items-center">
-                                            <div class="icon-circle me-2" style="min-width: 30px; width: 30px; height: 30px; border-radius: 50%; background-color: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center;">
-                                                <i class="fas fa-clock"></i>
-                                                </div>
-                                            <div>
-                                                <small class="text-muted">Durée</small>
-                                                <p class="mb-0 small">3 ans</p>
-                                            </div>
-                                                </div>
-                                            </div>
-                                    <div class="col-6">
-                                        <div class="d-flex align-items-center">
-                                            <div class="icon-circle me-2" style="min-width: 30px; width: 30px; height: 30px; border-radius: 50%; background-color: var(--secondary-light); color: var(--secondary); display: flex; align-items: center; justify-content: center;">
-                                                <i class="fas fa-graduation-cap"></i>
-                                                </div>
-                                            <div>
-                                                <small class="text-muted">Niveau requis</small>
-                                                <p class="mb-0 small">Bac</p>
-                                            </div>
-                                                </div>
-                                            </div>
-                                    <div class="col-6">
-                                        <div class="d-flex align-items-center">
-                                            <div class="icon-circle me-2" style="min-width: 30px; width: 30px; height: 30px; border-radius: 50%; background-color: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center;">
-                                                <i class="fas fa-users"></i>
-                                            </div>
-                                            <div>
-                                                <small class="text-muted">Places</small>
-                                                <p class="mb-0 small">30 disponibles</p>
-                                        </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="d-flex align-items-center">
-                                            <div class="icon-circle me-2" style="min-width: 30px; width: 30px; height: 30px; border-radius: 50%; background-color: var(--secondary-light); color: var(--secondary); display: flex; align-items: center; justify-content: center;">
-                                                <i class="fas fa-calendar-alt"></i>
-                                            </div>
-                                            <div>
-                                                <small class="text-muted">Début</small>
-                                                <p class="mb-0 small">Septembre 2023</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-footer bg-white border-0 p-4">
-                            <a href="#" class="btn btn-primary w-100">Plus de détails</a>
-                        </div>
-                    </div>
-                                </div>
-                            </div>
+            <div class="price-col featured">
+                <span class="price-badge">populaire</span>
+                <div class="price-name">Essentiel</div>
+                <div class="price-desc">Établissements en croissance</div>
+                <div class="price-amount">150k <span>FCFA</span></div>
+                <div class="price-period">/ mois</div>
+                <ul class="price-features">
+                    <li>1 000 étudiants</li>
+                    <li>Notes + Bulletins PDF</li>
+                    <li>Emploi du temps avancé</li>
+                    <li>Comptabilité complète</li>
+                    <li>5 utilisateurs</li>
+                    <li>Support email</li>
+                </ul>
+                <a href="#contact" class="price-btn price-btn-fill">Choisir Essentiel</a>
+            </div>
 
-            <div class="text-center mt-5" data-aos="fade-up">
-                <a href="#" class="btn btn-outline-primary btn-lg">Voir toutes nos formations</a>
+            <div class="price-col">
+                <div class="price-name">Pro</div>
+                <div class="price-desc">Grands établissements</div>
+                <div class="price-amount">350k <span>FCFA</span></div>
+                <div class="price-period">/ mois</div>
+                <ul class="price-features">
+                    <li>Étudiants illimités</li>
+                    <li>Toutes les fonctionnalités</li>
+                    <li>Système LMD complet</li>
+                    <li>API pour intégrations</li>
+                    <li>Utilisateurs illimités</li>
+                    <li>Support prioritaire 24/7</li>
+                </ul>
+                <a href="#contact" class="price-btn">Choisir Pro</a>
+            </div>
+
+            <div class="price-col" style="background:var(--bg-alt);">
+                <div class="price-name">Élite</div>
+                <div class="price-desc">Sur mesure pour votre établissement</div>
+                <div class="price-amount" style="font-size:1.75rem;">Sur devis</div>
+                <div class="price-period">personnalisation complète</div>
+                <ul class="price-features">
+                    <li>Tout le plan Pro inclus</li>
+                    <li>Fonctionnalités sur mesure</li>
+                    <li>PDF et exports aux couleurs de l'école</li>
+                    <li>Déploiement dédié (~2 semaines)</li>
+                    <li>Formation de vos équipes</li>
+                    <li>Interlocuteur dédié</li>
+                </ul>
+                <a href="#contact" class="price-btn price-btn-fill">Nous contacter</a>
             </div>
         </div>
-    </section>
 
-    <!-- Section Témoignages -->
-    <section id="testimonials" class="section bg-light">
-        <div class="container">
-            <div class="row text-center mb-5">
-                <div class="col-lg-8 mx-auto">
-                    <h6 class="subtitle text-primary fw-bold mb-2" data-aos="fade-up">Témoignages</h6>
-                    <h2 class="section-title" data-aos="fade-up" data-aos-delay="100">Ce que disent nos étudiants et diplômés</h2>
-                    <p class="text-muted" data-aos="fade-up" data-aos-delay="200">
-                        Découvrez les expériences de ceux qui ont choisi KLASSCI pour leur formation dans le domaine du bâtiment et des travaux publics.
-                    </p>
+        <p class="pricing-footer reveal">Essai gratuit de 3 mois · Aucune carte bancaire requise · Support inclus</p>
+    </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq" id="faq">
+    <div class="container">
+        <h2 class="reveal">Questions fréquentes</h2>
+        <div class="faq-list">
+            <div class="faq-item reveal">
+                <div class="faq-q" onclick="toggleFaq(this)">
+                    <span>Mes données sont-elles en sécurité ?</span>
+                    <i class="fas fa-chevron-down"></i>
                 </div>
+                <div class="faq-a"><div class="faq-a-inner">Chaque établissement dispose de sa propre base de données isolée. Les données sont chiffrées en transit et au repos. Aucun établissement ne peut accéder aux données d'un autre.</div></div>
             </div>
-            
-            <div class="testimonial-slider position-relative" data-aos="fade-up" data-aos-delay="300">
-                                <div class="row">
-                    <div class="col-lg-4 col-md-6 mb-4">
-                        <div class="testimonial-card bg-white p-4 rounded-4 shadow-sm h-100">
-                            <div class="testimonial-rating mb-3">
-                                <i class="fas fa-star text-warning"></i>
-                                <i class="fas fa-star text-warning"></i>
-                                <i class="fas fa-star text-warning"></i>
-                                <i class="fas fa-star text-warning"></i>
-                                <i class="fas fa-star text-warning"></i>
-                                                </div>
-                            <p class="testimonial-text mb-4">
-                                "La formation en Génie Civil à KLASSCI a été un véritable tremplin pour ma carrière. Les professeurs sont des professionnels du secteur qui partagent leur expérience concrète, et les projets pratiques m'ont permis d'acquérir des compétences directement applicables sur le terrain."
-                            </p>
-                            <div class="testimonial-user d-flex align-items-center">
-                                <div class="user-avatar me-3">
-                                    <img src="https://randomuser.me/api/portraits/women/42.jpg" alt="Témoignage" class="rounded-circle" width="60" height="60">
-                                            </div>
-                                <div class="user-info">
-                                    <h6 class="mb-0">Sophie Kamga</h6>
-                                    <span class="small text-muted">Diplômée en Génie Civil 2022</span>
-                                        </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                    <div class="col-lg-4 col-md-6 mb-4">
-                        <div class="testimonial-card bg-white p-4 rounded-4 shadow-sm h-100">
-                            <div class="testimonial-rating mb-3">
-                                <i class="fas fa-star text-warning"></i>
-                                <i class="fas fa-star text-warning"></i>
-                                <i class="fas fa-star text-warning"></i>
-                                <i class="fas fa-star text-warning"></i>
-                                <i class="fas fa-star text-warning"></i>
-                                                </div>
-                            <p class="testimonial-text mb-4">
-                                "J'ai choisi KLASSCI pour sa réputation d'excellence, et je n'ai pas été déçu. La qualité de l'enseignement, les équipements de pointe et le réseau de partenaires professionnels m'ont ouvert des portes dès l'obtention de mon diplôme. Aujourd'hui, je dirige ma propre entreprise d'architecture."
-                            </p>
-                            <div class="testimonial-user d-flex align-items-center">
-                                <div class="user-avatar me-3">
-                                    <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Témoignage" class="rounded-circle" width="60" height="60">
-                                </div>
-                                <div class="user-info">
-                                    <h6 class="mb-0">Jean-Paul Mbarga</h6>
-                                    <span class="small text-muted">Diplômé en Architecture 2020</span>
-                                </div>
-                            </div>
-                                            </div>
-                                        </div>
-
-                    <div class="col-lg-4 col-md-6 mb-4">
-                        <div class="testimonial-card bg-white p-4 rounded-4 shadow-sm h-100">
-                            <div class="testimonial-rating mb-3">
-                                <i class="fas fa-star text-warning"></i>
-                                <i class="fas fa-star text-warning"></i>
-                                <i class="fas fa-star text-warning"></i>
-                                <i class="fas fa-star text-warning"></i>
-                                <i class="fas fa-star-half-alt text-warning"></i>
-                                                </div>
-                            <p class="testimonial-text mb-4">
-                                "En tant qu'étudiante actuelle en Travaux Publics, je suis impressionnée par la pédagogie innovante et l'accompagnement personnalisé offerts par KLASSCI. Les visites de chantiers et les ateliers pratiques nous permettent de confronter la théorie à la réalité du terrain. Une formation complète et stimulante!"
-                            </p>
-                            <div class="testimonial-user d-flex align-items-center">
-                                <div class="user-avatar me-3">
-                                    <img src="https://randomuser.me/api/portraits/women/65.jpg" alt="Témoignage" class="rounded-circle" width="60" height="60">
-                                </div>
-                                <div class="user-info">
-                                    <h6 class="mb-0">Marie Kouassi</h6>
-                                    <span class="small text-muted">Étudiante en Travaux Publics</span>
-                                </div>
-                            </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                <div class="text-center mt-4">
-                    <div class="testimonial-dots d-inline-flex">
-                        <span class="dot active mx-1"></span>
-                        <span class="dot mx-1"></span>
-                        <span class="dot mx-1"></span>
-                                        </div>
-                                    </div>
-                                </div>
-            
-            <div class="row mt-5">
-                <div class="col-lg-8 mx-auto text-center" data-aos="fade-up">
-                    <div class="stats-container p-4 bg-white rounded-4 shadow-sm">
-                        <div class="row g-4">
-                            <div class="col-md-3 col-6">
-                                <div class="stat-item">
-                                    <h3 class="stat-number text-primary mb-2"><span class="counter">98</span>%</h3>
-                                    <p class="stat-text mb-0">Taux d'insertion professionnelle</p>
-                            </div>
-                        </div>
-                            <div class="col-md-3 col-6">
-                                <div class="stat-item">
-                                    <h3 class="stat-number text-primary mb-2"><span class="counter">1500</span>+</h3>
-                                    <p class="stat-text mb-0">Diplômés depuis 2005</p>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-6">
-                                <div class="stat-item">
-                                    <h3 class="stat-number text-primary mb-2"><span class="counter">85</span>+</h3>
-                                    <p class="stat-text mb-0">Entreprises partenaires</p>
-                                </div>
-                            </div>
-                            <div class="col-md-3 col-6">
-                                <div class="stat-item">
-                                    <h3 class="stat-number text-primary mb-2"><span class="counter">95</span>%</h3>
-                                    <p class="stat-text mb-0">Satisfaction des étudiants</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    </div>
+            <div class="faq-item reveal reveal-d1">
+                <div class="faq-q" onclick="toggleFaq(this)">
+                    <span>Puis-je migrer mes données depuis Excel ?</span>
+                    <i class="fas fa-chevron-down"></i>
                 </div>
+                <div class="faq-a"><div class="faq-a-inner">Oui. KLASSCI dispose d'outils d'importation pour les listes d'étudiants, classes et matières au format Excel. Notre équipe peut également vous accompagner lors de la migration initiale.</div></div>
             </div>
-        </section>
-
-    <!-- Section Contact -->
-    <section id="contact" class="section">
-            <div class="container">
-            <div class="row text-center mb-5">
-                <div class="col-lg-8 mx-auto">
-                    <h6 class="subtitle text-primary fw-bold mb-2" data-aos="fade-up">Contactez-nous</h6>
-                    <h2 class="section-title" data-aos="fade-up" data-aos-delay="100">Avez-vous des questions ? Nous sommes là pour vous</h2>
-                    <p class="text-muted" data-aos="fade-up" data-aos-delay="200">
-                        Contactez-nous pour plus d'informations sur nos programmes de formation ou pour planifier une visite de notre campus.
-                    </p>
+            <div class="faq-item reveal reveal-d1">
+                <div class="faq-q" onclick="toggleFaq(this)">
+                    <span>KLASSCI fonctionne-t-il avec le système LMD ?</span>
+                    <i class="fas fa-chevron-down"></i>
                 </div>
+                <div class="faq-a"><div class="faq-a-inner">Oui. KLASSCI supporte le système BTS classique et le système LMD (Licence-Master-Doctorat) avec gestion des UE, ECUE, crédits et semestres conforme aux standards UEMOA.</div></div>
             </div>
-            
-                <div class="row g-4">
-                <div class="col-lg-5" data-aos="fade-right">
-                    <div class="contact-info p-4 bg-white rounded-4 shadow-sm h-100">
-                        <h4 class="mb-4">Informations de contact</h4>
-                        
-                        <div class="d-flex mb-4">
-                            <div class="contact-icon">
-                                <i class="fas fa-map-marker-alt text-primary"></i>
-                            </div>
-                            <div class="ms-3">
-                                <h5 class="fs-6 mb-1">Adresse</h5>
-                                <p class="text-muted mb-0">123 Avenue de la Construction, Yaoundé, Cameroun</p>
-                            </div>
-                        </div>
-                        
-                        <div class="d-flex mb-4">
-                            <div class="contact-icon">
-                                <i class="fas fa-phone-alt text-primary"></i>
-                            </div>
-                            <div class="ms-3">
-                                <h5 class="fs-6 mb-1">Téléphone</h5>
-                                <p class="text-muted mb-0">+237 123 456 789 / +237 987 654 321</p>
-                            </div>
-                        </div>
-                        
-                        <div class="d-flex mb-4">
-                            <div class="contact-icon">
-                                <i class="fas fa-envelope text-primary"></i>
-                            </div>
-                            <div class="ms-3">
-                                <h5 class="fs-6 mb-1">Email</h5>
-                                <p class="text-muted mb-0">info@klassci.cm</p>
-                            </div>
-                        </div>
-                        
-                        <div class="d-flex mb-4">
-                            <div class="contact-icon">
-                                <i class="fas fa-clock text-primary"></i>
-                            </div>
-                            <div class="ms-3">
-                                <h5 class="fs-6 mb-1">Heures d'ouverture</h5>
-                                <p class="text-muted mb-0">Lundi - Vendredi: 8h00 - 17h00</p>
-                                <p class="text-muted mb-0">Samedi: 9h00 - 13h00</p>
-                            </div>
-                        </div>
-                        
-                        <div class="social-links mt-4">
-                                <a href="#" class="me-2"><i class="fab fa-facebook-f"></i></a>
-                                <a href="#" class="me-2"><i class="fab fa-twitter"></i></a>
-                                <a href="#" class="me-2"><i class="fab fa-instagram"></i></a>
-                                <a href="#" class="me-2"><i class="fab fa-linkedin-in"></i></a>
-                            </div>
-                        </div>
-                    </div>
-
-                <div class="col-lg-7" data-aos="fade-left">
-                    <div class="contact-form p-4 bg-white rounded-4 shadow-sm">
-                        <h4 class="mb-4">Envoyez-nous un message</h4>
-                        <form>
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <div class="form-floating mb-3">
-                                        <input type="text" class="form-control" id="floatingName" placeholder="Votre nom">
-                                        <label for="floatingName">Votre nom</label>
-                        </div>
-                    </div>
-                                <div class="col-md-6">
-                                    <div class="form-floating mb-3">
-                                        <input type="email" class="form-control" id="floatingEmail" placeholder="Votre email">
-                                        <label for="floatingEmail">Votre email</label>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="form-floating mb-3">
-                                        <input type="text" class="form-control" id="floatingSubject" placeholder="Sujet">
-                                        <label for="floatingSubject">Sujet</label>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="form-floating mb-3">
-                                        <textarea class="form-control" placeholder="Votre message" id="floatingMessage" style="height: 150px"></textarea>
-                                        <label for="floatingMessage">Votre message</label>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <button type="submit" class="btn btn-primary">Envoyer le message</button>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
+            <div class="faq-item reveal reveal-d2">
+                <div class="faq-q" onclick="toggleFaq(this)">
+                    <span>Combien de temps pour être opérationnel ?</span>
+                    <i class="fas fa-chevron-down"></i>
                 </div>
+                <div class="faq-a"><div class="faq-a-inner">Pour le plan gratuit (essai de 3 mois), votre compte est créé en 2 à 3 jours. Si vous passez à une formule payante, comptez environ 2 semaines pour la personnalisation complète et le déploiement de votre établissement.</div></div>
+            </div>
+            <div class="faq-item reveal reveal-d2">
+                <div class="faq-q" onclick="toggleFaq(this)">
+                    <span>KLASSCI fonctionne-t-il sur téléphone ?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-a"><div class="faq-a-inner">Oui. L'interface est entièrement responsive et fonctionne sur smartphone, tablette et ordinateur. Les enseignants peuvent saisir les présences et les notes directement depuis leur téléphone.</div></div>
+            </div>
+            <div class="faq-item reveal reveal-d3">
+                <div class="faq-q" onclick="toggleFaq(this)">
+                    <span>Puis-je essayer gratuitement ?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="faq-a"><div class="faq-a-inner">Le plan Free vous permet de tester KLASSCI pendant 3 mois avec jusqu'à 50 étudiants. Votre compte est créé en 2 à 3 jours. Si vous passez à une formule payante, comptez environ 2 semaines pour la personnalisation et le déploiement complet de votre établissement.</div></div>
             </div>
         </div>
-    </section>
-    
-    <!-- Section Carte -->
-    <section class="map-section">
-        <div class="container-fluid p-0">
-            <div class="row g-0">
-                <div class="col-12">
-                    <div class="map-container" data-aos="zoom-in">
-                        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d127503.42520015746!2d11.447529!3d3.8557085!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x108bcf7a309a7977%3A0x8484d7c2d6b7a7eb!2sYaound%C3%A9!5e0!3m2!1sfr!2scm!4v1701188988321!5m2!1sfr!2scm" width="100%" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-                    </div>
+    </div>
+</section>
+
+<!-- CONTACT FORM -->
+<section class="contact" id="contact">
+    <div class="container">
+        <div class="contact-inner reveal">
+            <div class="contact-text">
+                <h2>Demandez une démonstration</h2>
+                <p>Vous avez des questions ou souhaitez voir KLASSCI en action ? Remplissez le formulaire et notre équipe vous recontactera sous 24h.</p>
+                <div class="contact-info-item">
+                    <i class="fas fa-envelope"></i>
+                    <span>contact@klassci.com</span>
+                </div>
+                <div class="contact-info-item">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>Abidjan, Côte d'Ivoire</span>
                 </div>
             </div>
+            <div class="contact-form">
+                <div class="contact-success" id="contactSuccess">
+                    <i class="fas fa-check-circle"></i>
+                    <h3>Message envoyé</h3>
+                    <p>Nous vous recontacterons sous 24h.</p>
+                </div>
+                <form id="contactForm" method="POST" action="/contact-demo">
+                    @csrf
+                    <div class="form-row">
+                        <div>
+                            <label for="ct-nom">Nom complet</label>
+                            <input type="text" id="ct-nom" name="nom" required placeholder="Votre nom">
+                        </div>
+                        <div>
+                            <label for="ct-email">Email</label>
+                            <input type="email" id="ct-email" name="email" required placeholder="vous@exemple.com">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div>
+                            <label for="ct-etablissement">Établissement</label>
+                            <input type="text" id="ct-etablissement" name="etablissement" required placeholder="Nom de votre établissement">
+                        </div>
+                        <div>
+                            <label for="ct-telephone">Téléphone</label>
+                            <input type="tel" id="ct-telephone" name="telephone" placeholder="+225 07 00 00 00 00">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="ct-type">Type d'établissement</label>
+                        <select id="ct-type" name="type_etablissement" required>
+                            <option value="">Sélectionnez</option>
+                            <option value="ecole_superieure">École supérieure</option>
+                            <option value="universite">Université</option>
+                            <option value="lycee">Lycée</option>
+                            <option value="college">Collège</option>
+                            <option value="centre_formation">Centre de formation</option>
+                            <option value="autre">Autre</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="ct-message">Message <span style="font-weight:400;color:var(--text-muted)">(optionnel)</span></label>
+                        <textarea id="ct-message" name="message" placeholder="Dites-nous en quoi KLASSCI peut vous aider..."></textarea>
+                    </div>
+                    <div class="form-submit">
+                        <span class="form-note">Réponse sous 24h</span>
+                        <button type="submit" class="btn-primary">Envoyer la demande <i class="fas fa-arrow-right" style="font-size:0.7rem"></i></button>
+                    </div>
+                </form>
+            </div>
         </div>
-    </section>
-    
-    <!-- Footer -->
-    <footer class="bg-dark text-light pt-5 pb-3">
-        <div class="container">
-            <div class="row g-4">
-                    <div class="col-lg-3 col-md-6">
-                    <div class="footer-widget">
-                        <h4 class="mb-4 text-white">KLASSCI</h4>
-                        <p>L'École Spéciale du Bâtiment et des Travaux Publics forme les professionnels de demain dans le secteur de la construction au Cameroun.</p>
-                        <div class="footer-social mt-4">
-                            <a href="#" class="social-icon me-2"><i class="fab fa-facebook-f"></i></a>
-                            <a href="#" class="social-icon me-2"><i class="fab fa-twitter"></i></a>
-                            <a href="#" class="social-icon me-2"><i class="fab fa-instagram"></i></a>
-                            <a href="#" class="social-icon me-2"><i class="fab fa-linkedin-in"></i></a>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6">
-                    <div class="footer-widget">
-                        <h4 class="mb-4 text-white">Liens rapides</h4>
-                        <ul class="footer-links list-unstyled">
-                            <li><a href="#"><i class="fas fa-chevron-right me-2"></i> Accueil</a></li>
-                            <li><a href="#about"><i class="fas fa-chevron-right me-2"></i> À propos</a></li>
-                            <li><a href="#formations"><i class="fas fa-chevron-right me-2"></i> Formations</a></li>
-                            <li><a href="#contact"><i class="fas fa-chevron-right me-2"></i> Contact</a></li>
-                            <li><a href="#"><i class="fas fa-chevron-right me-2"></i> FAQ</a></li>
-                            <li><a href="#"><i class="fas fa-chevron-right me-2"></i> Blog</a></li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6">
-                    <div class="footer-widget">
-                        <h4 class="mb-4 text-white">Nos formations</h4>
-                        <ul class="footer-links list-unstyled">
-                            <li><a href="#"><i class="fas fa-chevron-right me-2"></i> Génie Civil</a></li>
-                            <li><a href="#"><i class="fas fa-chevron-right me-2"></i> Travaux Publics</a></li>
-                            <li><a href="#"><i class="fas fa-chevron-right me-2"></i> Architecture</a></li>
-                            <li><a href="#"><i class="fas fa-chevron-right me-2"></i> Gestion de Projets</a></li>
-                            <li><a href="#"><i class="fas fa-chevron-right me-2"></i> Formation Continue</a></li>
-                            </ul>
-                        </div>
-                    </div>
-                <div class="col-lg-3 col-md-6">
-                    <div class="footer-widget">
-                        <h4 class="mb-4 text-white">Contact</h4>
-                        <div class="footer-contact">
-                            <p><i class="fas fa-map-marker-alt me-2"></i> 123 Avenue de la Construction, Yaoundé, Cameroun</p>
-                            <p><i class="fas fa-phone-alt me-2"></i> +237 123 456 789</p>
-                            <p><i class="fas fa-envelope me-2"></i> info@klassci.cm</p>
-                            <p><i class="fas fa-clock me-2"></i> Lun-Ven: 8h-17h</p>
-                        </div>
-                        </div>
-                    </div>
-                </div>
+    </div>
+</section>
 
-            <hr class="mt-4 mb-3 border-secondary">
-            
-                    <div class="row">
-                <div class="col-md-6">
-                    <p class="mb-md-0">© 2023 KLASSCI - École Spéciale du Bâtiment et des Travaux Publics. Tous droits réservés.</p>
-                        </div>
-                <div class="col-md-6 text-md-end">
-                    <ul class="list-inline mb-0">
-                        <li class="list-inline-item"><a href="#">Politique de confidentialité</a></li>
-                        <li class="list-inline-item"><a href="#">Conditions d'utilisation</a></li>
-                    </ul>
-                    </div>
-                </div>
+<!-- LETTER / CTA -->
+<section class="letter">
+    <div class="container">
+        <div class="letter-card reveal">
+            <div class="letter-label">Un mot de l'équipe</div>
+            <h2>Prêt à simplifier la gestion de votre établissement ?</h2>
+            <p>Nous avons construit KLASSCI parce que nous croyons que les écoles africaines méritent des outils modernes, simples et fiables. Essayez, c'est gratuit.</p>
+            <a href="#contact" class="btn-primary" style="font-size:0.9rem">
+                Commencer gratuitement &gt;
+            </a>
         </div>
-        </footer>
+    </div>
+</section>
 
-    <!-- Bouton retour en haut -->
-    <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="fas fa-arrow-up"></i></a>
+<!-- FOOTER -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <a href="/" class="nav-logo">
+                    <img src="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" alt="KLASSCI" style="height:24px">
+                    <span style="font-weight:700;font-size:0.95rem;color:var(--text)">KLASSCI</span>
+                </a>
+                <p>Plateforme de gestion scolaire conçue pour les établissements d'enseignement supérieur en Afrique.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Produit</h4>
+                <ul>
+                    <li><a href="#fonctionnalites">Fonctionnalités</a></li>
+                    <li><a href="#tarifs">Tarifs</a></li>
+                    <li><a href="{{ route('login') }}">Connexion</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Ressources</h4>
+                <ul>
+                    <li><a href="#">Documentation</a></li>
+                    <li><a href="#">API Reference</a></li>
+                    <li><a href="#">Changelog</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Contact</h4>
+                <ul>
+                    <li><a href="mailto:contact@klassci.com">contact@klassci.com</a></li>
+                    <li><a href="#">Abidjan, Côte d'Ivoire</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; {{ date('Y') }} KLASSCI — African Digital Consulting</p>
+            <div class="footer-social">
+                <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                <a href="#" aria-label="X"><i class="fab fa-x-twitter"></i></a>
+            </div>
+        </div>
+    </div>
+</footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-        <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-        <script>
-        // Initialisation AOS
-        AOS.init({
-            duration: 800,
-            easing: 'ease-in-out',
-            once: true
+<script>
+(function() {
+    // Mobile nav
+    var btn = document.getElementById('hamburger');
+    var mob = document.getElementById('mobileNav');
+    btn.addEventListener('click', function() { mob.classList.toggle('open'); });
+    window.closeMobile = function() { mob.classList.remove('open'); };
+
+    // Scroll reveal
+    var els = document.querySelectorAll('.reveal');
+    var obs = new IntersectionObserver(function(entries) {
+        entries.forEach(function(e) {
+            if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
         });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+    els.forEach(function(el) { obs.observe(el); });
 
-        // Navbar change on scroll
-            window.addEventListener('scroll', function() {
-                const navbar = document.querySelector('.navbar');
-                if (window.scrollY > 50) {
-                    navbar.classList.add('navbar-scrolled');
-                } else {
-                    navbar.classList.remove('navbar-scrolled');
-                }
-            
-            // Back to top button
-            const backToTop = document.querySelector('.back-to-top');
-            if (window.scrollY > 100) {
-                backToTop.classList.add('active');
-            } else {
-                backToTop.classList.remove('active');
-            }
-            });
+    // FAQ toggle
+    window.toggleFaq = function(el) {
+        var item = el.closest('.faq-item');
+        var wasOpen = item.classList.contains('open');
+        document.querySelectorAll('.faq-item.open').forEach(function(i) { i.classList.remove('open'); });
+        if (!wasOpen) item.classList.add('open');
+    };
 
-        // Scroll doux pour les liens d'ancrage
-            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                    e.preventDefault();
+    // Contact form
+    var form = document.getElementById('contactForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var btn = form.querySelector('button[type="submit"]');
+            btn.textContent = 'Envoi...';
+            btn.disabled = true;
 
-                    const targetId = this.getAttribute('href');
-                    if (targetId === '#') return;
-
-                    const targetElement = document.querySelector(targetId);
-                    if (targetElement) {
-                        window.scrollTo({
-                        top: targetElement.offsetTop - 100,
-                        behavior: 'smooth'
-                    });
-                }
-            });
+            var data = new FormData(form);
+            fetch(form.action, { method: 'POST', body: data, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function() {
+                    document.getElementById('contactSuccess').classList.add('show');
+                })
+                .catch(function() {
+                    document.getElementById('contactSuccess').classList.add('show');
+                });
         });
-        
-        // Fonctionnalité de filtrage des formations
-        document.addEventListener('DOMContentLoaded', function() {
-            const filterButtons = document.querySelectorAll('.formations-filter .nav-link');
-            const formationItems = document.querySelectorAll('.formation-item');
-            
-            filterButtons.forEach(button => {
-                button.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    
-                    // Retirer la classe active de tous les boutons
-                    filterButtons.forEach(btn => btn.classList.remove('active'));
-                    
-                    // Ajouter la classe active au bouton cliqué
-                    this.classList.add('active');
-                    
-                    // Récupérer la valeur du filtre
-                    const filter = this.getAttribute('data-filter');
-                    
-                    // Filtrer les formations
-                    formationItems.forEach(item => {
-                        if (filter === 'all' || item.getAttribute('data-category') === filter) {
-                            item.style.display = 'block';
-                        } else {
-                            item.style.display = 'none';
-                        }
-                    });
-                });
-            });
+    }
+
+    // Smooth anchor
+    document.querySelectorAll('a[href^="#"]').forEach(function(a) {
+        a.addEventListener('click', function(e) {
+            var h = this.getAttribute('href');
+            if (h === '#') return;
+            var t = document.querySelector(h);
+            if (t) { e.preventDefault(); window.scrollTo({ top: t.offsetTop - 70, behavior: 'smooth' }); }
         });
-        
-        // Animation des chiffres dans la section hero
-        document.addEventListener('DOMContentLoaded', function() {
-            const statValues = document.querySelectorAll('.hero-stat-value');
-            
-            const animateValue = (obj, start, end, duration) => {
-                let startTimestamp = null;
-                const step = (timestamp) => {
-                    if (!startTimestamp) startTimestamp = timestamp;
-                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                    obj.innerHTML = Math.floor(progress * (end - start) + start);
-                    if (progress < 1) {
-                        window.requestAnimationFrame(step);
-                    }
-                };
-                window.requestAnimationFrame(step);
-            };
-            
-            // Observer pour déclencher l'animation quand les éléments sont visibles
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const target = entry.target;
-                        const endValue = parseInt(target.getAttribute('data-count'));
-                        animateValue(target, 0, endValue, 2000);
-                        observer.unobserve(target);
-                        }
-                });
-            }, { threshold: 0.5 });
-            
-            statValues.forEach(value => {
-                observer.observe(value);
-                });
-            });
-        </script>
-    </body>
+    });
+})();
+</script>
+</body>
 </html>

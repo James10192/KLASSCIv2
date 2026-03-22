@@ -54,12 +54,15 @@ class ContactController extends Controller
                 'user_agent' => $request->userAgent()
             ];
 
-            // Email de destination (configurable via .env)
-            $destinationEmail = env('DEMO_EMAIL', 'commercial@klassci.com');
+            // Email de destination
+            $destinationEmails = [
+                'contact@klassci.com',
+                'bede.josias@africandigitconsulting.com',
+            ];
 
             // Envoyer l'email
-            Mail::send('emails.demo-request', $emailData, function ($message) use ($destinationEmail, $emailData) {
-                $message->to($destinationEmail)
+            Mail::send('emails.demo-request', $emailData, function ($message) use ($destinationEmails, $emailData) {
+                $message->to($destinationEmails)
                         ->subject('📋 Nouvelle demande de démonstration KLASSCI - ' . $emailData['etablissement'])
                         ->replyTo($emailData['email'], $emailData['nom']);
             });

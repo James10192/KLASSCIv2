@@ -92,11 +92,10 @@ Route::get('/test-emploi-temps-show', function () {
     return $controller->show($emploiTemps);
 });
 
-// Route d'accueil - Modifiée pour utiliser la vue de solution logicielle par défaut
+// Route d'accueil
 Route::get('/', function () {
-    // Charger la vue de solution logicielle comme page d'accueil principale
-    return view('welcome-software')->withHeaders([
-        'Cache-Control' => 'public, max-age=3600', // Cache 1 heure
+    return view('welcome')->withHeaders([
+        'Cache-Control' => 'public, max-age=3600',
         'Expires' => gmdate('D, d M Y H:i:s', time() + 3600).' GMT',
     ]);
 })->name('welcome');
