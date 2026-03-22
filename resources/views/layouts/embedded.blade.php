@@ -53,7 +53,7 @@
             height: 36px;
             border-radius: 8px;
             background: rgba(4, 83, 203, 0.08);
-            color: #0453cb;
+            color: var(--primary, #0453cb);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -64,12 +64,12 @@
         .se-section-title {
             font-weight: 600;
             font-size: 0.95rem;
-            color: #1e293b;
+            color: var(--gray-800, #1e293b);
         }
 
         .se-section-desc {
             font-size: 0.78rem;
-            color: #64748b;
+            color: var(--gray-500, #64748b);
             margin-top: 1px;
         }
 
@@ -96,7 +96,7 @@
 
         .se-section-body .form-control:focus,
         .se-section-body .form-select:focus {
-            border-color: #0453cb;
+            border-color: var(--primary, #0453cb);
             box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1);
         }
 
@@ -121,7 +121,7 @@
             gap: 0.5rem;
             width: 100%;
             padding: 0.75rem;
-            background: #0453cb;
+            background: var(--primary, #0453cb);
             color: #fff;
             border: none;
             border-radius: 10px;
@@ -132,7 +132,7 @@
         }
 
         .se-submit-btn:hover {
-            background: #0340a0;
+            background: var(--primary-dark, #0340a0);
         }
 
         /* Parent modal styling */

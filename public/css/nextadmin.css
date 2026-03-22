@@ -1218,7 +1218,7 @@ body {
 }
 
 .table th {
-    background: #0453cb;
+    background: var(--primary);
     border: none;
     padding: var(--space-4);
     font-weight: 600;
@@ -1607,19 +1607,19 @@ body {
 /* View button = primary blue */
 .table-action-btn.btn-primary,
 .table-action-btn.btn-info {
-    background: #0453cb;
+    background: var(--primary);
     color: #fff;
 }
 
 .table-action-btn.btn-primary:hover,
 .table-action-btn.btn-info:hover {
-    background: #0340a0;
+    background: var(--primary-dark);
     color: #fff;
 }
 
 /* Edit button = warning */
 .table-action-btn.btn-warning {
-    background: #f59e0b;
+    background: var(--warning);
     color: #fff;
 }
 
@@ -1630,7 +1630,7 @@ body {
 
 /* Delete button = danger */
 .table-action-btn.btn-danger {
-    background: #ef4444;
+    background: var(--danger);
     color: #fff;
 }
 
@@ -1641,7 +1641,7 @@ body {
 
 /* Success button */
 .table-action-btn.btn-success {
-    background: #10b981;
+    background: var(--success);
     color: #fff;
 }
 

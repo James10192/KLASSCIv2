@@ -3044,7 +3044,7 @@
                 <div class="desktop-filters">
                     <div class="section-title mb-md" style="display:flex; align-items:center; justify-content:space-between;">
                         <span><i class="fas fa-filter me-2"></i>Filtres de recherche</span>
-                        <button type="button" onclick="var b=document.getElementById('advanced-filters');var ic=this.querySelector('.fa-chevron-down,.fa-chevron-up');if(b.style.display==='none'){b.style.display='block';ic.classList.replace('fa-chevron-down','fa-chevron-up');}else{b.style.display='none';ic.classList.replace('fa-chevron-up','fa-chevron-down');}" style="background:none;border:1px solid #e0e0e0;border-radius:6px;padding:0.35rem 0.9rem;font-size:0.8rem;color:#5c5c5c;cursor:pointer;display:inline-flex;align-items:center;gap:0.5rem;font-weight:500;">
+                        <button type="button" id="toggle-advanced-filters-btn" style="background:none;border:1px solid #e0e0e0;border-radius:6px;padding:0.35rem 0.9rem;font-size:0.8rem;color:#5c5c5c;cursor:pointer;display:inline-flex;align-items:center;gap:0.5rem;font-weight:500;">
                             <i class="fas fa-sliders-h"></i> Filtres avancés <i class="fas fa-chevron-down" style="font-size:0.6rem;"></i>
                         </button>
                     </div>
@@ -3380,7 +3380,7 @@
 
 <!-- Modal d'édition rapide -->
 <div class="modal fade modal-modern" id="etudiantEditModal" tabindex="-1" aria-labelledby="etudiantEditModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl" style="width:98vw;max-width:98vw;height:95vh;max-height:95vh;margin:2.5vh auto;">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -3639,6 +3639,22 @@
     }
     document.addEventListener('DOMContentLoaded', function () {
         updateStudentCountBadge();
+
+        // Advanced filters toggle
+        var toggleBtn = document.getElementById('toggle-advanced-filters-btn');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function() {
+                var panel = document.getElementById('advanced-filters');
+                var icon = this.querySelector('.fa-chevron-down, .fa-chevron-up');
+                if (panel.style.display === 'none') {
+                    panel.style.display = 'block';
+                    if (icon) icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
+                } else {
+                    panel.style.display = 'none';
+                    if (icon) icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
+                }
+            });
+        }
 
         const form = document.getElementById('search-form');
         const resultsContainer = document.getElementById('etudiants-results');
