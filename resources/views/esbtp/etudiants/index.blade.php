@@ -3411,7 +3411,7 @@
                     </ul>
                 </div>
                 <!-- Overlay that covers the entire parent modal when iframe opens parent search -->
-                <div id="parent-modal-overlay" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.35);z-index:50;border-radius:24px;"></div>
+                <div id="parent-modal-overlay" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.35);z-index:50;border-radius:24px;pointer-events:none;"></div>
 
                 <div class="tab-content modern-tab-content" id="editStudentTabContent">
                     <div class="tab-pane fade show active" id="tab-etudiant" role="tabpanel">
