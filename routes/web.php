@@ -261,6 +261,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::put('/coordinateur/profile/update-professional', [AdminProfileController::class, 'updateProfessionalInfo'])->name('coordinateur.profile.update.professional');
         Route::put('/coordinateur/profile/update-password', [AdminProfileController::class, 'updatePassword'])->name('coordinateur.password.update');
 
+        // Dashboard coordinateur — AJAX data refresh
+        Route::get('/coordinateur/dashboard-data', [App\Http\Controllers\DashboardController::class, 'coordinateurDashboardData'])->name('coordinateur.dashboard-data');
+
         // Tableau de bord des présences pour coordinateurs
         Route::get('/coordinateur/attendance-dashboard', [App\Http\Controllers\CoordinateurDashboardController::class, 'attendanceDashboard'])->name('coordinateur.attendance-dashboard');
         Route::get('/coordinateur/recent-activities', [App\Http\Controllers\CoordinateurDashboardController::class, 'getRecentActivities'])->name('coordinateur.recent-activities');

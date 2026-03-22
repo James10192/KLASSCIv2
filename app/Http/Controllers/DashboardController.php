@@ -804,42 +804,63 @@ class DashboardController extends Controller
 
         // Évaluations - Coordinateurs peuvent voir les évaluations (filtré par année en cours)
         try {
+            $evalQuery = ESBTPEvaluation::query();
             if ($anneeEnCours) {
-                $data['totalExamens'] = ESBTPEvaluation::whereHas('classe', function($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id);
-                })->count();
-                $data['recentExamens'] = ESBTPEvaluation::with(['classe', 'matiere'])
-                    ->whereHas('classe', function($q) use ($anneeEnCours) {
-                        $q->where('annee_universitaire_id', $anneeEnCours->id);
-                    })
-                    ->orderBy('created_at', 'desc')
-                    ->take(5)
-                    ->get();
-            } else {
-                $data['totalExamens'] = ESBTPEvaluation::count();
-                $data['recentExamens'] = ESBTPEvaluation::with(['classe', 'matiere'])
-                    ->orderBy('created_at', 'desc')
-                    ->take(5)
-                    ->get();
+                $evalQuery->whereHas('classe', fn($q) => $q->where('annee_universitaire_id', $anneeEnCours->id));
             }
+            $data['totalExamens'] = (clone $evalQuery)->count();
+            $data['recentExamens'] = (clone $evalQuery)
+                ->with(['classe', 'matiere'])
+                ->withCount('notes')
+                ->orderBy('date_evaluation', 'desc')
+                ->take(5)
+                ->get();
+
+            // Évaluations passées sans notes (alerte pour le coordinateur)
+            $data['evaluationsSansNotes'] = (clone $evalQuery)
+                ->with(['classe', 'matiere'])
+                ->whereDate('date_evaluation', '<', today())
+                ->whereDoesntHave('notes')
+                ->orderBy('date_evaluation', 'desc')
+                ->take(5)
+                ->get();
+            $data['evaluationsSansNotesCount'] = (clone $evalQuery)
+                ->whereDate('date_evaluation', '<', today())
+                ->whereDoesntHave('notes')
+                ->count();
         } catch (\Exception $e) {
             $data['totalExamens'] = 0;
             $data['recentExamens'] = collect();
+            $data['evaluationsSansNotes'] = collect();
+            $data['evaluationsSansNotesCount'] = 0;
         }
 
         // Emplois du temps - Coordinateurs gèrent la planification (filtré par année en cours)
         try {
+            $edtQuery = ESBTPEmploiTemps::query();
             if ($anneeEnCours) {
-                $data['totalEmploiTemps'] = ESBTPEmploiTemps::where('annee_universitaire_id', $anneeEnCours->id)->count();
-                $data['activeEmploiTemps'] = ESBTPEmploiTemps::where('annee_universitaire_id', $anneeEnCours->id)
-                    ->where('is_active', true)->count();
-            } else {
-                $data['totalEmploiTemps'] = ESBTPEmploiTemps::count();
-                $data['activeEmploiTemps'] = ESBTPEmploiTemps::where('is_active', true)->count();
+                $edtQuery->where('annee_universitaire_id', $anneeEnCours->id);
             }
+            $data['totalEmploiTemps'] = (clone $edtQuery)->count();
+            $data['activeEmploiTemps'] = (clone $edtQuery)
+                ->where('is_active', true)
+                ->whereDate('date_debut', '<=', today())
+                ->whereDate('date_fin', '>=', today())
+                ->count();
+            $data['expiredEmploiTemps'] = (clone $edtQuery)
+                ->whereDate('date_fin', '<', today())
+                ->count();
+
+            // Classes sans emploi du temps pour l'année courante
+            $classesAvecEdt = (clone $edtQuery)->pluck('classe_id')->unique();
+            $data['classesWithoutTimetable'] = ESBTPClasse::where('is_active', true)
+                ->whereNotIn('id', $classesAvecEdt)
+                ->count();
         } catch (\Exception $e) {
             $data['totalEmploiTemps'] = 0;
             $data['activeEmploiTemps'] = 0;
+            $data['expiredEmploiTemps'] = 0;
+            $data['classesWithoutTimetable'] = 0;
         }
 
         // Présences - Coordinateurs suivent les présences (filtré par année en cours)
@@ -883,18 +904,21 @@ class DashboardController extends Controller
             ];
         }
 
-        // Messages pour coordinateurs
+        // Messages pour coordinateurs (fix: wrapper parent pour les OR)
         try {
-            $data['recentMessages'] = Message::where(function($query) {
-                    $query->where('recipient_type', 'coordinateurs')
-                        ->whereNull('recipient_group');
-                })
-                ->orWhere(function($query) {
-                    $query->where('recipient_type', 'all')
-                        ->whereNull('recipient_group');
-                })
-                ->orWhere('recipient_id', Auth::id())
+            $data['recentMessages'] = Message::with('sender')
                 ->whereNull('parent_id')
+                ->where(function($query) {
+                    $query->where(function($q) {
+                        $q->where('recipient_type', 'coordinateurs')
+                          ->whereNull('recipient_group');
+                    })
+                    ->orWhere(function($q) {
+                        $q->where('recipient_type', 'all')
+                          ->whereNull('recipient_group');
+                    })
+                    ->orWhere('recipient_id', Auth::id());
+                })
                 ->orderBy('created_at', 'desc')
                 ->take(5)
                 ->get();
@@ -940,6 +964,85 @@ class DashboardController extends Controller
         }
 
         return view('dashboard.coordinateur', $data);
+    }
+
+    /**
+     * Données JSON du dashboard coordinateur (AJAX refresh)
+     */
+    public function coordinateurDashboardData()
+    {
+        $user = Auth::user();
+        if (!$user || !$user->hasRole('coordinateur')) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // Réutiliser la même logique que coordinateurDashboard
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        $totalStudents = 0;
+        $pendingInscriptionsCount = 0;
+        $totalClasses = 0;
+        $totalTeachers = 0;
+        $totalExamens = 0;
+        $evaluationsSansNotesCount = 0;
+        $totalEmploiTemps = 0;
+        $activeEmploiTemps = 0;
+        $expiredEmploiTemps = 0;
+        $classesWithoutTimetable = 0;
+        $attendanceStats = ['total_present' => 0, 'total_absent' => 0, 'attendance_rate' => 0];
+
+        try {
+            if ($anneeEnCours) {
+                $totalStudents = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
+                    ->where('status', 'active')->count();
+                $pendingInscriptionsCount = ESBTPInscription::whereIn('status', ['en_attente', 'pending'])
+                    ->where('annee_universitaire_id', $anneeEnCours->id)->count();
+
+                $evalQuery = ESBTPEvaluation::whereHas('classe', fn($q) => $q->where('annee_universitaire_id', $anneeEnCours->id));
+                $totalExamens = (clone $evalQuery)->count();
+                $evaluationsSansNotesCount = (clone $evalQuery)
+                    ->whereDate('date_evaluation', '<', today())
+                    ->whereDoesntHave('notes')->count();
+
+                $edtQuery = ESBTPEmploiTemps::where('annee_universitaire_id', $anneeEnCours->id);
+                $totalEmploiTemps = (clone $edtQuery)->count();
+                $activeEmploiTemps = (clone $edtQuery)->where('is_active', true)
+                    ->whereDate('date_debut', '<=', today())
+                    ->whereDate('date_fin', '>=', today())->count();
+                $expiredEmploiTemps = (clone $edtQuery)->whereDate('date_fin', '<', today())->count();
+                $classesAvecEdt = (clone $edtQuery)->pluck('classe_id')->unique();
+                $classesWithoutTimetable = ESBTPClasse::where('is_active', true)
+                    ->whereNotIn('id', $classesAvecEdt)->count();
+
+                $totalPresent = ESBTPAttendance::whereHas('etudiant.inscriptions', fn($q) => $q->where('annee_universitaire_id', $anneeEnCours->id)->where('status', 'active'))
+                    ->where('status', 'present')->whereDate('date', today())->count();
+                $totalAbsent = ESBTPAttendance::whereHas('etudiant.inscriptions', fn($q) => $q->where('annee_universitaire_id', $anneeEnCours->id)->where('status', 'active'))
+                    ->where('status', 'absent')->whereDate('date', today())->count();
+                $attendanceStats = [
+                    'total_present' => $totalPresent,
+                    'total_absent' => $totalAbsent,
+                    'attendance_rate' => $totalPresent + $totalAbsent > 0 ? round(($totalPresent / ($totalPresent + $totalAbsent)) * 100, 1) : 0,
+                ];
+            }
+            $totalClasses = ESBTPClasse::where('is_active', true)->count();
+            $totalTeachers = ESBTPTeacher::count();
+        } catch (\Exception $e) {
+            // Keep defaults
+        }
+
+        return response()->json([
+            'totalStudents' => $totalStudents,
+            'pendingInscriptionsCount' => $pendingInscriptionsCount,
+            'totalClasses' => $totalClasses,
+            'totalTeachers' => $totalTeachers,
+            'totalExamens' => $totalExamens,
+            'evaluationsSansNotesCount' => $evaluationsSansNotesCount,
+            'totalEmploiTemps' => $totalEmploiTemps,
+            'activeEmploiTemps' => $activeEmploiTemps,
+            'expiredEmploiTemps' => $expiredEmploiTemps,
+            'classesWithoutTimetable' => $classesWithoutTimetable,
+            'attendanceStats' => $attendanceStats,
+        ]);
     }
 
     /**
