@@ -1972,9 +1972,9 @@
     }
 
     /* ═══════════════════════
-       HERO SLIDESHOW
+       HERO SLIDER (swipe)
     ═══════════════════════ */
-    .hero-slideshow {
+    .hero-slider {
         position: relative;
         margin: 4rem auto 0;
         max-width: 900px;
@@ -1984,76 +1984,71 @@
         box-shadow:
             0 2px 4px rgba(0,0,0,0.04),
             0 12px 40px rgba(0,0,0,0.08);
+        cursor: grab;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+
+    .hero-slider:active { cursor: grabbing; }
+
+    .hero-slider-track {
+        display: flex;
+        transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        will-change: transform;
+    }
+
+    .hero-slider-track.dragging {
+        transition: none;
     }
 
     .hero-slide {
-        position: absolute;
-        inset: 0;
-        opacity: 0;
-        transition: opacity 0.8s var(--ease-out);
-    }
-
-    .hero-slide:first-child {
-        position: relative;
-    }
-
-    .hero-slide.active {
-        opacity: 1;
-        z-index: 1;
+        min-width: 100%;
+        flex-shrink: 0;
     }
 
     .hero-slide img {
         width: 100%;
+        aspect-ratio: 16 / 10;
+        object-fit: cover;
+        object-position: top center;
         display: block;
+        pointer-events: none;
     }
 
-    /* Slide indicator dots */
+    /* Dots */
     .hero-dots {
         position: absolute;
-        bottom: 1rem;
+        bottom: 0.75rem;
         left: 50%;
         transform: translateX(-50%);
         display: flex;
-        gap: 0.5rem;
+        gap: 0.4rem;
         z-index: 5;
+        background: rgba(0,0,0,0.3);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        padding: 0.35rem 0.6rem;
+        border-radius: 20px;
     }
 
     .hero-dot {
-        width: 8px;
-        height: 8px;
+        width: 7px;
+        height: 7px;
         border-radius: 50%;
-        background: rgba(255,255,255,0.4);
-        border: 1px solid rgba(255,255,255,0.6);
+        background: rgba(255,255,255,0.35);
         transition: all 0.3s;
         cursor: pointer;
+        border: none;
     }
 
     .hero-dot.active {
         background: #fff;
-        transform: scale(1.2);
+        width: 20px;
+        border-radius: 4px;
     }
-
-    /* Slide label */
-    .hero-slide-label {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        padding: 2.5rem 1.25rem 0.75rem;
-        background: linear-gradient(transparent, rgba(0,0,0,0.5));
-        color: #fff;
-        font-family: 'IBM Plex Sans', sans-serif;
-        font-size: 0.8rem;
-        font-weight: 500;
-        opacity: 0;
-        transition: opacity 0.3s;
-    }
-
-    .hero-slide[style*="opacity: 1"] .hero-slide-label,
-    .hero-slideshow:hover .hero-slide-label { opacity: 1; }
 
     @media (max-width: 768px) {
-        .hero-slideshow { margin: 2rem -1rem 0; max-width: calc(100% + 2rem); border-radius: 8px; }
+        .hero-slider { margin: 2rem -1rem 0; max-width: calc(100% + 2rem); border-radius: 8px; }
     }
 
     /* ═══════════════════════
@@ -2149,35 +2144,19 @@
         </div>
         <p class="hero-note reveal reveal-d3">Disponible sur navigateur. Aucune installation requise.</p>
 
-        <div class="hero-slideshow reveal-scale" id="heroSlideshow">
-            <div class="hero-slide active">
-                <img src="{{ asset('images/landing/hero_section.png') }}" alt="Tableau de bord" loading="eager">
+        <div class="hero-slider reveal-scale" id="heroSlider">
+            <div class="hero-slider-track" id="heroTrack">
+                <div class="hero-slide"><img src="{{ asset('images/landing/hero_section.png') }}" alt="Tableau de bord" loading="eager"></div>
+                <div class="hero-slide"><img src="{{ asset('images/landing/page-étudiants.png') }}" alt="Gestion des étudiants" loading="lazy"></div>
+                <div class="hero-slide"><img src="{{ asset('images/landing/nuvelle_inscription.png') }}" alt="Nouvelle inscription" loading="lazy"></div>
+                <div class="hero-slide"><img src="{{ asset('images/landing/resultats.png') }}" alt="Résultats" loading="lazy"></div>
+                <div class="hero-slide"><img src="{{ asset('images/landing/planning-général.png') }}" alt="Planning général" loading="lazy"></div>
+                <div class="hero-slide"><img src="{{ asset('images/landing/gestion-presences.png') }}" alt="Gestion des présences" loading="lazy"></div>
+                <div class="hero-slide"><img src="{{ asset('images/landing/parcours-lmd.png') }}" alt="Parcours LMD" loading="lazy"></div>
+                <div class="hero-slide"><img src="{{ asset('images/landing/gestion-personnel.png') }}" alt="Gestion du personnel" loading="lazy"></div>
+                <div class="hero-slide"><img src="{{ asset('images/landing/code-emargement.png') }}" alt="Code d'émargement" loading="lazy"></div>
             </div>
-            <div class="hero-slide">
-                <img src="{{ asset('images/landing/page-étudiants.png') }}" alt="Gestion des étudiants" loading="lazy">
-            </div>
-            <div class="hero-slide">
-                <img src="{{ asset('images/landing/nuvelle_inscription.png') }}" alt="Nouvelle inscription" loading="lazy">
-            </div>
-            <div class="hero-slide">
-                <img src="{{ asset('images/landing/resultats.png') }}" alt="Résultats" loading="lazy">
-            </div>
-            <div class="hero-slide">
-                <img src="{{ asset('images/landing/planning-général.png') }}" alt="Planning général" loading="lazy">
-            </div>
-            <div class="hero-slide">
-                <img src="{{ asset('images/landing/gestion-presences.png') }}" alt="Gestion des présences" loading="lazy">
-            </div>
-            <div class="hero-slide">
-                <img src="{{ asset('images/landing/parcours-lmd.png') }}" alt="Parcours LMD" loading="lazy">
-            </div>
-            <div class="hero-slide">
-                <img src="{{ asset('images/landing/gestion-personnel.png') }}" alt="Gestion du personnel" loading="lazy">
-            </div>
-            <div class="hero-slide">
-                <img src="{{ asset('images/landing/code-emargement.png') }}" alt="Code d'émargement" loading="lazy">
-            </div>
-            <div class="hero-dots">
+            <div class="hero-dots" id="heroDots">
                 @for($i = 0; $i < 9; $i++)
                 <span class="hero-dot {{ $i === 0 ? 'active' : '' }}" data-slide="{{ $i }}"></span>
                 @endfor
@@ -2873,32 +2852,103 @@
         if (e.key === 'Escape' && featOverlay.classList.contains('open')) closeFeatModal();
     });
 
-    // Hero slideshow — JS-driven crossfade
-    var heroSlides = document.querySelectorAll('.hero-slide');
-    var heroDots = document.querySelectorAll('.hero-dot');
-    if (heroSlides.length > 1) {
-        var current = 0;
-        heroSlides[0].classList.add('active');
+    // Hero slider — drag/swipe + autoplay
+    var slider = document.getElementById('heroSlider');
+    var track = document.getElementById('heroTrack');
+    var dots = document.querySelectorAll('#heroDots .hero-dot');
+    if (track && dots.length) {
+        var slideCount = track.children.length;
+        var currentIdx = 0;
+        var isDragging = false;
+        var startX = 0;
+        var currentTranslate = 0;
+        var prevTranslate = 0;
+        var autoTimer;
 
-        function goToSlide(idx) {
-            heroSlides[current].classList.remove('active');
-            heroDots[current].classList.remove('active');
-            current = idx % heroSlides.length;
-            heroSlides[current].classList.add('active');
-            heroDots[current].classList.add('active');
+        function setPosition(percent, animate) {
+            if (animate) track.classList.remove('dragging');
+            else track.classList.add('dragging');
+            track.style.transform = 'translateX(' + percent + '%)';
+            currentTranslate = percent;
         }
 
-        var autoPlay = setInterval(function() {
-            goToSlide(current + 1);
-        }, 4000);
+        function goTo(idx, animate) {
+            if (idx < 0) idx = 0;
+            if (idx >= slideCount) idx = 0;
+            dots[currentIdx].classList.remove('active');
+            currentIdx = idx;
+            dots[currentIdx].classList.add('active');
+            prevTranslate = -(currentIdx * 100);
+            setPosition(prevTranslate, animate !== false);
+        }
 
-        heroDots.forEach(function(dot) {
-            dot.addEventListener('click', function() {
-                clearInterval(autoPlay);
-                goToSlide(parseInt(this.dataset.slide));
-                autoPlay = setInterval(function() { goToSlide(current + 1); }, 4000);
+        function startAuto() {
+            clearInterval(autoTimer);
+            autoTimer = setInterval(function() { goTo(currentIdx + 1); }, 4000);
+        }
+
+        // Dots click
+        dots.forEach(function(d) {
+            d.addEventListener('click', function() {
+                goTo(parseInt(this.dataset.slide));
+                startAuto();
             });
         });
+
+        // Drag — mouse
+        slider.addEventListener('mousedown', function(e) {
+            isDragging = true;
+            startX = e.clientX;
+            track.classList.add('dragging');
+            clearInterval(autoTimer);
+        });
+
+        window.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            var diff = e.clientX - startX;
+            var pct = (diff / slider.offsetWidth) * 100;
+            setPosition(prevTranslate + pct, false);
+        });
+
+        window.addEventListener('mouseup', function(e) {
+            if (!isDragging) return;
+            isDragging = false;
+            var diff = e.clientX - startX;
+            var threshold = slider.offsetWidth * 0.15;
+            if (diff < -threshold) goTo(currentIdx + 1);
+            else if (diff > threshold) goTo(currentIdx - 1);
+            else goTo(currentIdx);
+            startAuto();
+        });
+
+        // Drag — touch
+        slider.addEventListener('touchstart', function(e) {
+            isDragging = true;
+            startX = e.touches[0].clientX;
+            track.classList.add('dragging');
+            clearInterval(autoTimer);
+        }, { passive: true });
+
+        slider.addEventListener('touchmove', function(e) {
+            if (!isDragging) return;
+            var diff = e.touches[0].clientX - startX;
+            var pct = (diff / slider.offsetWidth) * 100;
+            setPosition(prevTranslate + pct, false);
+        }, { passive: true });
+
+        slider.addEventListener('touchend', function(e) {
+            if (!isDragging) return;
+            isDragging = false;
+            var diff = e.changedTouches[0].clientX - startX;
+            var threshold = slider.offsetWidth * 0.15;
+            if (diff < -threshold) goTo(currentIdx + 1);
+            else if (diff > threshold) goTo(currentIdx - 1);
+            else goTo(currentIdx);
+            startAuto();
+        });
+
+        // Start autoplay
+        startAuto();
     }
 
     // FAQ toggle
