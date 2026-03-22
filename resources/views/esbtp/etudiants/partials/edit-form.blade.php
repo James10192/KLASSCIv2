@@ -223,7 +223,7 @@
                 <button type="button" class="btn btn-sm btn-primary" id="add-new-parent" style="border-radius:8px 0 0 8px;">
                     <i class="fas fa-plus me-1"></i>Nouveau
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-primary" id="add-existing-parent" onclick="document.getElementById('searchParentModal').style.display='flex';document.body.classList.add('parent-panel-open')" style="border-radius:0 8px 8px 0;">
+                <button type="button" class="btn btn-sm btn-outline-primary" id="add-existing-parent" onclick="document.getElementById('searchParentModal').style.display='flex';document.body.classList.add('parent-panel-open');window.scrollTo(0,0)" style="border-radius:0 8px 8px 0;">
                     <i class="fas fa-search me-1"></i>Existant
                 </button>
             </div>

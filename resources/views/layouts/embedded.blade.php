@@ -137,14 +137,17 @@
 
         /* Parent search overlay (replaces Bootstrap modal to avoid iframe z-index flash) */
         .parent-search-overlay {
-            position: fixed;
-            inset: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            min-height: 100%;
             z-index: 9999;
             background: rgba(0,0,0,0.4);
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
-            padding: 1rem;
+            padding: 2rem 1rem;
         }
 
         .parent-search-panel {
