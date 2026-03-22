@@ -187,11 +187,8 @@
             ensureEmptyState();
             recalculateParentCount();
 
-            // Fermer la modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('searchParentModal'));
-            if (modal) {
-                modal.hide();
-            }
+            // Fermer le panel
+            document.getElementById('searchParentModal').style.display = 'none';
 
             // Réinitialiser les champs de recherche
             document.getElementById('parent_search_query').value = '';
@@ -428,10 +425,13 @@
             });
         });
 
-        // Charger les parents quand le modal s'ouvre
-        $('#searchParentModal').on('show.bs.modal', function() {
-            loadParents();
-        });
+        // Charger les parents quand le panel s'ouvre
+        var existingBtn = document.getElementById('add-existing-parent');
+        if (existingBtn) {
+            existingBtn.addEventListener('click', function() {
+                loadParents();
+            });
+        }
 
         $('[data-embedded-toggle="form"]').on('click', function() {
             const targetId = $(this).data('target');

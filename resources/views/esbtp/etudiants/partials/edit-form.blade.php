@@ -223,7 +223,7 @@
                 <button type="button" class="btn btn-sm btn-primary" id="add-new-parent" style="border-radius:8px 0 0 8px;">
                     <i class="fas fa-plus me-1"></i>Nouveau
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-primary" id="add-existing-parent" data-bs-toggle="modal" data-bs-target="#searchParentModal" style="border-radius:0 8px 8px 0;">
+                <button type="button" class="btn btn-sm btn-outline-primary" id="add-existing-parent" onclick="document.getElementById('searchParentModal').style.display='flex'" style="border-radius:0 8px 8px 0;">
                     <i class="fas fa-search me-1"></i>Existant
                 </button>
             </div>
@@ -249,56 +249,55 @@
     </div>
 </form>
 
-{{-- Modal HORS du form pour éviter le z-index stacking context --}}
-<div class="modal" id="searchParentModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="true" aria-labelledby="searchParentModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable se-parent-modal">
-        <div class="modal-content" style="border-radius:15px; border:none; box-shadow:0 10px 40px rgba(0,0,0,.3);">
-            <div class="modal-header" style="background:linear-gradient(135deg, var(--k-blue) 0%, var(--k-blue-2) 100%); color:#fff; border-radius:15px 15px 0 0; padding:1.25rem 1.5rem; border:none;">
-                <h5 class="modal-title fw-bold" id="searchParentModalLabel">
-                    <i class="fas fa-user-friends me-2"></i>Sélectionner un Parent Existant
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+{{-- Panel overlay (PAS un modal Bootstrap — évite le flash z-index dans iframe) --}}
+<div id="searchParentModal" class="parent-search-overlay" style="display:none;">
+    <div class="parent-search-panel">
+        <div class="parent-search-header">
+            <h5 style="margin:0;font-weight:700;font-size:1rem;">
+                <i class="fas fa-user-friends me-2"></i>Sélectionner un Parent Existant
+            </h5>
+            <button type="button" class="parent-search-close" onclick="document.getElementById('searchParentModal').style.display='none'">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="parent-search-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label for="parent_search_filter">Filtrer par :</label>
+                    <select class="form-control" id="parent_search_filter" style="border-radius:8px;">
+                        <option value="all">Tous les champs</option>
+                        <option value="nom">Nom</option>
+                        <option value="prenoms">Prénom(s)</option>
+                        <option value="telephone">Téléphone</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="parent_search_query">Rechercher :</label>
+                    <input type="text" class="form-control" id="parent_search_query" placeholder="Nom, prénom, téléphone..." style="border-radius:8px;">
+                </div>
             </div>
-            <div class="modal-body" style="padding:1.5rem;">
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="parent_search_filter">Filtrer par :</label>
-                        <select class="form-control" id="parent_search_filter" style="border-radius:8px;">
-                            <option value="all">Tous les champs</option>
-                            <option value="nom">Nom</option>
-                            <option value="prenoms">Prénom(s)</option>
-                            <option value="telephone">Téléphone</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="parent_search_query">Rechercher :</label>
-                        <input type="text" class="form-control" id="parent_search_query" placeholder="Nom, prénom, téléphone..." style="border-radius:8px;">
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover">
-                        <thead>
-                            <tr>
-                                <th class="sortable-parent" data-column="nom" style="cursor: pointer;">
-                                    Nom <i class="fas fa-sort text-muted"></i>
-                                </th>
-                                <th class="sortable-parent" data-column="prenoms" style="cursor: pointer;">
-                                    Prénom(s) <i class="fas fa-sort text-muted"></i>
-                                </th>
-                                <th class="sortable-parent" data-column="telephone" style="cursor: pointer;">
-                                    Téléphone <i class="fas fa-sort text-muted"></i>
-                                </th>
-                                <th>Enfants</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="parents-table-body">
-                            <tr><td colspan="5" class="text-center">Chargement...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="sortable-parent" data-column="nom" style="cursor: pointer;">
+                                Nom <i class="fas fa-sort text-muted"></i>
+                            </th>
+                            <th class="sortable-parent" data-column="prenoms" style="cursor: pointer;">
+                                Prénom(s) <i class="fas fa-sort text-muted"></i>
+                            </th>
+                            <th class="sortable-parent" data-column="telephone" style="cursor: pointer;">
+                                Téléphone <i class="fas fa-sort text-muted"></i>
+                            </th>
+                            <th>Enfants</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="parents-table-body">
+                        <tr><td colspan="5" class="text-center">Chargement...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
-</div>
 </div>

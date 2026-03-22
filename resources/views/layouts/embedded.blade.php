@@ -135,31 +135,62 @@
             background: var(--primary-dark, #0340a0);
         }
 
-        /* Parent modal — prevent flash/jitter */
-        #searchParentModal {
-            animation: none !important;
-            transition: none !important;
+        /* Parent search overlay (replaces Bootstrap modal to avoid iframe z-index flash) */
+        .parent-search-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
         }
 
-        #searchParentModal .modal-backdrop {
-            animation: none !important;
+        .parent-search-panel {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+            width: 100%;
+            max-width: 900px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
-        .se-parent-modal .modal-body {
-            overflow-y: scroll;
+        .parent-search-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.25rem;
+            background: var(--primary, #0453cb);
+            color: #fff;
         }
 
-        .se-parent-modal .table {
-            margin-bottom: 0;
+        .parent-search-close {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.8);
+            font-size: 1.1rem;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
         }
 
-        .se-parent-modal .table tbody tr {
-            transition: none !important;
+        .parent-search-close:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.15);
         }
 
-        .se-parent-modal .table-hover > tbody > tr:hover {
-            --bs-table-hover-bg: transparent;
-            background-color: #f0f4ff;
+        .parent-search-body {
+            padding: 1.25rem;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .parent-search-body .table tbody tr {
+            transition: none;
         }
 
         /* Badge overrides inside embedded */
