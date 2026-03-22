@@ -292,7 +292,7 @@
     }
 
     .hero h1 {
-        font-size: clamp(2.75rem, 7vw, 3rem);
+        font-size: clamp(2.75rem, 7vw, 3.5rem);
         margin-bottom: 1.25rem;
         font-style: normal;
         font-weight: 300;
@@ -302,12 +302,12 @@
 
     .hero-sub {
         font-family: 'IBM Plex Sans', sans-serif;
-        font-size: clamp(0.95rem, 1.5vw, 1.05rem);
+        font-size: clamp(1rem, 1.8vw, 1.15rem);
         color: var(--text-secondary);
-        max-width: 520px;
+        max-width: 540px;
         margin: 0 auto 2.5rem;
         line-height: 1.6;
-        letter-spacing: -0.025em;
+        letter-spacing: -0.02em;
     }
 
     .hero-actions {
@@ -422,7 +422,7 @@
 
     .pillar p {
         font-family: 'IBM Plex Sans', sans-serif;
-        font-size: 0.875rem;
+        font-size: 1rem;
         color: var(--text-secondary);
         line-height: 1.6;
     }
@@ -443,7 +443,7 @@
 
     .proof h2 {
         text-align: center;
-        font-size: clamp(1.5rem, 3.5vw, 1.65rem);
+        font-size: clamp(1.75rem, 4vw, 2.25rem);
         font-style: normal;
         margin-bottom: 3rem;
     }
@@ -528,7 +528,7 @@
 
     .testimonial-text {
         font-family: 'IBM Plex Sans', sans-serif;
-        font-size: 0.875rem;
+        font-size: 0.95rem;
         line-height: 1.65;
         color: var(--text-secondary);
         margin-bottom: 1.5rem;
@@ -587,18 +587,18 @@
     }
 
     .features h2 {
-        font-size: clamp(1.5rem, 3.5vw, 1.65rem);
+        font-size: clamp(1.75rem, 4vw, 2.25rem);
         font-style: normal;
         margin-bottom: 1rem;
     }
 
     .features-intro {
         font-family: 'IBM Plex Sans', sans-serif;
-        font-size: 0.95rem;
+        font-size: 1.05rem;
         color: var(--text-secondary);
-        max-width: 600px;
+        max-width: 620px;
         margin-bottom: 3rem;
-        line-height: 1.6;
+        line-height: 1.65;
     }
 
     /* Big feature — asymmetric text + image */
@@ -622,7 +622,7 @@
 
     .feature-big-text p {
         font-family: 'IBM Plex Sans', sans-serif;
-        font-size: 0.875rem;
+        font-size: 1rem;
         color: var(--text-secondary);
         line-height: 1.65;
         margin-bottom: 1.25rem;
@@ -630,7 +630,7 @@
 
     .feature-big-text a {
         font-family: 'IBM Plex Sans', sans-serif;
-        font-size: 0.875rem;
+        font-size: 1rem;
         font-weight: 500;
         transition: color var(--duration-normal);
     }
@@ -694,7 +694,7 @@
 
     .feature-tile p {
         font-family: 'IBM Plex Sans', sans-serif;
-        font-size: 0.82rem;
+        font-size: 0.9rem;
         color: var(--text-secondary);
         line-height: 1.6;
     }
@@ -733,14 +733,14 @@
     }
 
     .video-text h2 {
-        font-size: clamp(1.5rem, 3.5vw, 1.65rem);
+        font-size: clamp(1.75rem, 4vw, 2.25rem);
         font-style: normal;
         margin-bottom: 1rem;
     }
 
     .video-text p {
         font-family: 'IBM Plex Sans', sans-serif;
-        font-size: 0.9rem;
+        font-size: 1rem;
         color: var(--text-secondary);
         line-height: 1.65;
     }
@@ -837,14 +837,14 @@
     .info-grid.reverse > * { direction: ltr; }
 
     .info-text h2 {
-        font-size: clamp(1.5rem, 3.5vw, 1.65rem);
+        font-size: clamp(1.75rem, 4vw, 2.25rem);
         font-style: normal;
         margin-bottom: 1.25rem;
     }
 
     .info-text p {
         font-family: 'IBM Plex Sans', sans-serif;
-        font-size: 0.875rem;
+        font-size: 1rem;
         color: var(--text-secondary);
         line-height: 1.65;
         margin-bottom: 0.75rem;
@@ -886,7 +886,7 @@
 
     .pricing h2 {
         text-align: center;
-        font-size: clamp(1.5rem, 3.5vw, 1.65rem);
+        font-size: clamp(1.75rem, 4vw, 2.25rem);
         font-style: normal;
         margin-bottom: 0.75rem;
     }
@@ -1094,14 +1094,14 @@
     }
 
     .letter h2 {
-        font-size: clamp(1.5rem, 3.5vw, 1.65rem);
+        font-size: clamp(1.75rem, 4vw, 2.25rem);
         font-style: normal;
         margin-bottom: 1.25rem;
     }
 
     .letter p {
         font-family: 'IBM Plex Sans', sans-serif;
-        font-size: 0.9rem;
+        font-size: 1rem;
         color: var(--text-secondary);
         line-height: 1.65;
         margin-bottom: 2rem;
@@ -1246,7 +1246,7 @@
 
     .faq h2 {
         text-align: center;
-        font-size: clamp(1.5rem, 3.5vw, 1.65rem);
+        font-size: clamp(1.75rem, 4vw, 2.25rem);
         font-style: normal;
         margin-bottom: 3rem;
     }
@@ -1318,14 +1318,14 @@
     }
 
     .contact-text h2 {
-        font-size: clamp(1.5rem, 3.5vw, 1.65rem);
+        font-size: clamp(1.75rem, 4vw, 2.25rem);
         font-style: normal;
         margin-bottom: 1rem;
     }
 
     .contact-text p {
         font-family: 'IBM Plex Sans', sans-serif;
-        font-size: 0.9rem;
+        font-size: 1rem;
         color: var(--text-secondary);
         line-height: 1.65;
         margin-bottom: 2rem;
