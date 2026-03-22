@@ -1459,33 +1459,39 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 32px;
-        height: 32px;
-        border: 1px solid var(--border);
+        gap: 0.4rem;
+        height: 34px;
+        padding: 0 0.75rem;
+        border: 1px solid var(--border-strong);
         border-radius: var(--radius);
-        background: none;
+        background: var(--bg-card);
         cursor: pointer;
-        color: var(--text-secondary);
-        transition: all var(--duration-normal);
-        padding: 0;
-        margin-left: 0.25rem;
+        color: var(--text);
+        transition: all var(--duration-normal) var(--ease-out);
+        font-family: 'IBM Plex Sans', sans-serif;
+        font-size: 0.78rem;
+        font-weight: 500;
+        letter-spacing: -0.02em;
     }
 
     .theme-toggle:hover {
-        color: var(--text);
-        border-color: var(--border-strong);
+        border-color: var(--accent);
         background: var(--accent-light);
+        color: var(--accent);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(4,83,203,0.12);
     }
 
     .theme-toggle svg {
-        width: 16px;
-        height: 16px;
+        width: 15px;
+        height: 15px;
+        flex-shrink: 0;
     }
 
-    .theme-toggle .sun { display: none; }
-    .theme-toggle .moon { display: block; }
-    html.dark .theme-toggle .sun { display: block; }
-    html.dark .theme-toggle .moon { display: none; }
+    .theme-toggle .sun-group { display: none; }
+    .theme-toggle .moon-group { display: contents; }
+    html.dark .theme-toggle .sun-group { display: contents; }
+    html.dark .theme-toggle .moon-group { display: none; }
 
     /* ═══════════════════════
        FEATURE MODAL
@@ -1667,8 +1673,14 @@
             <li><a href="{{ route('login') }}" class="nav-cta">Se connecter</a></li>
             <li>
                 <button class="theme-toggle" id="themeToggle" aria-label="Changer le thème">
-                    <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                    <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    <span class="moon-group">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                        <span>Sombre</span>
+                    </span>
+                    <span class="sun-group">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                        <span>Clair</span>
+                    </span>
                 </button>
             </li>
         </ul>
