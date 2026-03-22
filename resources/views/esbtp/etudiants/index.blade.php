@@ -1056,13 +1056,13 @@
 
 
     .modal-modern .modal-dialog {
-        width: 80vw;
+        width: 92vw;
         max-width: 1800px;
         min-width: auto;
-        height: 80vh;
-        max-height: 80vh;
+        height: 88vh;
+        max-height: 88vh;
         position: relative;
-        margin: 10vh auto;
+        margin: 6vh auto;
     }
 
     .modal-modern .modal-content {
@@ -1298,28 +1298,28 @@
 
     @media (max-width: 1400px) {
         .modal-modern .modal-dialog {
-            width: 85vw;
-            max-width: 85vw;
+            width: 94vw;
+            max-width: 94vw;
         }
     }
 
     @media (max-width: 1200px) {
         .modal-modern .modal-dialog {
-            width: 90vw;
-            max-width: 90vw;
-            height: 85vh;
-            max-height: 85vh;
-            margin: 7.5vh auto;
+            width: 96vw;
+            max-width: 96vw;
+            height: 90vh;
+            max-height: 90vh;
+            margin: 5vh auto;
         }
     }
 
     @media (max-width: 992px) {
         .modal-modern .modal-dialog {
-            width: 95vw;
-            max-width: 95vw;
-            height: 90vh;
-            max-height: 90vh;
-            margin: 5vh auto;
+            width: 98vw;
+            max-width: 98vw;
+            height: 92vh;
+            max-height: 92vh;
+            margin: 4vh auto;
         }
 
         .accordion-modern .accordion-body .modal-iframe-wrapper {
