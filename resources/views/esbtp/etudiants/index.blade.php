@@ -1056,13 +1056,13 @@
 
 
     .modal-modern .modal-dialog {
-        width: 92vw;
+        width: 98vw;
         max-width: 1800px;
         min-width: auto;
-        height: 88vh;
-        max-height: 88vh;
+        height: 95vh;
+        max-height: 95vh;
         position: relative;
-        margin: 6vh auto;
+        margin: 2.5vh auto;
     }
 
     .modal-modern .modal-content {
