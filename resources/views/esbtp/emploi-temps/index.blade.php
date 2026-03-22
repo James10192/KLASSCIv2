@@ -5,155 +5,227 @@
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    /* Styles spécifiques pour les emplois du temps */
+    /* ─── Scoped Premium — Emploi du Temps Index ─────────────────── */
+
+    /* ── Header ──────────────────────────────────────────────────── */
     .emploi-temps-header {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        background: linear-gradient(135deg, var(--primary) 0%, #5e91de 100%);
         border-radius: var(--radius-medium);
-        padding: var(--space-xl);
-        margin-bottom: var(--space-xl);
+        padding: var(--space-lg);
+        margin-bottom: var(--space-lg);
         color: white;
         position: relative;
         overflow: hidden;
     }
-    
     .emploi-temps-header::before {
         content: '';
         position: absolute;
-        top: 0;
-        right: 0;
-        width: 100px;
-        height: 100%;
-        background: rgba(255,255,255,0.1);
-        transform: skewX(-15deg);
-        transform-origin: top;
+        top: -40%; right: -10%;
+        width: 320px; height: 320px;
+        background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
     }
-    
-    .emploi-stat-card {
-        text-align: center;
+    .et-header-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: var(--space-md);
         position: relative;
-        overflow: hidden;
+        z-index: 1;
     }
-    
-    .emploi-stat-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        border-radius: var(--radius-medium) var(--radius-medium) 0 0;
-    }
-    
-    .emploi-stat-card.primary::before { background: var(--primary); }
-    .emploi-stat-card.success::before { background: var(--success); }
-    .emploi-stat-card.info::before { background: var(--accent-blue); }
-    .emploi-stat-card.warning::before { background: var(--warning); }
-    
-    .emploi-stat-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: var(--radius-circle);
+    .et-header-left { display: flex; align-items: center; gap: var(--space-lg); }
+    .et-header-icon {
+        width: 64px; height: 64px;
+        border-radius: var(--radius-medium);
+        background: rgba(255,255,255,0.15);
+        backdrop-filter: blur(8px);
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 auto var(--space-sm);
-        font-size: 20px;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        font-size: 1.6rem;
+        color: #fff;
+        flex-shrink: 0;
     }
-    
-    .emploi-stat-card.primary .emploi-stat-icon { color: var(--primary); }
-    .emploi-stat-card.success .emploi-stat-icon { color: var(--success); }
-    .emploi-stat-card.info .emploi-stat-icon { color: var(--accent-blue); }
-    .emploi-stat-card.warning .emploi-stat-icon { color: var(--warning); }
-    
-    .emploi-stat-value {
-        font-size: var(--amount-large);
-        font-weight: bold;
-        color: var(--primary);
-        margin-bottom: var(--space-xs);
+    .emploi-temps-header h1 { color: #fff; margin: 0; font-size: 1.3rem; font-weight: 700; }
+    .emploi-temps-header .et-subtitle { color: rgba(255,255,255,0.8); margin: 3px 0 0; font-size: 0.84rem; }
+    .et-header-actions { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; }
+    .et-header-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: var(--radius-small);
+        font-size: 0.82rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        border: 1px solid rgba(255,255,255,0.3);
+        color: #fff;
+        background: rgba(255,255,255,0.12);
+        backdrop-filter: blur(4px);
+        cursor: pointer;
     }
-    
-    .emploi-stat-label {
-        color: var(--text-secondary);
-        font-size: var(--text-small);
-        font-weight: 500;
+    .et-header-btn:hover { background: rgba(255,255,255,0.25); color: #fff; }
+    .et-header-btn--primary { background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.4); }
+    .et-header-btn--primary:hover { background: rgba(255,255,255,0.35); }
+
+    /* ── KPI Grid ─────────────────────────────────────────────────── */
+    .et-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: var(--space-md);
+        margin-bottom: var(--space-lg);
     }
-    
+    .et-kpi {
+        border-radius: var(--radius-medium);
+        padding: var(--space-lg) var(--space-md);
+        text-align: center;
+        color: #fff;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+    }
+    .et-kpi:hover { transform: translateY(-4px); }
+    .et-kpi::after {
+        content: '';
+        position: absolute;
+        top: -30%; right: -20%;
+        width: 120px; height: 120px;
+        background: rgba(255,255,255,0.08);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+    .et-kpi-icon { font-size: 1.5rem; margin-bottom: var(--space-sm); opacity: 0.9; }
+    .et-kpi-value { font-size: 1.8rem; font-weight: 800; line-height: 1.1; margin-bottom: 4px; }
+    .et-kpi-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        opacity: 0.85;
+        font-weight: 600;
+    }
+    .et-kpi--primary { background: linear-gradient(135deg, var(--primary), #3b7ddb); box-shadow: 0 4px 16px rgba(4,83,203,0.25); }
+    .et-kpi--primary:hover { box-shadow: 0 8px 28px rgba(4,83,203,0.35); }
+    .et-kpi--success { background: linear-gradient(135deg, var(--success), #34d399); box-shadow: 0 4px 16px rgba(16,185,129,0.25); }
+    .et-kpi--success:hover { box-shadow: 0 8px 28px rgba(16,185,129,0.35); }
+    .et-kpi--cyan { background: linear-gradient(135deg, #0891b2, var(--accent-blue)); box-shadow: 0 4px 16px rgba(6,182,212,0.25); }
+    .et-kpi--cyan:hover { box-shadow: 0 8px 28px rgba(6,182,212,0.35); }
+    .et-kpi--warning { background: linear-gradient(135deg, #d97706, #f59e0b); box-shadow: 0 4px 16px rgba(245,158,11,0.25); }
+    .et-kpi--warning:hover { box-shadow: 0 8px 28px rgba(245,158,11,0.35); }
+
+    /* ── Filter Card ──────────────────────────────────────────────── */
     .emploi-filter-card {
         background: var(--surface);
         border-radius: var(--radius-medium);
-        box-shadow: var(--shadow-card);
-        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+        overflow: hidden;
+        transition: box-shadow 0.2s ease;
     }
-    
-    .emploi-table-container {
+    .emploi-filter-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .emploi-filter-card .card-header {
+        padding: var(--space-md) var(--space-lg);
+        border-bottom: 1px solid rgba(0,0,0,0.06);
+        background: transparent;
+    }
+    .emploi-filter-card .card-header h6 {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+    .emploi-filter-card .card-header h6 i { color: var(--primary); }
+    .emploi-filter-card .card-body { padding: var(--space-lg); }
+    .emploi-filter-card .form-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        margin-bottom: 6px;
+    }
+    .emploi-filter-card .form-select,
+    .emploi-filter-card .form-control {
+        border: 1px solid rgba(0,0,0,0.1);
+        border-radius: var(--radius-small);
+        padding: 8px 12px;
+        font-size: 0.84rem;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .emploi-filter-card .form-select:focus,
+    .emploi-filter-card .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(4,83,203,0.1);
+    }
+
+    /* ── Main Card (list) ─────────────────────────────────────────── */
+    .et-list-card {
         background: var(--surface);
         border-radius: var(--radius-medium);
-        box-shadow: var(--shadow-card);
-        border: none;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        overflow: hidden;
     }
-    
+    .et-list-card > .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--space-md) var(--space-lg);
+        border-bottom: 1px solid rgba(0,0,0,0.06);
+        background: transparent;
+    }
+    .et-list-card > .card-header h5 {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    .et-list-card > .card-header h5 i { color: var(--primary); }
+
+    /* ── EDT Cards (keep existing but enhance) ────────────────────── */
     .emploi-card {
         background: var(--surface);
         border-radius: var(--radius-medium);
-        box-shadow: var(--shadow-card);
-        border: 1px solid #e5e7eb;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        border: 1px solid rgba(0,0,0,0.06);
         margin-bottom: var(--space-md);
-        transition: all 0.3s ease;
+        transition: box-shadow 0.2s ease, transform 0.2s ease;
         position: relative;
         overflow: hidden;
     }
-    
     .emploi-card:hover {
-        box-shadow: var(--shadow-hover);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
         transform: translateY(-2px);
     }
-    
     .emploi-card::before {
         content: '';
         position: absolute;
-        top: 0;
-        left: 0;
-        width: 4px;
-        height: 100%;
+        top: 0; left: 0;
+        width: 4px; height: 100%;
         background: var(--primary);
     }
-    
-    .emploi-card.active::before {
-        background: var(--success);
-    }
-
-    .emploi-card.expired::before {
-        background: var(--danger);
-    }
-
-    .emploi-card.upcoming::before {
-        background: var(--accent-blue);
-    }
-
-    .emploi-card.current-period::before {
-        background: var(--warning);
-    }
+    .emploi-card.active::before { background: var(--success); }
+    .emploi-card.expired::before { background: #dc2626; }
+    .emploi-card.upcoming::before { background: var(--accent-blue); }
+    .emploi-card.current-period::before { background: #d97706; }
 
     .timetable-tips-btn {
-        background: rgba(255, 255, 255, 0.18);
-        color: #ffffff;
-        border: 1px solid rgba(255, 255, 255, 0.35);
-        padding: 0.65rem 1rem;
-        border-radius: 10px;
+        background: rgba(255,255,255,0.12);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,0.3);
+        padding: 8px 16px;
+        border-radius: var(--radius-small);
         font-weight: 600;
+        font-size: 0.82rem;
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 6px;
         transition: all 0.2s ease;
+        cursor: pointer;
+        backdrop-filter: blur(4px);
     }
-
     .timetable-tips-btn:hover {
-        background: rgba(255, 255, 255, 0.3);
-        color: #ffffff;
-        transform: translateY(-1px);
+        background: rgba(255,255,255,0.25);
+        color: #fff;
     }
 
     .tips-modal .modal-content {
@@ -317,19 +389,17 @@
     
     .emploi-card-header {
         padding: var(--space-md);
-        border-bottom: 1px solid #f3f4f6;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
-    
     .emploi-card-title {
-        font-weight: 600;
-        font-size: var(--text-normal);
+        font-weight: 700;
+        font-size: 0.88rem;
         color: var(--primary);
         margin: 0;
     }
-    
     .emploi-card-body {
         padding: var(--space-md);
     }
@@ -533,70 +603,45 @@
     
     .table-moderne {
         margin-bottom: 0;
-        border-collapse: separate;
-        border-spacing: 0 8px;
+        border-collapse: collapse;
         min-width: 960px;
+        width: 100%;
     }
-    
+    .table-moderne thead tr {
+        background: linear-gradient(135deg, var(--primary), #3b7ddb);
+    }
     .table-moderne th {
-        background-color: var(--background);
-        color: var(--text-primary);
+        color: #fff;
         font-weight: 600;
-        font-size: var(--text-small);
+        font-size: 0.7rem;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-bottom: 2px solid #e5e7eb;
-        padding: var(--space-md);
+        letter-spacing: 0.6px;
+        border: none;
+        padding: 12px 16px;
         white-space: nowrap;
-        min-width: fit-content;
     }
-    
     .table-moderne td {
-        padding: var(--space-md);
-        border-top: 1px solid #f3f4f6;
-        border-bottom: 1px solid #f3f4f6;
+        padding: 10px 16px;
+        border-bottom: 1px solid rgba(0,0,0,0.04);
         vertical-align: middle;
+        font-size: 0.84rem;
         white-space: nowrap;
-        min-width: fit-content;
     }
-
     .table-moderne tbody tr {
-        background: #ffffff;
-        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+        background: var(--surface);
+        transition: background 0.15s ease;
     }
-
-    .table-moderne tbody tr td:first-child {
-        border-left: 1px solid #f3f4f6;
-        border-top-left-radius: 10px;
-        border-bottom-left-radius: 10px;
-    }
-
-    .table-moderne tbody tr td:last-child {
-        border-right: 1px solid #f3f4f6;
-        border-top-right-radius: 10px;
-        border-bottom-right-radius: 10px;
+    .table-moderne tbody tr:hover {
+        background: rgba(4,83,203,0.03);
     }
 
     .table-shortcut-row td {
-        background: rgba(245, 158, 11, 0.08);
-        border: 1px dashed rgba(245, 158, 11, 0.4);
-        border-radius: 10px;
-        padding: var(--space-md);
+        background: rgba(245, 158, 11, 0.06);
+        border-bottom: 1px dashed rgba(245, 158, 11, 0.3);
     }
-    
-    /* Largeurs spécifiques pour les colonnes */
-    .table-moderne .col-classe {
-        min-width: 120px;
-        font-weight: 600;
-    }
-    
-    .table-moderne .col-filiere {
-        min-width: 140px;
-    }
-    
-    .table-moderne .col-niveau {
-        min-width: 100px;
-    }
+    .table-moderne .col-classe { min-width: 120px; font-weight: 600; }
+    .table-moderne .col-filiere { min-width: 140px; }
+    .table-moderne .col-niveau { min-width: 100px; }
     
     .table-moderne .col-annee {
         min-width: 150px;
@@ -622,10 +667,6 @@
     .table-moderne .col-actions {
         min-width: 120px;
         text-align: center;
-    }
-    
-    .table-moderne tbody tr:hover {
-        background-color: rgba(30, 58, 138, 0.02);
     }
     
     .badge-moderne {
@@ -701,36 +742,47 @@
         transform: translateY(-1px);
         box-shadow: var(--shadow-elevated);
     }
+
+    /* ── Responsive ────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+        .et-header-inner { flex-direction: column; text-align: center; }
+        .et-header-left { flex-direction: column; }
+        .et-header-actions { justify-content: center; }
+        .et-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 480px) {
+        .et-kpi-grid { grid-template-columns: 1fr; }
+    }
 </style>
 @endsection
 
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header moderne des emplois du temps -->
+        <!-- Header premium -->
         <div class="emploi-temps-header">
-            <div class="d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center">
-                    <div class="emploi-stat-icon me-4">
+            <div class="et-header-inner">
+                <div class="et-header-left">
+                    <div class="et-header-icon">
                         <i class="fas fa-calendar-alt"></i>
                     </div>
                     <div>
-                        <h1 class="mb-1">Gestion des emplois du temps</h1>
-                        <p class="mb-0 opacity-75">Administration avancée des plannings scolaires avec intégration planning</p>
+                        <h1>Gestion des emplois du temps</h1>
+                        <p class="et-subtitle">Administration avancee des plannings scolaires</p>
                     </div>
                 </div>
-                <div class="d-flex gap-2">
+                <div class="et-header-actions">
                     <button type="button" class="timetable-tips-btn" data-bs-toggle="modal" data-bs-target="#timetableTipsModal">
-                        <i class="fas fa-lightbulb"></i>Tips
+                        <i class="fas fa-lightbulb"></i> Tips
                     </button>
                     @if(auth()->user()->can('edit_timetables'))
-                        <button type="button" class="btn-acasi info" data-bs-toggle="modal" data-bs-target="#bulkEditModal">
-                            <i class="fas fa-layer-group me-2"></i>Modifier rapidement
+                        <button type="button" class="et-header-btn" data-bs-toggle="modal" data-bs-target="#bulkEditModal">
+                            <i class="fas fa-layer-group"></i> Modifier rapidement
                         </button>
                     @endif
                     @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('create_timetable'))
-                        <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn-acasi primary">
-                            <i class="fas fa-plus-circle me-2"></i>Nouveau
+                        <a href="{{ route('esbtp.emploi-temps.create') }}" class="et-header-btn et-header-btn--primary">
+                            <i class="fas fa-plus-circle"></i> Nouveau
                         </a>
                     @endif
                 </div>
@@ -751,43 +803,27 @@
             </div>
         @endif
 
-        <!-- Statistiques des emplois du temps -->
-        <div class="kpi-grid mb-xl">
-            <div class="card-moderne emploi-stat-card primary">
-                <div class="p-lg">
-                    <div class="emploi-stat-icon">
-                        <i class="fas fa-calendar"></i>
-                    </div>
-                    <div class="emploi-stat-value">{{ $totalEmploisTemps }}</div>
-                    <div class="emploi-stat-label">Total emplois du temps</div>
-                </div>
+        <!-- KPI Grid premium -->
+        <div class="et-kpi-grid">
+            <div class="et-kpi et-kpi--primary">
+                <div class="et-kpi-icon"><i class="fas fa-calendar"></i></div>
+                <div class="et-kpi-value">{{ $totalEmploisTemps }}</div>
+                <div class="et-kpi-label">Total emplois du temps</div>
             </div>
-            <div class="card-moderne emploi-stat-card success">
-                <div class="p-lg">
-                    <div class="emploi-stat-icon">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div class="emploi-stat-value">{{ $emploisTempsActifsCount }}</div>
-                    <div class="emploi-stat-label">Emplois du temps actifs</div>
-                </div>
+            <div class="et-kpi et-kpi--success">
+                <div class="et-kpi-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="et-kpi-value">{{ $emploisTempsActifsCount }}</div>
+                <div class="et-kpi-label">Actifs (periode en cours)</div>
             </div>
-            <div class="card-moderne emploi-stat-card info">
-                <div class="p-lg">
-                    <div class="emploi-stat-icon">
-                        <i class="fas fa-chalkboard-teacher"></i>
-                    </div>
-                    <div class="emploi-stat-value">{{ $totalSeances }}</div>
-                    <div class="emploi-stat-label">Total séances de cours</div>
-                </div>
+            <div class="et-kpi et-kpi--cyan">
+                <div class="et-kpi-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                <div class="et-kpi-value">{{ $totalSeances }}</div>
+                <div class="et-kpi-label">Total seances de cours</div>
             </div>
-            <div class="card-moderne emploi-stat-card warning">
-                <div class="p-lg">
-                    <div class="emploi-stat-icon">
-                        <i class="fas fa-graduation-cap"></i>
-                    </div>
-                    <div class="emploi-stat-value">{{ $anneeUniversitaireCourante->name ?? 'Année non définie' }}</div>
-                    <div class="emploi-stat-label">Année universitaire</div>
-                </div>
+            <div class="et-kpi et-kpi--warning">
+                <div class="et-kpi-icon"><i class="fas fa-graduation-cap"></i></div>
+                <div class="et-kpi-value">{{ $anneeUniversitaireCourante->name ?? 'N/A' }}</div>
+                <div class="et-kpi-label">Annee universitaire</div>
             </div>
         </div>
 
@@ -809,7 +845,7 @@
         <div class="row">
             <!-- Main content -->
             <div class="col-lg-8">
-                <div class="card-moderne">
+                <div class="et-list-card">
                     <div class="card-header">
                         <h5 class="mb-0">
                             <i class="fas fa-calendar-alt me-2"></i>Liste des emplois du temps
