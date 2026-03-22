@@ -1993,12 +1993,24 @@
 
     .hero-slider-track {
         display: flex;
-        transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         will-change: transform;
     }
 
     .hero-slider-track.dragging {
         transition: none;
+    }
+
+    /* Swipe "finger" animation — peek, pull back, then slide */
+    .hero-slider-track.auto-swipe {
+        animation: fingerSwipe 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    @keyframes fingerSwipe {
+        0%   { --swipe-offset: 0%; }
+        15%  { --swipe-offset: -3%; }   /* peek — slide a tiny bit */
+        30%  { --swipe-offset: 1.5%; }  /* pull back — take momentum */
+        100% { --swipe-offset: -100%; } /* full slide to next */
     }
 
     .hero-slide {
@@ -2949,7 +2961,7 @@
         if (e.key === 'Escape' && featOverlay.classList.contains('open')) closeFeatModal();
     });
 
-    // Hero slider — drag/swipe + autoplay
+    // Hero slider — finger-swipe animation + drag/touch
     var slider = document.getElementById('heroSlider');
     var track = document.getElementById('heroTrack');
     var dots = document.querySelectorAll('#heroDots .hero-dot');
@@ -2958,45 +2970,78 @@
         var currentIdx = 0;
         var isDragging = false;
         var startX = 0;
-        var currentTranslate = 0;
         var prevTranslate = 0;
         var autoTimer;
+        var isAnimating = false;
 
-        function setPosition(percent, animate) {
-            if (animate) track.classList.remove('dragging');
-            else track.classList.add('dragging');
-            track.style.transform = 'translateX(' + percent + '%)';
-            currentTranslate = percent;
-        }
-
-        function goTo(idx, animate) {
-            if (idx < 0) idx = 0;
+        function snapTo(idx, useSwipeAnim) {
+            if (isAnimating) return;
+            if (idx < 0) idx = slideCount - 1;
             if (idx >= slideCount) idx = 0;
+
             dots[currentIdx].classList.remove('active');
+            var fromIdx = currentIdx;
             currentIdx = idx;
             dots[currentIdx].classList.add('active');
-            prevTranslate = -(currentIdx * 100);
-            setPosition(prevTranslate, animate !== false);
+
+            if (useSwipeAnim && fromIdx !== idx) {
+                // Finger swipe animation: peek → pull back → slide
+                isAnimating = true;
+                track.classList.remove('dragging');
+                var basePos = -(fromIdx * 100);
+                var targetPos = -(idx * 100);
+                var direction = idx > fromIdx ? -1 : 1; // -1 = slide left, 1 = slide right
+
+                // Step 1: peek (move 3% in slide direction)
+                track.style.transition = 'transform 0.2s ease-out';
+                track.style.transform = 'translateX(' + (basePos + (direction * -3)) + '%)';
+
+                setTimeout(function() {
+                    // Step 2: pull back (move 2% opposite — take momentum)
+                    track.style.transition = 'transform 0.15s ease-in';
+                    track.style.transform = 'translateX(' + (basePos + (direction * 2)) + '%)';
+
+                    setTimeout(function() {
+                        // Step 3: full slide to target
+                        track.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
+                        track.style.transform = 'translateX(' + targetPos + '%)';
+                        prevTranslate = targetPos;
+
+                        setTimeout(function() { isAnimating = false; }, 500);
+                    }, 150);
+                }, 200);
+            } else {
+                // Instant snap (after drag)
+                track.classList.remove('dragging');
+                track.style.transition = 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)';
+                prevTranslate = -(idx * 100);
+                track.style.transform = 'translateX(' + prevTranslate + '%)';
+            }
         }
 
         function startAuto() {
             clearInterval(autoTimer);
-            autoTimer = setInterval(function() { goTo(currentIdx + 1); }, 4000);
+            autoTimer = setInterval(function() {
+                snapTo(currentIdx + 1, true);
+            }, 4500);
         }
 
         // Dots click
         dots.forEach(function(d) {
             d.addEventListener('click', function() {
-                goTo(parseInt(this.dataset.slide));
+                clearInterval(autoTimer);
+                snapTo(parseInt(this.dataset.slide), false);
                 startAuto();
             });
         });
 
         // Drag — mouse
         slider.addEventListener('mousedown', function(e) {
+            if (isAnimating) return;
             isDragging = true;
             startX = e.clientX;
             track.classList.add('dragging');
+            track.style.transition = 'none';
             clearInterval(autoTimer);
         });
 
@@ -3004,7 +3049,7 @@
             if (!isDragging) return;
             var diff = e.clientX - startX;
             var pct = (diff / slider.offsetWidth) * 100;
-            setPosition(prevTranslate + pct, false);
+            track.style.transform = 'translateX(' + (prevTranslate + pct) + '%)';
         });
 
         window.addEventListener('mouseup', function(e) {
@@ -3012,17 +3057,19 @@
             isDragging = false;
             var diff = e.clientX - startX;
             var threshold = slider.offsetWidth * 0.15;
-            if (diff < -threshold) goTo(currentIdx + 1);
-            else if (diff > threshold) goTo(currentIdx - 1);
-            else goTo(currentIdx);
+            if (diff < -threshold) snapTo(currentIdx + 1, false);
+            else if (diff > threshold) snapTo(currentIdx - 1, false);
+            else snapTo(currentIdx, false);
             startAuto();
         });
 
         // Drag — touch
         slider.addEventListener('touchstart', function(e) {
+            if (isAnimating) return;
             isDragging = true;
             startX = e.touches[0].clientX;
             track.classList.add('dragging');
+            track.style.transition = 'none';
             clearInterval(autoTimer);
         }, { passive: true });
 
@@ -3030,7 +3077,7 @@
             if (!isDragging) return;
             var diff = e.touches[0].clientX - startX;
             var pct = (diff / slider.offsetWidth) * 100;
-            setPosition(prevTranslate + pct, false);
+            track.style.transform = 'translateX(' + (prevTranslate + pct) + '%)';
         }, { passive: true });
 
         slider.addEventListener('touchend', function(e) {
@@ -3038,13 +3085,14 @@
             isDragging = false;
             var diff = e.changedTouches[0].clientX - startX;
             var threshold = slider.offsetWidth * 0.15;
-            if (diff < -threshold) goTo(currentIdx + 1);
-            else if (diff > threshold) goTo(currentIdx - 1);
-            else goTo(currentIdx);
+            if (diff < -threshold) snapTo(currentIdx + 1, false);
+            else if (diff > threshold) snapTo(currentIdx - 1, false);
+            else snapTo(currentIdx, false);
             startAuto();
         });
 
-        // Start autoplay
+        // Start
+        track.style.transform = 'translateX(0%)';
         startAuto();
     }
 
