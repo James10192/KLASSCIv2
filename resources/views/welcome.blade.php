@@ -141,6 +141,13 @@
             animation-duration: 0.01ms !important;
             transition-duration: 0.01ms !important;
         }
+        .blob, .hero h1 {
+            animation: none !important;
+        }
+        .hero h1 {
+            -webkit-text-fill-color: var(--accent) !important;
+            background: none !important;
+        }
     }
 
     a { text-decoration: none; color: var(--accent); transition: color 0.2s; }
@@ -1305,39 +1312,61 @@
 
     .blob {
         position: absolute;
-        border-radius: 50%;
-        filter: blur(80px);
-        opacity: 0.12;
-        animation: blobFloat 12s ease-in-out infinite alternate;
+        filter: blur(60px);
+        opacity: 0.15;
+        animation: blobMorph 10s ease-in-out infinite;
     }
 
-    html.dark .blob { opacity: 0.06; }
+    html.dark .blob { opacity: 0.07; }
 
     .blob-1 {
         width: 400px; height: 400px;
-        background: var(--accent);
+        background: linear-gradient(135deg, var(--accent), #5e91de);
         top: -10%; right: 10%;
     }
     .blob-2 {
         width: 300px; height: 300px;
-        background: #5e91de;
+        background: linear-gradient(135deg, #5e91de, #87ceeb);
         bottom: -5%; left: 5%;
         animation-delay: -4s;
-        animation-duration: 15s;
+        animation-duration: 13s;
+        animation-direction: reverse;
     }
     .blob-3 {
         width: 200px; height: 200px;
-        background: var(--accent);
+        background: linear-gradient(135deg, var(--accent), #5e91de);
         top: 40%; left: 60%;
-        animation-delay: -8s;
-        animation-duration: 18s;
+        animation-delay: -7s;
+        animation-duration: 16s;
     }
 
-    @keyframes blobFloat {
-        0% { transform: translate(0, 0) scale(1); }
-        33% { transform: translate(30px, -20px) scale(1.05); }
-        66% { transform: translate(-20px, 15px) scale(0.95); }
-        100% { transform: translate(10px, -10px) scale(1.02); }
+    @keyframes blobMorph {
+        0%, 100% {
+            border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+            transform: translate(0, 0) scale(1);
+        }
+        25% {
+            border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+            transform: translate(30px, -40px) scale(1.05);
+        }
+        50% {
+            border-radius: 70% 30% 60% 40% / 30% 60% 50% 70%;
+            transform: translate(-20px, 20px) scale(0.95);
+        }
+        75% {
+            border-radius: 40% 60% 30% 70% / 70% 40% 60% 30%;
+            transform: translate(40px, 30px) scale(1.02);
+        }
+    }
+
+    /* 11. Clip-path text reveal on hero subtitle */
+    @keyframes clipReveal {
+        from { clip-path: inset(0 100% 0 0); }
+        to { clip-path: inset(0 0 0 0); }
+    }
+
+    .hero .reveal.visible.hero-sub {
+        animation: clipReveal 0.9s var(--ease-out) 0.15s both;
     }
 
     /* 5. Shimmer line separator between sections */
