@@ -58,6 +58,56 @@
             z-index: 1;
         }
 
+        /* ─── Floating elements ─── */
+        .floating-elements {
+            position: fixed;
+            inset: 0;
+            z-index: 2;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .floating-icon {
+            position: absolute;
+            color: rgba(255,255,255,0.12);
+            font-size: 1.5rem;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .fi-1 { top: 12%; left: 6%; animation-delay: 0s; }
+        .fi-2 { top: 22%; right: 10%; animation-delay: 2s; font-size: 1.3rem; }
+        .fi-3 { bottom: 25%; left: 8%; animation-delay: 4s; }
+        .fi-4 { bottom: 12%; right: 12%; animation-delay: 6s; font-size: 1.8rem; }
+        .fi-5 { top: 55%; left: 4%; animation-delay: 1s; font-size: 1.2rem; }
+        .fi-6 { top: 72%; right: 6%; animation-delay: 3s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-15px) rotate(5deg); }
+            50% { transform: translateY(-30px) rotate(0deg); }
+            75% { transform: translateY(-15px) rotate(-5deg); }
+        }
+
+        /* Geometric rings */
+        .geo-ring {
+            position: fixed;
+            border: 1.5px solid rgba(255,255,255,0.08);
+            border-radius: 50%;
+            animation: ring-spin 25s linear infinite;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .ring-1 { width: 280px; height: 280px; top: 8%; left: -8%; }
+        .ring-2 { width: 180px; height: 180px; top: 55%; right: -4%; animation-delay: -8s; animation-duration: 20s; }
+        .ring-3 { width: 140px; height: 140px; bottom: 15%; left: 12%; animation-delay: -15s; animation-duration: 30s; }
+
+        @keyframes ring-spin {
+            0% { transform: rotate(0deg); opacity: 0.3; }
+            50% { transform: rotate(180deg); opacity: 0.08; }
+            100% { transform: rotate(360deg); opacity: 0.3; }
+        }
+
         /* ─── Main card ─── */
         .login-card {
             position: relative;
@@ -170,6 +220,36 @@
             font-size: 0.78rem;
             color: rgba(255,255,255,0.6);
             margin-top: 0.35rem;
+        }
+
+        /* Animated gradient line on left panel bottom */
+        .panel-left::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { opacity: 0.3; transform: translateX(-30%); }
+            50% { opacity: 0.8; transform: translateX(30%); }
+        }
+
+        /* Stat values animate in */
+        .stat-value {
+            animation: countUp 0.8s var(--ease-out) both;
+        }
+        .stat:nth-child(1) .stat-value { animation-delay: 0.4s; }
+        .stat:nth-child(2) .stat-value { animation-delay: 0.6s; }
+        .stat:nth-child(3) .stat-value { animation-delay: 0.8s; }
+
+        @keyframes countUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: none; }
         }
 
         /* ─── Right panel — Form ─── */
@@ -414,6 +494,19 @@
     </style>
 </head>
 <body>
+
+<!-- Floating background elements -->
+<div class="floating-elements">
+    <div class="floating-icon fi-1"><i class="fas fa-graduation-cap"></i></div>
+    <div class="floating-icon fi-2"><i class="fas fa-book-open"></i></div>
+    <div class="floating-icon fi-3"><i class="fas fa-users"></i></div>
+    <div class="floating-icon fi-4"><i class="fas fa-chart-line"></i></div>
+    <div class="floating-icon fi-5"><i class="fas fa-lightbulb"></i></div>
+    <div class="floating-icon fi-6"><i class="fas fa-trophy"></i></div>
+</div>
+<div class="geo-ring ring-1"></div>
+<div class="geo-ring ring-2"></div>
+<div class="geo-ring ring-3"></div>
 
 <div class="login-card">
     <!-- Left panel -->
