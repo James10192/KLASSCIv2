@@ -628,6 +628,178 @@
     }
 
     /* ═══════════════════════
+       PARTNERSHIP BANNER
+    ═══════════════════════ */
+    .partnership {
+        border-top: 1px solid var(--border);
+        overflow: hidden;
+    }
+
+    .partnership img {
+        width: 100%;
+        display: block;
+    }
+
+    /* ═══════════════════════
+       VIDEO TESTIMONIAL
+    ═══════════════════════ */
+    .video-section {
+        padding: 5rem 0;
+        border-top: 1px solid var(--border);
+    }
+
+    .video-inner {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4rem;
+        align-items: center;
+    }
+
+    .video-text h2 {
+        font-size: clamp(1.5rem, 3.5vw, 2.25rem);
+        font-style: italic;
+        margin-bottom: 1rem;
+    }
+
+    .video-text p {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        line-height: 1.75;
+    }
+
+    .video-container {
+        position: relative;
+        border-radius: 16px;
+        overflow: hidden;
+        background: #000;
+        aspect-ratio: 9/16;
+        max-width: 300px;
+        margin: 0 auto;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        cursor: pointer;
+    }
+
+    .video-container video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .video-play-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,0.3);
+        transition: opacity 0.3s;
+    }
+
+    .video-play-overlay i {
+        width: 60px; height: 60px;
+        background: rgba(255,255,255,0.9);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--accent);
+        font-size: 1.25rem;
+        padding-left: 3px;
+    }
+
+    .video-container.playing .video-play-overlay { opacity: 0; pointer-events: none; }
+
+    .video-badge {
+        position: absolute;
+        top: 1rem; left: 1rem;
+        background: #ef4444;
+        color: #fff;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        z-index: 2;
+    }
+
+    .video-badge-dot {
+        width: 6px; height: 6px;
+        background: #fff;
+        border-radius: 50%;
+        animation: vPulse 1.5s infinite;
+    }
+
+    @keyframes vPulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+    @media (max-width: 768px) {
+        .video-inner { grid-template-columns: 1fr; }
+        .video-container { max-width: 260px; }
+    }
+
+    /* ═══════════════════════
+       SECURITY + SUPPORT SECTIONS
+    ═══════════════════════ */
+    .info-section {
+        padding: 5rem 0;
+        border-top: 1px solid var(--border);
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4rem;
+        align-items: center;
+    }
+
+    .info-grid.reverse { direction: rtl; }
+    .info-grid.reverse > * { direction: ltr; }
+
+    .info-text h2 {
+        font-size: clamp(1.5rem, 3.5vw, 2rem);
+        font-style: italic;
+        margin-bottom: 1.25rem;
+    }
+
+    .info-text p {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        line-height: 1.75;
+        margin-bottom: 0.75rem;
+    }
+
+    .info-image {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .info-image img {
+        width: 100%;
+        display: block;
+    }
+
+    @media (max-width: 768px) {
+        .info-grid, .info-grid.reverse { grid-template-columns: 1fr; direction: ltr; }
+        .info-image { order: -1; }
+    }
+
+    /* Full-width image banner */
+    .image-banner {
+        border-top: 1px solid var(--border);
+        overflow: hidden;
+    }
+
+    .image-banner img {
+        width: 100%;
+        display: block;
+    }
+
+    /* ═══════════════════════
        PRICING
     ═══════════════════════ */
     .pricing {
@@ -1357,6 +1529,72 @@
     </div>
 </section>
 
+<!-- PARTNERSHIP BANNER — Devenez Partenaire -->
+<section class="partnership reveal">
+    <img src="{{ asset('images/Images landingPage/Sans titre - 2-02.png') }}" alt="Devenez partenaire KLASSCI — 0 FCFA" loading="lazy">
+</section>
+
+<!-- VIDEO TESTIMONIAL -->
+<section class="video-section">
+    <div class="container">
+        <div class="video-inner reveal">
+            <div class="video-text">
+                <h2>Ils en parlent mieux que nous</h2>
+                <p>Découvrez le témoignage d'un responsable d'établissement qui utilise KLASSCI au quotidien pour gérer ses étudiants, ses enseignants et ses finances.</p>
+            </div>
+            <div class="video-container" id="videoContainer">
+                <div class="video-badge"><span class="video-badge-dot"></span> TÉMOIGNAGE</div>
+                <video id="testimonialVideo" muted loop playsinline preload="none"
+                    data-src="{{ asset('images/WhatsApp Video 2025-11-02 at 12.10.55 PM.mp4') }}">
+                </video>
+                <div class="video-play-overlay" id="videoOverlay">
+                    <i class="fas fa-play"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- SECURITY -->
+<section class="info-section">
+    <div class="container">
+        <div class="info-grid reveal">
+            <div class="info-image">
+                <img src="{{ asset('images/Images landingPage/Sans titre - 2-04.png') }}" alt="Sécurité et protection des données KLASSCI" loading="lazy">
+            </div>
+            <div class="info-text">
+                <h2>Sécurité et confiance totales</h2>
+                <p>Nous garantissons la protection optimale de vos données, dans le respect strict des normes RGPD.</p>
+                <p>Notre équipe dédiée à la cybersécurité travaille en continu pour renforcer et améliorer nos dispositifs de protection.</p>
+                <p>Chaque établissement dispose de sa propre base de données isolée — aucun partage de données entre écoles.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- SUPPORT CLIENT -->
+<section class="info-section">
+    <div class="container">
+        <div class="info-grid reverse reveal">
+            <div class="info-text">
+                <h2>Support client disponible 24h/24</h2>
+                <p>Accédez à des informations fiables à tout moment grâce à notre chatbot intégré.</p>
+                <p>Échangez directement avec notre service client par email, WhatsApp ou Telegram.</p>
+                <p>Nos agents maîtrisent parfaitement le français et l'anglais, pour une communication fluide.</p>
+                <p>Temps d'attente minimal : une réponse en moins de 2 minutes dans la majorité des cas.</p>
+            </div>
+            <div class="info-image">
+                <img src="{{ asset('images/Images landingPage/bulles.png') }}" alt="Support client KLASSCI — chat et assistance" loading="lazy" style="max-width: 350px; margin: 0 auto;">
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- IMAGE CTA — Students banner -->
+<section class="image-banner reveal">
+    <img src="{{ asset('images/Images landingPage/Sans titre - 2-03.png') }}" alt="Étudiants KLASSCI" loading="lazy">
+</section>
+
 <!-- PRICING -->
 <section class="pricing" id="tarifs">
     <div class="container">
@@ -1631,6 +1869,50 @@
         });
     }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
     els.forEach(function(el) { obs.observe(el); });
+
+    // Video lazy load + play/pause
+    var video = document.getElementById('testimonialVideo');
+    var vContainer = document.getElementById('videoContainer');
+    var vOverlay = document.getElementById('videoOverlay');
+    var videoLoaded = false;
+
+    if (video && vContainer) {
+        // Lazy load when visible
+        var vObs = new IntersectionObserver(function(entries) {
+            entries.forEach(function(e) {
+                if (e.isIntersecting && !videoLoaded) {
+                    var src = video.dataset.src;
+                    if (src) {
+                        var source = document.createElement('source');
+                        source.src = src;
+                        source.type = 'video/mp4';
+                        video.appendChild(source);
+                        video.load();
+                        video.addEventListener('canplay', function() {
+                            video.play().catch(function() {});
+                            vContainer.classList.add('playing');
+                            videoLoaded = true;
+                        }, { once: true });
+                    }
+                    vObs.unobserve(video);
+                }
+            });
+        }, { rootMargin: '100px' });
+        vObs.observe(video);
+
+        // Click to toggle play/pause
+        vContainer.addEventListener('click', function() {
+            if (!videoLoaded) return;
+            if (video.paused) {
+                video.play();
+                video.muted = false;
+                vContainer.classList.add('playing');
+            } else {
+                video.pause();
+                vContainer.classList.remove('playing');
+            }
+        });
+    }
 
     // FAQ toggle
     window.toggleFaq = function(el) {
