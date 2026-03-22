@@ -255,7 +255,6 @@
     }
 
     .nav-hamburger {
-        display: none;
         background: none; border: none;
         cursor: pointer; padding: 0.5rem;
     }
