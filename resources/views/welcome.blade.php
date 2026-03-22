@@ -2877,7 +2877,7 @@
                 '<li>Suivi des heures planifiées vs heures réalisées</li>' +
                 '<li>KPI : nombre de séances, heures de cours, enseignants actifs</li>' +
                 '<li>Vue d\'ensemble, planning annuel, charge par classe et interface coordinateur</li>' +
-                '<li>Volume horaire des matières par bâtiment et niveau d\'étude</li>' +
+                '<li>Volume horaire des matières par filière et niveau d\'étude</li>' +
                 '</ul>' +
                 '<div class="feat-modal-cta"><a href="#contact" class="btn-primary" onclick="closeFeatModal()">Demander une démo</a><a href="#tarifs" class="btn-outline" onclick="closeFeatModal()">Voir les tarifs</a></div>'
         },
