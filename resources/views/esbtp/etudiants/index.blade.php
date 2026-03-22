@@ -1205,6 +1205,24 @@
         flex: 1;
         display: flex;
         flex-direction: column;
+        position: relative;
+    }
+
+    .iframe-loader {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+        z-index: 5;
+        transition: opacity 0.3s;
+    }
+
+    .iframe-loader.hidden {
+        opacity: 0;
+        pointer-events: none;
     }
 
     .modal-iframe-wrapper iframe {
@@ -3394,8 +3412,12 @@
                 </div>
                 <div class="tab-content modern-tab-content" id="editStudentTabContent">
                     <div class="tab-pane fade show active" id="tab-etudiant" role="tabpanel">
-                        <div class="modal-iframe-wrapper">
-                            <iframe id="student-edit-frame" src="about:blank" title="Édition étudiant" loading="lazy" class="border-0"></iframe>
+                        <div class="modal-iframe-wrapper" style="position:relative;">
+                            <div id="student-edit-loader" class="iframe-loader">
+                                <div class="spinner-border text-primary" role="status" style="width:2rem;height:2rem;"></div>
+                                <span style="font-size:0.85rem;color:#64748b;margin-top:0.5rem;">Chargement du formulaire...</span>
+                            </div>
+                            <iframe id="student-edit-frame" src="about:blank" title="Édition étudiant" loading="eager" class="border-0"></iframe>
                         </div>
                     </div>
                     <div class="tab-pane fade" id="tab-inscriptions" role="tabpanel">
@@ -3741,13 +3763,21 @@
             if (!container) {
                 return;
             }
+            function loadIframeWithLoader(iframe) {
+                if (!iframe || iframe.src) return;
+                const loader = iframe.closest('.modal-iframe-wrapper')?.querySelector('.inscription-loader');
+                if (loader) loader.classList.remove('hidden');
+                const separator = iframe.dataset.src.includes('?') ? '&' : '?';
+                iframe.src = `${iframe.dataset.src}${separator}_=${Date.now()}`;
+                iframe.addEventListener('load', function h() {
+                    if (loader) loader.classList.add('hidden');
+                    iframe.removeEventListener('load', h);
+                });
+            }
+
             container.querySelectorAll('.accordion-collapse').forEach((collapseEl) => {
                 collapseEl.addEventListener('show.bs.collapse', function () {
-                    const iframe = this.querySelector('iframe[data-src]');
-                    if (iframe && !iframe.src) {
-                        const separator = iframe.dataset.src.includes('?') ? '&' : '?';
-                        iframe.src = `${iframe.dataset.src}${separator}_=${Date.now()}`;
-                    }
+                    loadIframeWithLoader(this.querySelector('iframe[data-src]'));
                 }, { once: true });
             });
 
@@ -3755,8 +3785,7 @@
             if (firstVisible) {
                 const iframe = firstVisible.querySelector('iframe[data-src]');
                 if (iframe && !iframe.src) {
-                    const separator = iframe.dataset.src.includes('?') ? '&' : '?';
-                    iframe.src = `${iframe.dataset.src}${separator}_=${Date.now()}`;
+                    loadIframeWithLoader(iframe);
                 }
             }
         }
@@ -3834,8 +3863,12 @@
                     <i class="fas fa-eye me-1"></i>Voir l'inscription
                 </a>
             </div>
-            <div class="modal-iframe-wrapper">
-                <iframe class="border-0 inscription-frame" data-src="${inscription.edit_url}" title="Inscription #${inscription.id}" loading="lazy"></iframe>
+            <div class="modal-iframe-wrapper" style="position:relative;">
+                <div class="iframe-loader inscription-loader">
+                    <div class="spinner-border text-primary" role="status" style="width:1.5rem;height:1.5rem;"></div>
+                    <span style="font-size:0.8rem;color:#64748b;margin-top:0.4rem;">Chargement...</span>
+                </div>
+                <iframe class="border-0 inscription-frame" data-src="${inscription.edit_url}" title="Inscription #${inscription.id}" loading="eager"></iframe>
             </div>
         </div>
     </div>
@@ -3855,6 +3888,8 @@
                 modalElement.addEventListener('hidden.bs.modal', () => {
                     if (studentFrame) {
                         studentFrame.src = 'about:blank';
+                        const loader = document.getElementById('student-edit-loader');
+                        if (loader) { loader.classList.remove('hidden'); }
                     }
                     if (inscriptionsContainer) {
                         inscriptionsContainer.innerHTML = '<div class="text-muted">Sélectionnez un étudiant pour afficher ses inscriptions.</div>';
@@ -3877,11 +3912,12 @@
             }
 
             if (studentFrame && payload.edit_url) {
-                studentFrame.classList.add('opacity-50');
+                const loader = document.getElementById('student-edit-loader');
+                if (loader) { loader.classList.remove('hidden'); }
                 const separator = payload.edit_url.includes('?') ? '&' : '?';
                 studentFrame.src = `${payload.edit_url}${separator}_=${Date.now()}`;
                 studentFrame.addEventListener('load', function handleLoad() {
-                    studentFrame.classList.remove('opacity-50');
+                    if (loader) { loader.classList.add('hidden'); }
                     studentFrame.removeEventListener('load', handleLoad);
                 });
             }
