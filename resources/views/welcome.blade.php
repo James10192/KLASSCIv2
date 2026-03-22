@@ -502,26 +502,62 @@
         margin-bottom: 3rem;
     }
 
-    .proof-logos {
-        display: flex;
-        align-items: stretch;
-        justify-content: center;
-        gap: 1.5rem;
+    /* Logo marquee */
+    .proof-marquee {
+        overflow: hidden;
         margin-bottom: 4rem;
         padding-bottom: 3rem;
         border-bottom: 1px solid var(--border);
+        position: relative;
+    }
+
+    /* Fade edges */
+    .proof-marquee::before,
+    .proof-marquee::after {
+        content: '';
+        position: absolute;
+        top: 0; bottom: 0;
+        width: 80px;
+        z-index: 2;
+        pointer-events: none;
+    }
+    .proof-marquee::before {
+        left: 0;
+        background: linear-gradient(90deg, var(--bg), transparent);
+    }
+    .proof-marquee::after {
+        right: 0;
+        background: linear-gradient(270deg, var(--bg), transparent);
+    }
+
+    .proof-logos {
+        display: flex;
+        gap: 1.25rem;
+        animation: marqueeScroll 25s linear infinite;
+        width: fit-content;
+    }
+
+    .proof-marquee:hover .proof-logos {
+        animation-play-state: paused;
+    }
+
+    @keyframes marqueeScroll {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(calc(-50% - 0.625rem)); }
     }
 
     .proof-logo-card {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 1rem;
-        padding: 2rem 3rem;
+        gap: 0.75rem;
+        padding: 1.5rem 2.5rem;
         background: var(--bg-card);
         border: 1px solid var(--border);
         border-radius: var(--radius);
         transition: all var(--duration-normal) var(--ease-out);
+        flex-shrink: 0;
+        min-width: 180px;
     }
 
     .proof-logo-card:hover {
@@ -533,6 +569,7 @@
     .proof-logo-card img {
         height: 56px;
         width: auto;
+        object-fit: contain;
     }
 
     .proof-logo-card .proof-logo-name {
@@ -540,17 +577,14 @@
         font-weight: 600;
         font-size: 0.9rem;
         color: var(--text);
+        white-space: nowrap;
     }
 
     .proof-logo-card .proof-logo-detail {
         font-family: 'IBM Plex Sans', sans-serif;
         font-size: 0.75rem;
         color: var(--text-muted);
-    }
-
-    @media (max-width: 480px) {
-        .proof-logos { flex-direction: column; align-items: center; }
-        .proof-logo-card { width: 100%; max-width: 280px; }
+        white-space: nowrap;
     }
 
     /* Testimonials — organic masonry like zed */
@@ -2056,16 +2090,60 @@
     <div class="container">
         <h2 class="reveal">Adopté par des établissements<br>qui forment des milliers d'étudiants</h2>
 
-        <div class="proof-logos reveal">
-            <div class="proof-logo-card">
-                <img src="{{ asset('images/landing/esbtp_logo.png') }}" alt="ESBTP Abidjan">
-                <div class="proof-logo-name">ESBTP Abidjan</div>
-                <div class="proof-logo-detail">2 600+ étudiants · Plan Élite</div>
-            </div>
-            <div class="proof-logo-card">
-                <img src="{{ asset('images/landing/esbtp_logo.png') }}" alt="ESBTP Yamoussoukro">
-                <div class="proof-logo-name">ESBTP Yamoussoukro</div>
-                <div class="proof-logo-detail">2 000+ étudiants · Plan Élite</div>
+        <div class="proof-marquee reveal">
+            <div class="proof-logos">
+                {{-- Original set --}}
+                <div class="proof-logo-card">
+                    <img src="{{ asset('images/landing/esbtp_logo.png') }}" alt="ESBTP Abidjan">
+                    <div class="proof-logo-name">ESBTP Abidjan</div>
+                    <div class="proof-logo-detail">2 600+ étudiants · Plan Élite</div>
+                </div>
+                <div class="proof-logo-card">
+                    <img src="{{ asset('images/landing/esbtp_logo.png') }}" alt="ESBTP Yamoussoukro">
+                    <div class="proof-logo-name">ESBTP Yamoussoukro</div>
+                    <div class="proof-logo-detail">2 000+ étudiants · Plan Élite</div>
+                </div>
+                <div class="proof-logo-card">
+                    <img src="{{ asset('images/landing/institut-pascal-logo.jpeg') }}" alt="Institut Pascal">
+                    <div class="proof-logo-name">Institut Pascal</div>
+                    <div class="proof-logo-detail">Nouveau partenaire</div>
+                </div>
+                <div class="proof-logo-card">
+                    <img src="{{ asset('images/landing/san-andrea-school.jpeg') }}" alt="San Andrea School">
+                    <div class="proof-logo-name">San Andrea School</div>
+                    <div class="proof-logo-detail">Nouveau partenaire</div>
+                </div>
+                <div class="proof-logo-card">
+                    <img src="{{ asset('images/landing/its-logo.jpeg') }}" alt="ITS">
+                    <div class="proof-logo-name">ITS</div>
+                    <div class="proof-logo-detail">Nouveau partenaire</div>
+                </div>
+                {{-- Duplicate for seamless loop --}}
+                <div class="proof-logo-card">
+                    <img src="{{ asset('images/landing/esbtp_logo.png') }}" alt="ESBTP Abidjan">
+                    <div class="proof-logo-name">ESBTP Abidjan</div>
+                    <div class="proof-logo-detail">2 600+ étudiants · Plan Élite</div>
+                </div>
+                <div class="proof-logo-card">
+                    <img src="{{ asset('images/landing/esbtp_logo.png') }}" alt="ESBTP Yamoussoukro">
+                    <div class="proof-logo-name">ESBTP Yamoussoukro</div>
+                    <div class="proof-logo-detail">2 000+ étudiants · Plan Élite</div>
+                </div>
+                <div class="proof-logo-card">
+                    <img src="{{ asset('images/landing/institut-pascal-logo.jpeg') }}" alt="Institut Pascal">
+                    <div class="proof-logo-name">Institut Pascal</div>
+                    <div class="proof-logo-detail">Nouveau partenaire</div>
+                </div>
+                <div class="proof-logo-card">
+                    <img src="{{ asset('images/landing/san-andrea-school.jpeg') }}" alt="San Andrea School">
+                    <div class="proof-logo-name">San Andrea School</div>
+                    <div class="proof-logo-detail">Nouveau partenaire</div>
+                </div>
+                <div class="proof-logo-card">
+                    <img src="{{ asset('images/landing/its-logo.jpeg') }}" alt="ITS">
+                    <div class="proof-logo-name">ITS</div>
+                    <div class="proof-logo-detail">Nouveau partenaire</div>
+                </div>
             </div>
         </div>
 
@@ -2085,24 +2163,24 @@
             <div class="testimonial testimonial-featured reveal reveal-d1">
                 <p class="testimonial-text">"<mark>Le suivi financier a complètement changé.</mark> On voit en temps réel qui a payé, qui doit relancer, et les rapports sont toujours à jour. Plus besoin d'attendre la fin du mois pour avoir une vision claire. C'est devenu indispensable pour nous."</p>
                 <div class="testimonial-author">
-                    <img src="{{ asset('images/testimonial-2.png') }}" alt="" class="testimonial-avatar">
+                    <img src="https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=100&h=100&fit=crop&crop=face" alt="Ama Bamba" class="testimonial-avatar">
                     <div>
                         <div class="testimonial-name">Ama Bamba</div>
                         <div class="testimonial-role">Comptable</div>
                     </div>
-                    <span class="testimonial-company">ESBTP Yakro</span>
+                    <span class="testimonial-company">ESBTP Yamoussoukro</span>
                 </div>
             </div>
 
             <div class="testimonial reveal reveal-d2">
                 <p class="testimonial-text">"L'émargement numérique a <mark>réduit l'absentéisme de 30%</mark>. Les coordinateurs voient en temps réel qui est présent, sans attendre les feuilles de présence."</p>
                 <div class="testimonial-author">
-                    <img src="{{ asset('images/testimonial-3.png') }}" alt="" class="testimonial-avatar">
+                    <img src="https://images.unsplash.com/photo-1506277886164-e25aa3f4ef7f?w=100&h=100&fit=crop&crop=face" alt="Tarek Mehdy" class="testimonial-avatar">
                     <div>
-                        <div class="testimonial-name">Traoré Nanga</div>
+                        <div class="testimonial-name">Tarek Mehdy</div>
                         <div class="testimonial-role">Coordinateur</div>
                     </div>
-                    <span class="testimonial-company">ESBTP Yakro</span>
+                    <span class="testimonial-company">ESBTP Yamoussoukro</span>
                 </div>
             </div>
         </div>
