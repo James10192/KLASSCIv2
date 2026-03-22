@@ -137,17 +137,18 @@
 
         /* Parent search overlay (replaces Bootstrap modal to avoid iframe z-index flash) */
         .parent-search-overlay {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            min-height: 100%;
+            right: 0;
+            bottom: 0;
             z-index: 9999;
             background: rgba(0,0,0,0.4);
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             justify-content: center;
-            padding: 2rem 1rem;
+            padding: 1rem;
+            overflow-y: auto;
         }
 
         .parent-search-panel {
@@ -209,7 +210,8 @@
 
         /* Lock body scroll when panel is open */
         body.parent-panel-open {
-            overflow: hidden;
+            overflow: hidden !important;
+            height: 100vh !important;
         }
 
         /* Badge overrides inside embedded */
