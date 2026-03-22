@@ -992,6 +992,13 @@ class DashboardController extends Controller
         $attendanceStats = ['total_present' => 0, 'total_absent' => 0, 'attendance_rate' => 0];
 
         try {
+            $totalClasses = ESBTPClasse::count();
+            $totalTeachers = ESBTPTeacher::count();
+        } catch (\Exception $e) {
+            // Keep defaults
+        }
+
+        try {
             if ($anneeEnCours) {
                 $totalStudents = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
                     ->where('status', 'active')->count();
@@ -1024,8 +1031,6 @@ class DashboardController extends Controller
                     'attendance_rate' => $totalPresent + $totalAbsent > 0 ? round(($totalPresent / ($totalPresent + $totalAbsent)) * 100, 1) : 0,
                 ];
             }
-            $totalClasses = ESBTPClasse::count();
-            $totalTeachers = ESBTPTeacher::count();
         } catch (\Exception $e) {
             // Keep defaults
         }
