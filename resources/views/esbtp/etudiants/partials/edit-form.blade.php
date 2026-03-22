@@ -250,7 +250,7 @@
 </form>
 
 {{-- Panel overlay (PAS un modal Bootstrap — évite le flash z-index dans iframe) --}}
-<div id="searchParentModal" class="parent-search-overlay" style="display:none;">
+<div id="searchParentModal" class="parent-search-overlay">
     <div class="parent-search-panel">
         <div class="parent-search-header">
             <h5 style="margin:0;font-weight:700;font-size:1rem;">
