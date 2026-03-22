@@ -506,7 +506,7 @@
     .proof-marquee {
         overflow: hidden;
         margin-bottom: 4rem;
-        padding-bottom: 3rem;
+        padding: 8px 0 3rem;
         border-bottom: 1px solid var(--border);
         position: relative;
     }
@@ -1979,6 +1979,7 @@
         width: 100vw;
         overflow: hidden;
         position: relative;
+        padding: 8px 0 12px;
     }
 
     .hero-marquee::before,
