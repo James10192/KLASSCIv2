@@ -2317,20 +2317,56 @@
             </div>
         </div>
 
-        <!-- Small features grid -->
+        <!-- Big feature 3 — image LEFT -->
+        <div class="feature-big">
+            <div class="feature-big-image reveal-left">
+                <img src="{{ asset('images/landing/planning-général.png') }}" alt="Planning général KLASSCI" loading="lazy">
+            </div>
+            <div class="feature-big-text reveal-right">
+                <h3>Emploi du temps intelligent</h3>
+                <p>Générez automatiquement les plannings avec gestion des conflits de salles et d'enseignants. Visualisez la charge horaire de chaque classe et partagez l'emploi du temps en un clic.</p>
+                <a href="#" class="feat-modal-trigger" data-feature="planning">En savoir plus &gt;</a>
+            </div>
+        </div>
+
+        <!-- Big feature 4 — image RIGHT -->
+        <div class="feature-big">
+            <div class="feature-big-text reveal-left">
+                <h3>Émargement et présences</h3>
+                <p>Prise de présence numérique par séance avec code d'émargement unique. Historique complet, taux de présence en temps réel, alertes d'absentéisme automatiques.</p>
+                <a href="#" class="feat-modal-trigger" data-feature="presences">En savoir plus &gt;</a>
+            </div>
+            <div class="feature-big-image reveal-right">
+                <img src="{{ asset('images/landing/gestion-presences.png') }}" alt="Gestion des présences KLASSCI" loading="lazy">
+            </div>
+        </div>
+
+        <!-- Big feature 5 — image LEFT -->
+        <div class="feature-big">
+            <div class="feature-big-image reveal-left">
+                <img src="{{ asset('images/landing/parcours-lmd.png') }}" alt="Parcours LMD KLASSCI" loading="lazy">
+            </div>
+            <div class="feature-big-text reveal-right">
+                <h3>Système LMD complet</h3>
+                <p>Gestion des UE, ECUE, crédits et semestres conforme aux standards UEMOA. Bulletins adaptés, calcul automatique des crédits validés et parcours étudiant.</p>
+                <a href="#" class="feat-modal-trigger" data-feature="lmd">En savoir plus &gt;</a>
+            </div>
+        </div>
+
+        <!-- Big feature 6 — image RIGHT -->
+        <div class="feature-big">
+            <div class="feature-big-text reveal-left">
+                <h3>Gestion du personnel</h3>
+                <p>Suivez vos enseignants et le personnel administratif. Affectation aux classes, charge horaire, historique des cours dispensés et émargement enseignant.</p>
+                <a href="#" class="feat-modal-trigger" data-feature="personnel">En savoir plus &gt;</a>
+            </div>
+            <div class="feature-big-image reveal-right">
+                <img src="{{ asset('images/landing/gestion-personnel.png') }}" alt="Gestion du personnel KLASSCI" loading="lazy">
+            </div>
+        </div>
+
+        <!-- Small features grid — remaining -->
         <div class="features-small">
-            <div class="feature-tile reveal">
-                <h4>Emploi du temps</h4>
-                <p>Génération automatique des plannings avec gestion des conflits de salles et d'enseignants.</p>
-            </div>
-            <div class="feature-tile reveal reveal-d1">
-                <h4>Émargement numérique</h4>
-                <p>Prise de présence par séance, historique complet, taux de présence en temps réel.</p>
-            </div>
-            <div class="feature-tile reveal reveal-d2">
-                <h4>Système LMD</h4>
-                <p>Gestion des UE, ECUE, crédits et semestres conforme aux standards UEMOA.</p>
-            </div>
             <div class="feature-tile reveal">
                 <h4>Inscriptions en ligne</h4>
                 <p>Workflow complet : de la demande à la validation, avec suivi des documents et pièces requises.</p>
@@ -2810,6 +2846,59 @@
                 '<li>Système de frais flexible : inscription, scolarité, examens, etc.</li>' +
                 '</ul>' +
                 '<p>Les comptables voient en un coup d\'œil qui a payé, qui est en retard, et peuvent agir immédiatement — sans attendre la fin du mois.</p>' +
+                '<div class="feat-modal-cta"><a href="#contact" class="btn-primary" onclick="closeFeatModal()">Demander une démo</a><a href="#tarifs" class="btn-outline" onclick="closeFeatModal()">Voir les tarifs</a></div>'
+        },
+        planning: {
+            title: 'Emploi du temps intelligent',
+            img: '{{ asset("images/landing/planning-général.png") }}',
+            body: '<p>KLASSCI génère et gère l\'emploi du temps de votre établissement avec précision.</p>' +
+                '<ul>' +
+                '<li>Planification automatique avec détection des conflits</li>' +
+                '<li>Gestion des salles, enseignants et créneaux horaires</li>' +
+                '<li>Vue par classe, par enseignant ou par salle</li>' +
+                '<li>Planning général semaine/mois avec export PDF</li>' +
+                '<li>Notifications automatiques en cas de modification</li>' +
+                '</ul>' +
+                '<div class="feat-modal-cta"><a href="#contact" class="btn-primary" onclick="closeFeatModal()">Demander une démo</a><a href="#tarifs" class="btn-outline" onclick="closeFeatModal()">Voir les tarifs</a></div>'
+        },
+        presences: {
+            title: 'Émargement et présences',
+            img: '{{ asset("images/landing/gestion-presences.png") }}',
+            body: '<p>Digitalisez complètement la prise de présence avec un système fiable et rapide.</p>' +
+                '<ul>' +
+                '<li>Code d\'émargement unique par séance</li>' +
+                '<li>Prise de présence depuis mobile ou ordinateur</li>' +
+                '<li>Taux de présence en temps réel par classe et par étudiant</li>' +
+                '<li>Alertes automatiques pour absentéisme récurrent</li>' +
+                '<li>Historique complet consultable par l\'administration</li>' +
+                '<li>Émargement enseignant avec suivi des heures</li>' +
+                '</ul>' +
+                '<div class="feat-modal-cta"><a href="#contact" class="btn-primary" onclick="closeFeatModal()">Demander une démo</a><a href="#tarifs" class="btn-outline" onclick="closeFeatModal()">Voir les tarifs</a></div>'
+        },
+        lmd: {
+            title: 'Système LMD complet',
+            img: '{{ asset("images/landing/parcours-lmd.png") }}',
+            body: '<p>KLASSCI supporte le système LMD (Licence-Master-Doctorat) conforme aux standards UEMOA.</p>' +
+                '<ul>' +
+                '<li>Gestion des UE, ECUE et crédits par semestre</li>' +
+                '<li>Parcours étudiant avec validation progressive des crédits</li>' +
+                '<li>Bulletins LMD avec moyennes pondérées et crédits</li>' +
+                '<li>Formules de calcul configurables (AQ, NAQ, APC)</li>' +
+                '<li>Compatible BTS classique et LMD dans le même établissement</li>' +
+                '</ul>' +
+                '<div class="feat-modal-cta"><a href="#contact" class="btn-primary" onclick="closeFeatModal()">Demander une démo</a><a href="#tarifs" class="btn-outline" onclick="closeFeatModal()">Voir les tarifs</a></div>'
+        },
+        personnel: {
+            title: 'Gestion du personnel',
+            img: '{{ asset("images/landing/gestion-personnel.png") }}',
+            body: '<p>Centralisez la gestion de vos enseignants et du personnel administratif.</p>' +
+                '<ul>' +
+                '<li>Fiches enseignants avec coordonnées et spécialités</li>' +
+                '<li>Affectation aux classes et matières</li>' +
+                '<li>Suivi de la charge horaire hebdomadaire</li>' +
+                '<li>Émargement enseignant avec historique</li>' +
+                '<li>Tableau de bord enseignant personnalisé</li>' +
+                '</ul>' +
                 '<div class="feat-modal-cta"><a href="#contact" class="btn-primary" onclick="closeFeatModal()">Demander une démo</a><a href="#tarifs" class="btn-outline" onclick="closeFeatModal()">Voir les tarifs</a></div>'
         }
     };
