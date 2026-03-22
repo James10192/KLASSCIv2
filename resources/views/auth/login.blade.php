@@ -7,759 +7,569 @@
 
     <title>{{ config('app.name', 'KLASSCI') }} - Connexion</title>
 
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Fonts — same as landing page -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@300;400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- Styles -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 
     <style>
         :root {
-            /* Couleurs KLASSCI basées sur le logo */
-            --klassci-orange: #FF6B35;
-            --klassci-blue: #2E5EAA;
-            --klassci-blue-dark: #1E4A8C;
-            --klassci-blue-light: #4A7BC8;
-            --white: #ffffff;
-            --gray-50: #f8fafc;
-            --gray-100: #f1f5f9;
-            --gray-200: #e2e8f0;
-            --gray-300: #cbd5e1;
-            --gray-400: #94a3b8;
-            --gray-500: #64748b;
-            --gray-600: #475569;
-            --gray-700: #334155;
-            --gray-800: #1e293b;
-            --gray-900: #0f172a;
+            --accent: #0453cb;
+            --accent-hover: #0340a0;
+            --accent-light: rgba(4,83,203,0.08);
+            --text: #1a1a1a;
+            --text-secondary: #3a3d43;
+            --text-muted: #8a8a8a;
+            --bg: #f6f4f0;
+            --bg-card: #fff;
+            --border: #dadde2;
+            --border-strong: #c5c9d0;
+            --radius: 4px;
+            --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
         }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: 'Poppins', 'Inter', sans-serif;
-            background: 
-                linear-gradient(135deg, rgba(46, 94, 170, 0.85) 0%, rgba(30, 74, 140, 0.9) 50%, rgba(255, 107, 53, 0.85) 100%),
-                url('{{ asset('images/Images landingPage/Sans titre - 2-03.png') }}');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
+            font-family: 'IBM Plex Sans', system-ui, sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            background:
+                linear-gradient(135deg, rgba(4,53,130,0.88) 0%, rgba(4,83,203,0.82) 50%, rgba(4,53,130,0.9) 100%),
+                url('{{ asset('images/Images landingPage/Sans titre - 2-03.png') }}');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
             overflow-x: hidden;
-            position: relative;
+            -webkit-font-smoothing: antialiased;
         }
-        
-        /* Arrière-plan éducatif avec motifs géométriques */
-        .educational-bg {
+
+        /* Dot grid overlay */
+        body::after {
+            content: '';
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-            overflow: hidden;
-        }
-        
-        .geometric-pattern {
-            position: absolute;
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            animation: rotate 20s linear infinite;
-        }
-        
-        .pattern-1 { width: 300px; height: 300px; top: 10%; left: -10%; animation-delay: 0s; }
-        .pattern-2 { width: 200px; height: 200px; top: 60%; right: -5%; animation-delay: -5s; }
-        .pattern-3 { width: 150px; height: 150px; bottom: 20%; left: 15%; animation-delay: -10s; }
-        .pattern-4 { width: 250px; height: 250px; top: 30%; right: 20%; animation-delay: -15s; }
-        
-        @keyframes rotate {
-            0% { transform: rotate(0deg) scale(1); opacity: 0.3; }
-            50% { transform: rotate(180deg) scale(1.1); opacity: 0.1; }
-            100% { transform: rotate(360deg) scale(1); opacity: 0.3; }
-        }
-        
-        /* Éléments éducatifs flottants */
-        .floating-elements {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 2;
+            inset: 0;
             pointer-events: none;
+            background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+            background-size: 20px 20px;
+            z-index: 1;
         }
-        
-        .floating-icon {
-            position: absolute;
-            color: rgba(255, 255, 255, 0.15);
-            font-size: 2rem;
-            animation: float 8s ease-in-out infinite;
-        }
-        
-        .icon-1 { top: 15%; left: 8%; animation-delay: 0s; }
-        .icon-2 { top: 25%; right: 12%; animation-delay: 2s; }
-        .icon-3 { bottom: 30%; left: 10%; animation-delay: 4s; }
-        .icon-4 { bottom: 15%; right: 15%; animation-delay: 6s; }
-        .icon-5 { top: 50%; left: 5%; animation-delay: 1s; }
-        .icon-6 { top: 70%; right: 8%; animation-delay: 3s; }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            25% { transform: translateY(-20px) rotate(5deg); }
-            50% { transform: translateY(-40px) rotate(0deg); }
-            75% { transform: translateY(-20px) rotate(-5deg); }
-        }
-        
-        /* Container principal avec effet glassmorphism avancé */
-        .main-container {
+
+        /* ─── Main card ─── */
+        .login-card {
             position: relative;
             z-index: 10;
             display: flex;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 32px;
-            box-shadow: 
-                0 32px 64px -12px rgba(0, 0, 0, 0.4),
-                0 0 0 1px rgba(255, 255, 255, 0.2),
-                inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            backdrop-filter: blur(40px);
-            -webkit-backdrop-filter: blur(40px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            overflow: hidden;
-            max-width: 950px;
+            max-width: 880px;
             width: 100%;
             margin: 2rem;
-            animation: slideIn 0.8s ease-out;
+            background: var(--bg-card);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow:
+                0 1px 0 rgba(255,255,255,0.1),
+                0 24px 60px rgba(0,0,0,0.3),
+                0 2px 6px rgba(0,0,0,0.15);
+            animation: cardIn 0.7s var(--ease-out) both;
         }
-        
-        @keyframes slideIn {
-            from { transform: translateY(50px) scale(0.95); opacity: 0; }
-            to { transform: translateY(0) scale(1); opacity: 1; }
+
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(24px) scale(0.98); }
+            to { opacity: 1; transform: none; }
         }
-        
-        /* Section gauche - Visuel éducatif avec glassmorphism */
-        .visual-section {
+
+        /* ─── Left panel ─── */
+        .panel-left {
             flex: 1;
-            background: 
-                linear-gradient(135deg, rgba(46, 94, 170, 0.3) 0%, rgba(74, 123, 200, 0.2) 100%);
-            padding: 3rem;
+            background:
+                linear-gradient(160deg, #043582 0%, var(--accent) 60%, #0a5fd4 100%);
+            padding: 3rem 2.5rem;
             display: flex;
             flex-direction: column;
-            align-items: center;
             justify-content: center;
-            text-align: center;
             position: relative;
             overflow: hidden;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
         }
-        
-        .visual-section::before {
+
+        /* Subtle grid pattern on left panel */
+        .panel-left::before {
             content: '';
             position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.1)"/></svg>');
-            animation: drift 30s linear infinite;
+            inset: 0;
+            background-image: radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
+            background-size: 18px 18px;
+            pointer-events: none;
         }
-        
-        @keyframes drift {
-            0% { transform: translate(0, 0) rotate(0deg); }
-            100% { transform: translate(100px, 100px) rotate(360deg); }
-        }
-        
-        .education-visual {
+
+        .panel-left-content {
             position: relative;
             z-index: 2;
         }
-        
-        .graduation-icon {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            width: 120px;
-            height: 120px;
+
+        .panel-left .logo-row {
             display: flex;
             align-items: center;
-            justify-content: center;
-            margin-bottom: 2rem;
-            backdrop-filter: blur(10px);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            animation: pulse 3s ease-in-out infinite;
+            gap: 0.6rem;
+            margin-bottom: 2.5rem;
         }
-        
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); }
-            50% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(255, 255, 255, 0); }
+
+        .panel-left .logo-row img {
+            height: 32px;
         }
-        
-        .graduation-icon i {
-            font-size: 3rem;
-            color: white;
-        }
-        
-        .visual-title {
-            color: white;
-            font-size: 2rem;
+
+        .panel-left .logo-row span {
+            font-family: 'IBM Plex Sans', sans-serif;
             font-weight: 700;
-            margin-bottom: 1rem;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-        }
-        
-        .visual-subtitle {
-            color: rgba(255, 255, 255, 0.9);
             font-size: 1.1rem;
-            font-weight: 400;
-            line-height: 1.6;
-            max-width: 300px;
+            letter-spacing: -0.02em;
         }
-        
-        .stats-row {
+
+        .panel-left h2 {
+            font-family: 'IBM Plex Serif', serif;
+            font-weight: 300;
+            font-size: 2rem;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+            margin-bottom: 1rem;
+        }
+
+        .panel-left .tagline {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: rgba(255,255,255,0.8);
+            max-width: 300px;
+            margin-bottom: 2.5rem;
+        }
+
+        /* Stats */
+        .stats {
             display: flex;
             gap: 2rem;
-            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255,255,255,0.15);
         }
-        
-        .stat-item {
-            text-align: center;
-            color: white;
+
+        .stat {
+            display: flex;
+            flex-direction: column;
         }
-        
-        .stat-number {
-            font-size: 1.8rem;
-            font-weight: 800;
-            color: var(--klassci-orange);
-            display: block;
+
+        .stat-value {
+            font-family: 'IBM Plex Serif', serif;
+            font-weight: 400;
+            font-size: 1.75rem;
+            letter-spacing: -0.02em;
+            line-height: 1;
         }
-        
+
         .stat-label {
-            font-size: 0.9rem;
-            opacity: 0.9;
-            margin-top: 0.25rem;
+            font-size: 0.78rem;
+            color: rgba(255,255,255,0.6);
+            margin-top: 0.35rem;
         }
-        
-        /* Section droite - Formulaire de connexion avec glassmorphism intense */
-        .login-section {
+
+        /* ─── Right panel — Form ─── */
+        .panel-right {
             flex: 1;
-            padding: 3rem;
+            padding: 3rem 2.5rem;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            background: rgba(255, 255, 255, 0.25);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            position: relative;
+            background: var(--bg-card);
         }
-        
-        .login-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
-            pointer-events: none;
-        }
-        
-        /* Logo KLASSCI */
-        .logo-container {
-            text-align: center;
+
+        .form-header {
             margin-bottom: 2rem;
         }
-        
-        .klassci-logo {
-            height: 60px;
-            width: auto;
-            margin-bottom: 1rem;
-            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
-        }
-        
-        .login-title {
+
+        .form-header h1 {
+            font-family: 'IBM Plex Serif', serif;
+            font-weight: 300;
             font-size: 1.75rem;
-            font-weight: 700;
-            color: var(--gray-800);
-            margin-bottom: 0.5rem;
-            text-align: center;
+            color: var(--accent);
+            letter-spacing: -0.02em;
+            margin-bottom: 0.4rem;
         }
-        
-        .login-subtitle {
-            color: var(--gray-800);
-            font-size: 1rem;
-            text-align: center;
-            margin-bottom: 2rem;
-            font-weight: 500;
-            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+
+        .form-header p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
         }
-        
-        /* Formulaire */
-        .form-group {
-            margin-bottom: 1.5rem;
-            position: relative;
+
+        /* Form fields */
+        .field {
+            margin-bottom: 1.25rem;
         }
-        
-        .form-label {
+
+        .field label {
             display: block;
+            font-size: 0.78rem;
             font-weight: 600;
-            color: var(--gray-700);
-            margin-bottom: 0.5rem;
-            font-size: 0.95rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.4rem;
         }
-        
-        .form-control {
-            width: 100%;
-            padding: 1rem 1rem 1rem 3rem;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 16px;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+
+        .field .input-wrap {
             position: relative;
-            color: var(--gray-800);
         }
-        
-        .form-control::placeholder {
-            color: rgba(51, 65, 85, 0.6);
-        }
-        
-        .form-control:focus {
-            outline: none;
-            border-color: rgba(46, 94, 170, 0.5);
-            box-shadow: 0 0 0 3px rgba(46, 94, 170, 0.15), 0 8px 32px rgba(46, 94, 170, 0.15);
-            transform: translateY(-1px);
-            background: rgba(255, 255, 255, 0.3);
-        }
-        
-        .input-icon {
+
+        .field .input-wrap i.icon {
             position: absolute;
-            left: 1rem;
+            left: 0.85rem;
             top: 50%;
             transform: translateY(-50%);
-            color: var(--gray-400);
-            font-size: 1.1rem;
-            z-index: 5;
+            color: var(--text-muted);
+            font-size: 0.85rem;
             pointer-events: none;
+            transition: color 0.2s;
+        }
+
+        .field input {
+            width: 100%;
+            padding: 0.7rem 0.85rem 0.7rem 2.5rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 0.9rem;
+            color: var(--text);
+            background: var(--bg);
+            transition: all 0.2s var(--ease-out);
+            outline: none;
+        }
+
+        .field input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .field input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-light);
+            background: #fff;
+        }
+
+        .field input:focus + i.icon,
+        .field input:focus ~ i.icon {
+            color: var(--accent);
         }
 
         .password-toggle {
             position: absolute;
-            right: 1rem;
+            right: 0.75rem;
             top: 50%;
             transform: translateY(-50%);
-            color: var(--gray-400);
-            font-size: 1.1rem;
+            color: var(--text-muted);
             cursor: pointer;
-            z-index: 5;
+            padding: 0.25rem;
+            font-size: 0.85rem;
             transition: color 0.2s;
-            padding: 0.5rem;
+            z-index: 2;
         }
 
-        .password-toggle:hover {
-            color: var(--klassci-blue);
-        }
-        
-        .form-check {
+        .password-toggle:hover { color: var(--accent); }
+
+        /* Remember + forgot */
+        .form-options {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin: 1.5rem 0;
+            margin: 1.25rem 0 1.5rem;
         }
-        
-        .form-check-input {
-            width: 18px;
-            height: 18px;
-            border: 2px solid var(--gray-300);
-            border-radius: 6px;
-            margin-right: 0.75rem;
+
+        .remember-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
-        
-        .form-check-input:checked {
-            background-color: var(--klassci-blue);
-            border-color: var(--klassci-blue);
+
+        .remember-row input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent);
+            cursor: pointer;
         }
-        
+
+        .remember-row label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
         .forgot-link {
-            color: var(--klassci-orange);
-            text-decoration: none;
+            font-size: 0.82rem;
             font-weight: 500;
-            font-size: 0.9rem;
+            color: var(--accent);
+            text-decoration: none;
             transition: color 0.2s;
         }
-        
-        .forgot-link:hover {
-            color: var(--klassci-blue);
-        }
-        
-        /* Bouton de connexion avec glassmorphism */
+
+        .forgot-link:hover { color: var(--accent-hover); }
+
+        /* Submit button */
         .btn-login {
             width: 100%;
-            background: 
-                linear-gradient(135deg, rgba(46, 94, 170, 0.9) 0%, rgba(30, 74, 140, 0.9) 100%);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 16px;
-            padding: 1rem;
-            font-size: 1.1rem;
+            padding: 0.75rem;
+            background: var(--accent);
+            color: #fff;
+            border: 1px solid var(--accent);
+            border-radius: var(--radius);
+            font-family: 'IBM Plex Sans', sans-serif;
+            font-size: 0.9rem;
             font-weight: 600;
-            color: white;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 
-                0 8px 32px rgba(46, 94, 170, 0.3),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            position: relative;
-            overflow: hidden;
-            margin-bottom: 1.5rem;
+            transition: all 0.2s var(--ease-out);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            letter-spacing: -0.02em;
         }
-        
-        .btn-login::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: left 0.5s;
-        }
-        
-        .btn-login:hover::before {
-            left: 100%;
-        }
-        
+
         .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 
-                0 12px 40px rgba(46, 94, 170, 0.4),
-                inset 0 1px 0 rgba(255, 255, 255, 0.3);
-            background: 
-                linear-gradient(135deg, rgba(46, 94, 170, 1) 0%, rgba(30, 74, 140, 1) 100%);
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(4,83,203,0.3);
         }
-        
-        .btn-login:active {
-            transform: translateY(0);
-        }
-        
+
+        .btn-login:active { transform: none; }
+
         /* Footer */
         .login-footer {
             text-align: center;
-            color: var(--gray-700);
-            font-size: 0.85rem;
-            font-weight: 500;
-            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
-            background: rgba(255, 255, 255, 0.1);
-            padding: 0.5rem;
-            border-radius: 8px;
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
+            margin-top: 2rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.75rem;
+            color: var(--text-muted);
         }
-        
-        /* Responsive */
+
+        /* Alerts */
+        .alert {
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius);
+            font-size: 0.85rem;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .alert-danger {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .alert-success {
+            background: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+        }
+
+        .alert-warning {
+            background: #fffbeb;
+            color: #d97706;
+            border: 1px solid #fde68a;
+        }
+
+        .invalid-feedback {
+            font-size: 0.78rem;
+            color: #dc2626;
+            margin-top: 0.3rem;
+        }
+
+        /* ─── Responsive ─── */
         @media (max-width: 768px) {
-            body {
-                background-attachment: scroll;
-            }
-            
-            .main-container {
+            body { background-attachment: scroll; }
+
+            .login-card {
                 flex-direction: column;
                 margin: 1rem;
-                max-width: 100%;
-                background: rgba(255, 255, 255, 0.2);
-                backdrop-filter: blur(30px);
-                -webkit-backdrop-filter: blur(30px);
             }
-            
-            .visual-section {
-                padding: 2rem;
-                min-height: 280px;
-                border-right: none;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+            .panel-left {
+                padding: 2rem 1.5rem;
             }
-            
-            .visual-title {
-                font-size: 1.5rem;
-            }
-            
-            .graduation-icon {
-                width: 80px;
-                height: 80px;
-                margin-bottom: 1.5rem;
-            }
-            
-            .graduation-icon i {
-                font-size: 2rem;
-            }
-            
-            .stats-row {
-                gap: 1rem;
-                margin-top: 1.5rem;
-            }
-            
-            .stat-number {
-                font-size: 1.4rem;
-            }
-            
-            .login-section {
-                padding: 2rem;
-                background: rgba(255, 255, 255, 0.4);
-            }
-            
-            .login-subtitle {
-                color: var(--gray-900);
-                text-shadow: 0 1px 3px rgba(255, 255, 255, 1);
-            }
-            
-            .login-footer {
-                background: rgba(255, 255, 255, 0.2);
-                color: var(--gray-800);
-                text-shadow: 0 1px 3px rgba(255, 255, 255, 1);
-            }
-            
-            .login-title {
-                font-size: 1.5rem;
-            }
-            
-            .klassci-logo {
-                height: 45px;
-            }
-            
-            .floating-elements,
-            .educational-bg {
-                display: none;
+
+            .panel-left h2 { font-size: 1.5rem; }
+
+            .stats { gap: 1.5rem; }
+            .stat-value { font-size: 1.4rem; }
+
+            .panel-right {
+                padding: 2rem 1.5rem;
             }
         }
-        
-        /* Alerte d'erreur stylisée */
-        .alert {
-            border-radius: 16px;
-            border: none;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            font-weight: 500;
-        }
-        
-        .alert-danger {
-            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-            color: #dc2626;
-            border-left: 4px solid var(--klassci-orange);
-        }
-        
-        .alert-success {
-            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-            color: #059669;
-            border-left: 4px solid var(--klassci-blue);
+
+        @media (max-width: 480px) {
+            .login-card { margin: 0.5rem; border-radius: 6px; }
+            .stats { flex-wrap: wrap; gap: 1rem; }
         }
     </style>
 </head>
 <body>
-    <!-- Arrière-plan éducatif avec motifs géométriques -->
-    <div class="educational-bg">
-        <div class="geometric-pattern pattern-1"></div>
-        <div class="geometric-pattern pattern-2"></div>
-        <div class="geometric-pattern pattern-3"></div>
-        <div class="geometric-pattern pattern-4"></div>
-    </div>
-    
-    <!-- Éléments éducatifs flottants -->
-    <div class="floating-elements">
-        <div class="floating-icon icon-1"><i class="fas fa-graduation-cap"></i></div>
-        <div class="floating-icon icon-2"><i class="fas fa-book"></i></div>
-        <div class="floating-icon icon-3"><i class="fas fa-users"></i></div>
-        <div class="floating-icon icon-4"><i class="fas fa-chart-line"></i></div>
-        <div class="floating-icon icon-5"><i class="fas fa-lightbulb"></i></div>
-        <div class="floating-icon icon-6"><i class="fas fa-trophy"></i></div>
-    </div>
-    
-    <!-- Container principal -->
-    <div class="main-container">
-        <!-- Section gauche - Visuel éducatif -->
-        <div class="visual-section">
-            <div class="education-visual">
-                <div class="graduation-icon">
-                    <i class="fas fa-graduation-cap"></i>
+
+<div class="login-card">
+    <!-- Left panel -->
+    <div class="panel-left">
+        <div class="panel-left-content">
+            <div class="logo-row">
+                <img src="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" alt="KLASSCI">
+                <span>KLASSCI</span>
+            </div>
+
+            <h2>Gérez votre établissement en toute simplicité.</h2>
+            <p class="tagline">Notes, bulletins, paiements, emplois du temps — un seul outil pour tout piloter.</p>
+
+            <div class="stats">
+                <div class="stat">
+                    <span class="stat-value">5+</span>
+                    <span class="stat-label">Établissements</span>
                 </div>
-                <h2 class="visual-title">Excellence Éducative</h2>
-                <p class="visual-subtitle">Propulsez votre établissement vers l'excellence avec KLASSCI, la plateforme CRM éducative de nouvelle génération.</p>
-                
-                <div class="stats-row">
-                    <div class="stat-item">
-                        <span class="stat-number">5+</span>
-                        <div class="stat-label">Écoles</div>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number">5k+</span>
-                        <div class="stat-label">Étudiants</div>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-number">98%</span>
-                        <div class="stat-label">Satisfaction</div>
-                    </div>
+                <div class="stat">
+                    <span class="stat-value">5k+</span>
+                    <span class="stat-label">Étudiants</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">98%</span>
+                    <span class="stat-label">Satisfaction</span>
                 </div>
             </div>
         </div>
-        
-        <!-- Section droite - Formulaire de connexion -->
-        <div class="login-section">
-            <!-- Logo KLASSCI -->
-            <div class="logo-container">
-                <img src="{{ asset('images/Images landingPage/logo_klassci.png') }}" alt="KLASSCI" class="klassci-logo">
-                <h1 class="login-title">Bienvenue</h1>
-                <p class="login-subtitle">Connectez-vous à votre compte KLASSCI</p>
+    </div>
+
+    <!-- Right panel — Form -->
+    <div class="panel-right">
+        <div class="form-header">
+            <h1>Connexion</h1>
+            <p>Accédez à votre espace KLASSCI</p>
+        </div>
+
+        <!-- Alerts -->
+        @if(session('status'))
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i>
+                <span>{{ session('status') }}</span>
             </div>
-            
-            <!-- Messages d'alerte -->
-            @if(session('status'))
-                <div class="alert alert-success" role="alert">
-                    <i class="fas fa-check-circle me-2"></i>{{ session('status') }}
-                </div>
-            @endif
-            @if(session('warning'))
-                <div class="alert alert-warning" role="alert">
-                    <i class="fas fa-exclamation-triangle me-2"></i>{{ session('warning') }}
-                </div>
-            @endif
-            @if($errors->any())
-                <div class="alert alert-danger">
+        @endif
+        @if(session('warning'))
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>{{ session('warning') }}</span>
+            </div>
+        @endif
+        @if($errors->any())
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle"></i>
+                <div>
                     @foreach($errors->all() as $error)
-                        <div><i class="fas fa-exclamation-circle me-2"></i>{{ $error }}</div>
+                        <div>{{ $error }}</div>
                     @endforeach
                 </div>
-            @endif
-            
-            <!-- Formulaire de connexion -->
-            <form method="POST" action="{{ route('login') }}">
-                @csrf
-                <div class="form-group">
-                    <label for="username" class="form-label">Nom d'utilisateur</label>
-                    <div class="position-relative">
-                        <i class="fas fa-user input-icon"></i>
-                        <input 
-                            id="username" 
-                            type="text" 
-                            class="form-control @error('username') is-invalid @enderror" 
-                            name="username" 
-                            value="{{ old('username') }}" 
-                            required 
-                            autofocus 
-                            placeholder="Entrez votre nom d'utilisateur"
-                        >
-                        @error('username')
-                            <div class="invalid-feedback">
-                                <strong>{{ $message }}</strong>
-                            </div>
-                        @enderror
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="password" class="form-label">Mot de passe</label>
-                    <div class="position-relative">
-                        <i class="fas fa-lock input-icon"></i>
-                        <input
-                            id="password"
-                            type="password"
-                            class="form-control @error('password') is-invalid @enderror"
-                            name="password"
-                            required
-                            autocomplete="current-password"
-                            placeholder="Entrez votre mot de passe"
-                            style="padding-right: 3rem;"
-                        >
-                        <i class="fas fa-eye password-toggle" id="togglePassword" title="Afficher le mot de passe"></i>
-                        @error('password')
-                            <div class="invalid-feedback">
-                                <strong>{{ $message }}</strong>
-                            </div>
-                        @enderror
-                    </div>
-                </div>
-                
-                <div class="form-check">
-                    <div class="d-flex align-items-center">
-                        <input 
-                            class="form-check-input" 
-                            type="checkbox" 
-                            name="remember" 
-                            id="remember" 
-                            {{ old('remember') ? 'checked' : '' }}
-                        >
-                        <label class="form-check-label" for="remember">
-                            Se souvenir de moi
-                        </label>
-                    </div>
-                    @if (Route::has('password.request'))
-                        <a href="{{ route('password.request') }}" class="forgot-link">
-                            Mot de passe oublié ?
-                        </a>
-                    @endif
-                </div>
-                
-                <button type="submit" class="btn-login">
-                    <i class="fas fa-sign-in-alt me-2"></i>
-                    Se connecter
-                </button>
-            </form>
-            
-            <!-- Footer -->
-            <div class="login-footer">
-                <p>&copy; {{ date('Y') }} KLASSCI. Tous droits réservés.</p>
             </div>
+        @endif
+
+        <form method="POST" action="{{ route('login') }}">
+            @csrf
+
+            <div class="field">
+                <label for="username">Nom d'utilisateur</label>
+                <div class="input-wrap">
+                    <input
+                        id="username"
+                        type="text"
+                        name="username"
+                        value="{{ old('username') }}"
+                        required
+                        autofocus
+                        placeholder="Votre identifiant"
+                        class="@error('username') is-invalid @enderror"
+                    >
+                    <i class="fas fa-user icon"></i>
+                    @error('username')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+            </div>
+
+            <div class="field">
+                <label for="password">Mot de passe</label>
+                <div class="input-wrap">
+                    <input
+                        id="password"
+                        type="password"
+                        name="password"
+                        required
+                        autocomplete="current-password"
+                        placeholder="Votre mot de passe"
+                        class="@error('password') is-invalid @enderror"
+                        style="padding-right: 2.5rem;"
+                    >
+                    <i class="fas fa-lock icon"></i>
+                    <i class="fas fa-eye password-toggle" id="togglePassword" title="Afficher le mot de passe"></i>
+                    @error('password')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+            </div>
+
+            <div class="form-options">
+                <div class="remember-row">
+                    <input type="checkbox" name="remember" id="remember" {{ old('remember') ? 'checked' : '' }}>
+                    <label for="remember">Se souvenir de moi</label>
+                </div>
+                @if (Route::has('password.request'))
+                    <a href="{{ route('password.request') }}" class="forgot-link">Mot de passe oublié ?</a>
+                @endif
+            </div>
+
+            <button type="submit" class="btn-login">
+                <i class="fas fa-arrow-right" style="font-size:0.8rem"></i>
+                Se connecter
+            </button>
+        </form>
+
+        <div class="login-footer">
+            &copy; {{ date('Y') }} KLASSCI &mdash; African Digital Consulting
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Auto-refresh CSRF token every 30 minutes to prevent 419 errors
-        setInterval(function() {
-            fetch('/csrf-token-refresh', { headers: { 'Accept': 'application/json' } })
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.token) {
-                        var fields = document.querySelectorAll('input[name="_token"]');
-                        fields.forEach(function(f) { f.value = data.token; });
-                        var meta = document.querySelector('meta[name="csrf-token"]');
-                        if (meta) meta.setAttribute('content', data.token);
-                    }
-                })
-                .catch(function() {});
-        }, 30 * 60 * 1000);
+</div>
 
-        // Toggle password visibility
-        document.addEventListener('DOMContentLoaded', function() {
-            const togglePassword = document.getElementById('togglePassword');
-            const passwordInput = document.getElementById('password');
+<script>
+    // CSRF token refresh every 30 minutes
+    setInterval(function() {
+        fetch('/csrf-token-refresh', { headers: { 'Accept': 'application/json' } })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.token) {
+                    document.querySelectorAll('input[name="_token"]').forEach(function(f) { f.value = data.token; });
+                    var meta = document.querySelector('meta[name="csrf-token"]');
+                    if (meta) meta.setAttribute('content', data.token);
+                }
+            })
+            .catch(function() {});
+    }, 30 * 60 * 1000);
 
-            if (togglePassword && passwordInput) {
-                togglePassword.addEventListener('click', function() {
-                    // Toggle the type attribute
-                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                    passwordInput.setAttribute('type', type);
-
-                    // Toggle the icon
-                    if (type === 'password') {
-                        this.classList.remove('fa-eye-slash');
-                        this.classList.add('fa-eye');
-                        this.setAttribute('title', 'Afficher le mot de passe');
-                    } else {
-                        this.classList.remove('fa-eye');
-                        this.classList.add('fa-eye-slash');
-                        this.setAttribute('title', 'Masquer le mot de passe');
-                    }
-                });
-            }
-        });
-    </script>
+    // Toggle password visibility
+    (function() {
+        var toggle = document.getElementById('togglePassword');
+        var pw = document.getElementById('password');
+        if (toggle && pw) {
+            toggle.addEventListener('click', function() {
+                var isPassword = pw.type === 'password';
+                pw.type = isPassword ? 'text' : 'password';
+                this.classList.toggle('fa-eye', !isPassword);
+                this.classList.toggle('fa-eye-slash', isPassword);
+                this.title = isPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe';
+            });
+        }
+    })();
+</script>
 </body>
 </html>
