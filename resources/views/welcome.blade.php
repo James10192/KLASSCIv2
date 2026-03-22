@@ -1486,12 +1486,42 @@
         width: 15px;
         height: 15px;
         flex-shrink: 0;
+        transition: transform 0.5s var(--ease-out);
     }
 
-    .theme-toggle .sun-group { display: none; }
-    .theme-toggle .moon-group { display: contents; }
-    html.dark .theme-toggle .sun-group { display: contents; }
-    html.dark .theme-toggle .moon-group { display: none; }
+    .theme-toggle:active svg {
+        transform: rotate(360deg) scale(0.8);
+    }
+
+    .theme-toggle .sun-group,
+    .theme-toggle .moon-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        position: absolute;
+        transition: opacity 0.3s var(--ease-out), transform 0.3s var(--ease-out);
+    }
+
+    .theme-toggle {
+        position: relative;
+        min-width: 90px;
+    }
+
+    .theme-toggle .sun-group { opacity: 0; transform: translateY(6px); pointer-events: none; }
+    .theme-toggle .moon-group { opacity: 1; transform: translateY(0); }
+    html.dark .theme-toggle .sun-group { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    html.dark .theme-toggle .moon-group { opacity: 0; transform: translateY(-6px); pointer-events: none; }
+
+    /* Theme switch flash animation */
+    @keyframes themeFlash {
+        0% { opacity: 1; }
+        50% { opacity: 0.6; }
+        100% { opacity: 1; }
+    }
+
+    html.theme-switching body {
+        animation: themeFlash 0.4s var(--ease-out);
+    }
 
     /* ═══════════════════════
        FEATURE MODAL
@@ -2212,15 +2242,13 @@
     var toggle = document.getElementById('themeToggle');
     if (toggle) {
         toggle.addEventListener('click', function() {
-            html.classList.add('no-transitions');
             html.classList.toggle('dark');
             html.classList.toggle('light');
+            html.classList.add('theme-switching');
             localStorage.setItem('klassci-theme', html.classList.contains('dark') ? 'dark' : 'light');
-            requestAnimationFrame(function() {
-                requestAnimationFrame(function() {
-                    html.classList.remove('no-transitions');
-                });
-            });
+            setTimeout(function() {
+                html.classList.remove('theme-switching');
+            }, 450);
         });
     }
 
