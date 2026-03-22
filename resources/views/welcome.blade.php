@@ -2301,26 +2301,26 @@
         <h2 class="reveal">Ce que KLASSCI fait pour vous</h2>
         <p class="features-intro reveal reveal-d1">Chaque fonctionnalité a été construite en écoutant les besoins réels des établissements que nous accompagnons depuis 2023.</p>
 
-        <!-- Big feature 1 -->
+        <!-- Big feature 1 — image LEFT -->
         <div class="feature-big">
-            <div class="feature-big-text reveal-left">
+            <div class="feature-big-image reveal-left">
+                <img src="{{ asset('images/landing/Saisie_des_notes_et_bulletins.png') }}" alt="Saisie des notes et bulletins — fiche étudiant KLASSCI" loading="lazy">
+            </div>
+            <div class="feature-big-text reveal-right">
                 <h3>Saisie des notes et bulletins</h3>
                 <p>Les enseignants saisissent leurs notes directement depuis leur téléphone. Les moyennes, rangs et appréciations se calculent automatiquement. Les bulletins PDF sont générés en un clic, personnalisés aux couleurs de votre école.</p>
                 <a href="#" class="feat-modal-trigger" data-feature="notes">En savoir plus &gt;</a>
             </div>
-            <div class="feature-big-image reveal-right">
-                <img src="{{ asset('images/landing/Saisie_des_notes_et_bulletins.png') }}" alt="Saisie des notes et bulletins — fiche étudiant KLASSCI" loading="lazy">
-            </div>
         </div>
 
-        <!-- Big feature 2 -->
+        <!-- Big feature 2 — image RIGHT -->
         <div class="feature-big">
-            <div class="feature-big-text reveal-right">
+            <div class="feature-big-text reveal-left">
                 <h3>Suivi financier en temps réel</h3>
                 <p>Visualisez instantanément l'état des paiements de chaque étudiant. Envoyez des relances automatiques, générez des reçus, et exportez vos rapports financiers. Compatible avec le système de frais par catégorie.</p>
                 <a href="#" class="feat-modal-trigger" data-feature="finance">En savoir plus &gt;</a>
             </div>
-            <div class="feature-big-image reveal-left">
+            <div class="feature-big-image reveal-right">
                 <img src="{{ asset('images/landing/Suivi_financier_en_temps_réel.png') }}" alt="Dashboard Comptabilité — suivi financier en temps réel" loading="lazy">
             </div>
         </div>
@@ -2331,8 +2331,8 @@
                 <img src="{{ asset('images/landing/planning-général.png') }}" alt="Planning général KLASSCI" loading="lazy">
             </div>
             <div class="feature-big-text reveal-right">
-                <h3>Emploi du temps intelligent</h3>
-                <p>Générez automatiquement les plannings avec gestion des conflits de salles et d'enseignants. Visualisez la charge horaire de chaque classe et partagez l'emploi du temps en un clic.</p>
+                <h3>Planning général</h3>
+                <p>Configurez les volumes horaires pour chaque combinaison filière et niveau d'étude. Suivez les heures planifiées vs réalisées avec un tableau de bord clair pour les administrateurs.</p>
                 <a href="#" class="feat-modal-trigger" data-feature="planning">En savoir plus &gt;</a>
             </div>
         </div>
@@ -2365,7 +2365,7 @@
         <div class="feature-big">
             <div class="feature-big-text reveal-left">
                 <h3>Gestion du personnel</h3>
-                <p>Suivez vos enseignants et le personnel administratif. Affectation aux classes, charge horaire, historique des cours dispensés et émargement enseignant.</p>
+                <p>Administration unifiée de vos coordinateurs, enseignants, secrétaires et comptables. Vue d'ensemble avec filtres par rôle, statut et recherche rapide.</p>
                 <a href="#" class="feat-modal-trigger" data-feature="personnel">En savoir plus &gt;</a>
             </div>
             <div class="feature-big-image reveal-right">
@@ -2857,15 +2857,15 @@
                 '<div class="feat-modal-cta"><a href="#contact" class="btn-primary" onclick="closeFeatModal()">Demander une démo</a><a href="#tarifs" class="btn-outline" onclick="closeFeatModal()">Voir les tarifs</a></div>'
         },
         planning: {
-            title: 'Emploi du temps intelligent',
+            title: 'Planning général',
             img: '{{ asset("images/landing/planning-général.png") }}',
-            body: '<p>KLASSCI génère et gère l\'emploi du temps de votre établissement avec précision.</p>' +
+            body: '<p>Le planning général permet de configurer et suivre les volumes horaires de votre établissement.</p>' +
                 '<ul>' +
-                '<li>Planification automatique avec détection des conflits</li>' +
-                '<li>Gestion des salles, enseignants et créneaux horaires</li>' +
-                '<li>Vue par classe, par enseignant ou par salle</li>' +
-                '<li>Planning général semaine/mois avec export PDF</li>' +
-                '<li>Notifications automatiques en cas de modification</li>' +
+                '<li>Configuration des volumes horaires par combinaison filière / niveau d\'étude</li>' +
+                '<li>Suivi des heures planifiées vs heures réalisées</li>' +
+                '<li>KPI : nombre de séances, heures de cours, enseignants actifs</li>' +
+                '<li>Vue d\'ensemble, planning annuel, charge par classe et par coordinateur</li>' +
+                '<li>Matières configurées avec progression par bâtiment et niveau</li>' +
                 '</ul>' +
                 '<div class="feat-modal-cta"><a href="#contact" class="btn-primary" onclick="closeFeatModal()">Demander une démo</a><a href="#tarifs" class="btn-outline" onclick="closeFeatModal()">Voir les tarifs</a></div>'
         },
@@ -2899,13 +2899,13 @@
         personnel: {
             title: 'Gestion du personnel',
             img: '{{ asset("images/landing/gestion-personnel.png") }}',
-            body: '<p>Centralisez la gestion de vos enseignants et du personnel administratif.</p>' +
+            body: '<p>Administration unifiée de tout le personnel de votre établissement.</p>' +
                 '<ul>' +
-                '<li>Fiches enseignants avec coordonnées et spécialités</li>' +
-                '<li>Affectation aux classes et matières</li>' +
-                '<li>Suivi de la charge horaire hebdomadaire</li>' +
-                '<li>Émargement enseignant avec historique</li>' +
-                '<li>Tableau de bord enseignant personnalisé</li>' +
+                '<li>Vue d\'ensemble : coordinateurs, enseignants, secrétaires et comptables</li>' +
+                '<li>KPI par rôle avec compteurs en temps réel</li>' +
+                '<li>Onglets par catégorie avec recherche et filtres (statut, matricule)</li>' +
+                '<li>Ajout rapide de nouveau personnel avec affectation directe</li>' +
+                '<li>Profils détaillés avec coordonnées, date d\'embauche et statut</li>' +
                 '</ul>' +
                 '<div class="feat-modal-cta"><a href="#contact" class="btn-primary" onclick="closeFeatModal()">Demander une démo</a><a href="#tarifs" class="btn-outline" onclick="closeFeatModal()">Voir les tarifs</a></div>'
         }
