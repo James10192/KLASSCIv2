@@ -1972,103 +1972,82 @@
     }
 
     /* ═══════════════════════
-       HERO SLIDER (swipe)
+       HERO MARQUEE (screenshots)
     ═══════════════════════ */
-    .hero-slider {
-        position: relative;
+    .hero-marquee {
         margin: 4rem auto 0;
-        max-width: 900px;
-        border-radius: 12px;
         overflow: hidden;
-        border: 1px solid var(--border-strong);
-        box-shadow:
-            0 2px 4px rgba(0,0,0,0.04),
-            0 12px 40px rgba(0,0,0,0.08);
-        cursor: grab;
-        user-select: none;
-        -webkit-user-select: none;
+        position: relative;
     }
 
-    .hero-slider:active { cursor: grabbing; }
+    .hero-marquee::before,
+    .hero-marquee::after {
+        content: '';
+        position: absolute;
+        top: 0; bottom: 0;
+        width: 100px;
+        z-index: 2;
+        pointer-events: none;
+    }
+    .hero-marquee::before {
+        left: 0;
+        background: linear-gradient(90deg, var(--bg), transparent);
+    }
+    .hero-marquee::after {
+        right: 0;
+        background: linear-gradient(270deg, var(--bg), transparent);
+    }
 
-    .hero-slider-track {
+    .hero-marquee-track {
         display: flex;
-        transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        will-change: transform;
+        gap: 1.5rem;
+        animation: heroMarquee 40s linear infinite;
+        width: fit-content;
     }
 
-    .hero-slider-track.dragging {
-        transition: none;
+    .hero-marquee:hover .hero-marquee-track {
+        animation-play-state: paused;
     }
 
-    /* Swipe "finger" animation — peek, pull back, then slide */
-    .hero-slider-track.auto-swipe {
-        animation: fingerSwipe 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    @keyframes heroMarquee {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(calc(-50% - 0.75rem)); }
     }
 
-    @keyframes fingerSwipe {
-        0%   { --swipe-offset: 0%; }
-        15%  { --swipe-offset: -3%; }   /* peek — slide a tiny bit */
-        30%  { --swipe-offset: 1.5%; }  /* pull back — take momentum */
-        100% { --swipe-offset: -100%; } /* full slide to next */
-    }
-
-    .hero-slide {
-        min-width: 100%;
+    .hero-screenshot {
         flex-shrink: 0;
-    }
-
-    .hero-slide {
+        width: 750px;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        transition: all var(--duration-normal) var(--ease-out);
         background: var(--bg-card);
     }
 
-    .hero-slide img {
+    .hero-screenshot:hover {
+        border-color: var(--accent);
+        box-shadow: 0 8px 30px rgba(4,83,203,0.12);
+        transform: translateY(-4px);
+    }
+
+    .hero-screenshot img {
         width: 100%;
-        height: 480px;
-        object-fit: contain;
-        object-position: top center;
         display: block;
-        pointer-events: none;
+    }
+
+    .hero-screenshot-label {
+        padding: 0.6rem 1rem;
+        font-family: 'IBM Plex Sans', sans-serif;
+        font-size: 0.82rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        border-top: 1px solid var(--border);
     }
 
     @media (max-width: 768px) {
-        .hero-slide img { height: 240px; }
-    }
-
-    /* Dots */
-    .hero-dots {
-        position: absolute;
-        bottom: 0.75rem;
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        gap: 0.4rem;
-        z-index: 5;
-        background: rgba(0,0,0,0.3);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        padding: 0.35rem 0.6rem;
-        border-radius: 20px;
-    }
-
-    .hero-dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.35);
-        transition: all 0.3s;
-        cursor: pointer;
-        border: none;
-    }
-
-    .hero-dot.active {
-        background: #fff;
-        width: 20px;
-        border-radius: 4px;
-    }
-
-    @media (max-width: 768px) {
-        .hero-slider { margin: 2rem -1rem 0; max-width: calc(100% + 2rem); border-radius: 8px; }
+        .hero-screenshot { width: 85vw; }
+        .hero-marquee::before, .hero-marquee::after { width: 40px; }
     }
 
     /* ═══════════════════════
@@ -2164,22 +2143,28 @@
         </div>
         <p class="hero-note reveal reveal-d3">Disponible sur navigateur. Aucune installation requise.</p>
 
-        <div class="hero-slider reveal-scale" id="heroSlider">
-            <div class="hero-slider-track" id="heroTrack">
-                <div class="hero-slide"><img src="{{ asset('images/landing/hero_section.png') }}" alt="Tableau de bord" loading="eager"></div>
-                <div class="hero-slide"><img src="{{ asset('images/landing/page-étudiants.png') }}" alt="Gestion des étudiants" loading="lazy"></div>
-                <div class="hero-slide"><img src="{{ asset('images/landing/nuvelle_inscription.png') }}" alt="Nouvelle inscription" loading="lazy"></div>
-                <div class="hero-slide"><img src="{{ asset('images/landing/resultats.png') }}" alt="Résultats" loading="lazy"></div>
-                <div class="hero-slide"><img src="{{ asset('images/landing/planning-général.png') }}" alt="Planning général" loading="lazy"></div>
-                <div class="hero-slide"><img src="{{ asset('images/landing/gestion-presences.png') }}" alt="Gestion des présences" loading="lazy"></div>
-                <div class="hero-slide"><img src="{{ asset('images/landing/parcours-lmd.png') }}" alt="Parcours LMD" loading="lazy"></div>
-                <div class="hero-slide"><img src="{{ asset('images/landing/gestion-personnel.png') }}" alt="Gestion du personnel" loading="lazy"></div>
-                <div class="hero-slide"><img src="{{ asset('images/landing/code-emargement.png') }}" alt="Code d'émargement" loading="lazy"></div>
-            </div>
-            <div class="hero-dots" id="heroDots">
-                @for($i = 0; $i < 9; $i++)
-                <span class="hero-dot {{ $i === 0 ? 'active' : '' }}" data-slide="{{ $i }}"></span>
-                @endfor
+        <div class="hero-marquee reveal-scale">
+            <div class="hero-marquee-track">
+                {{-- Original set --}}
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/hero_section.png') }}" alt="Tableau de bord" loading="eager"><div class="hero-screenshot-label">Tableau de bord</div></div>
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/page-étudiants.png') }}" alt="Étudiants" loading="lazy"><div class="hero-screenshot-label">Gestion des étudiants</div></div>
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/nuvelle_inscription.png') }}" alt="Inscription" loading="lazy"><div class="hero-screenshot-label">Nouvelle inscription</div></div>
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/resultats.png') }}" alt="Résultats" loading="lazy"><div class="hero-screenshot-label">Résultats et bulletins</div></div>
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/planning-général.png') }}" alt="Planning" loading="lazy"><div class="hero-screenshot-label">Planning général</div></div>
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/gestion-presences.png') }}" alt="Présences" loading="lazy"><div class="hero-screenshot-label">Gestion des présences</div></div>
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/parcours-lmd.png') }}" alt="LMD" loading="lazy"><div class="hero-screenshot-label">Parcours LMD</div></div>
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/gestion-personnel.png') }}" alt="Personnel" loading="lazy"><div class="hero-screenshot-label">Gestion du personnel</div></div>
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/code-emargement.png') }}" alt="Émargement" loading="lazy"><div class="hero-screenshot-label">Code d'émargement</div></div>
+                {{-- Duplicate for seamless loop --}}
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/hero_section.png') }}" alt="Tableau de bord" loading="lazy"><div class="hero-screenshot-label">Tableau de bord</div></div>
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/page-étudiants.png') }}" alt="Étudiants" loading="lazy"><div class="hero-screenshot-label">Gestion des étudiants</div></div>
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/nuvelle_inscription.png') }}" alt="Inscription" loading="lazy"><div class="hero-screenshot-label">Nouvelle inscription</div></div>
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/resultats.png') }}" alt="Résultats" loading="lazy"><div class="hero-screenshot-label">Résultats et bulletins</div></div>
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/planning-général.png') }}" alt="Planning" loading="lazy"><div class="hero-screenshot-label">Planning général</div></div>
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/gestion-presences.png') }}" alt="Présences" loading="lazy"><div class="hero-screenshot-label">Gestion des présences</div></div>
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/parcours-lmd.png') }}" alt="LMD" loading="lazy"><div class="hero-screenshot-label">Parcours LMD</div></div>
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/gestion-personnel.png') }}" alt="Personnel" loading="lazy"><div class="hero-screenshot-label">Gestion du personnel</div></div>
+                <div class="hero-screenshot"><img src="{{ asset('images/landing/code-emargement.png') }}" alt="Émargement" loading="lazy"><div class="hero-screenshot-label">Code d'émargement</div></div>
             </div>
         </div>
     </div>
@@ -2200,6 +2185,102 @@
             <div class="pillar reveal reveal-d2">
                 <h3>Sécurisé</h3>
                 <p>Chaque établissement a sa propre base de données isolée. Vos données ne sont jamais partagées avec d'autres écoles.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="fonctionnalites">
+    <div class="container">
+        <h2 class="reveal">Ce que KLASSCI fait pour vous</h2>
+        <p class="features-intro reveal reveal-d1">Chaque fonctionnalité a été construite en écoutant les besoins réels des établissements que nous accompagnons depuis 2023.</p>
+
+        <!-- Big feature 1 — image LEFT -->
+        <div class="feature-big">
+            <div class="feature-big-image reveal-left">
+                <img src="{{ asset('images/landing/Saisie_des_notes_et_bulletins.png') }}" alt="Saisie des notes et bulletins — fiche étudiant KLASSCI" loading="lazy">
+            </div>
+            <div class="feature-big-text reveal-right">
+                <h3>Saisie des notes et bulletins</h3>
+                <p>Les enseignants saisissent leurs notes directement depuis leur téléphone. Les moyennes, rangs et appréciations se calculent automatiquement. Les bulletins PDF sont générés en un clic, personnalisés aux couleurs de votre école.</p>
+                <a href="#" class="feat-modal-trigger" data-feature="notes">En savoir plus &gt;</a>
+            </div>
+        </div>
+
+        <!-- Big feature 2 — image RIGHT -->
+        <div class="feature-big">
+            <div class="feature-big-text reveal-left">
+                <h3>Suivi financier en temps réel</h3>
+                <p>Visualisez instantanément l'état des paiements de chaque étudiant. Envoyez des relances automatiques, générez des reçus, et exportez vos rapports financiers. Compatible avec le système de frais par catégorie.</p>
+                <a href="#" class="feat-modal-trigger" data-feature="finance">En savoir plus &gt;</a>
+            </div>
+            <div class="feature-big-image reveal-right">
+                <img src="{{ asset('images/landing/Suivi_financier_en_temps_réel.png') }}" alt="Dashboard Comptabilité — suivi financier en temps réel" loading="lazy">
+            </div>
+        </div>
+
+        <!-- Big feature 3 — image LEFT -->
+        <div class="feature-big">
+            <div class="feature-big-image reveal-left">
+                <img src="{{ asset('images/landing/planning-général.png') }}" alt="Planning général KLASSCI" loading="lazy">
+            </div>
+            <div class="feature-big-text reveal-right">
+                <h3>Planning général</h3>
+                <p>Configurez les volumes horaires pour chaque combinaison filière et niveau d'étude. Suivez les heures planifiées vs réalisées avec un tableau de bord clair pour les administrateurs.</p>
+                <a href="#" class="feat-modal-trigger" data-feature="planning">En savoir plus &gt;</a>
+            </div>
+        </div>
+
+        <!-- Big feature 4 — image RIGHT -->
+        <div class="feature-big">
+            <div class="feature-big-text reveal-left">
+                <h3>Gestion des présences</h3>
+                <p>Tableau de bord complet pour le suivi des présences étudiants. L'enseignant fait l'appel numérique ou l'administration marque les présences. Taux en temps réel, tendances et rapports exportables.</p>
+                <a href="#" class="feat-modal-trigger" data-feature="presences">En savoir plus &gt;</a>
+            </div>
+            <div class="feature-big-image reveal-right">
+                <img src="{{ asset('images/landing/gestion-presences.png') }}" alt="Gestion des présences KLASSCI" loading="lazy">
+            </div>
+        </div>
+
+        <!-- Big feature 5 — image LEFT -->
+        <div class="feature-big">
+            <div class="feature-big-image reveal-left">
+                <img src="{{ asset('images/landing/parcours-lmd.png') }}" alt="Parcours LMD KLASSCI" loading="lazy">
+            </div>
+            <div class="feature-big-text reveal-right">
+                <h3>Système LMD complet</h3>
+                <p>Gestion des UE, ECUE, crédits et semestres conforme aux standards UEMOA. Bulletins adaptés, calcul automatique des crédits validés et parcours étudiant.</p>
+                <a href="#" class="feat-modal-trigger" data-feature="lmd">En savoir plus &gt;</a>
+            </div>
+        </div>
+
+        <!-- Big feature 6 — image RIGHT -->
+        <div class="feature-big">
+            <div class="feature-big-text reveal-left">
+                <h3>Gestion du personnel</h3>
+                <p>Administration unifiée de vos coordinateurs, enseignants, secrétaires et comptables. Vue d'ensemble avec filtres par rôle, statut et recherche rapide.</p>
+                <a href="#" class="feat-modal-trigger" data-feature="personnel">En savoir plus &gt;</a>
+            </div>
+            <div class="feature-big-image reveal-right">
+                <img src="{{ asset('images/landing/gestion-personnel.png') }}" alt="Gestion du personnel KLASSCI" loading="lazy">
+            </div>
+        </div>
+
+        <!-- Small features grid — remaining -->
+        <div class="features-small">
+            <div class="feature-tile reveal">
+                <h4>Inscriptions en ligne</h4>
+                <p>Workflow complet : de la demande à la validation, avec suivi des documents et pièces requises.</p>
+            </div>
+            <div class="feature-tile reveal reveal-d1">
+                <h4>Tableau de bord par rôle</h4>
+                <p>Directeur, secrétaire, enseignant, comptable, coordinateur — chacun voit ce qui le concerne.</p>
+            </div>
+            <div class="feature-tile reveal reveal-d2">
+                <h4>API et intégrations</h4>
+                <p>Connectez KLASSCI à votre LMS ou système existant via notre API REST documentée.</p>
             </div>
         </div>
     </div>
@@ -2302,102 +2383,6 @@
                     </div>
                     <span class="testimonial-company">ESBTP Yamoussoukro</span>
                 </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- FEATURES -->
-<section class="features" id="fonctionnalites">
-    <div class="container">
-        <h2 class="reveal">Ce que KLASSCI fait pour vous</h2>
-        <p class="features-intro reveal reveal-d1">Chaque fonctionnalité a été construite en écoutant les besoins réels des établissements que nous accompagnons depuis 2023.</p>
-
-        <!-- Big feature 1 — image LEFT -->
-        <div class="feature-big">
-            <div class="feature-big-image reveal-left">
-                <img src="{{ asset('images/landing/Saisie_des_notes_et_bulletins.png') }}" alt="Saisie des notes et bulletins — fiche étudiant KLASSCI" loading="lazy">
-            </div>
-            <div class="feature-big-text reveal-right">
-                <h3>Saisie des notes et bulletins</h3>
-                <p>Les enseignants saisissent leurs notes directement depuis leur téléphone. Les moyennes, rangs et appréciations se calculent automatiquement. Les bulletins PDF sont générés en un clic, personnalisés aux couleurs de votre école.</p>
-                <a href="#" class="feat-modal-trigger" data-feature="notes">En savoir plus &gt;</a>
-            </div>
-        </div>
-
-        <!-- Big feature 2 — image RIGHT -->
-        <div class="feature-big">
-            <div class="feature-big-text reveal-left">
-                <h3>Suivi financier en temps réel</h3>
-                <p>Visualisez instantanément l'état des paiements de chaque étudiant. Envoyez des relances automatiques, générez des reçus, et exportez vos rapports financiers. Compatible avec le système de frais par catégorie.</p>
-                <a href="#" class="feat-modal-trigger" data-feature="finance">En savoir plus &gt;</a>
-            </div>
-            <div class="feature-big-image reveal-right">
-                <img src="{{ asset('images/landing/Suivi_financier_en_temps_réel.png') }}" alt="Dashboard Comptabilité — suivi financier en temps réel" loading="lazy">
-            </div>
-        </div>
-
-        <!-- Big feature 3 — image LEFT -->
-        <div class="feature-big">
-            <div class="feature-big-image reveal-left">
-                <img src="{{ asset('images/landing/planning-général.png') }}" alt="Planning général KLASSCI" loading="lazy">
-            </div>
-            <div class="feature-big-text reveal-right">
-                <h3>Planning général</h3>
-                <p>Configurez les volumes horaires pour chaque combinaison filière et niveau d'étude. Suivez les heures planifiées vs réalisées avec un tableau de bord clair pour les administrateurs.</p>
-                <a href="#" class="feat-modal-trigger" data-feature="planning">En savoir plus &gt;</a>
-            </div>
-        </div>
-
-        <!-- Big feature 4 — image RIGHT -->
-        <div class="feature-big">
-            <div class="feature-big-text reveal-left">
-                <h3>Gestion des présences</h3>
-                <p>Tableau de bord complet pour le suivi des présences étudiants. L'enseignant fait l'appel numérique ou l'administration marque les présences. Taux en temps réel, tendances et rapports exportables.</p>
-                <a href="#" class="feat-modal-trigger" data-feature="presences">En savoir plus &gt;</a>
-            </div>
-            <div class="feature-big-image reveal-right">
-                <img src="{{ asset('images/landing/gestion-presences.png') }}" alt="Gestion des présences KLASSCI" loading="lazy">
-            </div>
-        </div>
-
-        <!-- Big feature 5 — image LEFT -->
-        <div class="feature-big">
-            <div class="feature-big-image reveal-left">
-                <img src="{{ asset('images/landing/parcours-lmd.png') }}" alt="Parcours LMD KLASSCI" loading="lazy">
-            </div>
-            <div class="feature-big-text reveal-right">
-                <h3>Système LMD complet</h3>
-                <p>Gestion des UE, ECUE, crédits et semestres conforme aux standards UEMOA. Bulletins adaptés, calcul automatique des crédits validés et parcours étudiant.</p>
-                <a href="#" class="feat-modal-trigger" data-feature="lmd">En savoir plus &gt;</a>
-            </div>
-        </div>
-
-        <!-- Big feature 6 — image RIGHT -->
-        <div class="feature-big">
-            <div class="feature-big-text reveal-left">
-                <h3>Gestion du personnel</h3>
-                <p>Administration unifiée de vos coordinateurs, enseignants, secrétaires et comptables. Vue d'ensemble avec filtres par rôle, statut et recherche rapide.</p>
-                <a href="#" class="feat-modal-trigger" data-feature="personnel">En savoir plus &gt;</a>
-            </div>
-            <div class="feature-big-image reveal-right">
-                <img src="{{ asset('images/landing/gestion-personnel.png') }}" alt="Gestion du personnel KLASSCI" loading="lazy">
-            </div>
-        </div>
-
-        <!-- Small features grid — remaining -->
-        <div class="features-small">
-            <div class="feature-tile reveal">
-                <h4>Inscriptions en ligne</h4>
-                <p>Workflow complet : de la demande à la validation, avec suivi des documents et pièces requises.</p>
-            </div>
-            <div class="feature-tile reveal reveal-d1">
-                <h4>Tableau de bord par rôle</h4>
-                <p>Directeur, secrétaire, enseignant, comptable, coordinateur — chacun voit ce qui le concerne.</p>
-            </div>
-            <div class="feature-tile reveal reveal-d2">
-                <h4>API et intégrations</h4>
-                <p>Connectez KLASSCI à votre LMS ou système existant via notre API REST documentée.</p>
             </div>
         </div>
     </div>
@@ -2960,141 +2945,6 @@
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && featOverlay.classList.contains('open')) closeFeatModal();
     });
-
-    // Hero slider — finger-swipe animation + drag/touch
-    var slider = document.getElementById('heroSlider');
-    var track = document.getElementById('heroTrack');
-    var dots = document.querySelectorAll('#heroDots .hero-dot');
-    if (track && dots.length) {
-        var slideCount = track.children.length;
-        var currentIdx = 0;
-        var isDragging = false;
-        var startX = 0;
-        var prevTranslate = 0;
-        var autoTimer;
-        var isAnimating = false;
-
-        function snapTo(idx, useSwipeAnim) {
-            if (isAnimating) return;
-            if (idx < 0) idx = slideCount - 1;
-            if (idx >= slideCount) idx = 0;
-
-            dots[currentIdx].classList.remove('active');
-            var fromIdx = currentIdx;
-            currentIdx = idx;
-            dots[currentIdx].classList.add('active');
-
-            if (useSwipeAnim && fromIdx !== idx) {
-                // Finger swipe animation: peek → pull back → slide
-                isAnimating = true;
-                track.classList.remove('dragging');
-                var basePos = -(fromIdx * 100);
-                var targetPos = -(idx * 100);
-                var direction = idx > fromIdx ? -1 : 1; // -1 = slide left, 1 = slide right
-
-                // Step 1: peek (move 3% in slide direction)
-                track.style.transition = 'transform 0.2s ease-out';
-                track.style.transform = 'translateX(' + (basePos + (direction * -3)) + '%)';
-
-                setTimeout(function() {
-                    // Step 2: pull back (move 2% opposite — take momentum)
-                    track.style.transition = 'transform 0.15s ease-in';
-                    track.style.transform = 'translateX(' + (basePos + (direction * 2)) + '%)';
-
-                    setTimeout(function() {
-                        // Step 3: full slide to target
-                        track.style.transition = 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)';
-                        track.style.transform = 'translateX(' + targetPos + '%)';
-                        prevTranslate = targetPos;
-
-                        setTimeout(function() { isAnimating = false; }, 500);
-                    }, 150);
-                }, 200);
-            } else {
-                // Instant snap (after drag)
-                track.classList.remove('dragging');
-                track.style.transition = 'transform 0.4s cubic-bezier(0.22, 1, 0.36, 1)';
-                prevTranslate = -(idx * 100);
-                track.style.transform = 'translateX(' + prevTranslate + '%)';
-            }
-        }
-
-        function startAuto() {
-            clearInterval(autoTimer);
-            autoTimer = setInterval(function() {
-                snapTo(currentIdx + 1, true);
-            }, 4500);
-        }
-
-        // Dots click
-        dots.forEach(function(d) {
-            d.addEventListener('click', function() {
-                clearInterval(autoTimer);
-                snapTo(parseInt(this.dataset.slide), false);
-                startAuto();
-            });
-        });
-
-        // Drag — mouse
-        slider.addEventListener('mousedown', function(e) {
-            if (isAnimating) return;
-            isDragging = true;
-            startX = e.clientX;
-            track.classList.add('dragging');
-            track.style.transition = 'none';
-            clearInterval(autoTimer);
-        });
-
-        window.addEventListener('mousemove', function(e) {
-            if (!isDragging) return;
-            var diff = e.clientX - startX;
-            var pct = (diff / slider.offsetWidth) * 100;
-            track.style.transform = 'translateX(' + (prevTranslate + pct) + '%)';
-        });
-
-        window.addEventListener('mouseup', function(e) {
-            if (!isDragging) return;
-            isDragging = false;
-            var diff = e.clientX - startX;
-            var threshold = slider.offsetWidth * 0.15;
-            if (diff < -threshold) snapTo(currentIdx + 1, false);
-            else if (diff > threshold) snapTo(currentIdx - 1, false);
-            else snapTo(currentIdx, false);
-            startAuto();
-        });
-
-        // Drag — touch
-        slider.addEventListener('touchstart', function(e) {
-            if (isAnimating) return;
-            isDragging = true;
-            startX = e.touches[0].clientX;
-            track.classList.add('dragging');
-            track.style.transition = 'none';
-            clearInterval(autoTimer);
-        }, { passive: true });
-
-        slider.addEventListener('touchmove', function(e) {
-            if (!isDragging) return;
-            var diff = e.touches[0].clientX - startX;
-            var pct = (diff / slider.offsetWidth) * 100;
-            track.style.transform = 'translateX(' + (prevTranslate + pct) + '%)';
-        }, { passive: true });
-
-        slider.addEventListener('touchend', function(e) {
-            if (!isDragging) return;
-            isDragging = false;
-            var diff = e.changedTouches[0].clientX - startX;
-            var threshold = slider.offsetWidth * 0.15;
-            if (diff < -threshold) snapTo(currentIdx + 1, false);
-            else if (diff > threshold) snapTo(currentIdx - 1, false);
-            else snapTo(currentIdx, false);
-            startAuto();
-        });
-
-        // Start
-        track.style.transform = 'translateX(0%)';
-        startAuto();
-    }
 
     // FAQ toggle
     window.toggleFaq = function(el) {
