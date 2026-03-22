@@ -3063,7 +3063,7 @@
                                                 @foreach($classes as $classeOption)
                                                 {
                                                     value: '{{ $classeOption->id }}',
-                                                    label: '{{ $classeOption->name }} @if($classeOption->filiere || $classeOption->niveauEtude)({{ $classeOption->filiere->name ?? "Filière N/A" }} - {{ $classeOption->niveauEtude->name ?? "Niveau N/A" }})@endif'
+                                                    label: '{!! str_replace("'", "\\'", $classeOption->name) !!} @if($classeOption->filiere || $classeOption->niveauEtude)({!! str_replace("'", "\\'", $classeOption->filiere->name ?? "Filière N/A") !!} - {!! str_replace("'", "\\'", $classeOption->niveauEtude->name ?? "Niveau N/A") !!})@endif'
                                                 },
                                                 @endforeach
                                             ],
