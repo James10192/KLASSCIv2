@@ -769,8 +769,7 @@ body {
 .nextadmin-content {
     flex: 1;
     padding: var(--space-8);
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(20px);
+    background: transparent;
     position: relative;
 }
 
@@ -827,14 +826,12 @@ body {
 
 /* ============= Cards ============= */
 .card {
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: #fff;
+    border: 1px solid #e5e7eb;
     border-radius: var(--radius-2xl);
-    box-shadow: var(--shadow-xl);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     overflow: visible;
-    transition: all var(--transition-normal);
+    transition: box-shadow 0.2s ease;
     position: relative;
     margin-bottom: var(--space-6);
     z-index: 1;
@@ -892,10 +889,8 @@ body {
 
 /* ============= Stat Cards ============= */
 .stat-card {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: #fff;
+    border: 1px solid #e5e7eb;
     border-radius: var(--radius-2xl);
     padding: var(--space-6);
     display: flex;
@@ -1155,10 +1150,8 @@ body {
 
 /* ============= Dropdowns ============= */
 .dropdown-menu {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: #fff;
+    border: 1px solid #e5e7eb;
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-2xl);
     padding: var(--space-2);
@@ -1205,11 +1198,10 @@ body {
 
 /* ============= Tables ============= */
 .table-responsive {
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(20px);
+    background: #fff;
     border-radius: var(--radius-xl);
     overflow: hidden;
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
 }
 
 .table {
@@ -1298,9 +1290,8 @@ body {
 
 /* ============= Alerts ============= */
 .alert {
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: #fff;
+    border: 1px solid #e5e7eb;
     border-radius: var(--radius-xl);
     padding: var(--space-5);
     margin-bottom: var(--space-6);
