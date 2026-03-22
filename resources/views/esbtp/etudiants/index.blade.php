@@ -1056,13 +1056,13 @@
 
 
     .modal-modern .modal-dialog {
-        width: 98vw;
-        max-width: 1800px;
+        width: 98vw !important;
+        max-width: 98vw !important;
         min-width: auto;
-        height: 95vh;
-        max-height: 95vh;
+        height: 95vh !important;
+        max-height: 95vh !important;
         position: relative;
-        margin: 2.5vh auto;
+        margin: 2.5vh auto !important;
     }
 
     .modal-modern .modal-content {
@@ -3362,7 +3362,7 @@
 
 <!-- Modal d'édition rapide -->
 <div class="modal fade modal-modern" id="etudiantEditModal" tabindex="-1" aria-labelledby="etudiantEditModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-xl" style="width:98vw;max-width:98vw;height:95vh;max-height:95vh;margin:2.5vh auto;">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
