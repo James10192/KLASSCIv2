@@ -972,7 +972,7 @@ class DashboardController extends Controller
     public function coordinateurDashboardData()
     {
         $user = Auth::user();
-        if (!$user || !$user->hasAnyRole(['coordinateur', 'superAdmin'])) {
+        if (!$user || !$user->hasRole('coordinateur')) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
