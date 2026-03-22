@@ -3024,8 +3024,11 @@
 
                 <!-- Filtres de recherche (Desktop uniquement) -->
                 <div class="desktop-filters">
-                    <div class="section-title mb-md">
-                        <i class="fas fa-filter me-2"></i>Filtres de recherche
+                    <div class="section-title mb-md" style="display:flex; align-items:center; justify-content:space-between;">
+                        <span><i class="fas fa-filter me-2"></i>Filtres de recherche</span>
+                        <button type="button" onclick="var b=document.getElementById('advanced-filters');var ic=this.querySelector('.fa-chevron-down,.fa-chevron-up');if(b.style.display==='none'){b.style.display='block';ic.classList.replace('fa-chevron-down','fa-chevron-up');}else{b.style.display='none';ic.classList.replace('fa-chevron-up','fa-chevron-down');}" style="background:none;border:1px solid #e0e0e0;border-radius:6px;padding:0.35rem 0.9rem;font-size:0.8rem;color:#5c5c5c;cursor:pointer;display:inline-flex;align-items:center;gap:0.5rem;font-weight:500;">
+                            <i class="fas fa-sliders-h"></i> Filtres avancés <i class="fas fa-chevron-down" style="font-size:0.6rem;"></i>
+                        </button>
                     </div>
                     <form method="GET" action="{{ route('esbtp.etudiants.index') }}" id="search-form">
                                 <div class="row">
@@ -3055,12 +3058,6 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                </div>
-                                <!-- Filtres avancés (collapsible) -->
-                                <div style="margin-bottom:0.75rem;">
-                                    <button type="button" onclick="var b=document.getElementById('advanced-filters');var ic=this.querySelector('.fa-chevron-down,.fa-chevron-up');if(b.style.display==='none'){b.style.display='block';ic.classList.replace('fa-chevron-down','fa-chevron-up');}else{b.style.display='none';ic.classList.replace('fa-chevron-up','fa-chevron-down');}" style="background:none;border:1px solid #e0e0e0;border-radius:6px;padding:0.4rem 1rem;font-size:0.85rem;color:#5c5c5c;cursor:pointer;display:inline-flex;align-items:center;gap:0.5rem;">
-                                        <i class="fas fa-sliders-h"></i> Filtres avancés <i class="fas fa-chevron-down" style="font-size:0.65rem;"></i>
-                                    </button>
                                 </div>
                                 <div id="advanced-filters" style="display:none;">
                                 <div class="row">
@@ -3346,7 +3343,7 @@
         <div class="card-moderne">
             <div class="p-lg">
                 <div class="section-title mb-md" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
-                    <span><i class="fas fa-list"></i>Liste des étudiants</span>
+                    <span><i class="fas fa-list me-2"></i>Liste des étudiants</span>
                     <span id="student-count-badge" style="font-size:0.85rem; font-weight:600; color:#0453cb; background:rgba(4,83,203,0.08); padding:0.35rem 1rem; border-radius:20px;"></span>
                 </div>
 
