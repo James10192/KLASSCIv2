@@ -1237,15 +1237,11 @@ body {
 }
 
 .table tbody tr {
-    transition: all var(--transition-fast);
-    position: relative;
-    z-index: 1;
+    transition: background-color 0.15s ease;
 }
 
 .table tbody tr:hover {
-    background: rgba(255, 255, 255, 0.5);
-    transform: none;
-    z-index: 5;
+    background-color: #f0f4ff;
 }
 
 .table tbody tr:hover .table-action-btn {

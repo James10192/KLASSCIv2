@@ -3637,9 +3637,9 @@
             badge.textContent = total + ' étudiant' + (parseInt(total) > 1 ? 's' : '') + (hasPages ? ' (' + page + ' sur cette page)' : '');
         }
     }
-    document.addEventListener('DOMContentLoaded', function() { updateStudentCountBadge(); });
-
     document.addEventListener('DOMContentLoaded', function () {
+        updateStudentCountBadge();
+
         const form = document.getElementById('search-form');
         const resultsContainer = document.getElementById('etudiants-results');
         const submitButton = form.querySelector('button[type="submit"]');
@@ -3647,6 +3647,7 @@
         const modalElement = document.getElementById('etudiantEditModal');
         const inscriptionsContainer = document.getElementById('inscriptions-accordion-container');
         const studentFrame = document.getElementById('student-edit-frame');
+        const studentEditLoader = document.getElementById('student-edit-loader');
         let editModal = null;
 
         function setLoading(isLoading) {
@@ -3888,8 +3889,7 @@
                 modalElement.addEventListener('hidden.bs.modal', () => {
                     if (studentFrame) {
                         studentFrame.src = 'about:blank';
-                        const loader = document.getElementById('student-edit-loader');
-                        if (loader) { loader.classList.remove('hidden'); }
+                        if (studentEditLoader) { studentEditLoader.classList.remove('hidden'); }
                     }
                     if (inscriptionsContainer) {
                         inscriptionsContainer.innerHTML = '<div class="text-muted">Sélectionnez un étudiant pour afficher ses inscriptions.</div>';
@@ -3912,12 +3912,11 @@
             }
 
             if (studentFrame && payload.edit_url) {
-                const loader = document.getElementById('student-edit-loader');
-                if (loader) { loader.classList.remove('hidden'); }
+                if (studentEditLoader) { studentEditLoader.classList.remove('hidden'); }
                 const separator = payload.edit_url.includes('?') ? '&' : '?';
                 studentFrame.src = `${payload.edit_url}${separator}_=${Date.now()}`;
                 studentFrame.addEventListener('load', function handleLoad() {
-                    if (loader) { loader.classList.add('hidden'); }
+                    if (studentEditLoader) { studentEditLoader.classList.add('hidden'); }
                     studentFrame.removeEventListener('load', handleLoad);
                 });
             }
