@@ -1069,10 +1069,11 @@
         border-radius: 24px;
         border: none;
         box-shadow: 0 25px 60px rgba(15, 23, 42, 0.25);
-        background: linear-gradient(135deg, #fdfdfd 0%, #f3f4f6 35%, #ffffff 100%);
+        background: #fff;
         height: 100%;
         display: flex;
         flex-direction: column;
+        will-change: transform;
     }
 
     .modal-modern .modal-header {
@@ -1299,20 +1300,10 @@
     }
 
     #editStudentTabContent {
-        transition: min-height 0.3s ease;
+        /* No transition — prevents flash when iframe content resizes */
     }
 
-    .modal-modern .modal-dialog::after {
-        content: '';
-        position: absolute;
-        top: -20px;
-        right: -20px;
-        width: 120px;
-        height: 120px;
-        background: radial-gradient(circle, rgba(255,255,255,0.45), rgba(99,102,241,0.08));
-        filter: blur(20px);
-        z-index: -1;
-    }
+    /* Removed: modal-dialog::after with filter:blur(20px) — caused iframe repaint flash */
 
     @media (max-width: 1400px) {
         .modal-modern .modal-dialog {
