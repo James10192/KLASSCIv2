@@ -62,8 +62,8 @@
                     <i class="fas fa-bell"></i>
                     Attention! Inscriptions en attente
                 </h5>
-                <p style="margin: 0 0 var(--space-md) 0; color: var(--text-primary);">
-                    Il y a <strong>{{ $pendingInscriptionsCount }}</strong> inscription(s) en attente de validation.<br>
+                <p style="margin: 0 0 var(--space-md) 0; color: #64748b;">
+                    Il y a <strong style="color: #1e293b;">{{ $pendingInscriptionsCount }}</strong> inscription(s) en attente de validation.<br>
                     Ces inscriptions nécessitent votre vérification pour finaliser le processus d'admission des étudiants.
                 </p>
                 <a href="{{ route('esbtp.inscriptions.index', ['status' => 'en_attente']) }}" class="btn-acasi" style="background-color: var(--warning); color: white;">
@@ -81,42 +81,30 @@
             <i class="fas fa-users fa-2x mb-md"></i>
             <div class="kpi-title" style="color: white;">Étudiants</div>
             <div class="kpi-value" style="color: white;">{{ $totalStudents }}</div>
-            <div style="color: rgba(255,255,255,0.8); font-size: var(--text-small);">Inscrits actifs</div>
         </div>
 
         <div class="kpi-card card-moderne" style="background-color: var(--success); color: white; text-align: center;">
             <i class="fas fa-graduation-cap fa-2x mb-md"></i>
             <div class="kpi-title" style="color: white;">Filières</div>
             <div class="kpi-value" style="color: white;">{{ $totalFilieres }}</div>
-            <div style="color: rgba(255,255,255,0.8); font-size: var(--text-small);">Disponibles</div>
         </div>
 
         <div class="kpi-card card-moderne" style="background-color: var(--warning); color: white; text-align: center;">
             <i class="fas fa-chalkboard-teacher fa-2x mb-md"></i>
             <div class="kpi-title" style="color: white;">Classes</div>
             <div class="kpi-value" style="color: white;">{{ $totalClasses }}</div>
-            <div style="color: rgba(255,255,255,0.8); font-size: var(--text-small);">Ouvertes</div>
         </div>
 
         <div class="kpi-card card-moderne" style="background-color: var(--accent-blue); color: white; text-align: center;">
             <i class="fas fa-book-open fa-2x mb-md"></i>
             <div class="kpi-title" style="color: white;">Matières</div>
             <div class="kpi-value" style="color: white;">{{ $totalMatieres }}</div>
-            <div style="color: rgba(255,255,255,0.8); font-size: var(--text-small);">Enseignées</div>
         </div>
 
         <div class="kpi-card card-moderne" style="background-color: var(--secondary); color: white; text-align: center;">
             <i class="fas fa-user-tie fa-2x mb-md"></i>
             <div class="kpi-title" style="color: white;">Enseignants</div>
             <div class="kpi-value" style="color: white;">{{ $totalTeachers ?? 0 }}</div>
-            <div style="color: rgba(255,255,255,0.8); font-size: var(--text-small);">Actifs</div>
-        </div>
-
-        <div class="kpi-card card-moderne" style="background-color: var(--neutral); color: white; text-align: center;">
-            <i class="fas fa-chart-line fa-2x mb-md"></i>
-            <div class="kpi-title" style="color: white;">Présence</div>
-            <div class="kpi-value" style="color: white;">{{ $attendanceStats['attendance_rate'] }}%</div>
-            <div style="color: rgba(255,255,255,0.8); font-size: var(--text-small);">Taux moyen</div>
         </div>
     </div>
 

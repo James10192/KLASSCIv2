@@ -137,8 +137,7 @@ html {
 
 body {
     font-family: var(--font-family);
-    background: linear-gradient(135deg, #0453cb 0%, #5e91de 50%, #1b64d4 100%);
-    background-attachment: fixed;
+    background: #ffffff;
     color: var(--gray-800);
     line-height: 1.6;
     overflow-x: hidden;
