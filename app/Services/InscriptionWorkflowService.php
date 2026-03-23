@@ -143,9 +143,10 @@ class InscriptionWorkflowService
                 ];
             }
 
-            // Compter les inscriptions actives pour cette classe dans l'année courante uniquement
+            // Compter les inscriptions validées (active + workflow complet) pour cette classe
             $inscriptionsActives = ESBTPInscription::where('classe_id', $classeId)
                 ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree')
                 ->where('annee_universitaire_id', $anneeUniversitaireCourante->id)
                 ->count();
 
@@ -183,7 +184,7 @@ class InscriptionWorkflowService
                         ->where('annee_universitaire_id', $classe->annee_universitaire_id)
                         ->where('id', '!=', $classeId)
                         ->where('is_active', true)
-                        ->whereRaw('(places_totales IS NULL OR places_totales > (SELECT COUNT(*) FROM esbtp_inscriptions WHERE classe_id = esbtp_classes.id AND status = "active" AND annee_universitaire_id = ?))', [$anneeUniversitaireCourante->id])
+                        ->whereRaw('(places_totales IS NULL OR places_totales > (SELECT COUNT(*) FROM esbtp_inscriptions WHERE classe_id = esbtp_classes.id AND status = "active" AND workflow_step = "etudiant_cree" AND annee_universitaire_id = ?))', [$anneeUniversitaireCourante->id])
                         ->get();
 
                     return [
