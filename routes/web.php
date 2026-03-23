@@ -1932,7 +1932,7 @@ Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur', 'paywall']
 });
 
 // Routes pour les coordinateurs et rôles admin avec permissions spécifiques
-Route::middleware(['auth', 'role:superAdmin|coordinateur|secretaire|comptable'])->prefix('esbtp')->name('esbtp.')->group(function () {
+Route::middleware(['auth', 'role:superAdmin|coordinateur|secretaire|comptable|enseignant|teacher'])->prefix('esbtp')->name('esbtp.')->group(function () {
     // Routes pour les notes
     Route::prefix('notes')->name('notes.')->group(function () {
         Route::get('/', [\App\Http\Controllers\ESBTPNoteController::class, 'index'])->name('index')
