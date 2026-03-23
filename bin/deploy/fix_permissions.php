@@ -370,6 +370,9 @@ try {
         'view_own_schedule',
         'send_messages', 'receive_messages',
         'view_annonces',
+        // Modules toggle
+        'module.notes_evaluations.access',
+        'module.presences.access',
     ];
     $enseignantRole->syncPermissions($enseignantPermissions);
 
