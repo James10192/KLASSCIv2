@@ -1648,8 +1648,8 @@ class ESBTPInscriptionController extends Controller
             DB::beginTransaction();
 
             $this->inscriptionService->validerInscription(
-                $inscription,
-                $request->input("observations"),
+                $inscription->id,
+                auth()->id(),
             );
 
             $montantPaye = $request->input("montant_paye", 0);
