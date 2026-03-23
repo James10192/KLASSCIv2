@@ -427,8 +427,8 @@ class ESBTPInscriptionService
 
             $inscription = ESBTPInscription::findOrFail($inscriptionId);
 
-            // Ne pas valider une inscription déjà validée
-            if ($inscription->status === 'active') {
+            // Ne pas valider une inscription déjà complètement validée
+            if ($inscription->status === 'active' && $inscription->workflow_step === 'etudiant_cree') {
                 return [
                     'success' => false,
                     'message' => 'Cette inscription est déjà validée'
@@ -436,6 +436,7 @@ class ESBTPInscriptionService
             }
 
             $inscription->status = 'active';
+            $inscription->workflow_step = 'etudiant_cree';
             $inscription->date_validation = now();
             $inscription->validated_by = $userId;
             $inscription->updated_by = $userId;

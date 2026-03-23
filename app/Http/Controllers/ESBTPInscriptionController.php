@@ -1662,6 +1662,13 @@ class ESBTPInscriptionController extends Controller
 
             DB::commit();
 
+            // Rediriger vers la fiche étudiant si on vient de etudiants.show
+            if ($request->input('redirect_to') === 'etudiant' && $inscription->etudiant_id) {
+                return redirect()
+                    ->route("esbtp.etudiants.show", $inscription->etudiant_id)
+                    ->with("success", "Inscription validée avec succès.");
+            }
+
             return redirect()
                 ->route("esbtp.inscriptions.show", $inscription->id)
                 ->with("success", "Inscription validée avec succès.");

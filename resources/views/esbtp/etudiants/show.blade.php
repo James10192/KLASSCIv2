@@ -2031,6 +2031,7 @@
                   method="POST" style="display:none;">
                 @csrf
                 @method('PUT')
+                <input type="hidden" name="redirect_to" value="etudiant">
             </form>
             @endcan
         </div>
