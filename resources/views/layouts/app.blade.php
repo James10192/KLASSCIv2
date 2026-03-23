@@ -1572,8 +1572,8 @@
                         </div>
                     @endif
 
-                    <!-- Personnel (exclusif : manage_personnel domine module.enseignants.access) -->
-                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire')))
+                    <!-- Personnel (secretaire uniquement — superAdmin a l'accordion dans Administration) -->
+                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole('secretaire'))
                         @can('manage_personnel')
                         <div class="menu-category">Personnel</div>
                         <div class="menu-item">

@@ -10,6 +10,8 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPNote;
+use App\Models\ESBTPSeanceCours;
+use App\Models\ESBTPTeacher;
 use App\Models\User;
 use App\Services\NotificationService;
 use Carbon\Carbon;
@@ -57,6 +59,25 @@ class ESBTPNoteController extends Controller
                 }
             }])
             ->with(['filiere', 'niveau', 'annee']);
+
+        // Enseignant : ne voir que les classes où il a des séances dans l'emploi du temps
+        $user = Auth::user();
+        if ($user && $user->hasRole(['teacher', 'enseignant'])) {
+            $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
+            if ($teacher && $anneeCourante) {
+                $classeIds = ESBTPSeanceCours::query()
+                    ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
+                    ->where('esbtp_seance_cours.teacher_id', $teacher->id)
+                    ->where('esbtp_emploi_temps.annee_universitaire_id', $anneeCourante->id)
+                    ->distinct()
+                    ->pluck('esbtp_seance_cours.classe_id');
+                $classesQuery->whereIn('id', $classeIds);
+            } elseif ($teacher) {
+                $classeIds = ESBTPSeanceCours::where('teacher_id', $teacher->id)
+                    ->distinct()->pluck('classe_id');
+                $classesQuery->whereIn('id', $classeIds);
+            }
+        }
 
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));

@@ -4442,23 +4442,49 @@
     {{-- Compte utilisateur --}}
     @if($etudiant->user)
     <div class="s-card">
-        <div class="s-card-header">
+        <div class="s-card-header" style="display:flex; align-items:center; justify-content:space-between;">
             <div class="s-card-title">
-                <div class="s-card-title-icon"><i class="fas fa-user-lock"></i></div>
+                <div class="s-card-title-icon"><i class="fas fa-user-shield"></i></div>
                 Compte utilisateur
             </div>
+            @php
+                $accountActive = $etudiant->user->is_active ?? true;
+            @endphp
+            <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:.72rem; font-weight:600;
+                background:{{ $accountActive ? 'rgba(16,185,129,.12)' : 'rgba(239,68,68,.12)' }};
+                color:{{ $accountActive ? '#059669' : '#dc2626' }};
+                border:1px solid {{ $accountActive ? 'rgba(16,185,129,.25)' : 'rgba(239,68,68,.25)' }};">
+                <i class="fas fa-circle" style="font-size:.35rem;"></i>
+                {{ $accountActive ? 'Actif' : 'Inactif' }}
+            </span>
         </div>
         <div class="info-grid">
-            <div class="info-row"><span class="info-lbl">Email connexion</span><span class="info-val"><a href="mailto:{{ $etudiant->user->email }}">{{ $etudiant->user->email }}</a></span></div>
+            <div class="info-row">
+                <span class="info-lbl">Nom d'utilisateur</span>
+                <span class="info-val" style="font-weight:600; font-family:monospace; background:rgba(0,0,0,.04); padding:2px 8px; border-radius:4px;">{{ $etudiant->user->username ?? $etudiant->user->email }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-lbl">Email connexion</span>
+                <span class="info-val"><a href="mailto:{{ $etudiant->user->email }}" style="color:#0453cb; text-decoration:none;">{{ $etudiant->user->email }}</a></span>
+            </div>
             <div class="info-row">
                 <span class="info-lbl">Dernière connexion</span>
-                <span class="info-val">{{ $etudiant->user->last_login_at ? \Carbon\Carbon::parse($etudiant->user->last_login_at)->diffForHumans() : '—' }}</span>
+                <span class="info-val">{{ $etudiant->user->last_login_at ? \Carbon\Carbon::parse($etudiant->user->last_login_at)->diffForHumans() : '— Jamais connecté' }}</span>
             </div>
             <div class="info-row">
                 <span class="info-lbl">Compte créé</span>
-                <span class="info-val">{{ $etudiant->user->created_at?->format('d/m/Y') ?? '—' }}</span>
+                <span class="info-val">{{ $etudiant->user->created_at?->format('d/m/Y à H:i') ?? '—' }}</span>
             </div>
         </div>
+        @can('edit_students')
+        <div style="padding:12px 16px 4px; border-top:1px solid rgba(0,0,0,.06);">
+            <a href="{{ route('esbtp.etudiants.reset-password', $etudiant->id) }}"
+               onclick="return confirm('Réinitialiser le mot de passe de cet étudiant ? Le nouveau mot de passe sera : Bonjour@2025')"
+               style="display:inline-flex; align-items:center; gap:6px; padding:7px 14px; background:linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color:#fff; border:none; border-radius:8px; font-size:.8rem; font-weight:600; text-decoration:none; cursor:pointer; box-shadow:0 2px 6px rgba(4,83,203,.25);">
+                <i class="fas fa-key" style="font-size:.7rem;"></i> Réinitialiser le mot de passe
+            </a>
+        </div>
+        @endcan
     </div>
     @endif
 
