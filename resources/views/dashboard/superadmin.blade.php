@@ -46,9 +46,7 @@
         </div>
     </div>
 
-    @php
-        $pendingInscriptionsCount = \App\Models\ESBTPInscription::whereIn('status', ['en_attente', 'pending'])->count();
-    @endphp
+    {{-- $pendingInscriptionsCount est calculé dans DashboardController avec la logique workflow_step --}}
 
     <!-- Alert for pending inscriptions -->
     @if($pendingInscriptionsCount > 0)
@@ -66,7 +64,7 @@
                     Il y a <strong>{{ $pendingInscriptionsCount }}</strong> inscription(s) en attente de validation.<br>
                     Ces inscriptions nécessitent votre vérification pour finaliser le processus d'admission des étudiants.
                 </p>
-                <a href="{{ route('esbtp.inscriptions.index', ['status' => 'en_attente']) }}" class="btn-acasi" style="background-color: var(--warning); color: white;">
+                <a href="{{ route('esbtp.inscriptions.index', ['status' => 'non_validee']) }}" class="btn-acasi" style="background-color: var(--warning); color: white;">
                     <i class="fas fa-check-circle"></i> Consulter et valider
                 </a>
             </div>

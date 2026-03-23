@@ -117,13 +117,20 @@ class DashboardController extends Controller
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $data['anneeEnCours'] = $anneeEnCours;
 
-        // Inscriptions en attente - SuperAdmin peut voir toutes les inscriptions (filtré par année en cours)
+        // Inscriptions en attente - inclut les actives dont le workflow n'est pas finalisé (etudiant_cree)
+        $pendingQuery = \App\Models\ESBTPInscription::where(function ($q) {
+            $q->whereIn('status', ['en_attente', 'pending'])->orWhere(function ($subQ) {
+                $subQ->where('status', 'active')
+                    ->where(function ($wq) {
+                        $wq->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation'])
+                            ->orWhereNull('workflow_step');
+                    });
+            });
+        });
         if ($anneeEnCours) {
-            $data['pendingInscriptionsCount'] = \App\Models\ESBTPInscription::whereIn('status', ['en_attente', 'pending'])
-                ->where('annee_universitaire_id', $anneeEnCours->id)->count();
-        } else {
-            $data['pendingInscriptionsCount'] = \App\Models\ESBTPInscription::whereIn('status', ['en_attente', 'pending'])->count();
+            $pendingQuery->where('annee_universitaire_id', $anneeEnCours->id);
         }
+        $data['pendingInscriptionsCount'] = $pendingQuery->count();
 
         $data['pendingCurrentYearInscriptionsCount'] = 0;
         $data['pendingCurrentYearInscriptionsByStep'] = [];
@@ -530,8 +537,20 @@ class DashboardController extends Controller
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $data['anneeEnCours'] = $anneeEnCours;
 
-        // Inscriptions en attente
-        $data['pendingInscriptionsCount'] = \App\Models\ESBTPInscription::whereIn('status', ['en_attente', 'pending'])->count();
+        // Inscriptions en attente - inclut les actives dont le workflow n'est pas finalisé
+        $pendingSecQuery = \App\Models\ESBTPInscription::where(function ($q) {
+            $q->whereIn('status', ['en_attente', 'pending'])->orWhere(function ($subQ) {
+                $subQ->where('status', 'active')
+                    ->where(function ($wq) {
+                        $wq->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation'])
+                            ->orWhereNull('workflow_step');
+                    });
+            });
+        });
+        if ($anneeEnCours) {
+            $pendingSecQuery->where('annee_universitaire_id', $anneeEnCours->id);
+        }
+        $data['pendingInscriptionsCount'] = $pendingSecQuery->count();
 
         $data['pendingCurrentYearInscriptionsCount'] = 0;
         $data['pendingCurrentYearInscriptionsByStep'] = [];
@@ -926,10 +945,19 @@ class DashboardController extends Controller
             $data['recentMessages'] = collect();
         }
 
-        // Inscriptions en attente (filtré par année en cours)
+        // Inscriptions en attente (filtré par année en cours) - inclut workflow non finalisé
         try {
+            $pendingCoordQuery = ESBTPInscription::where(function ($q) {
+                $q->whereIn('status', ['en_attente', 'pending'])->orWhere(function ($subQ) {
+                    $subQ->where('status', 'active')
+                        ->where(function ($wq) {
+                            $wq->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation'])
+                                ->orWhereNull('workflow_step');
+                        });
+                });
+            });
             if ($anneeEnCours) {
-                $data['pendingInscriptionsCount'] = ESBTPInscription::whereIn('status', ['en_attente', 'pending'])
+                $data['pendingInscriptionsCount'] = (clone $pendingCoordQuery)
                     ->where('annee_universitaire_id', $anneeEnCours->id)->count();
                 $data['recentInscriptions'] = ESBTPInscription::with([
                     'etudiant',
@@ -940,7 +968,7 @@ class DashboardController extends Controller
                     ->limit(5)
                     ->get();
             } else {
-                $data['pendingInscriptionsCount'] = ESBTPInscription::whereIn('status', ['en_attente', 'pending'])->count();
+                $data['pendingInscriptionsCount'] = $pendingCoordQuery->count();
                 $data['recentInscriptions'] = ESBTPInscription::with([
                     'etudiant',
                     'classe.filiere'
@@ -1001,9 +1029,17 @@ class DashboardController extends Controller
         try {
             if ($anneeEnCours) {
                 $totalStudents = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
-                    ->where('status', 'active')->count();
-                $pendingInscriptionsCount = ESBTPInscription::whereIn('status', ['en_attente', 'pending'])
-                    ->where('annee_universitaire_id', $anneeEnCours->id)->count();
+                    ->where('status', 'active')->where('workflow_step', 'etudiant_cree')->count();
+                $pendingInscriptionsCount = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
+                    ->where(function ($q) {
+                        $q->whereIn('status', ['en_attente', 'pending'])->orWhere(function ($subQ) {
+                            $subQ->where('status', 'active')
+                                ->where(function ($wq) {
+                                    $wq->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation'])
+                                        ->orWhereNull('workflow_step');
+                                });
+                        });
+                    })->count();
 
                 $evalQuery = ESBTPEvaluation::whereHas('classe', fn($q) => $q->where('annee_universitaire_id', $anneeEnCours->id));
                 $totalExamens = (clone $evalQuery)->count();

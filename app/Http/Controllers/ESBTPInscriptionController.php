@@ -136,7 +136,24 @@ class ESBTPInscriptionController extends Controller
         }
 
         if ($status && $status !== "all") {
-            $baseQuery->where("status", $status);
+            if ($status === "non_validee") {
+                // Inscriptions non validées : en_attente OU (active mais workflow pas finalisé)
+                $baseQuery->where(function ($q) {
+                    $q->where("status", "en_attente")->orWhere(function ($subQ) {
+                        $subQ
+                            ->where("status", "active")
+                            ->where(function ($wq) {
+                                $wq->whereIn("workflow_step", [
+                                    "prospect",
+                                    "documents_complets",
+                                    "en_validation",
+                                ])->orWhereNull("workflow_step");
+                            });
+                    });
+                });
+            } else {
+                $baseQuery->where("status", $status);
+            }
         }
 
         $perPage = 15;
@@ -355,9 +372,25 @@ class ESBTPInscriptionController extends Controller
             "total" => $statsQuery->count(),
             "actives" => (clone $statsQuery)
                 ->where("status", "active")
+                ->where("workflow_step", "etudiant_cree")
                 ->count(),
             "en_attente" => (clone $statsQuery)
                 ->where("status", "en_attente")
+                ->count(),
+            "non_validees" => (clone $statsQuery)
+                ->where(function ($q) {
+                    $q->where("status", "en_attente")->orWhere(function ($subQ) {
+                        $subQ
+                            ->where("status", "active")
+                            ->where(function ($wq) {
+                                $wq->whereIn("workflow_step", [
+                                    "prospect",
+                                    "documents_complets",
+                                    "en_validation",
+                                ])->orWhereNull("workflow_step");
+                            });
+                    });
+                })
                 ->count(),
             "annulees" => (clone $statsQuery)
                 ->where("status", "annulée")

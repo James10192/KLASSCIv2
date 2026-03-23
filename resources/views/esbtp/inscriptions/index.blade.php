@@ -132,7 +132,8 @@
                             <label for="status" class="form-label">Statut</label>
                             <select class="form-select" id="status" name="status">
                                 <option value="all" {{ request('status', 'active') == 'all' ? 'selected' : '' }}>Toutes</option>
-                                <option value="active" {{ request('status', 'active') == 'active' ? 'selected' : '' }}>Actives</option>
+                                <option value="active" {{ request('status', 'active') == 'active' ? 'selected' : '' }}>Actives (validées)</option>
+                                <option value="non_validee" {{ request('status') == 'non_validee' ? 'selected' : '' }}>Non validées ({{ $stats['non_validees'] ?? 0 }})</option>
                                 <option value="en_attente" {{ request('status') == 'en_attente' ? 'selected' : '' }}>En attente</option>
                                 <option value="annulée" {{ request('status') == 'annulée' ? 'selected' : '' }}>Annulées</option>
                                 <option value="terminée" {{ request('status') == 'terminée' ? 'selected' : '' }}>Terminées</option>

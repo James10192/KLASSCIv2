@@ -573,7 +573,7 @@
                         @endif
                     </div>
                 </div>
-                <a href="{{ route('esbtp.inscriptions.index', ['status' => 'en_attente']) }}" class="btn-acasi warning" style="flex-shrink: 0;">
+                <a href="{{ route('esbtp.inscriptions.index', ['status' => 'non_validee']) }}" class="btn-acasi warning" style="flex-shrink: 0;">
                     <i class="fas fa-check-circle me-1"></i>Consulter
                 </a>
             </div>
@@ -586,7 +586,7 @@
                     <div class="sec-kpi-icon"><i class="fas fa-user-clock"></i></div>
                     <div class="sec-kpi-label">Inscriptions en attente</div>
                     <div class="sec-kpi-value">{{ $pendingInscriptionsCount }}</div>
-                    <a href="{{ route('esbtp.inscriptions.index', ['status' => 'en_attente']) }}" class="sec-kpi-link">
+                    <a href="{{ route('esbtp.inscriptions.index', ['status' => 'non_validee']) }}" class="sec-kpi-link">
                         Valider <i class="fas fa-arrow-right"></i>
                     </a>
                 </div>

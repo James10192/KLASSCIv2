@@ -29,7 +29,7 @@
                     <tr class="{{ $problemeClass }}" data-inscription-id="{{ $inscription->id }}">
                         @can('inscriptions.validate')
                         <td>
-                            @if($inscription->status == 'pending' || $inscription->status == 'en_attente')
+                            @if($inscription->status == 'pending' || $inscription->status == 'en_attente' || ($inscription->status == 'active' && $inscription->workflow_step !== 'etudiant_cree'))
                             <input type="checkbox" class="form-check-input inscription-checkbox"
                                    value="{{ $inscription->id }}"
                                    data-inscription-id="{{ $inscription->id }}">
@@ -90,6 +90,10 @@
                         <td>
                             @if($inscription->status == 'pending' || $inscription->status == 'en_attente')
                                 <span class="badge bg-warning text-dark px-3 py-2">En attente</span>
+                            @elseif($inscription->status == 'active' && $inscription->workflow_step !== 'etudiant_cree')
+                                <span class="badge bg-warning text-dark px-3 py-2" title="Workflow: {{ $inscription->workflow_step ?? 'non défini' }}">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>Non validée
+                                </span>
                             @elseif($inscription->status == 'validated' || $inscription->status == 'active')
                                 <span class="badge bg-success px-3 py-2">Validée</span>
                             @elseif($inscription->status == 'cancelled')

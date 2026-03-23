@@ -569,7 +569,7 @@
                     <div class="cd-alert-title">{{ $pendingInscriptionsCount }} inscription(s) en attente de validation</div>
                     <div class="cd-alert-text">Ces dossiers requierent une verification pour finaliser l'admission.</div>
                 </div>
-                <a href="{{ route('esbtp.inscriptions.index', ['status' => 'en_attente']) }}" class="btn-acasi warning" style="flex-shrink: 0;">
+                <a href="{{ route('esbtp.inscriptions.index', ['status' => 'non_validee']) }}" class="btn-acasi warning" style="flex-shrink: 0;">
                     <i class="fas fa-check-circle me-1"></i>Consulter
                 </a>
             </div>
@@ -597,7 +597,7 @@
                 <div class="cd-kpi-icon"><i class="fas fa-user-clock"></i></div>
                 <div class="cd-kpi-label">Inscriptions en attente</div>
                 <div class="cd-kpi-value" data-kpi="pendingInscriptionsCount">{{ $pendingInscriptionsCount ?? 0 }}</div>
-                <a href="{{ route('esbtp.inscriptions.index', ['status' => 'en_attente']) }}" class="cd-kpi-link">
+                <a href="{{ route('esbtp.inscriptions.index', ['status' => 'non_validee']) }}" class="cd-kpi-link">
                     Valider <i class="fas fa-arrow-right"></i>
                 </a>
             </div>
@@ -725,7 +725,7 @@
                     <div class="cd-card-header">
                         <div class="cd-card-title"><i class="fas fa-user-plus"></i> Inscriptions recentes</div>
                         @if(($pendingInscriptionsCount ?? 0) > 0)
-                            <a href="{{ route('esbtp.inscriptions.index', ['status' => 'en_attente']) }}" class="cd-card-badge cd-card-badge--warning">
+                            <a href="{{ route('esbtp.inscriptions.index', ['status' => 'non_validee']) }}" class="cd-card-badge cd-card-badge--warning">
                                 {{ $pendingInscriptionsCount }} en attente
                             </a>
                         @endif
