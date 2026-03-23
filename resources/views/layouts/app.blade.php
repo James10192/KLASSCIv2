@@ -1881,22 +1881,35 @@
                     @if(auth()->check() && auth()->user() && auth()->user()->hasRole(['teacher', 'enseignant']))
                         <div class="menu-category">Enseignement</div>
 
+                        @can('module.notes_evaluations.access')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.notes.index') }}" class="menu-link {{ Request::routeIs('esbtp.notes.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-clipboard-list"></i></div>
+                                <div class="menu-text">Gestion des notes</div>
+                            </a>
+                        </div>
+                        @endcan
+
+                        @can('view_notes')
                         <div class="menu-item">
                             <a href="{{ route('teacher.grades') }}" class="menu-link {{ Request::routeIs('teacher.grades') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-pen-to-square"></i></div>
                                 <div class="menu-text">Saisie des notes</div>
                             </a>
                         </div>
+                        @endcan
 
                         <div class="menu-category">Présence</div>
 
                         <!-- Émargement enseignant -->
+                        @can('view_attendances')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.attendance.mark') }}" class="menu-link {{ Request::routeIs('esbtp.attendance.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
                                 <div class="menu-text">Faire les émargements</div>
                             </a>
                         </div>
+                        @endcan
                     @endif
 
                     <!-- Messages Section -->
