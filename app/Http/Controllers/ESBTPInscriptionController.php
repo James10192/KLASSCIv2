@@ -2022,20 +2022,18 @@ class ESBTPInscriptionController extends Controller
                     ) {
                         // Vérifications en amont pour éviter les erreurs
 
-                        // 1. Vérifier que le paiement est validé
+                        // 1. Vérifier le paiement — chercher un paiement validé (ne bloque pas la validation)
                         $paiement = ESBTPPaiement::find(
                             $inscription->paiement_validation_id,
                         );
                         if (!$paiement || $paiement->status !== "validé") {
-                            $stats["ignorees"][] = [
-                                "id" => $inscription->id,
-                                "etudiant" => $etudiantNom,
-                                "raison" =>
-                                    'Le paiement associé n\'est pas validé',
-                            ];
-                            $stats["raisons_ignorees"]["paiement_non_valide"]++;
-
-                            continue;
+                            // Chercher un autre paiement validé sur cette inscription
+                            $autrePaiementValide = $inscription->paiements->where("status", "validé")->first();
+                            if ($autrePaiementValide) {
+                                $inscription->update(["paiement_validation_id" => $autrePaiementValide->id]);
+                                $paiement = $autrePaiementValide;
+                            }
+                            // Si aucun paiement validé, on continue quand même la validation (aligné sur valider())
                         }
 
                         // 2. Vérifier la disponibilité de la classe (sauf si force = true)
@@ -2392,13 +2390,92 @@ class ESBTPInscriptionController extends Controller
                         continue;
                     }
 
-                    // Cas 4: Aucun paiement
-                    $stats["ignorees"][] = [
-                        "id" => $inscription->id,
-                        "etudiant" => $etudiantNom,
-                        "raison" => "Aucun paiement associé",
-                    ];
-                    $stats["raisons_ignorees"]["sans_paiement"]++;
+                    // Cas 4: Aucun paiement → valider quand même (aligné sur valider())
+                    // Vérifier la disponibilité de la classe (sauf si force = true)
+                    if (!$forceValidation) {
+                        $classAvailability = $this->workflowService->checkClassAvailability(
+                            $inscription->classe_id,
+                        );
+                        if (!$classAvailability["available"]) {
+                            $stats["ignorees"][] = [
+                                "id" => $inscription->id,
+                                "etudiant" => $etudiantNom,
+                                "raison" =>
+                                    "Classe pleine - " .
+                                    $classAvailability["message"],
+                            ];
+                            $stats["raisons_ignorees"]["classe_pleine"]++;
+
+                            continue;
+                        }
+                    }
+
+                    // Vérifier inscription active existante
+                    $existingInscription = ESBTPInscription::where(
+                        "etudiant_id",
+                        $inscription->etudiant_id,
+                    )
+                        ->where(
+                            "annee_universitaire_id",
+                            $inscription->annee_universitaire_id,
+                        )
+                        ->where("status", "active")
+                        ->where("workflow_step", "etudiant_cree")
+                        ->where("id", "!=", $inscription->id)
+                        ->first();
+
+                    if ($existingInscription) {
+                        $stats["ignorees"][] = [
+                            "id" => $inscription->id,
+                            "etudiant" => $etudiantNom,
+                            "raison" =>
+                                'L\'étudiant a déjà une inscription active pour cette année',
+                        ];
+                        $stats["raisons_ignorees"][
+                            "inscription_existante"
+                        ]++;
+
+                        continue;
+                    }
+
+                    $result = $this->workflowService->convertProspectToStudent(
+                        $inscription,
+                        "Validation groupée (sans paiement)",
+                    );
+
+                    if ($result["success"]) {
+                        $stats["validees_direct"]++;
+
+                        if (
+                            $inscription->etudiant &&
+                            $inscription->etudiant->user
+                        ) {
+                            $notificationService = app(
+                                \App\Services\NotificationService::class,
+                            );
+                            $notificationService->createNotification(
+                                $inscription->etudiant->user,
+                                "Inscription validée",
+                                "Votre inscription a été validée avec succès. Vous pouvez maintenant accéder à votre espace étudiant.",
+                                "success",
+                                route(
+                                    "esbtp.inscriptions.show",
+                                    $inscription->id,
+                                ),
+                                auth()->user(),
+                            );
+                        }
+
+                        $this->desactiverRappelsInscription(
+                            $inscription->id,
+                        );
+                    } else {
+                        $stats["ignorees"][] = [
+                            "id" => $id,
+                            "etudiant" => $etudiantNom,
+                            "raison" => $result["message"],
+                        ];
+                    }
                 } catch (\Exception $e) {
                     Log::error(
                         "Erreur validation inscription bulk #" .
