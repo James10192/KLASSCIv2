@@ -54,21 +54,20 @@ class InscriptionWorkflowService
                 }
             }
 
-            // Vérifier qu'un paiement est associé
-            if (!$inscription->paiement_validation_id) {
-                return [
-                    'success' => false,
-                    'message' => 'Aucun paiement associé à cette inscription.'
-                ];
-            }
-
-            // Vérifier que le paiement est validé
+            // Vérifier qu'au moins un paiement validé existe sur cette inscription
             $paiement = ESBTPPaiement::find($inscription->paiement_validation_id);
             if (!$paiement || $paiement->status !== 'validé') {
-                return [
-                    'success' => false,
-                    'message' => 'Le paiement associé n\'est pas validé.'
-                ];
+                // Chercher un autre paiement validé sur cette inscription
+                $autrePaiementValide = $inscription->paiements()->where('status', 'validé')->first();
+                if ($autrePaiementValide) {
+                    $inscription->update(['paiement_validation_id' => $autrePaiementValide->id]);
+                    $paiement = $autrePaiementValide;
+                } else {
+                    return [
+                        'success' => false,
+                        'message' => 'Aucun paiement validé trouvé sur cette inscription.'
+                    ];
+                }
             }
 
             // Vérifier la disponibilité de la classe
@@ -81,10 +80,11 @@ class InscriptionWorkflowService
                 ];
             }
 
-            // Vérifier que l'étudiant n'a pas déjà une inscription active pour cette année
+            // Vérifier que l'étudiant n'a pas déjà une inscription active validée pour cette année
             $existingInscription = ESBTPInscription::where('etudiant_id', $inscription->etudiant_id)
                 ->where('annee_universitaire_id', $inscription->annee_universitaire_id)
                 ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree')
                 ->where('id', '!=', $inscription->id)
                 ->first();
 
@@ -99,7 +99,7 @@ class InscriptionWorkflowService
                 'success' => true,
                 'message' => 'Inscription prête pour validation.',
                 'data' => [
-                    'paiement' => $paiement,
+                    'paiement' => $paiement ?? null,
                     'classe' => $inscription->classe
                 ]
             ];

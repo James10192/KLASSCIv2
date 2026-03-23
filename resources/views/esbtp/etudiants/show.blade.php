@@ -1664,6 +1664,11 @@
         : null;
     // Vrai "actif" = statut actif ET inscrit pour l'année courante
     $estInscritCetteAnnee = $inscCourante !== null;
+    // Inscription existe mais pas entièrement validée (workflow incomplet)
+    $inscNonValidee = $inscCourante && (
+        in_array($inscCourante->status, ['pending', 'en_attente'])
+        || ($inscCourante->status === 'active' && $inscCourante->workflow_step !== 'etudiant_cree')
+    );
 
     // Defaults LMD (safety fallback)
     $isLMD = $isLMD ?? false;
@@ -1739,6 +1744,11 @@
                 @else
                     <span class="hero-pill" style="background:rgba(255,255,255,0.15); color:#fff; border-color:rgba(255,255,255,0.4);">
                         <i class="fas fa-exclamation-circle" style="font-size:.7rem; color:#fbbf24;"></i> Non réinscrit {{ $anneeCourante ? $anneeCourante->name : '' }}
+                    </span>
+                @endif
+                @if($inscNonValidee)
+                    <span class="hero-pill" style="background:rgba(245,158,11,.3); color:#fcd34d; border-color:rgba(245,158,11,.5);">
+                        <i class="fas fa-exclamation-triangle" style="font-size:.6rem"></i> Inscription non validée
                     </span>
                 @endif
                 @if($etudiant->statut === 'abandon')
@@ -1958,6 +1968,71 @@
                style="display:inline-flex; align-items:center; gap:6px; margin-top:10px; padding:6px 14px; background:#e65100; color:#fff; border-radius:6px; font-size:.82rem; font-weight:600; text-decoration:none;">
                 <i class="fas fa-redo"></i> Réinscrire pour {{ $anneeCourante->name }}
             </a>
+        </div>
+    </div>
+    @endif
+
+    {{-- Bannière : inscription non validée (workflow incomplet) --}}
+    @if($inscNonValidee)
+    @php
+        $wfStep = $inscCourante->workflow_step ?? 'non défini';
+        $wfStatus = $inscCourante->status;
+        $wfStepLabels = [
+            'prospect' => 'Prospect',
+            'documents_complets' => 'Documents complets',
+            'en_validation' => 'En validation',
+            'etudiant_cree' => 'Étudiant créé',
+        ];
+        $wfStatusLabels = [
+            'pending' => 'En attente',
+            'en_attente' => 'En attente',
+            'active' => 'Active',
+            'validated' => 'Validée',
+            'cancelled' => 'Annulée',
+        ];
+    @endphp
+    <div style="
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border: 1.5px solid #f59e0b;
+        border-left: 5px solid #d97706;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+    ">
+        <div style="flex-shrink:0; width:36px; height:36px; background:#d97706; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+            <i class="fas fa-exclamation-triangle" style="color:#fff; font-size:.9rem;"></i>
+        </div>
+        <div style="flex:1;">
+            <div style="font-weight:700; color:#92400e; font-size:.95rem; margin-bottom:4px;">
+                L'inscription de {{ $anneeCourante->name }} n'est pas validée
+            </div>
+            <div style="color:#78350f; font-size:.85rem; line-height:1.5; margin-bottom:8px;">
+                Cette inscription existe mais le processus de validation n'est pas terminé. L'étudiant n'a pas encore accès à toutes les fonctionnalités.
+            </div>
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
+                <span style="display:inline-flex; align-items:center; gap:5px; padding:4px 10px; background:rgba(146,64,14,.1); border:1px solid rgba(146,64,14,.2); border-radius:6px; font-size:.78rem; color:#92400e; font-weight:600;">
+                    <i class="fas fa-tag" style="font-size:.65rem;"></i> Statut : {{ $wfStatusLabels[$wfStatus] ?? ucfirst($wfStatus) }}
+                </span>
+                <span style="display:inline-flex; align-items:center; gap:5px; padding:4px 10px; background:rgba(146,64,14,.1); border:1px solid rgba(146,64,14,.2); border-radius:6px; font-size:.78rem; color:#92400e; font-weight:600;">
+                    <i class="fas fa-tasks" style="font-size:.65rem;"></i> Étape : {{ $wfStepLabels[$wfStep] ?? ucfirst($wfStep) }}
+                </span>
+            </div>
+            @can('inscriptions.validate')
+            <button type="button" class="valider-inscription-btn"
+                    data-inscription-id="{{ $inscCourante->id }}"
+                    style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background:linear-gradient(135deg, #059669, #10b981); color:#fff; border:none; border-radius:8px; font-size:.84rem; font-weight:600; cursor:pointer; box-shadow:0 2px 8px rgba(5,150,105,.3);">
+                <i class="fas fa-check-circle"></i> Valider l'inscription
+            </button>
+            <form id="valider-inscription-form-{{ $inscCourante->id }}"
+                  action="{{ route('esbtp.inscriptions.valider', $inscCourante->id) }}"
+                  method="POST" style="display:none;">
+                @csrf
+                @method('PUT')
+            </form>
+            @endcan
         </div>
     </div>
     @endif
@@ -4719,6 +4794,16 @@ function switchLmdSem(sem) {
         tab.classList.add('active');
     }
 }
+
+// Validation inscription depuis fiche étudiant
+document.querySelectorAll('.valider-inscription-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var id = this.getAttribute('data-inscription-id');
+        if (confirm('Êtes-vous sûr de vouloir valider cette inscription ?')) {
+            document.getElementById('valider-inscription-form-' + id).submit();
+        }
+    });
+});
 
 // Upload photo étudiant via AJAX
 function uploadEtudiantPhoto(input) {
