@@ -869,7 +869,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         });
 
         // Routes accessibles pour les secrétaires, super-admins et coordinateurs
-        Route::middleware(['auth', 'role:secretaire|superAdmin|coordinateur', 'paywall'])->group(function () {
+        Route::middleware(['auth', 'role:secretaire|superAdmin|coordinateur|enseignant|teacher', 'paywall'])->group(function () {
             // Nouvelle route pour la vue fusionnée des étudiants et inscriptions
             Route::get('/etudiants-inscriptions', [ESBTPEtudiantController::class, 'indexFusionne'])
                 ->name('etudiants-inscriptions.index')

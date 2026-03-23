@@ -363,7 +363,9 @@ try {
     $enseignantPermissions = [
         'view_dashboard',
         'view_own_students',
+        'view_classes',
         'view_notes', 'create_notes', 'edit_notes', 'view_own_notes', 'manage_own_notes',
+        'view_grades', 'create_grade', 'edit_grades',
         'view_evaluations', 'create_evaluations', 'edit_evaluations',
         'view_bulletins',
         'view_attendances', 'create_attendance', 'create_attendances', 'edit_attendances', 'view_own_attendances', 'view_own_attendance', 'sign_attendance',

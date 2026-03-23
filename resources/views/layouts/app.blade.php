@@ -1733,8 +1733,8 @@
 
                     @endif
 
-                    <!-- Grades & Reports Section -->
-                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('module.notes_evaluations.access')))
+                    <!-- Grades & Reports Section (pas pour enseignant — ils ont leur propre section) -->
+                    @if(auth()->check() && auth()->user() && !auth()->user()->hasRole(['teacher', 'enseignant']) && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('module.notes_evaluations.access')))
                         <div class="menu-category">Notes & Rapports</div>
 
                         @can('module.notes_evaluations.access')
@@ -1840,8 +1840,8 @@
                         </div>-->
                     @endif
 
-                    <!-- Attendance Section -->
-                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('module.presences.access')))
+                    <!-- Attendance Section (pas pour enseignant — ils ont émargement dans leur propre section) -->
+                    @if(auth()->check() && auth()->user() && !auth()->user()->hasRole(['teacher', 'enseignant']) && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('module.presences.access')))
                         <div class="menu-category">Présence & Absences</div>
 
                         @can('module.presences.access')
@@ -1881,6 +1881,15 @@
                     @if(auth()->check() && auth()->user() && auth()->user()->hasRole(['teacher', 'enseignant']))
                         <div class="menu-category">Enseignement</div>
 
+                        @can('view_classes')
+                        <div class="menu-item">
+                            <a href="{{ route('classes.index') }}" class="menu-link {{ Request::routeIs('classes.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-chalkboard"></i></div>
+                                <div class="menu-text">Mes classes</div>
+                            </a>
+                        </div>
+                        @endcan
+
                         @can('module.notes_evaluations.access')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.notes.index') }}" class="menu-link {{ Request::routeIs('esbtp.notes.*') ? 'active' : '' }}">
@@ -1899,9 +1908,6 @@
                         </div>
                         @endcan
 
-                        <div class="menu-category">Présence</div>
-
-                        <!-- Émargement enseignant -->
                         @can('view_attendances')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.attendance.mark') }}" class="menu-link {{ Request::routeIs('esbtp.attendance.*') ? 'active' : '' }}">
