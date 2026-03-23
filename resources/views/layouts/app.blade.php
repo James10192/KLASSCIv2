@@ -1883,7 +1883,7 @@
 
                         @can('view_classes')
                         <div class="menu-item">
-                            <a href="{{ route('classes.index') }}" class="menu-link {{ Request::routeIs('classes.*') ? 'active' : '' }}">
+                            <a href="{{ route('esbtp.classes.index') }}" class="menu-link {{ Request::routeIs('esbtp.classes.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-chalkboard"></i></div>
                                 <div class="menu-text">Mes classes</div>
                             </a>
