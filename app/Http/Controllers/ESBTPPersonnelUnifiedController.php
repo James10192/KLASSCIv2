@@ -8,10 +8,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use App\Services\UserService;
 use Spatie\Permission\Models\Role;
 
 class ESBTPPersonnelUnifiedController extends Controller
 {
+    protected $userService;
+
+    public function __construct(UserService $userService)
+    {
+        $this->userService = $userService;
+    }
     /**
      * Display a listing of all personnel with sliders.
      */
@@ -284,7 +291,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => 'nullable|string|min:8|confirmed',
             'telephone' => 'nullable|string|max:20',
             'type' => 'required|in:coordinateur,enseignant,secretaire,comptable,caissier',
         ];
@@ -306,21 +313,34 @@ class ESBTPPersonnelUnifiedController extends Controller
         try {
             DB::beginTransaction();
 
-            $user = User::create([
+            // Utiliser UserService pour username auto + mot de passe par défaut
+            $defaultPassword = $this->userService->generateDefaultPassword();
+            $user = $this->userService->createUserWithAutoCredentials([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
-                'telephone' => $validated['telephone'] ?? null,
+                'phone' => $validated['telephone'] ?? null,
+            ], $validated['type']);
+
+            // Mettre à jour les champs spécifiques au type
+            $user->update(array_filter([
                 'specialite' => $validated['specialite'] ?? null,
                 'service' => $validated['service'] ?? null,
                 'department' => $validated['department'] ?? null,
-                'is_active' => true,
                 'email_verified_at' => now(),
-            ]);
+            ]));
+
+            // Si un mot de passe personnalisé est fourni, l'utiliser à la place
+            if (!empty($validated['password'])) {
+                $user->update([
+                    'password' => Hash::make($validated['password']),
+                    'must_change_password' => true,
+                ]);
+                $defaultPassword = $validated['password'];
+            }
 
             // Assigner le rôle approprié
             $user->assignRole($validated['type']);
-            
+
             // Si c'est un enseignant, créer aussi dans la table ESBTPTeacher
             if ($type === 'enseignant') {
                 ESBTPTeacher::create([
@@ -336,7 +356,12 @@ class ESBTPPersonnelUnifiedController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => ucfirst($validated['type']) . ' créé avec succès.',
-                'data' => $user
+                'data' => $user,
+                'credentials' => [
+                    'username' => $user->username,
+                    'password' => $defaultPassword,
+                    'must_change_password' => true,
+                ]
             ]);
 
         } catch (\Exception $e) {

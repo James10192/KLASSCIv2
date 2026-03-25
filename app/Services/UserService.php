@@ -45,6 +45,15 @@ class UserService
     }
 
     /**
+     * Génère un username unique pour un caissier
+     */
+    public function generateCaissierUsername(string $prenom, string $nom): string
+    {
+        $baseUsername = $this->createBaseUsername('caisse', $prenom, $nom);
+        return $this->ensureUniqueUsername($baseUsername);
+    }
+
+    /**
      * Génère le mot de passe générique de l'année courante
      */
     public function generateDefaultPassword(): string
@@ -73,6 +82,9 @@ class UserService
                 break;
             case 'comptable':
                 $username = $this->generateComptableUsername($nameParts['prenom'], $nameParts['nom']);
+                break;
+            case 'caissier':
+                $username = $this->generateCaissierUsername($nameParts['prenom'], $nameParts['nom']);
                 break;
             default:
                 throw new \InvalidArgumentException("Type de rôle non supporté: {$roleType}");
