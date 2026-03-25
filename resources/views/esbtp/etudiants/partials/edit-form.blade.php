@@ -363,4 +363,11 @@
         </div>
     </div>
 </div>
+<script>
+// Déplacer le modal vers body pour éviter le stacking context (CSS animation/transform du parent)
+document.addEventListener('DOMContentLoaded', function() {
+    var modal = document.getElementById('parentSearchBootstrapModal');
+    if (modal) document.body.appendChild(modal);
+});
+</script>
 @endif
