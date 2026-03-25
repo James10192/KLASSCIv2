@@ -204,40 +204,63 @@
                         </div>
 
                         {{-- Analyse académique (chargée en AJAX) --}}
-                        <div x-show="analyseLoading" style="text-align:center; padding:16px 0; display:none;">
-                            <div class="spinner" style="width:20px; height:20px; border-width:2px; display:inline-block;"></div>
-                            <span style="font-size:.82rem; color:#64748b; margin-left:8px;">Analyse académique en cours...</span>
+                        <div x-show="analyseLoading" style="text-align:center; padding:20px 0; display:none;">
+                            <div class="spinner" style="width:22px; height:22px; border-width:2px; display:inline-block;"></div>
+                            <span style="font-size:.82rem; color:#64748b; margin-left:8px;">Analyse du dossier en cours...</span>
                         </div>
 
-                        <div x-show="analyseData && analyseData.has_analysis" style="display:none; margin-top:12px;">
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                                {{-- Décision --}}
-                                <div style="padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0;"
-                                     :style="analyseData?.decision === 'passage' ? 'background:rgba(16,185,129,.06); border-color:rgba(16,185,129,.3);' :
-                                             analyseData?.decision === 'redoublement' ? 'background:rgba(220,38,38,.06); border-color:rgba(220,38,38,.3);' :
-                                             'background:rgba(4,83,203,.06); border-color:rgba(4,83,203,.3);'">
-                                    <div style="font-size:.72rem; font-weight:600; color:#64748b; text-transform:uppercase; margin-bottom:4px;">Décision</div>
-                                    <div style="font-size:.92rem; font-weight:700;"
-                                         :style="analyseData?.decision === 'passage' ? 'color:#059669;' :
-                                                 analyseData?.decision === 'redoublement' ? 'color:#dc2626;' : 'color:#0453cb;'"
-                                         x-text="analyseData?.decision === 'passage' ? '✅ Passage' :
-                                                 analyseData?.decision === 'redoublement' ? '⚠️ Redoublement' : '🔄 Rattrapage'">
+                        <div x-show="analyseData && analyseData.has_analysis" style="display:none; margin-top:14px;">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                                {{-- Décision académique --}}
+                                <div style="padding:16px; border-radius:10px; position:relative; overflow:hidden;"
+                                     :style="analyseData?.decision === 'passage' ? 'background:linear-gradient(135deg, rgba(16,185,129,.08), rgba(16,185,129,.03)); border:1px solid rgba(16,185,129,.25);' :
+                                             analyseData?.decision === 'redoublement' ? 'background:linear-gradient(135deg, rgba(220,38,38,.08), rgba(220,38,38,.03)); border:1px solid rgba(220,38,38,.25);' :
+                                             'background:linear-gradient(135deg, rgba(4,83,203,.08), rgba(4,83,203,.03)); border:1px solid rgba(4,83,203,.25);'">
+                                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                                        <div style="width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:.8rem;"
+                                             :style="analyseData?.decision === 'passage' ? 'background:#10b981; color:#fff;' :
+                                                     analyseData?.decision === 'redoublement' ? 'background:#dc2626; color:#fff;' : 'background:#0453cb; color:#fff;'">
+                                            <i class="fas" :class="analyseData?.decision === 'passage' ? 'fa-arrow-up' : analyseData?.decision === 'redoublement' ? 'fa-redo' : 'fa-sync-alt'"></i>
+                                        </div>
+                                        <div>
+                                            <div style="font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#64748b;">Decision</div>
+                                            <div style="font-size:.95rem; font-weight:800;"
+                                                 :style="analyseData?.decision === 'passage' ? 'color:#059669;' : analyseData?.decision === 'redoublement' ? 'color:#dc2626;' : 'color:#0453cb;'"
+                                                 x-text="analyseData?.decision === 'passage' ? 'Passage' : analyseData?.decision === 'redoublement' ? 'Redoublement' : 'Rattrapage'"></div>
+                                        </div>
                                     </div>
-                                    <div style="font-size:.75rem; color:#64748b; margin-top:2px;">
-                                        Moyenne : <strong x-text="analyseData?.moyenne_generale ? parseFloat(analyseData.moyenne_generale).toFixed(2) + '/20' : 'N/A'"></strong>
+                                    <div style="display:flex; align-items:center; gap:6px; padding:6px 10px; background:rgba(255,255,255,.6); border-radius:6px; width:fit-content;">
+                                        <i class="fas fa-chart-line" style="font-size:.65rem; color:#64748b;"></i>
+                                        <span style="font-size:.78rem; color:#475569;">Moyenne : </span>
+                                        <strong style="font-size:.82rem; color:#1e293b;" x-text="analyseData?.moyenne_generale ? parseFloat(analyseData.moyenne_generale).toFixed(2) + '/20' : 'N/A'"></strong>
                                     </div>
                                 </div>
 
-                                {{-- Relicat --}}
-                                <div style="padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0;"
-                                     :style="analyseData?.solde_status === 'solde' ? 'background:rgba(16,185,129,.06); border-color:rgba(16,185,129,.3);' : 'background:rgba(220,38,38,.06); border-color:rgba(220,38,38,.3);'">
-                                    <div style="font-size:.72rem; font-weight:600; color:#64748b; text-transform:uppercase; margin-bottom:4px;">Situation financière</div>
-                                    <div style="font-size:.92rem; font-weight:700;"
-                                         :style="analyseData?.solde_status === 'solde' ? 'color:#059669;' : 'color:#dc2626;'"
-                                         x-text="analyseData?.solde_status === 'solde' ? '✅ Soldé' : '⚠️ Impayé : ' + formatFCFA(analyseData?.solde_restant || 0)">
+                                {{-- Situation financière --}}
+                                <div style="padding:16px; border-radius:10px; position:relative; overflow:hidden;"
+                                     :style="analyseData?.solde_status === 'solde' ? 'background:linear-gradient(135deg, rgba(16,185,129,.08), rgba(16,185,129,.03)); border:1px solid rgba(16,185,129,.25);' : 'background:linear-gradient(135deg, rgba(220,38,38,.08), rgba(220,38,38,.03)); border:1px solid rgba(220,38,38,.25);'">
+                                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                                        <div style="width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:.8rem;"
+                                             :style="analyseData?.solde_status === 'solde' ? 'background:#10b981; color:#fff;' : 'background:#dc2626; color:#fff;'">
+                                            <i class="fas" :class="analyseData?.solde_status === 'solde' ? 'fa-check-circle' : 'fa-exclamation-circle'"></i>
+                                        </div>
+                                        <div>
+                                            <div style="font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#64748b;">Finances</div>
+                                            <div style="font-size:.95rem; font-weight:800;"
+                                                 :style="analyseData?.solde_status === 'solde' ? 'color:#059669;' : 'color:#dc2626;'"
+                                                 x-text="analyseData?.solde_status === 'solde' ? 'Soldé' : 'Impayé'"></div>
+                                        </div>
                                     </div>
-                                    <div style="font-size:.75rem; color:#64748b; margin-top:2px;">
-                                        Classe actuelle : <strong x-text="analyseData?.classe_actuelle || '—'"></strong>
+                                    <div style="display:flex; flex-direction:column; gap:4px;">
+                                        <div x-show="analyseData?.solde_status !== 'solde'" style="display:flex; align-items:center; gap:6px; padding:6px 10px; background:rgba(220,38,38,.08); border-radius:6px; width:fit-content;">
+                                            <i class="fas fa-coins" style="font-size:.65rem; color:#dc2626;"></i>
+                                            <span style="font-size:.78rem; font-weight:700; color:#dc2626;" x-text="'Relicat : ' + formatFCFA(analyseData?.solde_restant || 0)"></span>
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:6px; padding:6px 10px; background:rgba(255,255,255,.6); border-radius:6px; width:fit-content;">
+                                            <i class="fas fa-chalkboard" style="font-size:.65rem; color:#64748b;"></i>
+                                            <span style="font-size:.78rem; color:#475569;">Classe : </span>
+                                            <strong style="font-size:.82rem; color:#1e293b;" x-text="analyseData?.classe_actuelle || '—'"></strong>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
