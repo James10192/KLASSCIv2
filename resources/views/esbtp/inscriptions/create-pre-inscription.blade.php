@@ -209,7 +209,7 @@
                             <span style="font-size:.82rem; color:#64748b; margin-left:8px;">Analyse du dossier en cours...</span>
                         </div>
 
-                        <div x-show="analyseData && analyseData.has_analysis" style="display:none; margin-top:14px;">
+                        <div x-show="analyseData && analyseData.has_analysis" style="display:none; margin-top:14px; padding:4px 2px;">
                             <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
                                 {{-- Décision académique --}}
                                 <div style="padding:16px; border-radius:10px; position:relative; overflow:hidden;"
