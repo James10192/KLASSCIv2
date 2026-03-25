@@ -3106,18 +3106,22 @@ class ESBTPInscriptionController extends Controller
                 $amount = min($amount, $maxAmount); // Ne pas dépasser le montant dû
                 if ($amount <= 0) continue;
 
+                // Récupérer le nom de la catégorie pour le motif
+                $categoryName = \App\Models\ESBTPFraisCategory::find($categoryId)?->name ?? 'Paiement';
+
                 $paiement = ESBTPPaiement::create([
                     'inscription_id' => $inscription->id,
                     'etudiant_id' => $etudiant->id,
                     'frais_category_id' => $categoryId,
                     'montant' => $amount,
+                    'motif' => $categoryName,
                     'date_paiement' => now(),
                     'mode_paiement' => $request->mode_paiement ?? 'especes',
                     'reference_paiement' => $request->reference_paiement,
                     'type_paiement' => 'inscription',
                     'status' => 'validé',
                     'annee_universitaire_id' => $anneeCourante->id,
-                    'validated_by' => Auth::id(),
+                    'validateur_id' => Auth::id(),
                     'created_by' => Auth::id(),
                 ]);
 
