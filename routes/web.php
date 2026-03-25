@@ -872,6 +872,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::middleware(['auth', 'role:caissier|superAdmin|secretaire', 'paywall'])->group(function () {
             Route::get('/inscriptions/pre-inscription', [ESBTPInscriptionController::class, 'createPreInscription'])->name('inscriptions.pre-inscription');
             Route::post('/inscriptions/pre-inscription', [ESBTPInscriptionController::class, 'storePreInscription'])->name('inscriptions.store-pre-inscription');
+            Route::get('/inscriptions/search-etudiants', [ESBTPInscriptionController::class, 'searchEtudiants'])->name('inscriptions.search-etudiants');
         });
 
         // Routes accessibles pour les secrétaires, super-admins, coordinateurs et caissier (consultation)

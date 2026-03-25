@@ -2997,6 +2997,44 @@ class ESBTPInscriptionController extends Controller
     }
 
     /**
+     * Recherche d'étudiants existants pour pré-inscription (AJAX)
+     */
+    public function searchEtudiants(Request $request)
+    {
+        $q = trim($request->get('q', ''));
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $etudiants = \App\Models\ESBTPEtudiant::where(function ($query) use ($q) {
+                $query->where('nom', 'like', "%{$q}%")
+                      ->orWhere('prenoms', 'like', "%{$q}%")
+                      ->orWhere('matricule', 'like', "%{$q}%")
+                      ->orWhere('telephone', 'like', "%{$q}%");
+            })
+            ->where('matricule', 'NOT LIKE', 'PRE-%')
+            ->with(['inscriptions' => function ($query) {
+                $query->latest()->with('classe')->take(1);
+            }])
+            ->orderBy('nom')
+            ->take(10)
+            ->get()
+            ->map(function ($e) {
+                $derniereInscription = $e->inscriptions->first();
+                return [
+                    'id' => $e->id,
+                    'nom' => $e->nom,
+                    'prenoms' => $e->prenoms,
+                    'matricule' => $e->matricule,
+                    'telephone' => $e->telephone,
+                    'derniere_classe' => $derniereInscription?->classe?->name ?? '—',
+                ];
+            });
+
+        return response()->json($etudiants);
+    }
+
+    /**
      * Générer un matricule unique pour pré-inscription
      */
     private function generatePreInscriptionMatricule(): string
@@ -3015,8 +3053,9 @@ class ESBTPInscriptionController extends Controller
     public function storePreInscription(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'nom' => 'required|string|max:100',
-            'prenoms' => 'required|string|max:100',
+            'etudiant_existant_id' => 'nullable|integer|exists:esbtp_etudiants,id',
+            'nom' => 'required_without:etudiant_existant_id|string|max:100',
+            'prenoms' => 'required_without:etudiant_existant_id|string|max:100',
             'classe_id' => 'required|exists:esbtp_classes,id',
             'telephone' => 'nullable|string|max:20',
             'frais' => 'nullable|array',
@@ -3044,15 +3083,21 @@ class ESBTPInscriptionController extends Controller
             $classe = ESBTPClasse::findOrFail($request->classe_id);
             $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->firstOrFail();
 
-            // 1. Créer l'étudiant avec infos minimales
-            $etudiant = \App\Models\ESBTPEtudiant::create([
-                'nom' => $request->nom,
-                'prenoms' => $request->prenoms,
-                'telephone' => $request->telephone,
-                'statut' => 'inactif',
-                'matricule' => $this->generatePreInscriptionMatricule(),
-                'created_by' => Auth::id(),
-            ]);
+            // 1. Étudiant existant (réinscription) ou nouveau (première inscription)
+            $isReinscription = !empty($request->etudiant_existant_id);
+
+            if ($isReinscription) {
+                $etudiant = \App\Models\ESBTPEtudiant::findOrFail($request->etudiant_existant_id);
+            } else {
+                $etudiant = \App\Models\ESBTPEtudiant::create([
+                    'nom' => $request->nom,
+                    'prenoms' => $request->prenoms,
+                    'telephone' => $request->telephone,
+                    'statut' => 'inactif',
+                    'matricule' => $this->generatePreInscriptionMatricule(),
+                    'created_by' => Auth::id(),
+                ]);
+            }
 
             // 2. Créer l'inscription en mode prospect
             $inscription = ESBTPInscription::create([
@@ -3064,7 +3109,8 @@ class ESBTPInscriptionController extends Controller
                 'date_inscription' => now()->format('Y-m-d'),
                 'status' => 'en_attente',
                 'workflow_step' => 'prospect',
-                'type_inscription' => 'première_inscription',
+                'type_inscription' => $isReinscription ? 'réinscription' : 'première_inscription',
+                'affectation_status' => $isReinscription ? 'affecté' : null,
                 'montant_scolarite' => 0,
                 'frais_inscription' => 0,
                 'created_by' => Auth::id(),

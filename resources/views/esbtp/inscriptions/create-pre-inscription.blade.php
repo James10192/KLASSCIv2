@@ -163,28 +163,76 @@
                 <div class="pi-body">
                     <div class="pi-info">
                         <i class="fas fa-info-circle"></i>
-                        <div>Seuls le nom, les prénoms et la classe sont obligatoires. L'administration complètera les autres informations ultérieurement.</div>
+                        <div>Recherchez un étudiant existant (réinscription) ou saisissez les informations pour un nouvel étudiant.</div>
                     </div>
 
+                    {{-- Recherche étudiant existant --}}
                     <div class="pi-section">
-                        <div class="pi-section-title"><i class="fas fa-user"></i> Identité de l'étudiant</div>
+                        <div class="pi-section-title"><i class="fas fa-search"></i> Étudiant existant (réinscription)</div>
+                        <div class="pi-row full" x-show="!etudiantExistant">
+                            <div class="pi-field" style="position:relative;">
+                                <label>Rechercher par nom, prénom ou matricule</label>
+                                <input type="text" x-model="searchQuery" @input.debounce.300ms="searchEtudiants()" placeholder="Tapez au moins 2 caractères...">
+                                {{-- Résultats de recherche --}}
+                                <div x-show="searchResults.length > 0" style="position:absolute; top:100%; left:0; right:0; z-index:10; background:#fff; border:1px solid #d1d5db; border-radius:0 0 8px 8px; box-shadow:0 4px 12px rgba(0,0,0,.1); max-height:200px; overflow-y:auto;">
+                                    <template x-for="r in searchResults" :key="r.id">
+                                        <div @click="selectEtudiant(r)" style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; gap:10px; transition:background .15s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#fff'">
+                                            <div style="width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg,#0453cb,#5e91de); color:#fff; display:flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:700; flex-shrink:0;" x-text="(r.nom[0] || '') + (r.prenoms[0] || '')"></div>
+                                            <div style="flex:1; min-width:0;">
+                                                <div style="font-weight:600; font-size:.85rem; color:#1e293b;" x-text="r.nom + ' ' + r.prenoms"></div>
+                                                <div style="font-size:.75rem; color:#64748b;" x-text="r.matricule + ' — ' + r.derniere_classe"></div>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Étudiant sélectionné --}}
+                        <div x-show="etudiantExistant" style="display:none;">
+                            <div style="display:flex; align-items:center; gap:14px; padding:14px 16px; background:rgba(16,185,129,.06); border:1px solid rgba(16,185,129,.2); border-radius:10px;">
+                                <div style="width:40px; height:40px; border-radius:50%; background:#10b981; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.85rem;" x-text="etudiantExistant ? (etudiantExistant.nom[0] + etudiantExistant.prenoms[0]) : ''"></div>
+                                <div style="flex:1;">
+                                    <div style="font-weight:700; color:#1e293b; font-size:.92rem;" x-text="etudiantExistant ? etudiantExistant.nom + ' ' + etudiantExistant.prenoms : ''"></div>
+                                    <div style="font-size:.78rem; color:#64748b;" x-text="etudiantExistant ? 'Matricule: ' + etudiantExistant.matricule + ' — Tél: ' + (etudiantExistant.telephone || '—') : ''"></div>
+                                </div>
+                                <button type="button" @click="clearEtudiant()" style="padding:6px 12px; background:#fff; border:1px solid #d1d5db; border-radius:6px; font-size:.78rem; color:#64748b; cursor:pointer;">
+                                    <i class="fas fa-times"></i> Changer
+                                </button>
+                            </div>
+                            <input type="hidden" name="etudiant_existant_id" :value="etudiantExistant?.id">
+                        </div>
+                    </div>
+
+                    {{-- Infos nouvel étudiant (masquées si existant sélectionné) --}}
+                    <div class="pi-section" x-show="!etudiantExistant">
+                        <div style="text-align:center; padding:8px 0; margin-bottom:12px; color:#94a3b8; font-size:.78rem; font-weight:600;">
+                            — OU — Nouvel étudiant
+                        </div>
                         <div class="pi-row">
                             <div class="pi-field">
                                 <label>Nom <span class="required">*</span></label>
-                                <input type="text" name="nom" x-model="nom" required placeholder="Ex: KOUASSI">
+                                <input type="text" name="nom" x-model="nom" placeholder="Ex: KOUASSI">
                                 <div class="field-error" x-show="errors.nom" x-text="errors.nom" style="display:none;"></div>
                             </div>
                             <div class="pi-field">
                                 <label>Prénoms <span class="required">*</span></label>
-                                <input type="text" name="prenoms" x-model="prenoms" required placeholder="Ex: Jean-Marc">
+                                <input type="text" name="prenoms" x-model="prenoms" placeholder="Ex: Jean-Marc">
                                 <div class="field-error" x-show="errors.prenoms" x-text="errors.prenoms" style="display:none;"></div>
                             </div>
                         </div>
-                        <div class="pi-row">
+                        <div class="pi-row full">
                             <div class="pi-field">
                                 <label>Téléphone</label>
                                 <input type="text" name="telephone" x-model="telephone" placeholder="Ex: 0708091011">
                             </div>
+                        </div>
+                    </div>
+
+                    {{-- Classe (toujours visible) --}}
+                    <div class="pi-section">
+                        <div class="pi-section-title"><i class="fas fa-graduation-cap"></i> Classe</div>
+                        <div class="pi-row full">
                             <div class="pi-field">
                                 <label>Classe <span class="required">*</span></label>
                                 <select name="classe_id" x-model="classe_id" required>
@@ -462,6 +510,9 @@ function preInscription() {
         prenoms: '{{ old("prenoms", "") }}',
         telephone: '{{ old("telephone", "") }}',
         classe_id: '{{ old("classe_id", "") }}',
+        searchQuery: '',
+        searchResults: [],
+        etudiantExistant: null,
         errors: {},
         loadingFrais: false,
         frais: [],
@@ -501,10 +552,38 @@ function preInscription() {
             return parseFloat(f._selectedAmount) || 0;
         },
 
+        searchEtudiants() {
+            if (this.searchQuery.length < 2) { this.searchResults = []; return; }
+            fetch(`{{ route('esbtp.inscriptions.search-etudiants') }}?q=${encodeURIComponent(this.searchQuery)}`, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(data => { this.searchResults = data; })
+            .catch(() => { this.searchResults = []; });
+        },
+
+        selectEtudiant(etudiant) {
+            this.etudiantExistant = etudiant;
+            this.nom = etudiant.nom;
+            this.prenoms = etudiant.prenoms;
+            this.telephone = etudiant.telephone || '';
+            this.searchQuery = '';
+            this.searchResults = [];
+        },
+
+        clearEtudiant() {
+            this.etudiantExistant = null;
+            this.nom = '';
+            this.prenoms = '';
+            this.telephone = '';
+        },
+
         validateStep1() {
             this.errors = {};
-            if (!this.nom.trim()) this.errors.nom = 'Le nom est obligatoire';
-            if (!this.prenoms.trim()) this.errors.prenoms = 'Le(s) prénom(s) est/sont obligatoire(s)';
+            if (!this.etudiantExistant) {
+                if (!this.nom.trim()) this.errors.nom = 'Le nom est obligatoire';
+                if (!this.prenoms.trim()) this.errors.prenoms = 'Le(s) prénom(s) est/sont obligatoire(s)';
+            }
             if (!this.classe_id) this.errors.classe_id = 'Veuillez sélectionner une classe';
             return Object.keys(this.errors).length === 0;
         },
