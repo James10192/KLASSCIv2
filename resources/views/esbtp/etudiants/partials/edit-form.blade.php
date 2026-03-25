@@ -223,9 +223,15 @@
                 <button type="button" class="btn btn-sm btn-primary" id="add-new-parent" style="border-radius:8px 0 0 8px;">
                     <i class="fas fa-plus me-1"></i>Nouveau
                 </button>
+                @if($isEmbedded)
                 <button type="button" class="btn btn-sm btn-outline-primary" id="add-existing-parent" onclick="var p=document.getElementById('searchParentModal');p.classList.add('open');p.scrollIntoView({behavior:'smooth',block:'nearest'})" style="border-radius:0 8px 8px 0;">
                     <i class="fas fa-search me-1"></i>Existant
                 </button>
+                @else
+                <button type="button" class="btn btn-sm btn-outline-primary" id="add-existing-parent" data-bs-toggle="modal" data-bs-target="#parentSearchBootstrapModal" style="border-radius:0 8px 8px 0;">
+                    <i class="fas fa-search me-1"></i>Existant
+                </button>
+                @endif
             </div>
         </div>
         <div class="se-section-body">
@@ -249,14 +255,15 @@
     </div>
 </form>
 
-{{-- Panel overlay (PAS un modal Bootstrap — évite le flash z-index dans iframe) --}}
+@if($isEmbedded)
+{{-- Panel overlay pour la version embedded (PAS un modal Bootstrap — évite le flash z-index dans iframe) --}}
 <div id="searchParentModal" class="parent-search-overlay">
     <div class="parent-search-panel">
         <div class="parent-search-header">
             <h5 style="margin:0;font-weight:700;font-size:1rem;">
                 <i class="fas fa-user-friends me-2"></i>Sélectionner un Parent Existant
             </h5>
-            <button type="button" class="parent-search-close" onclick="document.getElementById('searchParentModal').classList.remove('open')"
+            <button type="button" class="parent-search-close" onclick="document.getElementById('searchParentModal').classList.remove('open')">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -280,15 +287,9 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th class="sortable-parent" data-column="nom" style="cursor: pointer;">
-                                Nom <i class="fas fa-sort text-muted"></i>
-                            </th>
-                            <th class="sortable-parent" data-column="prenoms" style="cursor: pointer;">
-                                Prénom(s) <i class="fas fa-sort text-muted"></i>
-                            </th>
-                            <th class="sortable-parent" data-column="telephone" style="cursor: pointer;">
-                                Téléphone <i class="fas fa-sort text-muted"></i>
-                            </th>
+                            <th class="sortable-parent" data-column="nom" style="cursor:pointer;">Nom <i class="fas fa-sort text-muted"></i></th>
+                            <th class="sortable-parent" data-column="prenoms" style="cursor:pointer;">Prénom(s) <i class="fas fa-sort text-muted"></i></th>
+                            <th class="sortable-parent" data-column="telephone" style="cursor:pointer;">Téléphone <i class="fas fa-sort text-muted"></i></th>
                             <th>Enfants</th>
                             <th>Action</th>
                         </tr>
@@ -301,3 +302,65 @@
         </div>
     </div>
 </div>
+@else
+{{-- Modal Bootstrap pour la page edit normale --}}
+<div class="modal fade" id="parentSearchBootstrapModal" tabindex="-1" aria-labelledby="parentSearchLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border:none; border-radius:16px; overflow:hidden; box-shadow:0 8px 40px rgba(4,83,203,.2);">
+            <div class="modal-header" style="background:linear-gradient(135deg, #0453cb 0%, #5e91de 100%); border:none; padding:18px 24px;">
+                <h5 class="modal-title" id="parentSearchLabel" style="color:#fff; font-weight:700; font-size:1rem;">
+                    <i class="fas fa-user-friends me-2"></i>Sélectionner un Parent Existant
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body" style="padding:20px 24px;">
+                <div class="row mb-3 g-3">
+                    <div class="col-md-5">
+                        <label style="font-size:.8rem; font-weight:600; color:#475569; margin-bottom:4px;">Filtrer par</label>
+                        <select class="form-select" id="parent_search_filter" style="border-radius:8px; font-size:.88rem;">
+                            <option value="all">Tous les champs</option>
+                            <option value="nom">Nom</option>
+                            <option value="prenoms">Prénom(s)</option>
+                            <option value="telephone">Téléphone</option>
+                        </select>
+                    </div>
+                    <div class="col-md-7">
+                        <label style="font-size:.8rem; font-weight:600; color:#475569; margin-bottom:4px;">Rechercher</label>
+                        <div style="position:relative;">
+                            <input type="text" class="form-control" id="parent_search_query" placeholder="Nom, prénom, téléphone..." style="border-radius:8px; font-size:.88rem; padding-left:36px;">
+                            <i class="fas fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:.85rem;"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-responsive" style="max-height:400px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:10px;">
+                    <table class="table table-hover mb-0" style="font-size:.88rem;">
+                        <thead style="position:sticky; top:0; z-index:1;">
+                            <tr style="background:linear-gradient(135deg, #0453cb, #5e91de);">
+                                <th class="sortable-parent" data-column="nom" style="cursor:pointer; color:#fff; font-weight:600; font-size:.78rem; border:none; padding:10px 14px;">
+                                    Nom <i class="fas fa-sort" style="opacity:.6;"></i>
+                                </th>
+                                <th class="sortable-parent" data-column="prenoms" style="cursor:pointer; color:#fff; font-weight:600; font-size:.78rem; border:none; padding:10px 14px;">
+                                    Prénom(s) <i class="fas fa-sort" style="opacity:.6;"></i>
+                                </th>
+                                <th class="sortable-parent" data-column="telephone" style="cursor:pointer; color:#fff; font-weight:600; font-size:.78rem; border:none; padding:10px 14px;">
+                                    Téléphone <i class="fas fa-sort" style="opacity:.6;"></i>
+                                </th>
+                                <th style="color:#fff; font-weight:600; font-size:.78rem; border:none; padding:10px 14px;">Enfants</th>
+                                <th style="color:#fff; font-weight:600; font-size:.78rem; border:none; padding:10px 14px; text-align:center;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="parents-table-body">
+                            <tr><td colspan="5" class="text-center py-4" style="color:#94a3b8;"><i class="fas fa-spinner fa-spin me-2"></i>Chargement...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid #e2e8f0; padding:12px 24px; background:#f8fafc;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:8px; font-size:.85rem;">
+                    <i class="fas fa-times me-1"></i>Fermer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
