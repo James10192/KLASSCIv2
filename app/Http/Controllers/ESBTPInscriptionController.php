@@ -3117,8 +3117,8 @@ class ESBTPInscriptionController extends Controller
                     'type_paiement' => 'inscription',
                     'status' => 'validé',
                     'annee_universitaire_id' => $anneeCourante->id,
-                    'validateur_id' => Auth::id(),
-                    'createur_id' => Auth::id(),
+                    'validated_by' => Auth::id(),
+                    'created_by' => Auth::id(),
                 ]);
 
                 $totalPaye += $amount;
