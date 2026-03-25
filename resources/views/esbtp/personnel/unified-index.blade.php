@@ -605,7 +605,7 @@
     if ($ur === 'coordinateur') $hiddenTabs[] = 'coordinateurs';
     if ($ur === 'secretaire') $hiddenTabs[] = 'secretaires';
     // Premier tab visible = actif par défaut
-    $tabOrder = ['coordinateurs', 'enseignants', 'secretaires', 'comptables'];
+    $tabOrder = ['coordinateurs', 'enseignants', 'secretaires', 'comptables', 'caissiers'];
     $firstVisibleTab = collect($tabOrder)->first(fn($t) => !in_array($t, $hiddenTabs));
 @endphp
 
@@ -672,6 +672,10 @@
                     <div class="pu-hero-kpi-label">Comptables</div>
                 </div>
                 <div class="pu-hero-kpi">
+                    <div class="pu-hero-kpi-value">{{ $stats['caissiers'] ?? 0 }}</div>
+                    <div class="pu-hero-kpi-label">Caissiers</div>
+                </div>
+                <div class="pu-hero-kpi">
                     <div class="pu-hero-kpi-value">{{ $stats['total'] ?? 0 }}</div>
                     <div class="pu-hero-kpi-label">Total</div>
                 </div>
@@ -716,6 +720,11 @@
                     <span class="pu-tab-icon"><i class="fas fa-calculator"></i></span>
                     <span class="pu-tab-label">Comptables</span>
                     <span class="pu-tab-count">{{ $stats['comptables'] ?? 0 }} personnes</span>
+                </button>
+                <button class="pu-tab slider-tab {{ $firstVisibleTab === 'caissiers' ? 'active' : '' }}" data-tab="caissiers">
+                    <span class="pu-tab-icon"><i class="fas fa-cash-register"></i></span>
+                    <span class="pu-tab-label">Caissiers</span>
+                    <span class="pu-tab-count">{{ $stats['caissiers'] ?? 0 }} personnes</span>
                 </button>
             </div>
 
@@ -1032,6 +1041,58 @@
                                 <p>Commencez par créer votre premier comptable.</p>
                                 <a href="{{ route('esbtp.comptables.create') }}" class="pu-empty-btn">
                                     <i class="fas fa-plus"></i>Créer un comptable
+                                </a>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Caissiers Panel --}}
+                <div class="pu-panel slider-panel {{ $firstVisibleTab === 'caissiers' ? 'active' : '' }}" id="caissiers-panel">
+                    <div class="pu-panel-header">
+                        <div class="pu-search">
+                            <input type="text" placeholder="Rechercher un caissier..." id="search-caissiers">
+                        </div>
+                        <a href="{{ route('esbtp.caissiers.create') }}" class="pu-panel-btn pu-panel-btn-primary">
+                            <i class="fas fa-plus"></i>Nouveau Caissier
+                        </a>
+                    </div>
+                    <div class="pu-grid" id="caissiers-grid">
+                        @if(isset($caissiers) && $caissiers->count() > 0)
+                            @foreach($caissiers as $caissier)
+                            <div class="pu-card personnel-card">
+                                <div class="pu-avatar pu-avatar-blue">
+                                    {{ strtoupper(substr($caissier->name, 0, 2)) }}
+                                </div>
+                                <div class="pu-card-body">
+                                    <h4 class="pu-card-name">{{ $caissier->name }}</h4>
+                                    <p class="pu-card-info">{{ $caissier->email }}</p>
+                                    @if($caissier->telephone)
+                                    <p class="pu-card-info"><i class="fas fa-phone"></i> {{ $caissier->telephone }}</p>
+                                    @endif
+                                    <span class="pu-badge {{ $caissier->is_active ? 'pu-badge-success' : 'pu-badge-danger' }}">
+                                        {{ $caissier->is_active ? 'Actif' : 'Inactif' }}
+                                    </span>
+                                </div>
+                                <div class="pu-card-actions">
+                                    @if($caissier->id !== auth()->id())
+                                    <button type="button"
+                                            class="pu-action-btn pu-act-danger"
+                                            title="Supprimer"
+                                            onclick="deletePersonnel('caissier', {{ $caissier->id }})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    @endif
+                                </div>
+                            </div>
+                            @endforeach
+                        @else
+                            <div class="pu-empty">
+                                <div class="pu-empty-icon"><i class="fas fa-cash-register"></i></div>
+                                <h3>Aucun caissier</h3>
+                                <p>Commencez par créer votre premier caissier.</p>
+                                <a href="{{ route('esbtp.caissiers.create') }}" class="pu-empty-btn">
+                                    <i class="fas fa-plus"></i>Créer un caissier
                                 </a>
                             </div>
                         @endif
