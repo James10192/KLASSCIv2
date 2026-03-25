@@ -2990,12 +2990,22 @@ class ESBTPInscriptionController extends Controller
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
-        $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
-        $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
 
         return view('esbtp.inscriptions.create-pre-inscription', compact(
-            'anneeCourante', 'classes', 'filieres', 'niveaux'
+            'anneeCourante', 'classes'
         ));
+    }
+
+    /**
+     * Générer un matricule unique pour pré-inscription
+     */
+    private function generatePreInscriptionMatricule(): string
+    {
+        do {
+            $matricule = 'PRE-' . strtoupper(Str::random(8));
+        } while (\App\Models\ESBTPEtudiant::where('matricule', $matricule)->exists());
+
+        return $matricule;
     }
 
     /**
@@ -3025,7 +3035,7 @@ class ESBTPInscriptionController extends Controller
         try {
             DB::beginTransaction();
 
-            $classe = ESBTPClasse::with(['filiere', 'niveau'])->findOrFail($request->classe_id);
+            $classe = ESBTPClasse::findOrFail($request->classe_id);
             $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->firstOrFail();
 
             // 1. Créer l'étudiant avec infos minimales
@@ -3034,7 +3044,7 @@ class ESBTPInscriptionController extends Controller
                 'prenoms' => $request->prenoms,
                 'telephone' => $request->telephone,
                 'statut' => 'en_attente',
-                'matricule' => 'PRE-' . strtoupper(Str::random(8)),
+                'matricule' => $this->generatePreInscriptionMatricule(),
                 'created_by' => Auth::id(),
             ]);
 
