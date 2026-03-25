@@ -209,57 +209,59 @@
                             <span style="font-size:.82rem; color:#64748b; margin-left:8px;">Analyse du dossier en cours...</span>
                         </div>
 
-                        <div x-show="analyseData && analyseData.has_analysis" style="display:none; margin-top:14px; padding:4px 2px;">
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div x-show="analyseData && analyseData.has_analysis" style="display:none; margin-top:16px;">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
                                 {{-- Décision académique --}}
-                                <div style="padding:16px; border-radius:10px; position:relative; overflow:hidden;"
-                                     :style="analyseData?.decision === 'passage' ? 'background:linear-gradient(135deg, rgba(16,185,129,.08), rgba(16,185,129,.03)); border:1px solid rgba(16,185,129,.25);' :
-                                             analyseData?.decision === 'redoublement' ? 'background:linear-gradient(135deg, rgba(220,38,38,.08), rgba(220,38,38,.03)); border:1px solid rgba(220,38,38,.25);' :
-                                             'background:linear-gradient(135deg, rgba(4,83,203,.08), rgba(4,83,203,.03)); border:1px solid rgba(4,83,203,.25);'">
-                                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-                                        <div style="width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:.8rem;"
-                                             :style="analyseData?.decision === 'passage' ? 'background:#10b981; color:#fff;' :
-                                                     analyseData?.decision === 'redoublement' ? 'background:#dc2626; color:#fff;' : 'background:#0453cb; color:#fff;'">
+                                <div style="padding:18px 20px; border-radius:14px; position:relative; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.04);"
+                                     :style="analyseData?.decision === 'passage' ? 'background:linear-gradient(145deg, #ecfdf5, #d1fae5); border:1.5px solid #6ee7b7;' :
+                                             analyseData?.decision === 'redoublement' ? 'background:linear-gradient(145deg, #fef2f2, #fecaca); border:1.5px solid #fca5a5;' :
+                                             'background:linear-gradient(145deg, #eff6ff, #dbeafe); border:1.5px solid #93c5fd;'">
+                                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+                                        <div style="width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:.9rem; box-shadow:0 2px 6px rgba(0,0,0,.12);"
+                                             :style="analyseData?.decision === 'passage' ? 'background:linear-gradient(135deg, #10b981, #059669); color:#fff;' :
+                                                     analyseData?.decision === 'redoublement' ? 'background:linear-gradient(135deg, #ef4444, #dc2626); color:#fff;' : 'background:linear-gradient(135deg, #0453cb, #5e91de); color:#fff;'">
                                             <i class="fas" :class="analyseData?.decision === 'passage' ? 'fa-arrow-up' : analyseData?.decision === 'redoublement' ? 'fa-redo' : 'fa-sync-alt'"></i>
                                         </div>
                                         <div>
-                                            <div style="font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#64748b;">Decision</div>
-                                            <div style="font-size:.95rem; font-weight:800;"
-                                                 :style="analyseData?.decision === 'passage' ? 'color:#059669;' : analyseData?.decision === 'redoublement' ? 'color:#dc2626;' : 'color:#0453cb;'"
+                                            <div style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:#64748b; margin-bottom:2px;">Decision</div>
+                                            <div style="font-size:1.05rem; font-weight:800; line-height:1;"
+                                                 :style="analyseData?.decision === 'passage' ? 'color:#047857;' : analyseData?.decision === 'redoublement' ? 'color:#b91c1c;' : 'color:#1d4ed8;'"
                                                  x-text="analyseData?.decision === 'passage' ? 'Passage' : analyseData?.decision === 'redoublement' ? 'Redoublement' : 'Rattrapage'"></div>
                                         </div>
                                     </div>
-                                    <div style="display:flex; align-items:center; gap:6px; padding:6px 10px; background:rgba(255,255,255,.6); border-radius:6px; width:fit-content;">
-                                        <i class="fas fa-chart-line" style="font-size:.65rem; color:#64748b;"></i>
-                                        <span style="font-size:.78rem; color:#475569;">Moyenne : </span>
-                                        <strong style="font-size:.82rem; color:#1e293b;" x-text="analyseData?.moyenne_generale ? parseFloat(analyseData.moyenne_generale).toFixed(2) + '/20' : 'N/A'"></strong>
+                                    <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(255,255,255,.7); border-radius:8px; backdrop-filter:blur(4px);">
+                                        <i class="fas fa-chart-line" style="font-size:.7rem; color:#64748b;"></i>
+                                        <span style="font-size:.8rem; color:#475569;">Moyenne</span>
+                                        <strong style="font-size:.88rem; color:#1e293b;" x-text="analyseData?.moyenne_generale ? parseFloat(analyseData.moyenne_generale).toFixed(2) + '/20' : 'N/A'"></strong>
                                     </div>
                                 </div>
 
                                 {{-- Situation financière --}}
-                                <div style="padding:16px; border-radius:10px; position:relative; overflow:hidden;"
-                                     :style="analyseData?.solde_status === 'solde' ? 'background:linear-gradient(135deg, rgba(16,185,129,.08), rgba(16,185,129,.03)); border:1px solid rgba(16,185,129,.25);' : 'background:linear-gradient(135deg, rgba(220,38,38,.08), rgba(220,38,38,.03)); border:1px solid rgba(220,38,38,.25);'">
-                                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-                                        <div style="width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:.8rem;"
-                                             :style="analyseData?.solde_status === 'solde' ? 'background:#10b981; color:#fff;' : 'background:#dc2626; color:#fff;'">
+                                <div style="padding:18px 20px; border-radius:14px; position:relative; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.04);"
+                                     :style="analyseData?.solde_status === 'solde' ? 'background:linear-gradient(145deg, #ecfdf5, #d1fae5); border:1.5px solid #6ee7b7;' : 'background:linear-gradient(145deg, #fef2f2, #fecaca); border:1.5px solid #fca5a5;'">
+                                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+                                        <div style="width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:.9rem; box-shadow:0 2px 6px rgba(0,0,0,.12);"
+                                             :style="analyseData?.solde_status === 'solde' ? 'background:linear-gradient(135deg, #10b981, #059669); color:#fff;' : 'background:linear-gradient(135deg, #ef4444, #dc2626); color:#fff;'">
                                             <i class="fas" :class="analyseData?.solde_status === 'solde' ? 'fa-check-circle' : 'fa-exclamation-circle'"></i>
                                         </div>
                                         <div>
-                                            <div style="font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#64748b;">Finances</div>
-                                            <div style="font-size:.95rem; font-weight:800;"
-                                                 :style="analyseData?.solde_status === 'solde' ? 'color:#059669;' : 'color:#dc2626;'"
-                                                 x-text="analyseData?.solde_status === 'solde' ? 'Soldé' : 'Impayé'"></div>
+                                            <div style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:#64748b; margin-bottom:2px;">Finances</div>
+                                            <div style="font-size:1.05rem; font-weight:800; line-height:1;"
+                                                 :style="analyseData?.solde_status === 'solde' ? 'color:#047857;' : 'color:#b91c1c;'"
+                                                 x-text="analyseData?.solde_status === 'solde' ? 'Solde' : 'Impaye'"></div>
                                         </div>
                                     </div>
-                                    <div style="display:flex; flex-direction:column; gap:4px;">
-                                        <div x-show="analyseData?.solde_status !== 'solde'" style="display:flex; align-items:center; gap:6px; padding:6px 10px; background:rgba(220,38,38,.08); border-radius:6px; width:fit-content;">
-                                            <i class="fas fa-coins" style="font-size:.65rem; color:#dc2626;"></i>
-                                            <span style="font-size:.78rem; font-weight:700; color:#dc2626;" x-text="'Relicat : ' + formatFCFA(analyseData?.solde_restant || 0)"></span>
+                                    <div style="display:flex; flex-direction:column; gap:6px;">
+                                        <div x-show="analyseData?.solde_status !== 'solde'" style="display:none;">
+                                            <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(220,38,38,.08); border-radius:8px;">
+                                                <i class="fas fa-coins" style="font-size:.7rem; color:#dc2626;"></i>
+                                                <span style="font-size:.82rem; font-weight:700; color:#b91c1c;" x-text="'Relicat : ' + formatFCFA(analyseData?.solde_restant || 0)"></span>
+                                            </div>
                                         </div>
-                                        <div style="display:flex; align-items:center; gap:6px; padding:6px 10px; background:rgba(255,255,255,.6); border-radius:6px; width:fit-content;">
-                                            <i class="fas fa-chalkboard" style="font-size:.65rem; color:#64748b;"></i>
-                                            <span style="font-size:.78rem; color:#475569;">Classe : </span>
-                                            <strong style="font-size:.82rem; color:#1e293b;" x-text="analyseData?.classe_actuelle || '—'"></strong>
+                                        <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(255,255,255,.7); border-radius:8px; backdrop-filter:blur(4px);">
+                                            <i class="fas fa-chalkboard" style="font-size:.7rem; color:#64748b;"></i>
+                                            <span style="font-size:.8rem; color:#475569;">Classe</span>
+                                            <strong style="font-size:.88rem; color:#1e293b;" x-text="analyseData?.classe_actuelle || '—'"></strong>
                                         </div>
                                     </div>
                                 </div>
