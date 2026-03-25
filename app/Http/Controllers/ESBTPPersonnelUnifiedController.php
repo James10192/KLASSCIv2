@@ -291,7 +291,6 @@ class ESBTPPersonnelUnifiedController extends Controller
         $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'nullable|string|min:8|confirmed',
             'telephone' => 'nullable|string|max:20',
             'type' => 'required|in:coordinateur,enseignant,secretaire,comptable,caissier',
         ];
@@ -328,15 +327,6 @@ class ESBTPPersonnelUnifiedController extends Controller
                 'department' => $validated['department'] ?? null,
                 'email_verified_at' => now(),
             ]));
-
-            // Si un mot de passe personnalisé est fourni, l'utiliser à la place
-            if (!empty($validated['password'])) {
-                $user->update([
-                    'password' => Hash::make($validated['password']),
-                    'must_change_password' => true,
-                ]);
-                $defaultPassword = $validated['password'];
-            }
 
             // Assigner le rôle approprié
             $user->assignRole($validated['type']);
