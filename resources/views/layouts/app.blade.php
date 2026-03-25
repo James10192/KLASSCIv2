@@ -1971,7 +1971,7 @@
 
                         @can('comptabilite.relances.send')
                         <div class="menu-item">
-                            <a href="{{ route('esbtp.comptabilite.relances') }}" class="menu-link {{ Request::routeIs('esbtp.comptabilite.relances') ? 'active' : '' }}">
+                            <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="menu-link {{ Request::routeIs('esbtp.comptabilite.relances.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-bell"></i></div>
                                 <div class="menu-text">Relances</div>
                             </a>

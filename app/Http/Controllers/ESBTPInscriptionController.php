@@ -3043,7 +3043,7 @@ class ESBTPInscriptionController extends Controller
                 'nom' => $request->nom,
                 'prenoms' => $request->prenoms,
                 'telephone' => $request->telephone,
-                'statut' => 'en_attente',
+                'statut' => 'inactif',
                 'matricule' => $this->generatePreInscriptionMatricule(),
                 'created_by' => Auth::id(),
             ]);
