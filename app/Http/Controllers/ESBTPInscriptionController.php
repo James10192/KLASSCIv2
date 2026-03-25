@@ -3024,6 +3024,8 @@ class ESBTPInscriptionController extends Controller
             'frais.*.amount' => 'nullable|numeric|min:0',
             'paiement_categories' => 'nullable|array',
             'paiement_categories.*' => 'integer',
+            'paiement_montants' => 'nullable|array',
+            'paiement_montants.*' => 'numeric|min:0',
             'mode_paiement' => 'nullable|string|in:especes,cheque,virement,mobile_money',
             'reference_paiement' => 'nullable|string|max:100',
         ], [
@@ -3091,13 +3093,17 @@ class ESBTPInscriptionController extends Controller
                 $totalSouscrit += $amount;
             }
 
-            // 4. Créer les paiements par catégorie cochée
+            // 4. Créer les paiements par catégorie cochée (montant partiel possible)
             $paiementCategories = $request->input('paiement_categories', []);
+            $paiementMontants = $request->input('paiement_montants', []);
             $totalPaye = 0;
             $firstPaiement = null;
 
             foreach ($paiementCategories as $categoryId) {
-                $amount = floatval($fraisData[$categoryId]['amount'] ?? 0);
+                // Utiliser le montant partiel saisi, sinon le montant total de la catégorie
+                $maxAmount = floatval($fraisData[$categoryId]['amount'] ?? 0);
+                $amount = isset($paiementMontants[$categoryId]) ? floatval($paiementMontants[$categoryId]) : $maxAmount;
+                $amount = min($amount, $maxAmount); // Ne pas dépasser le montant dû
                 if ($amount <= 0) continue;
 
                 $paiement = ESBTPPaiement::create([

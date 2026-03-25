@@ -369,20 +369,40 @@
                             <div>Cochez les catégories que l'étudiant règle maintenant. Les frais non cochés resteront en attente de paiement.</div>
                         </div>
 
-                        {{-- Summary of selected fees with checkboxes --}}
+                        {{-- Summary of selected fees with checkboxes + partial amount --}}
                         <template x-for="f in selectedFrais" :key="f.category.id">
-                            <div class="pi-pay-item">
-                                <label>
-                                    <input type="checkbox"
-                                           :value="f.category.id"
-                                           name="paiement_categories[]"
-                                           :checked="isPaymentChecked(f.category.id)"
-                                           @change="togglePayment(f.category.id, $event.target.checked)">
-                                    <span x-text="f.category.name"></span>
-                                    <span class="pi-frais-badge" :class="f.is_mandatory ? 'mandatory' : 'optional'"
-                                          x-text="f.is_mandatory ? 'Obligatoire' : 'Optionnel'"></span>
-                                </label>
-                                <span class="pi-pay-amount" x-text="formatFCFA(f._selectedAmount)"></span>
+                            <div class="pi-pay-item" style="flex-wrap:wrap;">
+                                <div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+                                    <label>
+                                        <input type="checkbox"
+                                               :value="f.category.id"
+                                               name="paiement_categories[]"
+                                               :checked="isPaymentChecked(f.category.id)"
+                                               @change="togglePayment(f.category.id, $event.target.checked, f._selectedAmount)">
+                                        <span x-text="f.category.name"></span>
+                                        <span class="pi-frais-badge" :class="f.is_mandatory ? 'mandatory' : 'optional'"
+                                              x-text="f.is_mandatory ? 'Obligatoire' : 'Optionnel'"></span>
+                                    </label>
+                                    <span class="pi-pay-amount" x-text="formatFCFA(f._selectedAmount)"></span>
+                                </div>
+                                {{-- Partial amount input when checked --}}
+                                <div x-show="isPaymentChecked(f.category.id)" style="width:100%;margin-top:8px;padding-left:28px;display:none;" x-transition>
+                                    <div style="display:flex;align-items:center;gap:8px;">
+                                        <label style="font-size:.78rem;color:#475569;white-space:nowrap;margin:0;">Montant payé :</label>
+                                        <input type="number"
+                                               :name="'paiement_montants[' + f.category.id + ']'"
+                                               :value="getPaymentAmount(f.category.id)"
+                                               @input="updatePaymentAmount(f.category.id, $event.target.value)"
+                                               :max="f._selectedAmount"
+                                               min="0"
+                                               step="500"
+                                               style="width:160px;padding:6px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:.85rem;font-weight:600;">
+                                        <span style="font-size:.75rem;color:#64748b;">/ <span x-text="formatFCFA(f._selectedAmount)"></span></span>
+                                    </div>
+                                    <div x-show="getPaymentAmount(f.category.id) < f._selectedAmount" style="font-size:.72rem;color:#0453cb;margin-top:4px;display:none;">
+                                        Paiement partiel — reste à payer : <strong x-text="formatFCFA(f._selectedAmount - getPaymentAmount(f.category.id))"></strong>
+                                    </div>
+                                </div>
                             </div>
                         </template>
 
@@ -446,6 +466,7 @@ function preInscription() {
         loadingFrais: false,
         frais: [],
         paiementChecked: {},
+        paiementAmounts: {},
         modePaiement: 'especes',
         referencePaiement: '',
         submitting: false,
@@ -466,7 +487,7 @@ function preInscription() {
             let total = 0;
             this.selectedFrais.forEach(f => {
                 if (this.paiementChecked[f.category.id]) {
-                    total += parseFloat(f._selectedAmount) || 0;
+                    total += parseFloat(this.paiementAmounts[f.category.id]) || 0;
                 }
             });
             return total;
@@ -567,12 +588,29 @@ function preInscription() {
             return !!this.paiementChecked[categoryId];
         },
 
-        togglePayment(categoryId, checked) {
+        togglePayment(categoryId, checked, fullAmount) {
             if (checked) {
                 this.paiementChecked[categoryId] = true;
+                // Default to full amount
+                if (!this.paiementAmounts[categoryId]) {
+                    this.paiementAmounts[categoryId] = fullAmount || 0;
+                }
             } else {
                 delete this.paiementChecked[categoryId];
+                delete this.paiementAmounts[categoryId];
             }
+        },
+
+        getPaymentAmount(categoryId) {
+            return this.paiementAmounts[categoryId] || 0;
+        },
+
+        updatePaymentAmount(categoryId, value) {
+            const amount = parseFloat(value) || 0;
+            // Find the max for this category
+            const f = this.selectedFrais.find(fr => fr.category.id == categoryId);
+            const max = f ? parseFloat(f._selectedAmount) || 0 : 0;
+            this.paiementAmounts[categoryId] = Math.min(amount, max);
         }
     };
 }
