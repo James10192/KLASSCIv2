@@ -30,16 +30,16 @@
     .pi-info { padding: 12px 16px; background: rgba(4,83,203,.06); border: 1px solid rgba(4,83,203,.15); border-radius: 8px; font-size: .82rem; color: #1e40af; display: flex; align-items: flex-start; gap: 8px; margin-bottom: 20px; }
     .pi-info i { margin-top: 2px; }
 
-    /* Step indicator */
-    .pi-steps { display: flex; align-items: center; gap: 0; padding: 20px 24px; border-bottom: 1px solid rgba(0,0,0,.06); }
-    .pi-step { display: flex; align-items: center; gap: 8px; flex: 1; }
-    .pi-step-num { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .78rem; font-weight: 700; border: 2px solid #d1d5db; color: #94a3b8; background: #fff; transition: all .3s; }
-    .pi-step.active .pi-step-num { border-color: #0453cb; background: linear-gradient(135deg, #0453cb, #5e91de); color: #fff; }
+    /* Step indicator — centered with continuous line */
+    .pi-steps { display: flex; align-items: center; justify-content: center; padding: 20px 24px; border-bottom: 1px solid rgba(0,0,0,.06); position: relative; }
+    .pi-step { display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 1; flex: 0 0 auto; min-width: 70px; }
+    .pi-step-num { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .82rem; font-weight: 700; border: 2px solid #d1d5db; color: #94a3b8; background: #fff; transition: all .3s; position: relative; z-index: 2; }
+    .pi-step.active .pi-step-num { border-color: #0453cb; background: linear-gradient(135deg, #0453cb, #5e91de); color: #fff; box-shadow: 0 2px 8px rgba(4,83,203,.3); }
     .pi-step.done .pi-step-num { border-color: #10b981; background: #10b981; color: #fff; }
-    .pi-step-label { font-size: .76rem; font-weight: 600; color: #94a3b8; transition: color .3s; }
+    .pi-step-label { font-size: .74rem; font-weight: 600; color: #94a3b8; transition: color .3s; }
     .pi-step.active .pi-step-label { color: #0453cb; }
     .pi-step.done .pi-step-label { color: #10b981; }
-    .pi-step-line { flex: 0 0 auto; width: 40px; height: 2px; background: #e2e8f0; margin: 0 4px; transition: background .3s; }
+    .pi-step-line { flex: 1; height: 2px; background: #e2e8f0; min-width: 40px; max-width: 160px; transition: background .3s; z-index: 0; align-self: flex-start; margin-top: 15px; }
     .pi-step-line.done { background: #10b981; }
 
     /* Progress bar */
