@@ -246,7 +246,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Routes pour la gestion du profil admin, enseignants et coordinateurs
-    Route::middleware(['role:superAdmin|secretaire|serviceTechnique|enseignant|teacher|coordinateur|comptable'])->group(function () {
+    Route::middleware(['role:superAdmin|secretaire|serviceTechnique|enseignant|teacher|coordinateur|comptable|caissier'])->group(function () {
         Route::get('/admin/profile', [AdminProfileController::class, 'index'])->name('admin.profile');
         Route::put('/admin/profile/update', [AdminProfileController::class, 'update'])->name('admin.profile.update');
         Route::put('/admin/profile/update-professional', [AdminProfileController::class, 'updateProfessionalInfo'])->name('admin.profile.update.professional');
@@ -272,7 +272,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     // Routes pour les fonctionnalités ESBTP
     Route::prefix('esbtp')->name('esbtp.')->group(function () {
         // Routes protégées pour les super-administrateurs, secrétaires, coordinateurs et enseignants
-        Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur|enseignant|teacher|comptable', 'paywall'])->group(function () {
+        Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur|enseignant|teacher|comptable|caissier', 'paywall'])->group(function () {
             // Routes pour les paiements
             Route::resource('payments', \App\Http\Controllers\ESBTP\PaymentController::class);
             Route::get('payments/{payment}/receipt', [\App\Http\Controllers\ESBTP\PaymentController::class, 'generateReceipt'])
@@ -441,7 +441,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         });
 
         // Routes accessibles aux superAdmin, secrétaires, coordinateurs et enseignants
-        Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur|enseignant|teacher|comptable', 'paywall'])->group(function () {
+        Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur|enseignant|teacher|comptable|caissier', 'paywall'])->group(function () {
             // Routes pour les classes ESBTP - index et show avec permission view_classes
             Route::get('classes', [ESBTPClasseController::class, 'index'])
                 ->name('classes.index')
@@ -868,8 +868,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             });
         });
 
-        // Routes accessibles pour les secrétaires, super-admins et coordinateurs
-        Route::middleware(['auth', 'role:secretaire|superAdmin|coordinateur|enseignant|teacher', 'paywall'])->group(function () {
+        // Routes pré-inscription caissier
+        Route::middleware(['auth', 'role:caissier|superAdmin|secretaire', 'paywall'])->group(function () {
+            Route::get('/inscriptions/pre-inscription', [ESBTPInscriptionController::class, 'createPreInscription'])->name('inscriptions.pre-inscription');
+            Route::post('/inscriptions/pre-inscription', [ESBTPInscriptionController::class, 'storePreInscription'])->name('inscriptions.store-pre-inscription');
+        });
+
+        // Routes accessibles pour les secrétaires, super-admins, coordinateurs et caissier (consultation)
+        Route::middleware(['auth', 'role:secretaire|superAdmin|coordinateur|enseignant|teacher|caissier', 'paywall'])->group(function () {
             // Nouvelle route pour la vue fusionnée des étudiants et inscriptions
             Route::get('/etudiants-inscriptions', [ESBTPEtudiantController::class, 'indexFusionne'])
                 ->name('etudiants-inscriptions.index')

@@ -2979,4 +2979,122 @@ class ESBTPInscriptionController extends Controller
             }
         }
     }
+
+    /**
+     * Formulaire de pré-inscription simplifié (caissier)
+     */
+    public function createPreInscription()
+    {
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $classes = ESBTPClasse::with(['filiere', 'niveau'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
+
+        return view('esbtp.inscriptions.create-pre-inscription', compact(
+            'anneeCourante', 'classes', 'filieres', 'niveaux'
+        ));
+    }
+
+    /**
+     * Enregistrer une pré-inscription (caissier)
+     * Crée un étudiant minimal + inscription prospect + paiement optionnel
+     */
+    public function storePreInscription(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'nom' => 'required|string|max:100',
+            'prenoms' => 'required|string|max:100',
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'telephone' => 'nullable|string|max:20',
+            'montant_paye' => 'nullable|numeric|min:0',
+            'mode_paiement' => 'nullable|string|in:especes,cheque,virement,mobile_money',
+            'reference_paiement' => 'nullable|string|max:100',
+        ], [
+            'nom.required' => 'Le nom est obligatoire',
+            'prenoms.required' => 'Le(s) prénom(s) est/sont obligatoire(s)',
+            'classe_id.required' => 'Veuillez sélectionner une classe',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $classe = ESBTPClasse::with(['filiere', 'niveau'])->findOrFail($request->classe_id);
+            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->firstOrFail();
+
+            // 1. Créer l'étudiant avec infos minimales
+            $etudiant = \App\Models\ESBTPEtudiant::create([
+                'nom' => $request->nom,
+                'prenoms' => $request->prenoms,
+                'telephone' => $request->telephone,
+                'statut' => 'en_attente',
+                'matricule' => 'PRE-' . strtoupper(Str::random(8)),
+                'created_by' => Auth::id(),
+            ]);
+
+            // 2. Créer l'inscription en mode prospect
+            $inscription = ESBTPInscription::create([
+                'etudiant_id' => $etudiant->id,
+                'classe_id' => $classe->id,
+                'filiere_id' => $classe->filiere_id,
+                'niveau_id' => $classe->niveau_etude_id,
+                'annee_universitaire_id' => $anneeCourante->id,
+                'date_inscription' => now()->format('Y-m-d'),
+                'status' => 'en_attente',
+                'workflow_step' => 'prospect',
+                'type_inscription' => 'première_inscription',
+                'montant_scolarite' => 0,
+                'frais_inscription' => 0,
+                'created_by' => Auth::id(),
+            ]);
+
+            // 3. Créer le paiement si un montant est fourni
+            $paiement = null;
+            $montantPaye = floatval($request->montant_paye ?? 0);
+            if ($montantPaye > 0) {
+                $paiement = ESBTPPaiement::create([
+                    'inscription_id' => $inscription->id,
+                    'etudiant_id' => $etudiant->id,
+                    'montant' => $montantPaye,
+                    'date_paiement' => now(),
+                    'mode_paiement' => $request->mode_paiement ?? 'especes',
+                    'reference' => $request->reference_paiement,
+                    'type_paiement' => 'inscription',
+                    'status' => 'validé',
+                    'annee_universitaire_id' => $anneeCourante->id,
+                    'validated_by' => Auth::id(),
+                    'created_by' => Auth::id(),
+                ]);
+
+                $inscription->update(['paiement_validation_id' => $paiement->id]);
+            }
+
+            DB::commit();
+
+            $message = "Pré-inscription créée avec succès pour {$request->nom} {$request->prenoms}.";
+            if ($paiement) {
+                $message .= " Paiement de " . number_format($montantPaye, 0, ',', ' ') . " FCFA enregistré.";
+            }
+
+            return redirect()
+                ->route('esbtp.inscriptions.show', $inscription->id)
+                ->with('success', $message);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur pré-inscription caissier: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Erreur lors de la pré-inscription: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
 }

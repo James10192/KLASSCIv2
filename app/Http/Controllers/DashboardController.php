@@ -73,8 +73,8 @@ class DashboardController extends Controller
             return $this->secretaireDashboard();
         }
 
-        // Vérifier si l'utilisateur est un comptable
-        if ($user->hasRole('comptable')) {
+        // Vérifier si l'utilisateur est un comptable ou caissier
+        if ($user->hasRole(['comptable', 'caissier'])) {
             return $this->comptableDashboard();
         }
 

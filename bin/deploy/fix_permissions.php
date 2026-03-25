@@ -260,6 +260,7 @@ try {
         'serviceTechnique' => 'Service Technique (African Digit Consulting)',
         'teacher' => 'Teacher (alias de enseignant)',
         'comptable' => 'Comptable',
+        'caissier' => 'Caissier',
     ];
 
     echo "\nCréation/vérification des rôles...\n";
@@ -463,6 +464,29 @@ try {
     ];
     $comptableRole->syncPermissions($comptablePermissions);
     echo '✓ Comptable: '.count($comptablePermissions)." permissions accordées\n";
+
+    // Caissier - Pré-inscription simplifiée + paiements + consultation
+    $caissierRole = Role::findByName('caissier');
+    $caissierPermissions = [
+        'view_dashboard',
+        // Consultation étudiants & inscriptions
+        'view_students', 'view_inscriptions', 'inscriptions.view',
+        // Création pré-inscription (inscription prospect)
+        'create_inscriptions', 'inscriptions.create',
+        // Paiements
+        'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.validate',
+        'view_payments', 'create_payments', 'edit_payments',
+        // Comptabilité (consultation + relances, pas de config)
+        'comptabilite.access', 'comptabilite.dashboard.view',
+        'comptabilite.relances.send',
+        'comptabilite.paiements.view', 'comptabilite.paiements.validate',
+        'frais.view',
+        // Communication
+        'send_messages', 'receive_messages',
+        'view_annonces',
+    ];
+    $caissierRole->syncPermissions($caissierPermissions);
+    echo '✓ Caissier: '.count($caissierPermissions)." permissions accordées\n";
 
     // Vérifier les utilisateurs sans rôle et leur attribuer un rôle par défaut
     echo "\nVérification des utilisateurs sans rôle...\n";

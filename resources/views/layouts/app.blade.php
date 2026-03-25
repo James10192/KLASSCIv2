@@ -1918,6 +1918,76 @@
                         @endcan
                     @endif
 
+                    <!-- Caissier Section -->
+                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole('caissier'))
+                        <div class="menu-category">Caisse</div>
+
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.inscriptions.pre-inscription') }}" class="menu-link {{ Request::routeIs('esbtp.inscriptions.pre-inscription') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-user-plus"></i></div>
+                                <div class="menu-text">Pré-inscription</div>
+                            </a>
+                        </div>
+
+                        <div class="menu-category">Consultation</div>
+
+                        @can('view_students')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.etudiants.index') }}" class="menu-link {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
+                                <div class="menu-text">Étudiants</div>
+                            </a>
+                        </div>
+                        @endcan
+
+                        @can('view_inscriptions')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.inscriptions.index') }}" class="menu-link {{ Request::routeIs('esbtp.inscriptions.*') && !Request::routeIs('esbtp.inscriptions.pre-inscription') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-file-signature"></i></div>
+                                <div class="menu-text">Inscriptions</div>
+                            </a>
+                        </div>
+                        @endcan
+
+                        <div class="menu-category">Comptabilité</div>
+
+                        @can('comptabilite.access')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.comptabilite.dashboard') }}" class="menu-link {{ Request::routeIs('esbtp.comptabilite.dashboard') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-chart-line"></i></div>
+                                <div class="menu-text">Dashboard Comptable</div>
+                            </a>
+                        </div>
+                        @endcan
+
+                        @can('paiements.view')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.paiements.index') }}" class="menu-link {{ Request::routeIs('esbtp.paiements.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-money-bill-wave"></i></div>
+                                <div class="menu-text">Paiements</div>
+                            </a>
+                        </div>
+                        @endcan
+
+                        @can('comptabilite.relances.send')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.comptabilite.relances') }}" class="menu-link {{ Request::routeIs('esbtp.comptabilite.relances') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-bell"></i></div>
+                                <div class="menu-text">Relances</div>
+                            </a>
+                        </div>
+                        @endcan
+
+                        @can('frais.view')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.frais.index') }}" class="menu-link {{ Request::routeIs('esbtp.frais.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-tags"></i></div>
+                                <div class="menu-text">Suivi catégories</div>
+                            </a>
+                        </div>
+                        @endcan
+                    @endif
+
                     <!-- Messages Section -->
                     @if(auth()->check() && auth()->user() && auth()->user()->hasRole('etudiant'))
                         <div class="menu-category">Communication</div>
