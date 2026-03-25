@@ -5,83 +5,107 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    .pi-page { max-width: 800px; margin: 0 auto; padding: 20px; }
-    .pi-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.06); border: 1px solid rgba(0,0,0,.08); overflow: hidden; }
-    .pi-header { padding: 20px 24px; border-bottom: 1px solid rgba(0,0,0,.06); display: flex; align-items: center; gap: 12px; }
-    .pi-header-icon { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.1rem; }
-    .pi-header h2 { margin: 0; font-size: 1.15rem; font-weight: 700; color: #1e293b; }
-    .pi-header p { margin: 2px 0 0; font-size: .82rem; color: #64748b; }
-    .pi-body { padding: 24px; }
-    .pi-section { margin-bottom: 24px; }
-    .pi-section-title { font-size: .82rem; font-weight: 700; color: #0453cb; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 2px solid rgba(4,83,203,.1); }
-    .pi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px; }
+    /* ── Page layout ── */
+    .pi-page { max-width: 820px; margin: 0 auto; padding: 24px 16px; }
+
+    /* ── Main card ── */
+    .pi-card { background: #fff; border-radius: 18px; box-shadow: 0 4px 24px rgba(4,83,203,.06), 0 1px 3px rgba(0,0,0,.04); border: 1px solid rgba(4,83,203,.08); overflow: hidden; }
+
+    /* ── Header ── */
+    .pi-header { padding: 24px 28px; background: linear-gradient(145deg, #f8faff, #f0f5ff); border-bottom: 1px solid rgba(4,83,203,.08); display: flex; align-items: center; gap: 14px; }
+    .pi-header-icon { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.15rem; box-shadow: 0 3px 10px rgba(4,83,203,.25); }
+    .pi-header h2 { margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b; letter-spacing: -.01em; }
+    .pi-header p { margin: 3px 0 0; font-size: .82rem; color: #64748b; }
+
+    /* ── Body ── */
+    .pi-body { padding: 28px; }
+
+    /* ── Sections ── */
+    .pi-section { margin-bottom: 28px; }
+    .pi-section-title { font-size: .72rem; font-weight: 800; color: #0453cb; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid rgba(4,83,203,.12); display: flex; align-items: center; gap: 8px; }
+    .pi-section-title i { font-size: .7rem; }
+
+    /* ── Form fields ── */
+    .pi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 14px; }
     .pi-row.full { grid-template-columns: 1fr; }
-    .pi-field label { display: block; font-size: .78rem; font-weight: 600; color: #475569; margin-bottom: 4px; }
+    .pi-field label { display: block; font-size: .76rem; font-weight: 700; color: #475569; margin-bottom: 6px; letter-spacing: .02em; }
     .pi-field label .required { color: #dc2626; }
-    .pi-field input, .pi-field select { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: .88rem; color: #1e293b; transition: border-color .2s, box-shadow .2s; }
-    .pi-field input:focus, .pi-field select:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.12); }
-    .pi-field .field-error { font-size: .75rem; color: #dc2626; margin-top: 2px; }
-    .pi-submit { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid rgba(0,0,0,.06); background: #f8fafc; }
-    .pi-btn { padding: 10px 20px; border-radius: 8px; font-size: .88rem; font-weight: 600; cursor: pointer; border: none; transition: all .2s; }
-    .pi-btn-primary { background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: #fff; box-shadow: 0 2px 8px rgba(4,83,203,.25); }
-    .pi-btn-primary:hover { box-shadow: 0 4px 12px rgba(4,83,203,.35); transform: translateY(-1px); }
-    .pi-btn-secondary { background: #fff; color: #64748b; border: 1px solid #d1d5db; }
-    .pi-btn-secondary:hover { background: #f1f5f9; }
-    .pi-info { padding: 12px 16px; background: rgba(4,83,203,.06); border: 1px solid rgba(4,83,203,.15); border-radius: 8px; font-size: .82rem; color: #1e40af; display: flex; align-items: flex-start; gap: 8px; margin-bottom: 20px; }
-    .pi-info i { margin-top: 2px; }
+    .pi-field input, .pi-field select { width: 100%; padding: 11px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: .88rem; color: #1e293b; background: #fff; transition: all .2s; }
+    .pi-field input:hover, .pi-field select:hover { border-color: #cbd5e1; }
+    .pi-field input:focus, .pi-field select:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.1); background: #fafbff; }
+    .pi-field .field-error { font-size: .74rem; color: #dc2626; margin-top: 3px; font-weight: 500; }
 
-    /* Step indicator — centered with continuous line */
-    .pi-steps { display: flex; align-items: center; justify-content: center; padding: 20px 24px; border-bottom: 1px solid rgba(0,0,0,.06); position: relative; }
-    .pi-step { display: flex; flex-direction: column; align-items: center; gap: 6px; z-index: 1; flex: 0 0 auto; min-width: 70px; }
-    .pi-step-num { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .82rem; font-weight: 700; border: 2px solid #d1d5db; color: #94a3b8; background: #fff; transition: all .3s; position: relative; z-index: 2; }
-    .pi-step.active .pi-step-num { border-color: #0453cb; background: linear-gradient(135deg, #0453cb, #5e91de); color: #fff; box-shadow: 0 2px 8px rgba(4,83,203,.3); }
-    .pi-step.done .pi-step-num { border-color: #10b981; background: #10b981; color: #fff; }
-    .pi-step-label { font-size: .74rem; font-weight: 600; color: #94a3b8; transition: color .3s; }
+    /* ── Footer / submit ── */
+    .pi-submit { display: flex; justify-content: flex-end; gap: 12px; padding: 18px 28px; border-top: 1px solid rgba(0,0,0,.05); background: linear-gradient(180deg, #f8fafc, #f1f5f9); border-radius: 0 0 18px 18px; }
+    .pi-btn { padding: 11px 22px; border-radius: 10px; font-size: .88rem; font-weight: 700; cursor: pointer; border: none; transition: all .25s; letter-spacing: .01em; }
+    .pi-btn-primary { background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: #fff; box-shadow: 0 3px 12px rgba(4,83,203,.25); }
+    .pi-btn-primary:hover { box-shadow: 0 6px 20px rgba(4,83,203,.35); transform: translateY(-2px); }
+    .pi-btn-primary:active { transform: translateY(0); }
+    .pi-btn-primary:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+    .pi-btn-secondary { background: #fff; color: #64748b; border: 1.5px solid #e2e8f0; }
+    .pi-btn-secondary:hover { background: #f8fafc; border-color: #cbd5e1; color: #475569; }
+
+    /* ── Info banner ── */
+    .pi-info { padding: 14px 18px; background: linear-gradient(145deg, rgba(4,83,203,.05), rgba(4,83,203,.02)); border: 1.5px solid rgba(4,83,203,.12); border-radius: 12px; font-size: .82rem; color: #1e40af; display: flex; align-items: flex-start; gap: 10px; margin-bottom: 22px; }
+    .pi-info i { margin-top: 2px; font-size: .75rem; }
+
+    /* ── Step indicator ── */
+    .pi-steps { display: flex; align-items: center; justify-content: center; padding: 22px 28px; border-bottom: 1px solid rgba(4,83,203,.06); background: linear-gradient(180deg, #fff, #fafbff); }
+    .pi-step { display: flex; flex-direction: column; align-items: center; gap: 7px; z-index: 1; flex: 0 0 auto; min-width: 76px; }
+    .pi-step-num { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .82rem; font-weight: 800; border: 2.5px solid #e2e8f0; color: #94a3b8; background: #fff; transition: all .35s; position: relative; z-index: 2; }
+    .pi-step.active .pi-step-num { border-color: #0453cb; background: linear-gradient(135deg, #0453cb, #5e91de); color: #fff; box-shadow: 0 3px 12px rgba(4,83,203,.3); }
+    .pi-step.done .pi-step-num { border-color: #10b981; background: linear-gradient(135deg, #10b981, #059669); color: #fff; box-shadow: 0 2px 8px rgba(16,185,129,.25); }
+    .pi-step-label { font-size: .74rem; font-weight: 700; color: #94a3b8; transition: color .3s; letter-spacing: .02em; }
     .pi-step.active .pi-step-label { color: #0453cb; }
-    .pi-step.done .pi-step-label { color: #10b981; }
-    .pi-step-line { flex: 1; height: 2px; background: #e2e8f0; min-width: 40px; max-width: 160px; transition: background .3s; z-index: 0; align-self: flex-start; margin-top: 15px; }
-    .pi-step-line.done { background: #10b981; }
+    .pi-step.done .pi-step-label { color: #059669; }
+    .pi-step-line { flex: 1; height: 2.5px; background: #e2e8f0; min-width: 40px; max-width: 160px; transition: background .35s; z-index: 0; align-self: flex-start; margin-top: 16px; border-radius: 2px; }
+    .pi-step-line.done { background: linear-gradient(90deg, #10b981, #059669); }
 
-    /* Progress bar */
+    /* ── Progress bar ── */
     .pi-progress { height: 3px; background: #e2e8f0; }
-    .pi-progress-bar { height: 100%; background: linear-gradient(90deg, #0453cb, #5e91de); transition: width .4s ease; }
+    .pi-progress-bar { height: 100%; background: linear-gradient(90deg, #0453cb, #5e91de); transition: width .4s ease; border-radius: 0 2px 2px 0; }
 
-    /* Frais cards */
+    /* ── Frais cards ── */
     .pi-frais-list { display: flex; flex-direction: column; gap: 10px; }
-    .pi-frais-item { padding: 14px 16px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; transition: border-color .2s; }
-    .pi-frais-item.mandatory { border-left: 3px solid #0453cb; }
-    .pi-frais-item.optional { border-left: 3px solid #64748b; }
+    .pi-frais-item { padding: 16px 18px !important; border: 1.5px solid #e2e8f0; border-radius: 12px !important; background: #fff; transition: all .2s; }
+    .pi-frais-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+    .pi-frais-item.mandatory { border-left: 4px solid #0453cb; }
+    .pi-frais-item.optional { border-left: 4px solid #94a3b8; }
     .pi-frais-item.selected { border-color: #0453cb; background: rgba(4,83,203,.02); }
     .pi-frais-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .pi-frais-name { font-size: .88rem; font-weight: 600; color: #1e293b; }
-    .pi-frais-amount { font-size: .92rem; font-weight: 700; color: #0453cb; white-space: nowrap; }
-    .pi-frais-badge { display: inline-block; font-size: .68rem; font-weight: 600; padding: 2px 8px; border-radius: 20px; margin-left: 8px; }
-    .pi-frais-badge.mandatory { background: rgba(4,83,203,.1); color: #0453cb; }
-    .pi-frais-badge.optional { background: rgba(100,116,139,.1); color: #64748b; }
-    .pi-frais-check { display: flex; align-items: center; gap: 8px; }
-    .pi-frais-check input[type=checkbox] { width: 16px; height: 16px; accent-color: #0453cb; }
-    .pi-frais-variants { margin-top: 10px; padding-top: 10px; border-top: 1px solid #f1f5f9; display: flex; flex-wrap: wrap; gap: 8px; }
-    .pi-variant-label { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: .8rem; transition: all .2s; }
-    .pi-variant-label:has(input:checked) { border-color: #0453cb; background: rgba(4,83,203,.06); }
+    .pi-frais-name { font-size: .88rem; font-weight: 700; color: #1e293b; }
+    .pi-frais-amount { font-size: .95rem; font-weight: 800; color: #0453cb; white-space: nowrap; }
+    .pi-frais-badge { display: inline-flex; align-items: center; gap: 4px; font-size: .66rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; margin-left: 8px; letter-spacing: .03em; }
+    .pi-frais-badge.mandatory { background: linear-gradient(135deg, rgba(4,83,203,.1), rgba(4,83,203,.06)); color: #0453cb; }
+    .pi-frais-badge.optional { background: rgba(100,116,139,.08); color: #64748b; }
+    .pi-frais-check { display: flex; align-items: center; gap: 10px; }
+    .pi-frais-check input[type=checkbox] { width: 18px; height: 18px; accent-color: #0453cb; cursor: pointer; }
+    .pi-frais-variants { margin-top: 12px; padding-top: 12px; border-top: 1.5px solid #f1f5f9; display: flex; flex-wrap: wrap; gap: 8px; }
+    .pi-variant-label { display: flex; align-items: center; gap: 6px; padding: 7px 14px; border: 1.5px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: .8rem; transition: all .2s; }
+    .pi-variant-label:hover { border-color: #cbd5e1; background: #fafbff; }
+    .pi-variant-label:has(input:checked) { border-color: #0453cb; background: rgba(4,83,203,.05); box-shadow: 0 0 0 2px rgba(4,83,203,.08); }
     .pi-variant-label input[type=radio] { accent-color: #0453cb; }
 
-    /* Total bar */
-    .pi-total-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: linear-gradient(135deg, rgba(4,83,203,.06), rgba(94,145,222,.06)); border: 1px solid rgba(4,83,203,.15); border-radius: 10px; margin-top: 16px; }
-    .pi-total-label { font-size: .85rem; font-weight: 600; color: #475569; }
-    .pi-total-amount { font-size: 1.1rem; font-weight: 800; color: #0453cb; }
+    /* ── Total bar ── */
+    .pi-total-bar { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: linear-gradient(145deg, rgba(4,83,203,.06), rgba(94,145,222,.04)); border: 1.5px solid rgba(4,83,203,.12); border-radius: 12px; margin-top: 18px; }
+    .pi-total-label { font-size: .85rem; font-weight: 700; color: #475569; display: flex; align-items: center; gap: 8px; }
+    .pi-total-label i { font-size: .8rem; color: #0453cb; }
+    .pi-total-amount { font-size: 1.15rem; font-weight: 800; color: #0453cb; }
 
-    /* Paiement slide */
-    .pi-pay-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 8px; }
-    .pi-pay-item label { display: flex; align-items: center; gap: 8px; font-size: .85rem; font-weight: 500; color: #1e293b; margin: 0; cursor: pointer; }
-    .pi-pay-item input[type=checkbox] { width: 16px; height: 16px; accent-color: #10b981; }
-    .pi-pay-amount { font-size: .88rem; font-weight: 700; color: #0453cb; }
+    /* ── Paiement slide ── */
+    .pi-pay-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px !important; border: 1.5px solid #e2e8f0; border-radius: 12px !important; margin-bottom: 10px; transition: all .2s; flex-wrap: wrap; }
+    .pi-pay-item:hover { border-color: #cbd5e1; box-shadow: 0 2px 6px rgba(0,0,0,.03); }
+    .pi-pay-item label { display: flex; align-items: center; gap: 10px; font-size: .85rem; font-weight: 600; color: #1e293b; margin: 0; cursor: pointer; }
+    .pi-pay-item input[type=checkbox] { width: 18px; height: 18px; accent-color: #10b981; cursor: pointer; }
+    .pi-pay-amount { font-size: .92rem; font-weight: 800; color: #0453cb; }
 
-    .pi-encaisser-total { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: rgba(16,185,129,.06); border: 1px solid rgba(16,185,129,.2); border-radius: 10px; margin-top: 12px; margin-bottom: 16px; }
-    .pi-encaisser-label { font-size: .88rem; font-weight: 600; color: #065f46; }
-    .pi-encaisser-amount { font-size: 1.1rem; font-weight: 800; color: #059669; }
+    .pi-encaisser-total { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: linear-gradient(145deg, #ecfdf5, #d1fae5); border: 1.5px solid #6ee7b7; border-radius: 12px; margin-top: 14px; margin-bottom: 18px; }
+    .pi-encaisser-label { font-size: .88rem; font-weight: 700; color: #047857; display: flex; align-items: center; gap: 8px; }
+    .pi-encaisser-label i { font-size: .85rem; }
+    .pi-encaisser-amount { font-size: 1.15rem; font-weight: 800; color: #047857; }
 
-    /* Loading spinner */
-    .pi-loading { text-align: center; padding: 30px 0; }
+    /* ── Loading spinner ── */
+    .pi-loading { text-align: center; padding: 32px 0; }
     .pi-loading .spinner { width: 28px; height: 28px; border: 3px solid #e2e8f0; border-top-color: #0453cb; border-radius: 50%; animation: pi-spin .7s linear infinite; display: inline-block; }
     @keyframes pi-spin { to { transform: rotate(360deg); } }
     .pi-loading p { margin: 10px 0 0; font-size: .82rem; color: #64748b; }
