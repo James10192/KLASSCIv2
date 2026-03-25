@@ -86,6 +86,27 @@
     @keyframes pi-spin { to { transform: rotate(360deg); } }
     .pi-loading p { margin: 10px 0 0; font-size: .82rem; color: #64748b; }
 
+    /* Analysis cards */
+    .pi-analyse-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+    .pi-analyse-card { padding: 20px !important; border-radius: 14px !important; position: relative; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+    .pi-analyse-card.success { background: linear-gradient(145deg, #ecfdf5, #d1fae5) !important; border: 1.5px solid #6ee7b7 !important; }
+    .pi-analyse-card.danger { background: linear-gradient(145deg, #fef2f2, #fecaca) !important; border: 1.5px solid #fca5a5 !important; }
+    .pi-analyse-card.info { background: linear-gradient(145deg, #eff6ff, #dbeafe) !important; border: 1.5px solid #93c5fd !important; }
+    .pi-analyse-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .pi-analyse-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: .9rem; color: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.12); flex-shrink: 0; }
+    .pi-analyse-icon.green { background: linear-gradient(135deg, #10b981, #059669); }
+    .pi-analyse-icon.red { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .pi-analyse-icon.blue { background: linear-gradient(135deg, #0453cb, #5e91de); }
+    .pi-analyse-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: #64748b; margin-bottom: 2px; }
+    .pi-analyse-value { font-size: 1.05rem; font-weight: 800; line-height: 1; }
+    .pi-analyse-value.green { color: #047857; }
+    .pi-analyse-value.red { color: #b91c1c; }
+    .pi-analyse-value.blue { color: #1d4ed8; }
+    .pi-analyse-pill { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(255,255,255,.7); border-radius: 8px; backdrop-filter: blur(4px); }
+    .pi-analyse-pill i { font-size: .7rem; color: #64748b; }
+    .pi-analyse-pill span { font-size: .8rem; color: #475569; }
+    .pi-analyse-pill strong { font-size: .88rem; color: #1e293b; }
+
     /* Slide transitions */
     .pi-slide { display: none; }
     .pi-slide.active { display: block; animation: pi-fadeIn .3s ease; }
@@ -209,59 +230,50 @@
                             <span style="font-size:.82rem; color:#64748b; margin-left:8px;">Analyse du dossier en cours...</span>
                         </div>
 
-                        <div x-show="analyseData && analyseData.has_analysis" style="display:none; margin-top:16px;">
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+                        <div x-show="analyseData && analyseData.has_analysis" style="display:none;">
+                            <div class="pi-analyse-grid">
                                 {{-- Décision académique --}}
-                                <div style="padding:18px 20px; border-radius:14px; position:relative; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.04);"
-                                     :style="analyseData?.decision === 'passage' ? 'background:linear-gradient(145deg, #ecfdf5, #d1fae5); border:1.5px solid #6ee7b7;' :
-                                             analyseData?.decision === 'redoublement' ? 'background:linear-gradient(145deg, #fef2f2, #fecaca); border:1.5px solid #fca5a5;' :
-                                             'background:linear-gradient(145deg, #eff6ff, #dbeafe); border:1.5px solid #93c5fd;'">
-                                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
-                                        <div style="width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:.9rem; box-shadow:0 2px 6px rgba(0,0,0,.12);"
-                                             :style="analyseData?.decision === 'passage' ? 'background:linear-gradient(135deg, #10b981, #059669); color:#fff;' :
-                                                     analyseData?.decision === 'redoublement' ? 'background:linear-gradient(135deg, #ef4444, #dc2626); color:#fff;' : 'background:linear-gradient(135deg, #0453cb, #5e91de); color:#fff;'">
+                                <div class="pi-analyse-card" :class="analyseData?.decision === 'passage' ? 'success' : analyseData?.decision === 'redoublement' ? 'danger' : 'info'">
+                                    <div class="pi-analyse-head">
+                                        <div class="pi-analyse-icon" :class="analyseData?.decision === 'passage' ? 'green' : analyseData?.decision === 'redoublement' ? 'red' : 'blue'">
                                             <i class="fas" :class="analyseData?.decision === 'passage' ? 'fa-arrow-up' : analyseData?.decision === 'redoublement' ? 'fa-redo' : 'fa-sync-alt'"></i>
                                         </div>
                                         <div>
-                                            <div style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:#64748b; margin-bottom:2px;">Decision</div>
-                                            <div style="font-size:1.05rem; font-weight:800; line-height:1;"
-                                                 :style="analyseData?.decision === 'passage' ? 'color:#047857;' : analyseData?.decision === 'redoublement' ? 'color:#b91c1c;' : 'color:#1d4ed8;'"
+                                            <div class="pi-analyse-label">Decision</div>
+                                            <div class="pi-analyse-value" :class="analyseData?.decision === 'passage' ? 'green' : analyseData?.decision === 'redoublement' ? 'red' : 'blue'"
                                                  x-text="analyseData?.decision === 'passage' ? 'Passage' : analyseData?.decision === 'redoublement' ? 'Redoublement' : 'Rattrapage'"></div>
                                         </div>
                                     </div>
-                                    <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(255,255,255,.7); border-radius:8px; backdrop-filter:blur(4px);">
-                                        <i class="fas fa-chart-line" style="font-size:.7rem; color:#64748b;"></i>
-                                        <span style="font-size:.8rem; color:#475569;">Moyenne</span>
-                                        <strong style="font-size:.88rem; color:#1e293b;" x-text="analyseData?.moyenne_generale ? parseFloat(analyseData.moyenne_generale).toFixed(2) + '/20' : 'N/A'"></strong>
+                                    <div class="pi-analyse-pill">
+                                        <i class="fas fa-chart-line"></i>
+                                        <span>Moyenne</span>
+                                        <strong x-text="analyseData?.moyenne_generale ? parseFloat(analyseData.moyenne_generale).toFixed(2) + '/20' : 'N/A'"></strong>
                                     </div>
                                 </div>
 
                                 {{-- Situation financière --}}
-                                <div style="padding:18px 20px; border-radius:14px; position:relative; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.04);"
-                                     :style="analyseData?.solde_status === 'solde' ? 'background:linear-gradient(145deg, #ecfdf5, #d1fae5); border:1.5px solid #6ee7b7;' : 'background:linear-gradient(145deg, #fef2f2, #fecaca); border:1.5px solid #fca5a5;'">
-                                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
-                                        <div style="width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:.9rem; box-shadow:0 2px 6px rgba(0,0,0,.12);"
-                                             :style="analyseData?.solde_status === 'solde' ? 'background:linear-gradient(135deg, #10b981, #059669); color:#fff;' : 'background:linear-gradient(135deg, #ef4444, #dc2626); color:#fff;'">
+                                <div class="pi-analyse-card" :class="analyseData?.solde_status === 'solde' ? 'success' : 'danger'">
+                                    <div class="pi-analyse-head">
+                                        <div class="pi-analyse-icon" :class="analyseData?.solde_status === 'solde' ? 'green' : 'red'">
                                             <i class="fas" :class="analyseData?.solde_status === 'solde' ? 'fa-check-circle' : 'fa-exclamation-circle'"></i>
                                         </div>
                                         <div>
-                                            <div style="font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:#64748b; margin-bottom:2px;">Finances</div>
-                                            <div style="font-size:1.05rem; font-weight:800; line-height:1;"
-                                                 :style="analyseData?.solde_status === 'solde' ? 'color:#047857;' : 'color:#b91c1c;'"
+                                            <div class="pi-analyse-label">Finances</div>
+                                            <div class="pi-analyse-value" :class="analyseData?.solde_status === 'solde' ? 'green' : 'red'"
                                                  x-text="analyseData?.solde_status === 'solde' ? 'Solde' : 'Impaye'"></div>
                                         </div>
                                     </div>
                                     <div style="display:flex; flex-direction:column; gap:6px;">
                                         <div x-show="analyseData?.solde_status !== 'solde'" style="display:none;">
-                                            <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(220,38,38,.08); border-radius:8px;">
-                                                <i class="fas fa-coins" style="font-size:.7rem; color:#dc2626;"></i>
-                                                <span style="font-size:.82rem; font-weight:700; color:#b91c1c;" x-text="'Relicat : ' + formatFCFA(analyseData?.solde_restant || 0)"></span>
+                                            <div class="pi-analyse-pill" style="background:rgba(220,38,38,.08);">
+                                                <i class="fas fa-coins" style="color:#dc2626;"></i>
+                                                <strong style="color:#b91c1c;" x-text="'Relicat : ' + formatFCFA(analyseData?.solde_restant || 0)"></strong>
                                             </div>
                                         </div>
-                                        <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(255,255,255,.7); border-radius:8px; backdrop-filter:blur(4px);">
-                                            <i class="fas fa-chalkboard" style="font-size:.7rem; color:#64748b;"></i>
-                                            <span style="font-size:.8rem; color:#475569;">Classe</span>
-                                            <strong style="font-size:.88rem; color:#1e293b;" x-text="analyseData?.classe_actuelle || '—'"></strong>
+                                        <div class="pi-analyse-pill">
+                                            <i class="fas fa-chalkboard"></i>
+                                            <span>Classe</span>
+                                            <strong x-text="analyseData?.classe_actuelle || '—'"></strong>
                                         </div>
                                     </div>
                                 </div>
