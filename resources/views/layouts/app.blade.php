@@ -1947,6 +1947,12 @@
                                 <div class="menu-text">Inscriptions</div>
                             </a>
                         </div>
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.reinscription.index') }}" class="menu-link {{ Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-redo"></i></div>
+                                <div class="menu-text">Réinscriptions</div>
+                            </a>
+                        </div>
                         @endcan
 
                         <div class="menu-category">Comptabilité</div>

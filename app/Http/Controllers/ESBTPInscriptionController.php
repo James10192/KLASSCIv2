@@ -2997,6 +2997,80 @@ class ESBTPInscriptionController extends Controller
     }
 
     /**
+     * Analyse académique d'un étudiant pour réinscription caissier (AJAX)
+     */
+    public function analyseEtudiant(Request $request, $etudiantId)
+    {
+        try {
+            $etudiant = \App\Models\ESBTPEtudiant::findOrFail($etudiantId);
+            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+            // Inscription active de l'année précédente
+            $inscriptionActive = $etudiant->inscriptions()
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree')
+                ->latest()
+                ->first();
+
+            if (!$inscriptionActive) {
+                return response()->json([
+                    'success' => true,
+                    'has_analysis' => false,
+                    'message' => 'Aucune inscription active trouvée pour cet étudiant.',
+                ]);
+            }
+
+            // Analyse académique
+            $reinscriptionService = app(\App\Services\ReeinscriptionService::class);
+            $anneeAnalyse = $inscriptionActive->anneeUniversitaire?->name ?? ($anneeCourante?->name ?? date('Y'));
+
+            $analysis = null;
+            try {
+                $analysis = $reinscriptionService->analyserSituationEtudiant($etudiantId, $anneeAnalyse);
+            } catch (\Exception $e) {
+                // Pas de notes = pas d'analyse possible
+            }
+
+            // Calcul du solde (relicat)
+            $totalAttendu = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscriptionActive->id)
+                ->where('is_active', true)->sum('amount');
+            $totalPaye = $inscriptionActive->paiements()->where('status', 'validé')->sum('montant');
+            $soldeRestant = max(0, $totalAttendu - $totalPaye);
+
+            // Classes proposées
+            $decision = $analysis['decision'] ?? 'passage';
+            $classesProposees = [];
+            try {
+                $classesProposees = $reinscriptionService->proposerNouvellesClasses($etudiantId, $decision);
+            } catch (\Exception $e) {
+                // Fallback : toutes les classes actives
+            }
+
+            return response()->json([
+                'success' => true,
+                'has_analysis' => true,
+                'decision' => $decision,
+                'moyenne_generale' => $analysis['moyenne_generale'] ?? null,
+                'matieres_echouees' => count($analysis['matieres_echouees'] ?? []),
+                'classe_actuelle' => $inscriptionActive->classe?->name ?? '—',
+                'solde_restant' => $soldeRestant,
+                'solde_status' => $soldeRestant <= 0 ? 'solde' : 'impaye',
+                'classes_proposees' => collect($classesProposees)->map(fn($c) => [
+                    'id' => $c->id ?? $c['id'] ?? null,
+                    'name' => $c->name ?? $c['name'] ?? '',
+                    'filiere' => $c->filiere->name ?? $c['filiere']['name'] ?? '',
+                    'niveau' => $c->niveau->name ?? $c['niveau']['name'] ?? '',
+                ])->values(),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'analyse : ' . $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * Recherche d'étudiants existants pour pré-inscription (AJAX)
      */
     public function searchEtudiants(Request $request)

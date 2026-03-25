@@ -202,6 +202,46 @@
                             </div>
                             <input type="hidden" name="etudiant_existant_id" :value="etudiantExistant?.id">
                         </div>
+
+                        {{-- Analyse académique (chargée en AJAX) --}}
+                        <div x-show="analyseLoading" style="text-align:center; padding:16px 0; display:none;">
+                            <div class="spinner" style="width:20px; height:20px; border-width:2px; display:inline-block;"></div>
+                            <span style="font-size:.82rem; color:#64748b; margin-left:8px;">Analyse académique en cours...</span>
+                        </div>
+
+                        <div x-show="analyseData && analyseData.has_analysis" style="display:none; margin-top:12px;">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                                {{-- Décision --}}
+                                <div style="padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0;"
+                                     :style="analyseData?.decision === 'passage' ? 'background:rgba(16,185,129,.06); border-color:rgba(16,185,129,.3);' :
+                                             analyseData?.decision === 'redoublement' ? 'background:rgba(220,38,38,.06); border-color:rgba(220,38,38,.3);' :
+                                             'background:rgba(4,83,203,.06); border-color:rgba(4,83,203,.3);'">
+                                    <div style="font-size:.72rem; font-weight:600; color:#64748b; text-transform:uppercase; margin-bottom:4px;">Décision</div>
+                                    <div style="font-size:.92rem; font-weight:700;"
+                                         :style="analyseData?.decision === 'passage' ? 'color:#059669;' :
+                                                 analyseData?.decision === 'redoublement' ? 'color:#dc2626;' : 'color:#0453cb;'"
+                                         x-text="analyseData?.decision === 'passage' ? '✅ Passage' :
+                                                 analyseData?.decision === 'redoublement' ? '⚠️ Redoublement' : '🔄 Rattrapage'">
+                                    </div>
+                                    <div style="font-size:.75rem; color:#64748b; margin-top:2px;">
+                                        Moyenne : <strong x-text="analyseData?.moyenne_generale ? parseFloat(analyseData.moyenne_generale).toFixed(2) + '/20' : 'N/A'"></strong>
+                                    </div>
+                                </div>
+
+                                {{-- Relicat --}}
+                                <div style="padding:12px 14px; border-radius:8px; border:1px solid #e2e8f0;"
+                                     :style="analyseData?.solde_status === 'solde' ? 'background:rgba(16,185,129,.06); border-color:rgba(16,185,129,.3);' : 'background:rgba(220,38,38,.06); border-color:rgba(220,38,38,.3);'">
+                                    <div style="font-size:.72rem; font-weight:600; color:#64748b; text-transform:uppercase; margin-bottom:4px;">Situation financière</div>
+                                    <div style="font-size:.92rem; font-weight:700;"
+                                         :style="analyseData?.solde_status === 'solde' ? 'color:#059669;' : 'color:#dc2626;'"
+                                         x-text="analyseData?.solde_status === 'solde' ? '✅ Soldé' : '⚠️ Impayé : ' + formatFCFA(analyseData?.solde_restant || 0)">
+                                    </div>
+                                    <div style="font-size:.75rem; color:#64748b; margin-top:2px;">
+                                        Classe actuelle : <strong x-text="analyseData?.classe_actuelle || '—'"></strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {{-- Infos nouvel étudiant (masquées si existant sélectionné) --}}
@@ -513,6 +553,8 @@ function preInscription() {
         searchQuery: '',
         searchResults: [],
         etudiantExistant: null,
+        analyseData: null,
+        analyseLoading: false,
         errors: {},
         loadingFrais: false,
         frais: [],
@@ -569,13 +611,35 @@ function preInscription() {
             this.telephone = etudiant.telephone || '';
             this.searchQuery = '';
             this.searchResults = [];
+            this.loadAnalyse(etudiant.id);
         },
 
         clearEtudiant() {
             this.etudiantExistant = null;
+            this.analyseData = null;
             this.nom = '';
             this.prenoms = '';
             this.telephone = '';
+        },
+
+        loadAnalyse(etudiantId) {
+            this.analyseLoading = true;
+            this.analyseData = null;
+            fetch(`/esbtp/inscriptions/analyse-etudiant/${etudiantId}`, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    this.analyseData = data;
+                    // Filtrer les classes proposées si disponibles
+                    if (data.classes_proposees && data.classes_proposees.length > 0) {
+                        this.classesProposees = data.classes_proposees;
+                    }
+                }
+                this.analyseLoading = false;
+            })
+            .catch(() => { this.analyseLoading = false; });
         },
 
         validateStep1() {
