@@ -3115,6 +3115,7 @@ class ESBTPInscriptionController extends Controller
                     'frais_category_id' => $categoryId,
                     'montant' => $amount,
                     'motif' => $categoryName,
+                    'numero_recu' => 'REC-' . strtoupper(Str::random(8)),
                     'date_paiement' => now(),
                     'mode_paiement' => $request->mode_paiement ?? 'especes',
                     'reference_paiement' => $request->reference_paiement,
