@@ -3019,7 +3019,11 @@ class ESBTPInscriptionController extends Controller
             'prenoms' => 'required|string|max:100',
             'classe_id' => 'required|exists:esbtp_classes,id',
             'telephone' => 'nullable|string|max:20',
-            'montant_paye' => 'nullable|numeric|min:0',
+            'frais' => 'nullable|array',
+            'frais.*.variant_id' => 'nullable|string',
+            'frais.*.amount' => 'nullable|numeric|min:0',
+            'paiement_categories' => 'nullable|array',
+            'paiement_categories.*' => 'integer',
             'mode_paiement' => 'nullable|string|in:especes,cheque,virement,mobile_money',
             'reference_paiement' => 'nullable|string|max:100',
         ], [
@@ -3064,32 +3068,69 @@ class ESBTPInscriptionController extends Controller
                 'created_by' => Auth::id(),
             ]);
 
-            // 3. Créer le paiement si un montant est fourni
-            $paiement = null;
-            $montantPaye = floatval($request->montant_paye ?? 0);
-            if ($montantPaye > 0) {
-                $paiement = ESBTPPaiement::create([
+            // 3. Créer les souscriptions de frais
+            $fraisData = $request->input('frais', []);
+            $totalSouscrit = 0;
+            foreach ($fraisData as $categoryId => $fraisInfo) {
+                $amount = floatval($fraisInfo['amount'] ?? 0);
+                if ($amount <= 0) continue;
+
+                $variantId = ($fraisInfo['variant_id'] ?? null);
+                $selectedOptionId = ($variantId !== 'default' && $variantId !== null) ? $variantId : null;
+
+                ESBTPFraisSubscription::create([
                     'inscription_id' => $inscription->id,
-                    'etudiant_id' => $etudiant->id,
-                    'montant' => $montantPaye,
-                    'date_paiement' => now(),
-                    'mode_paiement' => $request->mode_paiement ?? 'especes',
-                    'reference' => $request->reference_paiement,
-                    'type_paiement' => 'inscription',
-                    'status' => 'validé',
-                    'annee_universitaire_id' => $anneeCourante->id,
-                    'validated_by' => Auth::id(),
+                    'frais_category_id' => $categoryId,
+                    'selected_option_id' => $selectedOptionId,
+                    'amount' => $amount,
+                    'is_active' => true,
+                    'subscribed_at' => now(),
                     'created_by' => Auth::id(),
                 ]);
 
-                $inscription->update(['paiement_validation_id' => $paiement->id]);
+                $totalSouscrit += $amount;
+            }
+
+            // 4. Créer les paiements par catégorie cochée
+            $paiementCategories = $request->input('paiement_categories', []);
+            $totalPaye = 0;
+            $firstPaiement = null;
+
+            foreach ($paiementCategories as $categoryId) {
+                $amount = floatval($fraisData[$categoryId]['amount'] ?? 0);
+                if ($amount <= 0) continue;
+
+                $paiement = ESBTPPaiement::create([
+                    'inscription_id' => $inscription->id,
+                    'etudiant_id' => $etudiant->id,
+                    'frais_category_id' => $categoryId,
+                    'montant' => $amount,
+                    'date_paiement' => now(),
+                    'mode_paiement' => $request->mode_paiement ?? 'especes',
+                    'reference_paiement' => $request->reference_paiement,
+                    'type_paiement' => 'inscription',
+                    'status' => 'validé',
+                    'annee_universitaire_id' => $anneeCourante->id,
+                    'validateur_id' => Auth::id(),
+                    'createur_id' => Auth::id(),
+                ]);
+
+                $totalPaye += $amount;
+                if (!$firstPaiement) $firstPaiement = $paiement;
+            }
+
+            if ($firstPaiement) {
+                $inscription->update(['paiement_validation_id' => $firstPaiement->id]);
             }
 
             DB::commit();
 
             $message = "Pré-inscription créée avec succès pour {$request->nom} {$request->prenoms}.";
-            if ($paiement) {
-                $message .= " Paiement de " . number_format($montantPaye, 0, ',', ' ') . " FCFA enregistré.";
+            if ($totalSouscrit > 0) {
+                $message .= " Frais souscrits : " . number_format($totalSouscrit, 0, ',', ' ') . " FCFA.";
+            }
+            if ($totalPaye > 0) {
+                $message .= " Paiement encaissé : " . number_format($totalPaye, 0, ',', ' ') . " FCFA.";
             }
 
             return redirect()

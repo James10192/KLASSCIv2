@@ -73,8 +73,13 @@ class DashboardController extends Controller
             return $this->secretaireDashboard();
         }
 
-        // Vérifier si l'utilisateur est un comptable ou caissier
-        if ($user->hasRole(['comptable', 'caissier'])) {
+        // Vérifier si l'utilisateur est un caissier
+        if ($user->hasRole('caissier')) {
+            return $this->caissierDashboard();
+        }
+
+        // Vérifier si l'utilisateur est un comptable
+        if ($user->hasRole('comptable')) {
             return $this->comptableDashboard();
         }
 
@@ -764,6 +769,60 @@ class DashboardController extends Controller
         }
 
         return view('dashboard.comptable', $data);
+    }
+
+    /**
+     * Tableau de bord pour les caissiers.
+     */
+    private function caissierDashboard()
+    {
+        $user = Auth::user();
+        $today = now()->startOfDay();
+        $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        try {
+            // KPIs — scoped to current caissier
+            $paiementsAujourdhuiCount = \App\Models\ESBTPPaiement::whereDate('created_at', $today)
+                ->where('created_by', $user->id)
+                ->count();
+
+            $montantEncaisseAujourdhui = \App\Models\ESBTPPaiement::whereDate('created_at', $today)
+                ->where('created_by', $user->id)
+                ->where('status', 'validé')
+                ->sum('montant');
+
+            $preInscriptionsAujourdhui = \App\Models\ESBTPInscription::whereDate('created_at', $today)
+                ->where('workflow_step', 'prospect')
+                ->where('created_by', $user->id)
+                ->count();
+
+            $preInscriptionsEnAttente = \App\Models\ESBTPInscription::where('workflow_step', 'prospect')
+                ->where('status', 'en_attente')
+                ->count();
+
+            // Recent payments (last 10 by this caissier)
+            $paiementsRecents = \App\Models\ESBTPPaiement::with(['etudiant', 'inscription'])
+                ->where('created_by', $user->id)
+                ->orderBy('created_at', 'desc')
+                ->take(10)
+                ->get();
+        } catch (\Exception $e) {
+            $paiementsAujourdhuiCount = 0;
+            $montantEncaisseAujourdhui = 0;
+            $preInscriptionsAujourdhui = 0;
+            $preInscriptionsEnAttente = 0;
+            $paiementsRecents = collect();
+        }
+
+        return view('dashboard.caissier', compact(
+            'user',
+            'anneeEnCours',
+            'paiementsAujourdhuiCount',
+            'montantEncaisseAujourdhui',
+            'preInscriptionsAujourdhui',
+            'preInscriptionsEnAttente',
+            'paiementsRecents'
+        ));
     }
 
     /**

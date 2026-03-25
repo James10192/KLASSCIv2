@@ -1951,14 +1951,12 @@
 
                         <div class="menu-category">Comptabilité</div>
 
-                        @can('comptabilite.access')
                         <div class="menu-item">
-                            <a href="{{ route('esbtp.comptabilite.dashboard') }}" class="menu-link {{ Request::routeIs('esbtp.comptabilite.dashboard') ? 'active' : '' }}">
+                            <a href="{{ route('dashboard') }}" class="menu-link {{ Request::routeIs('dashboard') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-chart-line"></i></div>
-                                <div class="menu-text">Dashboard Comptable</div>
+                                <div class="menu-text">Tableau de bord</div>
                             </a>
                         </div>
-                        @endcan
 
                         @can('paiements.view')
                         <div class="menu-item">
