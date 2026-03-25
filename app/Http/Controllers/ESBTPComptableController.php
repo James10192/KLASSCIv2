@@ -129,6 +129,52 @@ class ESBTPComptableController extends Controller
         return redirect()->back()->with('success', "Comptable {$label}.");
     }
 
+    public function createCaissier()
+    {
+        return view('esbtp.caissiers.create');
+    }
+
+    public function storeCaissier(Request $request)
+    {
+        $validated = $request->validate([
+            'name'      => 'required|string|max:255',
+            'email'     => 'nullable|string|email|max:255|unique:users,email',
+            'telephone' => 'nullable|string|max:20',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $user = $this->userService->createUserWithAutoCredentials([
+                'name' => $validated['name'],
+                'email' => $validated['email'] ?? null,
+                'phone' => $validated['telephone'] ?? null,
+            ], 'caissier');
+
+            $user->update([
+                'telephone' => $validated['telephone'] ?? null,
+            ]);
+
+            $user->assignRole('caissier');
+
+            DB::commit();
+
+            $credentials = $this->userService->getCredentialsInfo(
+                $user->username,
+                $this->userService->generateDefaultPassword()
+            );
+
+            return redirect()
+                ->route('esbtp.personnel.unified.index')
+                ->with('success', "Caissier {$user->name} créé avec succès.")
+                ->with('credentials', $credentials);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Erreur lors de la création : ' . $e->getMessage());
+        }
+    }
+
     public function destroy($id)
     {
         $comptable = User::role('comptable')->findOrFail($id);

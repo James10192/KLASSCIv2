@@ -1907,6 +1907,10 @@ Route::middleware(['auth', 'role:superAdmin', 'paywall'])->prefix('esbtp')->name
     Route::get('/comptables/{user}', [\App\Http\Controllers\ESBTPComptableController::class, 'show'])->name('comptables.show');
     Route::put('/comptables/{user}', [\App\Http\Controllers\ESBTPComptableController::class, 'update'])->name('comptables.update');
     Route::post('/comptables/{user}/toggle-status', [\App\Http\Controllers\ESBTPComptableController::class, 'toggleStatus'])->name('comptables.toggle-status');
+
+    // Caissier
+    Route::get('/caissiers/create', [\App\Http\Controllers\ESBTPComptableController::class, 'createCaissier'])->name('caissiers.create');
+    Route::post('/caissiers', [\App\Http\Controllers\ESBTPComptableController::class, 'storeCaissier'])->name('caissiers.store');
 });
 
 // Routes pour la gestion du personnel avec sliders

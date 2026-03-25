@@ -643,6 +643,9 @@
                             <li><a class="dropdown-item" href="{{ route('esbtp.comptables.create') }}">
                                 <i class="fas fa-calculator"></i>Comptable
                             </a></li>
+                            <li><a class="dropdown-item" href="{{ route('esbtp.caissiers.create') }}">
+                                <i class="fas fa-cash-register"></i>Caissier
+                            </a></li>
                         </ul>
                     </div>
                 </div>
