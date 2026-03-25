@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ESBTPSecretaireController extends Controller
@@ -163,10 +164,28 @@ class ESBTPSecretaireController extends Controller
     public function destroy($id)
     {
         $secretaire = User::role('secretaire')->findOrFail($id);
-        $secretaire->delete();
 
-        return redirect()->route('secretaires.index')
-            ->with('success', 'Secrétaire supprimé avec succès');
+        if ($secretaire->id === Auth::id()) {
+            return redirect()->back()->with('error', 'Vous ne pouvez pas supprimer votre propre compte.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $secretaire->update([
+                'is_active' => false,
+                'email' => $secretaire->email . '_deleted_' . time(),
+            ]);
+            $secretaire->removeRole('secretaire');
+
+            DB::commit();
+
+            return redirect()->route('esbtp.personnel.unified.index')
+                ->with('success', 'Secrétaire désactivé avec succès');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
+        }
     }
 
     /**

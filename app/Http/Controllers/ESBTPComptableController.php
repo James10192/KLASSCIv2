@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
@@ -126,5 +127,32 @@ class ESBTPComptableController extends Controller
         }
 
         return redirect()->back()->with('success', "Comptable {$label}.");
+    }
+
+    public function destroy($id)
+    {
+        $comptable = User::role('comptable')->findOrFail($id);
+
+        if ($comptable->id === Auth::id()) {
+            return redirect()->back()->with('error', 'Vous ne pouvez pas supprimer votre propre compte.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $comptable->update([
+                'is_active' => false,
+                'email' => $comptable->email . '_deleted_' . time(),
+            ]);
+            $comptable->removeRole('comptable');
+
+            DB::commit();
+
+            return redirect()->route('esbtp.personnel.unified.index')
+                ->with('success', 'Comptable désactivé avec succès');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
+        }
     }
 }

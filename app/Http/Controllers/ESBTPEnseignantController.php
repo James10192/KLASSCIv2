@@ -1290,38 +1290,32 @@ class ESBTPEnseignantController extends Controller
      */
     public function destroy(ESBTPTeacher $teacher)
     {
+        // Empêcher la suppression de son propre compte
+        if ($teacher->user_id === Auth::id()) {
+            return redirect()->back()->with('error', 'Vous ne pouvez pas supprimer votre propre compte.');
+        }
+
         try {
             DB::beginTransaction();
 
-            // Supprimer les fichiers associés
-            if (
-                $teacher->cv_path &&
-                Storage::disk("public")->exists($teacher->cv_path)
-            ) {
-                Storage::disk("public")->delete($teacher->cv_path);
-            }
-            if (
-                $teacher->photo_path &&
-                Storage::disk("public")->exists($teacher->photo_path)
-            ) {
-                Storage::disk("public")->delete($teacher->photo_path);
-            }
+            // Marquer l'enseignant comme inactif (soft deactivation)
+            $teacher->update(['status' => 'inactive']);
 
-            // Supprimer le profil étendu si il existe
-            if (Schema::hasTable("esbtp_enseignant_profiles")) {
-                DB::table("esbtp_enseignant_profiles")
-                    ->where("user_id", $teacher->user_id)
-                    ->delete();
+            // Désactiver le compte utilisateur associé
+            if ($teacher->user) {
+                $teacher->user->update([
+                    'is_active' => false,
+                    'email' => $teacher->user->email . '_deleted_' . time(),
+                ]);
+                $teacher->user->removeRole('enseignant');
+                $teacher->user->removeRole('teacher');
             }
-
-            // Supprimer l'enseignant
-            $teacher->delete();
 
             DB::commit();
 
             return redirect()
                 ->route("esbtp.personnel.unified.index")
-                ->with("success", "Enseignant supprimé avec succès");
+                ->with("success", "Enseignant désactivé avec succès");
         } catch (\Exception $e) {
             DB::rollback();
 

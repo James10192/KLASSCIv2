@@ -79,13 +79,28 @@ class ESBTPPersonnelUnifiedController extends Controller
             $comptables = collect();
         }
 
+        // Récupérer les caissiers
+        $caissiers = collect();
+        try {
+            if (Role::where('name', 'caissier')->exists()) {
+                $caissiers = User::role('caissier')
+                    ->with(['roles'])
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get();
+            }
+        } catch (\Exception $e) {
+            $caissiers = collect();
+        }
+
         // Calculer les statistiques
         $stats = [
             'coordinateurs' => $coordinateurs->count(),
             'enseignants' => $enseignants->count(),
             'secretaires' => $secretaires->count(),
             'comptables' => $comptables->count(),
-            'total' => $coordinateurs->count() + $enseignants->count() + $secretaires->count() + $comptables->count(),
+            'caissiers' => $caissiers->count(),
+            'total' => $coordinateurs->count() + $enseignants->count() + $secretaires->count() + $comptables->count() + $caissiers->count(),
         ];
 
         // Rétro-compatibilité : $isCoordinateur est dérivé de $userRole
@@ -96,6 +111,7 @@ class ESBTPPersonnelUnifiedController extends Controller
             'enseignants',
             'secretaires',
             'comptables',
+            'caissiers',
             'stats',
             'isCoordinateur',
             'userRole'
@@ -216,8 +232,33 @@ class ESBTPPersonnelUnifiedController extends Controller
                     $data = collect();
                 }
                 break;
+
+            case 'caissier':
+                $data = collect();
+                try {
+                    if (Role::where('name', 'caissier')->exists()) {
+                        $query = User::role('caissier')->with(['roles']);
+
+                        if ($status) {
+                            $query->where('is_active', $status === 'active');
+                        }
+
+                        if ($search) {
+                            $query->where(function($q) use ($search) {
+                                $q->where('name', 'like', "%{$search}%")
+                                  ->orWhere('email', 'like', "%{$search}%")
+                                  ->orWhere('telephone', 'like', "%{$search}%");
+                            });
+                        }
+
+                        $data = $query->orderBy('name')->get();
+                    }
+                } catch (\Exception $e) {
+                    $data = collect();
+                }
+                break;
         }
-        
+
         return response()->json([
             'success' => true,
             'data' => $data,
@@ -245,7 +286,7 @@ class ESBTPPersonnelUnifiedController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
             'telephone' => 'nullable|string|max:20',
-            'type' => 'required|in:coordinateur,enseignant,secretaire,comptable',
+            'type' => 'required|in:coordinateur,enseignant,secretaire,comptable,caissier',
         ];
 
         // Règles spécifiques selon le type
