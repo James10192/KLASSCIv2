@@ -607,6 +607,43 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                 </div>
             @endif
 
+            {{-- Bannière pré-inscription caissier --}}
+            @if($inscription->etudiant && $inscription->etudiant->matricule && str_starts_with($inscription->etudiant->matricule, 'PRE-'))
+            @php
+                $piMissing = [];
+                if (!$inscription->etudiant->date_naissance) $piMissing[] = 'Date de naissance';
+                if (!$inscription->etudiant->sexe) $piMissing[] = 'Sexe';
+                if (!$inscription->etudiant->lieu_naissance) $piMissing[] = 'Lieu de naissance';
+                if (!$inscription->etudiant->adresse) $piMissing[] = 'Adresse';
+                $piCreator = $inscription->createdBy;
+            @endphp
+            @if(count($piMissing) > 0)
+            <div style="background:linear-gradient(135deg,#dbeafe,#bfdbfe); border:1.5px solid #3b82f6; border-left:5px solid #0453cb; border-radius:10px; padding:16px 20px; margin-bottom:16px; display:flex; align-items:flex-start; gap:14px;">
+                <div style="flex-shrink:0; width:36px; height:36px; background:#0453cb; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-clipboard-list" style="color:#fff; font-size:.9rem;"></i>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-weight:700; color:#1e3a5f; font-size:.95rem; margin-bottom:4px;">Pré-inscription — Informations à compléter</div>
+                    <div style="color:#1e40af; font-size:.85rem; margin-bottom:8px;">
+                        Créée par @if($piCreator) <strong>{{ $piCreator->name }}</strong> @endif
+                        le {{ $inscription->created_at->format('d/m/Y à H:i') }}.
+                        Complétez les informations avant de valider.
+                    </div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+                        @foreach($piMissing as $field)
+                        <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; background:rgba(4,83,203,.1); border:1px solid rgba(4,83,203,.2); border-radius:6px; font-size:.75rem; color:#0453cb; font-weight:600;">
+                            <i class="fas fa-times-circle" style="font-size:.6rem;"></i> {{ $field }}
+                        </span>
+                        @endforeach
+                    </div>
+                    <a href="{{ route('esbtp.etudiants.edit', $inscription->etudiant->id) }}" style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background:linear-gradient(135deg,#0453cb,#5e91de); color:#fff; border:none; border-radius:8px; font-size:.84rem; font-weight:600; text-decoration:none; box-shadow:0 2px 8px rgba(4,83,203,.25);">
+                        <i class="fas fa-edit"></i> Compléter les informations
+                    </a>
+                </div>
+            </div>
+            @endif
+            @endif
+
             <div class="row">
                 <div class="col-12 col-md-5 col-lg-4">
                     <!-- Informations étudiant -->

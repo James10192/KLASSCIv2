@@ -1670,6 +1670,17 @@
         || ($inscCourante->status === 'active' && $inscCourante->workflow_step !== 'etudiant_cree')
     );
 
+    // Pré-inscription caissier : matricule PRE-* = infos à compléter
+    $isPreInscription = $etudiant->matricule && str_starts_with($etudiant->matricule, 'PRE-') && $inscCourante;
+    $preInscriptionMissing = [];
+    if ($isPreInscription) {
+        if (!$etudiant->date_naissance) $preInscriptionMissing[] = 'Date de naissance';
+        if (!$etudiant->sexe) $preInscriptionMissing[] = 'Sexe';
+        if (!$etudiant->lieu_naissance) $preInscriptionMissing[] = 'Lieu de naissance';
+        if (!$etudiant->adresse) $preInscriptionMissing[] = 'Adresse';
+        $preInscriptionCreator = $inscCourante->createdBy ?? null;
+    }
+
     // Defaults LMD (safety fallback)
     $isLMD = $isLMD ?? false;
     $bulletinLMD = $bulletinLMD ?? null;
@@ -1972,8 +1983,49 @@
     </div>
     @endif
 
-    {{-- Bannière : inscription non validée (workflow incomplet) --}}
-    @if($inscNonValidee)
+    {{-- Bannière : pré-inscription caissier à compléter --}}
+    @if($isPreInscription && count($preInscriptionMissing) > 0)
+    <div style="
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        border: 1.5px solid #3b82f6;
+        border-left: 5px solid #0453cb;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+    ">
+        <div style="flex-shrink:0; width:36px; height:36px; background:#0453cb; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+            <i class="fas fa-clipboard-list" style="color:#fff; font-size:.9rem;"></i>
+        </div>
+        <div style="flex:1;">
+            <div style="font-weight:700; color:#1e3a5f; font-size:.95rem; margin-bottom:4px;">
+                Pré-inscription — Informations à compléter
+            </div>
+            <div style="color:#1e40af; font-size:.85rem; line-height:1.5; margin-bottom:8px;">
+                Cette fiche a été créée par le caissier
+                @if($preInscriptionCreator) <strong>{{ $preInscriptionCreator->name }}</strong> @endif
+                le {{ $inscCourante->created_at->format('d/m/Y à H:i') }}.
+                Veuillez compléter les informations manquantes avant de valider l'inscription.
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+                @foreach($preInscriptionMissing as $field)
+                <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; background:rgba(4,83,203,.1); border:1px solid rgba(4,83,203,.2); border-radius:6px; font-size:.75rem; color:#0453cb; font-weight:600;">
+                    <i class="fas fa-times-circle" style="font-size:.6rem;"></i> {{ $field }}
+                </span>
+                @endforeach
+            </div>
+            <a href="{{ route('esbtp.etudiants.edit', $etudiant->id) }}"
+               style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background:linear-gradient(135deg, #0453cb, #5e91de); color:#fff; border:none; border-radius:8px; font-size:.84rem; font-weight:600; text-decoration:none; cursor:pointer; box-shadow:0 2px 8px rgba(4,83,203,.25);">
+                <i class="fas fa-edit"></i> Compléter les informations
+            </a>
+        </div>
+    </div>
+    @endif
+
+    {{-- Bannière : inscription non validée (workflow incomplet) — masquée si pré-inscription incomplète --}}
+    @if($inscNonValidee && (!$isPreInscription || count($preInscriptionMissing) === 0))
     @php
         $wfStep = $inscCourante->workflow_step ?? 'non défini';
         $wfStatus = $inscCourante->status;

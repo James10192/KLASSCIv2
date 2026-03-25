@@ -54,6 +54,20 @@ class InscriptionWorkflowService
                 }
             }
 
+            // Vérifier que les infos obligatoires de l'étudiant sont complètes (pré-inscription caissier)
+            $etudiant = $inscription->etudiant;
+            if ($etudiant && $etudiant->matricule && str_starts_with($etudiant->matricule, 'PRE-')) {
+                $missing = [];
+                if (!$etudiant->date_naissance) $missing[] = 'date de naissance';
+                if (!$etudiant->sexe) $missing[] = 'sexe';
+                if (count($missing) > 0) {
+                    return [
+                        'success' => false,
+                        'message' => 'Pré-inscription incomplète. Veuillez d\'abord compléter : ' . implode(', ', $missing) . '.'
+                    ];
+                }
+            }
+
             // Vérifier qu'au moins un paiement validé existe sur cette inscription
             $paiement = ESBTPPaiement::find($inscription->paiement_validation_id);
             if (!$paiement || $paiement->status !== 'validé') {

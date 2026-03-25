@@ -773,6 +773,16 @@ class ESBTPEtudiantController extends Controller
 
             // Forcer un update sans détection de modification
             $result = $etudiant->save(['timestamps' => true]);
+
+            // Auto-régénérer le matricule PRE-* quand les infos sont complétées
+            if ($etudiant->matricule && str_starts_with($etudiant->matricule, 'PRE-') && $etudiant->date_naissance && $etudiant->sexe) {
+                do {
+                    $newMatricule = strtoupper(\Illuminate\Support\Str::random(10));
+                } while (ESBTPEtudiant::where('matricule', $newMatricule)->exists());
+                $etudiant->update(['matricule' => $newMatricule]);
+                \Log::info('Matricule PRE- régénéré', ['old' => 'PRE-*', 'new' => $newMatricule, 'etudiant_id' => $etudiant->id]);
+            }
+
             \Log::info('Résultat de la sauvegarde', [
                 'success' => $result,
                 'session_id' => session()->getId()
