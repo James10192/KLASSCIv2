@@ -305,7 +305,7 @@
 @else
 {{-- Modal Bootstrap pour la page edit normale --}}
 <div class="modal fade" id="parentSearchBootstrapModal" tabindex="-1" aria-labelledby="parentSearchLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:85vw; width:85vw;">
         <div class="modal-content" style="border:none; border-radius:16px; overflow:hidden; box-shadow:0 8px 40px rgba(4,83,203,.2);">
             <div class="modal-header" style="background:linear-gradient(135deg, #0453cb 0%, #5e91de 100%); border:none; padding:18px 24px;">
                 <h5 class="modal-title" id="parentSearchLabel" style="color:#fff; font-weight:700; font-size:1rem;">
