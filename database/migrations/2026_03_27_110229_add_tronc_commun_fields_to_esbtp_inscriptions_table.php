@@ -22,8 +22,15 @@ return new class extends Migration
         // Modifier la contrainte unique pour permettre 2 inscriptions/an dans 2 classes différentes
         // Ancienne : (etudiant_id, annee_universitaire_id, status)
         // Nouvelle : (etudiant_id, annee_universitaire_id, classe_id)
+
+        // 1. Créer le nouvel index AVANT de drop l'ancien
+        //    (MySQL a besoin d'un index sur etudiant_id pour la FK etudiant_id_foreign)
         Schema::table('esbtp_inscriptions', function (Blueprint $table) {
-            // Drop l'ancienne contrainte si elle existe
+            $table->unique(['etudiant_id', 'annee_universitaire_id', 'classe_id'], 'inscriptions_etudiant_annee_classe_unique');
+        });
+
+        // 2. Drop l'ancienne contrainte (MySQL peut maintenant utiliser le nouvel index pour la FK)
+        Schema::table('esbtp_inscriptions', function (Blueprint $table) {
             $sm = Schema::getConnection()->getDoctrineSchemaManager();
             $indexes = $sm->listTableIndexes('esbtp_inscriptions');
 
@@ -37,10 +44,6 @@ return new class extends Migration
                     break;
                 }
             }
-        });
-
-        Schema::table('esbtp_inscriptions', function (Blueprint $table) {
-            $table->unique(['etudiant_id', 'annee_universitaire_id', 'classe_id'], 'inscriptions_etudiant_annee_classe_unique');
         });
     }
 

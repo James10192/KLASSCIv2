@@ -175,7 +175,7 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
     const classesUrl = '{{ route("esbtp.inscriptions.specialisation.classes", $inscription) }}';
 
@@ -239,4 +239,4 @@
         }
     });
 </script>
-@endsection
+@endpush

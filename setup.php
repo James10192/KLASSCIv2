@@ -236,7 +236,8 @@ class KLASSCISetup
         $seeders = [
             'ChatbotSeeder',
             'ServiceTechniqueSeeder',
-            'SettingsSeeder'
+            'SettingsSeeder',
+            'TroncCommunSettingsSeeder'
         ];
 
         if (!isset($this->lockData['seeders'])) {
@@ -349,7 +350,7 @@ class KLASSCISetup
                 if (!isset($this->lockData['seeders'])) {
                     return false;
                 }
-                $criticalSeeders = ['ChatbotSeeder', 'ServiceTechniqueSeeder', 'SettingsSeeder'];
+                $criticalSeeders = ['ChatbotSeeder', 'ServiceTechniqueSeeder', 'SettingsSeeder', 'TroncCommunSettingsSeeder'];
                 foreach ($criticalSeeders as $seeder) {
                     if (!isset($this->lockData['seeders'][$seeder]) ||
                         $this->lockData['seeders'][$seeder]['status'] !== 'success') {
