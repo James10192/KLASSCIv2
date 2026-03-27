@@ -944,6 +944,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Route pour récupérer les frais par classe
             Route::get('/inscriptions/frais-by-classe/{classeId}', [ESBTPInscriptionApiController::class, 'getFraisByClasse'])->name('inscriptions.frais-by-classe');
 
+            // Routes pour la spécialisation (tronc commun → spécialisation)
+            Route::get('/inscriptions/{inscription}/specialisation', [\App\Http\Controllers\ESBTP\ESBTPSpecialisationController::class, 'show'])->name('inscriptions.specialisation');
+            Route::get('/inscriptions/{inscription}/specialisation/classes', [\App\Http\Controllers\ESBTP\ESBTPSpecialisationController::class, 'getClasses'])->name('inscriptions.specialisation.classes');
+            Route::post('/inscriptions/{inscription}/specialisation', [\App\Http\Controllers\ESBTP\ESBTPSpecialisationController::class, 'store'])->name('inscriptions.specialisation.store');
+
             // Routes API utilisées par les formulaires
 
             // Routes pour les notes

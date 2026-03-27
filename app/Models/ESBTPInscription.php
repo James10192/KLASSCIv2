@@ -52,7 +52,9 @@ class ESBTPInscription extends Model
         'reinscription_validated_by',
         'reinscription_observations',
         'est_transfert', // Transfert d'un autre établissement
-        'etablissement_origine' // Nom de l'établissement d'origine
+        'etablissement_origine', // Nom de l'établissement d'origine
+        'inscription_origine_id', // Lien vers inscription tronc commun
+        'type_changement', // Type de changement (specialisation)
     ];
 
     /**
@@ -337,6 +339,38 @@ class ESBTPInscription extends Model
     public function classeAlternative()
     {
         return $this->belongsTo(ESBTPClasse::class, 'classe_alternative_id');
+    }
+
+    /**
+     * Inscription d'origine (tronc commun → spécialisation).
+     */
+    public function inscriptionOrigine()
+    {
+        return $this->belongsTo(ESBTPInscription::class, 'inscription_origine_id');
+    }
+
+    /**
+     * Inscription de spécialisation (issue de cette inscription tronc commun).
+     */
+    public function inscriptionSpecialisation()
+    {
+        return $this->hasOne(ESBTPInscription::class, 'inscription_origine_id');
+    }
+
+    /**
+     * Vérifie si cette inscription est issue d'un tronc commun.
+     */
+    public function isSpecialisation(): bool
+    {
+        return $this->type_changement === 'specialisation' && $this->inscription_origine_id !== null;
+    }
+
+    /**
+     * Vérifie si cette inscription a donné lieu à une spécialisation.
+     */
+    public function hasSpecialisation(): bool
+    {
+        return $this->inscriptionSpecialisation()->exists();
     }
 
     /**

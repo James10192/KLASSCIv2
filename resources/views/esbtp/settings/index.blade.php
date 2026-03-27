@@ -1089,6 +1089,73 @@
                 </div>
             </div>
 
+            <!-- Section: Tronc Commun / Spécialisation -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon stats">
+                        <i class="fas fa-code-branch"></i>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Tronc Commun / Spécialisation</h3>
+                        <p class="section-description">Configuration du système de tronc commun avec spécialisation en cours d'année</p>
+                    </div>
+                </div>
+
+                <div class="settings-grid-2">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-toggle-on text-primary"></i>
+                            Activer le tronc commun
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="setting_tronc_commun_enabled" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('tronc_commun_enabled', '0') == '1' ? 'checked' : '' }}>
+                            <span class="switch-slider"></span>
+                        </label>
+                        <small class="text-muted">Permet aux filières marquées "tronc commun" de proposer une spécialisation en cours d'année</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-clipboard-check text-success"></i>
+                            Reporter les notes S1 dans la MGA
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="setting_tronc_commun_mga_include_s1" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('tronc_commun_mga_include_s1', '1') == '1' ? 'checked' : '' }}>
+                            <span class="switch-slider"></span>
+                        </label>
+                        <small class="text-muted">Inclure les notes du tronc commun (S1) dans le calcul de la Moyenne Générale Annuelle</small>
+                    </div>
+                </div>
+
+                <div class="settings-grid-2 mt-3">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-money-bill-transfer text-warning"></i>
+                            Reporter les paiements
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="setting_tronc_commun_report_paiements" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('tronc_commun_report_paiements', '1') == '1' ? 'checked' : '' }}>
+                            <span class="switch-slider"></span>
+                        </label>
+                        <small class="text-muted">Reporter automatiquement les paiements du tronc commun sur la spécialisation</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-file-lines text-info"></i>
+                            Reporter les notes
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="setting_tronc_commun_report_notes" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('tronc_commun_report_notes', '1') == '1' ? 'checked' : '' }}>
+                            <span class="switch-slider"></span>
+                        </label>
+                        <small class="text-muted">Conserver les notes du S1 (tronc commun) accessibles depuis la spécialisation</small>
+                    </div>
+                </div>
+            </div>
+
             <!-- Section: Pondération des semestres -->
             <div class="settings-section">
                 <div class="section-header">

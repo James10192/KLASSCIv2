@@ -264,9 +264,27 @@ class BulletinService
             ->where('moyenne_generale', '>', 0)
             ->exists();
 
+        // Tronc commun : si l'inscription est une spécialisation, chercher S1 dans la classe d'origine
+        $classeIdS1 = $classeId;
+        $classeTroncCommun = null;
+        $inscription = \App\Models\ESBTPInscription::where('etudiant_id', $etudiantId)
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('status', ['active', 'terminée'])
+            ->first();
+
+        if ($inscription && $inscription->isSpecialisation()
+            && \App\Helpers\SettingsHelper::get('tronc_commun_mga_include_s1', true)) {
+            $origine = $inscription->inscriptionOrigine;
+            if ($origine && $origine->classe_id) {
+                $classeIdS1 = $origine->classe_id;
+                $classeTroncCommun = $origine->classe;
+            }
+        }
+
         $moyenneSemestre1 = $this->getBulletinAverageForPeriode(
             $etudiantId,
-            $classeId,
+            $classeIdS1, // Peut être la classe tronc commun si spécialisation
             $anneeUniversitaireId,
             'semestre1',
             $periode,
@@ -275,7 +293,7 @@ class BulletinService
         );
         $moyenneSemestre2 = $this->getBulletinAverageForPeriode(
             $etudiantId,
-            $classeId,
+            $classeId, // Toujours la classe actuelle pour S2
             $anneeUniversitaireId,
             'semestre2',
             $periode,
