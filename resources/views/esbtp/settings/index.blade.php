@@ -1154,6 +1154,48 @@
                         <small class="text-muted">Conserver les notes du S1 (tronc commun) accessibles depuis la spécialisation</small>
                     </div>
                 </div>
+
+                <div class="settings-grid-2 mt-3">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-id-card text-primary"></i>
+                            Afficher la classe d'origine sur le bulletin
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="setting_tronc_commun_bulletin_show_origin" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('tronc_commun_bulletin_show_origin', '1') == '1' ? 'checked' : '' }}>
+                            <span class="switch-slider"></span>
+                        </label>
+                        <small class="text-muted">Mentionner la classe de tronc commun (S1) sur le bulletin de la spécialisation (S2)</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-link text-success"></i>
+                            Matières communes automatiques
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="setting_tronc_commun_matieres_communes" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('tronc_commun_matieres_communes', '1') == '1' ? 'checked' : '' }}>
+                            <span class="switch-slider"></span>
+                        </label>
+                        <small class="text-muted">Détecter les matières partagées entre TC et spécialisation, reporter les notes automatiquement</small>
+                    </div>
+                </div>
+
+                <div class="settings-grid-2 mt-3">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-calendar-check text-info"></i>
+                            Planning strict par semestre
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="setting_tronc_commun_planning_semestre_strict" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('tronc_commun_planning_semestre_strict', '0') == '1' ? 'checked' : '' }}>
+                            <span class="switch-slider"></span>
+                        </label>
+                        <small class="text-muted">Restreindre le planning général : matières TC en S1 uniquement, matières spécialisation en S2 uniquement</small>
+                    </div>
+                </div>
             </div>
 
             <!-- Section: Pondération des semestres -->
