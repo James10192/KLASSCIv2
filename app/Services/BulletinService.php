@@ -301,6 +301,26 @@ class BulletinService
         // Préparer la photo de l'étudiant en base64 pour le PDF
         $photoEtudiantBase64 = $this->preparePhotoEtudiantBase64($etudiant);
 
+        // Note de conduite (absences par matière)
+        $conduiteEnabled = SettingsHelper::get('bulletin_conduite_enabled', '0') === '1';
+        $absencesParMatiere = [];
+        $noteConduite = null;
+        $mentionConduite = '';
+        $totalHeuresAbsencesParMatiere = 0;
+
+        if ($conduiteEnabled) {
+            $absencesParMatiereData = $this->absenceService->calculerAbsencesParMatiere(
+                $etudiant->id,
+                $classe->id,
+                $anneeUniversitaire->date_debut,
+                $anneeUniversitaire->date_fin
+            );
+            $absencesParMatiere = $absencesParMatiereData['par_matiere'] ?? [];
+            $totalHeuresAbsencesParMatiere = $absencesParMatiereData['total_heures'] ?? 0;
+            $noteConduite = $this->calculerNoteConduite($totalHeuresAbsencesParMatiere);
+            $mentionConduite = $this->getMentionConduite($noteConduite);
+        }
+
         return [
             'etudiant' => $etudiant,
             'classe' => $classe,
@@ -313,7 +333,7 @@ class BulletinService
             'moyenneGlobale' => $moyenneGlobale,
             'moyenneAvecAssiduite' => $moyenneAvecAssiduite,
             'noteAssiduite' => $noteAssiduite,
-            'note_assiduite' => $noteAssiduite, // Alias pour compatibilité template
+            'note_assiduite' => $noteAssiduite,
             'rang' => $rang,
             'effectif' => $effectif,
             'meilleure_moyenne' => $statsClasse['meilleure_moyenne'],
@@ -323,8 +343,8 @@ class BulletinService
             'absences' => $absences,
             'absencesJustifiees' => $absences['justifiees'] ?? 0,
             'absencesNonJustifiees' => $absences['non_justifiees'] ?? 0,
-            'absences_justifiees' => $absences['justifiees'] ?? 0, // Alias pour compatibilité
-            'absences_non_justifiees' => $absences['non_justifiees'] ?? 0, // Alias pour compatibilité
+            'absences_justifiees' => $absences['justifiees'] ?? 0,
+            'absences_non_justifiees' => $absences['non_justifiees'] ?? 0,
             'professeurs' => $professeurs,
             'date_edition' => date('d/m/Y'),
             'settings' => $settings,
@@ -334,6 +354,10 @@ class BulletinService
             'moyenneAnnuelle' => $moyenneAnnuelle,
             'semesterWeights' => $semesterWeights,
             'warnings' => $warnings,
+            'noteConduite' => $noteConduite,
+            'mentionConduite' => $mentionConduite,
+            'absencesParMatiere' => $absencesParMatiere,
+            'totalHeuresAbsencesParMatiere' => $totalHeuresAbsencesParMatiere,
         ];
     }
 
@@ -777,6 +801,12 @@ class BulletinService
             'bulletin_show_lowest_average' => \App\Helpers\SettingsHelper::get('bulletin_show_lowest_average', '1'),
             'bulletin_show_class_average' => \App\Helpers\SettingsHelper::get('bulletin_show_class_average', '1'),
             'bulletin_include_attendance_in_stats' => \App\Helpers\SettingsHelper::get('bulletin_include_attendance_in_stats', '1'),
+
+            // Note de conduite
+            'bulletin_conduite_enabled' => \App\Helpers\SettingsHelper::get('bulletin_conduite_enabled', '0'),
+            'conduite_note_defaut' => \App\Helpers\SettingsHelper::get('conduite_note_defaut', '16'),
+            'conduite_heures_par_point' => \App\Helpers\SettingsHelper::get('conduite_heures_par_point', '4'),
+            'bulletin_show_absences_par_matiere' => \App\Helpers\SettingsHelper::get('bulletin_show_absences_par_matiere', '1'),
 
             // Décision et signatures
             'bulletin_show_council_decision' => \App\Helpers\SettingsHelper::get('bulletin_show_council_decision', '1'),
@@ -1810,23 +1840,58 @@ class BulletinService
 
     public function getAppreciation($moyenne)
     {
-        if ($moyenne >= 16) {
-            return 'Excellent';
-        }
-        if ($moyenne >= 14) {
-            return 'Très Bien';
-        }
-        if ($moyenne >= 12) {
-            return 'Bien';
-        }
-        if ($moyenne >= 10) {
-            return 'Assez Bien';
-        }
-        if ($moyenne >= 8) {
-            return 'Passable';
+        $useCustomAppreciations = SettingsHelper::get('bulletin_conduite_enabled', '0') === '1';
+
+        if ($useCustomAppreciations) {
+            if ($moyenne >= 18) return 'Excellent';
+            if ($moyenne >= 16) return 'Très Bien';
+            if ($moyenne >= 14) return 'Bien';
+            if ($moyenne >= 12) return 'Assez-bien';
+            if ($moyenne >= 9.99) return 'Passable';
+            if ($moyenne >= 7) return 'Insuffisant';
+            if ($moyenne >= 1) return 'Médiocre';
+            return 'Nul';
         }
 
+        if ($moyenne >= 16) return 'Excellent';
+        if ($moyenne >= 14) return 'Très Bien';
+        if ($moyenne >= 12) return 'Bien';
+        if ($moyenne >= 10) return 'Assez Bien';
+        if ($moyenne >= 8) return 'Passable';
         return 'Insuffisant';
+    }
+
+    /**
+     * Calcule la note de conduite basée sur les absences totales
+     * Note par défaut - (total_heures_absences / heures_par_point)
+     */
+    public function calculerNoteConduite($totalHeuresAbsences)
+    {
+        $noteDefaut = floatval(SettingsHelper::get('conduite_note_defaut', '16'));
+        $heuresParPoint = floatval(SettingsHelper::get('conduite_heures_par_point', '4'));
+
+        if ($heuresParPoint <= 0) {
+            $heuresParPoint = 4;
+        }
+
+        $deduction = floor($totalHeuresAbsences / $heuresParPoint);
+        $noteConduite = max(0, $noteDefaut - $deduction);
+
+        return round($noteConduite, 2);
+    }
+
+    /**
+     * Retourne la mention conduite selon la note
+     */
+    public function getMentionConduite($noteConduite)
+    {
+        if ($noteConduite <= 0) {
+            return 'Blâme';
+        }
+        if ($noteConduite <= 10) {
+            return 'Avertissement';
+        }
+        return '';
     }
 
 

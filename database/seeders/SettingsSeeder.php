@@ -1017,6 +1017,56 @@ class SettingsSeeder extends Seeder
                 'sort_order' => 37
             ],
 
+            // Note de conduite
+            [
+                'key' => 'bulletin_conduite_enabled',
+                'value' => '0',
+                'type' => 'boolean',
+                'group' => 'bulletin',
+                'category' => 'bulletin',
+                'description' => 'Activer la note de conduite sur le bulletin',
+                'is_required' => false,
+                'default_value' => '0',
+                'validation_rules' => ['string'],
+                'sort_order' => 38
+            ],
+            [
+                'key' => 'conduite_note_defaut',
+                'value' => '16',
+                'type' => 'float',
+                'group' => 'bulletin',
+                'category' => 'bulletin',
+                'description' => 'Note de conduite par défaut (/20)',
+                'is_required' => false,
+                'default_value' => '16',
+                'validation_rules' => ['nullable', 'numeric', 'min:0', 'max:20'],
+                'sort_order' => 39
+            ],
+            [
+                'key' => 'conduite_heures_par_point',
+                'value' => '4',
+                'type' => 'float',
+                'group' => 'bulletin',
+                'category' => 'bulletin',
+                'description' => 'Nombre d\'heures d\'absence pour retrancher 1 point de conduite',
+                'is_required' => false,
+                'default_value' => '4',
+                'validation_rules' => ['nullable', 'numeric', 'min:1'],
+                'sort_order' => 40
+            ],
+            [
+                'key' => 'bulletin_show_absences_par_matiere',
+                'value' => '1',
+                'type' => 'boolean',
+                'group' => 'bulletin',
+                'category' => 'bulletin',
+                'description' => 'Afficher les absences par matière sur le bulletin',
+                'is_required' => false,
+                'default_value' => '1',
+                'validation_rules' => ['string'],
+                'sort_order' => 41
+            ],
+
             // Statistiques
             [
                 'key' => 'bulletin_show_statistics',

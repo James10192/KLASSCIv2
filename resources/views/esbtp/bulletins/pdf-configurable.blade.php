@@ -515,6 +515,7 @@
                     @if(($settings['bulletin_show_coefficient'] ?? '1') == '1')<th>Coef C</th>@endif
                     @if(($settings['bulletin_show_weighted_average'] ?? '1') == '1')<th>Moy Pondérée M×C</th>@endif
                     @if(($settings['bulletin_show_rank_per_subject'] ?? '1') == '1')<th>Rang</th>@endif
+                    @if(($settings['bulletin_show_absences_par_matiere'] ?? '0') == '1' && ($settings['bulletin_conduite_enabled'] ?? '0') == '1')<th>Abs. (h)</th>@endif
                     @if(($settings['bulletin_show_teachers'] ?? '1') == '1')<th>Professeurs</th>@endif
                     @if(($settings['bulletin_show_appreciations'] ?? '1') == '1')<th>Appréciations</th>@endif
                 </tr>
@@ -534,12 +535,13 @@
                                 @if(($settings['bulletin_show_coefficient'] ?? '1') == '1')<td class="center">{{ $resultat->coefficient }}</td>@endif
                                 @if(($settings['bulletin_show_weighted_average'] ?? '1') == '1')<td class="center">{{ number_format($resultat->moyenne * $resultat->coefficient, 2) }}</td>@endif
                                 @if(($settings['bulletin_show_rank_per_subject'] ?? '1') == '1')<td class="center">{{ $resultat->rang ?: '-' }}</td>@endif
+                                @if(($settings['bulletin_show_absences_par_matiere'] ?? '0') == '1' && ($settings['bulletin_conduite_enabled'] ?? '0') == '1')<td class="center">{{ isset($absencesParMatiere[$resultat->matiere_id]) ? $absencesParMatiere[$resultat->matiere_id]['total_heures'] : 0 }}</td>@endif
                                 @if(($settings['bulletin_show_teachers'] ?? '1') == '1')<td>{{ $professeurs[$resultat->matiere_id] ?? 'M.' }}</td>@endif
                                 @if(($settings['bulletin_show_appreciations'] ?? '1') == '1')<td>{{ $resultat->appreciation ?? 'Nul' }}</td>@endif
                             </tr>
                         @endforeach
                     @else
-                        <tr><td colspan="7" class="center">Aucune matière d'enseignement général</td></tr>
+                        <tr><td colspan="8" class="center">Aucune matière d'enseignement général</td></tr>
                     @endif
                     @if(($settings['bulletin_show_section_averages'] ?? '1') == '1')
                     <tr class="summary-row">
@@ -562,12 +564,13 @@
                             @if(($settings['bulletin_show_coefficient'] ?? '1') == '1')<td class="center">{{ $resultat->coefficient }}</td>@endif
                             @if(($settings['bulletin_show_weighted_average'] ?? '1') == '1')<td class="center">{{ number_format($resultat->moyenne * $resultat->coefficient, 2) }}</td>@endif
                             @if(($settings['bulletin_show_rank_per_subject'] ?? '1') == '1')<td class="center">{{ $resultat->rang ?: '-' }}</td>@endif
+                            @if(($settings['bulletin_show_absences_par_matiere'] ?? '0') == '1' && ($settings['bulletin_conduite_enabled'] ?? '0') == '1')<td class="center">{{ isset($absencesParMatiere[$resultat->matiere_id]) ? $absencesParMatiere[$resultat->matiere_id]['total_heures'] : 0 }}</td>@endif
                             @if(($settings['bulletin_show_teachers'] ?? '1') == '1')<td>{{ $professeurs[$resultat->matiere_id] ?? 'M.' }}</td>@endif
                             @if(($settings['bulletin_show_appreciations'] ?? '1') == '1')<td>{{ $resultat->appreciation ?? 'Nul' }}</td>@endif
                         </tr>
                     @endforeach
                 @else
-                    <tr><td colspan="7" class="center">Aucune matière d'enseignement technique</td></tr>
+                    <tr><td colspan="8" class="center">Aucune matière d'enseignement technique</td></tr>
                 @endif
                 @if(($settings['bulletin_show_section_averages'] ?? '1') == '1')
                 <tr class="summary-row">
@@ -600,6 +603,33 @@
                 <tr>
                     <td>Absences non justifiées</td>
                     <td class="center">{{ isset($absencesNonJustifiees) ? $absencesNonJustifiees : (isset($absences_non_justifiees) ? $absences_non_justifiees : (isset($bulletin->absences_non_justifiees) ? $bulletin->absences_non_justifiees : '00')) }} Heure(s)</td>
+                </tr>
+                @endif
+            </tbody>
+        </table>
+        @endif
+
+        {{-- Note de Conduite --}}
+        @if(($settings['bulletin_conduite_enabled'] ?? '0') == '1' && isset($noteConduite))
+        <table class="absences-table">
+            <thead>
+                <tr class="section-header">
+                    <td colspan="2">Note de Conduite</td>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Total heures d'absences</td>
+                    <td class="center" style="width: 50%;">{{ $totalHeuresAbsencesParMatiere ?? 0 }} Heure(s)</td>
+                </tr>
+                <tr>
+                    <td>Note de conduite</td>
+                    <td class="center"><strong>{{ number_format($noteConduite, 2) }} / 20</strong></td>
+                </tr>
+                @if(!empty($mentionConduite))
+                <tr>
+                    <td>Mention conduite</td>
+                    <td class="center"><strong style="color: #c0392b;">{{ $mentionConduite }}</strong></td>
                 </tr>
                 @endif
             </tbody>
