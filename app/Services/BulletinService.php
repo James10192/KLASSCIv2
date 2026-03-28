@@ -376,8 +376,8 @@ class BulletinService
             'mentionConduite' => $mentionConduite,
             'absencesParMatiere' => $absencesParMatiere,
             'totalHeuresAbsencesParMatiere' => $totalHeuresAbsencesParMatiere,
-            'classeTroncCommun' => $classeTroncCommun ?? null,
-            'isSpecialisation' => isset($classeTroncCommun) && $classeTroncCommun !== null,
+            'classeTroncCommun' => $classeTroncCommun,
+            'isSpecialisation' => $classeTroncCommun !== null,
         ];
     }
 

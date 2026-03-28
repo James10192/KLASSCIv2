@@ -192,18 +192,14 @@ class TroncCommunService
     }
 
     /**
-     * Récupère les matières communes entre filière TC et filière spécialisation.
+     * Récupère les IDs des matières communes entre filière TC et filière spécialisation.
      */
-    public function getMatieresCommunes(ESBTPFiliere $filiereTc, ESBTPFiliere $filiereSpec, int $niveauId): Collection
+    public function getMatieresCommunesIds(ESBTPFiliere $filiereTc, ESBTPFiliere $filiereSpec, int $niveauId): Collection
     {
         $matieresTc = \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($filiereTc->id, $niveauId);
         $matieresSpec = \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($filiereSpec->id, $niveauId);
 
-        $communIds = $matieresTc->intersect($matieresSpec);
-
-        return \App\Models\ESBTPMatiere::whereIn('id', $communIds)
-            ->where('is_active', true)
-            ->get();
+        return $matieresTc->intersect($matieresSpec)->values();
     }
 
     /**
@@ -234,13 +230,12 @@ class TroncCommunService
             $classeSpec = $inscriptionSpecialisation->classe;
 
             if ($classeOrigine && $classeSpec && $classeOrigine->filiere_id && $classeSpec->filiere_id) {
-                $filiereTc = ESBTPFiliere::find($classeOrigine->filiere_id);
-                $filiereSpec = ESBTPFiliere::find($classeSpec->filiere_id);
+                $filiereTc = $classeOrigine->filiere;
+                $filiereSpec = $classeSpec->filiere;
                 $niveauId = $classeOrigine->niveau_etude_id ?? $classeSpec->niveau_etude_id;
 
                 if ($filiereTc && $filiereSpec && $niveauId) {
-                    $matieresCommunes = $this->getMatieresCommunes($filiereTc, $filiereSpec, $niveauId);
-                    $communIds = $matieresCommunes->pluck('id');
+                    $communIds = $this->getMatieresCommunesIds($filiereTc, $filiereSpec, $niveauId);
 
                     if ($communIds->isNotEmpty()) {
                         $query->whereIn('matiere_id', $communIds);

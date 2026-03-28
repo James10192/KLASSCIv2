@@ -54,23 +54,18 @@ class ESBTPPlanningConfigController extends Controller
         $matiereIds = \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($filiereId, $niveauId);
 
         // Tronc commun : filtrage strict par semestre
-        $isTroncCommun = false;
         $troncCommunStrict = \App\Helpers\SettingsHelper::get('tronc_commun_planning_semestre_strict', false);
-        $filiere = \App\Models\ESBTPFiliere::find($filiereId);
+        $filiere = ESBTPFiliere::find($filiereId);
 
         if ($filiere && $filiere->isTroncCommun() && $troncCommunStrict) {
-            $isTroncCommun = true;
             $nbSemestresTc = $filiere->semestres_tronc_commun ?? 1;
 
             if ($semestre > $nbSemestresTc) {
-                // S2+ pour filière TC en mode strict : matières des spécialisations
-                $specialisationIds = \App\Models\ESBTPFiliere::where('parent_id', $filiere->id)->pluck('id');
-                $matiereIds = collect();
-                foreach ($specialisationIds as $specId) {
-                    $specMatiereIds = \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($specId, $niveauId);
-                    $matiereIds = $matiereIds->merge($specMatiereIds);
-                }
-                $matiereIds = $matiereIds->unique();
+                $specialisationIds = $filiere->getSpecialisations()->pluck('id');
+                $matiereIds = \App\Models\ESBTPMatiereFilierNiveau::whereIn('filiere_id', $specialisationIds)
+                    ->where('niveau_etude_id', $niveauId)
+                    ->pluck('matiere_id')
+                    ->unique();
             }
         }
 

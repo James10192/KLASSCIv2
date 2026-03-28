@@ -488,7 +488,7 @@
                             <span class="info-label">Classe :</span>
                             <span class="info-value">{{ $classe->libelle ?? $classe->name }}</span>
                         </div>
-                        @if(isset($isSpecialisation) && $isSpecialisation && isset($classeTroncCommun) && ($settings['tronc_commun_bulletin_show_origin'] ?? '1') == '1')
+                        @if(!empty($isSpecialisation) && !empty($classeTroncCommun) && ($settings['tronc_commun_bulletin_show_origin'] ?? '1') == '1')
                         <div class="info-row">
                             <span class="info-label">Classe S1 (TC) :</span>
                             <span class="info-value">{{ $classeTroncCommun->libelle ?? $classeTroncCommun->name }}</span>
