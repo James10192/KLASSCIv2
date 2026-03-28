@@ -128,6 +128,31 @@ class ESBTPSettingsController extends Controller
                 );
             }
 
+            // Créer les settings de note de conduite si inexistants
+            $conduiteDefaults = [
+                'bulletin_conduite_enabled' => ['value' => '0', 'type' => 'boolean', 'description' => 'Activer la note de conduite sur le bulletin'],
+                'conduite_note_defaut' => ['value' => '16', 'type' => 'float', 'description' => 'Note de conduite par défaut (/20)'],
+                'conduite_heures_par_point' => ['value' => '4', 'type' => 'float', 'description' => 'Heures d\'absence pour retrancher 1 point'],
+                'bulletin_show_absences_par_matiere' => ['value' => '1', 'type' => 'boolean', 'description' => 'Afficher les absences par matière sur le bulletin'],
+            ];
+
+            foreach ($conduiteDefaults as $key => $attrs) {
+                Setting::firstOrCreate(
+                    ['key' => $key],
+                    [
+                        'value' => $attrs['value'],
+                        'type' => $attrs['type'],
+                        'group' => 'bulletin',
+                        'category' => 'bulletin',
+                        'description' => $attrs['description'],
+                        'is_required' => false,
+                        'default_value' => $attrs['value'],
+                        'validation_rules' => null,
+                        'sort_order' => 150,
+                    ]
+                );
+            }
+
             $allCheckboxSettings = Setting::whereIn('key', [
                 'bulletin_show_logo', 'bulletin_show_header', 'bulletin_show_republic_info',
                 'bulletin_show_ministry_info', 'bulletin_show_school_info', 'bulletin_show_cycle_info',
@@ -138,6 +163,7 @@ class ESBTPSettingsController extends Controller
                 'bulletin_show_highest_average', 'bulletin_show_lowest_average', 'bulletin_show_class_average',
                 'bulletin_auto_calculate_mention', 'bulletin_show_felicitation', 'bulletin_show_encouragement',
                 'certificat_show_classe', 'certificat_show_niveau', 'certificat_show_filiere',
+                'bulletin_conduite_enabled', 'bulletin_show_absences_par_matiere',
             ])->get();
 
             foreach ($allCheckboxSettings as $setting) {

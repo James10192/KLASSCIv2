@@ -1129,6 +1129,84 @@
                 </small>
             </div>
 
+            <!-- Section: Note de Conduite -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Note de Conduite</h3>
+                        <p class="section-description">Configuration de la note de conduite basée sur les absences</p>
+                    </div>
+                </div>
+
+                <div class="settings-grid-3">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-toggle-on text-success"></i>
+                            Activer la note de conduite
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_conduite_enabled" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_conduite_enabled', '0') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-list-ol text-info"></i>
+                            Absences par matière sur bulletin
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="bulletin_show_absences_par_matiere" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_absences_par_matiere', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="settings-grid-2" style="margin-top: var(--space-md);">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-star text-warning"></i>
+                            Note par défaut (/20)
+                        </label>
+                        <input type="number" class="form-control form-control-modern threshold-input"
+                               name="setting_conduite_note_defaut"
+                               value="{{ \App\Helpers\SettingsHelper::get('conduite_note_defaut', '16') }}"
+                               min="0" max="20" step="0.5">
+                        <small class="text-muted">Note de départ avant déduction des absences</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-clock text-danger"></i>
+                            Heures d'absence par point retiré
+                        </label>
+                        <input type="number" class="form-control form-control-modern threshold-input"
+                               name="setting_conduite_heures_par_point"
+                               value="{{ \App\Helpers\SettingsHelper::get('conduite_heures_par_point', '4') }}"
+                               min="1" max="20" step="1">
+                        <small class="text-muted">Chaque X heures d'absences = -1 point sur la note de conduite</small>
+                    </div>
+                </div>
+
+                <div style="margin-top: var(--space-md); padding: var(--space-md); background: #fef3cd; border-radius: var(--radius-medium); border: 1px solid #ffc107;">
+                    <strong><i class="fas fa-info-circle"></i> Barème des mentions de conduite :</strong>
+                    <ul style="margin: 8px 0 0 16px; padding: 0;">
+                        <li><strong>0/20</strong> → Blâme</li>
+                        <li><strong>05/20 à 10/20</strong> → Avertissement</li>
+                    </ul>
+                    <strong style="display: block; margin-top: 8px;"><i class="fas fa-book"></i> Appréciations des notes :</strong>
+                    <ul style="margin: 8px 0 0 16px; padding: 0;">
+                        <li>00/20 = Nul · 01-06 = Médiocre · 07-09.98 = Insuffisant · 9.99-11.99 = Passable</li>
+                        <li>12-13.99 = Assez-bien · 14-15.99 = Bien · 16-17.99 = Très Bien · 18-20 = Excellent</li>
+                    </ul>
+                </div>
+            </div>
+
             <!-- Section: Mentions et Seuils -->
             <div class="settings-section">
                 <div class="section-header">
