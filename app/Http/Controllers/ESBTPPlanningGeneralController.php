@@ -180,7 +180,8 @@ class ESBTPPlanningGeneralController extends Controller
                 $combinaisons[] = [
                     "filiere" => $filiere,
                     "niveau" => $niveau,
-                    "name" => $filiere->name . " - " . $niveau->name,
+                    "name" => ($filiere->isTroncCommun() ? '[TC] ' : '') . $filiere->name . " - " . $niveau->name,
+                    "is_tronc_commun" => $filiere->isTroncCommun(),
                     "total_matieres" => $totalMatieres,
                     "total_heures" => $totalHeures,
                     "matieres_configurees" => $matieresConfigurees,

@@ -376,6 +376,8 @@ class BulletinService
             'mentionConduite' => $mentionConduite,
             'absencesParMatiere' => $absencesParMatiere,
             'totalHeuresAbsencesParMatiere' => $totalHeuresAbsencesParMatiere,
+            'classeTroncCommun' => $classeTroncCommun ?? null,
+            'isSpecialisation' => isset($classeTroncCommun) && $classeTroncCommun !== null,
         ];
     }
 
@@ -825,6 +827,9 @@ class BulletinService
             'conduite_note_defaut' => \App\Helpers\SettingsHelper::get('conduite_note_defaut', '16'),
             'conduite_heures_par_point' => \App\Helpers\SettingsHelper::get('conduite_heures_par_point', '4'),
             'bulletin_show_absences_par_matiere' => \App\Helpers\SettingsHelper::get('bulletin_show_absences_par_matiere', '1'),
+
+            // Tronc commun
+            'tronc_commun_bulletin_show_origin' => \App\Helpers\SettingsHelper::get('tronc_commun_bulletin_show_origin', '1'),
 
             // Décision et signatures
             'bulletin_show_council_decision' => \App\Helpers\SettingsHelper::get('bulletin_show_council_decision', '1'),

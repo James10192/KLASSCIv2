@@ -192,7 +192,23 @@ class TroncCommunService
     }
 
     /**
+     * Récupère les matières communes entre filière TC et filière spécialisation.
+     */
+    public function getMatieresCommunes(ESBTPFiliere $filiereTc, ESBTPFiliere $filiereSpec, int $niveauId): Collection
+    {
+        $matieresTc = \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($filiereTc->id, $niveauId);
+        $matieresSpec = \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($filiereSpec->id, $niveauId);
+
+        $communIds = $matieresTc->intersect($matieresSpec);
+
+        return \App\Models\ESBTPMatiere::whereIn('id', $communIds)
+            ->where('is_active', true)
+            ->get();
+    }
+
+    /**
      * Récupère les notes du tronc commun (S1) pour une inscription de spécialisation.
+     * Si le setting tronc_commun_matieres_communes est activé, filtre aux matières communes.
      */
     public function getNotesTroncCommun(ESBTPInscription $inscriptionSpecialisation): Collection
     {
@@ -205,13 +221,35 @@ class TroncCommunService
             return collect();
         }
 
-        return ESBTPNote::where('classe_id', $origine->classe_id)
+        $query = ESBTPNote::where('classe_id', $origine->classe_id)
             ->where('etudiant_id', $inscriptionSpecialisation->etudiant_id)
             ->whereHas('evaluation', function ($q) {
                 $q->where('periode', 'semestre1');
             })
-            ->with(['evaluation', 'matiere'])
-            ->get();
+            ->with(['evaluation', 'matiere']);
+
+        // Filtrer par matières communes si le setting est activé
+        if (SettingsHelper::get('tronc_commun_matieres_communes', true)) {
+            $classeOrigine = $origine->classe;
+            $classeSpec = $inscriptionSpecialisation->classe;
+
+            if ($classeOrigine && $classeSpec && $classeOrigine->filiere_id && $classeSpec->filiere_id) {
+                $filiereTc = ESBTPFiliere::find($classeOrigine->filiere_id);
+                $filiereSpec = ESBTPFiliere::find($classeSpec->filiere_id);
+                $niveauId = $classeOrigine->niveau_etude_id ?? $classeSpec->niveau_etude_id;
+
+                if ($filiereTc && $filiereSpec && $niveauId) {
+                    $matieresCommunes = $this->getMatieresCommunes($filiereTc, $filiereSpec, $niveauId);
+                    $communIds = $matieresCommunes->pluck('id');
+
+                    if ($communIds->isNotEmpty()) {
+                        $query->whereIn('matiere_id', $communIds);
+                    }
+                }
+            }
+        }
+
+        return $query->get();
     }
 
     /**
