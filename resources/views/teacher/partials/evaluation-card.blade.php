@@ -72,14 +72,15 @@
             <a href="{{ route('esbtp.evaluations.show', $evaluation) }}" class="btn-action primary">
                 <i class="fas fa-eye"></i> Voir
             </a>
-            <button type="button"
-                    class="btn-action success {{ $canOpenNotesModal ? '' : 'disabled' }}"
-                    data-action="open-notes-modal"
-                    data-evaluation-id="{{ $evaluation->id }}"
-                    title="{{ $canOpenNotesModal ? 'Saisir les notes' : $notesDisabledReason }}"
-                    {{ $canOpenNotesModal ? '' : 'disabled' }}>
-                <i class="fas fa-pen-to-square"></i> Notes
-            </button>
+            @if($canOpenNotesModal)
+                <a href="{{ route('esbtp.notes.saisie-rapide', $evaluation) }}" class="btn-action success" title="Saisir les notes">
+                    <i class="fas fa-pen-to-square"></i> Notes
+                </a>
+            @else
+                <button type="button" class="btn-action success disabled" disabled title="{{ $notesDisabledReason }}">
+                    <i class="fas fa-pen-to-square"></i> Notes
+                </button>
+            @endif
         </div>
         @if(!$canOpenNotesModal && $notesDisabledReason)
             <div class="evaluation-helper">

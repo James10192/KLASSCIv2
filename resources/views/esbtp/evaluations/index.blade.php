@@ -1013,9 +1013,9 @@ document.addEventListener('DOMContentLoaded', () => {
             window.toastr[type](message);
         } else {
             if (type === 'error') {
-                debugError(message);
+                console.error('[Evaluations]', message);
             } else {
-                debugLog(message);
+                console.log('[Evaluations]', message);
             }
         }
     }
