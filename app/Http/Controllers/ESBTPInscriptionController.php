@@ -2258,145 +2258,18 @@ class ESBTPInscriptionController extends Controller
                         continue;
                     }
 
-                    // Cas 3: A des paiements EN ATTENTE → Valider automatiquement le premier
+                    // Cas 3: A des paiements EN ATTENTE -> ne pas valider automatiquement
                     $paiementsEnAttente = $inscription->paiements->where(
                         "status",
                         "en_attente",
                     );
                     if ($paiementsEnAttente->count() > 0) {
-                        $premierPaiement = $paiementsEnAttente->first();
-
-                        // Vérifications en amont
-
-                        // 1. Vérifier la disponibilité de la classe (sauf si force = true)
-                        if (!$forceValidation) {
-                            $classAvailability = $this->workflowService->checkClassAvailability(
-                                $inscription->classe_id,
-                            );
-                            if (!$classAvailability["available"]) {
-                                $stats["ignorees"][] = [
-                                    "id" => $inscription->id,
-                                    "etudiant" => $etudiantNom,
-                                    "raison" =>
-                                        "Classe pleine - " .
-                                        $classAvailability["message"],
-                                ];
-                                $stats["raisons_ignorees"]["classe_pleine"]++;
-
-                                continue;
-                            }
-                        }
-
-                        // 2. Vérifier inscription active existante
-                        $existingInscription = ESBTPInscription::where(
-                            "etudiant_id",
-                            $inscription->etudiant_id,
-                        )
-                            ->where(
-                                "annee_universitaire_id",
-                                $inscription->annee_universitaire_id,
-                            )
-                            ->where("status", "active")
-                            ->where("id", "!=", $inscription->id)
-                            ->first();
-
-                        if ($existingInscription) {
-                            $stats["ignorees"][] = [
-                                "id" => $inscription->id,
-                                "etudiant" => $etudiantNom,
-                                "raison" =>
-                                    'L\'étudiant a déjà une inscription active pour cette année',
-                            ];
-                            $stats["raisons_ignorees"][
-                                "inscription_existante"
-                            ]++;
-
-                            continue;
-                        }
-
-                        // Valider le paiement
-                        $premierPaiement->update([
-                            "status" => "validé",
-                            "date_validation" => now(),
-                            "validateur_id" => auth()->id(),
-                        ]);
-                        $stats["paiements_valides"]++;
-
-                        // Notifier l'étudiant de la validation du paiement
-                        try {
-                            $notificationService = app(
-                                \App\Services\NotificationService::class,
-                            );
-                            $notificationService->notifyPaiementValide(
-                                $premierPaiement,
-                                auth()->user(),
-                            );
-                        } catch (\Exception $e) {
-                            Log::error(
-                                "Erreur notification paiement validé (bulk): " .
-                                    $e->getMessage(),
-                            );
-                        }
-
-                        // Désactiver les rappels du paiement
-                        $this->desactiverRappelsPaiement($premierPaiement->id);
-
-                        // Associer le paiement à l'inscription
-                        $inscription->update([
-                            "paiement_validation_id" => $premierPaiement->id,
-                            "workflow_step" => "en_validation",
-                        ]);
-
-                        // Enregistrer dans l'historique
-                        \App\Models\ESBTPInscriptionWorkflowHistory::createEntry(
-                            $inscription->id,
-                            $inscription->workflow_step,
-                            "en_validation",
-                            "paiement_associe",
-                            auth()->id(),
-                            "Paiement validé et associé lors de validation groupée",
-                            ["paiement_id" => $premierPaiement->id],
-                        );
-
-                        // Valider définitivement l'inscription
-                        $result = $this->workflowService->convertProspectToStudent(
-                            $inscription,
-                            "Validation groupée avec paiement auto-validé",
-                        );
-
-                        if ($result["success"]) {
-                            $stats["validees_apres_paiement"]++;
-
-                            // Notification inscription validée
-                            if (
-                                $inscription->etudiant &&
-                                $inscription->etudiant->user
-                            ) {
-                                $notificationService->createNotification(
-                                    $inscription->etudiant->user,
-                                    "Inscription validée",
-                                    "Votre inscription a été validée avec succès. Vous pouvez maintenant accéder à votre espace étudiant.",
-                                    "success",
-                                    route(
-                                        "esbtp.inscriptions.show",
-                                        $inscription->id,
-                                    ),
-                                    auth()->user(),
-                                );
-                            }
-
-                            // Désactiver les rappels de l'inscription
-                            $this->desactiverRappelsInscription(
-                                $inscription->id,
-                            );
-                        } else {
-                            // Si ça échoue, on ignore au lieu de créer une erreur
-                            $stats["ignorees"][] = [
-                                "id" => $id,
-                                "etudiant" => $etudiantNom,
-                                "raison" => $result["message"],
-                            ];
-                        }
+                        $stats["ignorees"][] = [
+                            "id" => $inscription->id,
+                            "etudiant" => $etudiantNom,
+                            "raison" => "Le paiement associe n'est pas encore valide",
+                        ];
+                        $stats["raisons_ignorees"]["paiement_non_valide"]++;
 
                         continue;
                     }
