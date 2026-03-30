@@ -2273,8 +2273,19 @@ class ESBTPInscriptionController extends Controller
 
                         continue;
                     }
+                    // Cas 4: Aucun paiement -> ignorer
+                    if ($inscription->paiements->count() === 0) {
+                        $stats["ignorees"][] = [
+                            "id" => $inscription->id,
+                            "etudiant" => $etudiantNom,
+                            "raison" => "Aucun paiement associe a cette inscription",
+                        ];
+                        $stats["raisons_ignorees"]["sans_paiement"]++;
 
-                    // Cas 4: Aucun paiement → valider quand même (aligné sur valider())
+                        continue;
+                    }
+
+                    // Cas 4: Paiement present -> valider (aligne sur valider())
                     // Vérifier la disponibilité de la classe (sauf si force = true)
                     if (!$forceValidation) {
                         $classAvailability = $this->workflowService->checkClassAvailability(
