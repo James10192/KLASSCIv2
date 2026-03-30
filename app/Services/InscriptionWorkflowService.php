@@ -241,6 +241,7 @@ class InscriptionWorkflowService
             // Valider l'inscription d'abord
             $validation = $this->validateInscription($inscription);
             if (!$validation['success']) {
+                DB::rollBack();
                 return $validation;
             }
 
