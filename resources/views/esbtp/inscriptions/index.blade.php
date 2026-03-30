@@ -648,7 +648,7 @@ function clearInscriptionSelection() {
     updateInscriptionSelectionCount();
 }
 
-// Fonction pour valider les inscriptions sélectionnées
+// Fonction pour valider les inscriptions sélectionnées (AJAX)
 function bulkValiderInscriptions() {
     const checkboxes = document.querySelectorAll('.inscription-checkbox:checked');
     const inscriptionIds = Array.from(checkboxes).map(cb => cb.value);
@@ -658,36 +658,106 @@ function bulkValiderInscriptions() {
         return;
     }
 
-    const confirmMessage = `Êtes-vous sûr de vouloir valider ${inscriptionIds.length} inscription(s) ?\n\nLe système va automatiquement :\n• Valider les inscriptions avec paiements validés\n• Auto-valider les paiements en attente si nécessaire\n• Ignorer les inscriptions sans paiements\n• Envoyer les notifications aux étudiants concernés`;
+    const confirmMessage = `Êtes-vous sûr de vouloir valider ${inscriptionIds.length} inscription(s) ?\n\nLe système va automatiquement :\n• Valider les inscriptions avec paiements validés\n• Auto-valider les paiements en attente si nécessaire\n• Valider les inscriptions sans paiement (aligné sur validation unitaire)\n• Envoyer les notifications aux étudiants concernés`;
 
     if (!confirm(confirmMessage)) {
         return;
     }
 
-    // Créer et soumettre le formulaire
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '{{ route("esbtp.inscriptions.bulk-valider") }}';
+    const formData = new FormData();
+    formData.append('_token', '{{ csrf_token() }}');
+    inscriptionIds.forEach(id => formData.append('inscription_ids[]', id));
 
-    // Ajouter le token CSRF
-    const csrfInput = document.createElement('input');
-    csrfInput.type = 'hidden';
-    csrfInput.name = '_token';
-    csrfInput.value = '{{ csrf_token() }}';
-    form.appendChild(csrfInput);
-
-    // Ajouter les IDs sélectionnés
-    inscriptionIds.forEach(function(id) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'inscription_ids[]';
-        input.value = id;
-        form.appendChild(input);
+    // Mettre toutes les lignes en loading
+    inscriptionIds.forEach(id => {
+        const row = document.querySelector(`tr[data-inscription-id="${id}"]`);
+        if (row) {
+            row.classList.add('is-loading');
+            const wrapper = row.querySelector('.inscription-actions-wrapper');
+            if (wrapper) wrapper.classList.add('is-loading');
+        }
     });
 
-    // Ajouter le formulaire au body et le soumettre
-    document.body.appendChild(form);
-    form.submit();
+    fetch("{{ route('esbtp.inscriptions.bulk-valider') }}", {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Erreur lors de la validation.');
+        return response.json();
+    })
+    .then(data => {
+        if (!data.success) {
+            alert(data.message || 'Validation échouée.');
+            inscriptionIds.forEach(id => {
+                const row = document.querySelector(`tr[data-inscription-id="${id}"]`);
+                if (row) {
+                    row.classList.remove('is-loading');
+                    const wrapper = row.querySelector('.inscription-actions-wrapper');
+                    if (wrapper) wrapper.classList.remove('is-loading');
+                }
+            });
+            return;
+        }
+
+        if (data.message) {
+            alert(data.message);
+        }
+
+        const problems = data.inscriptions_problemes || {};
+
+        // Rafraîchir chaque ligne avec highlight
+        inscriptionIds.forEach(id => {
+            const actionType = problems[id] ? 'reject' : 'validate';
+            refreshInscriptionLigne(id, actionType);
+        });
+
+        clearInscriptionSelection();
+    })
+    .catch(error => {
+        alert(error.message || 'Erreur lors de la validation.');
+        inscriptionIds.forEach(id => {
+            const row = document.querySelector(`tr[data-inscription-id="${id}"]`);
+            if (row) {
+                row.classList.remove('is-loading');
+                const wrapper = row.querySelector('.inscription-actions-wrapper');
+                if (wrapper) wrapper.classList.remove('is-loading');
+            }
+        });
+    });
+}
+
+function refreshInscriptionLigne(inscriptionId, actionType) {
+    fetch(`/esbtp/inscriptions/${inscriptionId}/refresh-ligne?context=index`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Erreur rafraîchissement ligne.');
+        return response.json();
+    })
+    .then(data => {
+        if (!data.success || !data.html) return;
+
+        const template = document.createElement('template');
+        template.innerHTML = data.html.trim();
+        const newRow = template.content.querySelector('tr');
+        if (!newRow) return;
+
+        const existingRow = document.querySelector(`tr[data-inscription-id="${inscriptionId}"]`);
+        if (existingRow) {
+            existingRow.replaceWith(newRow);
+            // Appeler le highlight depuis le DOMContentLoaded scope si disponible
+            if (typeof window._triggerInscriptionRowHighlight === 'function') {
+                window._triggerInscriptionRowHighlight(newRow, actionType);
+            }
+        }
+    })
+    .catch(() => {});
 }
 </script>
 
@@ -762,6 +832,9 @@ document.addEventListener('DOMContentLoaded', function () {
             row.classList.remove('inscription-row-flash', 'reject');
         }, 1200);
     }
+
+    // Exposer pour refreshInscriptionLigne (hors scope DOMContentLoaded)
+    window._triggerInscriptionRowHighlight = triggerInscriptionRowHighlight;
 
     initInscriptionsSelect2();
     initInscriptionsTooltips();

@@ -2445,9 +2445,10 @@ class ESBTPInscriptionController extends Controller
                         continue;
                     }
 
-                    $result = $this->workflowService->convertProspectToStudent(
-                        $inscription,
-                        "Validation groupée (sans paiement)",
+                    // Sans paiement : utiliser inscriptionService (aligné sur valider() unitaire)
+                    $result = $this->inscriptionService->validerInscription(
+                        $inscription->id,
+                        auth()->id(),
                     );
 
                     if ($result["success"]) {
@@ -3291,6 +3292,20 @@ class ESBTPInscriptionController extends Controller
             }
         } catch (\Exception $e) {
             Log::error('Erreur désactivation reminder inscription: ' . $e->getMessage());
+        }
+    }
+
+    private function desactiverRappelsPaiement($paiementId)
+    {
+        try {
+            $reminder = \App\Models\NotificationReminder::where('remindable_type', 'App\Models\ESBTPPaiement')
+                ->where('remindable_id', $paiementId)
+                ->first();
+            if ($reminder) {
+                $reminder->deactivate();
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur désactivation reminder paiement: ' . $e->getMessage());
         }
     }
 }
