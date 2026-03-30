@@ -1647,10 +1647,14 @@ class ESBTPInscriptionController extends Controller
         try {
             DB::beginTransaction();
 
-            $this->inscriptionService->validerInscription(
+            $result = $this->inscriptionService->validerInscription(
                 $inscription->id,
                 auth()->id(),
             );
+
+            if (! $result[success]) {
+                throw new \Exception($result[message]);
+            }
 
             $montantPaye = $request->input("montant_paye", 0);
             if ($montantPaye > 0) {

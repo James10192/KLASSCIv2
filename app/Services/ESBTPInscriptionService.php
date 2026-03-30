@@ -429,12 +429,39 @@ class ESBTPInscriptionService
 
             // Ne pas valider une inscription déjà complètement validée
             if ($inscription->status === 'active' && $inscription->workflow_step === 'etudiant_cree') {
+                DB::rollBack();
+
                 return [
                     'success' => false,
                     'message' => 'Cette inscription est déjà validée'
                 ];
             }
 
+            $paiement = $inscription->paiement_validation_id
+                ? ESBTPPaiement::find($inscription->paiement_validation_id)
+                : null;
+
+            if (! $paiement || $paiement->status !== 'validé') {
+                $autrePaiementValide = $inscription->paiements()
+                    ->where('status', 'validé')
+                    ->first();
+
+                if ($autrePaiementValide) {
+                    $inscription->update([
+                        'paiement_validation_id' => $autrePaiementValide->id
+                    ]);
+                    $paiement = $autrePaiementValide;
+                }
+            }
+
+            if (! $paiement || $paiement->status !== 'validé') {
+                DB::rollBack();
+
+                return [
+                    'success' => false,
+                    'message' => 'Aucun paiement validé trouvé sur cette inscription.'
+                ];
+            }
             $inscription->status = 'active';
             $inscription->workflow_step = 'etudiant_cree';
             $inscription->date_validation = now();
