@@ -3279,4 +3279,18 @@ class ESBTPInscriptionController extends Controller
                 ->withInput();
         }
     }
+
+    private function desactiverRappelsInscription($inscriptionId)
+    {
+        try {
+            $reminder = \App\Models\NotificationReminder::where('remindable_type', 'App\Models\ESBTPInscription')
+                ->where('remindable_id', $inscriptionId)
+                ->first();
+            if ($reminder) {
+                $reminder->deactivate();
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur désactivation reminder inscription: ' . $e->getMessage());
+        }
+    }
 }
