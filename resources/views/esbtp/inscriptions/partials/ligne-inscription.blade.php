@@ -3,11 +3,13 @@
     $hasProbleme = session('inscriptions_problemes') && isset(session('inscriptions_problemes')[$inscription->id]);
     $problemeInfo = $hasProbleme ? session('inscriptions_problemes')[$inscription->id] : null;
     $problemeClass = $hasProbleme ? ($problemeInfo['type'] === 'error' ? 'table-danger' : 'table-warning') : '';
+    $isNonValidee = $inscription->workflow_step !== 'etudiant_cree';
+    $isValidee = $inscription->status == 'active' && $inscription->workflow_step === 'etudiant_cree';
 @endphp
 <tr class="{{ $problemeClass }}" data-inscription-id="{{ $inscription->id }}">
     @if(auth()->user()->hasRole('superAdmin'))
     <td>
-        @if($inscription->status == 'pending' || $inscription->status == 'en_attente')
+        @if($isNonValidee)
         <input type="checkbox" class="form-check-input inscription-checkbox"
                value="{{ $inscription->id }}"
                data-inscription-id="{{ $inscription->id }}">
@@ -60,9 +62,9 @@
     <td>{{ $inscription->niveau->name ?? ($inscription->niveau->nom ?? 'N/A') }}</td>
     <td>{{ $inscription->anneeUniversitaire->name ?? ($inscription->anneeUniversitaire->annee_scolaire ?? 'N/A') }}</td>
     <td>
-        @if($inscription->status == 'pending' || $inscription->status == 'en_attente')
+        @if($isNonValidee)
             <span class="badge bg-warning text-dark px-3 py-2">En attente</span>
-        @elseif($inscription->status == 'validated' || $inscription->status == 'active')
+        @elseif($isValidee)
             <span class="badge bg-success px-3 py-2">Validée</span>
         @elseif($inscription->status == 'cancelled')
             <span class="badge bg-danger px-3 py-2">Annulée</span>
