@@ -1652,8 +1652,8 @@ class ESBTPInscriptionController extends Controller
                 auth()->id(),
             );
 
-            if (! $result[success]) {
-                throw new \Exception($result[message]);
+            if (! $result['success']) {
+                throw new \Exception($result['message']);
             }
 
             $montantPaye = $request->input("montant_paye", 0);
