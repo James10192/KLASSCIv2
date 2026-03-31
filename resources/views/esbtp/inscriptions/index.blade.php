@@ -9,7 +9,7 @@
 @section('content')
 <!-- Debug: Afficher les données de session -->
 @if(session('inscriptions_problemes'))
-    <script>debugLog('Inscriptions avec problèmes:', @json(session('inscriptions_problemes')));</script>
+    <script>console.log('Inscriptions avec problèmes:', @json(session('inscriptions_problemes')));</script>
 @endif
 
 <div class="dashboard-acasi">
@@ -496,7 +496,7 @@ function triggerInscriptionRowHighlight(row, actionType = 'update', options = {}
 window.triggerInscriptionRowHighlight = triggerInscriptionRowHighlight;
 
 function showYearChangeInfo() {
-    debugLog('Tentative ouverture modal');
+    console.log('Tentative ouverture modal');
     
     // Essayer avec différentes méthodes Bootstrap
     if (typeof bootstrap !== 'undefined') {
@@ -953,7 +953,7 @@ document.addEventListener('DOMContentLoaded', function () {
             clearInscriptionSelection();
         })
         .catch(error => {
-            debugError(error);
+            console.error(error);
             alert('Impossible de charger les inscriptions. Veuillez réessayer.');
         })
         .finally(() => setLoading(false));
@@ -996,7 +996,7 @@ function ouvrirModalValiderPaiement(inscriptionId) {
             }
         })
         .catch(error => {
-            debugError(error);
+            console.error(error);
             showToast('Erreur lors du chargement des données', 'error');
         });
 }
@@ -1067,7 +1067,7 @@ function ouvrirModalChangerClasse(inscriptionId) {
             }
         })
         .catch(error => {
-            debugError(error);
+            console.error(error);
             showToast('Erreur lors du chargement des données', 'error');
         });
 }
@@ -1096,7 +1096,7 @@ function ouvrirModalCreerPaiement(inscriptionId) {
             }
         })
         .catch(error => {
-            debugError(error);
+            console.error(error);
             showToast('Erreur lors du chargement des données', 'error');
         });
 }
@@ -1118,7 +1118,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             isSubmitting = true;
-            debugLog('🔒 formValiderPaiement - Formulaire verrouillé');
+            console.log('🔒 formValiderPaiement - Formulaire verrouillé');
 
             // Désactiver le bouton submit
             const $submitBtn = this.querySelector('button[type="submit"]');
@@ -1148,7 +1148,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                debugError(error);
+                console.error(error);
                 alert('Erreur lors de la validation du paiement');
             })
             .finally(() => {
@@ -1185,7 +1185,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            debugError(error);
+            console.error(error);
             alert('Erreur lors du changement de classe');
         });
     });
@@ -1205,7 +1205,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             isSubmitting = true;
-            debugLog('🔒 formCreerPaiement - Formulaire verrouillé');
+            console.log('🔒 formCreerPaiement - Formulaire verrouillé');
 
             // Désactiver le bouton submit
             const $submitBtn = this.querySelector('button[type="submit"]');
@@ -1235,7 +1235,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                debugError(error);
+                console.error(error);
                 alert('Erreur lors de la création du paiement');
             })
             .finally(() => {
@@ -1252,12 +1252,12 @@ document.addEventListener('DOMContentLoaded', function() {
      * Inclut spinner de chargement et sauvegarde de l'état du checkbox
      */
     window.refreshInscriptionLigne = function(inscriptionId, actionType = 'update') {
-        debugLog('🔄 refreshInscriptionLigne() appelé pour ID:', inscriptionId);
+        console.log('🔄 refreshInscriptionLigne() appelé pour ID:', inscriptionId);
 
         const row = document.querySelector(`tr[data-inscription-id="${inscriptionId}"]`);
 
         if (!row) {
-            debugError('❌ Ligne non trouvée pour inscription ID:', inscriptionId);
+            console.error('❌ Ligne non trouvée pour inscription ID:', inscriptionId);
             location.reload();
             return;
         }
@@ -1275,7 +1275,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .then(response => {
-            debugLog('📥 Réponse reçue, status:', response.status);
+            console.log('📥 Réponse reçue, status:', response.status);
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
@@ -1295,7 +1295,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (!rowFragment) {
-                debugError('❌ Contenu HTML reçu:', data.html);
+                console.error('❌ Contenu HTML reçu:', data.html);
                 throw new Error('HTML retourné invalide (pas de TR)');
             }
 
@@ -1373,7 +1373,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 setInscriptionRowLoadingState(inscriptionId, false);
                 updateInscriptionSelectionCount();
 
-                debugLog('🎉 Ligne rafraîchie avec succès:', inscriptionId);
+                console.log('🎉 Ligne rafraîchie avec succès:', inscriptionId);
             };
 
             triggerInscriptionRowHighlight(row, actionType, {
@@ -1389,9 +1389,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }, INSCRIPTION_HIGHLIGHT_DURATION + 150);
         })
         .catch(error => {
-            debugError('❌ Erreur refresh ligne:', error);
-            debugError('❌ Message d\'erreur:', error.message);
-            debugError('❌ Stack trace:', error.stack);
+            console.error('❌ Erreur refresh ligne:', error);
+            console.error('❌ Message d\'erreur:', error.message);
+            console.error('❌ Stack trace:', error.stack);
 
             setInscriptionRowLoadingState(inscriptionId, false);
 
