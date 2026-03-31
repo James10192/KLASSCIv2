@@ -648,13 +648,26 @@ function clearInscriptionSelection() {
     updateInscriptionSelectionCount();
 }
 
+function showToast(message, type = 'success') {
+    if (!message) {
+        return;
+    }
+
+    if (window.toastr && typeof window.toastr[type] === 'function') {
+        window.toastr[type](message);
+        return;
+    }
+
+    alert(message);
+}
+
 // Fonction pour valider les inscriptions sélectionnées (AJAX)
 function bulkValiderInscriptions() {
     const checkboxes = document.querySelectorAll('.inscription-checkbox:checked');
     const inscriptionIds = Array.from(checkboxes).map(cb => cb.value);
 
     if (inscriptionIds.length === 0) {
-        alert('Veuillez sélectionner au moins une inscription à valider.');
+        showToast('Veuillez sélectionner au moins une inscription à valider.', 'warning');
         return;
     }
 
@@ -689,7 +702,7 @@ function bulkValiderInscriptions() {
     })
     .then(data => {
         if (!data.success) {
-            alert(data.message || 'Validation échouée.');
+            showToast(data.message || 'Validation échouée.', 'error');
             inscriptionIds.forEach(id => {
                 const row = document.querySelector(`tr[data-inscription-id="${id}"]`);
                 if (row) {
@@ -702,10 +715,17 @@ function bulkValiderInscriptions() {
         }
 
         if (data.message) {
-            alert(data.message);
+            const hasProblems = data.inscriptions_problemes && Object.keys(data.inscriptions_problemes).length > 0;
+            showToast(data.message, hasProblems ? 'warning' : 'success');
         }
 
         const problems = data.inscriptions_problemes || {};
+
+        Object.values(problems).forEach(problem => {
+            if (problem && problem.message) {
+                showToast(problem.message, 'warning');
+            }
+        });
 
         // Rafraîchir chaque ligne avec highlight
         inscriptionIds.forEach(id => {
@@ -716,7 +736,7 @@ function bulkValiderInscriptions() {
         clearInscriptionSelection();
     })
     .catch(error => {
-        alert(error.message || 'Erreur lors de la validation.');
+        showToast(error.message || 'Erreur lors de la validation.', 'error');
         inscriptionIds.forEach(id => {
             const row = document.querySelector(`tr[data-inscription-id="${id}"]`);
             if (row) {
@@ -972,12 +992,12 @@ function ouvrirModalValiderPaiement(inscriptionId) {
                 const modal = new bootstrap.Modal(document.getElementById('modalValiderPaiement'));
                 modal.show();
             } else {
-                alert('Impossible de récupérer les informations du paiement: ' + (data.message || ''));
+                showToast('Impossible de récupérer les informations du paiement: ' + (data.message || ''), 'error');
             }
         })
         .catch(error => {
             debugError(error);
-            alert('Erreur lors du chargement des données');
+            showToast('Erreur lors du chargement des données', 'error');
         });
 }
 
@@ -1043,12 +1063,12 @@ function ouvrirModalChangerClasse(inscriptionId) {
                 const modal = new bootstrap.Modal(document.getElementById('modalChangerClasse'));
                 modal.show();
             } else {
-                alert(data.message || 'Impossible de récupérer les classes alternatives');
+                showToast(data.message || 'Impossible de récupérer les classes alternatives', 'error');
             }
         })
         .catch(error => {
             debugError(error);
-            alert('Erreur lors du chargement des données');
+            showToast('Erreur lors du chargement des données', 'error');
         });
 }
 
@@ -1072,12 +1092,12 @@ function ouvrirModalCreerPaiement(inscriptionId) {
                 const modal = new bootstrap.Modal(document.getElementById('modalCreerPaiement'));
                 modal.show();
             } else {
-                alert('Impossible de récupérer les informations de l\'inscription: ' + (data.message || ''));
+                showToast('Impossible de récupérer les informations de l\'inscription: ' + (data.message || ''), 'error');
             }
         })
         .catch(error => {
             debugError(error);
-            alert('Erreur lors du chargement des données');
+            showToast('Erreur lors du chargement des données', 'error');
         });
 }
 
