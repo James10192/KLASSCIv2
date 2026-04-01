@@ -64,7 +64,7 @@
             <div class="card-body">
                 @if($studyYear->description)
                     <div class="mb-4">
-                        {!! $studyYear->description !!}
+                        {!! nl2br(e($studyYear->description)) !!}
                     </div>
                 @else
                     <p class="text-muted">Aucune description disponible pour cette année d'études.</p>

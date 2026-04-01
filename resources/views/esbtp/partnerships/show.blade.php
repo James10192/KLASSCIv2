@@ -106,7 +106,7 @@
                         <div class="active tab-pane" id="description">
                             <div class="post">
                                 <div>
-                                    {!! $partnership->description ?? 'Aucune description disponible.' !!}
+                                    {!! nl2br(e($partnership->description ?? 'Aucune description disponible.')) !!}
                                 </div>
                             </div>
                         </div>

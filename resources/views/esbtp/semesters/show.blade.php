@@ -81,7 +81,7 @@
             <div class="card-body">
                 @if($semester->description)
                     <div class="mb-4">
-                        {!! $semester->description !!}
+                        {!! nl2br(e($semester->description)) !!}
                     </div>
                 @else
                     <p class="text-muted">Aucune description disponible pour ce semestre.</p>

@@ -414,7 +414,7 @@
                                             @endphp
                                             <div class="notification-body-block">
                                                 @if($primaryLine !== '')
-                                                    <div class="notification-primary-line">{!! $primaryLine !!}</div>
+                                                    <div class="notification-primary-line">{{ $primaryLine }}</div>
                                                 @endif
                                                 @if(!empty($labels))
                                                     <div class="notification-meta-row">
@@ -476,7 +476,7 @@
                                                     </div>
                                                 @endif
                                                 @if($cta)
-                                                    <div class="notification-cta">{!! $cta !!}</div>
+                                                    <div class="notification-cta">{{ $cta }}</div>
                                                 @endif
                                             </div>{{-- .notification-body-block --}}
                                             <div class="d-flex align-items-center mt-2">

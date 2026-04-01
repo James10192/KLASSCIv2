@@ -13,21 +13,11 @@ class LogRequests
         Log::info('Incoming request', [
             'method' => $request->method(),
             'url' => $request->fullUrl(),
-            'headers' => $request->headers->all(),
-            'input' => $request->all(),
-            'route' => $request->route() ? [
-                'name' => $request->route()->getName(),
-                'parameters' => $request->route()->parameters(),
-                'methods' => $request->route()->methods(),
-            ] : null,
+            'input' => $request->except(['password', 'password_confirmation', 'current_password', '_token']),
+            'route' => $request->route() ? $request->route()->getName() : null,
         ]);
 
         $response = $next($request);
-
-        Log::info('Response', [
-            'status' => method_exists($response, 'status') ? $response->status() : $response->getStatusCode(),
-            'headers' => $response->headers->all(),
-        ]);
 
         return $response;
     }

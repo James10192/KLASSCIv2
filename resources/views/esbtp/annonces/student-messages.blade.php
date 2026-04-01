@@ -544,7 +544,7 @@
                         </div>
                         
                         <div class="message-full-content">
-                            {!! $message->contenu !!}
+                            {!! nl2br(e($message->contenu)) !!}
                         </div>
                         
                         @if($message->fichier)
