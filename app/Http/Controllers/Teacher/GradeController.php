@@ -36,6 +36,7 @@ class GradeController extends Controller
     {
         $this->middleware('auth');
         $this->middleware('role:teacher|enseignant');
+        $this->middleware('permission:module.notes_evaluations.access');
     }
 
     /**

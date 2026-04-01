@@ -25,6 +25,7 @@ class TeacherDashboardController extends Controller
     public function __construct()
     {
         $this->middleware(['auth', 'role:teacher|enseignant']);
+        $this->middleware('permission:module.presences.access')->only('showAttendance');
     }
 
     /**

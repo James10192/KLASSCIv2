@@ -28,6 +28,7 @@ class ESBTPPlanningConfigController extends Controller
         PlanningConfigurationService $planningConfigService,
     ) {
         $this->middleware("auth");
+        $this->middleware('permission:module.emploi_temps.access');
         $this->planningConfigService = $planningConfigService;
     }
 

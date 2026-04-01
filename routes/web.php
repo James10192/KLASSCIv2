@@ -77,20 +77,21 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// Route de debug temporaire pour identifier l'erreur is_current
-Route::get('/debug-annees-simple', [ESBTPAnneeUniversitaireController::class, 'debug'])->name('debug-annees-simple');
+// Debug routes — local environment only
+if (app()->environment('local')) {
+    Route::get('/debug-annees-simple', [ESBTPAnneeUniversitaireController::class, 'debug'])->name('debug-annees-simple');
 
-// Test route for debugging
-Route::get('/test-emploi-temps-show', function () {
-    $controller = new ESBTPEmploiTempsController;
-    $emploiTemps = \App\Models\ESBTPEmploiTemps::find(1);
+    Route::get('/test-emploi-temps-show', function () {
+        $controller = new ESBTPEmploiTempsController;
+        $emploiTemps = \App\Models\ESBTPEmploiTemps::find(1);
 
-    if (! $emploiTemps) {
-        return response()->json(['error' => 'Emploi du temps not found'], 404);
-    }
+        if (! $emploiTemps) {
+            return response()->json(['error' => 'Emploi du temps not found'], 404);
+        }
 
-    return $controller->show($emploiTemps);
-});
+        return $controller->show($emploiTemps);
+    });
+}
 
 // Route d'accueil
 Route::get('/', function () {
@@ -342,7 +343,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware(['permission:view_students']);
 
             // Routes pour les rôles et permissions
-            Route::resource('roles', \App\Http\Controllers\ESBTP\RoleController::class);
+            Route::resource('roles', \App\Http\Controllers\ESBTP\RoleController::class)->middleware(['role:superAdmin']);
 
             // Routes pour les départements
             Route::resource('departments', ESBTPDepartmentController::class);
@@ -1619,7 +1620,7 @@ Route::prefix('esbtp')->middleware(['auth', 'validate.device', 'attendance.rate_
 });
 
 // Forgotten Codes Routes
-Route::prefix('esbtp/admin/attendance')->name('esbtp.admin.attendance.')->middleware(['auth', 'role:secretary,superAdmin'])->group(function () {
+Route::prefix('esbtp/admin/attendance')->name('esbtp.admin.attendance.')->middleware(['auth', 'role:secretaire|superAdmin'])->group(function () {
     Route::get('/forgotten-codes', [App\Http\Controllers\ESBTP\Admin\ESBTPForgottenCodeController::class, 'index'])
         ->name('forgotten-codes');
     Route::post('/generate-manual-code', [App\Http\Controllers\ESBTP\Admin\ESBTPForgottenCodeController::class, 'generateManualCode'])
@@ -1638,7 +1639,7 @@ Route::prefix('esbtp/admin/attendance/manual')->name('esbtp.admin.attendance.man
         ->name('bulk');
 });
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'role:superAdmin'])->group(function () {
     // ... existing code ...
 
     // ESBTP Settings Routes
@@ -1683,8 +1684,8 @@ Route::middleware(['auth'])->group(function () {
         ->name('esbtp.etudiants.all-inscriptions');
 
     // Export étudiants (avant resource pour éviter conflit {etudiant})
-    Route::get('esbtp/etudiants-export/excel', [ESBTPStudentController::class, 'exportExcel'])->name('esbtp.etudiants.export.excel');
-    Route::get('esbtp/etudiants-export/pdf', [ESBTPStudentController::class, 'exportPdf'])->name('esbtp.etudiants.export.pdf');
+    Route::get('esbtp/etudiants-export/excel', [ESBTPStudentController::class, 'exportExcel'])->name('esbtp.etudiants.export.excel')->middleware('permission:view_students');
+    Route::get('esbtp/etudiants-export/pdf', [ESBTPStudentController::class, 'exportPdf'])->name('esbtp.etudiants.export.pdf')->middleware('permission:view_students');
 
     Route::resource('esbtp/etudiants', ESBTPStudentController::class, ['as' => 'esbtp'])->parameters(['etudiants' => 'etudiant']);
     Route::post('esbtp/etudiants/{id}/restore', [ESBTPStudentController::class, 'restore'])->name('esbtp.etudiants.restore');
@@ -2030,7 +2031,7 @@ Route::middleware(['auth', 'role:coordinateur'])->prefix('esbtp')->name('esbtp.'
 });
 
 // Routes pour la gestion des liens externes (pour admins/secrétaires)
-Route::middleware(['auth', 'role:superAdmin,secretary,coordinateur'])->prefix('esbtp')->name('esbtp.')->group(function () {
+Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur'])->prefix('esbtp')->name('esbtp.')->group(function () {
     Route::post('/evaluations/{evaluation}/generate-external-link', [ESBTPEvaluationController::class, 'generateExternalLink'])->name('evaluations.generate-external-link');
     Route::delete('/evaluations/{evaluation}/revoke-external-link', [ESBTPEvaluationController::class, 'revokeExternalLink'])->name('evaluations.revoke-external-link');
     Route::get('/evaluations/active-external-links', [ESBTPEvaluationController::class, 'getActiveExternalLinks'])->name('evaluations.active-external-links');

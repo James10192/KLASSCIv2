@@ -25,6 +25,8 @@ class ESBTPNoteController extends Controller
 
     public function __construct(NotificationService $notificationService)
     {
+        $this->middleware(['auth']);
+        $this->middleware('permission:module.notes_evaluations.access');
         $this->notificationService = $notificationService;
     }
 

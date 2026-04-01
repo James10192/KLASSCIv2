@@ -1484,9 +1484,10 @@
                     </div>
 
                     <!-- Academic Management Section -->
-                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire')))
+                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('module.academique.access')))
                         <div class="menu-category">Gestion académique</div>
 
+                        @can('module.academique.access')
                         <!-- Programs & Classes -->
                         <div class="menu-accordion">
                             <button class="menu-accordion-btn {{ Request::routeIs('esbtp.filieres.*') || Request::routeIs('esbtp.classes.*') || Request::routeIs('esbtp.niveaux-etudes.*') ? 'active' : '' }}">
@@ -1513,6 +1514,7 @@
                                 </a>
                             </div>
                         </div>
+                        @endcan
 
                         <!-- Training Cycles -->
                         <!--<div class="menu-accordion">
@@ -1539,9 +1541,10 @@
                     @endif
 
                     <!-- Students Section -->
-                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire')))
+                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('module.etudiants.access')))
                         <div class="menu-category">Étudiants</div>
 
+                        @can('module.etudiants.access')
                         <!-- Student Management -->
                         <div class="menu-accordion">
                             <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
@@ -1570,6 +1573,7 @@
                                 @endif
                             </div>
                         </div>
+                        @endcan
                     @endif
 
                     <!-- Personnel (secretaire uniquement — superAdmin a l'accordion dans Administration) -->
@@ -1616,6 +1620,7 @@
                             </div>
                         </div>
 
+                        @can('module.etudiants.access')
                         <!-- Student Management -->
                         <div class="menu-accordion">
                             <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
@@ -1642,6 +1647,7 @@
                                 <div class="menu-text">Classes</div>
                             </a>
                         </div>
+                        @endcan
 
                         <!-- Personnel Management -->
                         @can('manage_personnel')
@@ -1663,12 +1669,14 @@
                         @endcan
 
                         <!-- Attendance Dashboard -->
+                        @can('module.presences.access')
                         <div class="menu-item">
                             <a href="{{ route('coordinateur.attendance-dashboard') }}" class="menu-link {{ Request::routeIs('coordinateur.attendance-dashboard') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-chart-bar"></i></div>
                                 <div class="menu-text">Tableau de Bord Présences</div>
                             </a>
                         </div>
+                        @endcan
 
                         <!-- Communication -->
                         <div class="menu-item">
@@ -1715,6 +1723,7 @@
                         </div>
                         @endcan
 
+                        @can('module.academique.access')
                         <!-- Matières -->
                         <div class="menu-item">
                             <a href="{{ route('esbtp.matieres.index') }}" class="menu-link {{ Request::routeIs('esbtp.matieres.*') ? 'active' : '' }}">
@@ -1722,7 +1731,9 @@
                                 <div class="menu-text">Matières</div>
                             </a>
                         </div>
+                        @endcan
 
+                        @can('module.emploi_temps.access')
                         <!-- Planning Général -->
                         <div class="menu-item">
                             <a href="{{ route('esbtp.planning-general.index') }}" class="menu-link {{ Request::routeIs('esbtp.planning-general.*') ? 'active' : '' }}">
@@ -1730,6 +1741,7 @@
                                 <div class="menu-text">Planning Général</div>
                             </a>
                         </div>
+                        @endcan
 
                     @endif
 
@@ -2021,9 +2033,10 @@
                     @endif
 
                     <!-- Accounting Section -->
-                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('comptable')))
+                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('comptable') || auth()->user()->can('module.comptabilite.access')))
                         <div class="menu-category">Gestion financière</div>
 
+                        @can('module.comptabilite.access')
                         {{-- Dashboard Comptabilité (superAdmin + comptable) --}}
                         @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('comptable'))
                         <div class="menu-item">
@@ -2066,12 +2079,13 @@
                                 @endif
                             </div>
                         </div>
+                        @endcan
                     @endif
 
                     <!-- Announcements Section -->
-                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('enseignant') || auth()->user()->hasRole('coordinateur')))
+                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('enseignant') || auth()->user()->hasRole('coordinateur') || auth()->user()->can('module.communication.access')))
+                    @can('module.communication.access')
                     <div class="menu-category">Communication</div>
-
                     <!-- Announcements Management -->
                         <div class="menu-item">
                             <a href="{{ route('esbtp.annonces.index') }}" class="menu-link {{ Request::routeIs('esbtp.annonces.*') ? 'active' : '' }}">
@@ -2079,7 +2093,7 @@
                                 <div class="menu-text">Annonces</div>
                             </a>
                         </div>
-                        
+
                         @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur'))
                         <!-- Create Announcement -->
                         <div class="menu-item">
@@ -2089,6 +2103,7 @@
                             </a>
                         </div>
                         @endif
+                    @endcan
                     @endif
 
                     <!-- Service Technique Section - ADC Only -->

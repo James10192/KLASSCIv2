@@ -220,6 +220,15 @@ try {
         'module.emploi_temps.access',
         'module.presences.access',
         'module.lmd.access',
+        'module.academique.access',
+        'module.etudiants.access',
+        'module.comptabilite.access',
+        'module.communication.access',
+
+        // Permissions manquantes utilisées dans le code
+        'manage-users',
+        'edit_enseignants',
+        'edit_bulletins',
 
         // Permissions Service Technique (African Digit Consulting)
         'paywall.configure',
@@ -317,6 +326,13 @@ try {
         'module.emploi_temps.access',
         'module.presences.access',
         'module.lmd.access',
+        'module.academique.access',
+        'module.etudiants.access',
+        'module.comptabilite.access',
+        'module.communication.access',
+        'manage-users',
+        'edit_enseignants',
+        'edit_bulletins',
     ];
     $secretaireRole->syncPermissions($secretairePermissions);
     echo '✓ Secrétaire: '.count($secretairePermissions)." permissions accordées\n";
@@ -355,6 +371,9 @@ try {
         'module.emploi_temps.access',
         'module.presences.access',
         'module.lmd.access',
+        'module.academique.access',
+        'module.etudiants.access',
+        'module.communication.access',
     ];
     $coordinateurRole->syncPermissions($coordinateurPermissions);
     echo '✓ Coordinateur: '.count($coordinateurPermissions)." permissions accordées\n";
@@ -376,6 +395,7 @@ try {
         // Modules toggle
         'module.notes_evaluations.access',
         'module.presences.access',
+        'module.communication.access',
     ];
     $enseignantRole->syncPermissions($enseignantPermissions);
 
@@ -461,6 +481,9 @@ try {
         // Communication
         'send_messages', 'receive_messages',
         'view_annonces',
+        // Modules toggle
+        'module.comptabilite.access',
+        'module.communication.access',
     ];
     $comptableRole->syncPermissions($comptablePermissions);
     echo '✓ Comptable: '.count($comptablePermissions)." permissions accordées\n";

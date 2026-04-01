@@ -23,7 +23,8 @@ class TeacherGradeController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('enseignant');
+        $this->middleware('role:enseignant|teacher');
+        $this->middleware('permission:module.notes_evaluations.access');
     }
 
     /**

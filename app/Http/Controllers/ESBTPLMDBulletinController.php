@@ -17,6 +17,8 @@ class ESBTPLMDBulletinController extends Controller
 
     public function __construct(LMDBulletinService $service)
     {
+        $this->middleware(['auth']);
+        $this->middleware('permission:module.lmd.access');
         $this->service = $service;
     }
 

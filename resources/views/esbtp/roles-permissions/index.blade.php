@@ -18,6 +18,14 @@
         'enseignant' => 'Cours, présence, évaluations',
         'etudiant' => 'Accès aux services étudiant',
     ];
+    $roleIcons = [
+        'superAdmin' => 'fa-crown',
+        'secretaire' => 'fa-clipboard',
+        'comptable' => 'fa-calculator',
+        'coordinateur' => 'fa-user-tie',
+        'enseignant' => 'fa-chalkboard-teacher',
+        'etudiant' => 'fa-user-graduate',
+    ];
     $groupDescriptions = [
         'Administration' => 'Pilotage et gestion globale',
         'Pédagogie' => 'Suivi pédagogique et cours',
@@ -36,10 +44,7 @@
     <div class="dashboard-header">
         <div class="header-left">
             <h1><i class="fas fa-user-shield me-2"></i>Rôles & Permissions</h1>
-            <p class="header-subtitle">Administration des rôles existants et de leurs permissions</p>
-        </div>
-        <div class="header-actions">
-            <span class="badge primary">ADMIN CONFIG</span>
+            <p class="header-subtitle">Configurez les accès de chaque rôle en langage clair</p>
         </div>
     </div>
 
@@ -49,566 +54,469 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
-
-    <div class="card-moderne mb-lg">
-        <div class="section-card-header">
-            <h3 class="section-card-title">
-                <i class="fas fa-sliders-h"></i>
-                Configuration des permissions
-            </h3>
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
-        <div class="section-card-body">
-            <form action="{{ route('esbtp.roles-permissions.update') }}" method="POST" id="rolePermissionsForm">
-                @csrf
+    @endif
 
-                <div class="form-grid-2 mb-lg">
-                    <div class="form-group-moderne">
-                        <label class="form-label-moderne">
-                            <i class="fas fa-users-cog me-1"></i>Rôle cible
-                        </label>
-                        <input type="hidden" id="roleSelect" name="role" value="{{ $selectedRoleName }}">
-                        <div class="role-accordion" id="roleAccordion">
-                            @foreach($groupedRoles as $groupLabel => $groupRoles)
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header" id="heading-{{ Str::slug($groupLabel) }}">
-                                        <button class="accordion-button {{ $loop->first ? '' : 'collapsed' }}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ Str::slug($groupLabel) }}" aria-expanded="{{ $loop->first ? 'true' : 'false' }}" aria-controls="collapse-{{ Str::slug($groupLabel) }}">
-                                            <div class="group-title">
-                                                <span class="group-icon">
-                                                    <i class="fas fa-layer-group"></i>
-                                                </span>
-                                                <div>
-                                                    <div class="group-name">{{ $groupLabel }}</div>
-                                                    <div class="group-desc">{{ $groupDescriptions[$groupLabel] ?? '' }}</div>
-                                                </div>
-                                            </div>
-                                            <span class="group-count">{{ $groupRoles->count() }} rôles</span>
-                                        </button>
-                                    </h2>
-                                    <div id="collapse-{{ Str::slug($groupLabel) }}" class="accordion-collapse collapse {{ $loop->first ? 'show' : '' }}" aria-labelledby="heading-{{ Str::slug($groupLabel) }}" data-bs-parent="#roleAccordion">
-                                        <div class="accordion-body">
-                                            <div class="role-grid">
-                                                @foreach($groupRoles as $role)
-                                                    @php
-                                                        $rolePerms = $rolePermissions[$role->name] ?? collect();
-                                                    @endphp
-                                                    <button type="button" class="role-card {{ $selectedRoleName === $role->name ? 'active' : '' }}" data-role="{{ $role->name }}" data-permissions='@json($rolePerms)'>
-                                                    <div class="role-name">{{ $roleLabels[$role->name] ?? Str::title(str_replace(['_', '-'], ' ', $role->name)) }}</div>
-                                                    <div class="role-desc">{{ $roleDescriptions[$role->name] ?? '' }}</div>
-                                                    </button>
-                                                @endforeach
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                    <div class="form-group-moderne">
-                        <label class="form-label-moderne">
-                            <i class="fas fa-filter me-1"></i>Actions rapides
-                        </label>
-                        <div class="d-flex gap-2 flex-wrap">
-                            <button type="button" class="btn-acasi secondary" id="selectAllPerms">
-                                <i class="fas fa-check-double me-1"></i>Tout cocher
-                            </button>
-                            <button type="button" class="btn-acasi secondary" id="clearAllPerms">
-                                <i class="fas fa-eraser me-1"></i>Tout retirer
-                            </button>
-                        </div>
-                    </div>
-                </div>
+    <form action="{{ route('esbtp.roles-permissions.update') }}" method="POST" id="rpForm">
+        @csrf
+        <input type="hidden" id="rpRoleInput" name="role" value="{{ $selectedRoleName }}">
 
-                <div class="alert alert-info mb-lg">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Les rôles existent déjà. Vous pouvez ajouter ou retirer des permissions puis enregistrer.
-                </div>
+        {{-- ── Sélection du rôle ── --}}
+        <div class="rp-roles-bar">
+            @foreach($roles as $role)
+                <button type="button"
+                        class="rp-role-chip {{ $selectedRoleName === $role->name ? 'active' : '' }}"
+                        data-role="{{ $role->name }}"
+                        data-permissions='@json($rolePermissions[$role->name] ?? [])'>
+                    <i class="fas {{ $roleIcons[$role->name] ?? 'fa-user' }}"></i>
+                    <span>{{ $roleLabels[$role->name] ?? $role->name }}</span>
+                </button>
+            @endforeach
+        </div>
 
+        {{-- ── Barre d'actions ── --}}
+        <div class="rp-actions-bar">
+            <div class="rp-actions-left">
+                <span class="rp-counter"><strong id="rpCheckedCount">0</strong> / {{ $permissions->count() }} permissions activées</span>
+            </div>
+            <div class="rp-actions-right">
+                <button type="button" class="btn-acasi secondary btn-sm" id="rpSelectAll">
+                    <i class="fas fa-check-double me-1"></i>Tout activer
+                </button>
+                <button type="button" class="btn-acasi secondary btn-sm" id="rpClearAll">
+                    <i class="fas fa-eraser me-1"></i>Tout désactiver
+                </button>
+                <button type="submit" class="btn-acasi primary btn-sm">
+                    <i class="fas fa-save me-1"></i>Enregistrer
+                </button>
+            </div>
+        </div>
+
+        {{-- ── Groupes de permissions ── --}}
+        <div class="rp-groups">
+            @foreach($sortedGroups as $groupName => $groupItems)
                 @php
+                    $groupIcon = 'fa-layer-group';
+                    $firstPerm = $groupItems->first();
+                    if ($firstPerm && isset($catalog[$firstPerm->name])) {
+                        $groupIcon = $catalog[$firstPerm->name][2];
+                    }
+                    $groupSlug = Str::slug($groupName);
                     $selectedPermissions = $rolePermissions[$selectedRoleName] ?? collect();
+                    $checkedInGroup = $groupItems->filter(fn($p) => $selectedPermissions->contains($p->name))->count();
                 @endphp
-                <div class="permissions-accordion" id="permissionsAccordion">
-                    @foreach($groupedPermissions as $groupName => $groupItems)
-                        <div class="accordion-item">
-                            <h2 class="accordion-header" id="perm-heading-{{ Str::slug($groupName) }}">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#perm-collapse-{{ Str::slug($groupName) }}" aria-expanded="false" aria-controls="perm-collapse-{{ Str::slug($groupName) }}">
-                                    <div class="group-title">
-                                        <span class="group-icon">
-                                            <i class="fas fa-layer-group"></i>
-                                        </span>
-                                        <div>
-                                            <div class="group-name">{{ Str::title(str_replace('_', ' ', $groupName)) }}</div>
-                                            <div class="group-desc">{{ $groupItems->count() }} permissions</div>
-                                        </div>
-                                    </div>
-                                </button>
-                            </h2>
-                            <div id="perm-collapse-{{ Str::slug($groupName) }}" class="accordion-collapse collapse" aria-labelledby="perm-heading-{{ Str::slug($groupName) }}" data-bs-parent="#permissionsAccordion">
-                                <div class="accordion-body" data-group="{{ $groupName }}">
-                                    <div class="group-actions">
-                                        <button type="button" class="btn-acasi secondary group-select-all" data-group="{{ $groupName }}">
-                                            Tout cocher
-                                        </button>
-                                        <button type="button" class="btn-acasi secondary group-clear-all" data-group="{{ $groupName }}">
-                                            Tout retirer
-                                        </button>
-                                    </div>
-                                    <div class="permissions-grid">
-                                        @foreach($groupItems as $permission)
-                                            <label class="permission-card">
-                                                <input type="checkbox" name="permissions[]" value="{{ $permission->name }}"
-                                                    data-group="{{ $groupName }}"
-                                                    {{ $selectedPermissions->contains($permission->name) ? 'checked' : '' }}>
-                                                <span class="permission-label">{{ $permission->name }}</span>
-                                            </label>
-                                        @endforeach
-                                    </div>
-                                </div>
+                <div class="rp-group" data-group="{{ $groupSlug }}">
+                    <div class="rp-group-header" data-bs-toggle="collapse" data-bs-target="#rp-group-{{ $groupSlug }}">
+                        <div class="rp-group-left">
+                            <div class="rp-group-icon"><i class="fas {{ $groupIcon }}"></i></div>
+                            <div>
+                                <div class="rp-group-name">{{ $groupName }}</div>
+                                <div class="rp-group-meta">{{ $groupItems->count() }} permissions</div>
                             </div>
                         </div>
-                    @endforeach
+                        <div class="rp-group-right">
+                            <span class="rp-group-badge" data-group-slug="{{ $groupSlug }}">{{ $checkedInGroup }} / {{ $groupItems->count() }}</span>
+                            <i class="fas fa-chevron-down rp-chevron"></i>
+                        </div>
+                    </div>
+                    <div class="collapse" id="rp-group-{{ $groupSlug }}">
+                        <div class="rp-group-body">
+                            <div class="rp-group-actions">
+                                <button type="button" class="rp-link-btn rp-group-check-all" data-group="{{ $groupSlug }}">Tout activer</button>
+                                <button type="button" class="rp-link-btn rp-group-uncheck-all" data-group="{{ $groupSlug }}">Tout désactiver</button>
+                            </div>
+                            <div class="rp-perms-grid">
+                                @foreach($groupItems as $permission)
+                                    @php
+                                        $entry = $catalog[$permission->name] ?? null;
+                                        $label = $entry ? $entry[0] : $permission->name;
+                                    @endphp
+                                    <label class="rp-perm-card">
+                                        <input type="checkbox" name="permissions[]" value="{{ $permission->name }}"
+                                               data-group="{{ $groupSlug }}"
+                                               {{ $selectedPermissions->contains($permission->name) ? 'checked' : '' }}>
+                                        <div class="rp-perm-content">
+                                            <span class="rp-perm-label">{{ $label }}</span>
+                                            <span class="rp-perm-key">{{ $permission->name }}</span>
+                                        </div>
+                                        <div class="rp-perm-toggle"></div>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
-                <div class="d-flex justify-content-end gap-2 mt-lg">
-                    <button type="submit" class="btn-acasi primary">
-                        <i class="fas fa-save me-2"></i>Enregistrer
-                    </button>
-                </div>
-            </form>
+            @endforeach
         </div>
-    </div>
+
+        {{-- ── Bouton enregistrer en bas ── --}}
+        <div class="rp-bottom-bar">
+            <button type="submit" class="btn-acasi primary">
+                <i class="fas fa-save me-1"></i>Enregistrer les modifications
+            </button>
+        </div>
+    </form>
 </div>
 
 <style>
-    .permissions-group-list {
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-    }
+/* ── Rôles bar ── */
+.rp-roles-bar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+}
 
-    .role-accordion {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
+.rp-role-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: 2px solid #e2e8f0;
+    background: #fff;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
 
-    .role-accordion .accordion-item {
-        border: 1px solid #e2e8f0;
-        border-radius: 18px;
-        overflow: hidden;
-        background: #fff;
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
-    }
+.rp-role-chip:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+}
 
-    .role-accordion .accordion-button {
-        font-weight: 700;
-        color: #0f172a;
-        background: linear-gradient(135deg, #f8fafc 0%, #ffffff 70%);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 16px 18px;
-    }
+.rp-role-chip.active {
+    border-color: var(--primary, #0453cb);
+    background: linear-gradient(135deg, rgba(4,83,203,0.08), rgba(94,145,222,0.05));
+    color: var(--primary, #0453cb);
+    box-shadow: 0 4px 12px rgba(4,83,203,0.15);
+}
 
-    .role-accordion .accordion-button:focus {
-        box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.15);
-    }
+.rp-role-chip i {
+    font-size: 0.85rem;
+}
 
-    .role-accordion .accordion-button .group-count {
-        font-size: 0.85rem;
-        color: #0f172a;
-        font-weight: 700;
-        background: #e2e8f0;
-        border-radius: 999px;
-        padding: 4px 10px;
-    }
+/* ── Actions bar ── */
+.rp-actions-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    margin-bottom: 1.25rem;
+}
 
-    .role-accordion .accordion-body {
-        padding: 16px 18px 18px;
-    }
+.rp-actions-left { display: flex; align-items: center; gap: 12px; }
+.rp-actions-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-    .group-title {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
+.rp-counter {
+    font-size: 0.9rem;
+    color: #64748b;
+}
 
-    .group-icon {
-        width: 38px;
-        height: 38px;
-        border-radius: 12px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(4, 83, 203, 0.12);
-        color: #0453cb;
-        font-size: 1rem;
-    }
+.rp-counter strong {
+    color: var(--primary, #0453cb);
+    font-size: 1.05rem;
+}
 
-    .group-name {
-        font-size: 1rem;
-        font-weight: 700;
-    }
+/* ── Groupes ── */
+.rp-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
 
-    .group-desc {
-        font-size: 0.85rem;
-        color: #64748b;
-        font-weight: 500;
-    }
+.rp-group {
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    background: #fff;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(15,23,42,0.04);
+}
 
-    .role-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 12px;
-    }
+.rp-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
 
-    .role-card {
-        border: 1px solid #e2e8f0;
-        background: #f8fafc;
-        padding: 12px 14px;
-        border-radius: 14px;
-        text-align: left;
-        font-weight: 700;
-        color: #0f172a;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    }
+.rp-group-header:hover {
+    background: #f8fafc;
+}
 
-    .role-name {
-        font-size: 0.98rem;
-    }
+.rp-group-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
 
-    .role-desc {
-        font-size: 0.82rem;
-        color: #64748b;
-        font-weight: 500;
-        margin-top: 2px;
-    }
+.rp-group-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(4,83,203,0.1);
+    color: var(--primary, #0453cb);
+    font-size: 1rem;
+    flex-shrink: 0;
+}
 
-    .role-card.active {
-        border-color: #0453cb;
-        background: linear-gradient(135deg, rgba(4, 83, 203, 0.12), rgba(94, 145, 222, 0.08));
-        box-shadow: 0 10px 24px rgba(4, 83, 203, 0.15);
-    }
+.rp-group-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #1e293b;
+}
 
-    .role-card:hover {
-        border-color: #94a3b8;
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-    }
+.rp-group-meta {
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
 
-    .permissions-accordion {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
+.rp-group-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
 
-    .permissions-accordion .accordion-item {
-        border: 1px solid #e2e8f0;
-        border-radius: 18px;
-        overflow: hidden;
-        background: #fff;
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
-    }
+.rp-group-badge {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 4px 10px;
+    border-radius: 999px;
+}
 
-    .permissions-accordion .accordion-button {
-        font-weight: 700;
-        color: #0f172a;
-        background: linear-gradient(135deg, #f8fafc 0%, #ffffff 70%);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 16px 18px;
-    }
+.rp-chevron {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    transition: transform 0.2s ease;
+}
 
-    .permissions-accordion .accordion-button:focus {
-        box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.15);
-    }
+.rp-group-header[aria-expanded="true"] .rp-chevron,
+[data-bs-toggle="collapse"]:not(.collapsed) .rp-chevron {
+    transform: rotate(180deg);
+}
 
-    .permissions-accordion .accordion-body {
-        padding: 16px 18px 18px;
-        background: #f8fafc;
-    }
+/* ── Group body ── */
+.rp-group-body {
+    padding: 0 18px 18px;
+}
 
-    .group-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-bottom: 12px;
-    }
+.rp-group-actions {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+    padding-top: 4px;
+}
 
-    .group-title {
-        font-weight: 700;
-        color: #0f172a;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
+.rp-link-btn {
+    background: none;
+    border: none;
+    color: var(--primary, #0453cb);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
 
-    .group-count {
-        font-size: 0.85rem;
-        color: #64748b;
-        font-weight: 500;
-    }
+.rp-link-btn:hover {
+    color: #1e40af;
+}
 
-    .group-actions {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-bottom: 12px;
-    }
+/* ── Permission grid ── */
+.rp-perms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 8px;
+}
 
-    .permissions-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-        gap: 12px;
-    }
+.rp-perm-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
 
-    .permission-card {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 12px 14px;
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        background: #fff;
-        font-size: 0.95rem;
-        cursor: pointer;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    }
+.rp-perm-card:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+}
 
-    .permission-card:hover {
-        border-color: #94a3b8;
-        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
-    }
+.rp-perm-card:has(input:checked) {
+    border-color: rgba(4,83,203,0.3);
+    background: rgba(4,83,203,0.04);
+}
 
-    .permission-card input {
-        width: 18px;
-        height: 18px;
-        accent-color: var(--primary);
-    }
+.rp-perm-card input[type="checkbox"] {
+    display: none;
+}
 
-    .permission-label {
-        font-weight: 600;
-        color: #0f172a;
-        word-break: break-word;
-    }
+.rp-perm-content {
+    flex: 1;
+    min-width: 0;
+}
 
-    @media (max-width: 768px) {
-        .group-actions {
-            width: 100%;
-        }
+.rp-perm-label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: #1e293b;
+    line-height: 1.3;
+}
 
-        .permissions-grid {
-            grid-template-columns: 1fr;
-        }
-    }
+.rp-perm-key {
+    display: block;
+    font-size: 0.72rem;
+    color: #94a3b8;
+    font-family: monospace;
+    margin-top: 1px;
+}
+
+/* ── Toggle visual ── */
+.rp-perm-toggle {
+    width: 36px;
+    height: 20px;
+    border-radius: 999px;
+    background: #cbd5e1;
+    position: relative;
+    flex-shrink: 0;
+    transition: background 0.2s ease;
+}
+
+.rp-perm-toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    transition: transform 0.2s ease;
+}
+
+.rp-perm-card:has(input:checked) .rp-perm-toggle {
+    background: var(--primary, #0453cb);
+}
+
+.rp-perm-card:has(input:checked) .rp-perm-toggle::after {
+    transform: translateX(16px);
+}
+
+/* ── Bottom bar ── */
+.rp-bottom-bar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 1.25rem 0;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .rp-roles-bar { gap: 6px; }
+    .rp-role-chip { padding: 8px 12px; font-size: 0.82rem; }
+    .rp-perms-grid { grid-template-columns: 1fr; }
+    .rp-actions-bar { flex-direction: column; align-items: stretch; }
+}
 </style>
 
+@push('scripts')
 <script>
-    console.log('🔍 [PERMISSIONS DEBUG] Script chargé');
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('rpForm');
+    const roleInput = document.getElementById('rpRoleInput');
+    const chips = document.querySelectorAll('.rp-role-chip');
+    const checkedCounter = document.getElementById('rpCheckedCount');
 
-    const roleSelect = document.getElementById('roleSelect');
-    const roleCards = document.querySelectorAll('.role-card');
-    const selectAllBtn = document.getElementById('selectAllPerms');
-    const clearAllBtn = document.getElementById('clearAllPerms');
-    const groupSelectButtons = document.querySelectorAll('.group-select-all');
-    const groupClearButtons = document.querySelectorAll('.group-clear-all');
-    const form = document.getElementById('rolePermissionsForm');
+    function updateCounter() {
+        const count = document.querySelectorAll('input[name="permissions[]"]:checked').length;
+        if (checkedCounter) checkedCounter.textContent = count;
 
-    // DEBUG: Log initial state
-    console.log('🔍 [PERMISSIONS DEBUG] État initial:', {
-        roleSelectValue: roleSelect?.value,
-        roleCardsCount: roleCards.length,
-        formAction: form?.action,
-        formMethod: form?.method
-    });
-
-    // DEBUG: Log permissions data from each role card
-    roleCards.forEach((card) => {
-        const perms = JSON.parse(card.dataset.permissions || '[]');
-        console.log(`🔍 [PERMISSIONS DEBUG] Rôle "${card.dataset.role}" - ${perms.length} permissions depuis data-attribute`);
-    });
-
-    function syncPermissionsFromRole() {
-        const selectedCard = document.querySelector('.role-card.active');
-        const allowed = JSON.parse(selectedCard?.dataset.permissions || '[]');
-
-        console.log('🔍 [PERMISSIONS DEBUG] syncPermissionsFromRole() appelé:', {
-            selectedRole: selectedCard?.dataset.role,
-            permissionsCount: allowed.length,
-            permissions: allowed
+        // Update group badges
+        document.querySelectorAll('.rp-group').forEach(group => {
+            const slug = group.dataset.group;
+            const total = group.querySelectorAll('input[name="permissions[]"]').length;
+            const checked = group.querySelectorAll('input[name="permissions[]"]:checked').length;
+            const badge = document.querySelector(`.rp-group-badge[data-group-slug="${slug}"]`);
+            if (badge) badge.textContent = `${checked} / ${total}`;
         });
-
-        document.querySelectorAll('input[name="permissions[]"]').forEach((checkbox) => {
-            checkbox.checked = allowed.includes(checkbox.value);
-        });
-
-        const groupsToOpen = new Set();
-        document.querySelectorAll('input[name="permissions[]"]:checked').forEach((checkbox) => {
-            const group = checkbox.dataset.group;
-            if (group) {
-                groupsToOpen.add(group);
-            }
-        });
-
-        document.querySelectorAll('.permissions-accordion .accordion-collapse').forEach((panel) => {
-            panel.classList.remove('show');
-        });
-
-        groupsToOpen.forEach((group) => {
-            const panel = document.getElementById(`perm-collapse-${CSS.escape(group)}`);
-            if (panel) {
-                panel.classList.add('show');
-            }
-        });
-
-        // DEBUG: Log checked checkboxes after sync
-        const checkedCount = document.querySelectorAll('input[name="permissions[]"]:checked').length;
-        console.log(`🔍 [PERMISSIONS DEBUG] Après sync: ${checkedCount} checkboxes cochées`);
     }
 
-    roleCards.forEach((card) => {
-        card.addEventListener('click', () => {
-            console.log(`🔍 [PERMISSIONS DEBUG] Clic sur rôle: ${card.dataset.role}`);
+    function syncFromRole(chip) {
+        const perms = JSON.parse(chip.dataset.permissions || '[]');
+        document.querySelectorAll('input[name="permissions[]"]').forEach(cb => {
+            cb.checked = perms.includes(cb.value);
+        });
+        updateCounter();
+    }
 
-            roleCards.forEach((item) => item.classList.remove('active'));
-            card.classList.add('active');
-            if (roleSelect) {
-                roleSelect.value = card.dataset.role;
-                console.log(`🔍 [PERMISSIONS DEBUG] roleSelect.value mis à jour: ${roleSelect.value}`);
-            }
-            syncPermissionsFromRole();
+    // Role chip click
+    chips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            chips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            roleInput.value = chip.dataset.role;
+            syncFromRole(chip);
         });
     });
 
-    selectAllBtn?.addEventListener('click', () => {
-        console.log('🔍 [PERMISSIONS DEBUG] Clic "Tout cocher"');
-        document.querySelectorAll('input[name="permissions[]"]').forEach((checkbox) => {
-            checkbox.checked = true;
+    // Select all / Clear all
+    document.getElementById('rpSelectAll')?.addEventListener('click', () => {
+        document.querySelectorAll('input[name="permissions[]"]').forEach(cb => cb.checked = true);
+        updateCounter();
+    });
+    document.getElementById('rpClearAll')?.addEventListener('click', () => {
+        document.querySelectorAll('input[name="permissions[]"]').forEach(cb => cb.checked = false);
+        updateCounter();
+    });
+
+    // Group-level actions
+    document.querySelectorAll('.rp-group-check-all').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const group = btn.dataset.group;
+            document.querySelectorAll(`input[data-group="${group}"]`).forEach(cb => cb.checked = true);
+            updateCounter();
+        });
+    });
+    document.querySelectorAll('.rp-group-uncheck-all').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const group = btn.dataset.group;
+            document.querySelectorAll(`input[data-group="${group}"]`).forEach(cb => cb.checked = false);
+            updateCounter();
         });
     });
 
-    clearAllBtn?.addEventListener('click', () => {
-        console.log('🔍 [PERMISSIONS DEBUG] Clic "Tout retirer"');
-        document.querySelectorAll('input[name="permissions[]"]').forEach((checkbox) => {
-            checkbox.checked = false;
-        });
+    // Checkbox change
+    document.querySelectorAll('input[name="permissions[]"]').forEach(cb => {
+        cb.addEventListener('change', updateCounter);
     });
 
-    groupSelectButtons.forEach((button) => {
-        button.addEventListener('click', () => {
-            const group = button.dataset.group;
-            console.log(`🔍 [PERMISSIONS DEBUG] Clic "Tout cocher" groupe: ${group}`);
-            document.querySelectorAll(`input[name="permissions[]"][data-group="${group}"]`).forEach((checkbox) => {
-                checkbox.checked = true;
-            });
-        });
-    });
-
-    groupClearButtons.forEach((button) => {
-        button.addEventListener('click', () => {
-            const group = button.dataset.group;
-            console.log(`🔍 [PERMISSIONS DEBUG] Clic "Tout retirer" groupe: ${group}`);
-            document.querySelectorAll(`input[name="permissions[]"][data-group="${group}"]`).forEach((checkbox) => {
-                checkbox.checked = false;
-            });
-        });
-    });
-
-    // DEBUG: Intercepter la soumission du formulaire
-    form?.addEventListener('submit', function(e) {
-        e.preventDefault(); // Empêcher la soumission normale pour debug
-
-        const formData = new FormData(this);
-        const role = formData.get('role');
-        const permissions = formData.getAll('permissions[]');
-        const csrfToken = formData.get('_token');
-
-        console.log('🔧 [PERMISSIONS SUBMIT] Soumission du formulaire:', {
-            role: role,
-            permissionsCount: permissions.length,
-            permissions: permissions,
-            csrfToken: csrfToken ? 'présent' : 'MANQUANT!',
-            formAction: this.action,
-            formMethod: this.method
-        });
-
-        // Envoyer via fetch pour voir la réponse
-        console.log('🔧 [PERMISSIONS SUBMIT] Envoi via fetch...');
-
-        fetch(this.action, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json, text/html'
-            }
-        })
-        .then(response => {
-            console.log('🔧 [PERMISSIONS SUBMIT] Réponse reçue:', {
-                status: response.status,
-                statusText: response.statusText,
-                redirected: response.redirected,
-                url: response.url,
-                type: response.type
-            });
-
-            // Si c'est une redirection (302), on suit
-            if (response.redirected) {
-                console.log('🔧 [PERMISSIONS SUBMIT] Redirection vers:', response.url);
-                window.location.href = response.url;
-                return null;
-            }
-
-            // Essayer de parser comme JSON d'abord
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
-            }
-            return response.text();
-        })
-        .then(data => {
-            if (data === null) return; // Déjà redirigé
-
-            console.log('🔧 [PERMISSIONS SUBMIT] Contenu réponse:', data);
-
-            // Si pas d'erreur, soumettre le formulaire normalement
-            if (typeof data === 'string' && data.includes('success')) {
-                console.log('🔧 [PERMISSIONS SUBMIT] Succès détecté, rechargement...');
-                window.location.reload();
-            } else if (typeof data === 'object') {
-                console.log('🔧 [PERMISSIONS SUBMIT] Réponse JSON:', data);
-                // Recharger pour voir le résultat
-                window.location.href = this.action.replace('/update', '') + '?role=' + role;
-            } else {
-                // Soumettre normalement
-                console.log('🔧 [PERMISSIONS SUBMIT] Soumission normale du formulaire...');
-                this.removeEventListener('submit', arguments.callee);
-                this.submit();
-            }
-        })
-        .catch(error => {
-            console.error('🔧 [PERMISSIONS SUBMIT] Erreur:', error);
-            // En cas d'erreur, soumettre normalement
-            console.log('🔧 [PERMISSIONS SUBMIT] Erreur fetch, soumission normale...');
-            form.submit();
-        });
-    });
-
-    // DEBUG: Log au chargement complet de la page
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('🔍 [PERMISSIONS DEBUG] DOM chargé');
-
-        const selectedRole = document.querySelector('.role-card.active');
-        const checkedPerms = document.querySelectorAll('input[name="permissions[]"]:checked');
-
-        console.log('🔍 [PERMISSIONS DEBUG] État après chargement:', {
-            selectedRole: selectedRole?.dataset.role || 'aucun',
-            checkedPermissionsCount: checkedPerms.length,
-            checkedPermissions: Array.from(checkedPerms).map(c => c.value)
-        });
-    });
+    // Init counter
+    updateCounter();
+});
 </script>
+@endpush
 @endsection
