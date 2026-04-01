@@ -1343,7 +1343,7 @@ Route::get('/evaluations/{evaluation}/pdf', [ESBTPEvaluationController::class, '
     ->middleware(['auth']);
 
 // Route pour l'index des bulletins ESBTP
-Route::get('/esbtp/bulletins', [ESBTPBulletinController::class, 'index'])->name('esbtp.bulletins.index');
+Route::get('/esbtp/bulletins', [ESBTPBulletinController::class, 'index'])->name('esbtp.bulletins.index')->middleware(['auth']);
 
 // Route spéciale pour la sélection des bulletins
 Route::get('/esbtp/bulletins/select', [ESBTPBulletinController::class, 'select'])
@@ -1351,10 +1351,10 @@ Route::get('/esbtp/bulletins/select', [ESBTPBulletinController::class, 'select']
     ->middleware(['auth']);
 
 // Route pour télécharger un bulletin au format PDF
-Route::get('/esbtp/bulletins/{bulletin}/download', [ESBTPBulletinController::class, 'genererPDF'])->name('esbtp.bulletins.download');
+Route::get('/esbtp/bulletins/{bulletin}/download', [ESBTPBulletinController::class, 'genererPDF'])->name('esbtp.bulletins.download')->middleware(['auth']);
 
 // Routes pour la gestion des secrétaires
-Route::prefix('secretaires')->name('secretaires.')->group(function () {
+Route::prefix('secretaires')->name('secretaires.')->middleware(['auth', 'role:superAdmin'])->group(function () {
     Route::get('/', [ESBTPSecretaireController::class, 'index'])->name('index');
     Route::get('/create', [ESBTPSecretaireController::class, 'create'])->name('create');
     Route::post('/', [ESBTPSecretaireController::class, 'store'])->name('store');
@@ -1747,69 +1747,55 @@ Route::get('/debug-permissions', function () {
     return response()->json($data, 200, [], JSON_PRETTY_PRINT);
 })->middleware('auth');
 
-// Routes spéciales pour le workflow des bulletins (copiées exactement du GitHub)
-// Route spéciale pour la génération de PDF de bulletins - placée ici pour éviter les conflits
-Route::get('/esbtp-special/bulletins-pdf', [ESBTPBulletinController::class, 'genererPDFParParamsUnified'])->name('esbtp.bulletins.pdf-params');
-Route::get('/esbtp-special/bulletins-check', [ESBTPBulletinController::class, 'checkBulletinPrerequisites'])->name('esbtp.bulletins.check-prerequisites');
+// Routes spéciales pour le workflow des bulletins — PROTÉGÉES
+Route::middleware(['auth', 'role:superAdmin|secretaire|coordinateur'])->group(function () {
+    Route::get('/esbtp-special/bulletins-pdf', [ESBTPBulletinController::class, 'genererPDFParParamsUnified'])->name('esbtp.bulletins.pdf-params');
+    Route::get('/esbtp-special/bulletins-check', [ESBTPBulletinController::class, 'checkBulletinPrerequisites'])->name('esbtp.bulletins.check-prerequisites');
+    Route::get('/esbtp/bulletins/preview', [ESBTPBulletinController::class, 'previewBulletin'])->name('esbtp.bulletins.preview');
+    Route::post('/esbtp/bulletins/generer-classe', [ESBTPBulletinController::class, 'genererClasseBulletins'])->name('esbtp.bulletins.generer-classe');
 
-// Route pour prévisualiser le bulletin avant génération PDF
-Route::get('/esbtp/bulletins/preview', [ESBTPBulletinController::class, 'previewBulletin'])->name('esbtp.bulletins.preview');
+    // Routes spéciales moyennes
+    Route::get('/esbtp-special/bulletins/moyennes-preview', [ESBTPResultatController::class, 'previewMoyennes'])->name('esbtp.bulletins.moyennes-preview');
+    Route::post('/esbtp-special/bulletins/moyennes-update', [ESBTPResultatController::class, 'updateMoyennes'])->name('esbtp.bulletins.moyennes-update');
+    Route::delete('/esbtp-special/bulletins/moyennes-delete', [ESBTPResultatController::class, 'deleteMoyenne'])->name('esbtp.bulletins.moyennes-delete');
 
+    // Configuration matières, professeurs, absences bulletins
+    Route::get('/esbtp-special/bulletins/config-matieres', [ESBTPBulletinConfigController::class, 'configMatieresTypeFormation'])->name('esbtp.bulletins.config-matieres');
+    Route::post('/esbtp-special/bulletins/save-config-matieres', [ESBTPBulletinConfigController::class, 'saveConfigMatieresTypeFormation'])->name('esbtp.bulletins.save-config-matieres');
+    Route::get('/esbtp-special/bulletins/edit-professeurs', [ESBTPBulletinConfigController::class, 'editProfesseurs'])->name('esbtp.bulletins.edit-professeurs');
+    Route::post('/esbtp-special/bulletins/save-professeurs', [ESBTPBulletinConfigController::class, 'saveProfesseurs'])->name('esbtp.bulletins.save-professeurs');
+    Route::get('/esbtp-special/bulletins/edit-absences', [ESBTPBulletinConfigController::class, 'editAbsences'])->name('esbtp.bulletins.edit-absences');
+    Route::post('/esbtp-special/bulletins/save-absences', [ESBTPBulletinConfigController::class, 'saveAbsences'])->name('esbtp.bulletins.save-absences');
+    Route::get('/esbtp-special/bulletins/generate', [ESBTPBulletinController::class, 'generate'])->name('esbtp.bulletins.generate-special');
 
-// Route pour générer tous les bulletins d'une classe
-Route::post('/esbtp/bulletins/generer-classe', [ESBTPBulletinController::class, 'genererClasseBulletins'])->name('esbtp.bulletins.generer-classe');
+    // Bulletins configurables
+    Route::get('/bulletins/configurable', [ESBTPBulletinController::class, 'generateConfigurableBulletin'])->name('esbtp.bulletins.configurable');
+    Route::post('/bulletins/configurable', [ESBTPBulletinController::class, 'generateConfigurableBulletin'])->name('esbtp.bulletins.configurable.generate');
+});
 
-// Synchroniser systeme_academique (BTS/LMD) depuis les niveaux d'études
-Route::post('/esbtp/classes/sync-systeme-academique', [ESBTPClasseController::class, 'syncSystemeAcademique'])->name('esbtp.classes.sync-systeme-academique');
-
-// Route AJAX pour récupérer les étudiants d'une classe
-Route::get('/esbtp/classes/{classe}/etudiants', [ESBTPClasseController::class, 'getEtudiants'])->name('esbtp.classes.etudiants');
-Route::get('/esbtp/classes/{classe}/semestres-lmd', function (\App\Models\ESBTPClasse $classe) {
-    return response()->json(['semestres' => $classe->getSemestresLMD()]);
-})->name('esbtp.classes.semestres-lmd');
-
-// Routes pour les listes d'étudiants par classe
-Route::get('/esbtp/classes/{classe}/liste-appel', [ESBTPClasseController::class, 'listeAppel'])->name('esbtp.classes.liste-appel');
-Route::get('/esbtp/classes/{classe}/liste-appel/pdf', [ESBTPClasseController::class, 'listeAppelPDF'])->name('esbtp.classes.liste-appel.pdf');
-Route::get('/esbtp/classes/{classe}/liste-complete', [ESBTPClasseController::class, 'listeComplete'])->name('esbtp.classes.liste-complete');
-Route::get('/esbtp/classes/{classe}/liste-complete/pdf', [ESBTPClasseController::class, 'listeCompletePDF'])->name('esbtp.classes.liste-complete.pdf');
-Route::get('/esbtp/classes/{classe}/liste-complete/excel', [ESBTPClasseController::class, 'listeCompleteExcel'])->name('esbtp.classes.liste-complete.excel');
-
-// Routes pour export de la liste des classes
-Route::get('/esbtp/classes-export/excel', [ESBTPClasseController::class, 'exportExcel'])->name('esbtp.classes.export.excel');
-Route::get('/esbtp/classes-export/csv', [ESBTPClasseController::class, 'exportCsv'])->name('esbtp.classes.export.csv');
-Route::get('/esbtp/classes-export/pdf', [ESBTPClasseController::class, 'exportPdf'])->name('esbtp.classes.export.pdf');
-
-// Route AJAX pour rafraîchir une carte de classe spécifique (pattern identique à paiements.refreshLigne)
-Route::get('/esbtp/classes/{classe}/refresh-ligne', [ESBTPClasseController::class, 'refreshLigne'])->name('esbtp.classes.refresh-ligne');
-
-// Route pour mettre à jour les matières d'une classe
-Route::post('/esbtp/classes/{classe}/update-matieres', [ESBTPClasseController::class, 'updateMatieres'])->name('esbtp.classes.update-matieres');
-
-// Routes AJAX pour gestion des étudiants dans une classe (ajout/retrait/transfert)
-Route::get('/esbtp/classes/{classe}/search-available-students', [ESBTPClasseController::class, 'searchAvailableStudents'])->name('esbtp.classes.search-available-students');
-Route::post('/esbtp/classes/{classe}/add-students', [ESBTPClasseController::class, 'addStudents'])->name('esbtp.classes.add-students');
-Route::post('/esbtp/classes/{classe}/remove-students', [ESBTPClasseController::class, 'removeStudents'])->name('esbtp.classes.remove-students');
-Route::post('/esbtp/classes/{classe}/check-student-data', [ESBTPClasseController::class, 'checkStudentData'])->name('esbtp.classes.check-student-data');
-Route::get('/esbtp/classes/{classe}/student-table-html', [ESBTPClasseController::class, 'studentTableHtml'])->name('esbtp.classes.student-table-html');
-
-// Routes spéciales pour la prévisualisation et modification des moyennes
-Route::get('/esbtp-special/bulletins/moyennes-preview', [ESBTPResultatController::class, 'previewMoyennes'])->name('esbtp.bulletins.moyennes-preview');
-Route::post('/esbtp-special/bulletins/moyennes-update', [ESBTPResultatController::class, 'updateMoyennes'])->name('esbtp.bulletins.moyennes-update');
-Route::delete('/esbtp-special/bulletins/moyennes-delete', [ESBTPResultatController::class, 'deleteMoyenne'])->name('esbtp.bulletins.moyennes-delete');
-
-// Routes spéciales pour la configuration des matières et l'édition des professeurs
-Route::get('/esbtp-special/bulletins/config-matieres', [ESBTPBulletinConfigController::class, 'configMatieresTypeFormation'])->name('esbtp.bulletins.config-matieres');
-Route::post('/esbtp-special/bulletins/save-config-matieres', [ESBTPBulletinConfigController::class, 'saveConfigMatieresTypeFormation'])->name('esbtp.bulletins.save-config-matieres');
-Route::get('/esbtp-special/bulletins/edit-professeurs', [ESBTPBulletinConfigController::class, 'editProfesseurs'])->name('esbtp.bulletins.edit-professeurs');
-Route::post('/esbtp-special/bulletins/save-professeurs', [ESBTPBulletinConfigController::class, 'saveProfesseurs'])->name('esbtp.bulletins.save-professeurs');
-Route::get('/esbtp-special/bulletins/edit-absences', [ESBTPBulletinConfigController::class, 'editAbsences'])->name('esbtp.bulletins.edit-absences');
-Route::post('/esbtp-special/bulletins/save-absences', [ESBTPBulletinConfigController::class, 'saveAbsences'])->name('esbtp.bulletins.save-absences');
-Route::get('/esbtp-special/bulletins/generate', [ESBTPBulletinController::class, 'generate'])->name('esbtp.bulletins.generate-special');
-
-// Routes pour les bulletins configurables
-Route::get('/bulletins/configurable', [ESBTPBulletinController::class, 'generateConfigurableBulletin'])->name('esbtp.bulletins.configurable');
-Route::post('/bulletins/configurable', [ESBTPBulletinController::class, 'generateConfigurableBulletin'])->name('esbtp.bulletins.configurable.generate');
+// Routes classes — PROTÉGÉES
+Route::middleware(['auth'])->group(function () {
+    Route::post('/esbtp/classes/sync-systeme-academique', [ESBTPClasseController::class, 'syncSystemeAcademique'])->name('esbtp.classes.sync-systeme-academique');
+    Route::get('/esbtp/classes/{classe}/etudiants', [ESBTPClasseController::class, 'getEtudiants'])->name('esbtp.classes.etudiants');
+    Route::get('/esbtp/classes/{classe}/semestres-lmd', function (\App\Models\ESBTPClasse $classe) {
+        return response()->json(['semestres' => $classe->getSemestresLMD()]);
+    })->name('esbtp.classes.semestres-lmd');
+    Route::get('/esbtp/classes/{classe}/liste-appel', [ESBTPClasseController::class, 'listeAppel'])->name('esbtp.classes.liste-appel');
+    Route::get('/esbtp/classes/{classe}/liste-appel/pdf', [ESBTPClasseController::class, 'listeAppelPDF'])->name('esbtp.classes.liste-appel.pdf');
+    Route::get('/esbtp/classes/{classe}/liste-complete', [ESBTPClasseController::class, 'listeComplete'])->name('esbtp.classes.liste-complete');
+    Route::get('/esbtp/classes/{classe}/liste-complete/pdf', [ESBTPClasseController::class, 'listeCompletePDF'])->name('esbtp.classes.liste-complete.pdf');
+    Route::get('/esbtp/classes/{classe}/liste-complete/excel', [ESBTPClasseController::class, 'listeCompleteExcel'])->name('esbtp.classes.liste-complete.excel');
+    Route::get('/esbtp/classes-export/excel', [ESBTPClasseController::class, 'exportExcel'])->name('esbtp.classes.export.excel');
+    Route::get('/esbtp/classes-export/csv', [ESBTPClasseController::class, 'exportCsv'])->name('esbtp.classes.export.csv');
+    Route::get('/esbtp/classes-export/pdf', [ESBTPClasseController::class, 'exportPdf'])->name('esbtp.classes.export.pdf');
+    Route::get('/esbtp/classes/{classe}/refresh-ligne', [ESBTPClasseController::class, 'refreshLigne'])->name('esbtp.classes.refresh-ligne');
+    Route::post('/esbtp/classes/{classe}/update-matieres', [ESBTPClasseController::class, 'updateMatieres'])->name('esbtp.classes.update-matieres');
+    Route::get('/esbtp/classes/{classe}/search-available-students', [ESBTPClasseController::class, 'searchAvailableStudents'])->name('esbtp.classes.search-available-students');
+    Route::post('/esbtp/classes/{classe}/add-students', [ESBTPClasseController::class, 'addStudents'])->name('esbtp.classes.add-students');
+    Route::post('/esbtp/classes/{classe}/remove-students', [ESBTPClasseController::class, 'removeStudents'])->name('esbtp.classes.remove-students');
+    Route::post('/esbtp/classes/{classe}/check-student-data', [ESBTPClasseController::class, 'checkStudentData'])->name('esbtp.classes.check-student-data');
+    Route::get('/esbtp/classes/{classe}/student-table-html', [ESBTPClasseController::class, 'studentTableHtml'])->name('esbtp.classes.student-table-html');
+});
 
 // ... existing code ...
 

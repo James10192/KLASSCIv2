@@ -629,9 +629,9 @@ class ESBTPNoteController extends Controller
             $evalIds = collect($request->notes)->pluck('evaluation_id')->unique();
             $evaluations = ESBTPEvaluation::whereIn('id', $evalIds)->get()->keyBy('id');
 
-            // Requête tuple-based IN au lieu de N orWhere
+            // Requête tuple-based IN avec cast int pour éviter injection SQL
             $pairs = collect($request->notes)
-                ->map(fn($e) => "({$e['etudiant_id']}, {$e['evaluation_id']})")
+                ->map(fn($e) => '(' . (int) $e['etudiant_id'] . ', ' . (int) $e['evaluation_id'] . ')')
                 ->implode(',');
             $existingNotes = $pairs
                 ? ESBTPNote::whereRaw("(etudiant_id, evaluation_id) IN ({$pairs})")
