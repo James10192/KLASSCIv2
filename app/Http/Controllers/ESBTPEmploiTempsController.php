@@ -1319,8 +1319,7 @@ class ESBTPEmploiTempsController extends Controller
      */
     public function activateAll()
     {
-        // Check if user is superAdmin
-        if (! auth()->user()->hasRole('superAdmin')) {
+        if (! auth()->user()->can('edit_timetables')) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -1379,8 +1378,7 @@ class ESBTPEmploiTempsController extends Controller
      */
     public function setCurrent($id)
     {
-        // Check if user has permission
-        if (! auth()->user()->hasRole('superAdmin') && ! auth()->user()->hasRole('secretaire')) {
+        if (! auth()->user()->can('edit_timetables')) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -1911,7 +1909,7 @@ class ESBTPEmploiTempsController extends Controller
     {
         $user = auth()->user();
 
-        if (! $user || (! $user->hasRole('superAdmin') && ! $user->hasRole('secretaire') && ! $user->can('create_timetable'))) {
+        if (! $user || (! $user->can('create_timetable'))) {
             abort(403);
         }
 
@@ -2061,7 +2059,7 @@ class ESBTPEmploiTempsController extends Controller
     public function quickGeneratePreview(Request $request, TimetableShortcutService $shortcutService)
     {
         $user = auth()->user();
-        if (! $user || (! $user->hasRole('superAdmin') && ! $user->hasRole('secretaire') && ! $user->can('create_timetable'))) {
+        if (! $user || (! $user->can('create_timetable'))) {
             abort(403);
         }
 
