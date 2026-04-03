@@ -557,27 +557,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('emploi-temps.sections')
                 ->middleware(['permission:view_timetables']);
 
-            // Routes pour les emplois du temps ESBTP
-            Route::resource('emploi-temps', ESBTPEmploiTempsController::class)
-                ->parameters(['emploi-temps' => 'emploi_temp'])
-                ->names([
-                    'index' => 'emploi-temps.index',
-                    'create' => 'emploi-temps.create',
-                    'store' => 'emploi-temps.store',
-                    'show' => 'emploi-temps.show',
-                    'edit' => 'emploi-temps.edit',
-                    'update' => 'emploi-temps.update',
-                    'destroy' => 'emploi-temps.destroy',
-                ])
-                ->middleware([
-                    'index' => 'permission:view_timetables',
-                    'create' => 'permission:create_timetable',
-                    'store' => 'permission:create_timetable',
-                    'show' => 'permission:view_timetables',
-                    'edit' => 'permission:edit_timetables',
-                    'update' => 'permission:edit_timetables',
-                    'destroy' => 'permission:delete_timetables',
-                ]);
+            // Routes pour les emplois du temps ESBTP (permissions par action)
+            Route::get('emploi-temps', [ESBTPEmploiTempsController::class, 'index'])->name('emploi-temps.index')->middleware('permission:view_timetables');
+            Route::get('emploi-temps/create', [ESBTPEmploiTempsController::class, 'create'])->name('emploi-temps.create')->middleware('permission:create_timetable');
+            Route::post('emploi-temps', [ESBTPEmploiTempsController::class, 'store'])->name('emploi-temps.store')->middleware('permission:create_timetable');
+            Route::get('emploi-temps/{emploi_temp}', [ESBTPEmploiTempsController::class, 'show'])->name('emploi-temps.show')->middleware('permission:view_timetables');
+            Route::get('emploi-temps/{emploi_temp}/edit', [ESBTPEmploiTempsController::class, 'edit'])->name('emploi-temps.edit')->middleware('permission:edit_timetables');
+            Route::put('emploi-temps/{emploi_temp}', [ESBTPEmploiTempsController::class, 'update'])->name('emploi-temps.update')->middleware('permission:edit_timetables');
+            Route::delete('emploi-temps/{emploi_temp}', [ESBTPEmploiTempsController::class, 'destroy'])->name('emploi-temps.destroy')->middleware('permission:delete_timetables');
 
             Route::get('emploi-temps/{emploi_temp}/export-pdf', [ESBTPEmploiTempsController::class, 'generatePdf'])
                 ->name('emploi-temps.export-pdf')
