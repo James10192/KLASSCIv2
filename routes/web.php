@@ -264,7 +264,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         // Dashboard coordinateur — AJAX data refresh
         Route::get('/coordinateur/dashboard-data', [App\Http\Controllers\DashboardController::class, 'coordinateurDashboardData'])->name('coordinateur.dashboard-data');
 
-        // Tableau de bord des présences pour coordinateurs
+    });
+
+    // Tableau de bord des présences — accessible coordinateur, secrétaire, superAdmin
+    Route::middleware(['auth', 'role:coordinateur|secretaire|superAdmin', 'permission:module.presences.access'])->group(function () {
         Route::get('/coordinateur/attendance-dashboard', [App\Http\Controllers\CoordinateurDashboardController::class, 'attendanceDashboard'])->name('coordinateur.attendance-dashboard');
         Route::get('/coordinateur/recent-activities', [App\Http\Controllers\CoordinateurDashboardController::class, 'getRecentActivities'])->name('coordinateur.recent-activities');
         Route::post('/coordinateur/daily-report', [App\Http\Controllers\CoordinateurDashboardController::class, 'generateDailyReport'])->name('coordinateur.daily-report');
