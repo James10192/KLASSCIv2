@@ -1479,7 +1479,12 @@ class ESBTPInscriptionController extends Controller
         try {
             DB::beginTransaction();
 
-            $data = $request->all();
+            $data = $request->only([
+                'filiere_id', 'niveau_id', 'classe_id', 'date_inscription',
+                'type_inscription', 'montant_scolarite', 'frais_inscription',
+                'observations', 'status', 'affectation_status',
+                'est_transfert', 'etablissement_origine',
+            ]);
 
             // Stocker les anciennes valeurs pour détecter les changements
             $ancienneFiliere = $inscription->filiere_id;

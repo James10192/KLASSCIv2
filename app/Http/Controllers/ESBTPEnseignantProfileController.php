@@ -134,7 +134,7 @@ class ESBTPEnseignantProfileController extends Controller
         try {
             DB::beginTransaction();
 
-            $data = $request->all();
+            $data = $validator->validated();
             $data['created_by'] = Auth::id();
             $data['statut'] = 'actif';
             $data['profil_valide'] = false;
@@ -248,7 +248,7 @@ class ESBTPEnseignantProfileController extends Controller
         }
 
         try {
-            $data = $request->all();
+            $data = $validator->validated();
             $data['updated_by'] = Auth::id();
 
             // Ajouter à l'historique des modifications

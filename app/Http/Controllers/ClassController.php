@@ -47,13 +47,13 @@ class ClassController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'session_id' => 'required|exists:sessions,id',
         ]);
 
-        ClassModel::create($request->all());
+        ClassModel::create($validated);
 
         return redirect()->route('classes.index')
             ->with('success', 'Classe créée avec succès.');
@@ -84,13 +84,13 @@ class ClassController extends Controller
      */
     public function update(Request $request, ClassModel $class)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'session_id' => 'required|exists:sessions,id',
         ]);
 
-        $class->update($request->all());
+        $class->update($validated);
 
         return redirect()->route('classes.index')
             ->with('success', 'Classe mise à jour avec succès.');

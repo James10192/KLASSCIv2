@@ -313,7 +313,11 @@ class ESBTPComptabiliteFraisController extends Controller
         }
 
         try {
-            $data = $request->all();
+            $data = $request->only([
+                'etudiant_id', 'annee_universitaire_id', 'type_bourse',
+                'montant', 'pourcentage', 'date_debut', 'date_fin',
+                'statut', 'organisme_financeur', 'conditions', 'commentaires',
+            ]);
             $data['createur_id'] = auth()->id();
 
             ESBTPBourse::create($data);
@@ -404,7 +408,11 @@ class ESBTPComptabiliteFraisController extends Controller
 
         try {
             $bourse = ESBTPBourse::findOrFail($id);
-            $bourse->update($request->all());
+            $bourse->update($request->only([
+                'etudiant_id', 'annee_universitaire_id', 'type_bourse',
+                'montant', 'pourcentage', 'date_debut', 'date_fin',
+                'statut', 'organisme_financeur', 'conditions', 'commentaires',
+            ]));
 
             return redirect()->route('esbtp.comptabilite.bourses')->with('success', 'Bourse mise à jour avec succès.');
         } catch (\Exception $e) {
