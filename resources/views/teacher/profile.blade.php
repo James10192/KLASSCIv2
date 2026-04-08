@@ -402,47 +402,112 @@ use Illuminate\Support\Facades\Storage;
     </div>
 </div>
 
-<!-- Modal Changement de mot de passe -->
-<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form action="{{ route('teacher.profile.password.update') }}" method="POST">
+<!-- Premium Password Change Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border: none; border-radius: 1rem; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
+            <!-- Header with blue gradient -->
+            <div style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); padding: 1.5rem 1.75rem; position: relative;">
+                <div style="position: absolute; inset: 0; background-image: url(&quot;data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1.5' cy='1.5' r='1' fill='rgba(255,255,255,0.07)'/%3E%3C/svg%3E&quot;); background-size: 20px 20px;"></div>
+                <div style="position: relative; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div style="width: 44px; height: 44px; background: rgba(255,255,255,0.15); backdrop-filter: blur(8px); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.2);">
+                            <i class="fas fa-shield-alt" style="color: white; font-size: 1.1rem;"></i>
+                        </div>
+                        <div>
+                            <h5 style="color: white; margin: 0; font-weight: 700; font-size: 1.1rem;">Modifier le mot de passe</h5>
+                            <p style="color: rgba(255,255,255,0.7); margin: 0; font-size: 0.8rem;">Securisez votre compte</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+
+            <!-- Body -->
+            <form method="POST" action="{{ route('teacher.profile.password.update') }}" id="teacherPasswordForm">
                 @csrf
                 @method('PUT')
-
-                <div class="modal-header">
-                    <h5 class="modal-title" id="changePasswordModalLabel"><i class="fas fa-lock me-2"></i>Changer mon mot de passe</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    @if ($errors->hasAny(['current_password', 'password']))
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <ul class="mb-0">
-                                @foreach ($errors->only(['current_password', 'password']) as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div style="padding: 1.75rem;">
+                    <!-- Error display -->
+                    @if($errors->has('current_password') || $errors->has('password'))
+                        <div style="background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 0.5rem; padding: 0.75rem 1rem; margin-bottom: 1.25rem; display: flex; align-items: start; gap: 0.5rem;">
+                            <i class="fas fa-exclamation-circle" style="color: #ef4444; margin-top: 2px;"></i>
+                            <div style="font-size: 0.85rem; color: #ef4444;">
+                                @foreach($errors->all() as $error)<div>{{ $error }}</div>@endforeach
+                            </div>
                         </div>
                     @endif
 
-                    <div class="mb-3">
-                        <label for="current_password" class="form-label fw-semibold">Mot de passe actuel <span class="text-danger">*</span></label>
-                        <input type="password" class="form-control" id="current_password" name="current_password" required autocomplete="current-password">
+                    <!-- Current password -->
+                    <div style="margin-bottom: 1.25rem;">
+                        <label style="display: block; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.5rem;">
+                            <i class="fas fa-lock" style="margin-right: 0.35rem; color: #0453cb;"></i>Mot de passe actuel
+                        </label>
+                        <div style="position: relative;">
+                            <input type="password" name="current_password" class="form-control" required
+                                   style="border: 2px solid #e2e8f0; border-radius: 0.625rem; padding: 0.7rem 2.75rem 0.7rem 1rem; font-size: 0.95rem; transition: border-color 0.2s;"
+                                   onfocus="this.style.borderColor='#0453cb'" onblur="this.style.borderColor='#e2e8f0'">
+                            <button type="button" onclick="togglePwdVisibility(this)" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #94a3b8; padding: 0.25rem;" title="Afficher/masquer">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label fw-semibold">Nouveau mot de passe <span class="text-danger">*</span></label>
-                        <input type="password" class="form-control" id="password" name="password" required minlength="8" autocomplete="new-password">
-                        <div class="form-text">Minimum 8 caractères.</div>
+
+                    <!-- Divider -->
+                    <div style="height: 1px; background: #e2e8f0; margin: 1.25rem 0;"></div>
+
+                    <!-- New password -->
+                    <div style="margin-bottom: 1.25rem;">
+                        <label style="display: block; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.5rem;">
+                            <i class="fas fa-key" style="margin-right: 0.35rem; color: #0453cb;"></i>Nouveau mot de passe
+                        </label>
+                        <div style="position: relative;">
+                            <input type="password" name="password" id="teacherPasswordForm_password" class="form-control" required minlength="8"
+                                   style="border: 2px solid #e2e8f0; border-radius: 0.625rem; padding: 0.7rem 2.75rem 0.7rem 1rem; font-size: 0.95rem; transition: border-color 0.2s;"
+                                   onfocus="this.style.borderColor='#0453cb'" onblur="this.style.borderColor='#e2e8f0'">
+                            <button type="button" onclick="togglePwdVisibility(this)" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #94a3b8; padding: 0.25rem;" title="Afficher/masquer">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <!-- Password strength indicator -->
+                        <div style="margin-top: 0.5rem; display: flex; gap: 0.25rem;" id="teacherPasswordForm_strength">
+                            <div style="height: 3px; flex: 1; border-radius: 2px; background: #e2e8f0; transition: background 0.3s;"></div>
+                            <div style="height: 3px; flex: 1; border-radius: 2px; background: #e2e8f0; transition: background 0.3s;"></div>
+                            <div style="height: 3px; flex: 1; border-radius: 2px; background: #e2e8f0; transition: background 0.3s;"></div>
+                            <div style="height: 3px; flex: 1; border-radius: 2px; background: #e2e8f0; transition: background 0.3s;"></div>
+                        </div>
+                        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.35rem;" id="teacherPasswordForm_strength_text">Min. 8 caracteres, majuscule, chiffre, symbole</div>
                     </div>
-                    <div class="mb-3">
-                        <label for="password_confirmation" class="form-label fw-semibold">Confirmer le nouveau mot de passe <span class="text-danger">*</span></label>
-                        <input type="password" class="form-control" id="password_confirmation" name="password_confirmation" required minlength="8" autocomplete="new-password">
+
+                    <!-- Confirm password -->
+                    <div style="margin-bottom: 0.5rem;">
+                        <label style="display: block; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.5rem;">
+                            <i class="fas fa-check-double" style="margin-right: 0.35rem; color: #0453cb;"></i>Confirmer le mot de passe
+                        </label>
+                        <div style="position: relative;">
+                            <input type="password" name="password_confirmation" class="form-control" required minlength="8"
+                                   style="border: 2px solid #e2e8f0; border-radius: 0.625rem; padding: 0.7rem 2.75rem 0.7rem 1rem; font-size: 0.95rem; transition: border-color 0.2s;"
+                                   onfocus="this.style.borderColor='#0453cb'" onblur="this.style.borderColor='#e2e8f0'">
+                            <button type="button" onclick="togglePwdVisibility(this)" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #94a3b8; padding: 0.25rem;" title="Afficher/masquer">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div style="font-size: 0.75rem; color: #ef4444; margin-top: 0.35rem; display: none;" id="teacherPasswordForm_mismatch">
+                            <i class="fas fa-times-circle"></i> Les mots de passe ne correspondent pas
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Enregistrer</button>
+
+                <!-- Footer -->
+                <div style="padding: 1rem 1.75rem 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid #f1f5f9;">
+                    <button type="button" class="btn" data-bs-dismiss="modal"
+                            style="padding: 0.6rem 1.25rem; border-radius: 0.5rem; font-weight: 500; font-size: 0.9rem; border: 1px solid #e2e8f0; color: #64748b; background: white;">
+                        Annuler
+                    </button>
+                    <button type="submit"
+                            style="padding: 0.6rem 1.5rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.9rem; border: none; color: white; background: linear-gradient(135deg, #0453cb, #5e91de); cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-shield-alt"></i> Mettre a jour
+                    </button>
                 </div>
             </form>
         </div>
@@ -552,6 +617,71 @@ function previewProfilePhoto(event) {
         reader.readAsDataURL(file);
     }
 }
+
+// Toggle password visibility
+function togglePwdVisibility(btn) {
+    const input = btn.parentElement.querySelector('input');
+    const icon = btn.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+}
+
+// Password strength indicator
+function initPasswordStrength(formPrefix) {
+    const pwdInput = document.getElementById(formPrefix + '_password');
+    if (!pwdInput) return;
+
+    const bars = document.querySelectorAll('#' + formPrefix + '_strength div');
+    const text = document.getElementById(formPrefix + '_strength_text');
+
+    pwdInput.addEventListener('input', function() {
+        const val = this.value;
+        let score = 0;
+        if (val.length >= 8) score++;
+        if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score++;
+        if (/\d/.test(val)) score++;
+        if (/[^A-Za-z0-9]/.test(val)) score++;
+
+        const colors = ['#ef4444', '#f59e0b', '#0453cb', '#10b981'];
+        const labels = ['Faible', 'Moyen', 'Bon', 'Excellent'];
+
+        bars.forEach((bar, i) => {
+            bar.style.background = i < score ? colors[Math.min(score-1, 3)] : '#e2e8f0';
+        });
+
+        if (val.length > 0) {
+            text.textContent = labels[Math.min(score-1, 3)] || 'Trop court';
+            text.style.color = colors[Math.min(score-1, 3)] || '#94a3b8';
+        } else {
+            text.textContent = 'Min. 8 caracteres, majuscule, chiffre, symbole';
+            text.style.color = '#94a3b8';
+        }
+    });
+
+    // Password mismatch check
+    const confirmInput = pwdInput.closest('form').querySelector('input[name="password_confirmation"]');
+    const mismatch = document.getElementById(formPrefix + '_mismatch');
+    if (confirmInput && mismatch) {
+        confirmInput.addEventListener('input', function() {
+            if (this.value && this.value !== pwdInput.value) {
+                mismatch.style.display = 'block';
+                this.style.borderColor = '#ef4444';
+            } else {
+                mismatch.style.display = 'none';
+                this.style.borderColor = '#e2e8f0';
+            }
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initPasswordStrength('teacherPasswordForm');
+});
 
 // Rouvrir le modal s'il y a des erreurs de validation
 @if ($errors->hasAny(['current_password', 'password']))
