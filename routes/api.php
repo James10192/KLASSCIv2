@@ -269,3 +269,29 @@ Route::get('/lms/documentation', function () {
         ]
     ]);
 })->name('api.lms.documentation');
+
+/*
+|--------------------------------------------------------------------------
+| CLI API Routes — KLASSCI Remote Management
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.cli.')->group(function () {
+    // Read endpoints
+    Route::get('/stats', [App\Http\Controllers\API\CLIController::class, 'stats'])->name('stats');
+    Route::get('/students', [App\Http\Controllers\API\CLIController::class, 'students'])->name('students');
+    Route::get('/students/{id}', [App\Http\Controllers\API\CLIController::class, 'studentShow'])->name('students.show');
+    Route::get('/inscriptions', [App\Http\Controllers\API\CLIController::class, 'inscriptions'])->name('inscriptions');
+    Route::get('/classes', [App\Http\Controllers\API\CLIController::class, 'classes'])->name('classes');
+    Route::get('/payments', [App\Http\Controllers\API\CLIController::class, 'payments'])->name('payments');
+    Route::get('/settings', [App\Http\Controllers\API\CLIController::class, 'settings'])->name('settings');
+
+    // Write endpoints
+    Route::post('/inscriptions/{id}/validate', [App\Http\Controllers\API\CLIController::class, 'validateInscription'])->name('inscriptions.validate');
+
+    // Admin endpoints (strict throttle)
+    Route::middleware('throttle:5,1')->group(function () {
+        Route::post('/cache/clear', [App\Http\Controllers\API\CLIController::class, 'cacheClear'])->name('cache.clear');
+        Route::post('/permissions/fix', [App\Http\Controllers\API\CLIController::class, 'permissionsFix'])->name('permissions.fix');
+        Route::put('/settings/{key}', [App\Http\Controllers\API\CLIController::class, 'settingsUpdate'])->name('settings.update');
+    });
+});

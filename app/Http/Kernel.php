@@ -83,6 +83,8 @@ class Kernel extends HttpKernel
         'force.password.change' => \App\Http\Middleware\ForcePasswordChange::class,
         'paywall' => \App\Http\Middleware\PaywallMiddleware::class,
         'contract.expiry' => \App\Http\Middleware\ContractExpiryMiddleware::class,
+        'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
+        'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
     ];
 
     /**
