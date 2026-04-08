@@ -233,6 +233,65 @@ class UserService
     }
 
     /**
+     * Vérifie si le mot de passe est expiré (> X mois)
+     */
+    public static function isPasswordExpired(User $user, ?int $months = null): bool
+    {
+        $months = $months ?? (int) (\App\Models\Setting::get('password_expiry_months', 6));
+        if ($months <= 0) {
+            return false; // Feature désactivée
+        }
+
+        // Si must_change_password est déjà true, le middleware gère via first_login
+        if ($user->must_change_password) {
+            return false;
+        }
+
+        // Date de référence : password_changed_at si dispo, sinon created_at du compte
+        $referenceDate = $user->password_changed_at ?? $user->created_at;
+        if (!$referenceDate) {
+            return true; // Pas de date du tout → expiré
+        }
+
+        return $referenceDate->addMonths($months)->isPast();
+    }
+
+    /**
+     * Vérifie si le mot de passe expire bientôt (dans le dernier mois avant expiration)
+     */
+    public static function isPasswordExpiringSoon(User $user, ?int $months = null): bool
+    {
+        $months = $months ?? (int) (\App\Models\Setting::get('password_expiry_months', 6));
+        if ($months <= 0 || $user->must_change_password) {
+            return false;
+        }
+
+        $referenceDate = $user->password_changed_at ?? $user->created_at;
+        if (!$referenceDate) {
+            return false;
+        }
+
+        $expiresAt = $referenceDate->addMonths($months);
+        $warningStart = $expiresAt->copy()->subMonth();
+
+        return now()->between($warningStart, $expiresAt);
+    }
+
+    /**
+     * Retourne la raison du changement de mot de passe forcé
+     */
+    public static function getPasswordChangeReason(User $user): string
+    {
+        if ($user->must_change_password) {
+            return 'first_login';
+        }
+        if (self::isPasswordExpired($user)) {
+            return 'expired';
+        }
+        return 'none';
+    }
+
+    /**
      * Génère les informations d'affichage des credentials
      */
     public function getCredentialsInfo(string $username, string $password): array

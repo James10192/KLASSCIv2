@@ -2,27 +2,40 @@
 
 @section('content')
 <div class="main-content">
+    @php
+        $reason = session('password_change_reason', 'first_login');
+        $isExpired = $reason === 'expired';
+    @endphp
+
     <div class="dashboard-header">
         <div class="header-left">
-            <h1>Changement de mot de passe requis</h1>
-            <p class="header-subtitle">Veuillez changer votre mot de passe pour continuer</p>
+            <h1>{{ $isExpired ? 'Mot de passe expiré' : 'Première connexion' }}</h1>
+            <p class="header-subtitle">{{ $isExpired ? 'Votre mot de passe doit être renouvelé pour continuer' : 'Créez votre mot de passe personnalisé pour continuer' }}</p>
         </div>
     </div>
 
     <div class="card-moderne" style="max-width: 600px; margin: 0 auto; padding: var(--space-xl);">
         @if (session('warning'))
-            <div class="alert alert-warning mb-lg" style="background-color: rgba(245, 158, 11, 0.1); color: var(--warning); padding: var(--space-md); border-radius: var(--radius-medium); margin-bottom: var(--space-lg);">
-                <i class="fas fa-exclamation-triangle" style="margin-right: var(--space-sm);"></i>
+            <div class="alert alert-{{ $isExpired ? 'danger' : 'warning' }} mb-lg" style="background-color: {{ $isExpired ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)' }}; color: {{ $isExpired ? 'var(--danger)' : 'var(--warning)' }}; padding: var(--space-md); border-radius: var(--radius-medium); margin-bottom: var(--space-lg);">
+                <i class="fas fa-{{ $isExpired ? 'clock' : 'exclamation-triangle' }}" style="margin-right: var(--space-sm);"></i>
                 {{ session('warning') }}
             </div>
         @endif
 
         <div style="text-align: center; margin-bottom: var(--space-xl);">
-            <div style="width: 80px; height: 80px; background-color: var(--warning); border-radius: var(--radius-circle); margin: 0 auto var(--space-lg); display: flex; align-items: center; justify-content: center;">
-                <i class="fas fa-key" style="font-size: 24px; color: white;"></i>
+            <div style="width: 80px; height: 80px; background-color: {{ $isExpired ? '#0453cb' : 'var(--warning)' }}; border-radius: var(--radius-circle); margin: 0 auto var(--space-lg); display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-{{ $isExpired ? 'clock' : 'key' }}" style="font-size: 24px; color: white;"></i>
             </div>
-            <h2 style="color: var(--text-primary); margin-bottom: var(--space-sm);">Sécurité renforcée</h2>
-            <p style="color: var(--text-secondary); margin: 0;">Pour votre sécurité, vous devez créer un nouveau mot de passe personnalisé.</p>
+            <h2 style="color: var(--text-primary); margin-bottom: var(--space-sm);">
+                {{ $isExpired ? 'Renouvellement de mot de passe' : 'Bienvenue sur KLASSCI' }}
+            </h2>
+            <p style="color: var(--text-secondary); margin: 0;">
+                @if($isExpired)
+                    Votre mot de passe n'a pas été changé depuis plus de 6 mois. Pour la sécurité de votre compte et des données de l'établissement, veuillez en créer un nouveau.
+                @else
+                    C'est votre première connexion. Pour sécuriser votre compte, veuillez créer un mot de passe personnalisé.
+                @endif
+            </p>
         </div>
 
         <form method="POST" action="{{ route('password.change.update') }}">
@@ -102,7 +115,7 @@
         <div style="margin-top: var(--space-lg); padding-top: var(--space-lg); border-top: 1px solid #e5e7eb; text-align: center;">
             <p style="font-size: var(--text-small); color: var(--text-muted); margin: 0;">
                 <i class="fas fa-shield-alt" style="margin-right: var(--space-xs);"></i>
-                Cette étape est obligatoire pour sécuriser votre compte
+                {{ $isExpired ? 'Le renouvellement régulier du mot de passe protège les données de l\'établissement' : 'Cette étape est obligatoire pour sécuriser votre compte' }}
             </p>
         </div>
     </div>
