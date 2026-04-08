@@ -6,25 +6,22 @@
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
     .edit-header {
-        background: linear-gradient(135deg, var(--warning), var(--secondary));
+        background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
         color: white;
-        padding: var(--space-xl);
+        padding: var(--space-xl) var(--space-xl) var(--space-lg);
         border-radius: var(--radius-large);
         margin-bottom: var(--space-xl);
         position: relative;
         overflow: hidden;
     }
-    
+
     .edit-header::before {
         content: '';
         position: absolute;
-        top: 0;
-        right: 0;
-        width: 150px;
-        height: 100%;
-        background: rgba(255,255,255,0.1);
-        transform: skewX(-15deg);
-        transform-origin: top;
+        inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1.5' cy='1.5' r='1' fill='rgba(255,255,255,0.07)'/%3E%3C/svg%3E");
+        background-size: 20px 20px;
+        pointer-events: none;
     }
     
     .coordinator-form {
@@ -111,18 +108,33 @@
     }
     
     .current-avatar {
-        width: 100px;
-        height: 100px;
+        width: 80px;
+        height: 80px;
         border-radius: var(--radius-circle);
-        background: var(--primary);
+        background: rgba(255,255,255,0.15);
+        backdrop-filter: blur(10px);
         color: white;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 2rem;
+        font-size: 1.8rem;
         font-weight: bold;
-        margin: 0 auto var(--space-md);
-        border: 4px solid rgba(var(--primary-rgb), 0.2);
+        border: 3px solid rgba(255,255,255,0.3);
+        margin: 0;
+    }
+
+    .edit-header .btn-acasi.secondary {
+        background: rgba(255,255,255,0.15);
+        backdrop-filter: blur(6px);
+        color: white;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+    .edit-header .btn-acasi.secondary:hover {
+        background: rgba(255,255,255,0.25);
+    }
+    .edit-header .btn-acasi:not(.secondary) {
+        background: white;
+        color: #0453cb;
     }
     
     .info-card {
