@@ -284,6 +284,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::get('/classes', [App\Http\Controllers\API\CLIController::class, 'classes'])->name('classes');
     Route::get('/payments', [App\Http\Controllers\API\CLIController::class, 'payments'])->name('payments');
     Route::get('/settings', [App\Http\Controllers\API\CLIController::class, 'settings'])->name('settings');
+    Route::get('/annee', [App\Http\Controllers\API\CLIController::class, 'annee'])->name('annee');
 
     // Write endpoints
     Route::post('/inscriptions/{id}/validate', [App\Http\Controllers\API\CLIController::class, 'validateInscription'])->name('inscriptions.validate');
@@ -293,5 +294,6 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/cache/clear', [App\Http\Controllers\API\CLIController::class, 'cacheClear'])->name('cache.clear');
         Route::post('/permissions/fix', [App\Http\Controllers\API\CLIController::class, 'permissionsFix'])->name('permissions.fix');
         Route::put('/settings/{key}', [App\Http\Controllers\API\CLIController::class, 'settingsUpdate'])->name('settings.update');
+        Route::post('/annee/set/{id}', [App\Http\Controllers\API\CLIController::class, 'anneeSet'])->name('annee.set');
     });
 });

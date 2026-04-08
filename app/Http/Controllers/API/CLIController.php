@@ -92,7 +92,8 @@ class CLIController extends BaseApiController
                 'validated' => $validatedPayments,
                 'pending' => $pendingPayments,
             ],
-            'annee_universitaire' => $annee->nom ?? "{$annee->annee_debut}-{$annee->annee_fin}",
+            'annee_universitaire' => $annee->name ?? $annee->libelle ?? "{$annee->annee_debut}-{$annee->annee_fin}",
+            'annee_universitaire_id' => $annee->id,
         ], 'Dashboard KPIs');
     }
 
@@ -429,6 +430,68 @@ class CLIController extends BaseApiController
             ]));
 
         return $this->successResponse(['settings' => $settings]);
+    }
+
+    /**
+     * GET /api/cli/annee — Current academic year + list all
+     */
+    public function annee(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $current = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $all = ESBTPAnneeUniversitaire::orderBy('id', 'desc')->get();
+
+        return $this->successResponse([
+            'current' => $current ? [
+                'id' => $current->id,
+                'name' => $current->name ?? $current->libelle,
+                'annee_debut' => $current->annee_debut,
+                'annee_fin' => $current->annee_fin,
+                'start_date' => $current->start_date?->format('Y-m-d'),
+                'end_date' => $current->end_date?->format('Y-m-d'),
+                'is_current' => true,
+            ] : null,
+            'all' => $all->map(fn ($a) => [
+                'id' => $a->id,
+                'name' => $a->name ?? $a->libelle,
+                'annee_debut' => $a->annee_debut,
+                'annee_fin' => $a->annee_fin,
+                'start_date' => $a->start_date?->format('Y-m-d'),
+                'end_date' => $a->end_date?->format('Y-m-d'),
+                'is_current' => (bool) $a->is_current,
+                'is_active' => (bool) $a->is_active,
+            ]),
+        ]);
+    }
+
+    /**
+     * POST /api/cli/annee/set/{id} — Set current academic year
+     */
+    public function anneeSet(Request $request, $id): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $annee = ESBTPAnneeUniversitaire::find($id);
+        if (!$annee) {
+            return $this->errorResponse("Academic year #{$id} not found", [], 404);
+        }
+
+        // Unset all current
+        ESBTPAnneeUniversitaire::where('is_current', true)->update(['is_current' => false]);
+
+        // Set the new one
+        $annee->update(['is_current' => true]);
+
+        return $this->successResponse([
+            'id' => $annee->id,
+            'name' => $annee->name ?? $annee->libelle,
+            'is_current' => true,
+        ], "Academic year '{$annee->name}' is now current");
     }
 
     // =========================================================================
