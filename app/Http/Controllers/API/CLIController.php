@@ -53,9 +53,11 @@ class CLIController extends BaseApiController
             ->where('workflow_step', 'etudiant_cree')
             ->count();
 
-        $totalClasses = ESBTPClasse::where('annee_universitaire_id', $annee->id)
-            ->where('is_active', true)
-            ->count();
+        $totalClasses = ESBTPClasse::whereHas('inscriptions', function ($q) use ($annee) {
+                $q->where('annee_universitaire_id', $annee->id)
+                  ->where('status', 'active')
+                  ->where('workflow_step', 'etudiant_cree');
+            })->count();
 
         $pendingInscriptions = ESBTPInscription::where('annee_universitaire_id', $annee->id)
             ->where(function ($q) {
@@ -324,12 +326,16 @@ class CLIController extends BaseApiController
             return $this->errorResponse('No current academic year configured', [], 404);
         }
 
-        $classes = ESBTPClasse::where('annee_universitaire_id', $annee->id)
-            ->where('is_active', true)
+        $classes = ESBTPClasse::whereHas('inscriptions', function ($q) use ($annee) {
+                $q->where('annee_universitaire_id', $annee->id)
+                  ->where('status', 'active')
+                  ->where('workflow_step', 'etudiant_cree');
+            })
             ->with(['filiere:id,name', 'niveau:id,name'])
             ->get()
-            ->map(function ($c) {
+            ->map(function ($c) use ($annee) {
                 $effectif = ESBTPInscription::where('classe_id', $c->id)
+                    ->where('annee_universitaire_id', $annee->id)
                     ->where('status', 'active')
                     ->where('workflow_step', 'etudiant_cree')
                     ->count();
