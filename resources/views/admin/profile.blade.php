@@ -371,7 +371,7 @@
                             <input type="password" name="current_password" class="form-control" required
                                    style="border: 2px solid #e2e8f0; border-radius: 0.625rem; padding: 0.7rem 2.75rem 0.7rem 1rem; font-size: 0.95rem; transition: border-color 0.2s;"
                                    onfocus="this.style.borderColor='#0453cb'" onblur="this.style.borderColor='#e2e8f0'">
-                            <button type="button" onclick="togglePwdVisibility(this)" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #94a3b8; padding: 0.25rem;" title="Afficher/masquer">
+                            <button type="button" onclick="togglePwdVisibility(this)" style="position: absolute; right: 0; top: 0; height: 100%; width: 2.75rem; display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; color: #94a3b8;" title="Afficher/masquer">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
@@ -389,7 +389,7 @@
                             <input type="password" name="password" id="adminPasswordForm_password" class="form-control" required minlength="8"
                                    style="border: 2px solid #e2e8f0; border-radius: 0.625rem; padding: 0.7rem 2.75rem 0.7rem 1rem; font-size: 0.95rem; transition: border-color 0.2s;"
                                    onfocus="this.style.borderColor='#0453cb'" onblur="this.style.borderColor='#e2e8f0'">
-                            <button type="button" onclick="togglePwdVisibility(this)" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #94a3b8; padding: 0.25rem;" title="Afficher/masquer">
+                            <button type="button" onclick="togglePwdVisibility(this)" style="position: absolute; right: 0; top: 0; height: 100%; width: 2.75rem; display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; color: #94a3b8;" title="Afficher/masquer">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
@@ -412,7 +412,7 @@
                             <input type="password" name="password_confirmation" class="form-control" required minlength="8"
                                    style="border: 2px solid #e2e8f0; border-radius: 0.625rem; padding: 0.7rem 2.75rem 0.7rem 1rem; font-size: 0.95rem; transition: border-color 0.2s;"
                                    onfocus="this.style.borderColor='#0453cb'" onblur="this.style.borderColor='#e2e8f0'">
-                            <button type="button" onclick="togglePwdVisibility(this)" style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #94a3b8; padding: 0.25rem;" title="Afficher/masquer">
+                            <button type="button" onclick="togglePwdVisibility(this)" style="position: absolute; right: 0; top: 0; height: 100%; width: 2.75rem; display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; color: #94a3b8;" title="Afficher/masquer">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
