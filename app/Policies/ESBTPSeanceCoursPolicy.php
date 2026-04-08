@@ -11,6 +11,16 @@ class ESBTPSeanceCoursPolicy
     use HandlesAuthorization;
 
     /**
+     * Super-admin bypass — grants all abilities.
+     */
+    public function before(User $user, string $ability)
+    {
+        if ($user->hasRole('superAdmin')) {
+            return true;
+        }
+    }
+
+    /**
      * Determine whether the user can view any models.
      *
      * @param  \App\Models\User  $user
@@ -18,10 +28,7 @@ class ESBTPSeanceCoursPolicy
      */
     public function viewAny(User $user)
     {
-        return $user->hasRole('superAdmin') ||
-               $user->hasRole('secretaire') ||
-               $user->hasRole('teacher') ||
-               $user->hasRole('etudiant');
+        return $user->can('view_timetables') || $user->can('view_own_timetable');
     }
 
     /**
@@ -33,10 +40,7 @@ class ESBTPSeanceCoursPolicy
      */
     public function view(User $user, ESBTPSeanceCours $eSBTPSeanceCours)
     {
-        return $user->hasRole('superAdmin') ||
-               $user->hasRole('secretaire') ||
-               $user->hasRole('teacher') ||
-               $user->hasRole('etudiant');
+        return $user->can('view_timetables') || $user->can('view_own_timetable');
     }
 
     /**
@@ -47,7 +51,7 @@ class ESBTPSeanceCoursPolicy
      */
     public function create(User $user)
     {
-        return $user->hasRole('superAdmin') || $user->hasRole('secretaire');
+        return $user->can('create_timetable') || $user->can('edit_timetables');
     }
 
     /**
@@ -59,7 +63,7 @@ class ESBTPSeanceCoursPolicy
      */
     public function update(User $user, ESBTPSeanceCours $eSBTPSeanceCours)
     {
-        return $user->hasRole('superAdmin') || $user->hasRole('secretaire');
+        return $user->can('create_timetable') || $user->can('edit_timetables');
     }
 
     /**
@@ -71,7 +75,7 @@ class ESBTPSeanceCoursPolicy
      */
     public function edit(User $user, ESBTPSeanceCours $eSBTPSeanceCours)
     {
-        return $user->hasRole('superAdmin') || $user->hasRole('secretaire');
+        return $user->can('create_timetable') || $user->can('edit_timetables');
     }
 
     /**
@@ -83,7 +87,7 @@ class ESBTPSeanceCoursPolicy
      */
     public function delete(User $user, ESBTPSeanceCours $eSBTPSeanceCours)
     {
-        return $user->hasRole('superAdmin') || $user->hasRole('secretaire');
+        return $user->can('delete_timetables');
     }
 
     /**
@@ -95,7 +99,7 @@ class ESBTPSeanceCoursPolicy
      */
     public function restore(User $user, ESBTPSeanceCours $eSBTPSeanceCours)
     {
-        return $user->hasRole('superAdmin');
+        return $user->can('manage_system');
     }
 
     /**
@@ -107,6 +111,6 @@ class ESBTPSeanceCoursPolicy
      */
     public function forceDelete(User $user, ESBTPSeanceCours $eSBTPSeanceCours)
     {
-        return $user->hasRole('superAdmin');
+        return $user->can('manage_system');
     }
 }

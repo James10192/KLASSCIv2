@@ -33,8 +33,7 @@ class ESBTPMatierePolicy
      */
     public function viewAny(User $user)
     {
-        // SuperAdmin, secretaire et teacher peuvent voir la liste
-        return $user->hasAnyRole(['superAdmin', 'secretaire', 'teacher']);
+        return $user->can('view_matieres');
     }
 
     /**
@@ -46,8 +45,7 @@ class ESBTPMatierePolicy
      */
     public function view(User $user, ESBTPMatiere $eSBTPMatiere)
     {
-        // SuperAdmin, secretaire et teacher peuvent voir les détails
-        return $user->hasAnyRole(['superAdmin', 'secretaire', 'teacher']);
+        return $user->can('view_matieres');
     }
 
     /**
@@ -58,8 +56,7 @@ class ESBTPMatierePolicy
      */
     public function create(User $user)
     {
-        // Seuls SuperAdmin et secretaire peuvent créer
-        return $user->hasAnyRole(['superAdmin', 'secretaire']);
+        return $user->can('create_matieres');
     }
 
     /**
@@ -71,8 +68,7 @@ class ESBTPMatierePolicy
      */
     public function update(User $user, ESBTPMatiere $eSBTPMatiere)
     {
-        // Seuls SuperAdmin et secretaire peuvent modifier
-        return $user->hasAnyRole(['superAdmin', 'secretaire']);
+        return $user->can('edit_matieres');
     }
 
     /**
@@ -84,8 +80,7 @@ class ESBTPMatierePolicy
      */
     public function delete(User $user, ESBTPMatiere $eSBTPMatiere)
     {
-        // Seuls SuperAdmin et secretaire peuvent supprimer
-        return $user->hasAnyRole(['superAdmin', 'secretaire']);
+        return $user->can('delete_matieres');
     }
 
     /**
@@ -97,8 +92,7 @@ class ESBTPMatierePolicy
      */
     public function restore(User $user, ESBTPMatiere $eSBTPMatiere)
     {
-        // Seul SuperAdmin peut restaurer
-        return $user->hasRole('superAdmin');
+        return $user->can('manage_system');
     }
 
     /**
@@ -110,7 +104,6 @@ class ESBTPMatierePolicy
      */
     public function forceDelete(User $user, ESBTPMatiere $eSBTPMatiere)
     {
-        // Seul SuperAdmin peut supprimer définitivement
-        return $user->hasRole('superAdmin');
+        return $user->can('manage_system');
     }
 }

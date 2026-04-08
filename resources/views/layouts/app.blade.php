@@ -1484,10 +1484,10 @@
                     </div>
 
                     <!-- Academic Management Section -->
-                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('module.academique.access')))
+                    @can('module.academique.access')
+                    @can('view_filieres')
                         <div class="menu-category">Gestion académique</div>
 
-                        @can('module.academique.access')
                         <!-- Programs & Classes -->
                         <div class="menu-accordion">
                             <button class="menu-accordion-btn {{ Request::routeIs('esbtp.filieres.*') || Request::routeIs('esbtp.classes.*') || Request::routeIs('esbtp.niveaux-etudes.*') ? 'active' : '' }}">
@@ -1514,8 +1514,6 @@
                                 </a>
                             </div>
                         </div>
-                        @endcan
-
                         <!-- Training Cycles -->
                         <!--<div class="menu-accordion">
                             <button class="menu-accordion-btn {{ Request::routeIs('esbtp.cycles.*') || Request::routeIs('esbtp.specialties.*') ? 'active' : '' }}">
@@ -1538,13 +1536,14 @@
                                 </a>
                             </div>
                         </div>-->
-                    @endif
+                    @endcan
+                    @endcan
 
                     <!-- Students Section -->
-                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('module.etudiants.access')))
+                    @can('module.etudiants.access')
+                    @can('view_students')
                         <div class="menu-category">Étudiants</div>
 
-                        @can('module.etudiants.access')
                         <!-- Student Management -->
                         <div class="menu-accordion">
                             <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
@@ -1565,20 +1564,20 @@
                                     <div class="menu-icon"><i class="fas fa-user-plus"></i></div>
                                     <div class="menu-text">Nouvelle Inscription</div>
                                 </a>
-                                @if(auth()->check() && auth()->user() && auth()->user()->hasRole(['superAdmin', 'secretaire', 'coordinateur']))
+                                @can('view_inscriptions')
                                 <a href="{{ route('esbtp.reinscription.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-redo"></i></div>
                                     <div class="menu-text">Réinscriptions</div>
                                 </a>
-                                @endif
+                                @endcan
                             </div>
                         </div>
-                        @endcan
-                    @endif
+                    @endcan
+                    @endcan
 
-                    <!-- Personnel (secretaire uniquement — superAdmin a l'accordion dans Administration) -->
-                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole('secretaire'))
-                        @can('manage_personnel')
+                    <!-- Personnel (non-superAdmin — superAdmin has accordion in Administration) -->
+                    @can('manage_personnel')
+                        @if(!auth()->user()->hasRole('superAdmin'))
                         <div class="menu-category">Personnel</div>
                         <div class="menu-item">
                             <a href="{{ route('esbtp.personnel.unified.index') }}" class="menu-link {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
@@ -1586,7 +1585,8 @@
                                 <div class="menu-text">Gestion du personnel</div>
                             </a>
                         </div>
-                        @elsecan('module.enseignants.access')
+                        @endif
+                    @elsecan('module.enseignants.access')
                         <div class="menu-category">Personnel</div>
                         <div class="menu-item">
                             <a href="{{ route('esbtp.enseignants.index') }}" class="menu-link {{ Request::routeIs('esbtp.enseignants.*') ? 'active' : '' }}">
@@ -1594,8 +1594,7 @@
                                 <div class="menu-text">Enseignants</div>
                             </a>
                         </div>
-                        @endcan
-                    @endif
+                    @endcan
 
                     <!-- Coordinateur Section -->
                     @if(auth()->check() && auth()->user() && auth()->user()->hasRole('coordinateur'))
@@ -1710,20 +1709,19 @@
                     @endif
 
                     <!-- Teaching Section -->
-                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('module.emploi_temps.access')))
+                    @can('module.emploi_temps.access')
+                    @can('view_timetables')
                         <div class="menu-category">Enseignement</div>
 
                         <!-- Schedule Management -->
-                        @can('module.emploi_temps.access')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.emploi-temps.index') }}" class="menu-link {{ Request::routeIs('esbtp.emploi-temps.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-calendar-alt"></i></div>
                                 <div class="menu-text">Emplois du temps</div>
                             </a>
                         </div>
-                        @endcan
 
-                        @can('module.academique.access')
+                        @can('view_matieres')
                         <!-- Matières -->
                         <div class="menu-item">
                             <a href="{{ route('esbtp.matieres.index') }}" class="menu-link {{ Request::routeIs('esbtp.matieres.*') ? 'active' : '' }}">
@@ -1733,7 +1731,6 @@
                         </div>
                         @endcan
 
-                        @can('module.emploi_temps.access')
                         <!-- Planning Général -->
                         <div class="menu-item">
                             <a href="{{ route('esbtp.planning-general.index') }}" class="menu-link {{ Request::routeIs('esbtp.planning-general.*') ? 'active' : '' }}">
@@ -1741,12 +1738,13 @@
                                 <div class="menu-text">Planning Général</div>
                             </a>
                         </div>
-                        @endcan
 
-                    @endif
+                    @endcan
+                    @endcan
 
-                    <!-- Grades & Reports Section (pas pour enseignant — ils ont leur propre section) -->
-                    @if(auth()->check() && auth()->user() && !auth()->user()->hasRole(['teacher', 'enseignant']) && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('module.notes_evaluations.access')))
+                    <!-- Grades & Reports Section -->
+                    @can('module.notes_evaluations.access')
+                    @can('view_notes')
                         <div class="menu-category">Notes & Rapports</div>
 
                         @can('module.notes_evaluations.access')
@@ -1777,11 +1775,12 @@
                             </a>
                         </div>
                         @endcan
-                    @endif
+                    @endcan
+                    @endcan
 
                     <!-- LMD Section (Licence-Master-Doctorat) -->
-                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur')))
-                        @can('module.lmd.access')
+                    @can('module.lmd.access')
+                    @can('view_notes')
                         <div class="menu-category">Système LMD</div>
 
                         <div class="menu-accordion">
@@ -1813,11 +1812,11 @@
                                 </a>
                             </div>
                         </div>
-                        @endcan
-                    @endif
+                    @endcan
+                    @endcan
 
                     <!-- Administration Section -->
-                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole('superAdmin'))
+                    @can('manage_personnel')
                         <div class="menu-category">Administration</div>
 
                         <!-- Staff Management -->
@@ -1850,13 +1849,13 @@
                                 <div class="menu-text">Partenariats</div>
                             </a>
                         </div>-->
-                    @endif
+                    @endcan
 
-                    <!-- Attendance Section (pas pour enseignant — ils ont émargement dans leur propre section) -->
-                    @if(auth()->check() && auth()->user() && !auth()->user()->hasRole(['teacher', 'enseignant']) && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('module.presences.access')))
+                    <!-- Attendance Section -->
+                    @can('module.presences.access')
+                    @can('view_attendances')
                         <div class="menu-category">Présence & Absences</div>
 
-                        @can('module.presences.access')
                         <!-- Gestion des présences/absences -->
                         <div class="menu-accordion">
                             <button class="menu-accordion-btn {{ Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.absences.*') || Request::routeIs('esbtp.teacher-attendance.*') || Request::routeIs('esbtp.attendance-codes.*') ? 'active' : '' }}">
@@ -1877,18 +1876,20 @@
                                     <span class="menu-dot"></span>
                                     <span>Historique émargement enseignant</span>
                                 </a>-->
+                                @can('generate-attendance-codes')
                                 <a href="{{ route('esbtp.attendance-codes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.attendance-codes.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Codes d'émargement</span>
                                 </a>
+                                @endcan
                                 <a href="{{ route('coordinateur.attendance-dashboard') }}" class="menu-sublink {{ Request::routeIs('coordinateur.attendance-dashboard') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Tableau de Bord Présences</span>
                                 </a>
                             </div>
                         </div>
-                        @endcan
-                    @endif
+                    @endcan
+                    @endcan
 
                     @if(auth()->check() && auth()->user() && auth()->user()->hasRole(['teacher', 'enseignant']))
                         <div class="menu-category">Enseignement</div>
@@ -2033,19 +2034,19 @@
                     @endif
 
                     <!-- Accounting Section -->
-                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('comptable') || auth()->user()->can('module.comptabilite.access')))
+                    @can('module.comptabilite.access')
+                    @can('comptabilite.access')
                         <div class="menu-category">Gestion financière</div>
 
-                        @can('module.comptabilite.access')
-                        {{-- Dashboard Comptabilité (superAdmin + comptable) --}}
-                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('comptable'))
+                        {{-- Dashboard Comptabilité --}}
+                        @can('comptabilite.dashboard.view')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.comptabilite.dashboard') }}" class="menu-link {{ Request::routeIs('esbtp.comptabilite.dashboard') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-chart-line"></i></div>
                                 <div class="menu-text">Dashboard Comptable</div>
                             </a>
                         </div>
-                        @endif
+                        @endcan
 
                         <div class="menu-accordion">
                             <button class="menu-accordion-btn {{ Request::routeIs('esbtp.comptabilite.*') || Request::routeIs('esbtp.frais.*') || Request::routeIs('esbtp.fee-categories.*') || Request::routeIs('esbtp.payment-categories.*') || Request::routeIs('esbtp.fees.*') || Request::routeIs('esbtp.payments.*') ? 'active' : '' }}">
@@ -2070,21 +2071,21 @@
                                     <span class="menu-dot"></span>
                                     <span>Suivi par Catégorie</span>
                                 </a>
-                                {{-- Relances (superAdmin + comptable) --}}
-                                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('comptable'))
+                                {{-- Relances --}}
+                                @can('comptabilite.relances.send')
                                 <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.relances.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Relances</span>
                                 </a>
-                                @endif
+                                @endcan
                             </div>
                         </div>
-                        @endcan
-                    @endif
+                    @endcan
+                    @endcan
 
                     <!-- Announcements Section -->
-                    @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('enseignant') || auth()->user()->hasRole('coordinateur') || auth()->user()->can('module.communication.access')))
                     @can('module.communication.access')
+                    @can('view_annonces')
                     <div class="menu-category">Communication</div>
                     <!-- Announcements Management -->
                         <div class="menu-item">
@@ -2094,7 +2095,7 @@
                             </a>
                         </div>
 
-                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur'))
+                        @can('create_annonces')
                         <!-- Create Announcement -->
                         <div class="menu-item">
                             <a href="{{ route('esbtp.annonces.create') }}" class="menu-link {{ Request::routeIs('esbtp.annonces.create') ? 'active' : '' }}">
@@ -2102,9 +2103,9 @@
                                 <div class="menu-text">Créer une annonce</div>
                             </a>
                         </div>
-                        @endif
+                        @endcan
                     @endcan
-                    @endif
+                    @endcan
 
                     <!-- Service Technique Section - ADC Only -->
                     @if(auth()->check() && auth()->user() && auth()->user()->hasRole('serviceTechnique'))
@@ -2138,8 +2139,8 @@
                         </div>
                     @endif
 
-                    <!-- System Section - SuperAdmin Only -->
-                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole('superAdmin'))
+                    <!-- System Section -->
+                    @can('manage_system')
                         <div class="menu-category">Système</div>
 
                         <!-- System Settings -->
@@ -2160,7 +2161,7 @@
                                 </a>-->
                             </div>
                         </div>
-                    @endif
+                    @endcan
 
                     @role('etudiant')
                     <div class="menu-category">Mon espace étudiant</div>

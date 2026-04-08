@@ -287,6 +287,11 @@ try {
     $superAdminRole->syncPermissions($permissions);
     echo "✓ SuperAdmin: Toutes les permissions accordées\n";
 
+    // Admin - Toutes les permissions (comme superAdmin)
+    $adminRole = Role::findByName('admin');
+    $adminRole->syncPermissions($permissions);
+    echo "✓ Admin: Toutes les permissions accordées\n";
+
     // Secrétaire - Permissions principales
     $secretaireRole = Role::findByName('secretaire');
     $secretairePermissions = [
@@ -340,30 +345,60 @@ try {
     // Coordinateur - Permissions de coordination
     $coordinateurRole = Role::findByName('coordinateur');
     $coordinateurPermissions = [
-        'view_dashboard',
         'access_admin',
-        'view_students', 'edit_students',
-        'view_inscriptions', 'create_inscriptions', 'approve_inscriptions', 'reject_inscriptions',
+        'view_dashboard',
+        // Étudiants — full CRUD
+        'view_students', 'create_students', 'edit_students',
+        'view_own_students',
+        // Inscriptions
+        'view_inscriptions', 'create_inscriptions', 'edit_inscriptions',
+        'approve_inscriptions', 'reject_inscriptions',
         'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
+        'edit inscriptions', 'valider inscriptions', 'annuler inscriptions',
+        // Paiements (consultation)
         'paiements.view',
-        'frais.view',
-        'view cycles', 'edit cycles',
-        'view_classes', // REMOVED: 'edit_classes', 'create_classes' - coordinateurs can only view, not edit/create
-        'view_matieres', 'edit_matieres',
-        'view_notes', 'create_notes', 'edit_notes',
-        'view_grades', 'create_grade', 'edit_grades', 'delete_grades',
-        'view_evaluations', 'create_evaluations', 'edit_evaluations',
-        'view_bulletins', 'generate_bulletins',
-        'view_attendances', 'create_attendance', 'create_attendances', 'edit_attendances', 'delete_attendances',
-        'generate-attendance-codes', 'manage-planning', 'view-all-timetables', 'view_timetables', 'create_timetable', 'edit_timetables',
         'view_payments',
-        'view_teachers', 'create_teachers',
+        // Frais (consultation)
+        'frais.view',
+        // Cycles
+        'view cycles', 'edit cycles',
+        // Classes (consultation + show)
+        'view_classes',
+        // Filières
+        'view_filieres',
+        // Niveaux d'études
+        'view_niveaux_etudes',
+        // Matières
+        'view_matieres', 'edit_matieres', 'create_matieres',
+        // Notes — full CRUD
+        'view_notes', 'create_notes', 'edit_notes', 'edit_existing_notes',
+        'view_grades', 'create_grade', 'edit_grades', 'delete_grades',
+        // Évaluations
+        'view_evaluations', 'create_evaluations', 'edit_evaluations',
+        // Bulletins
+        'view_bulletins', 'generate_bulletins', 'edit_bulletins',
+        // Présences — full CRUD
+        'view_attendances', 'create_attendance', 'create_attendances',
+        'edit_attendances', 'delete_attendances',
+        'generate-attendance-codes',
+        // Planning & Emploi du temps — full CRUD
+        'manage-planning', 'view-all-timetables',
+        'view_timetables', 'create_timetable', 'edit_timetables', 'delete_timetables',
+        'view_planning_general', 'edit_planning_general',
+        // Personnel
+        'view_personnel', 'manage_personnel',
+        'view_teachers', 'create_teachers', 'edit_teachers',
+        'edit_enseignants',
+        // Coordinateurs CRUD
         'view_coordinateurs', 'create_coordinateurs', 'edit_coordinateurs', 'delete_coordinateurs',
+        // Emplois du temps
         'view_schedules', 'create_schedules', 'edit_schedules',
+        // Communication
         'send_messages', 'receive_messages',
         'view_annonces', 'create_annonces', 'edit_annonces',
+        // Rapports
         'view_reports', 'generate_reports',
-        'view_planning_general', 'edit_planning_general',
+        // Résultats
         'view_resultats', 'edit_resultats',
         // Modules toggle
         'module.enseignants.access',
@@ -374,6 +409,8 @@ try {
         'module.academique.access',
         'module.etudiants.access',
         'module.communication.access',
+        // Manage users
+        'manage-users',
     ];
     $coordinateurRole->syncPermissions($coordinateurPermissions);
     echo '✓ Coordinateur: '.count($coordinateurPermissions)." permissions accordées\n";
@@ -381,6 +418,7 @@ try {
     // Enseignant - Permissions d'enseignement
     $enseignantRole = Role::findByName('enseignant');
     $enseignantPermissions = [
+        'access_admin',
         'view_dashboard',
         'view_own_students',
         'view_classes',
@@ -491,6 +529,7 @@ try {
     // Caissier - Pré-inscription simplifiée + paiements + consultation
     $caissierRole = Role::findByName('caissier');
     $caissierPermissions = [
+        'access_admin',
         'view_dashboard',
         // Consultation étudiants & inscriptions
         'view_students', 'view_inscriptions', 'inscriptions.view',
