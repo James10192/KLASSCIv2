@@ -865,6 +865,9 @@
     </div>
 </div>
 
+@endsection
+
+@push('scripts')
 <script>
 // -- Tab switching -----------------------------------------------
 document.querySelectorAll('.cs-tab').forEach(function(tab) {
@@ -957,4 +960,4 @@ document.getElementById('resetPasswordModal').addEventListener('hidden.bs.modal'
     document.getElementById('copyPasswordBtn').style.display = 'none';
 });
 </script>
-@endsection
+@endpush
