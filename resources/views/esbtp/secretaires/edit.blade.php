@@ -5,40 +5,91 @@
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    .edit-header {
-        background: linear-gradient(135deg, var(--warning), var(--secondary));
-        color: white;
-        padding: var(--space-xl);
-        border-radius: var(--radius-large);
-        margin-bottom: var(--space-xl);
-        position: relative;
-        overflow: hidden;
+    /* ===================================================================
+       SECRETAIRE EDIT — Premium Design — KLASSCI Design System
+       Namespace: se- (secretaire-edit)
+    =================================================================== */
+    :root {
+        --se-blue:   #0453cb;
+        --se-blue-2: #5e91de;
+        --se-surface: #f4f7fb;
+        --se-card:   #ffffff;
+        --se-border: #e2e8f0;
+        --se-text:   #1e293b;
+        --se-muted:  #64748b;
     }
 
-    .edit-header::before {
+    .se-page { background: var(--se-surface); min-height: 100vh; }
+
+    /* Hero header */
+    .se-hero {
+        position: relative;
+        background: linear-gradient(135deg, var(--se-blue) 0%, var(--se-blue-2) 100%);
+        padding: 0;
+    }
+    .se-hero::before {
         content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 150px;
-        height: 100%;
-        background: rgba(255,255,255,0.1);
-        transform: skewX(-15deg);
-        transform-origin: top;
+        position: absolute; inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='1.5' fill='rgba(255,255,255,0.1)'/%3E%3C/svg%3E");
+        pointer-events: none; overflow: hidden;
+    }
+    .se-hero::after {
+        content: '';
+        position: absolute; bottom: 0; left: 0; right: 0; height: 48px;
+        background: linear-gradient(to top, var(--se-surface) 0%, transparent 100%);
+    }
+    .se-hero-inner {
+        position: relative; z-index: 2;
+        max-width: 1280px; margin: 0 auto;
+        padding: 32px 32px 28px;
+        display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+    }
+    .se-hero-avatar {
+        width: 80px; height: 80px; border-radius: 50%;
+        border: 3px solid rgba(255,255,255,.6);
+        background: rgba(255,255,255,.15);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.8rem; font-weight: 700; color: rgba(255,255,255,.9);
+        overflow: hidden; flex-shrink: 0;
+        box-shadow: 0 4px 20px rgba(0,0,0,.22);
+        backdrop-filter: blur(4px);
+    }
+    .se-hero-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .se-hero-text { flex: 1; min-width: 200px; color: #fff; }
+    .se-hero-name { font-size: 1.5rem; font-weight: 800; letter-spacing: -.02em; margin: 0 0 3px; }
+    .se-hero-sub { font-size: .85rem; opacity: .8; margin: 0; }
+    .se-hero-btns {
+        display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        margin-left: auto;
+    }
+    .se-hero-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 9px 18px; border-radius: 8px; font-size: .82rem; font-weight: 600;
+        text-decoration: none; cursor: pointer; border: none; transition: all .18s;
+        white-space: nowrap;
+    }
+    .se-hero-btn.primary { background: rgba(255,255,255,.95); color: var(--se-blue); }
+    .se-hero-btn.primary:hover { background: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.15); }
+    .se-hero-btn.ghost { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.35); }
+    .se-hero-btn.ghost:hover { background: rgba(255,255,255,.25); }
+
+    .se-form-wrap {
+        max-width: 1280px; margin: 0 auto;
+        padding: 28px 24px 60px;
     }
 
     .secretary-form {
-        background: var(--surface);
-        border-radius: var(--radius-large);
+        background: var(--se-card);
+        border-radius: 20px;
         padding: var(--space-xl);
-        box-shadow: var(--shadow-card);
-        border: 1px solid var(--border);
+        box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+        border: 1px solid var(--se-border);
     }
 
     .form-section {
         margin-bottom: var(--space-xl);
         padding-bottom: var(--space-lg);
-        border-bottom: 1px solid var(--border);
+        border-bottom: 1px solid var(--se-border);
     }
 
     .form-section:last-child {
@@ -47,25 +98,25 @@
     }
 
     .section-title {
-        color: var(--primary);
-        font-size: 1.3rem;
-        font-weight: 600;
+        color: var(--se-blue);
+        font-size: 1.2rem;
+        font-weight: 700;
         margin-bottom: var(--space-lg);
         display: flex;
         align-items: center;
-        gap: var(--space-md);
+        gap: var(--space-sm);
     }
 
     .section-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: var(--radius-circle);
-        background: rgba(var(--primary-rgb), 0.1);
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, var(--se-blue) 0%, var(--se-blue-2) 100%);
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--primary);
-        font-size: 1.1rem;
+        color: #fff;
+        font-size: .8rem;
     }
 
     .form-group {
@@ -74,7 +125,7 @@
 
     .form-label {
         font-weight: 600;
-        color: var(--text-primary);
+        color: var(--se-text);
         margin-bottom: var(--space-sm);
         display: flex;
         align-items: center;
@@ -82,23 +133,23 @@
     }
 
     .form-control, .form-select {
-        border: 2px solid var(--border);
-        border-radius: var(--radius-medium);
+        border: 2px solid var(--se-border);
+        border-radius: 10px;
         padding: var(--space-md);
         font-size: var(--text-normal);
         transition: all 0.3s ease;
-        background: var(--surface);
+        background: var(--se-card);
     }
 
     .form-control:focus, .form-select:focus {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+        border-color: var(--se-blue);
+        box-shadow: 0 0 0 3px rgba(4,83,203,.1);
         transform: translateY(-1px);
     }
 
     .form-help {
         font-size: var(--text-small);
-        color: var(--text-secondary);
+        color: var(--se-muted);
         margin-top: var(--space-xs);
     }
 
@@ -107,67 +158,54 @@
         gap: var(--space-md);
         justify-content: center;
         padding-top: var(--space-xl);
-        border-top: 1px solid var(--border);
-    }
-
-    .current-avatar {
-        width: 100px;
-        height: 100px;
-        border-radius: var(--radius-circle);
-        background: var(--primary);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2rem;
-        font-weight: bold;
-        margin: 0 auto var(--space-md);
-        border: 4px solid rgba(var(--primary-rgb), 0.2);
+        border-top: 1px solid var(--se-border);
     }
 
     .info-card {
-        background: var(--background);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-medium);
+        background: rgba(4,83,203,.04);
+        border: 1px solid rgba(4,83,203,.15);
+        border-radius: 12px;
         padding: var(--space-md);
         margin-bottom: var(--space-lg);
-        border-left: 4px solid var(--info);
+        border-left: 4px solid var(--se-blue);
+    }
+
+    @media (max-width: 768px) {
+        .se-hero-inner { padding: 24px 16px 20px; flex-direction: column; text-align: center; }
+        .se-hero-btns { margin-left: 0; justify-content: center; }
+        .se-form-wrap { padding: 20px 16px 40px; }
     }
 </style>
 @endsection
 
 @section('content')
-<div class="dashboard-acasi">
-    <div class="main-content">
-        <div class="edit-header">
-            <div class="row align-items-center">
-                <div class="col-lg-8">
-                    <div style="display: flex; align-items: center; gap: var(--space-lg); position: relative; z-index: 2;">
-                        <div class="current-avatar">
-                            {{ strtoupper(substr($secretaire->name ?? 'S', 0, 2)) }}
-                        </div>
-                        <div>
-                            <h1 style="color: white; margin: 0; font-size: var(--title-main); font-weight: 700;">
-                                <i class="fas fa-user-edit me-2"></i>Modifier le Secrétaire
-                            </h1>
-                            <p style="color: rgba(255,255,255,0.8); margin: var(--space-xs) 0 0 0;">
-                                Modification du profil de <strong>{{ $secretaire->name }}</strong>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-4 text-end">
-                    <div style="position: relative; z-index: 2;">
-                        <a href="{{ route('esbtp.secretaires.show', $secretaire->id) }}" class="btn-acasi secondary" style="margin-right: var(--space-md);">
-                            <i class="fas fa-arrow-left"></i> Retour
-                        </a>
-                        <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn-acasi">
-                            <i class="fas fa-list"></i> Liste
-                        </a>
-                    </div>
-                </div>
+<div class="se-page">
+    {{-- Dark Hero Header --}}
+    <div class="se-hero">
+        <div class="se-hero-inner">
+            <div class="se-hero-avatar">
+                @if($secretaire->photo_url ?? false)
+                    <img src="{{ $secretaire->photo_url }}" alt="{{ $secretaire->name }}">
+                @else
+                    {{ strtoupper(substr($secretaire->first_name ?? $secretaire->name ?? 'S', 0, 1) . substr($secretaire->last_name ?? '', 0, 1)) }}
+                @endif
+            </div>
+            <div class="se-hero-text">
+                <h1 class="se-hero-name"><i class="fas fa-user-edit me-2"></i>Modifier le Secretaire</h1>
+                <p class="se-hero-sub">Modification du profil de <strong>{{ $secretaire->first_name ?? $secretaire->name ?? '' }} {{ $secretaire->last_name ?? '' }}</strong></p>
+            </div>
+            <div class="se-hero-btns">
+                <a href="{{ route('esbtp.secretaires.show', $secretaire->id) }}" class="se-hero-btn primary">
+                    <i class="fas fa-arrow-left"></i> Retour
+                </a>
+                <a href="{{ route('esbtp.personnel.unified.index') }}" class="se-hero-btn ghost">
+                    <i class="fas fa-list"></i> Liste
+                </a>
             </div>
         </div>
+    </div>
+
+    <div class="se-form-wrap">
 
         @if($errors->any())
         <div class="alert alert-danger alert-dismissible fade show mb-lg" style="background-color: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); border-radius: var(--radius-medium); padding: var(--space-lg);">
@@ -298,7 +336,7 @@
             </form>
         </div>
     </div>
-</div>
+</div><!-- /.se-page -->
 @endsection
 
 @push('scripts')

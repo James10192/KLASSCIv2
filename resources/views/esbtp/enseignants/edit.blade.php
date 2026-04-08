@@ -521,83 +521,108 @@
             font-size: 0.7rem;
         }
     }
+
+    /* -- Edit page hero (es- namespace) -------------------------------- */
+    .es-edit-hero {
+        position: relative;
+        background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
+        padding: 0; margin-bottom: 24px;
+        border-radius: 0 0 20px 20px;
+    }
+    .es-edit-hero::before {
+        content: '';
+        position: absolute; inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='1.5' fill='rgba(255,255,255,0.1)'/%3E%3C/svg%3E");
+        pointer-events: none; overflow: hidden;
+        border-radius: 0 0 20px 20px;
+    }
+    .es-edit-hero-inner {
+        position: relative; z-index: 2;
+        max-width: 1280px; margin: 0 auto;
+        padding: 28px 32px 24px;
+        display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    }
+    .es-edit-avatar {
+        width: 72px; height: 72px; border-radius: 50%;
+        border: 3px solid rgba(255,255,255,.6);
+        background: rgba(255,255,255,.15);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.6rem; font-weight: 700; color: rgba(255,255,255,.9);
+        overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,.2);
+        backdrop-filter: blur(4px); flex-shrink: 0;
+    }
+    .es-edit-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .es-edit-text { flex: 1; min-width: 200px; color: #fff; }
+    .es-edit-name { font-size: 1.4rem; font-weight: 800; margin: 0 0 2px; letter-spacing: -.02em; }
+    .es-edit-sub { font-size: .84rem; opacity: .8; margin: 0 0 8px; }
+    .es-edit-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+    .es-edit-pill {
+        display: inline-flex; align-items: center; gap: 5px;
+        background: rgba(255,255,255,.18); backdrop-filter: blur(6px);
+        border: 1px solid rgba(255,255,255,.28);
+        color: #fff; font-size: .74rem; font-weight: 600;
+        padding: 3px 10px; border-radius: 20px; white-space: nowrap;
+    }
+    .es-edit-pill.green { background: rgba(16,185,129,.25); border-color: rgba(16,185,129,.4); }
+    .es-edit-btns { display: flex; gap: 8px; margin-left: auto; flex-shrink: 0; }
+    .es-edit-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 8px 16px; border-radius: 8px; font-size: .8rem; font-weight: 600;
+        text-decoration: none; border: none; cursor: pointer; transition: all .18s; white-space: nowrap;
+    }
+    .es-edit-btn.primary { background: rgba(255,255,255,.95); color: #0453cb; }
+    .es-edit-btn.primary:hover { background: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.15); }
+    .es-edit-btn.ghost { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.35); }
+    .es-edit-btn.ghost:hover { background: rgba(255,255,255,.25); }
+    @media (max-width: 768px) {
+        .es-edit-hero-inner { padding: 20px 16px; flex-direction: column; text-align: center; }
+        .es-edit-pills { justify-content: center; }
+        .es-edit-btns { margin-left: 0; justify-content: center; }
+    }
 </style>
 @endsection
 
 @section('content')
+{{-- Premium Hero Header --}}
+<div class="es-edit-hero">
+    <div class="es-edit-hero-inner">
+        <div class="es-edit-avatar">
+            @if($teacher->user && $teacher->user->photo_url)
+                <img src="{{ $teacher->user->photo_url }}" alt="{{ $teacher->user->name }}">
+            @else
+                {{ $teacher->user ? strtoupper(substr($teacher->user->name, 0, 2)) : 'NN' }}
+            @endif
+        </div>
+        <div class="es-edit-text">
+            <h1 class="es-edit-name">{{ $teacher->user->name ?? 'Nom non disponible' }}</h1>
+            <p class="es-edit-sub"><i class="fas fa-user-edit" style="margin-right:4px;"></i> Modification du profil enseignant</p>
+            <div class="es-edit-pills">
+                <span class="es-edit-pill"><i class="fas fa-id-card"></i> {{ $teacher->matricule ?? 'N/A' }}</span>
+                <span class="es-edit-pill {{ $teacher->status === 'active' ? 'green' : '' }}">
+                    <i class="fas fa-circle" style="font-size:.5rem"></i>
+                    {{ $teacher->status === 'active' ? 'Actif' : 'Inactif' }}
+                </span>
+                @if($teacher->department)
+                <span class="es-edit-pill"><i class="fas fa-building"></i> {{ $teacher->department->name }}</span>
+                @endif
+                @if($teacher->specialization)
+                <span class="es-edit-pill"><i class="fas fa-star"></i> {{ $teacher->specialization }}</span>
+                @endif
+            </div>
+        </div>
+        <div class="es-edit-btns">
+            <a href="{{ route('esbtp.enseignants.show', ['enseignant' => $teacher->id]) }}" class="es-edit-btn primary">
+                <i class="fas fa-eye"></i> Voir le profil
+            </a>
+            <a href="{{ route('esbtp.personnel.unified.index') }}" class="es-edit-btn ghost">
+                <i class="fas fa-arrow-left"></i> Retour
+            </a>
+        </div>
+    </div>
+</div>
+
 <div class="dashboard-acasi">
     <div class="main-content">
-        <div class="main-header">
-            <div class="header-content">
-                <div class="header-left">
-                    <h1>
-                        <i class="fas fa-user-edit me-2"></i>
-                        Modifier Enseignant
-                    </h1>
-                    <p>Mise à jour du profil de l'enseignant</p>
-                </div>
-                <div class="header-actions">
-                    <a href="{{ route('esbtp.enseignants.show', ['enseignant' => $teacher->id]) }}" class="btn-header">
-                        <i class="fas fa-eye"></i>
-                        Voir le profil
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Informations actuelles de l'enseignant -->
-        <div class="teacher-info-card">
-            <div class="teacher-info-header">
-                <div class="teacher-avatar">
-                    {{ $teacher->user ? substr($teacher->user->name, 0, 2) : 'NN' }}
-                </div>
-                <div class="teacher-details">
-                    <h3>{{ $teacher->user->name ?? 'Nom non disponible' }}</h3>
-                    <p class="email">{{ $teacher->user->email ?? 'Email non disponible' }}</p>
-                    @if($teacher->specialization)
-                        <span class="specialization">{{ $teacher->specialization }}</span>
-                    @endif
-                </div>
-            </div>
-            <div class="teacher-meta">
-                <div class="meta-item">
-                    <div class="meta-icon">
-                        <i class="fas fa-id-card"></i>
-                    </div>
-                    <div>
-                        <div class="meta-label">Matricule</div>
-                        <div>{{ $teacher->matricule ?? 'Non assigné' }}</div>
-                    </div>
-                </div>
-                <div class="meta-item">
-                    <div class="meta-icon">
-                        <i class="fas fa-calendar"></i>
-                    </div>
-                    <div>
-                        <div class="meta-label">Créé le</div>
-                        <div>{{ $teacher->created_at ? $teacher->created_at->format('d/m/Y') : 'Date inconnue' }}</div>
-                    </div>
-                </div>
-                <div class="meta-item">
-                    <div class="meta-icon">
-                        <i class="fas fa-building"></i>
-                    </div>
-                    <div>
-                        <div class="meta-label">Département</div>
-                        <div>{{ $teacher->department->name ?? 'Aucun département' }}</div>
-                    </div>
-                </div>
-                <div class="meta-item">
-                    <div class="meta-icon">
-                        <i class="fas fa-circle {{ $teacher->status === 'active' ? 'text-success' : 'text-danger' }}"></i>
-                    </div>
-                    <div>
-                        <div class="meta-label">Statut</div>
-                        <div>{{ $teacher->status === 'active' ? 'Actif' : 'Inactif' }}</div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Messages d'erreur -->
         @if ($errors->any())

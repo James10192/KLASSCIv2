@@ -1900,6 +1900,7 @@ Route::middleware(['auth', 'permission:manage_system', 'paywall'])->prefix('esbt
     Route::get('/comptables/{user}', [\App\Http\Controllers\ESBTPComptableController::class, 'show'])->name('comptables.show');
     Route::put('/comptables/{user}', [\App\Http\Controllers\ESBTPComptableController::class, 'update'])->name('comptables.update');
     Route::post('/comptables/{user}/toggle-status', [\App\Http\Controllers\ESBTPComptableController::class, 'toggleStatus'])->name('comptables.toggle-status');
+    Route::delete('/comptables/{user}', [\App\Http\Controllers\ESBTPComptableController::class, 'destroy'])->name('comptables.destroy');
 
     // Caissier
     Route::get('/caissiers/create', [\App\Http\Controllers\ESBTPComptableController::class, 'createCaissier'])->name('caissiers.create');

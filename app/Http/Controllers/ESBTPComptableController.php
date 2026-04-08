@@ -175,22 +175,22 @@ class ESBTPComptableController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy(User $user)
     {
-        $comptable = User::role('comptable')->findOrFail($id);
+        abort_unless($user->hasRole('comptable'), 404);
 
-        if ($comptable->id === Auth::id()) {
+        if ($user->id === Auth::id()) {
             return redirect()->back()->with('error', 'Vous ne pouvez pas supprimer votre propre compte.');
         }
 
         try {
             DB::beginTransaction();
 
-            $comptable->update([
+            $user->update([
                 'is_active' => false,
-                'email' => $comptable->email . '_deleted_' . time(),
+                'email' => $user->email . '_deleted_' . time(),
             ]);
-            $comptable->removeRole('comptable');
+            $user->removeRole('comptable');
 
             DB::commit();
 
