@@ -325,7 +325,7 @@ class CLIController extends BaseApiController
 
         $classes = ESBTPClasse::where('annee_universitaire_id', $annee->id)
             ->where('is_active', true)
-            ->with(['filiere:id,nom', 'niveau:id,nom'])
+            ->with(['filiere:id,name', 'niveau:id,name'])
             ->get()
             ->map(function ($c) {
                 $effectif = ESBTPInscription::where('classe_id', $c->id)
@@ -337,8 +337,8 @@ class CLIController extends BaseApiController
                     'id' => $c->id,
                     'name' => $c->name,
                     'code' => $c->code,
-                    'filiere' => $c->filiere?->nom,
-                    'niveau' => $c->niveau?->nom,
+                    'filiere' => $c->filiere?->name,
+                    'niveau' => $c->niveau?->name,
                     'systeme' => $c->systeme_academique,
                     'capacite' => $c->places_totales,
                     'effectif' => $effectif,
