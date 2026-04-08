@@ -404,7 +404,7 @@ use Illuminate\Support\Facades\Storage;
 
 <!-- Premium Password Change Modal -->
 <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content" style="border: none; border-radius: 1rem; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
             <!-- Header with blue gradient -->
             <div style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); padding: 1.5rem 1.75rem; position: relative;">
