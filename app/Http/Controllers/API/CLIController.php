@@ -45,7 +45,7 @@ class CLIController extends BaseApiController
 
         $annee = $this->getAnneeCouraante();
         if (!$annee) {
-            return $this->errorResponse('No current academic year configured', [], 404);
+            return $this->errorResponse('Aucune annee universitaire courante configuree. Creez-en une avec: klassci annee:create <tenant> "2025-2026" 2025-09-15 2026-07-31', ['code' => 'NO_ACADEMIC_YEAR'], 422);
         }
 
         $activeStudents = ESBTPInscription::where('annee_universitaire_id', $annee->id)
@@ -110,7 +110,7 @@ class CLIController extends BaseApiController
 
         $annee = $this->getAnneeCouraante();
         if (!$annee) {
-            return $this->errorResponse('No current academic year configured', [], 404);
+            return $this->errorResponse('Aucune annee universitaire courante configuree. Creez-en une avec: klassci annee:create <tenant> "2025-2026" 2025-09-15 2026-07-31', ['code' => 'NO_ACADEMIC_YEAR'], 422);
         }
 
         $perPage = min((int) $request->input('per_page', 25), 100);
@@ -263,7 +263,7 @@ class CLIController extends BaseApiController
 
         $annee = $this->getAnneeCouraante();
         if (!$annee) {
-            return $this->errorResponse('No current academic year configured', [], 404);
+            return $this->errorResponse('Aucune annee universitaire courante configuree. Creez-en une avec: klassci annee:create <tenant> "2025-2026" 2025-09-15 2026-07-31', ['code' => 'NO_ACADEMIC_YEAR'], 422);
         }
 
         $perPage = min((int) $request->input('per_page', 25), 100);
@@ -323,7 +323,7 @@ class CLIController extends BaseApiController
 
         $annee = $this->getAnneeCouraante();
         if (!$annee) {
-            return $this->errorResponse('No current academic year configured', [], 404);
+            return $this->errorResponse('Aucune annee universitaire courante configuree. Creez-en une avec: klassci annee:create <tenant> "2025-2026" 2025-09-15 2026-07-31', ['code' => 'NO_ACADEMIC_YEAR'], 422);
         }
 
         $classes = ESBTPClasse::whereHas('inscriptions', function ($q) use ($annee) {
@@ -370,7 +370,7 @@ class CLIController extends BaseApiController
 
         $annee = $this->getAnneeCouraante();
         if (!$annee) {
-            return $this->errorResponse('No current academic year configured', [], 404);
+            return $this->errorResponse('Aucune annee universitaire courante configuree. Creez-en une avec: klassci annee:create <tenant> "2025-2026" 2025-09-15 2026-07-31', ['code' => 'NO_ACADEMIC_YEAR'], 422);
         }
 
         $perPage = min((int) $request->input('per_page', 25), 100);
@@ -498,6 +498,51 @@ class CLIController extends BaseApiController
             'name' => $annee->name ?? $annee->libelle,
             'is_current' => true,
         ], "Academic year '{$annee->name}' is now current");
+    }
+
+    /**
+     * POST /api/cli/annee/create — Create a new academic year
+     */
+    public function anneeCreate(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:50',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+            'set_current' => 'nullable|boolean',
+        ]);
+
+        try {
+            $setCurrent = $validated['set_current'] ?? true;
+
+            // Si set_current, retirer le flag des autres
+            if ($setCurrent) {
+                ESBTPAnneeUniversitaire::where('is_current', true)->update(['is_current' => false]);
+            }
+
+            $annee = ESBTPAnneeUniversitaire::create([
+                'name' => $validated['name'],
+                'start_date' => $validated['start_date'],
+                'end_date' => $validated['end_date'],
+                'is_current' => $setCurrent,
+                'is_active' => true,
+            ]);
+
+            return $this->successResponse([
+                'id' => $annee->id,
+                'name' => $annee->name,
+                'start_date' => $annee->start_date->format('Y-m-d'),
+                'end_date' => $annee->end_date->format('Y-m-d'),
+                'is_current' => (bool) $annee->is_current,
+            ], "Academic year '{$annee->name}' created" . ($setCurrent ? ' and set as current' : ''));
+        } catch (\Exception $e) {
+            Log::error('CLI: annee creation failed', ['error' => $e->getMessage()]);
+            return $this->errorResponse('Failed to create academic year: ' . $e->getMessage(), [], 500);
+        }
     }
 
     /**
