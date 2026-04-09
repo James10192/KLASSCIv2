@@ -130,11 +130,52 @@ try {
         }
     } else {
         // Linux/Unix
-        $result = symlink(realpath($storagePublicPath), $publicStoragePath);
-        if ($result) {
+        $storagePath = realpath($storagePublicPath);
+
+        // realpath() retourne false si le chemin n'existe pas — fallback sur le chemin relatif
+        if ($storagePath === false) {
+            // S'assurer que le dossier existe
+            if (!is_dir($storagePublicPath)) {
+                mkdir($storagePublicPath, 0755, true);
+            }
+            $storagePath = realpath($storagePublicPath);
+        }
+
+        $symlinkOk = false;
+
+        if ($storagePath !== false) {
+            $symlinkOk = @symlink($storagePath, $publicStoragePath);
+        }
+
+        if ($symlinkOk) {
             echo "✅ Lien symbolique Unix créé avec succès!\n";
         } else {
-            throw new Exception("Échec de la création du lien symbolique Unix");
+            // Fallback 1: chemin relatif (fonctionne même sans realpath)
+            echo "⚠️  symlink() a échoué, essai avec chemin relatif...\n";
+            $relativeTarget = '../storage/app/public';
+            $symlinkOk = @symlink($relativeTarget, $publicStoragePath);
+
+            if ($symlinkOk) {
+                echo "✅ Lien symbolique créé avec chemin relatif!\n";
+            } else {
+                // Fallback 2: php artisan storage:link
+                echo "⚠️  Chemin relatif échoué, essai avec Artisan...\n";
+                $artisanPath = $baseDir . '/artisan';
+                exec("php \"$artisanPath\" storage:link 2>&1", $artisanOutput, $artisanCode);
+
+                if ($artisanCode === 0) {
+                    echo "✅ Lien créé avec Artisan!\n";
+                    foreach ($artisanOutput as $line) {
+                        echo "   $line\n";
+                    }
+                } else {
+                    echo "❌ Tous les essais ont échoué.\n";
+                    echo "🆘 Créez le lien manuellement:\n";
+                    echo "   cd " . dirname($publicStoragePath) . "\n";
+                    echo "   ln -s ../storage/app/public storage\n";
+                    // Ne PAS throw ici — le reste du setup peut continuer
+                }
+            }
         }
     }
 
