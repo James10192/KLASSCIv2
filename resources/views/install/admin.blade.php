@@ -45,18 +45,30 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Mot de passe</label>
-                    <input type="password" id="password" v-model="form.password" required
-                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="••••••••">
+                    <div style="position: relative;">
+                        <input type="password" id="password" v-model="form.password" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            style="padding-right: 2.75rem;"
+                            placeholder="••••••••">
+                        <button type="button" onclick="togglePwdVisibility(this)" style="position: absolute; right: 0; top: 0; height: 100%; width: 2.75rem; display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; color: #94a3b8;" title="Afficher/masquer">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                     <p class="text-xs text-gray-500 mt-1">Minimum 8 caractères</p>
                 </div>
 
                 <!-- Confirmation mot de passe -->
                 <div>
                     <label for="password_confirmation" class="block text-sm font-medium text-gray-700 mb-1">Confirmer le mot de passe</label>
-                    <input type="password" id="password_confirmation" v-model="form.password_confirmation" required
-                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="••••••••">
+                    <div style="position: relative;">
+                        <input type="password" id="password_confirmation" v-model="form.password_confirmation" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            style="padding-right: 2.75rem;"
+                            placeholder="••••••••">
+                        <button type="button" onclick="togglePwdVisibility(this)" style="position: absolute; right: 0; top: 0; height: 100%; width: 2.75rem; display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; color: #94a3b8;" title="Afficher/masquer">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                     <p class="text-xs text-gray-500 mt-1">Répétez le même mot de passe</p>
                 </div>
             </div>
@@ -102,6 +114,18 @@
 
 @section('scripts')
 <script>
+    function togglePwdVisibility(btn) {
+        var input = btn.parentElement.querySelector('input');
+        var icon = btn.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.replace('fa-eye-slash', 'fa-eye');
+        }
+    }
+
     window.debugLog = window.debugLog || function () {
         if (window.console && console.log) {
             console.log.apply(console, arguments);
