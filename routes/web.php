@@ -1048,13 +1048,15 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         });
 
         // Teachers routes
-        Route::resource('teachers', TeacherAdminController::class);
-        Route::put('teachers/{id}/restore', [TeacherAdminController::class, 'restore'])->name('teachers.restore');
-        Route::resource('specialties', ESBTPSpecialtyController::class);
-        Route::put('specialties/{id}/restore', [ESBTPSpecialtyController::class, 'restore'])->name('specialties.restore');
-        Route::resource('continuing-education', ESBTPContinuingEducationController::class);
-        Route::put('continuing-education/{id}/restore', [ESBTPContinuingEducationController::class, 'restore'])->name('continuing-education.restore');
-        Route::put('students/{id}/restore', [ESBTPStudentController::class, 'restore'])->name('students.restore');
+        Route::middleware(['permission:access_admin'])->group(function () {
+            Route::resource('teachers', TeacherAdminController::class);
+            Route::put('teachers/{id}/restore', [TeacherAdminController::class, 'restore'])->name('teachers.restore');
+            Route::resource('specialties', ESBTPSpecialtyController::class);
+            Route::put('specialties/{id}/restore', [ESBTPSpecialtyController::class, 'restore'])->name('specialties.restore');
+            Route::resource('continuing-education', ESBTPContinuingEducationController::class);
+            Route::put('continuing-education/{id}/restore', [ESBTPContinuingEducationController::class, 'restore'])->name('continuing-education.restore');
+            Route::put('students/{id}/restore', [ESBTPStudentController::class, 'restore'])->name('students.restore');
+        });
     });
 
     // Routes pour les paramètres et les rôles
@@ -1193,7 +1195,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Routes pour la configuration du paywall - Service Technique ADC seulement
-    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall'])->group(function () {
+    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall', 'permission:manage_system'])->group(function () {
         Route::get('/paywall-config', [ESBTPPaywallConfigController::class, 'index'])->name('paywall-config.index');
         Route::get('/paywall-config/blocked', [ESBTPPaywallConfigController::class, 'blocked'])->name('paywall-config.blocked');
         Route::get('/paywall-config/upgrade', [ESBTPPaywallConfigController::class, 'upgrade'])->name('paywall-config.upgrade');
@@ -1275,7 +1277,7 @@ Route::prefix('api/esbtp')->name('api.esbtp.')->middleware(['auth'])->group(func
     Route::get('matieres/list', [ESBTPMatiereController::class, 'apiList'])->name('matieres.list');
 });
 
-Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth'])->group(function () {
+Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth', 'permission:access_admin'])->group(function () {
     Route::get('classes/{id}', [ESBTPClasseController::class, 'getClasseById'])->name('classes.get');
     Route::get('classes/{id}/niveau-config', [ESBTPClasseController::class, 'getNiveauConfig'])->name('classes.niveau-config');
     Route::get('get-classes', [ESBTPInscriptionApiController::class, 'getClasses'])->name('get-classes');
@@ -1297,7 +1299,7 @@ Route::post('esbtp/emploi-temps/{id}/set-current', [App\Http\Controllers\ESBTPEm
     ->middleware(['auth', 'permission:edit_timetables']);
 
 // Routes pour les évaluations
-Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['auth'])->group(function () {
+Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['auth', 'permission:access_admin'])->group(function () {
     Route::get('/', [ESBTPEvaluationController::class, 'index'])->name('index');
     Route::get('/create', [ESBTPEvaluationController::class, 'create'])->name('create');
     Route::post('/', [ESBTPEvaluationController::class, 'store'])->name('store');
@@ -1336,15 +1338,15 @@ Route::get('/evaluations/{evaluation}/pdf', [ESBTPEvaluationController::class, '
     ->middleware(['auth']);
 
 // Route pour l'index des bulletins ESBTP
-Route::get('/esbtp/bulletins', [ESBTPBulletinController::class, 'index'])->name('esbtp.bulletins.index')->middleware(['auth']);
+Route::get('/esbtp/bulletins', [ESBTPBulletinController::class, 'index'])->name('esbtp.bulletins.index')->middleware(['auth', 'permission:access_admin']);
 
 // Route spéciale pour la sélection des bulletins
 Route::get('/esbtp/bulletins/select', [ESBTPBulletinController::class, 'select'])
     ->name('esbtp.bulletins.select')
-    ->middleware(['auth']);
+    ->middleware(['auth', 'permission:access_admin']);
 
 // Route pour télécharger un bulletin au format PDF
-Route::get('/esbtp/bulletins/{bulletin}/download', [ESBTPBulletinController::class, 'genererPDF'])->name('esbtp.bulletins.download')->middleware(['auth']);
+Route::get('/esbtp/bulletins/{bulletin}/download', [ESBTPBulletinController::class, 'genererPDF'])->name('esbtp.bulletins.download')->middleware(['auth', 'permission:access_admin']);
 
 // Routes pour la gestion des secrétaires
 Route::prefix('secretaires')->name('secretaires.')->middleware(['auth', 'permission:manage_system'])->group(function () {

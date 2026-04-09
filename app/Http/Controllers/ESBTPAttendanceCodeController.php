@@ -121,7 +121,7 @@ class ESBTPAttendanceCodeController extends Controller
         } catch (\Exception $e) {
             Log::error('Erreur lors de la génération du code', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
                 'user_id' => Auth::id(),
                 'user' => Auth::user()
             ]);

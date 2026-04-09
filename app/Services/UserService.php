@@ -253,7 +253,7 @@ class UserService
             return true; // Pas de date du tout → expiré
         }
 
-        return $referenceDate->addMonths($months)->isPast();
+        return $referenceDate->copy()->addMonths($months)->isPast();
     }
 
     /**
@@ -271,7 +271,7 @@ class UserService
             return false;
         }
 
-        $expiresAt = $referenceDate->addMonths($months);
+        $expiresAt = $referenceDate->copy()->addMonths($months);
         $warningStart = $expiresAt->copy()->subMonth();
 
         return now()->between($warningStart, $expiresAt);

@@ -965,7 +965,7 @@ class ESBTPClasseController extends Controller
         } catch (\Exception $e) {
             \Log::error("Erreur refreshLigne classe: " . $e->getMessage(), [
                 "classe_id" => $classe->id,
-                "trace" => $e->getTraceAsString(),
+                "trace" => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return response()->json(
@@ -1573,7 +1573,7 @@ class ESBTPClasseController extends Controller
             \Log::error("❌ [API] students - Error", [
                 "class_id" => $classe->id,
                 "error" => $e->getMessage(),
-                "trace" => $e->getTraceAsString(),
+                "trace" => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return response()->json(
@@ -2066,7 +2066,7 @@ class ESBTPClasseController extends Controller
             return Excel::download($export, $filename);
         } catch (\Exception $e) {
             \Log::error("Erreur export Excel classes: " . $e->getMessage(), [
-                "trace" => $e->getTraceAsString(),
+                "trace" => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return redirect()
@@ -2128,7 +2128,7 @@ class ESBTPClasseController extends Controller
             );
         } catch (\Exception $e) {
             \Log::error("Erreur export CSV classes: " . $e->getMessage(), [
-                "trace" => $e->getTraceAsString(),
+                "trace" => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return redirect()
@@ -2192,7 +2192,7 @@ class ESBTPClasseController extends Controller
             return $pdf->download($filename);
         } catch (\Exception $e) {
             \Log::error("Erreur export PDF classes: " . $e->getMessage(), [
-                "trace" => $e->getTraceAsString(),
+                "trace" => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return redirect()
@@ -2292,7 +2292,7 @@ class ESBTPClasseController extends Controller
                 "Erreur lors de la récupération des classes en surcapacité: " .
                     $e->getMessage(),
                 [
-                    "trace" => $e->getTraceAsString(),
+                    "trace" => config('app.debug') ? $e->getTraceAsString() : null,
                 ],
             );
 
@@ -2389,7 +2389,7 @@ class ESBTPClasseController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur searchAvailableStudents: ' . $e->getMessage(), [
                 'classe_id' => $classe->id,
-                'trace' => $e->getTraceAsString(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
             return response()->json(['success' => false, 'message' => 'Erreur serveur.'], 500);
         }
@@ -2496,7 +2496,7 @@ class ESBTPClasseController extends Controller
             DB::rollBack();
             \Log::error('Erreur addStudents: ' . $e->getMessage(), [
                 'classe_id' => $classe->id,
-                'trace' => $e->getTraceAsString(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
             return response()->json(['success' => false, 'message' => 'Erreur serveur.'], 500);
         }
@@ -2610,7 +2610,7 @@ class ESBTPClasseController extends Controller
             DB::rollBack();
             \Log::error('Erreur removeStudents: ' . $e->getMessage(), [
                 'classe_id' => $classe->id,
-                'trace' => $e->getTraceAsString(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
             return response()->json(['success' => false, 'message' => 'Erreur serveur.'], 500);
         }

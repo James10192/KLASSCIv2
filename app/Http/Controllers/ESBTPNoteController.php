@@ -438,7 +438,7 @@ class ESBTPNoteController extends Controller
         } catch (\Exception $e) {
             // Débogage : Log de l'erreur
             \Log::error('Erreur lors de la création de la note : '.$e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return redirect()->back()
@@ -536,7 +536,7 @@ class ESBTPNoteController extends Controller
         } catch (\Exception $e) {
             // Débogage : Log de l'erreur
             \Log::error('Erreur lors de la mise à jour de la note : '.$e->getMessage(), [
-                'trace' => $e->getTraceAsString(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return redirect()->back()
@@ -1159,7 +1159,7 @@ class ESBTPNoteController extends Controller
                 'note_id' => $note->id,
                 'evaluation_id' => $evaluation->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
         }
     }

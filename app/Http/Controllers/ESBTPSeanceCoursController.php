@@ -638,11 +638,11 @@ class ESBTPSeanceCoursController extends Controller
                     ->withInput();
             } catch (\Exception $e) {
                 DB::rollBack();
-                \Log::error('Erreur exception création séance', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+                \Log::error('Erreur exception création séance', ['message' => $e->getMessage(), 'trace' => config('app.debug') ? $e->getTraceAsString() : null]);
                 throw $e;
             }
         } catch (\Exception $e) {
-            \Log::error('Erreur globale création séance', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            \Log::error('Erreur globale création séance', ['message' => $e->getMessage(), 'trace' => config('app.debug') ? $e->getTraceAsString() : null]);
 
             if ($creationSucceeded) {
                 if ($expectsJson) {
@@ -906,7 +906,7 @@ class ESBTPSeanceCoursController extends Controller
                 Log::error('Error loading required data for edit form', [
                     'session_id' => $seancesCour->id,
                     'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
+                    'trace' => config('app.debug') ? $e->getTraceAsString() : null,
                 ]);
 
                 return back()->with('error', 'Erreur lors du chargement des données du formulaire.');
@@ -928,7 +928,7 @@ class ESBTPSeanceCoursController extends Controller
             Log::error('Error in SeanceCoursController@edit', [
                 'session_id' => $seancesCour->id ?? null,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
                 'user_id' => Auth::id(),
             ]);
 
@@ -1069,7 +1069,7 @@ class ESBTPSeanceCoursController extends Controller
             Log::error('Erreur lors de la synchronisation de l\'évaluation associée au devoir', [
                 'seance_id' => $seance->id ?? null,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
         }
     }

@@ -131,7 +131,7 @@ class TeacherAdminController extends Controller
             DB::rollBack();
             \Log::error('Error creating teacher:', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
             return back()
                 ->with('error', 'Une erreur est survenue lors de la création de l\'enseignant: ' . $e->getMessage())

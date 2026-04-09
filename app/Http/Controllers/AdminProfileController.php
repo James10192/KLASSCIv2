@@ -139,7 +139,7 @@ class AdminProfileController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la mise à jour du profil', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
             
             // Pour les requêtes AJAX, renvoyer une erreur JSON

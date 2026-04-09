@@ -2654,7 +2654,7 @@ class ESBTPInscriptionController extends Controller
             Log::error("Erreur changerClasseRapide: " . $e->getMessage(), [
                 "inscription_id" => $inscription->id,
                 "nouvelle_classe_id" => $request->input("nouvelle_classe_id"),
-                "trace" => $e->getTraceAsString(),
+                "trace" => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return response()->json(
@@ -2760,7 +2760,7 @@ class ESBTPInscriptionController extends Controller
         } catch (\Exception $e) {
             Log::error("Erreur refreshLigne: " . $e->getMessage(), [
                 "inscription_id" => $inscription->id,
-                "trace" => $e->getTraceAsString(),
+                "trace" => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return response()->json(
@@ -3165,7 +3165,7 @@ class ESBTPInscriptionController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Erreur pré-inscription caissier: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
             return redirect()->back()

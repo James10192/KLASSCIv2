@@ -1443,7 +1443,7 @@ class ESBTPEmploiTempsController extends Controller
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
                 'emploi_temps_id' => $id,
             ]);
 
@@ -1453,7 +1453,7 @@ class ESBTPEmploiTempsController extends Controller
                     'error' => $e->getMessage(),
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'trace' => $e->getTraceAsString(),
+                    'trace' => config('app.debug') ? $e->getTraceAsString() : null,
                 ], 500);
             }
 

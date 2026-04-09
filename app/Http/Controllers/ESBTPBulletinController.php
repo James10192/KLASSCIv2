@@ -1631,7 +1631,7 @@ class ESBTPBulletinController extends Controller
             \Log::error('Erreur lors de la sauvegarde de la configuration: '.$e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return redirect()->back()->with('error', 'Erreur lors de la sauvegarde de la configuration: '.$e->getMessage());

@@ -156,7 +156,7 @@ class ESBTPBulletinConfigController extends Controller
         } catch (\Exception $e) {
             \Log::error('❌ Erreur lors de la récupération des matières depuis la classe', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return redirect()->route('esbtp.resultats.etudiant', [
@@ -1139,7 +1139,7 @@ class ESBTPBulletinConfigController extends Controller
         } catch (\Exception $e) {
             Log::error('❌ Erreur dans saveAbsences: '.$e->getMessage(), [
                 'exception' => $e,
-                'trace' => $e->getTraceAsString(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return back()

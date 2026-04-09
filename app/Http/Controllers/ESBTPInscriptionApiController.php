@@ -402,7 +402,7 @@ class ESBTPInscriptionApiController extends Controller
         } catch (\Exception $e) {
             \Log::error("Erreur getFraisByClasse: " . $e->getMessage(), [
                 "classe_id" => $classeId,
-                "trace" => $e->getTraceAsString(),
+                "trace" => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return response()->json(
@@ -453,7 +453,7 @@ class ESBTPInscriptionApiController extends Controller
         } catch (\Exception $e) {
             Log::error("Erreur getInscriptionData: " . $e->getMessage(), [
                 "inscription_id" => $inscription->id,
-                "trace" => $e->getTraceAsString(),
+                "trace" => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return response()->json(
@@ -508,7 +508,7 @@ class ESBTPInscriptionApiController extends Controller
         } catch (\Exception $e) {
             Log::error("Erreur getPaiementEnAttente: " . $e->getMessage(), [
                 "inscription_id" => $inscription->id,
-                "trace" => $e->getTraceAsString(),
+                "trace" => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return response()->json(
@@ -596,7 +596,7 @@ class ESBTPInscriptionApiController extends Controller
         } catch (\Exception $e) {
             Log::error("Erreur getClassesAlternatives: " . $e->getMessage(), [
                 "inscription_id" => $inscription->id,
-                "trace" => $e->getTraceAsString(),
+                "trace" => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return response()->json(

@@ -2859,7 +2859,7 @@
                     @php
                         $refDate = auth()->user()->password_changed_at ?? auth()->user()->created_at;
                         $expiryMonths = (int) \App\Models\Setting::get('password_expiry_months', 6);
-                        $expiresAt = $refDate ? $refDate->addMonths($expiryMonths) : now();
+                        $expiresAt = $refDate ? $refDate->copy()->addMonths($expiryMonths) : now();
                         $daysLeft = (int) now()->diffInDays($expiresAt, false);
                     @endphp
                     <div style="background: linear-gradient(135deg, #0453cb, #5e91de); color: white; padding: 0.75rem 1.25rem; border-radius: 0.5rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
@@ -2867,7 +2867,7 @@
                             <i class="fas fa-clock" style="font-size: 1.2rem;"></i>
                             <div>
                                 <strong>Votre mot de passe expire dans {{ $daysLeft }} jour{{ $daysLeft > 1 ? 's' : '' }}</strong>
-                                <div style="font-size: 0.85rem; opacity: 0.85;">Pour eviter d'etre bloque, changez-le maintenant depuis votre profil.</div>
+                                <div style="font-size: 0.85rem; opacity: 0.85;">Pour éviter d'être bloqué, changez-le maintenant depuis votre profil.</div>
                             </div>
                         </div>
                         <a href="{{ route('password.change.form') }}" style="background: white; color: #0453cb; padding: 0.4rem 1rem; border-radius: 0.375rem; font-weight: 600; font-size: 0.85rem; text-decoration: none; white-space: nowrap;">

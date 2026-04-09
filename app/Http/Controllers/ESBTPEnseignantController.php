@@ -530,7 +530,7 @@ class ESBTPEnseignantController extends Controller
                     'exception' => $e,
                     'file' => $e->getFile(),
                     'line' => $e->getLine(),
-                    'trace' => $e->getTraceAsString(),
+                    'trace' => config('app.debug') ? $e->getTraceAsString() : null,
                 ],
             );
             return response()->json(

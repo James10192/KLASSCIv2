@@ -596,7 +596,7 @@ class ESBTPAttendanceController extends Controller
                 \Log::error('Erreur lors de la récupération des données pour le marquage des présences: ' . $e->getMessage());
                 $messageErreur = 'Une erreur est survenue lors de la récupération des données: ' . $e->getMessage();
                 $debug['exception'] = $e->getMessage();
-                $debug['exception_trace'] = $e->getTraceAsString();
+                $debug['exception_trace'] = config('app.debug') ? $e->getTraceAsString() : null;
             }
         } else {
             // Si aucune classe n'est sélectionnée mais qu'une séance est spécifiée,
@@ -1552,7 +1552,7 @@ class ESBTPAttendanceController extends Controller
                 'etudiant_id' => $etudiantId,
                 'seance_cours_id' => $seanceCours->id ?? 'unknown',
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
         }
     }

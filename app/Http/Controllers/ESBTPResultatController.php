@@ -1552,7 +1552,7 @@ class ESBTPResultatController extends Controller
             \DB::rollBack();
             \Log::error('❌ Erreur bulk update moyennes: '.$e->getMessage(), [
                 'request_data' => $request->all(),
-                'exception' => $e->getTraceAsString(),
+                'exception' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return response()->json([
@@ -1960,7 +1960,7 @@ class ESBTPResultatController extends Controller
             \DB::rollBack();
             \Log::error('❌ Erreur bulk update config matières: '.$e->getMessage(), [
                 'request_data' => $request->all(),
-                'exception' => $e->getTraceAsString(),
+                'exception' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return response()->json([

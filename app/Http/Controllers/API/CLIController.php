@@ -125,7 +125,13 @@ class CLIController extends BaseApiController
                 if ($request->filled('class_id')) {
                     $q->where('classe_id', $request->input('class_id'));
                 }
-            });
+            })
+            ->with(['inscriptions' => function ($q) use ($annee) {
+                $q->where('annee_universitaire_id', $annee->id)
+                  ->where('status', 'active')
+                  ->where('workflow_step', 'etudiant_cree')
+                  ->with('classe:id,name');
+            }]);
 
         // Search filter
         if ($request->filled('search')) {
@@ -139,14 +145,9 @@ class CLIController extends BaseApiController
 
         $paginated = $query->orderBy('nom')->paginate($perPage);
 
-        // Enrich with classe name from active inscription
+        // Enrich with classe name from active inscription (already eager-loaded)
         $students = collect($paginated->items())->map(function ($etudiant) use ($annee) {
-            $inscription = $etudiant->inscriptions()
-                ->where('annee_universitaire_id', $annee->id)
-                ->where('status', 'active')
-                ->where('workflow_step', 'etudiant_cree')
-                ->with('classe:id,name')
-                ->first();
+            $inscription = $etudiant->inscriptions->first();
 
             return [
                 'id' => $etudiant->id,
@@ -326,20 +327,19 @@ class CLIController extends BaseApiController
             return $this->errorResponse('Aucune annee universitaire courante configuree. Creez-en une avec: klassci annee:create <tenant> "2025-2026" 2025-09-15 2026-07-31', ['code' => 'NO_ACADEMIC_YEAR'], 422);
         }
 
-        $classes = ESBTPClasse::whereHas('inscriptions', function ($q) use ($annee) {
+        $classes = ESBTPClasse::withCount(['inscriptions as effectif' => function ($q) use ($annee) {
+                $q->where('annee_universitaire_id', $annee->id)
+                  ->where('status', 'active')
+                  ->where('workflow_step', 'etudiant_cree');
+            }])
+            ->whereHas('inscriptions', function ($q) use ($annee) {
                 $q->where('annee_universitaire_id', $annee->id)
                   ->where('status', 'active')
                   ->where('workflow_step', 'etudiant_cree');
             })
             ->with(['filiere:id,name', 'niveau:id,name'])
             ->get()
-            ->map(function ($c) use ($annee) {
-                $effectif = ESBTPInscription::where('classe_id', $c->id)
-                    ->where('annee_universitaire_id', $annee->id)
-                    ->where('status', 'active')
-                    ->where('workflow_step', 'etudiant_cree')
-                    ->count();
-
+            ->map(function ($c) {
                 return [
                     'id' => $c->id,
                     'name' => $c->name,
@@ -348,8 +348,8 @@ class CLIController extends BaseApiController
                     'niveau' => $c->niveau?->name,
                     'systeme' => $c->systeme_academique,
                     'capacite' => $c->places_totales,
-                    'effectif' => $effectif,
-                    'places_disponibles' => max(0, ($c->places_totales ?? 0) - $effectif),
+                    'effectif' => $c->effectif,
+                    'places_disponibles' => max(0, ($c->places_totales ?? 0) - $c->effectif),
                 ];
             });
 
@@ -487,11 +487,11 @@ class CLIController extends BaseApiController
             return $this->errorResponse("Academic year #{$id} not found", [], 404);
         }
 
-        // Unset all current
-        ESBTPAnneeUniversitaire::where('is_current', true)->update(['is_current' => false]);
-
-        // Set the new one
-        $annee->update(['is_current' => true]);
+        // Unset all current + set the new one atomically
+        DB::transaction(function () use ($annee) {
+            ESBTPAnneeUniversitaire::where('is_current', true)->update(['is_current' => false]);
+            $annee->update(['is_current' => true]);
+        });
 
         return $this->successResponse([
             'id' => $annee->id,
@@ -519,18 +519,20 @@ class CLIController extends BaseApiController
         try {
             $setCurrent = $validated['set_current'] ?? true;
 
-            // Si set_current, retirer le flag des autres
-            if ($setCurrent) {
-                ESBTPAnneeUniversitaire::where('is_current', true)->update(['is_current' => false]);
-            }
+            $annee = DB::transaction(function () use ($validated, $setCurrent) {
+                // Si set_current, retirer le flag des autres
+                if ($setCurrent) {
+                    ESBTPAnneeUniversitaire::where('is_current', true)->update(['is_current' => false]);
+                }
 
-            $annee = ESBTPAnneeUniversitaire::create([
-                'name' => $validated['name'],
-                'start_date' => $validated['start_date'],
-                'end_date' => $validated['end_date'],
-                'is_current' => $setCurrent,
-                'is_active' => true,
-            ]);
+                return ESBTPAnneeUniversitaire::create([
+                    'name' => $validated['name'],
+                    'start_date' => $validated['start_date'],
+                    'end_date' => $validated['end_date'],
+                    'is_current' => $setCurrent,
+                    'is_active' => true,
+                ]);
+            });
 
             return $this->successResponse([
                 'id' => $annee->id,
@@ -540,8 +542,8 @@ class CLIController extends BaseApiController
                 'is_current' => (bool) $annee->is_current,
             ], "Academic year '{$annee->name}' created" . ($setCurrent ? ' and set as current' : ''));
         } catch (\Exception $e) {
-            Log::error('CLI: annee creation failed', ['error' => $e->getMessage()]);
-            return $this->errorResponse('Failed to create academic year: ' . $e->getMessage(), [], 500);
+            Log::error('CLI: annee creation failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
         }
     }
 
@@ -585,7 +587,7 @@ class CLIController extends BaseApiController
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|unique:users,email',
             'username' => 'required|string|max:100|unique:users,username',
-            'password' => 'required|string|min:6',
+            'password' => 'required|string|min:12',
             'role' => 'required|string',
             'phone' => 'nullable|string|max:20',
         ]);
@@ -619,8 +621,8 @@ class CLIController extends BaseApiController
                 'role' => $validated['role'],
             ], "User '{$user->name}' created with role '{$validated['role']}'");
         } catch (\Exception $e) {
-            Log::error('CLI: user creation failed', ['error' => $e->getMessage()]);
-            return $this->errorResponse('User creation failed: ' . $e->getMessage(), [], 500);
+            Log::error('CLI: user creation failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
         }
     }
 
@@ -683,8 +685,9 @@ class CLIController extends BaseApiController
             Log::error('CLI: inscription validation failed', [
                 'inscription_id' => $id,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
-            return $this->errorResponse('Validation failed: ' . $e->getMessage(), [], 500);
+            return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
         }
     }
 
@@ -720,8 +723,8 @@ class CLIController extends BaseApiController
             Setting::clearCache();
             $output[] = 'settings cache cleared';
         } catch (\Exception $e) {
-            Log::error('CLI: cache clear failed', ['error' => $e->getMessage()]);
-            return $this->errorResponse('Cache clear partially failed: ' . $e->getMessage(), ['completed' => $output], 500);
+            Log::error('CLI: cache clear failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return $this->errorResponse('Operation failed. Check server logs for details.', ['completed' => $output], 500);
         }
 
         return $this->successResponse([
@@ -821,8 +824,8 @@ class CLIController extends BaseApiController
                 'superadmin_permissions' => count($permissions),
             ], 'Permissions and roles synced successfully');
         } catch (\Exception $e) {
-            Log::error('CLI: permissions fix failed', ['error' => $e->getMessage()]);
-            return $this->errorResponse('Permissions fix failed: ' . $e->getMessage(), [], 500);
+            Log::error('CLI: permissions fix failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
         }
     }
 
@@ -853,7 +856,8 @@ class CLIController extends BaseApiController
                 'previous_value' => $setting->value,
             ], "Setting '{$key}' updated successfully");
         } catch (\Exception $e) {
-            return $this->errorResponse('Failed to update setting: ' . $e->getMessage(), [], 500);
+            Log::error('CLI: setting update failed', ['key' => $key, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
         }
     }
 }

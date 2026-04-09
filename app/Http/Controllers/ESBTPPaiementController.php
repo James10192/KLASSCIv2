@@ -1706,7 +1706,7 @@ class ESBTPPaiementController extends Controller
                 'statut' => $statut,
                 'category_id' => $request->input('category_id'),
                 'page' => $request->get('page', 1),
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
             return response()->json([
@@ -2058,7 +2058,7 @@ class ESBTPPaiementController extends Controller
                 'reliquat_id' => $request->input('reliquat_id'),
                 'montant' => $request->input('montant'),
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
             return redirect()->back()->with('error', 'Erreur lors du paiement: ' . $e->getMessage());
@@ -2153,7 +2153,7 @@ class ESBTPPaiementController extends Controller
             \Log::error('Erreur lors de la validation du paiement', [
                 'paiement_id' => $id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
             if ($request->ajax()) {
@@ -2259,7 +2259,7 @@ class ESBTPPaiementController extends Controller
             Log::error('Erreur lors de la validation rapide du paiement', [
                 'paiement_id' => $paiement->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
             return response()->json([
@@ -2348,7 +2348,7 @@ class ESBTPPaiementController extends Controller
             \Log::error('Erreur lors du rejet du paiement', [
                 'paiement_id' => $id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
             // Si c'est une requête AJAX, retourner JSON
@@ -2414,7 +2414,7 @@ class ESBTPPaiementController extends Controller
             Log::error('Erreur lors de la suppression définitive du paiement', [
                 'paiement_id' => $paiement->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
             if ($request->ajax() || $request->wantsJson()) {
@@ -2521,7 +2521,7 @@ class ESBTPPaiementController extends Controller
             \Log::error('Erreur lors de la validation groupée des paiements', [
                 'paiements' => $request->paiements,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
             // Si c'est une requête AJAX, retourner JSON
@@ -2616,7 +2616,7 @@ class ESBTPPaiementController extends Controller
             \Log::error('Erreur lors du rejet groupé des paiements', [
                 'paiements' => $request->paiements,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
             // Si c'est une requête AJAX, retourner JSON
@@ -2666,7 +2666,7 @@ class ESBTPPaiementController extends Controller
         } catch (\Exception $e) {
             \Log::error('Erreur refreshLigne paiement: ' . $e->getMessage(), [
                 'paiement_id' => $paiement->id,
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
             return response()->json([
@@ -2866,7 +2866,7 @@ class ESBTPPaiementController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur export Excel paiements: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
             return redirect()->back()->with('error', 'Erreur lors de l\'export Excel: ' . $e->getMessage());
@@ -2911,7 +2911,7 @@ class ESBTPPaiementController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur export CSV paiements: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
             return redirect()->back()->with('error', 'Erreur lors de l\'export CSV: ' . $e->getMessage());
@@ -2973,7 +2973,7 @@ class ESBTPPaiementController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Erreur export PDF paiements: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
             return redirect()->back()->with('error', 'Erreur lors de l\'export PDF: ' . $e->getMessage());

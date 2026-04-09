@@ -750,7 +750,7 @@ class ESBTPStudentController extends Controller
 
             return Excel::download($export, $filename);
         } catch (\Exception $e) {
-            \Log::error('Erreur export Excel étudiants: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            \Log::error('Erreur export Excel étudiants: ' . $e->getMessage(), ['trace' => config('app.debug') ? $e->getTraceAsString() : null]);
 
             return redirect()->back()->with('error', "Erreur lors de l'export Excel : " . $e->getMessage());
         }
@@ -938,7 +938,7 @@ class ESBTPStudentController extends Controller
 
             return response()->download($finalPath, $filename)->deleteFileAfterSend(true);
         } catch (\Exception $e) {
-            \Log::error('Erreur export PDF étudiants: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            \Log::error('Erreur export PDF étudiants: ' . $e->getMessage(), ['trace' => config('app.debug') ? $e->getTraceAsString() : null]);
 
             return redirect()->back()->with('error', "Erreur lors de l'export PDF : " . $e->getMessage());
         }

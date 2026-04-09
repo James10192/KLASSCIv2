@@ -48,7 +48,7 @@ class ESBTPCalculAbsencesController extends Controller
                 'classe_id' => $classeId,
                 'date_debut' => $dateDebut,
                 'date_fin' => $dateFin,
-                'exception' => $e->getTraceAsString()
+                'exception' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
             return response()->json([
@@ -169,7 +169,7 @@ class ESBTPCalculAbsencesController extends Controller
             ];
         } catch (\Exception $e) {
             Log::error('Erreur lors du calcul détaillé des absences: ' . $e->getMessage(), [
-                'exception' => $e->getTraceAsString()
+                'exception' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
             throw $e;
@@ -271,7 +271,7 @@ class ESBTPCalculAbsencesController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Erreur lors de la récupération du résumé des absences: ' . $e->getMessage(), [
-                'exception' => $e->getTraceAsString()
+                'exception' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
             return response()->json([

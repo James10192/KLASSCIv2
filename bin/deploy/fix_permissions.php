@@ -50,6 +50,7 @@ try {
         'edit_students',
         'delete_students',
         'view_own_students',
+        'view_exams',
 
         // Inscriptions
         'view_inscriptions',
@@ -154,6 +155,7 @@ try {
         'generate_bulletins',
         'edit_bulletins',
         'view_own_bulletin',
+        'view children bulletins',
 
         // Présences
         'view_attendances',
@@ -297,7 +299,7 @@ try {
     $secretairePermissions = [
         'view_dashboard',
         'access_admin',
-        'view_students', 'create_students', 'edit_students',
+        'view_students', 'create_students', 'edit_students', 'delete_students',
         'view_inscriptions', 'create_inscriptions', 'edit_inscriptions',
         'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
         'edit inscriptions', 'valider inscriptions',
@@ -309,8 +311,8 @@ try {
         'view_filieres', 'create_filieres', 'edit_filieres',
         'view_niveaux_etudes', 'create_niveaux_etudes', 'edit_niveaux_etudes',
         'view_matieres',
-        'view_notes', 'view_evaluations',
-        'view_bulletins', 'generate_bulletins',
+        'view_notes', 'view_evaluations', 'view_exams',
+        'view_bulletins', 'generate_bulletins', 'view children bulletins',
         'view_attendances', 'create_attendance', 'create_attendances', 'edit_attendances', 'delete_attendances',
         'generate-attendance-codes',
         'view_payments', 'create_payments', 'edit_payments',
@@ -348,7 +350,7 @@ try {
         'access_admin',
         'view_dashboard',
         // Étudiants — full CRUD
-        'view_students', 'create_students', 'edit_students',
+        'view_students', 'create_students', 'edit_students', 'delete_students',
         'view_own_students',
         // Inscriptions
         'view_inscriptions', 'create_inscriptions', 'edit_inscriptions',
@@ -374,9 +376,9 @@ try {
         'view_notes', 'create_notes', 'edit_notes', 'edit_existing_notes',
         'view_grades', 'create_grade', 'edit_grades', 'delete_grades',
         // Évaluations
-        'view_evaluations', 'create_evaluations', 'edit_evaluations',
+        'view_evaluations', 'create_evaluations', 'edit_evaluations', 'view_exams',
         // Bulletins
-        'view_bulletins', 'generate_bulletins', 'edit_bulletins',
+        'view_bulletins', 'generate_bulletins', 'edit_bulletins', 'view children bulletins',
         // Présences — full CRUD
         'view_attendances', 'create_attendance', 'create_attendances',
         'edit_attendances', 'delete_attendances',

@@ -643,7 +643,7 @@ class ESBTPInscriptionPaiementController extends Controller
                 "inscription_id" => $inscription->id,
                 "subscription_id" => $subscription->id,
                 "error" => $e->getMessage(),
-                "trace" => $e->getTraceAsString(),
+                "trace" => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return response()->json(
@@ -1225,7 +1225,7 @@ class ESBTPInscriptionPaiementController extends Controller
                 [
                     "inscription_id" => $inscription->id,
                     "error" => $e->getMessage(),
-                    "trace" => $e->getTraceAsString(),
+                    "trace" => config('app.debug') ? $e->getTraceAsString() : null,
                 ],
             );
             throw $e;

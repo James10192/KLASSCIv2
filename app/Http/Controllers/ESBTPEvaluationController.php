@@ -1271,7 +1271,7 @@ $evaluation->titre = $request->titre;
         } catch (\Exception $e) {
             \Log::error('❌ [AJAX] loadMatieres - Erreur', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return response()->json([
@@ -1380,7 +1380,7 @@ $evaluation->titre = $request->titre;
         } catch (\Throwable $throwable) {
             \Log::error('Erreur chargement coefficients modal', [
                 'error' => $throwable->getMessage(),
-                'trace' => $throwable->getTraceAsString(),
+                'trace' => config('app.debug') ? $throwable->getTraceAsString() : null,
             ]);
 
             return response()->json([
@@ -1600,7 +1600,7 @@ $evaluation->titre = $request->titre;
                 'class_id' => $classId,
                 'matiere_id' => $matiereId,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return response()->json([

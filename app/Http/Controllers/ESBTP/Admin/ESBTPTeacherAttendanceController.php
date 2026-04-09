@@ -101,7 +101,7 @@ class ESBTPTeacherAttendanceController extends Controller
                 \Log::error('❌ ERROR in store -> markTeacherAttendance', [
                     'message' => $e->getMessage(),
                     'line' => $e->getLine(),
-                    'trace' => $e->getTraceAsString()
+                    'trace' => config('app.debug') ? $e->getTraceAsString() : null
                 ]);
                 return redirect()->back()->with('error', 'Erreur système: ' . $e->getMessage());
             }
@@ -196,7 +196,7 @@ class ESBTPTeacherAttendanceController extends Controller
             \Log::error('❌ Erreur getOrCreateForSession: ' . $e->getMessage(), [
                 'seance_id' => $seanceCours->id,
                 'user_id' => $user->id,
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
             return redirect()->back()->with('error', 'Erreur lors de la création du workflow: ' . $e->getMessage());
         }
@@ -604,7 +604,7 @@ class ESBTPTeacherAttendanceController extends Controller
         } catch (\Exception $e) {
             \Log::error('❌ ERROR updateStatus', [
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
 
             return response()->json([
