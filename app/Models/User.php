@@ -67,6 +67,13 @@ class User extends Authenticatable
             $this->attributes['password'] = (str_starts_with($value, '$2y$') || str_starts_with($value, '$2b$') || str_starts_with($value, '$argon2'))
                 ? $value
                 : Hash::make($value);
+
+            // Auto-update password_changed_at à chaque changement de MDP
+            // Sauf si le model est en cours de création (pas encore en DB)
+            if ($this->exists) {
+                $this->attributes['password_changed_at'] = now();
+                $this->attributes['must_change_password'] = false;
+            }
         }
     }
 
