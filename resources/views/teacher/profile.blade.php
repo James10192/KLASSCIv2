@@ -402,6 +402,7 @@ use Illuminate\Support\Facades\Storage;
     </div>
 </div>
 
+<style>#changePasswordModal .modal-dialog { max-width: 600px !important; width: 600px !important; }</style>
 <!-- Premium Password Change Modal -->
 <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -681,6 +682,10 @@ function initPasswordStrength(formPrefix) {
 
 document.addEventListener('DOMContentLoaded', function() {
     initPasswordStrength('teacherPasswordForm');
+
+    // Move modal to body to escape stacking context
+    var pwdModal = document.getElementById('changePasswordModal');
+    if (pwdModal) document.body.appendChild(pwdModal);
 });
 
 // Rouvrir le modal s'il y a des erreurs de validation
