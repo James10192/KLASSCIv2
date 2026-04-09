@@ -500,6 +500,33 @@ class CLIController extends BaseApiController
         ], "Academic year '{$annee->name}' is now current");
     }
 
+    /**
+     * POST /api/cli/user/{id}/reset-password-expiry — Mark password as just changed
+     */
+    public function userResetPasswordExpiry(Request $request, $id): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $user = User::find($id);
+        if (!$user) {
+            return $this->errorResponse("User #{$id} not found", [], 404);
+        }
+
+        $user->password_changed_at = now();
+        $user->must_change_password = false;
+        $user->save();
+
+        return $this->successResponse([
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'password_changed_at' => $user->password_changed_at->toIso8601String(),
+            'must_change_password' => false,
+        ], "Password expiry reset for {$user->name}");
+    }
+
     // =========================================================================
     // WRITE ENDPOINTS (cli:write ability)
     // =========================================================================
