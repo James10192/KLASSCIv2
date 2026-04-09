@@ -236,6 +236,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::get('/payments', [App\Http\Controllers\API\CLIController::class, 'payments'])->name('payments');
     Route::get('/settings', [App\Http\Controllers\API\CLIController::class, 'settings'])->name('settings');
     Route::get('/annee', [App\Http\Controllers\API\CLIController::class, 'annee'])->name('annee');
+    Route::get('/users', [App\Http\Controllers\API\CLIController::class, 'users'])->name('users');
 
     // Write endpoints
     Route::post('/inscriptions/{id}/validate', [App\Http\Controllers\API\CLIController::class, 'validateInscription'])->name('inscriptions.validate');

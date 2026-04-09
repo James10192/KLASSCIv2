@@ -100,6 +100,55 @@ class CLIController extends BaseApiController
     }
 
     /**
+     * GET /api/cli/users — List user accounts
+     */
+    public function users(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $query = User::query();
+
+        if ($role = $request->input('role')) {
+            $query->role($role);
+        }
+
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('username', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $perPage = min((int) ($request->input('limit', 50)), 100);
+        $paginated = $query->orderBy('id')->paginate($perPage);
+
+        $users = collect($paginated->items())->map(function ($user) {
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'username' => $user->username,
+                'email' => $user->email,
+                'role' => $user->getRoleNames()->first() ?? '-',
+                'is_active' => $user->is_active,
+                'created_at' => $user->created_at?->toIso8601String(),
+            ];
+        });
+
+        return $this->successResponse([
+            'users' => $users,
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+            ],
+        ], 'User accounts');
+    }
+
+    /**
      * GET /api/cli/students — List students
      */
     public function students(Request $request): JsonResponse
