@@ -626,6 +626,67 @@ class CLIController extends BaseApiController
         }
     }
 
+    /**
+     * POST /api/cli/user/{id}/delete — Soft-delete a user
+     */
+    public function userDelete(Request $request, $id): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $user = User::find($id);
+        if (!$user) {
+            return $this->errorResponse("User #{$id} not found", [], 404);
+        }
+
+        // Block self-deletion
+        if ($user->id === $request->user()->id) {
+            return $this->errorResponse('Cannot delete your own account', [], 422);
+        }
+
+        // Block deletion of last superAdmin
+        if ($user->hasRole('superAdmin') && User::role('superAdmin')->count() <= 1) {
+            return $this->errorResponse('Cannot delete the last superAdmin account', [], 422);
+        }
+
+        // Block deletion of serviceTechnique
+        if ($user->hasRole('serviceTechnique')) {
+            return $this->errorResponse('Cannot delete serviceTechnique accounts', [], 422);
+        }
+
+        try {
+            $deletedData = [
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'username' => $user->username,
+                'email' => $user->email,
+                'role' => $user->getRoleNames()->first() ?? '-',
+                'related_data' => [
+                    'inscriptions' => $user->etudiant ? $user->etudiant->inscriptions()->count() : 0,
+                    'tokens' => $user->tokens()->count(),
+                ],
+            ];
+
+            // Revoke all Sanctum tokens
+            $user->tokens()->delete();
+
+            // Deactivate
+            $user->is_active = false;
+            $user->save();
+
+            // Soft-delete
+            $user->delete();
+
+            Log::info('CLI: user deleted', ['user_id' => $user->id, 'name' => $user->name, 'by' => $request->user()->id]);
+
+            return $this->successResponse($deletedData, "User '{$user->name}' (#{$user->id}) has been deleted");
+        } catch (\Exception $e) {
+            Log::error('CLI: user deletion failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
+        }
+    }
+
     // =========================================================================
     // WRITE ENDPOINTS (cli:write ability)
     // =========================================================================
