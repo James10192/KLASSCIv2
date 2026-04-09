@@ -527,6 +527,58 @@ class CLIController extends BaseApiController
         ], "Password expiry reset for {$user->name}");
     }
 
+    /**
+     * POST /api/cli/user/create — Create a user with a role
+     */
+    public function userCreate(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'nullable|email|unique:users,email',
+            'username' => 'required|string|max:100|unique:users,username',
+            'password' => 'required|string|min:6',
+            'role' => 'required|string',
+            'phone' => 'nullable|string|max:20',
+        ]);
+
+        $validRoles = ['superAdmin', 'admin', 'secretaire', 'coordinateur', 'enseignant',
+                        'etudiant', 'parent', 'comptable', 'caissier', 'teacher'];
+
+        if (!in_array($validated['role'], $validRoles)) {
+            return $this->errorResponse("Invalid role '{$validated['role']}'. Valid: " . implode(', ', $validRoles), [], 422);
+        }
+
+        try {
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'] ?? null,
+                'username' => $validated['username'],
+                'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
+                'phone' => $validated['phone'] ?? null,
+                'is_active' => true,
+                'must_change_password' => true,
+                'created_by' => $request->user()->id,
+            ]);
+
+            $user->assignRole($validated['role']);
+
+            return $this->successResponse([
+                'user_id' => $user->id,
+                'name' => $user->name,
+                'username' => $user->username,
+                'email' => $user->email,
+                'role' => $validated['role'],
+            ], "User '{$user->name}' created with role '{$validated['role']}'");
+        } catch (\Exception $e) {
+            Log::error('CLI: user creation failed', ['error' => $e->getMessage()]);
+            return $this->errorResponse('User creation failed: ' . $e->getMessage(), [], 500);
+        }
+    }
+
     // =========================================================================
     // WRITE ENDPOINTS (cli:write ability)
     // =========================================================================
