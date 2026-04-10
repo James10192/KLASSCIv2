@@ -40,7 +40,7 @@ class ESBTPInscriptionService
      * @param string $affectationStatus Statut d'affectation pour le calcul des frais
      * @return ESBTPInscription
      */
-    public function createInscription(array $etudiantData, array $inscriptionData, array $parentsData = [], ?array $paiementData = null, int $userId = null, array $selectedOptionals = [], string $affectationStatus = 'affecté')
+    public function createInscription(array $etudiantData, array $inscriptionData, array $parentsData = [], ?array $paiementData = null, int $userId = null, array $selectedOptionals = [], string $affectationStatus = ESBTPInscription::DEFAULT_AFFECTATION_STATUS)
     {
         try {
             DB::beginTransaction();
@@ -588,7 +588,7 @@ class ESBTPInscriptionService
      * @param string $affectationStatus Statut d'affectation pour le calcul des frais
      * @return array Liste des frais générés
      */
-    public function generateFeesForInscription(ESBTPInscription $inscription, array $selectedOptionals = [], string $affectationStatus = 'affecté')
+    public function generateFeesForInscription(ESBTPInscription $inscription, array $selectedOptionals = [], string $affectationStatus = ESBTPInscription::DEFAULT_AFFECTATION_STATUS)
     {
         $generatedFees = [];
         
@@ -791,7 +791,7 @@ class ESBTPInscriptionService
             ]);
 
             // Récupérer le statut d'affectation de l'inscription
-            $affectationStatus = $inscription->affectation_status ?? 'affecté';
+            $affectationStatus = $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
 
             // Charger la classe pour les vérifications
             $classe = $inscription->classe;

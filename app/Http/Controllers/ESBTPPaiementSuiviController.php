@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use App\Services\FeeCalculationService;
 use App\Services\FuzzyNameMatcher;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Database\QueryException;
@@ -300,7 +301,7 @@ class ESBTPPaiementSuiviController extends Controller
                         ->where('filiere_id', $inscription->filiere_id)
                         ->where('niveau_id', $inscription->niveau_id)
                         ->first();
-                    $montantAttendu = $rule ? $rule->getMontantByStatus($inscription->affectation_status ?? 'affecté') : $category->default_amount;
+                    $montantAttendu = $rule ? $rule->getMontantByStatus($inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS) : $category->default_amount;
                 } else {
                     // Service optionnel : vérifier s'il y a une souscription active
                     $subscription = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
@@ -349,31 +350,7 @@ class ESBTPPaiementSuiviController extends Controller
         return collect($statistiques);
     }
 
-    /**
-     * Helper : calculer le montant attendu pour une inscription et catégorie
-     */
-    private function getMontantAttendu($category, $inscription, $configurations, $subscriptions): float
-    {
-        if ($category->is_mandatory) {
-            $configKey = $this->buildConfigKey($category->id, $inscription->filiere_id, $inscription->niveau_id);
-            $config = $configurations->get($configKey, collect())->first();
-            return $config
-                ? $config->getMontantByStatus($inscription->affectation_status ?? \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS)
-                : $category->default_amount;
-        } else {
-            $inscSubs = $subscriptions->get($inscription->id, collect());
-            $sub = $inscSubs->where('frais_category_id', $category->id)->first();
-            return $sub ? $sub->amount : 0;
-        }
-    }
-
-    /**
-     * Helper : construire la clé de configuration (catégorie + filière + niveau)
-     */
-    private function buildConfigKey($categoryId, $filiereId, $niveauId): string
-    {
-        return "{$categoryId}_{$filiereId}_{$niveauId}";
-    }
+    // getMontantAttendu() and buildConfigKey() extracted to FeeCalculationService
 
     /**
      * Version optimisée : utilise les données pré-chargées au lieu de requêtes N+1
@@ -396,7 +373,7 @@ class ESBTPPaiementSuiviController extends Controller
             ];
 
             foreach ($inscriptions as $inscription) {
-                $montantAttendu = $this->getMontantAttendu($category, $inscription, $configurations, $subscriptions);
+                $montantAttendu = FeeCalculationService::getMontantAttendu($category, $inscription, $configurations, $subscriptions);
 
                 if ($montantAttendu > 0) {
                     $stats['etudiants_concernes']++;
@@ -442,7 +419,7 @@ class ESBTPPaiementSuiviController extends Controller
             $totalPaye = 0;
 
             foreach ($categories as $category) {
-                $montantAttendu = $this->getMontantAttendu($category, $inscription, $configurations, $subscriptions);
+                $montantAttendu = FeeCalculationService::getMontantAttendu($category, $inscription, $configurations, $subscriptions);
 
                 if ($montantAttendu > 0) {
                     $totalDu += $montantAttendu;
@@ -487,7 +464,7 @@ class ESBTPPaiementSuiviController extends Controller
         $montantTotalRecu = 0;
 
         foreach ($inscriptions as $inscription) {
-            $montantAttendu = $this->getMontantAttendu($category, $inscription, $configurations, $subscriptions);
+            $montantAttendu = FeeCalculationService::getMontantAttendu($category, $inscription, $configurations, $subscriptions);
 
             if ($montantAttendu <= 0) continue;
 

@@ -1248,6 +1248,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                 </div>
                             </div>
 
+                            @if($canViewFinancials ?? true)
                             @php
                                 $totalAttendu = collect($feeCategoriesWithRules)->where('is_configured', true)->sum('montant_attendu');
                                 $totalPaye = collect($feeCategoriesWithRules)->sum('total_paye');
@@ -1281,6 +1282,8 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                             </div>
                         </div>
                     </div>
+
+                    @endif {{-- canViewFinancials: Résumé Financier --}}
 
                     <!-- Parents / Tuteurs -->
                     <div class="card-moderne mb-4">
@@ -1388,6 +1391,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                         </div>
                     </div>
 
+                    @if($canViewFinancials ?? true)
                     <!-- Situation financière détaillée -->
                     <div class="card-moderne mb-4">
                         <div class="p-lg">
@@ -2180,8 +2184,10 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                         </div>
                     </div>
 
+                    @endif {{-- canViewFinancials: Situation Financière Détaillée --}}
+
                     <!-- Frais optionnels disponibles -->
-                    @if(isset($availableOptionalCategories) && $availableOptionalCategories->count() > 0)
+                    @if(($canViewFinancials ?? true) && isset($availableOptionalCategories) && $availableOptionalCategories->count() > 0)
                     <div class="card-moderne mb-4">
                         <div class="p-lg">
                             <div class="section-title mb-md">
@@ -2239,6 +2245,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                     </div>
                     @endif
 
+                    @if($canViewFinancials ?? true)
                     <!-- Paiements liés à l'inscription -->
                     <div class="card-moderne">
                         <div class="p-lg">
@@ -2558,8 +2565,10 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                         </div>
                     </div>
 
+                    @endif {{-- canViewFinancials: Paiements liés --}}
+
                     {{-- Section Reliquats --}}
-                    @if(isset($reliquatsEntrants) && $reliquatsEntrants->count() > 0 || isset($reliquatsSortants) && $reliquatsSortants->count() > 0)
+                    @if(($canViewFinancials ?? true) && (isset($reliquatsEntrants) && $reliquatsEntrants->count() > 0 || isset($reliquatsSortants) && $reliquatsSortants->count() > 0))
                         <div class="card-moderne mt-4">
                             <div class="p-lg">
                                 <div class="section-title mb-md">

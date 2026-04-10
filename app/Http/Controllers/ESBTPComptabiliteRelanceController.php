@@ -94,7 +94,7 @@ class ESBTPComptabiliteRelanceController extends Controller
                     $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
                     $config = $allConfigurations->get($configKey, collect())->first();
                     $montant = $config
-                        ? $config->getMontantByStatus($inscription->affectation_status ?? 'affecté')
+                        ? $config->getMontantByStatus($inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS)
                         : $category->default_amount;
                 }
             } else {
@@ -1157,7 +1157,7 @@ class ESBTPComptabiliteRelanceController extends Controller
                     $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
                     $config = $configurations->get($configKey, collect())->first();
                     $montant = $config
-                        ? $config->getMontantByStatus($inscription->affectation_status ?? 'affecté')
+                        ? $config->getMontantByStatus($inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS)
                         : $category->default_amount;
                 }
             } else {

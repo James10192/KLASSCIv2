@@ -8,6 +8,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPFraisSubscription;
+use App\Models\ESBTPInscription;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -97,7 +98,7 @@ class ReeinscriptionService
         $etudiant->montant_paye = 0;
         $etudiant->solde_restant = 0;
         $etudiant->peut_reinscrire = true;  // Valeur par défaut optimiste
-        $etudiant->affectation_status = $inscription->affectation_status ?? 'affecté';
+        $etudiant->affectation_status = $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
 
         return [
             'etudiant' => $etudiant,
@@ -311,7 +312,7 @@ class ReeinscriptionService
         return [];
     }
 
-    public function effectuerReinscription($etudiantId, $nouvelleClasseId, $decision, $observations = null, $selectedOptionals = [], $affectationStatus = 'affecté', $anneeUniversitaireId = null, $actionReliquat = null)
+    public function effectuerReinscription($etudiantId, $nouvelleClasseId, $decision, $observations = null, $selectedOptionals = [], $affectationStatus = ESBTPInscription::DEFAULT_AFFECTATION_STATUS, $anneeUniversitaireId = null, $actionReliquat = null)
     {
         \DB::beginTransaction();
         try {
@@ -756,7 +757,7 @@ class ReeinscriptionService
     {
         try {
             // Récupérer le statut d'affectation de l'inscription (défaut: affecté)
-            $affectationStatus = $inscription->affectation_status ?? 'affecté';
+            $affectationStatus = $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
 
             // Calculer le montant attendu selon le statut d'affectation
             $montantAttendu = $this->calculerMontantAttenduAvecStatut($inscription, $affectationStatus);
@@ -789,7 +790,7 @@ class ReeinscriptionService
             $etudiant->montant_paye = 0;
             $etudiant->solde_restant = 0;
             $etudiant->peut_reinscrire = false;
-            $etudiant->affectation_status = 'affecté';
+            $etudiant->affectation_status = ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
         }
     }
 

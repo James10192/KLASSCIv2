@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\ESBTPInscription;
 
 /**
  * Modèle unifié pour la configuration des frais par classe/année
@@ -319,7 +320,7 @@ class ESBTPFraisConfiguration extends Model
     public function getMontantByStatus($affectationStatus)
     {
         return match($affectationStatus) {
-            'affecté' => $this->amount_affecte ?? $this->amount,
+            ESBTPInscription::DEFAULT_AFFECTATION_STATUS => $this->amount_affecte ?? $this->amount,
             'réaffecté' => $this->amount_reaffecte ?? $this->amount,
             'non_affecté' => $this->amount_non_affecte ?? $this->amount,
             default => $this->amount
@@ -346,7 +347,7 @@ class ESBTPFraisConfiguration extends Model
     public function getAllAmounts()
     {
         return [
-            'affecté' => $this->amount_affecte ?? $this->amount,
+            ESBTPInscription::DEFAULT_AFFECTATION_STATUS => $this->amount_affecte ?? $this->amount,
             'réaffecté' => $this->amount_reaffecte ?? $this->amount,
             'non_affecté' => $this->amount_non_affecte ?? $this->amount,
         ];

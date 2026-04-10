@@ -7,8 +7,14 @@ use Illuminate\Support\Facades\Gate;
 use App\Models\ESBTPEmploiTemps;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPMatiere;
+use App\Models\ESBTPPaiement;
+use App\Models\ESBTPNote;
+use App\Models\ESBTPInscription;
 use App\Policies\ESBTPSeanceCoursPolicy;
 use App\Policies\ESBTPMatierePolicy;
+use App\Policies\ESBTPPaiementPolicy;
+use App\Policies\ESBTPNotePolicy;
+use App\Policies\ESBTPInscriptionPolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -20,6 +26,9 @@ class AuthServiceProvider extends ServiceProvider
     protected $policies = [
         ESBTPSeanceCours::class => ESBTPSeanceCoursPolicy::class,
         ESBTPMatiere::class => ESBTPMatierePolicy::class,
+        ESBTPPaiement::class => ESBTPPaiementPolicy::class,
+        ESBTPNote::class => ESBTPNotePolicy::class,
+        ESBTPInscription::class => ESBTPInscriptionPolicy::class,
     ];
 
     /**

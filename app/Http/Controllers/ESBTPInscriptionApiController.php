@@ -136,16 +136,18 @@ class ESBTPInscriptionApiController extends Controller
             ],
         );
 
-        $classes = $query->get();
+        // Année courante pour le calcul des places
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        // Log pour vérifier les résultats
-        \Illuminate\Support\Facades\Log::info(
-            "Classes trouvées (Inscription)",
-            [
-                "count" => $classes->count(),
-                "first_few" => $classes->take(3),
-            ],
-        );
+        $classes = $query->get()->map(function ($classe) use ($anneeCourante) {
+            $nombreEtudiants = \App\Models\ESBTPInscription::where('classe_id', $classe->id)
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree')
+                ->when($anneeCourante, fn($q) => $q->where('annee_universitaire_id', $anneeCourante->id))
+                ->count();
+            $classe->places_disponibles = max(0, ($classe->places_totales ?? 0) - $nombreEtudiants);
+            return $classe;
+        });
 
         return response()->json($classes);
     }
@@ -266,7 +268,7 @@ class ESBTPInscriptionApiController extends Controller
                 "niveau",
                 "annee",
             ])->findOrFail($classeId);
-            $affectationStatus = $request->get("affectation_status", "affecté");
+            $affectationStatus = $request->get("affectation_status", ESBTPInscription::DEFAULT_AFFECTATION_STATUS);
 
             \Log::info("getFraisByClasse appelé", [
                 "classe_id" => $classeId,

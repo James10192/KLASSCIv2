@@ -1186,7 +1186,7 @@ class ESBTPInscriptionPaiementController extends Controller
                 if ($fraisConfig) {
                     // Déterminer le montant selon le statut d'affectation
                     $affectationStatus =
-                        $inscription->affectation_status ?? "affecté";
+                        $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
                     $montant = $fraisConfig->getMontantByStatus(
                         $affectationStatus,
                     );

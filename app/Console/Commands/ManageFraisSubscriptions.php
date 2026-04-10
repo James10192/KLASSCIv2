@@ -166,7 +166,7 @@ class ManageFraisSubscriptions extends Command
                 $insc->etudiant ? ($insc->etudiant->nom . ' ' . ($insc->etudiant->prenoms ?? '')) : 'N/A',
                 $insc->etudiant->matricule ?? 'N/A',
                 $insc->classe->name ?? 'N/A',
-                $insc->affectation_status ?? 'affecté',
+                $insc->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
                 $activeCount,
                 number_format($subTotal, 0, ',', ' ') . ' FCFA',
             ];
@@ -416,7 +416,7 @@ class ManageFraisSubscriptions extends Command
             }
 
             // Calculer les nouveaux frais
-            $affectationStatus = $inscription->affectation_status ?? 'affecté';
+            $affectationStatus = $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
             $newFees = $this->inscriptionService->generateFeesForInscription(
                 $inscription,
                 [],

@@ -457,7 +457,7 @@ class ESBTPReinscriptionController extends Controller
     /**
      * Récupérer les frais pour une classe et un statut d'affectation donnés
      */
-    private function getFraisForClasseEtAffectation($classeId, $statutAffectation = 'affecté')
+    private function getFraisForClasseEtAffectation($classeId, $statutAffectation = \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS)
     {
         // Logique basée sur l'endpoint existant dans ESBTPInscriptionController
         $classe = \App\Models\ESBTPClasse::with(['niveau', 'filiere'])->findOrFail($classeId);
@@ -507,10 +507,10 @@ class ESBTPReinscriptionController extends Controller
     private function normaliserStatutAffectation($statutAffectation)
     {
         return match($statutAffectation) {
-            'affecté', 'affecte' => 'affecté',
+            'affecté', 'affecte' => \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
             'non-affecté', 'non_affecte', 'non-affecte', 'non_affecté' => 'non_affecté',
             'réaffecté', 'reaffecte', 'maintenant-affecté', 'maintenant_affecte' => 'réaffecté',
-            default => 'affecté'
+            default => \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS
         };
     }
 
@@ -866,7 +866,7 @@ class ESBTPReinscriptionController extends Controller
             if (empty($affectationStatus)) {
                 $affectationStatus = $request->input('affectation_status_final');
                 if (empty($affectationStatus)) {
-                    $affectationStatus = 'affecté';
+                    $affectationStatus = \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
                 }
             }
 

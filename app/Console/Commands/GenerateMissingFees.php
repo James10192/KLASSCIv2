@@ -84,7 +84,7 @@ class GenerateMissingFees extends Command
                 }
 
                 // Générer les frais pour cette inscription
-                $affectationStatus = $inscription->affectation_status ?? 'affecté';
+                $affectationStatus = $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
                 $generatedFees = $this->inscriptionService->generateFeesForInscription(
                     $inscription,
                     [], // Pas d'optionnels pour la correction automatique

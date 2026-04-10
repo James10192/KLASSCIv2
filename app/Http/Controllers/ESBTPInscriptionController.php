@@ -529,28 +529,9 @@ class ESBTPInscriptionController extends Controller
      * Enregistrer une nouvelle inscription.
      */
     public function store(
-        Request $request,
+        \App\Http\Requests\Inscription\StoreInscriptionRequest $request,
         StudentDuplicateDetector $duplicateDetector,
     ) {
-        // Créer un fichier de log dédié pour le debug
-        $debugFile = storage_path("logs/inscription_debug.log");
-        $debugData = [
-            "timestamp" => now()->toISOString(),
-            "method" => $request->method(),
-            "url" => $request->fullUrl(),
-            "all_input" => $request->all(),
-            "parents_input" => $request->input("parents", []),
-        ];
-
-        file_put_contents(
-            $debugFile,
-            "=== INSCRIPTION DEBUG " .
-                now() .
-                " ===\n" .
-                json_encode($debugData, JSON_PRETTY_PRINT) .
-                "\n\n",
-            FILE_APPEND | LOCK_EX,
-        );
 
         // Vérification du paywall avant de permettre une nouvelle inscription
         if ($this->checkPaywallLimitsForInscription()) {
@@ -562,6 +543,17 @@ class ESBTPInscriptionController extends Controller
                 )
                 ->with("paywall_contact", "klassci@africandigitconsulting.com")
                 ->withInput();
+        }
+
+        // Vérification des places disponibles dans la classe
+        if ($request->filled('classe_id')) {
+            $classe = \App\Models\ESBTPClasse::find($request->input('classe_id'));
+            if ($classe && $classe->places_disponibles <= 0) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'La classe sélectionnée est complète. Veuillez choisir une autre classe.')
+                    ->withInput();
+            }
         }
 
         // Détection de doublons (blocage tant que non confirmé)
@@ -593,170 +585,10 @@ class ESBTPInscriptionController extends Controller
             }
         }
 
-        // Construction dynamique des règles de validation
-        $rules = [
-            "classe_id" => "required|exists:esbtp_classes,id",
-            "nom" => "required|string|max:100",
-            "prenoms" => "required|string|max:100",
-            "sexe" => "required|in:M,F",
-            "date_naissance" => "required|date",
-            "lieu_naissance" => "nullable|string|max:100",
-            "telephone" => "required|string|max:20",
-            "email_personnel" => "nullable|email|max:100",
-            "ville" => "nullable|string|max:100",
-            "commune" => "nullable|string|max:100",
-            "photo" => "nullable|image|mimes:jpeg,png,jpg,gif|max:2048",
-            "matricule" => empty(trim((string) $request->matricule))
-                ? "nullable"
-                : "required|string|max:20|unique:esbtp_etudiants,matricule",
-        ];
-        $messages = [
-            "classe_id.required" => "Veuillez sélectionner une classe",
-            "nom.required" => "Le nom est obligatoire",
-            "prenoms.required" => "Le(s) prénom(s) est/sont obligatoire(s)",
-            "sexe.required" => "Le genre est obligatoire",
-            "date_naissance.required" => "La date de naissance est obligatoire",
-            "telephone.required" => "Le numéro de téléphone est obligatoire",
-            "matricule.required" => "Le matricule est obligatoire",
-            "matricule.unique" => "Ce matricule existe déjà",
-            "photo.image" => "Le fichier photo doit être une image valide.",
-            "photo.mimes" =>
-                "La photo doit être au format JPEG, PNG, JPG ou GIF.",
-            "photo.max" => "La photo ne doit pas dépasser 2 Mo.",
-            "photo.uploaded" =>
-                'La photo n\'a pas pu être téléchargée. Vérifiez la taille du fichier, le format et les limites d\'upload du serveur.',
-        ];
+        // Validation + parent cleaning handled by StoreInscriptionRequest
         $parents = $request->input("parents", []);
 
-        // Debug: Log des données parents reçues
-        Log::info("Debug Parents - Données reçues:", [
-            "parents" => $parents,
-            "request_all" => $request->all(),
-        ]);
-
-        // Nettoyer les données parents - supprimer le template et nettoyer les parents existants
-        foreach ($parents as $index => $parent) {
-            // Supprimer complètement le template
-            if ($index === "template") {
-                unset($parents[$index]);
-                file_put_contents(
-                    $debugFile,
-                    "Template supprimé\n",
-                    FILE_APPEND | LOCK_EX,
-                );
-
-                continue;
-            }
-
-            if (isset($parent["type"]) && $parent["type"] === "existant") {
-                // Pour un parent existant, ne garder que parent_id, relation et type
-                $parents[$index] = [
-                    "type" => "existant",
-                    "parent_id" => $parent["parent_id"] ?? null,
-                    "relation" => $parent["relation"] ?? null,
-                ];
-                file_put_contents(
-                    $debugFile,
-                    "Parent $index nettoyé pour type existant: " .
-                        json_encode($parents[$index]) .
-                        "\n",
-                    FILE_APPEND | LOCK_EX,
-                );
-            }
-        }
-
-        // Log des parents après nettoyage
-        file_put_contents(
-            $debugFile,
-            "Parents après nettoyage: " .
-                json_encode($parents, JSON_PRETTY_PRINT) .
-                "\n",
-            FILE_APPEND | LOCK_EX,
-        );
-
-        foreach ($parents as $index => $parent) {
-            Log::info("Debug Parent $index:", [
-                "parent" => $parent,
-                "type" => $parent["type"] ?? "non défini",
-                "has_nom" => isset($parent["nom"]),
-                "has_prenoms" => isset($parent["prenoms"]),
-                "has_telephone" => isset($parent["telephone"]),
-                "has_parent_id" => isset($parent["parent_id"]),
-            ]);
-
-            if (isset($parent["type"]) && $parent["type"] === "nouveau") {
-                $hasParentData =
-                    !empty($parent["nom"]) ||
-                    !empty($parent["prenoms"]) ||
-                    !empty($parent["telephone"]) ||
-                    !empty($parent["email"]) ||
-                    !empty($parent["profession"]) ||
-                    !empty($parent["adresse"]);
-
-                if ($hasParentData) {
-                    Log::info(
-                        "Parent $index: Type NOUVEAU détecté - Ajout des règles de validation",
-                    );
-                    $rules["parents.$index.nom"] = "required|string|max:100";
-                    $rules["parents.$index.prenoms"] =
-                        "required|string|max:100";
-                    $rules["parents.$index.telephone"] =
-                        "required|string|max:20";
-                    $rules["parents.$index.relation"] = "required|string";
-                    $messages["parents.$index.nom.required"] =
-                        "Le nom du parent/tuteur est obligatoire";
-                    $messages["parents.$index.prenoms.required"] =
-                        "Le(s) prénom(s) du parent/tuteur est/sont obligatoire(s)";
-                    $messages["parents.$index.telephone.required"] =
-                        "Le téléphone du parent/tuteur est obligatoire";
-                    $messages["parents.$index.relation.required"] =
-                        "La relation avec le parent/tuteur est obligatoire";
-                }
-            } elseif (
-                isset($parent["type"]) &&
-                $parent["type"] === "existant"
-            ) {
-                if (!empty($parent["parent_id"])) {
-                    Log::info(
-                        "Parent $index: Type EXISTANT détecté - Ajout des règles pour parent existant",
-                    );
-                    $rules["parents.$index.parent_id"] =
-                        "required|exists:esbtp_parents,id";
-                    $rules["parents.$index.relation"] = "required|string";
-                    $messages["parents.$index.parent_id.required"] =
-                        "Veuillez sélectionner un parent existant";
-                    $messages["parents.$index.parent_id.exists"] =
-                        'Le parent sélectionné n\'existe pas';
-                    $messages["parents.$index.relation.required"] =
-                        "La relation avec le parent/tuteur est obligatoire";
-                }
-                // NE PAS ajouter de règle sur nom/prenoms/telephone pour un parent existant
-            } else {
-                Log::warning("Parent $index: Type non reconnu ou manquant", [
-                    "parent" => $parent,
-                ]);
-            }
-        }
-
-        // Debug: Log des règles finales
-        Log::info("Debug Validation - Règles appliquées:", [
-            "rules" => $rules,
-            "messages" => $messages,
-        ]);
-
-        $validator = Validator::make($request->all(), $rules, $messages);
-        if ($validator->fails()) {
-            Log::error("Validation échouée:", [
-                "errors" => $validator->errors()->toArray(),
-                "input" => $request->all(),
-            ]);
-
-            return redirect()->back()->withErrors($validator)->withInput();
-        }
-
         try {
-            // Log des données soumises pour débogage
-            Log::info("Données reçues:", $request->all());
             // Récupérer les informations complètes de la classe sélectionnée
             $classe = ESBTPClasse::with([
                 "filiere",
@@ -782,20 +614,6 @@ class ESBTPInscriptionController extends Controller
                 "matricule" => $request->matricule,
             ];
 
-            // Ajouter un log pour déboguer
-            \Log::info('Données de l\'étudiant', [
-                "etudiantData" => $etudiantData,
-                "matriculeFromRequest" => $request->matricule,
-            ]);
-
-            // Ajouter un log supplémentaire pour les champs ville et commune
-            \Log::info("Champs de résidence", [
-                "ville" => $request->ville,
-                "commune" => $request->commune,
-                "lieu_naissance" => $request->lieu_naissance,
-                "adresse" => $request->adresse,
-            ]);
-
             // Traiter la photo si fournie
             if ($request->hasFile("photo")) {
                 $etudiantData["photo"] = $this->handlePhotoUpload(
@@ -806,7 +624,7 @@ class ESBTPInscriptionController extends Controller
             // Récupérer le statut d'affectation depuis le request
             $affectationStatus = $request->input(
                 "affectation_status",
-                "affecté",
+                ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
             );
 
             // CORRECTION: Utiliser l'année courante au lieu de l'année de la classe
@@ -1044,6 +862,8 @@ class ESBTPInscriptionController extends Controller
      */
     public function show(ESBTPInscription $inscription)
     {
+        $this->authorize('view', $inscription);
+
         // Charger toutes les relations nécessaires, y compris payments
         $inscription->load([
             "etudiant.parents",
@@ -1092,14 +912,7 @@ class ESBTPInscriptionController extends Controller
         $feeCategoriesWithRules = [];
 
         // Récupérer le statut d'affectation de l'inscription
-        $affectationStatus = $inscription->affectation_status ?? "affecté";
-
-        // Log pour debugging du statut d'affectation
-        \Log::info('Affichage inscription - Statut d\'affectation', [
-            "inscription_id" => $inscription->id,
-            "affectation_status" => $affectationStatus,
-            "matricule" => $inscription->etudiant->matricule ?? "N/A",
-        ]);
+        $affectationStatus = $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
 
         // Traiter les frais obligatoires (utiliser les souscriptions individuelles)
         foreach ($mandatoryCategories as $category) {
@@ -1128,41 +941,16 @@ class ESBTPInscriptionController extends Controller
 
             $totalPaye = $paiements->sum("montant");
 
-            // PRIORITÉ: Utiliser d'abord le montant de la souscription (modifiable par admin)
+            // Priorité: souscription > règle > défaut catégorie
             if ($subscription) {
                 $montantAttendu = $subscription->amount;
                 $isConfigured = true;
-
-                \Log::info("Calcul frais obligatoire - utilise souscription", [
-                    "category" => $category->name,
-                    "montant_attendu" => $montantAttendu,
-                    "subscription_amount" => $subscription->amount,
-                    "source" => "souscription_prioritaire",
-                ]);
             } elseif ($rule) {
-                // Fallback: utiliser les règles selon le statut d'affectation
                 $montantAttendu = $rule->getMontantByStatus($affectationStatus);
                 $isConfigured = true;
-
-                \Log::info("Calcul frais obligatoire - utilise règle", [
-                    "category" => $category->name,
-                    "affectation_status" => $affectationStatus,
-                    "montant_attendu" => $montantAttendu,
-                    "has_rule" => true,
-                    "rule_amounts" => $rule->getAllAmounts(),
-                    "source" => "regle_fallback",
-                ]);
             } else {
-                // Dernière solution: montant par défaut de la catégorie
                 $montantAttendu = $category->default_amount;
                 $isConfigured = false;
-
-                \Log::info("Calcul frais obligatoire - utilise défaut", [
-                    "category" => $category->name,
-                    "montant_attendu" => $montantAttendu,
-                    "default_amount" => $category->default_amount,
-                    "source" => "defaut_category",
-                ]);
             }
             $isSubscribed = $subscription !== null;
 
@@ -1361,6 +1149,8 @@ class ESBTPInscriptionController extends Controller
                 ]);
         }
 
+        $canViewFinancials = auth()->user()->can('viewFinancials', $inscription);
+
         return view(
             "esbtp.inscriptions.show",
             compact(
@@ -1376,6 +1166,7 @@ class ESBTPInscriptionController extends Controller
                 "statistiquesReliquats",
                 "reinscriptionData",
                 "classesDisponibles",
+                "canViewFinancials",
             ),
         );
     }
@@ -2610,7 +2401,7 @@ class ESBTPInscriptionController extends Controller
                 ->update(['archived_at' => null]);
 
             // Mettre à jour la classe et le statut d'affectation
-            $affectationStatus = $request->input("affectation_status", $ancienneClasseId ? "réaffecté" : "affecté");
+            $affectationStatus = $request->input("affectation_status", $ancienneClasseId ? "réaffecté" : ESBTPInscription::DEFAULT_AFFECTATION_STATUS);
             $inscription->update([
                 "classe_id" => $nouvelleClasseId,
                 "affectation_status" => $affectationStatus,
@@ -3078,7 +2869,7 @@ class ESBTPInscriptionController extends Controller
                 'status' => 'en_attente',
                 'workflow_step' => 'prospect',
                 'type_inscription' => $isReinscription ? 'réinscription' : 'première_inscription',
-                'affectation_status' => $isReinscription ? 'affecté' : null,
+                'affectation_status' => $isReinscription ? ESBTPInscription::DEFAULT_AFFECTATION_STATUS : null,
                 'montant_scolarite' => 0,
                 'frais_inscription' => 0,
                 'created_by' => Auth::id(),

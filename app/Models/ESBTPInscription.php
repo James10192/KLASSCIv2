@@ -413,7 +413,7 @@ class ESBTPInscription extends Model
      */
     public function scopeAffectes($query)
     {
-        return $query->where('affectation_status', 'affecté');
+        return $query->where('affectation_status', static::DEFAULT_AFFECTATION_STATUS);
     }
 
     /**

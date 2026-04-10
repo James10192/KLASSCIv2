@@ -2467,7 +2467,7 @@ class ESBTPClasseController extends Controller
                 // Mettre à jour l'inscription
                 $inscription->update([
                     'classe_id' => $classe->id,
-                    'affectation_status' => $inscription->classe_id ? 'réaffecté' : 'affecté',
+                    'affectation_status' => $inscription->classe_id ? 'réaffecté' : ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
                     'updated_by' => Auth::id(),
                 ]);
 

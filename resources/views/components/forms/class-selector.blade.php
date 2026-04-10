@@ -137,6 +137,7 @@
                                 <th class="sortable" data-column="niveau" style="cursor: pointer;">
                                     Niveau <i class="fas fa-sort text-muted"></i>
                                 </th>
+                                <th>Places</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -347,32 +348,7 @@ body.modal-open * {
         placesInfo.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">Loading...</span></div> Vérification des places...';
 
         // Vérifier les places disponibles
-        fetch(`/esbtp/classes/${classeId}/available-places`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erreur HTTP ! Statut: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                debugLog('Places disponibles:', data);
-                if (data.available_places !== undefined) {
-                    let message = `Places disponibles: <strong>${data.available_places}</strong> / ${data.capacity}`;
-                    let alertClass = 'alert-success';
-                    if (data.available_places <= 5) alertClass = 'alert-warning';
-                    if (data.available_places === 0) {
-                        alertClass = 'alert-danger';
-                        message = '<strong>Aucune place disponible !</strong>';
-                    }
-                    placesInfo.innerHTML = `<div class="alert ${alertClass} p-2 mt-2">${message}</div>`;
-                } else {
-                     placesInfo.innerHTML = `<div class="alert alert-danger p-2 mt-2">Réponse invalide du serveur.</div>`;
-                }
-            })
-            .catch(error => {
-                debugError('Erreur de vérification des places:', error);
-                placesInfo.innerHTML = `<div class="alert alert-danger p-2 mt-2">Erreur lors de la récupération des places.</div>`;
-            });
+        fetchAvailablePlaces(classeId, placesInfo);
 
         // Déclencher l'événement de changement de classe pour charger les frais (UNE SEULE FOIS)
         setTimeout(() => {
@@ -384,6 +360,51 @@ body.modal-open * {
         }, 100); // Petit délai pour éviter les conflits
     }
 
+    // Fonction partagée pour vérifier les places disponibles
+    function fetchAvailablePlaces(classeId, targetDiv) {
+        fetch(`/esbtp/classes/${classeId}/available-places`)
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                debugLog('Places disponibles:', data);
+                if (data.available_places !== undefined) {
+                    const ratio = data.capacity > 0 ? data.available_places / data.capacity : 0;
+                    let message = `<i class="fas fa-chair me-1"></i>Places disponibles : <strong>${data.available_places}</strong> / ${data.capacity}`;
+                    let alertClass = 'alert-success';
+                    if (ratio <= 0.2 && data.available_places > 0) alertClass = 'alert-warning';
+                    if (data.available_places <= 0) {
+                        alertClass = 'alert-danger';
+                        message = '<i class="fas fa-exclamation-triangle me-1"></i><strong>Classe complète !</strong> Aucune place disponible. Veuillez choisir une autre classe.';
+                    }
+                    targetDiv.innerHTML = `<div class="alert ${alertClass} p-2 mt-2 mb-0">${message}</div>`;
+                    toggleSubmitButton(data.available_places > 0);
+                } else {
+                    targetDiv.innerHTML = `<div class="alert alert-danger p-2 mt-2 mb-0">Réponse invalide du serveur.</div>`;
+                    toggleSubmitButton(true);
+                }
+            })
+            .catch(error => {
+                debugError('Erreur de vérification des places:', error);
+                targetDiv.innerHTML = `<div class="alert alert-warning p-2 mt-2 mb-0"><i class="fas fa-exclamation-circle me-1"></i>Impossible de vérifier les places disponibles.</div>`;
+                toggleSubmitButton(true);
+            });
+    }
+
+    // Bloquer/débloquer le bouton submit du formulaire
+    function toggleSubmitButton(enabled) {
+        const submitBtn = document.querySelector('form button[type="submit"], form input[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = !enabled;
+            if (!enabled) {
+                submitBtn.title = 'Classe complète — veuillez choisir une autre classe';
+            } else {
+                submitBtn.title = '';
+            }
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const classeField = document.getElementById('classe_id');
         const availablePlacesDiv = document.getElementById('available-places-info');
@@ -393,31 +414,10 @@ body.modal-open * {
                 const classeId = this.value;
                 if (classeId && availablePlacesDiv) {
                     availablePlacesDiv.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Vérification...';
-                    fetch(`/esbtp/classes/${classeId}/available-places`)
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.available_places !== undefined) {
-                                let message = `Places disponibles: <strong>${data.available_places}</strong>`;
-                                let alertClass = 'alert-success';
-                                if (data.available_places <= 5) alertClass = 'alert-warning';
-                                if (data.available_places === 0) {
-                                    alertClass = 'alert-danger';
-                                    message = '<strong>Aucune place disponible !</strong>';
-                                }
-                                availablePlacesDiv.innerHTML = `<div class="alert ${alertClass} p-2">${message}</div>`;
-                            }
-                        })
-                        .catch(error => {
-                            debugError('Erreur de vérification des places:', error);
-                            // Simulation temporaire - afficher un nombre aléatoire de places
-                            const placesSimulees = Math.floor(Math.random() * 20) + 5; // Entre 5 et 25 places
-                            let alertClass = 'alert-success';
-                            if (placesSimulees <= 10) alertClass = 'alert-warning';
-                            if (placesSimulees <= 5) alertClass = 'alert-danger';
-                            availablePlacesDiv.innerHTML = `<div class="alert ${alertClass} p-2"><strong>Places disponibles:</strong> ${placesSimulees} (estimation)</div>`;
-                        });
+                    fetchAvailablePlaces(classeId, availablePlacesDiv);
                 } else if (availablePlacesDiv) {
                     availablePlacesDiv.innerHTML = '';
+                    toggleSubmitButton(true);
                 }
             });
         }
@@ -460,17 +460,36 @@ body.modal-open * {
         tableBody.innerHTML = '';
 
         if (classes.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Aucune classe trouvée</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Aucune classe trouvée</td></tr>';
             return;
         }
 
         classes.forEach(classe => {
             const displayText = `${classe.name || ''} - ${classe.filiere_name || 'N/A'} - ${classe.niveau_name || 'N/A'}`;
-            tableBody.innerHTML += `<tr>
+            const places = classe.places_disponibles ?? '?';
+            const total = classe.places_totales ?? '?';
+            const isFull = places !== '?' && places <= 0;
+            const isLow = places !== '?' && !isFull && total !== '?' && places <= total * 0.2;
+
+            let placeBadge;
+            if (isFull) {
+                placeBadge = '<span class="badge bg-danger">Complet</span>';
+            } else if (isLow) {
+                placeBadge = `<span class="badge bg-warning text-dark">${places} / ${total}</span>`;
+            } else {
+                placeBadge = `<span class="badge bg-success">${places} / ${total}</span>`;
+            }
+
+            const btnClass = isFull ? 'btn-secondary' : 'btn-primary';
+            const btnDisabled = isFull ? 'disabled' : '';
+            const btnTitle = isFull ? 'title="Classe complète"' : '';
+
+            tableBody.innerHTML += `<tr class="${isFull ? 'table-light text-muted' : ''}">
                 <td>${classe.name || ''}</td>
                 <td>${classe.filiere_name || 'N/A'}</td>
                 <td>${classe.niveau_name || 'N/A'}</td>
-                <td><button type="button" class="btn btn-sm btn-primary" onclick="selectClasse(${classe.id}, '${displayText.replace(/'/g, "\\'")}\')">Sélectionner</button></td>
+                <td class="text-center">${placeBadge}</td>
+                <td><button type="button" class="btn btn-sm ${btnClass}" ${btnDisabled} ${btnTitle} onclick="selectClasse(${classe.id}, '${displayText.replace(/'/g, "\\'")}')">Sélectionner</button></td>
             </tr>`;
         });
     }
