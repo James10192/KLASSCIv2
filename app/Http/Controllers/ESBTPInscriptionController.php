@@ -88,16 +88,6 @@ class ESBTPInscriptionController extends Controller
      */
     public function index(Request $request, FuzzyNameMatcher $matcher)
     {
-        $startMicrotime = microtime(true);
-        $startTimestamp = now()->toIso8601String();
-        $baseLogContext = [
-            "timestamp" => $startTimestamp,
-            "url" => $request->fullUrl(),
-            "query" => $request->query(),
-            "user_id" => optional($request->user())->id,
-        ];
-        \Log::info("ESBTPInscriptionController@index start", $baseLogContext);
-
         // Récupérer les filtres de recherche
         $search = $request->input("search");
         $filiere = $request->input("filiere");
@@ -158,21 +148,6 @@ class ESBTPInscriptionController extends Controller
 
         $perPage = 15;
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
-
-        \Log::info(
-            "ESBTPInscriptionController@index processing",
-            array_merge($baseLogContext, [
-                "has_search" => (bool) $search,
-                "filters" => [
-                    "filiere" => $filiere,
-                    "niveau" => $niveau,
-                    "annee" => $annee,
-                    "status" => $status,
-                ],
-                "page" => $currentPage,
-                "per_page" => $perPage,
-            ]),
-        );
 
         $escapeLike = static fn(string $value): string => str_replace(
             ["\\", "%", "_"],
@@ -265,12 +240,9 @@ class ESBTPInscriptionController extends Controller
             try {
                 $candidates = $candidatesQuery->limit(200)->get();
             } catch (QueryException $exception) {
-                \Log::warning(
-                    "ESBTPInscriptionController@index fallback search triggered",
-                    array_merge($baseLogContext, [
-                        "message" => $exception->getMessage(),
-                    ]),
-                );
+                \Log::warning("Inscription search fallback triggered", [
+                    "message" => $exception->getMessage(),
+                ]);
 
                 $fallbackQuery = clone $baseQuery;
                 $fallbackQuery->where(function ($q) use ($search, $escapeLike) {
@@ -400,32 +372,7 @@ class ESBTPInscriptionController extends Controller
                 ->count(),
         ];
 
-        \Log::info(
-            "ESBTPInscriptionController@index completed",
-            array_merge($baseLogContext, [
-                "timestamp" => now()->toIso8601String(),
-                "total" => $inscriptions->total(),
-                "page" => $inscriptions->currentPage(),
-                "per_page" => $inscriptions->perPage(),
-                "duration_ms" => round(
-                    (microtime(true) - $startMicrotime) * 1000,
-                    2,
-                ),
-            ]),
-        );
-
         if ($request->ajax()) {
-            \Log::info(
-                "ESBTPInscriptionController@index returning AJAX response",
-                array_merge($baseLogContext, [
-                    "timestamp" => now()->toIso8601String(),
-                    "duration_ms" => round(
-                        (microtime(true) - $startMicrotime) * 1000,
-                        2,
-                    ),
-                ]),
-            );
-
             return response()->json([
                 "html" => view("esbtp.inscriptions.partials.results", [
                     "inscriptions" => $inscriptions,
@@ -433,17 +380,6 @@ class ESBTPInscriptionController extends Controller
                 "url" => $request->fullUrl(),
             ]);
         }
-
-        \Log::info(
-            "ESBTPInscriptionController@index returning view",
-            array_merge($baseLogContext, [
-                "timestamp" => now()->toIso8601String(),
-                "duration_ms" => round(
-                    (microtime(true) - $startMicrotime) * 1000,
-                    2,
-                ),
-            ]),
-        );
 
         return view(
             "esbtp.inscriptions.index",
@@ -2809,33 +2745,8 @@ class ESBTPInscriptionController extends Controller
      * Enregistrer une pré-inscription (caissier)
      * Crée un étudiant minimal + inscription prospect + paiement optionnel
      */
-    public function storePreInscription(Request $request)
+    public function storePreInscription(\App\Http\Requests\Inscription\StorePreInscriptionRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'etudiant_existant_id' => 'nullable|integer|exists:esbtp_etudiants,id',
-            'nom' => 'required_without:etudiant_existant_id|string|max:100',
-            'prenoms' => 'required_without:etudiant_existant_id|string|max:100',
-            'classe_id' => 'required|exists:esbtp_classes,id',
-            'telephone' => 'nullable|string|max:20',
-            'frais' => 'nullable|array',
-            'frais.*.variant_id' => 'nullable|string',
-            'frais.*.amount' => 'nullable|numeric|min:0',
-            'paiement_categories' => 'nullable|array',
-            'paiement_categories.*' => 'integer',
-            'paiement_montants' => 'nullable|array',
-            'paiement_montants.*' => 'numeric|min:0',
-            'mode_paiement' => 'nullable|string|in:especes,cheque,virement,mobile_money',
-            'reference_paiement' => 'nullable|string|max:100',
-        ], [
-            'nom.required' => 'Le nom est obligatoire',
-            'prenoms.required' => 'Le(s) prénom(s) est/sont obligatoire(s)',
-            'classe_id.required' => 'Veuillez sélectionner une classe',
-        ]);
-
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
-        }
-
         try {
             DB::beginTransaction();
 

@@ -10,11 +10,13 @@ use App\Models\ESBTPMatiere;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPInscription;
+use App\Models\ESBTPBulletin;
 use App\Policies\ESBTPSeanceCoursPolicy;
 use App\Policies\ESBTPMatierePolicy;
 use App\Policies\ESBTPPaiementPolicy;
 use App\Policies\ESBTPNotePolicy;
 use App\Policies\ESBTPInscriptionPolicy;
+use App\Policies\ESBTPBulletinPolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -29,6 +31,7 @@ class AuthServiceProvider extends ServiceProvider
         ESBTPPaiement::class => ESBTPPaiementPolicy::class,
         ESBTPNote::class => ESBTPNotePolicy::class,
         ESBTPInscription::class => ESBTPInscriptionPolicy::class,
+        ESBTPBulletin::class => ESBTPBulletinPolicy::class,
     ];
 
     /**

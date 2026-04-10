@@ -1033,46 +1033,6 @@ class ESBTPComptabiliteController extends Controller
         return $buckets;
     }
 
-    private function calculerTendance($donnees) { /* Implementation */ return ['slope' => 0.05, 'intercept' => 100000]; }
-    private function projetterValeur($tendance, $periode) { /* Implementation */ return $tendance['intercept'] + ($tendance['slope'] * $periode * 30000); }
-    private function getFacteurSaisonnier($mois) { /* Implementation */ return 1.0 + (sin($mois * pi() / 6) * 0.1); }
-    private function predictionIA($date, $histRecettes, $histDepenses) { /* Implementation */ return ['facteur_recettes' => 1.05, 'facteur_depenses' => 1.02]; }
-    private function calculerNiveauConfiance($periode, $includeIA) { /* Implementation */ return max(0.95 - ($periode * 0.05), 0.6); }
-    private function determinerScenario($cashFlow) { return $cashFlow > 0 ? 'positif' : 'negatif'; }
-    private function genererRecommandationsCashFlow($projections) { /* Implementation */ return []; }
-    private function identifierRisquesCashFlow($projections) { /* Implementation */ return []; }
-    private function identifierOpportunites($projections) { /* Implementation */ return []; }
-    private function calculerFiabiliteGlobale($projections) { /* Implementation */ return 0.85; }
-    private function calculerSeuilsAnomalies($paiements, $depenses, $personnalises) { /* Implementation */ return ['montant_max' => 1000000, 'z_score' => 2.5]; }
-    private function detecterAnomaliesMontants($paiements, $depenses, $seuils) { /* Implementation */ return []; }
-    private function detecterAnomaliesTemporelles($paiements, $depenses) { /* Implementation */ return []; }
-    private function detecterAnomaliesFrequence($paiements, $depenses) { /* Implementation */ return []; }
-    private function detecterPatternsSuspects($paiements, $depenses) { /* Implementation */ return []; }
-    private function detecterAnomaliesCategories($paiements, $depenses) { /* Implementation */ return []; }
-    private function evaluerNiveauRisqueGlobal($anomalies) { /* Implementation */ return 'moyen'; }
-    private function calculerScoreConfiance($anomalies) { /* Implementation */ return 0.78; }
-    private function genererRecommandationsAnomalies($anomalies) { /* Implementation */ return []; }
-    private function identifierActionsImmediates($anomalies) { /* Implementation */ return []; }
-    private function getDonneesHistoriques($periode) { /* Implementation */ return ['recettes' => [], 'depenses' => []]; }
-    private function analyserTendance($donnees) { /* Implementation */ return ['direction' => 'croissante', 'force' => 0.75]; }
-    private function analyserTendancesParFiliere($donnees) { /* Implementation */ return []; }
-    private function analyserTendancesParCategorie($donnees) { /* Implementation */ return []; }
-    private function analyserTendanceTauxRecouvrement($donnees) { /* Implementation */ return []; }
-    private function analyserCycleSaisonnier($donnees) { /* Implementation */ return []; }
-    private function genererPredictionsTendances($tendances, $periode) { /* Implementation */ return []; }
-    private function genererInsightsTendances($tendances) { /* Implementation */ return []; }
-    private function identifierAlertesTondances($tendances) { /* Implementation */ return []; }
-    private function identifierOpportunitesAmelioration($tendances) { /* Implementation */ return []; }
-    private function getDonneesML($periode) { /* Implementation */ return []; }
-    private function modelRegressionLineaire($donnees) { /* Implementation */ return ['r2' => 0.85, 'predictions' => []]; }
-    private function modelMoyennesMobiles($donnees) { /* Implementation */ return ['accuracy' => 0.78, 'predictions' => []]; }
-    private function modelDecompositionSaisonniere($donnees) { /* Implementation */ return ['seasonal_strength' => 0.65, 'predictions' => []]; }
-    private function modelReseauxNeurones($donnees) { /* Implementation */ return ['loss' => 0.15, 'predictions' => []]; }
-    private function combinerPredictions($modeles, $periode) { /* Implementation */ return []; }
-    private function evaluerConfianceModeles($modeles) { /* Implementation */ return []; }
-    private function identifierFacteursInfluence($donnees) { /* Implementation */ return []; }
-    private function genererScenario($predictions, $type) { /* Implementation */ return []; }
-    private function genererRecommandationsStrategiques($predictions) { /* Implementation */ return []; }
     /**
      * Calcule le cash flow en temps réel
      */

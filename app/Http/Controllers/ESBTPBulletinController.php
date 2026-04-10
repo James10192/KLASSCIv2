@@ -302,6 +302,8 @@ class ESBTPBulletinController extends Controller
      */
     public function show(ESBTPBulletin $bulletin)
     {
+        $this->authorize('view', $bulletin);
+
         $bulletin->load(['etudiant', 'classe', 'anneeUniversitaire', 'resultats.matiere', 'user']);
 
         return view('esbtp.bulletins.show', compact('bulletin'));
@@ -400,6 +402,8 @@ class ESBTPBulletinController extends Controller
      */
     public function genererPDF(ESBTPBulletin $bulletin)
     {
+        $this->authorize('download', $bulletin);
+
         try {
             Log::info('Début de la génération du PDF pour le bulletin #'.$bulletin->id);
 
