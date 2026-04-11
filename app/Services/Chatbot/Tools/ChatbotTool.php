@@ -155,10 +155,13 @@ abstract class ChatbotTool
      */
     public function toToolDefinition(): array
     {
+        $schema = $this->parameters();
+        $schema['additionalProperties'] = false;
+
         return [
             'name' => $this->name(),
             'description' => $this->description(),
-            'input_schema' => $this->parameters(),
+            'input_schema' => $schema,
         ];
     }
 }
