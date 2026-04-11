@@ -104,6 +104,20 @@
                                            min="1" max="4">
                                 </div>
                             </div>
+                            <div class="row" id="parent_id_container" style="{{ old('is_tronc_commun') ? 'display:none;' : '' }}">
+                                <div class="col-md-6 mb-3">
+                                    <label for="parent_id" class="form-label">Filière parent (Tronc Commun)</label>
+                                    <select class="form-control select2" id="parent_id" name="parent_id">
+                                        <option value="">-- Aucune (filière indépendante) --</option>
+                                        @foreach($filieres->where('is_tronc_commun', true) as $filiere)
+                                            <option value="{{ $filiere->id }}" {{ old('parent_id') == $filiere->id ? 'selected' : '' }}>
+                                                {{ $filiere->name }} ({{ $filiere->code }})
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted">Sélectionnez la filière tronc commun dont cette filière est une spécialisation</small>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     @endif
@@ -124,9 +138,13 @@
 @section('scripts')
 <script>
     $(document).ready(function() {
-        // Toggle semestres tronc commun
+        // Toggle semestres tronc commun + parent_id
         $('#is_tronc_commun').on('change', function() {
             $('#semestres_tc_container').toggle(this.checked);
+            $('#parent_id_container').toggle(!this.checked);
+            if (this.checked) {
+                $('#parent_id').val('').trigger('change');
+            }
         });
 
         // Configuration Select2

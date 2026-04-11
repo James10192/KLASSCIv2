@@ -1596,117 +1596,10 @@
                         </div>
                     @endcan
 
-                    <!-- Coordinateur Section -->
-                    @can('can_coordinate_academics')
-                        <div class="menu-category">Coordination pédagogique</div>
-
-                        <!-- Planning & Scheduling -->
-                        <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.emploi-temps.*') || Request::routeIs('esbtp.planning-general.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-calendar-alt"></i></div>
-                                <div class="menu-text">Planning & Emplois du temps</div>
-                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
-                            </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.emploi-temps.*') || Request::routeIs('esbtp.planning-general.*') ? 'show' : '' }}">
-                                <a href="{{ route('esbtp.emploi-temps.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.emploi-temps.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Emplois du temps</span>
-                                </a>
-                                <a href="{{ route('esbtp.planning-general.coordinateur') }}" class="menu-sublink {{ Request::routeIs('esbtp.planning-general.coordinateur') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Planning général</span>
-                                </a>
-                            </div>
-                        </div>
-
-                        @can('module.etudiants.access')
-                        <!-- Student Management -->
-                        <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
-                                <div class="menu-text">Gestion étudiants</div>
-                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
-                            </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.reinscription.*') ? 'show' : '' }}">
-                                <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Liste des étudiants</span>
-                                </a>
-                                <a href="{{ route('esbtp.reinscription.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Réinscriptions</span>
-                                </a>
-                            </div>
-                        </div>
-
-                        <!-- Classes Management -->
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.classes.index') }}" class="menu-link {{ Request::routeIs('esbtp.classes.index') || Request::routeIs('esbtp.classes.show') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-chalkboard"></i></div>
-                                <div class="menu-text">Classes</div>
-                            </a>
-                        </div>
-                        @endcan
-
-                        <!-- Personnel Management -->
-                        @can('manage_personnel')
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.personnel.unified.index') }}" class="menu-link {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-users-cog"></i></div>
-                                <div class="menu-text">Gestion du personnel</div>
-                            </a>
-                        </div>
-                        @endcan
-
-                        @can('module.enseignants.access')
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.enseignants.index') }}" class="menu-link {{ Request::routeIs('esbtp.enseignants.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-chalkboard-teacher"></i></div>
-                                <div class="menu-text">Enseignants</div>
-                            </a>
-                        </div>
-                        @endcan
-
-                        <!-- Attendance Dashboard -->
-                        @can('module.presences.access')
-                        <div class="menu-item">
-                            <a href="{{ route('coordinateur.attendance-dashboard') }}" class="menu-link {{ Request::routeIs('coordinateur.attendance-dashboard') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-chart-bar"></i></div>
-                                <div class="menu-text">Tableau de Bord Présences</div>
-                            </a>
-                        </div>
-                        @endcan
-
-                        <!-- Communication -->
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.annonces.index') }}" class="menu-link {{ Request::routeIs('esbtp.annonces.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-bullhorn"></i></div>
-                                <div class="menu-text">Annonces</div>
-                            </a>
-                        </div>
-
-                        <!-- Evaluations & Grades -->
-                        @can('module.notes_evaluations.access')
-                        <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.evaluations.*') || Request::routeIs('esbtp.notes.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-clipboard-list"></i></div>
-                                <div class="menu-text">Évaluations & Notes</div>
-                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
-                            </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.evaluations.*') || Request::routeIs('esbtp.notes.*') ? 'show' : '' }}">
-                                <a href="{{ route('esbtp.evaluations.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.evaluations.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Évaluations</span>
-                                </a>
-                                <a href="{{ route('esbtp.notes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.notes.*') ? 'active' : '' }}">
-                                    <span class="menu-dot"></span>
-                                    <span>Notes</span>
-                                </a>
-                            </div>
-                        </div>
-                        @endcan
-
-                    @endcan
+                    {{-- Coordination pédagogique section removed — all items exist in their canonical sections
+                         (Étudiants, Notes & Rapports, Présence & Absences, Administration, Communication, Enseignement).
+                         Coordinateurs see these items via their permissions on the canonical sections.
+                         Removed 2026-04-11 to fix superAdmin sidebar duplication. --}}
 
                     <!-- Teaching Section -->
                     @can('module.emploi_temps.access')
@@ -1747,7 +1640,6 @@
                     @can('view_notes')
                         <div class="menu-category">Notes & Rapports</div>
 
-                        @can('module.notes_evaluations.access')
                         <!-- Grades Management -->
                         <div class="menu-accordion">
                             <button class="menu-accordion-btn {{ Request::routeIs('esbtp.notes.*') || Request::routeIs('esbtp.bulletins.*') || Request::routeIs('esbtp.resultats.*') ? 'active' : '' }}">
@@ -1774,7 +1666,6 @@
                                 <div class="menu-text">Examens & Évaluations</div>
                             </a>
                         </div>
-                        @endcan
                     @endcan
                     @endcan
 
@@ -1891,7 +1782,9 @@
                     @endcan
                     @endcan
 
+                    {{-- Enseignant-only section: hidden for users who already see canonical sections --}}
                     @can('can_teach')
+                    @if(!auth()->user()->can('access_admin'))
                         <div class="menu-category">Enseignement</div>
 
                         @can('view_classes')
@@ -1929,6 +1822,7 @@
                             </a>
                         </div>
                         @endcan
+                    @endif
                     @endcan
 
                     <!-- Caissier Section -->

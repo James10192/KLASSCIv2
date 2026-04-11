@@ -148,6 +148,16 @@ class ESBTPFiliereController extends Controller
 
         $filiere = ESBTPFiliere::findOrFail($id);
 
+        // Prevent circular parent reference
+        if ($request->parent_id && $request->parent_id != $filiere->parent_id) {
+            $proposedParent = ESBTPFiliere::find($request->parent_id);
+            if ($proposedParent && $proposedParent->isDescendantOf($filiere)) {
+                return redirect()->back()
+                    ->with('error', 'Impossible : la filière parent sélectionnée est une spécialisation de cette filière.')
+                    ->withInput();
+            }
+        }
+
         // Update attributes
         $filiere->name = $request->name;
         $filiere->code = $request->code;
