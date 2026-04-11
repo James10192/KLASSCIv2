@@ -503,6 +503,12 @@
                             <span class="info-label">Classe :</span>
                             <span class="info-value">{{ $classe->libelle ?? $classe->name }}</span>
                         </div>
+                        @if(!empty($isSpecialisation) && !empty($classeTroncCommun) && ($settings['tronc_commun_bulletin_show_origin'] ?? '1') == '1')
+                        <div class="info-row">
+                            <span class="info-label">Classe S1 (TC) :</span>
+                            <span class="info-value">{{ $classeTroncCommun->libelle ?? $classeTroncCommun->name }}</span>
+                        </div>
+                        @endif
                         <div class="info-row">
                             <span class="info-label">Année d'étude :</span>
                             <span class="info-value">{{ $classe->niveau->libelle ?? $classe->niveau->name ?? ($classe->annee ?? 'N/A') }}</span>

@@ -53,6 +53,23 @@ class ESBTPPlanningConfigController extends Controller
 
         // Récupérer les matières liées à cette combinaison exacte
         $matiereIds = \App\Models\ESBTPMatiereFilierNiveau::matiereIdsForCombo($filiereId, $niveauId);
+
+        // Tronc commun : filtrage strict par semestre
+        $troncCommunStrict = \App\Helpers\SettingsHelper::get('tronc_commun_planning_semestre_strict', false);
+        $filiere = ESBTPFiliere::find($filiereId);
+
+        if ($filiere && $filiere->isTroncCommun() && $troncCommunStrict) {
+            $nbSemestresTc = $filiere->semestres_tronc_commun ?? 1;
+
+            if ($semestre > $nbSemestresTc) {
+                $specialisationIds = $filiere->getSpecialisations()->pluck('id');
+                $matiereIds = \App\Models\ESBTPMatiereFilierNiveau::whereIn('filiere_id', $specialisationIds)
+                    ->where('niveau_etude_id', $niveauId)
+                    ->pluck('matiere_id')
+                    ->unique();
+            }
+        }
+
         $matieresLiees = ESBTPMatiere::where("is_active", true)
             ->whereIn("id", $matiereIds)
             ->orderBy("name")

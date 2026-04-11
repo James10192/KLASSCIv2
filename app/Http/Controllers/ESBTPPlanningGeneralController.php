@@ -184,10 +184,12 @@ class ESBTPPlanningGeneralController extends Controller
                     $statusText = "Partiel";
                 }
 
+                $isTc = $filiere->isTroncCommun();
                 $combinaisons[] = [
                     "filiere" => $filiere,
                     "niveau" => $niveau,
-                    "name" => $filiere->name . " - " . $niveau->name,
+                    "name" => ($isTc ? '[TC] ' : '') . $filiere->name . " - " . $niveau->name,
+                    "is_tronc_commun" => $isTc,
                     "total_matieres" => $totalMatieres,
                     "total_heures" => $totalHeures,
                     "matieres_configurees" => $matieresConfigurees,

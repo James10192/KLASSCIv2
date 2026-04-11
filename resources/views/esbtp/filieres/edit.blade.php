@@ -95,6 +95,42 @@
                         </div>
                     </div>
 
+                    @if(\App\Helpers\SettingsHelper::get('tronc_commun_enabled', false))
+                    <div class="main-card mb-4" style="border-left: 3px solid var(--primary, #0453cb);">
+                        <div class="main-card-body">
+                            <h6 class="mb-3"><i class="fas fa-code-branch me-2 text-primary"></i>Tronc Commun / Spécialisation</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check form-switch">
+                                        <input type="checkbox" class="form-check-input" id="is_tronc_commun" name="is_tronc_commun" value="1"
+                                               {{ old('is_tronc_commun', $filiere->is_tronc_commun) ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="is_tronc_commun">
+                                            Cette filière est un tronc commun
+                                        </label>
+                                    </div>
+                                    <small class="text-muted">Les étudiants choisiront une spécialisation (filière enfant) après le(s) semestre(s) de tronc commun</small>
+                                </div>
+                                <div class="col-md-6 mb-3" id="semestres_tc_container" style="{{ old('is_tronc_commun', $filiere->is_tronc_commun) ? '' : 'display:none;' }}">
+                                    <label for="semestres_tronc_commun" class="form-label">Nombre de semestres tronc commun</label>
+                                    <input type="number" class="form-control" id="semestres_tronc_commun" name="semestres_tronc_commun"
+                                           value="{{ old('semestres_tronc_commun', $filiere->semestres_tronc_commun ?? 1) }}"
+                                           min="1" max="4">
+                                </div>
+                            </div>
+                            @if($filiere->is_tronc_commun && $filiere->options->count() > 0)
+                            <div class="mt-2">
+                                <small class="text-muted"><i class="fas fa-info-circle me-1"></i>Spécialisations disponibles :</small>
+                                <div class="d-flex flex-wrap gap-2 mt-1">
+                                    @foreach($filiere->options as $spec)
+                                        <span class="badge bg-primary bg-opacity-10 text-primary">{{ $spec->name }}</span>
+                                    @endforeach
+                                </div>
+                            </div>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+
                     <div class="d-flex justify-content-end gap-2">
                         <a href="{{ route('esbtp.filieres.show', $filiere) }}" class="btn btn-secondary">Annuler</a>
                         <button type="submit" class="btn btn-lg btn-primary fw-bold shadow rounded-3 px-4 py-2 d-flex align-items-center gap-2 animate-fade-in-up">
@@ -111,6 +147,11 @@
 @section('scripts')
 <script>
     $(document).ready(function() {
+        // Toggle semestres tronc commun
+        $('#is_tronc_commun').on('change', function() {
+            $('#semestres_tc_container').toggle(this.checked);
+        });
+
         // Configuration Select2
         $('.select2').select2({
             theme: 'bootstrap-5',

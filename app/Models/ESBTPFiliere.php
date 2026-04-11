@@ -29,6 +29,8 @@ class ESBTPFiliere extends Model
         'is_active',
         'parent_id',
         'option_filiere',
+        'is_tronc_commun',
+        'semestres_tronc_commun',
     ];
 
     /**
@@ -38,6 +40,8 @@ class ESBTPFiliere extends Model
      */
     protected $casts = [
         'is_active' => 'boolean',
+        'is_tronc_commun' => 'boolean',
+        'semestres_tronc_commun' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
@@ -159,6 +163,30 @@ class ESBTPFiliere extends Model
      * @param ESBTPFiliere $filiere La filière potentiellement ancêtre
      * @return bool
      */
+    /**
+     * Vérifie si cette filière est un tronc commun.
+     */
+    public function isTroncCommun(): bool
+    {
+        return $this->is_tronc_commun;
+    }
+
+    /**
+     * Récupère les spécialisations disponibles (filières enfants).
+     */
+    public function getSpecialisations()
+    {
+        return $this->options()->where('is_active', true)->get();
+    }
+
+    /**
+     * Scope pour les filières tronc commun.
+     */
+    public function scopeTroncCommun($query)
+    {
+        return $query->where('is_tronc_commun', true);
+    }
+
     public function isDescendantOf(ESBTPFiliere $filiere)
     {
         // Si cette filière est une option directe de la filière passée en paramètre

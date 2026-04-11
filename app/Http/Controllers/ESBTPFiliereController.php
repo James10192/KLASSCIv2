@@ -66,6 +66,8 @@ class ESBTPFiliereController extends Controller
         $filiere->description = $request->description;
         $filiere->is_active = $request->is_active;
         $filiere->parent_id = $request->parent_id;
+        $filiere->is_tronc_commun = $request->boolean('is_tronc_commun');
+        $filiere->semestres_tronc_commun = $request->input('semestres_tronc_commun', 1);
         $filiere->save();
 
         // Handle relations
@@ -152,6 +154,8 @@ class ESBTPFiliereController extends Controller
         $filiere->description = $request->description;
         $filiere->is_active = $request->is_active;
         $filiere->parent_id = $request->parent_id;
+        $filiere->is_tronc_commun = $request->boolean('is_tronc_commun');
+        $filiere->semestres_tronc_commun = $request->input('semestres_tronc_commun', 1);
         $filiere->save();
 
         // Update relations
