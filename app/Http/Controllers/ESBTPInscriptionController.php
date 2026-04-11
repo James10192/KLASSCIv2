@@ -18,7 +18,6 @@ use App\Models\ESBTPParent;
 use App\Models\Setting;
 use App\Services\ComptabiliteService;
 use App\Services\ESBTPInscriptionService;
-use App\Services\FuzzyNameMatcher;
 use App\Services\InscriptionWorkflowService;
 use App\Services\StudentDuplicateDetector;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -36,7 +35,6 @@ use App\Http\Requests\Inscription\ValiderAvecPaiementRequest;
 use App\Http\Requests\Inscription\ValiderDefinitivementRequest;
 use App\Http\Requests\Inscription\ValiderInscriptionRequest;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -57,14 +55,18 @@ class ESBTPInscriptionController extends Controller
     /**
      * Constructeur avec injection du service d'inscription
      */
+    protected $searchService;
+
     public function __construct(
         ESBTPInscriptionService $inscriptionService,
         ComptabiliteService $comptabiliteService,
         InscriptionWorkflowService $workflowService,
+        \App\Services\InscriptionSearchService $searchService,
     ) {
         $this->inscriptionService = $inscriptionService;
         $this->comptabiliteService = $comptabiliteService;
         $this->workflowService = $workflowService;
+        $this->searchService = $searchService;
         $this->middleware("auth");
         $this->middleware("permission:inscriptions.view", [
             "only" => ["index", "show"],
@@ -86,7 +88,7 @@ class ESBTPInscriptionController extends Controller
     /**
      * Afficher la liste des inscriptions.
      */
-    public function index(Request $request, FuzzyNameMatcher $matcher)
+    public function index(Request $request)
     {
         // Récupérer les filtres de recherche
         $search = $request->input("search");
@@ -115,11 +117,7 @@ class ESBTPInscriptionController extends Controller
         if ($annee) {
             $baseQuery->where("annee_universitaire_id", $annee);
         } else {
-            // Par défaut, filtrer par année en cours
-            $anneeEnCours = ESBTPAnneeUniversitaire::where(
-                "is_current",
-                true,
-            )->first();
+            $anneeEnCours = ESBTPAnneeUniversitaire::where("is_current", true)->first();
             if ($anneeEnCours) {
                 $baseQuery->where("annee_universitaire_id", $anneeEnCours->id);
             }
@@ -127,17 +125,12 @@ class ESBTPInscriptionController extends Controller
 
         if ($status && $status !== "all") {
             if ($status === "non_validee") {
-                // Inscriptions non validées : en_attente OU (active mais workflow pas finalisé)
                 $baseQuery->where(function ($q) {
                     $q->where("status", "en_attente")->orWhere(function ($subQ) {
-                        $subQ
-                            ->where("status", "active")
+                        $subQ->where("status", "active")
                             ->where(function ($wq) {
-                                $wq->whereIn("workflow_step", [
-                                    "prospect",
-                                    "documents_complets",
-                                    "en_validation",
-                                ])->orWhereNull("workflow_step");
+                                $wq->whereIn("workflow_step", ["prospect", "documents_complets", "en_validation"])
+                                    ->orWhereNull("workflow_step");
                             });
                     });
                 });
@@ -147,166 +140,15 @@ class ESBTPInscriptionController extends Controller
         }
 
         $perPage = 15;
-        $currentPage = LengthAwarePaginator::resolveCurrentPage();
-
-        $escapeLike = static fn(string $value): string => str_replace(
-            ["\\", "%", "_"],
-            ["\\\\", "\\%", "\\_"],
-            $value,
-        );
 
         if ($search) {
-            $candidatesQuery = clone $baseQuery;
-
-            $searchTokens = collect(
-                preg_split("/[\s,]+/u", $search ?: "", -1, PREG_SPLIT_NO_EMPTY),
-            )
-                ->map(fn($token) => trim($token))
-                ->filter();
-
-            $candidatesQuery->where(function ($q) use (
+            $inscriptions = $this->searchService->search(
+                $baseQuery,
                 $search,
-                $searchTokens,
-                $escapeLike,
-            ) {
-                $escapedSearch = $escapeLike($search);
-                $likeSearch = "%{$escapedSearch}%";
-
-                $q->whereHas("etudiant", function ($etudiantQuery) use (
-                    $likeSearch,
-                    $searchTokens,
-                    $escapeLike,
-                ) {
-                    $etudiantQuery
-                        ->where("matricule", "like", $likeSearch)
-                        ->orWhere("nom", "like", $likeSearch)
-                        ->orWhere("prenoms", "like", $likeSearch)
-                        ->orWhereRaw("CONCAT_WS(' ', prenoms, nom) LIKE ?", [
-                            $likeSearch,
-                        ])
-                        ->orWhereRaw("CONCAT_WS(' ', nom, prenoms) LIKE ?", [
-                            $likeSearch,
-                        ]);
-
-                    if ($searchTokens->isNotEmpty()) {
-                        $etudiantQuery->orWhere(function ($subQuery) use (
-                            $searchTokens,
-                            $escapeLike,
-                        ) {
-                            foreach ($searchTokens as $token) {
-                                $escapedToken = $escapeLike($token);
-                                $likeToken = "%{$escapedToken}%";
-                                $subQuery
-                                    ->orWhere("nom", "like", $likeToken)
-                                    ->orWhere("prenoms", "like", $likeToken)
-                                    ->orWhere("matricule", "like", $likeToken)
-                                    ->orWhere("telephone", "like", $likeToken)
-                                    ->orWhere(
-                                        "email_personnel",
-                                        "like",
-                                        $likeToken,
-                                    );
-                            }
-                        });
-                    }
-                })
-                    ->orWhere("numero_recu", "like", $likeSearch)
-                    ->orWhereHas("classe", function ($classeQuery) use (
-                        $likeSearch,
-                        $searchTokens,
-                        $escapeLike,
-                    ) {
-                        $classeQuery->where("name", "like", $likeSearch);
-
-                        if ($searchTokens->isNotEmpty()) {
-                            $classeQuery->orWhere(function ($subQuery) use (
-                                $searchTokens,
-                                $escapeLike,
-                            ) {
-                                foreach ($searchTokens as $token) {
-                                    $escapedToken = $escapeLike($token);
-                                    $likeToken = "%{$escapedToken}%";
-                                    $subQuery->orWhere(
-                                        "name",
-                                        "like",
-                                        $likeToken,
-                                    );
-                                }
-                            });
-                        }
-                    });
-            });
-
-            try {
-                $candidates = $candidatesQuery->limit(200)->get();
-            } catch (QueryException $exception) {
-                \Log::warning("Inscription search fallback triggered", [
-                    "message" => $exception->getMessage(),
-                ]);
-
-                $fallbackQuery = clone $baseQuery;
-                $fallbackQuery->where(function ($q) use ($search, $escapeLike) {
-                    $escapedSearch = $escapeLike($search);
-                    $likeSearch = "%{$escapedSearch}%";
-
-                    $q->whereHas("etudiant", function ($etudiantQuery) use (
-                        $likeSearch,
-                    ) {
-                        $etudiantQuery
-                            ->where("matricule", "like", $likeSearch)
-                            ->orWhere("nom", "like", $likeSearch)
-                            ->orWhere("prenoms", "like", $likeSearch);
-                    })->orWhere("numero_recu", "like", $likeSearch);
-                });
-
-                $candidates = $fallbackQuery->limit(200)->get();
-            }
-
-            $scored = $matcher->match(
-                $search,
-                $candidates,
-                function ($inscription) {
-                    $etudiant = $inscription->etudiant;
-
-                    return [
-                        "matricule" => $etudiant?->matricule,
-                        "nom" => $etudiant?->nom,
-                        "prenoms" => $etudiant?->prenoms,
-                        "full_name" => $etudiant
-                            ? trim($etudiant->prenoms . " " . $etudiant->nom)
-                            : null,
-                        "classe" => $inscription->classe?->name,
-                        "numero_inscription" =>
-                            $inscription->numero_inscription,
-                        "numero_recu" => $inscription->numero_recu,
-                    ];
-                },
-                [
-                    "threshold" => 35,
-                    "limit" => 150,
-                    "boosts" => [
-                        "matricule" => 18,
-                        "numero_inscription" => 12,
-                        "numero_recu" => 10,
-                        "full_name" => 6,
-                    ],
-                ],
-            );
-
-            $total = $scored->count();
-            $items = $scored->forPage($currentPage, $perPage)->values();
-
-            $inscriptions = new LengthAwarePaginator(
-                $items,
-                $total,
                 $perPage,
-                $currentPage,
-                [
-                    "path" => $request->url(),
-                    "query" => $request->query(),
-                ],
+                $request->url(),
+                $request->query(),
             );
-            $inscriptions->appends($request->query());
         } else {
             $inscriptions = $baseQuery
                 ->latest()
