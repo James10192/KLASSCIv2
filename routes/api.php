@@ -227,29 +227,42 @@ Route::get('/lms/documentation', function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.cli.')->group(function () {
-    // Read endpoints
-    Route::get('/stats', [App\Http\Controllers\API\CLIController::class, 'stats'])->name('stats');
-    Route::get('/students', [App\Http\Controllers\API\CLIController::class, 'students'])->name('students');
-    Route::get('/students/{id}', [App\Http\Controllers\API\CLIController::class, 'studentShow'])->name('students.show');
-    Route::get('/inscriptions', [App\Http\Controllers\API\CLIController::class, 'inscriptions'])->name('inscriptions');
-    Route::get('/classes', [App\Http\Controllers\API\CLIController::class, 'classes'])->name('classes');
-    Route::get('/payments', [App\Http\Controllers\API\CLIController::class, 'payments'])->name('payments');
-    Route::get('/settings', [App\Http\Controllers\API\CLIController::class, 'settings'])->name('settings');
-    Route::get('/annee', [App\Http\Controllers\API\CLIController::class, 'annee'])->name('annee');
-    Route::get('/users', [App\Http\Controllers\API\CLIController::class, 'users'])->name('users');
+    // Read endpoints — Data & KPIs
+    Route::get('/stats', [App\Http\Controllers\API\CLI\CLIDataController::class, 'stats'])->name('stats');
+    Route::get('/classes', [App\Http\Controllers\API\CLI\CLIDataController::class, 'classes'])->name('classes');
+    Route::get('/payments', [App\Http\Controllers\API\CLI\CLIDataController::class, 'payments'])->name('payments');
+    Route::get('/settings', [App\Http\Controllers\API\CLI\CLIDataController::class, 'settings'])->name('settings');
+
+    // Read endpoints — Students & Inscriptions
+    Route::get('/students', [App\Http\Controllers\API\CLI\CLIStudentController::class, 'students'])->name('students');
+    Route::get('/students/{id}', [App\Http\Controllers\API\CLI\CLIStudentController::class, 'studentShow'])->name('students.show');
+    Route::get('/inscriptions', [App\Http\Controllers\API\CLI\CLIStudentController::class, 'inscriptions'])->name('inscriptions');
+
+    // Read endpoints — Academic years
+    Route::get('/annee', [App\Http\Controllers\API\CLI\CLIAcademicController::class, 'annee'])->name('annee');
+
+    // Read endpoints — Users
+    Route::get('/users', [App\Http\Controllers\API\CLI\CLIUserController::class, 'users'])->name('users');
 
     // Write endpoints
-    Route::post('/inscriptions/{id}/validate', [App\Http\Controllers\API\CLIController::class, 'validateInscription'])->name('inscriptions.validate');
+    Route::post('/inscriptions/{id}/validate', [App\Http\Controllers\API\CLI\CLIStudentController::class, 'validateInscription'])->name('inscriptions.validate');
 
     // Admin endpoints (strict throttle)
     Route::middleware('throttle:5,1')->group(function () {
-        Route::post('/cache/clear', [App\Http\Controllers\API\CLIController::class, 'cacheClear'])->name('cache.clear');
-        Route::post('/permissions/fix', [App\Http\Controllers\API\CLIController::class, 'permissionsFix'])->name('permissions.fix');
-        Route::put('/settings/{key}', [App\Http\Controllers\API\CLIController::class, 'settingsUpdate'])->name('settings.update');
-        Route::post('/annee/set/{id}', [App\Http\Controllers\API\CLIController::class, 'anneeSet'])->name('annee.set');
-        Route::post('/annee/create', [App\Http\Controllers\API\CLIController::class, 'anneeCreate'])->name('annee.create');
-        Route::post('/user/{id}/reset-password-expiry', [App\Http\Controllers\API\CLIController::class, 'userResetPasswordExpiry'])->name('user.reset-password-expiry');
-        Route::post('/user/create', [App\Http\Controllers\API\CLIController::class, 'userCreate'])->name('user.create');
-        Route::post('/user/{id}/delete', [App\Http\Controllers\API\CLIController::class, 'userDelete'])->name('user.delete');
+        // Maintenance
+        Route::post('/cache/clear', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'cacheClear'])->name('cache.clear');
+        Route::post('/permissions/fix', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'permissionsFix'])->name('permissions.fix');
+
+        // Settings
+        Route::put('/settings/{key}', [App\Http\Controllers\API\CLI\CLIDataController::class, 'settingsUpdate'])->name('settings.update');
+
+        // Academic years
+        Route::post('/annee/set/{id}', [App\Http\Controllers\API\CLI\CLIAcademicController::class, 'anneeSet'])->name('annee.set');
+        Route::post('/annee/create', [App\Http\Controllers\API\CLI\CLIAcademicController::class, 'anneeCreate'])->name('annee.create');
+
+        // Users
+        Route::post('/user/{id}/reset-password-expiry', [App\Http\Controllers\API\CLI\CLIUserController::class, 'userResetPasswordExpiry'])->name('user.reset-password-expiry');
+        Route::post('/user/create', [App\Http\Controllers\API\CLI\CLIUserController::class, 'userCreate'])->name('user.create');
+        Route::post('/user/{id}/delete', [App\Http\Controllers\API\CLI\CLIUserController::class, 'userDelete'])->name('user.delete');
     });
 });

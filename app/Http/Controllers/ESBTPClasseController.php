@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Classe\AddStudentsRequest;
+use App\Http\Requests\Classe\RemoveStudentsRequest;
+use App\Http\Requests\Classe\StoreClasseRequest;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -16,6 +19,8 @@ use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPTeacher;
 use App\Models\Setting;
+use App\Services\ClassPlanningService;
+use App\Services\ClassStudentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +30,11 @@ use Illuminate\Support\Str;
 
 class ESBTPClasseController extends Controller
 {
+    public function __construct(
+        private readonly ClassPlanningService $planningService,
+        private readonly ClassStudentService $studentService,
+    ) {
+    }
     /**
      * Affiche la liste des classes.
      *
@@ -300,36 +310,9 @@ class ESBTPClasseController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store(StoreClasseRequest $request)
     {
-        // Valider les données du formulaire
-        try {
-            $validatedData = $request->validate([
-                "name" => "required|string|max:255",
-                "code" => "required|string|max:50|unique:esbtp_classes,code",
-                "filiere_id" => "required|exists:esbtp_filieres,id",
-                "niveau_etude_id" => "required|exists:esbtp_niveau_etudes,id",
-                "annee_universitaire_id" =>
-                    "required|exists:esbtp_annee_universitaires,id",
-                "places_totales" => "required|integer|min:1",
-                "description" => "nullable|string",
-                "is_active" => "boolean",
-                // systeme_academique is auto-set by ESBTPClasse::booted() from niveau_etude_id
-                "parcours_id" => "nullable|exists:esbtp_lmd_parcours,id",
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            // Si c'est une requête AJAX, retourner les erreurs en JSON
-            if ($request->ajax() || $request->input("is_ajax") === "1") {
-                return response()->json(
-                    [
-                        "success" => false,
-                        "errors" => $e->errors(),
-                    ],
-                    422,
-                );
-            }
-            throw $e;
-        }
+        $validatedData = $request->validated();
 
         // Ajouter les champs de traçabilité
         $validatedData["created_by"] = Auth::id();
@@ -445,7 +428,7 @@ class ESBTPClasseController extends Controller
             });
 
         $periode = $request->input("periode", "annee");
-        $planningMatiere = $this->buildPlanningMatierePourClasse(
+        $planningMatiere = $this->planningService->buildPlanningMatierePourClasse(
             $classe,
             $anneeCourante,
             $periode,
@@ -525,278 +508,6 @@ class ESBTPClasseController extends Controller
                 ),
             );
         }
-    }
-
-    private function buildPlanningMatierePourClasse(
-        ESBTPClasse $classe,
-        ?ESBTPAnneeUniversitaire $anneeCourante,
-        string $periode,
-    ) {
-        if (!$anneeCourante) {
-            return [
-                "matieres" => collect(),
-                "stats" => [
-                    "heures_planifiees" => 0,
-                    "heures_realisees" => 0,
-                    "nb_seances" => 0,
-                    "taux_realisation" => 0,
-                ],
-            ];
-        }
-
-        $planificationsQuery = ESBTPPlanificationAcademique::with(["matiere"])
-            ->where("annee_universitaire_id", $anneeCourante->id)
-            ->where("filiere_id", $classe->filiere_id)
-            ->where("niveau_etude_id", $classe->niveau_etude_id)
-            ->select(
-                "matiere_id",
-                DB::raw("SUM(volume_horaire_total) as heures_planifiees"),
-            )
-            ->groupBy("matiere_id");
-
-        if ($periode === "semestre1") {
-            $planificationsQuery->where("semestre", 1);
-        } elseif ($periode === "semestre2") {
-            $planificationsQuery->where("semestre", 2);
-        }
-
-        $planifications = $planificationsQuery->get()->keyBy("matiere_id");
-
-        $seancesQuery = ESBTPSeanceCours::query()
-            ->join(
-                "esbtp_emploi_temps",
-                "esbtp_seance_cours.emploi_temps_id",
-                "=",
-                "esbtp_emploi_temps.id",
-            )
-            ->leftJoin(
-                DB::raw('(
-                SELECT ta1.course_id, ta1.status
-                FROM esbtp_teacher_attendances ta1
-                INNER JOIN (
-                    SELECT course_id,
-                           MAX(CASE
-                               WHEN DATE(date) = CURDATE() THEN CONCAT("1_", created_at)
-                               WHEN DATE(date) = (SELECT DATE(date_seance) FROM esbtp_seance_cours WHERE id = course_id) THEN CONCAT("2_", created_at)
-                               ELSE CONCAT("3_", created_at)
-                           END) as max_priority
-                    FROM esbtp_teacher_attendances
-                    WHERE type = "start"
-                    GROUP BY course_id
-                ) ta2 ON ta1.course_id = ta2.course_id
-                     AND CONCAT(
-                         CASE
-                             WHEN DATE(ta1.date) = CURDATE() THEN "1_"
-                             WHEN DATE(ta1.date) = (SELECT DATE(date_seance) FROM esbtp_seance_cours WHERE id = ta1.course_id) THEN "2_"
-                             ELSE "3_"
-                         END, ta1.created_at
-                     ) = ta2.max_priority
-                WHERE ta1.type = "start"
-            ) as latest_attendance'),
-                "latest_attendance.course_id",
-                "=",
-                "esbtp_seance_cours.id",
-            )
-            ->where(function ($query) {
-                $query
-                    ->whereNull("latest_attendance.status")
-                    ->orWhere("latest_attendance.status", "!=", "absent");
-            })
-            ->where("esbtp_seance_cours.classe_id", $classe->id)
-            ->where(
-                "esbtp_emploi_temps.annee_universitaire_id",
-                $anneeCourante->id,
-            )
-            ->select(
-                "esbtp_seance_cours.matiere_id",
-                "esbtp_seance_cours.teacher_id",
-                DB::raw("COUNT(DISTINCT esbtp_seance_cours.id) as nb_seances"),
-                DB::raw(
-                    "SUM(TIME_TO_SEC(TIMEDIFF(esbtp_seance_cours.heure_fin, esbtp_seance_cours.heure_debut))/3600) as total_heures",
-                ),
-            )
-            ->groupBy(
-                "esbtp_seance_cours.matiere_id",
-                "esbtp_seance_cours.teacher_id",
-            )
-            ->whereRaw("(
-                esbtp_seance_cours.date_seance < CURDATE()
-                OR (
-                    esbtp_seance_cours.date_seance = CURDATE()
-                    AND TIME(esbtp_seance_cours.heure_fin) <= TIME(NOW())
-                )
-            )");
-
-        if ($periode === "semestre1") {
-            $seancesQuery->whereIn("esbtp_emploi_temps.semestre", [
-                "1",
-                1,
-                "S1",
-                "Semestre 1",
-                "semestre1",
-                "SEMESTRE 1",
-                "Semestre1",
-                "s1",
-            ]);
-        } elseif ($periode === "semestre2") {
-            $seancesQuery->whereIn("esbtp_emploi_temps.semestre", [
-                "2",
-                2,
-                "S2",
-                "Semestre 2",
-                "semestre2",
-                "SEMESTRE 2",
-                "Semestre2",
-                "s2",
-            ]);
-        }
-
-        $seancesRealisees = $seancesQuery->get();
-
-        $teacherIds = $seancesRealisees
-            ->pluck("teacher_id")
-            ->filter()
-            ->unique();
-        $teachers = ESBTPTeacher::with("user")
-            ->whereIn("id", $teacherIds)
-            ->get()
-            ->keyBy("id");
-
-        $matiereIds = $planifications
-            ->keys()
-            ->merge($seancesRealisees->pluck("matiere_id"))
-            ->unique();
-        $matieres = ESBTPMatiere::whereIn("id", $matiereIds)
-            ->get()
-            ->keyBy("id");
-
-        $matieresData = $matiereIds
-            ->map(function ($matiereId) use (
-                $planifications,
-                $seancesRealisees,
-                $teachers,
-                $matieres,
-            ) {
-                $planification = $planifications->get($matiereId);
-                $heuresPlanifiees = $planification
-                    ? (float) $planification->heures_planifiees
-                    : 0;
-
-                $seancesMatiere = $seancesRealisees->where(
-                    "matiere_id",
-                    $matiereId,
-                );
-                $totalHeures = (float) $seancesMatiere->sum("total_heures");
-                $nbSeances = (int) $seancesMatiere->sum("nb_seances");
-
-                $enseignants = $seancesMatiere
-                    ->groupBy("teacher_id")
-                    ->map(function ($items, $teacherId) use ($teachers) {
-                        $teacher = $teachers->get($teacherId);
-                        if (!$teacher) {
-                            return null;
-                        }
-
-                        $teacherName = trim(
-                            (string) ($teacher->title
-                                ? $teacher->title . " "
-                                : "") .
-                                ($teacher->name ?? ""),
-                        );
-
-                        return [
-                            "id" => $teacher->id,
-                            "name" => $teacherName ?: "Enseignant",
-                            "heures_realisees" => round(
-                                (float) $items->sum("total_heures"),
-                                2,
-                            ),
-                            "nb_seances" => (int) $items->sum("nb_seances"),
-                        ];
-                    })
-                    ->filter()
-                    ->values();
-
-                $heuresRestantes = max(0, $heuresPlanifiees - $totalHeures);
-
-                return [
-                    "matiere" => $matieres->get($matiereId),
-                    "heures_planifiees" => round($heuresPlanifiees, 2),
-                    "heures_realisees" => round($totalHeures, 2),
-                    "heures_restantes" => round($heuresRestantes, 2),
-                    "nb_seances" => $nbSeances,
-                    "pourcentage_realise" =>
-                        $heuresPlanifiees > 0
-                            ? round(($totalHeures / $heuresPlanifiees) * 100, 1)
-                            : 0,
-                    "est_configure" => $heuresPlanifiees > 0,
-                    "enseignants" => $enseignants,
-                ];
-            })
-            ->filter()
-            ->sortBy(function ($item) {
-                return $item["matiere"]->name ?? "";
-            })
-            ->values();
-
-        $enseignantsResume = $seancesRealisees
-            ->groupBy("teacher_id")
-            ->map(function ($items, $teacherId) use ($teachers) {
-                $teacher = $teachers->get($teacherId);
-                if (!$teacher) {
-                    return null;
-                }
-
-                $teacherName = trim(
-                    (string) ($teacher->title ? $teacher->title . " " : "") .
-                        ($teacher->name ?? ""),
-                );
-
-                return [
-                    "id" => $teacher->id,
-                    "name" => $teacherName ?: "Enseignant",
-                    "heures_realisees" => round(
-                        (float) $items->sum("total_heures"),
-                        2,
-                    ),
-                    "nb_seances" => (int) $items->sum("nb_seances"),
-                ];
-            })
-            ->filter()
-            ->sortByDesc("heures_realisees")
-            ->values();
-
-        $totalPlanifiees = $matieresData->sum("heures_planifiees");
-        $totalRealisees = $matieresData->sum("heures_realisees");
-        $totalSeances = $matieresData->sum("nb_seances");
-        $taux =
-            $totalPlanifiees > 0
-                ? round(($totalRealisees / $totalPlanifiees) * 100, 1)
-                : 0;
-
-        $matieresData = $matieresData
-            ->map(function ($item) use ($totalRealisees) {
-                $item["pourcentage"] =
-                    $totalRealisees > 0
-                        ? round(
-                            ($item["heures_realisees"] / $totalRealisees) * 100,
-                            1,
-                        )
-                        : 0;
-                return $item;
-            })
-            ->values();
-
-        return [
-            "matieres" => $matieresData,
-            "enseignants" => $enseignantsResume,
-            "stats" => [
-                "heures_planifiees" => round($totalPlanifiees, 2),
-                "heures_realisees" => round($totalRealisees, 2),
-                "nb_seances" => (int) $totalSeances,
-                "taux_realisation" => $taux,
-            ],
-        ];
     }
 
     /**
@@ -2317,75 +2028,18 @@ class ESBTPClasseController extends Controller
     public function searchAvailableStudents(Request $request, ESBTPClasse $classe)
     {
         try {
-            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-            if (!$anneeCourante) {
-                return response()->json(['success' => false, 'message' => 'Aucune année universitaire active.'], 400);
-            }
-
-            $search = $request->input('q', '');
-
-            // Étudiants ayant une inscription active + workflow étudiant créé pour l'année courante mais PAS dans cette classe
-            $query = ESBTPEtudiant::query()
-                ->whereHas('inscriptions', function ($q) use ($anneeCourante, $classe) {
-                    $q->where('annee_universitaire_id', $anneeCourante->id)
-                      ->where('status', 'active')
-                      ->where('workflow_step', 'etudiant_cree')
-                      ->where(function ($sub) use ($classe) {
-                          $sub->where('classe_id', '!=', $classe->id)
-                              ->orWhereNull('classe_id');
-                      });
-                })
-                // Exclure les étudiants déjà dans cette classe
-                ->whereDoesntHave('inscriptions', function ($q) use ($anneeCourante, $classe) {
-                    $q->where('annee_universitaire_id', $anneeCourante->id)
-                      ->where('status', 'active')
-                      ->where('classe_id', $classe->id);
-                });
-
-            // Filtre recherche texte
-            if ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('matricule', 'like', "%{$search}%")
-                      ->orWhere('nom', 'like', "%{$search}%")
-                      ->orWhere('prenoms', 'like', "%{$search}%")
-                      ->orWhere('telephone', 'like', "%{$search}%")
-                      ->orWhere('email_personnel', 'like', "%{$search}%");
-                });
-            }
-
-            $etudiants = $query
-                ->with(['inscriptions' => function ($q) use ($anneeCourante) {
-                    $q->where('annee_universitaire_id', $anneeCourante->id)
-                      ->where('status', 'active')
-                      ->where('workflow_step', 'etudiant_cree')
-                      ->with('classe:id,name,code');
-                }])
-                ->orderBy('nom')
-                ->orderBy('prenoms')
-                ->limit(50)
-                ->get()
-                ->map(function ($etudiant) {
-                    $inscription = $etudiant->inscriptions->first();
-                    return [
-                        'id' => $etudiant->id,
-                        'matricule' => $etudiant->matricule,
-                        'nom' => $etudiant->nom,
-                        'prenoms' => $etudiant->prenoms,
-                        'nom_complet' => $etudiant->nom . ' ' . $etudiant->prenoms,
-                        'genre' => $etudiant->genre,
-                        'telephone' => $etudiant->telephone,
-                        'classe_actuelle' => $inscription && $inscription->classe
-                            ? $inscription->classe->name
-                            : 'Non affecté',
-                        'inscription_id' => $inscription ? $inscription->id : null,
-                    ];
-                });
+            $result = $this->studentService->searchAvailableStudents(
+                $classe,
+                $request->input('q', ''),
+            );
 
             return response()->json([
                 'success' => true,
-                'etudiants' => $etudiants,
-                'count' => $etudiants->count(),
+                'etudiants' => $result['etudiants'],
+                'count' => $result['count'],
             ]);
+        } catch (\RuntimeException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         } catch (\Exception $e) {
             \Log::error('Erreur searchAvailableStudents: ' . $e->getMessage(), [
                 'classe_id' => $classe->id,
@@ -2398,102 +2052,23 @@ class ESBTPClasseController extends Controller
     /**
      * Ajoute des étudiants à cette classe en mettant à jour leurs inscriptions.
      */
-    public function addStudents(Request $request, ESBTPClasse $classe)
+    public function addStudents(AddStudentsRequest $request, ESBTPClasse $classe)
     {
         try {
-            $request->validate([
-                'etudiant_ids' => 'required|array|min:1',
-                'etudiant_ids.*' => 'integer|exists:esbtp_etudiants,id',
-            ]);
-
-            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-            if (!$anneeCourante) {
-                return response()->json(['success' => false, 'message' => 'Aucune année universitaire active.'], 400);
-            }
-
-            $etudiantIds = $request->input('etudiant_ids');
-            $added = 0;
-            $errors = [];
-
-            DB::beginTransaction();
-
-            foreach ($etudiantIds as $etudiantId) {
-                // Trouver l'inscription active de l'étudiant pour l'année courante
-                $inscription = ESBTPInscription::where('etudiant_id', $etudiantId)
-                    ->where('annee_universitaire_id', $anneeCourante->id)
-                    ->where('status', 'active')
-                    ->first();
-
-                if (!$inscription) {
-                    $errors[] = "Étudiant ID {$etudiantId}: Aucune inscription active trouvée.";
-                    continue;
-                }
-
-                // Vérifier que l'étudiant n'est pas déjà dans cette classe
-                if ($inscription->classe_id == $classe->id) {
-                    $errors[] = "Étudiant ID {$etudiantId}: Déjà dans cette classe.";
-                    continue;
-                }
-
-                // Restaurer les notes/résultats/bulletins archivés si l'étudiant revient dans cette classe
-                $restoredNotes = ESBTPNote::withoutGlobalScope('not_archived')
-                    ->where('etudiant_id', $etudiantId)
-                    ->where('classe_id', $classe->id)
-                    ->whereNotNull('archived_at')
-                    ->update(['archived_at' => null]);
-
-                $restoredResultats = ESBTPResultat::withoutGlobalScope('not_archived')
-                    ->where('etudiant_id', $etudiantId)
-                    ->where('classe_id', $classe->id)
-                    ->whereNotNull('archived_at')
-                    ->update(['archived_at' => null]);
-
-                $restoredBulletins = ESBTPBulletin::withoutGlobalScope('not_archived')
-                    ->where('etudiant_id', $etudiantId)
-                    ->where('classe_id', $classe->id)
-                    ->whereNotNull('archived_at')
-                    ->update(['archived_at' => null]);
-
-                if ($restoredNotes + $restoredResultats + $restoredBulletins > 0) {
-                    \Log::info('Données restaurées pour étudiant réintégré', [
-                        'etudiant_id' => $etudiantId,
-                        'classe_id' => $classe->id,
-                        'notes' => $restoredNotes,
-                        'resultats' => $restoredResultats,
-                        'bulletins' => $restoredBulletins,
-                    ]);
-                }
-
-                // Mettre à jour l'inscription
-                $inscription->update([
-                    'classe_id' => $classe->id,
-                    'affectation_status' => $inscription->classe_id ? 'réaffecté' : ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
-                    'updated_by' => Auth::id(),
-                ]);
-
-                $added++;
-            }
-
-            DB::commit();
-
-            \Log::info('Étudiants ajoutés à la classe', [
-                'classe_id' => $classe->id,
-                'classe_name' => $classe->name,
-                'added' => $added,
-                'errors_count' => count($errors),
-                'user_id' => Auth::id(),
-            ]);
+            $result = $this->studentService->addStudents(
+                $classe,
+                $request->validated()['etudiant_ids'],
+            );
 
             return response()->json([
                 'success' => true,
-                'message' => "{$added} étudiant(s) ajouté(s) à la classe {$classe->name}.",
-                'added' => $added,
-                'errors' => $errors,
+                'message' => "{$result['added']} étudiant(s) ajouté(s) à la classe {$classe->name}.",
+                'added' => $result['added'],
+                'errors' => $result['errors'],
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+        } catch (\RuntimeException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         } catch (\Exception $e) {
-            DB::rollBack();
             \Log::error('Erreur addStudents: ' . $e->getMessage(), [
                 'classe_id' => $classe->id,
                 'trace' => config('app.debug') ? $e->getTraceAsString() : null,
@@ -2506,108 +2081,25 @@ class ESBTPClasseController extends Controller
      * Retire des étudiants de cette classe.
      * Deux modes : transfert vers une autre classe OU marquage comme non affecté.
      */
-    public function removeStudents(Request $request, ESBTPClasse $classe)
+    public function removeStudents(RemoveStudentsRequest $request, ESBTPClasse $classe)
     {
         try {
-            $request->validate([
-                'etudiant_ids' => 'required|array|min:1',
-                'etudiant_ids.*' => 'integer|exists:esbtp_etudiants,id',
-                'destination_classe_id' => 'nullable|integer|exists:esbtp_classes,id',
-            ]);
-
-            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-            if (!$anneeCourante) {
-                return response()->json(['success' => false, 'message' => 'Aucune année universitaire active.'], 400);
-            }
-
-            $etudiantIds = $request->input('etudiant_ids');
-            $destinationClasseId = $request->input('destination_classe_id');
-            $removed = 0;
-            $errors = [];
-
-            // Récupérer la classe de destination pour le message
-            $destinationClasse = $destinationClasseId
-                ? ESBTPClasse::find($destinationClasseId)
-                : null;
-
-            DB::beginTransaction();
-
-            foreach ($etudiantIds as $etudiantId) {
-                $inscription = ESBTPInscription::where('etudiant_id', $etudiantId)
-                    ->where('annee_universitaire_id', $anneeCourante->id)
-                    ->where('status', 'active')
-                    ->where('classe_id', $classe->id)
-                    ->first();
-
-                if (!$inscription) {
-                    $errors[] = "Étudiant ID {$etudiantId}: Pas d'inscription active dans cette classe.";
-                    continue;
-                }
-
-                // Archiver les notes, résultats et bulletins de l'ancienne classe
-                $now = now();
-                $archivedNotes = ESBTPNote::where('etudiant_id', $etudiantId)
-                    ->where('classe_id', $classe->id)
-                    ->update(['archived_at' => $now]);
-
-                $archivedResultats = ESBTPResultat::where('etudiant_id', $etudiantId)
-                    ->where('classe_id', $classe->id)
-                    ->update(['archived_at' => $now]);
-
-                $archivedBulletins = ESBTPBulletin::where('etudiant_id', $etudiantId)
-                    ->where('classe_id', $classe->id)
-                    ->update(['archived_at' => $now]);
-
-                \Log::info('Données archivées pour étudiant', [
-                    'etudiant_id' => $etudiantId,
-                    'classe_id' => $classe->id,
-                    'notes' => $archivedNotes,
-                    'resultats' => $archivedResultats,
-                    'bulletins' => $archivedBulletins,
-                ]);
-
-                if ($destinationClasseId) {
-                    // Transfert vers une autre classe
-                    $inscription->update([
-                        'classe_id' => $destinationClasseId,
-                        'affectation_status' => 'réaffecté',
-                        'updated_by' => Auth::id(),
-                    ]);
-                } else {
-                    // Marquer comme non affecté
-                    $inscription->update([
-                        'classe_id' => null,
-                        'affectation_status' => 'non_affecté',
-                        'updated_by' => Auth::id(),
-                    ]);
-                }
-
-                $removed++;
-            }
-
-            DB::commit();
-
-            $actionMsg = $destinationClasse
-                ? "transféré(s) vers {$destinationClasse->name}"
-                : "retiré(s) de la classe (non affectés)";
-
-            \Log::info('Étudiants retirés de la classe', [
-                'classe_id' => $classe->id,
-                'destination_classe_id' => $destinationClasseId,
-                'removed' => $removed,
-                'user_id' => Auth::id(),
-            ]);
+            $validated = $request->validated();
+            $result = $this->studentService->removeStudents(
+                $classe,
+                $validated['etudiant_ids'],
+                $validated['destination_classe_id'] ?? null,
+            );
 
             return response()->json([
                 'success' => true,
-                'message' => "{$removed} étudiant(s) {$actionMsg}.",
-                'removed' => $removed,
-                'errors' => $errors,
+                'message' => "{$result['removed']} étudiant(s) {$result['action_message']}.",
+                'removed' => $result['removed'],
+                'errors' => $result['errors'],
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+        } catch (\RuntimeException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         } catch (\Exception $e) {
-            DB::rollBack();
             \Log::error('Erreur removeStudents: ' . $e->getMessage(), [
                 'classe_id' => $classe->id,
                 'trace' => config('app.debug') ? $e->getTraceAsString() : null,
@@ -2626,45 +2118,12 @@ class ESBTPClasseController extends Controller
             'etudiant_ids.*' => 'integer',
         ]);
 
-        $etudiantIds = $request->input('etudiant_ids');
-        $students = [];
+        $result = $this->studentService->checkStudentData(
+            $classe,
+            $request->input('etudiant_ids'),
+        );
 
-        foreach ($etudiantIds as $etudiantId) {
-            $etudiant = ESBTPEtudiant::find($etudiantId);
-            if (!$etudiant) continue;
-
-            $notesCount = ESBTPNote::where('etudiant_id', $etudiantId)
-                ->where('classe_id', $classe->id)
-                ->count();
-
-            $resultatsCount = ESBTPResultat::where('etudiant_id', $etudiantId)
-                ->where('classe_id', $classe->id)
-                ->count();
-
-            $bulletinsCount = ESBTPBulletin::where('etudiant_id', $etudiantId)
-                ->where('classe_id', $classe->id)
-                ->count();
-
-            $students[] = [
-                'etudiant_id' => $etudiantId,
-                'nom' => $etudiant->nom . ' ' . $etudiant->prenoms,
-                'notes_count' => $notesCount,
-                'resultats_count' => $resultatsCount,
-                'bulletins_count' => $bulletinsCount,
-                'has_data' => ($notesCount + $resultatsCount + $bulletinsCount) > 0,
-            ];
-        }
-
-        $totalData = collect($students)->sum(fn($s) => $s['notes_count'] + $s['resultats_count'] + $s['bulletins_count']);
-
-        return response()->json([
-            'success' => true,
-            'students' => $students,
-            'has_any_data' => $totalData > 0,
-            'total_notes' => collect($students)->sum('notes_count'),
-            'total_resultats' => collect($students)->sum('resultats_count'),
-            'total_bulletins' => collect($students)->sum('bulletins_count'),
-        ]);
+        return response()->json(array_merge(['success' => true], $result));
     }
 
     /**

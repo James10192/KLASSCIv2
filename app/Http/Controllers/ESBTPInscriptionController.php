@@ -3,13 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\ESBTPAnneeUniversitaire;
-use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
-use App\Models\ESBTPNote;
-use App\Models\ESBTPResultat;
 use App\Models\ESBTPFraisCategory;
-use App\Models\ESBTPFraisConfiguration;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPNiveauEtude;
@@ -363,9 +359,6 @@ class ESBTPInscriptionController extends Controller
             }
         }
 
-        // Validation + parent cleaning handled by StoreInscriptionRequest
-        $parents = $request->input("parents", []);
-
         try {
             // Récupérer les informations complètes de la classe sélectionnée
             $classe = ESBTPClasse::with([
@@ -374,136 +367,43 @@ class ESBTPInscriptionController extends Controller
                 "annee",
             ])->findOrFail($request->classe_id);
 
-            // Préparer les données de l'étudiant
-            $etudiantData = [
-                "nom" => $request->nom,
-                "prenoms" => $request->prenoms,
-                "sexe" => $request->sexe,
-                "date_naissance" => $request->date_naissance,
-                "lieu_naissance" => $request->lieu_naissance,
-                "nationalite" => $request->nationalite,
-                "email_personnel" => $request->email_personnel,
-                "telephone" => $request->telephone,
-                "adresse" => $request->adresse,
-                "ville" => $request->ville,
-                "commune" => $request->commune,
-                "statut" => "actif",
-                "creer_compte_utilisateur" => true,
-                "matricule" => $request->matricule,
-            ];
+            // Préparer les données via le service
+            $photoFilename = $request->hasFile('photo')
+                ? $this->handlePhotoUpload($request->file('photo'))
+                : null;
 
-            // Traiter la photo si fournie
-            if ($request->hasFile("photo")) {
-                $etudiantData["photo"] = $this->handlePhotoUpload(
-                    $request->file("photo"),
-                );
-            }
+            $etudiantData = $this->inscriptionService->prepareEtudiantData(
+                $request->validated(),
+                $photoFilename,
+            );
 
-            // Récupérer le statut d'affectation depuis le request
             $affectationStatus = $request->input(
                 "affectation_status",
                 ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
             );
 
-            // CORRECTION: Utiliser l'année courante au lieu de l'année de la classe
-            $anneeCourante = ESBTPAnneeUniversitaire::where(
-                "is_current",
-                true,
-            )->first();
-            if (!$anneeCourante) {
-                throw new \Exception(
-                    "Aucune année universitaire courante définie. Veuillez configurer l'année courante.",
-                );
-            }
+            $inscriptionData = $this->inscriptionService->prepareInscriptionData(
+                $classe,
+                $request->validated(),
+            );
 
-            // Préparer les données d'inscription
-            $inscriptionData = [
-                "date_inscription" =>
-                    $request->date_inscription ?? now()->format("Y-m-d"),
-                "classe_id" => $classe->id,
-                "annee_universitaire_id" => $anneeCourante->id, // Utiliser l'année courante
-                "status" => "en_attente",
-                "filiere_id" => $classe->filiere_id,
-                "niveau_id" => $classe->niveau_etude_id,
-                "type_inscription" => "première_inscription",
-                "montant_scolarite" => $request->montant_scolarite ?? 0,
-                "frais_inscription" => $request->frais_inscription ?? 0,
-                "affectation_status" => $affectationStatus, // Sauvegarder le statut d'affectation
-                "est_transfert" => $request->boolean("est_transfert", false), // Transfert d'établissement
-                "etablissement_origine" => $request->input(
-                    "etablissement_origine",
-                ), // Nom de l'établissement d'origine
-            ];
-
-            // Si la classe a des relations filière et niveau, les ajouter aux données de l'étudiant
+            // Ajouter filière/niveau à l'étudiant depuis la classe
             if ($classe->filiere_id) {
                 $etudiantData["filiere_id"] = $classe->filiere_id;
             }
-
             if ($classe->niveau_etude_id) {
                 $etudiantData["niveau_etude_id"] = $classe->niveau_etude_id;
             }
 
-            // Les paiements seront gérés lors de la validation de l'inscription
-
             // Préparer les données des parents
-            $parentsData = [];
+            $parentsData = $request->has('parents')
+                ? $this->inscriptionService->prepareParentsData($request->input('parents'))
+                : [];
 
-            // Traiter les parents du formulaire
-            if ($request->has("parents")) {
-                foreach ($request->parents as $parent) {
-                    if (
-                        isset($parent["type"]) &&
-                        $parent["type"] === "existant" &&
-                        !empty($parent["parent_id"])
-                    ) {
-                        // Parent existant sélectionné
-                        $parentsData[] = [
-                            "parent_id" => $parent["parent_id"],
-                            "relation" => $parent["relation"] ?? "Autre",
-                        ];
-                    } elseif (
-                        isset($parent["type"]) &&
-                        $parent["type"] === "nouveau" &&
-                        !empty($parent["nom"]) &&
-                        !empty($parent["prenoms"]) &&
-                        !empty($parent["telephone"])
-                    ) {
-                        // Nouveau parent
-                        $parentsData[] = [
-                            "nom" => $parent["nom"],
-                            "prenoms" => $parent["prenoms"],
-                            "email" => $parent["email"] ?? null,
-                            "telephone" => $parent["telephone"] ?? null,
-                            "profession" => $parent["profession"] ?? null,
-                            "relation" => $parent["relation"] ?? "Autre",
-                            "adresse" => $parent["adresse"] ?? null,
-                        ];
-                    }
-                }
-            }
-
-            $selectedOptionals = $request->input("fee_optionals", []);
-
-            // Traitement des frais sélectionnés selon la nouvelle architecture
-            $fraisVariants = $request->input("frais", []);
-            $selectedOptionals = []; // Format pour la nouvelle méthode ESBTPInscriptionService
-
-            // Convertir le format des frais pour la nouvelle architecture
-            foreach ($fraisVariants as $categoryId => $fraisData) {
-                if (!empty($fraisData["variant_id"])) {
-                    $selectedOptionals[$categoryId] = $fraisData;
-                }
-            }
-
-            // Ajouter un log plus détaillé en cas d'erreur
-            \Log::info('Données de l\'inscription avec variants', [
-                "etudiantData" => $etudiantData,
-                "inscriptionData" => $inscriptionData,
-                "parentsData" => $parentsData,
-                "selectedOptionals" => $selectedOptionals,
-                "fraisVariants" => $fraisVariants,
-            ]);
+            // Préparer les frais optionnels
+            $selectedOptionals = $this->inscriptionService->prepareFraisOptionals(
+                $request->input('frais', []),
+            );
 
             $autoGenerateMatricule = empty(trim((string) $request->matricule));
             if ($autoGenerateMatricule) {
@@ -1076,14 +976,6 @@ class ESBTPInscriptionController extends Controller
                         "user_id" => Auth::id(),
                     ],
                 );
-            } elseif (
-                $inscription->status === "active" &&
-                Auth::user()->can("inscriptions.manage")
-            ) {
-                \Log::info("SuperAdmin modifie une inscription active", [
-                    "inscription_id" => $inscription->id,
-                    "user_id" => Auth::id(),
-                ]);
             }
 
             // Mettre à jour l'inscription
@@ -1163,24 +1055,6 @@ class ESBTPInscriptionController extends Controller
                 $ancienneClasse != $inscription->classe_id ||
                 $ancienAffectationStatus != $inscription->affectation_status
             ) {
-                \Log::info(
-                    "Mise à jour des frais après changement de classe/filière/niveau/affectation",
-                    [
-                        "inscription_id" => $inscription->id,
-                        "ancienne_filiere" => $ancienneFiliere,
-                        "nouvelle_filiere" => $inscription->filiere_id,
-                        "ancien_niveau" => $ancienNiveau,
-                        "nouveau_niveau" => $inscription->niveau_id,
-                        "ancienne_classe" => $ancienneClasse,
-                        "nouvelle_classe" => $inscription->classe_id,
-                        "ancien_affectation_status" => $ancienAffectationStatus,
-                        "nouveau_affectation_status" =>
-                            $inscription->affectation_status,
-                        "user_id" => Auth::id(),
-                    ],
-                );
-
-                // Régénérer les frais pour cette inscription avec les nouvelles configurations
                 $this->regenererFraisInscription($inscription);
             }
 
@@ -1551,515 +1425,25 @@ class ESBTPInscriptionController extends Controller
         $inscriptionIds = $request->input("inscription_ids", []);
         $forceValidation = $request->input("force", false);
 
-        $stats = [
-            "validees_direct" => 0,
-            "paiements_valides" => 0,
-            "validees_apres_paiement" => 0,
-            "inscriptions_deja_validees" => 0,
-            "ignorees" => [],
-            "erreurs" => [],
-            "raisons_ignorees" => [
-                "sans_paiement" => 0,
-                "paiement_non_valide" => 0,
-                "classe_pleine" => 0,
-                "inscription_existante" => 0,
-            ],
-        ];
-
         try {
             DB::beginTransaction();
 
-            foreach ($inscriptionIds as $id) {
-                try {
-                    $inscription = ESBTPInscription::with([
-                        "paiements",
-                        "etudiant",
-                    ])->find($id);
-
-                    if (!$inscription) {
-                        $stats["erreurs"][] = [
-                            "id" => $id,
-                            "erreur" => "Inscription introuvable",
-                        ];
-
-                        continue;
-                    }
-
-                    // Skip si déjà validée (status = active ET workflow_step = etudiant_cree)
-                    if (
-                        $inscription->status === "active" &&
-                        $inscription->workflow_step === "etudiant_cree"
-                    ) {
-                        $stats["inscriptions_deja_validees"]++;
-
-                        continue;
-                    }
-
-                    $etudiantNom =
-                        $inscription->etudiant->nom .
-                        " " .
-                        $inscription->etudiant->prenoms;
-
-                    // Cas 1: A déjà un paiement validé ET workflow = en_validation
-                    if (
-                        $inscription->paiement_validation_id &&
-                        $inscription->workflow_step === "en_validation"
-                    ) {
-                        // Vérifications en amont pour éviter les erreurs
-
-                        // 1. Vérifier le paiement — chercher un paiement validé (ne bloque pas la validation)
-                        $paiement = ESBTPPaiement::find(
-                            $inscription->paiement_validation_id,
-                        );
-                        if (!$paiement || $paiement->status !== "validé") {
-                            // Chercher un autre paiement validé sur cette inscription
-                            $autrePaiementValide = $inscription->paiements->where("status", "validé")->first();
-                            if ($autrePaiementValide) {
-                                $inscription->update(["paiement_validation_id" => $autrePaiementValide->id]);
-                                $paiement = $autrePaiementValide;
-                            }
-                            // Si aucun paiement validé, on continue quand même la validation (aligné sur valider())
-                        }
-
-                        // 2. Vérifier la disponibilité de la classe (sauf si force = true)
-                        if (!$forceValidation) {
-                            $classAvailability = $this->workflowService->checkClassAvailability(
-                                $inscription->classe_id,
-                            );
-                            if (!$classAvailability["available"]) {
-                                $stats["ignorees"][] = [
-                                    "id" => $inscription->id,
-                                    "etudiant" => $etudiantNom,
-                                    "raison" =>
-                                        "Classe pleine - " .
-                                        $classAvailability["message"],
-                                ];
-                                $stats["raisons_ignorees"]["classe_pleine"]++;
-
-                                continue;
-                            }
-                        }
-
-                        // 3. Vérifier inscription active existante
-                        $existingInscription = ESBTPInscription::where(
-                            "etudiant_id",
-                            $inscription->etudiant_id,
-                        )
-                            ->where(
-                                "annee_universitaire_id",
-                                $inscription->annee_universitaire_id,
-                            )
-                            ->where("status", "active")
-                            ->where("id", "!=", $inscription->id)
-                            ->first();
-
-                        if ($existingInscription) {
-                            $stats["ignorees"][] = [
-                                "id" => $inscription->id,
-                                "etudiant" => $etudiantNom,
-                                "raison" =>
-                                    'L\'étudiant a déjà une inscription active pour cette année',
-                            ];
-                            $stats["raisons_ignorees"][
-                                "inscription_existante"
-                            ]++;
-
-                            continue;
-                        }
-
-                        // Toutes les vérifications passées, on peut valider
-                        $result = $this->workflowService->convertProspectToStudent(
-                            $inscription,
-                            "Validation groupée",
-                        );
-
-                        if ($result["success"]) {
-                            $stats["validees_direct"]++;
-
-                            // Envoyer notification à l'étudiant
-                            if (
-                                $inscription->etudiant &&
-                                $inscription->etudiant->user
-                            ) {
-                                $notificationService = app(
-                                    \App\Services\NotificationService::class,
-                                );
-                                $notificationService->createNotification(
-                                    $inscription->etudiant->user,
-                                    "Inscription validée",
-                                    "Votre inscription a été validée avec succès. Vous pouvez maintenant accéder à votre espace étudiant.",
-                                    "success",
-                                    route(
-                                        "esbtp.inscriptions.show",
-                                        $inscription->id,
-                                    ),
-                                    auth()->user(),
-                                );
-                            }
-
-                            // Désactiver les rappels
-                            $this->desactiverRappelsInscription(
-                                $inscription->id,
-                            );
-                        } else {
-                            // Si malgré tout ça échoue, on ignore au lieu de créer une erreur bloquante
-                            $stats["ignorees"][] = [
-                                "id" => $id,
-                                "etudiant" => $etudiantNom,
-                                "raison" => $result["message"],
-                            ];
-                        }
-
-                        continue;
-                    }
-
-                    // Cas 2: A un/des paiement(s) validé(s) mais pas encore en workflow "en_validation"
-                    $paiementsValides = $inscription->paiements->where(
-                        "status",
-                        "validé",
-                    );
-                    if ($paiementsValides->count() > 0) {
-                        $premierPaiement = $paiementsValides->first();
-
-                        // Vérifications en amont
-
-                        // 1. Vérifier la disponibilité de la classe (sauf si force = true)
-                        if (!$forceValidation) {
-                            $classAvailability = $this->workflowService->checkClassAvailability(
-                                $inscription->classe_id,
-                            );
-                            if (!$classAvailability["available"]) {
-                                $stats["ignorees"][] = [
-                                    "id" => $inscription->id,
-                                    "etudiant" => $etudiantNom,
-                                    "raison" =>
-                                        "Classe pleine - " .
-                                        $classAvailability["message"],
-                                ];
-                                $stats["raisons_ignorees"]["classe_pleine"]++;
-
-                                continue;
-                            }
-                        }
-
-                        // 2. Vérifier inscription active existante
-                        $existingInscription = ESBTPInscription::where(
-                            "etudiant_id",
-                            $inscription->etudiant_id,
-                        )
-                            ->where(
-                                "annee_universitaire_id",
-                                $inscription->annee_universitaire_id,
-                            )
-                            ->where("status", "active")
-                            ->where("id", "!=", $inscription->id)
-                            ->first();
-
-                        if ($existingInscription) {
-                            $stats["ignorees"][] = [
-                                "id" => $inscription->id,
-                                "etudiant" => $etudiantNom,
-                                "raison" =>
-                                    'L\'étudiant a déjà une inscription active pour cette année',
-                            ];
-                            $stats["raisons_ignorees"][
-                                "inscription_existante"
-                            ]++;
-
-                            continue;
-                        }
-
-                        // Associer le paiement via le workflow
-                        $inscription->update([
-                            "paiement_validation_id" => $premierPaiement->id,
-                            "workflow_step" => "en_validation",
-                        ]);
-
-                        // Enregistrer dans l'historique workflow
-                        \App\Models\ESBTPInscriptionWorkflowHistory::createEntry(
-                            $inscription->id,
-                            $inscription->workflow_step,
-                            "en_validation",
-                            "paiement_associe",
-                            auth()->id(),
-                            "Paiement associé lors de validation groupée",
-                            ["paiement_id" => $premierPaiement->id],
-                        );
-
-                        // Puis valider définitivement
-                        $result = $this->workflowService->convertProspectToStudent(
-                            $inscription,
-                            "Validation groupée",
-                        );
-
-                        if ($result["success"]) {
-                            $stats["validees_direct"]++;
-
-                            // Notification
-                            if (
-                                $inscription->etudiant &&
-                                $inscription->etudiant->user
-                            ) {
-                                $notificationService = app(
-                                    \App\Services\NotificationService::class,
-                                );
-                                $notificationService->createNotification(
-                                    $inscription->etudiant->user,
-                                    "Inscription validée",
-                                    "Votre inscription a été validée avec succès. Vous pouvez maintenant accéder à votre espace étudiant.",
-                                    "success",
-                                    route(
-                                        "esbtp.inscriptions.show",
-                                        $inscription->id,
-                                    ),
-                                    auth()->user(),
-                                );
-                            }
-
-                            // Désactiver les rappels
-                            $this->desactiverRappelsInscription(
-                                $inscription->id,
-                            );
-                        } else {
-                            // Si ça échoue, on ignore au lieu de créer une erreur
-                            $stats["ignorees"][] = [
-                                "id" => $id,
-                                "etudiant" => $etudiantNom,
-                                "raison" => $result["message"],
-                            ];
-                        }
-
-                        continue;
-                    }
-
-                    // Cas 3: A des paiements EN ATTENTE -> ne pas valider automatiquement
-                    $paiementsEnAttente = $inscription->paiements->where(
-                        "status",
-                        "en_attente",
-                    );
-                    if ($paiementsEnAttente->count() > 0) {
-                        $stats["ignorees"][] = [
-                            "id" => $inscription->id,
-                            "etudiant" => $etudiantNom,
-                            "raison" => "Le paiement associe n'est pas encore valide",
-                        ];
-                        $stats["raisons_ignorees"]["paiement_non_valide"]++;
-
-                        continue;
-                    }
-                    // Cas 4: Aucun paiement -> ignorer
-                    if ($inscription->paiements->count() === 0) {
-                        $stats["ignorees"][] = [
-                            "id" => $inscription->id,
-                            "etudiant" => $etudiantNom,
-                            "raison" => "Aucun paiement associe a cette inscription",
-                        ];
-                        $stats["raisons_ignorees"]["sans_paiement"]++;
-
-                        continue;
-                    }
-
-                    // Cas 4: Paiement present -> valider (aligne sur valider())
-                    // Vérifier la disponibilité de la classe (sauf si force = true)
-                    if (!$forceValidation) {
-                        $classAvailability = $this->workflowService->checkClassAvailability(
-                            $inscription->classe_id,
-                        );
-                        if (!$classAvailability["available"]) {
-                            $stats["ignorees"][] = [
-                                "id" => $inscription->id,
-                                "etudiant" => $etudiantNom,
-                                "raison" =>
-                                    "Classe pleine - " .
-                                    $classAvailability["message"],
-                            ];
-                            $stats["raisons_ignorees"]["classe_pleine"]++;
-
-                            continue;
-                        }
-                    }
-
-                    // Vérifier inscription active existante
-                    $existingInscription = ESBTPInscription::where(
-                        "etudiant_id",
-                        $inscription->etudiant_id,
-                    )
-                        ->where(
-                            "annee_universitaire_id",
-                            $inscription->annee_universitaire_id,
-                        )
-                        ->where("status", "active")
-                        ->where("workflow_step", "etudiant_cree")
-                        ->where("id", "!=", $inscription->id)
-                        ->first();
-
-                    if ($existingInscription) {
-                        $stats["ignorees"][] = [
-                            "id" => $inscription->id,
-                            "etudiant" => $etudiantNom,
-                            "raison" =>
-                                'L\'étudiant a déjà une inscription active pour cette année',
-                        ];
-                        $stats["raisons_ignorees"][
-                            "inscription_existante"
-                        ]++;
-
-                        continue;
-                    }
-
-                    // Sans paiement : utiliser inscriptionService (aligné sur valider() unitaire)
-                    $result = $this->inscriptionService->validerInscription(
-                        $inscription->id,
-                        auth()->id(),
-                    );
-
-                    if ($result["success"]) {
-                        $stats["validees_direct"]++;
-
-                        if (
-                            $inscription->etudiant &&
-                            $inscription->etudiant->user
-                        ) {
-                            $notificationService = app(
-                                \App\Services\NotificationService::class,
-                            );
-                            $notificationService->createNotification(
-                                $inscription->etudiant->user,
-                                "Inscription validée",
-                                "Votre inscription a été validée avec succès. Vous pouvez maintenant accéder à votre espace étudiant.",
-                                "success",
-                                route(
-                                    "esbtp.inscriptions.show",
-                                    $inscription->id,
-                                ),
-                                auth()->user(),
-                            );
-                        }
-
-                        $this->desactiverRappelsInscription(
-                            $inscription->id,
-                        );
-                    } else {
-                        $stats["ignorees"][] = [
-                            "id" => $id,
-                            "etudiant" => $etudiantNom,
-                            "raison" => $result["message"],
-                        ];
-                    }
-                } catch (\Exception $e) {
-                    Log::error(
-                        "Erreur validation inscription bulk #" .
-                            $id .
-                            ": " .
-                            $e->getMessage(),
-                    );
-                    $stats["erreurs"][] = [
-                        "id" => $id,
-                        "erreur" => $e->getMessage(),
-                    ];
-                }
-            }
+            $stats = $this->inscriptionService->processBulkValidation(
+                $inscriptionIds,
+                $forceValidation,
+                $this->workflowService,
+                auth()->id(),
+            );
 
             DB::commit();
 
-            $totalValidees =
-                $stats["validees_direct"] + $stats["validees_apres_paiement"];
-            $totalIgnorees = count($stats["ignorees"]);
-            $totalErreurs = count($stats["erreurs"]);
-            $totalTraitees =
-                count($inscriptionIds) - $stats["inscriptions_deja_validees"];
-
-            Log::info("Validation groupée inscriptions terminée", [
-                "user_id" => auth()->id(),
-                "total_selectionnees" => count($inscriptionIds),
-                "stats" => $stats,
-            ]);
-
-            // Construire le message de retour enrichi
-            $message = "";
-            if ($stats["validees_direct"] > 0) {
-                $message .= "{$stats["validees_direct"]} inscription(s) validée(s) directement. ";
-            }
-            if ($stats["paiements_valides"] > 0) {
-                $message .= "{$stats["paiements_valides"]} paiement(s) auto-validé(s). ";
-            }
-            if ($stats["validees_apres_paiement"] > 0) {
-                $message .= "{$stats["validees_apres_paiement"]} inscription(s) validée(s) après validation du paiement. ";
-            }
-            if ($stats["inscriptions_deja_validees"] > 0) {
-                $message .= "{$stats["inscriptions_deja_validees"]} inscription(s) déjà validée(s) (ignorée(s)). ";
-            }
-
-            // Détail des inscriptions ignorées par raison
-            if (count($stats["ignorees"]) > 0) {
-                $message .=
-                    count($stats["ignorees"]) . " inscription(s) ignorée(s) : ";
-                $raisons = [];
-                if ($stats["raisons_ignorees"]["sans_paiement"] > 0) {
-                    $raisons[] = "{$stats["raisons_ignorees"]["sans_paiement"]} sans paiement";
-                }
-                if ($stats["raisons_ignorees"]["paiement_non_valide"] > 0) {
-                    $raisons[] = "{$stats["raisons_ignorees"]["paiement_non_valide"]} paiement non validé";
-                }
-                if ($stats["raisons_ignorees"]["classe_pleine"] > 0) {
-                    $raisons[] = "{$stats["raisons_ignorees"]["classe_pleine"]} classe pleine";
-                }
-                if ($stats["raisons_ignorees"]["inscription_existante"] > 0) {
-                    $raisons[] = "{$stats["raisons_ignorees"]["inscription_existante"]} inscription existante";
-                }
-                $message .= implode(", ", $raisons) . ". ";
-            }
-
-            if (count($stats["erreurs"]) > 0) {
-                $message .=
-                    count($stats["erreurs"]) . " erreur(s) techniques. ";
-            }
-
-            // Stocker les détails des erreurs et inscriptions ignorées en session pour affichage visuel
-            $inscriptionsAvecProblemes = [];
-
-            // Ajouter les erreurs avec leur message
-            if (is_array($stats["erreurs"])) {
-                foreach ($stats["erreurs"] as $erreur) {
-                    if (
-                        is_array($erreur) &&
-                        isset($erreur["id"]) &&
-                        isset($erreur["erreur"])
-                    ) {
-                        $inscriptionsAvecProblemes[$erreur["id"]] = [
-                            "type" => "error",
-                            "message" => $erreur["erreur"],
-                        ];
-                    }
-                }
-            }
-
-            // Ajouter les ignorées avec leur raison
-            if (is_array($stats["ignorees"])) {
-                foreach ($stats["ignorees"] as $ignoree) {
-                    if (
-                        is_array($ignoree) &&
-                        isset($ignoree["id"]) &&
-                        isset($ignoree["raison"])
-                    ) {
-                        $inscriptionsAvecProblemes[$ignoree["id"]] = [
-                            "type" => "warning",
-                            "message" => $ignoree["raison"],
-                        ];
-                    }
-                }
-            }
-
-            // Debug: Log pour vérifier les données
-            Log::info("Inscriptions avec problèmes:", [
-                "problemes" => $inscriptionsAvecProblemes,
-            ]);
+            $message = $this->inscriptionService->buildBulkValidationMessage($stats);
+            $inscriptionsAvecProblemes = $this->inscriptionService->extractBulkProblems($stats);
 
             if ($request->ajax()) {
                 return response()->json([
                     "success" => true,
-                    "message" =>
-                        $message ?: 'Aucune inscription n\'a été traitée.',
+                    "message" => $message ?: 'Aucune inscription n\'a été traitée.',
                     "stats" => $stats,
                     "inscriptions_problemes" => $inscriptionsAvecProblemes,
                 ]);
@@ -2067,24 +1451,17 @@ class ESBTPInscriptionController extends Controller
 
             return redirect()
                 ->back()
-                ->with(
-                    "success",
-                    $message ?: 'Aucune inscription n\'a été traitée.',
-                )
+                ->with("success", $message ?: 'Aucune inscription n\'a été traitée.')
                 ->with("inscriptions_problemes", $inscriptionsAvecProblemes);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error(
-                "Erreur validation groupée inscriptions: " . $e->getMessage(),
-            );
+            Log::error("Erreur validation groupée inscriptions: " . $e->getMessage());
 
             if ($request->ajax()) {
                 return response()->json(
                     [
                         "success" => false,
-                        "message" =>
-                            "Erreur lors de la validation groupée: " .
-                            $e->getMessage(),
+                        "message" => "Erreur lors de la validation groupée: " . $e->getMessage(),
                     ],
                     500,
                 );
@@ -2092,10 +1469,7 @@ class ESBTPInscriptionController extends Controller
 
             return redirect()
                 ->back()
-                ->with(
-                    "error",
-                    "Erreur lors de la validation groupée: " . $e->getMessage(),
-                );
+                ->with("error", "Erreur lors de la validation groupée: " . $e->getMessage());
         }
     }
 
@@ -2114,108 +1488,27 @@ class ESBTPInscriptionController extends Controller
         try {
             DB::beginTransaction();
 
-            $nouvelleClasseId = $request->input("nouvelle_classe_id");
-            $ancienneClasseId = $inscription->classe_id;
-
-            // Vérifier la disponibilité de la nouvelle classe
-            $availability = $this->workflowService->checkClassAvailability(
-                $nouvelleClasseId,
-                $inscription->annee_universitaire_id,
+            $result = $this->inscriptionService->changerClasse(
+                $inscription,
+                $request->input("nouvelle_classe_id"),
+                $request->input("affectation_status"),
+                $this->workflowService,
             );
 
-            if (!$availability["available"]) {
+            if (!$result['success']) {
+                DB::rollBack();
                 return response()->json(
-                    [
-                        "success" => false,
-                        "message" => $availability["message"],
-                    ],
+                    ['success' => false, 'message' => $result['message']],
                     400,
                 );
             }
-
-            // Vérifier que ce n'est pas la même classe (sauf si ancienne est null = première affectation)
-            if ($ancienneClasseId && $ancienneClasseId == $nouvelleClasseId) {
-                return response()->json(
-                    [
-                        "success" => false,
-                        "message" =>
-                            'La nouvelle classe est identique à l\'ancienne.',
-                    ],
-                    400,
-                );
-            }
-
-            // Archiver les notes/résultats/bulletins de l'ancienne classe
-            if ($ancienneClasseId) {
-                $etudiantId = $inscription->etudiant_id;
-                $now = now();
-                ESBTPNote::where('etudiant_id', $etudiantId)
-                    ->where('classe_id', $ancienneClasseId)
-                    ->update(['archived_at' => $now]);
-                ESBTPResultat::where('etudiant_id', $etudiantId)
-                    ->where('classe_id', $ancienneClasseId)
-                    ->update(['archived_at' => $now]);
-                ESBTPBulletin::where('etudiant_id', $etudiantId)
-                    ->where('classe_id', $ancienneClasseId)
-                    ->update(['archived_at' => $now]);
-            }
-
-            // Restaurer les notes/résultats/bulletins archivés si l'étudiant revient dans la nouvelle classe
-            $etudiantId = $inscription->etudiant_id;
-            ESBTPNote::withoutGlobalScope('not_archived')
-                ->where('etudiant_id', $etudiantId)
-                ->where('classe_id', $nouvelleClasseId)
-                ->whereNotNull('archived_at')
-                ->update(['archived_at' => null]);
-            ESBTPResultat::withoutGlobalScope('not_archived')
-                ->where('etudiant_id', $etudiantId)
-                ->where('classe_id', $nouvelleClasseId)
-                ->whereNotNull('archived_at')
-                ->update(['archived_at' => null]);
-            ESBTPBulletin::withoutGlobalScope('not_archived')
-                ->where('etudiant_id', $etudiantId)
-                ->where('classe_id', $nouvelleClasseId)
-                ->whereNotNull('archived_at')
-                ->update(['archived_at' => null]);
-
-            // Mettre à jour la classe et le statut d'affectation
-            $affectationStatus = $request->input("affectation_status", $ancienneClasseId ? "réaffecté" : ESBTPInscription::DEFAULT_AFFECTATION_STATUS);
-            $inscription->update([
-                "classe_id" => $nouvelleClasseId,
-                "affectation_status" => $affectationStatus,
-                "updated_at" => now(),
-            ]);
-
-            // Régénérer les souscriptions de frais avec la nouvelle classe/statut
-            $this->regenererFraisInscription($inscription);
 
             DB::commit();
 
-            Log::info("Changement de classe rapide effectué", [
-                "inscription_id" => $inscription->id,
-                "ancienne_classe_id" => $ancienneClasseId,
-                "nouvelle_classe_id" => $nouvelleClasseId,
-                "affectation_status" => $affectationStatus,
-                "frais_regeneres" => true,
-                "user_id" => auth()->id(),
-            ]);
-
-            // Charger les relations pour retourner les infos
-            $inscription->load("classe");
-
             return response()->json([
-                "success" => true,
-                "message" => $ancienneClasseId
-                    ? "Classe changée avec succès. Les frais ont été recalculés."
-                    : "Étudiant affecté à la classe avec succès. Les frais ont été générés.",
-                "inscription" => [
-                    "id" => $inscription->id,
-                    "affectation_status" => $affectationStatus,
-                    "nouvelle_classe" => [
-                        "id" => $inscription->classe->id,
-                        "name" => $inscription->classe->name,
-                    ],
-                ],
+                'success' => true,
+                'message' => $result['message'],
+                'inscription' => $result['data'],
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -2223,15 +1516,12 @@ class ESBTPInscriptionController extends Controller
             Log::error("Erreur changerClasseRapide: " . $e->getMessage(), [
                 "inscription_id" => $inscription->id,
                 "nouvelle_classe_id" => $request->input("nouvelle_classe_id"),
-                "trace" => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return response()->json(
                 [
                     "success" => false,
-                    "message" =>
-                        "Erreur lors du changement de classe: " .
-                        $e->getMessage(),
+                    "message" => "Erreur lors du changement de classe: " . $e->getMessage(),
                 ],
                 500,
             );
@@ -2313,14 +1603,6 @@ class ESBTPInscriptionController extends Controller
                 "inscription" => $inscription,
             ])->render();
 
-            Log::info("Ligne inscription rafraîchie avec succès", [
-                "inscription_id" => $inscription->id,
-                "user_id" => auth()->id(),
-                "has_problem" => isset(
-                    $inscriptionsProblemes[$inscription->id],
-                ),
-            ]);
-
             return response()->json([
                 "success" => true,
                 "html" => $html,
@@ -2394,53 +1676,12 @@ class ESBTPInscriptionController extends Controller
     }
 
     /**
-     * Régénérer les frais obligatoires après changement de classe/filière/niveau
+     * Régénérer les frais obligatoires après changement de classe/filière/niveau.
+     * Délègue au service.
      */
     private function regenererFraisInscription(\App\Models\ESBTPInscription $inscription)
     {
-        \Log::info("Régénération des frais pour inscription", [
-            "inscription_id" => $inscription->id,
-            "filiere_id" => $inscription->filiere_id,
-            "niveau_id" => $inscription->niveau_id,
-            "classe_id" => $inscription->classe_id,
-        ]);
-
-        $categoriesObligatoires = ESBTPFraisCategory::where("is_mandatory", true)
-            ->where("is_active", true)
-            ->orderBy("sort_order")
-            ->get();
-
-        // Pré-charger toutes les configurations en une seule requête (évite N+1)
-        $configurations = ESBTPFraisConfiguration::where("is_active", true)
-            ->whereIn("frais_category_id", $categoriesObligatoires->pluck("id"))
-            ->get()
-            ->groupBy(fn($config) => "{$config->frais_category_id}_{$config->filiere_id}_{$config->niveau_id}");
-
-        $affectationStatus = $inscription->affectation_status ?? \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
-
-        foreach ($categoriesObligatoires as $category) {
-            $configKey = "{$category->id}_{$inscription->filiere_id}_{$inscription->niveau_id}";
-            $fraisConfig = $configurations->get($configKey, collect())->first();
-
-            if ($fraisConfig) {
-                $montant = $fraisConfig->getMontantByStatus($affectationStatus);
-
-                ESBTPFraisSubscription::updateOrCreate(
-                    [
-                        "inscription_id" => $inscription->id,
-                        "frais_category_id" => $category->id,
-                    ],
-                    [
-                        "selected_option_id" => null,
-                        "amount" => $montant,
-                        "is_active" => true,
-                        "subscribed_at" => now(),
-                        "created_by" => \Auth::id(),
-                        "notes" => "Régénéré automatiquement après changement de classe/filière/niveau",
-                    ],
-                );
-            }
-        }
+        $this->inscriptionService->regenererFraisInscription($inscription);
     }
 
     /**
@@ -2715,20 +1956,6 @@ class ESBTPInscriptionController extends Controller
             return redirect()->back()
                 ->with('error', 'Erreur lors de la pré-inscription: ' . $e->getMessage())
                 ->withInput();
-        }
-    }
-
-    private function desactiverRappelsInscription($inscriptionId)
-    {
-        try {
-            $reminder = \App\Models\NotificationReminder::where('remindable_type', 'App\Models\ESBTPInscription')
-                ->where('remindable_id', $inscriptionId)
-                ->first();
-            if ($reminder) {
-                $reminder->deactivate();
-            }
-        } catch (\Exception $e) {
-            Log::error('Erreur désactivation reminder inscription: ' . $e->getMessage());
         }
     }
 
