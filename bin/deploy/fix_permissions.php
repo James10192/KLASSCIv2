@@ -240,6 +240,13 @@ try {
         'system.technical_access',
         'system.emergency_override',
 
+        // Permissions authorization (migration hasRole → can)
+        'bulletin.configure',
+        'paiements.manage',
+        'inscriptions.manage',
+        'resultats.export',
+        'paywall.manage',
+
         // Permissions Comptabilité (rôle comptable)
         'comptabilite.access',
         'comptabilite.dashboard.view',
@@ -340,6 +347,10 @@ try {
         'manage-users',
         'edit_enseignants',
         'edit_bulletins',
+        // Authorization permissions
+        'inscriptions.manage',
+        'resultats.export',
+        'bulletin.configure',
     ];
     $secretaireRole->syncPermissions($secretairePermissions);
     echo '✓ Secrétaire: '.count($secretairePermissions)." permissions accordées\n";

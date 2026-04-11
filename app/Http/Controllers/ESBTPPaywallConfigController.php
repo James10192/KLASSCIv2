@@ -28,14 +28,14 @@ class ESBTPPaywallConfigController extends Controller
             'user_id' => $user->id,
             'user_email' => $user->email,
             'user_roles' => $user->roles->pluck('name')->toArray(),
-            'has_serviceTechnique_role' => $user->hasRole('serviceTechnique'),
+            'has_paywall_manage' => $user->can('paywall.manage'),
             'can_paywall_configure' => $user->can('paywall.configure'),
             'can_system_technical_access' => $user->can('system.technical_access'),
         ]);
 
         // ACCÈS RÉSERVÉ EXCLUSIVEMENT AU SERVICE TECHNIQUE D'AFRICAN DIGIT CONSULTING
         // Seul le rôle serviceTechnique est autorisé, pas les superAdmin
-        $hasAccess = $user->hasRole('serviceTechnique');
+        $hasAccess = $user->can('paywall.manage');
 
         \Log::info('PaywallConfig Access Result', [
             'hasAccess' => $hasAccess,
@@ -62,7 +62,7 @@ class ESBTPPaywallConfigController extends Controller
             'user_email' => auth()->user() ? auth()->user()->email : 'guest',
             'user_id' => auth()->user() ? auth()->user()->id : null,
             'user_roles' => auth()->user() ? auth()->user()->roles->pluck('name')->toArray() : [],
-            'has_serviceTechnique_role' => auth()->user() ? auth()->user()->hasRole('serviceTechnique') : false,
+            'has_paywall_manage' => auth()->user() ? auth()->user()->can('paywall.manage') : false,
             'can_paywall_configure' => auth()->user() ? auth()->user()->can('paywall.configure') : false,
             'can_system_technical_access' => auth()->user() ? auth()->user()->can('system.technical_access') : false,
             'request_ip' => request()->ip(),

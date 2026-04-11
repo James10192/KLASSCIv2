@@ -20,11 +20,9 @@ class CheckComptabiliteAccess
     $user = Auth::user();
 
     if (
-        !$user->hasRole('superAdmin') &&
-        !$user->hasRole('comptable') &&
-        !$user->hasPermissionTo('comptabilite.access') &&
-        !$user->hasPermissionTo('access_comptabilite_module') &&
-        !$user->hasPermissionTo('comptabilite.manage')
+        !$user->can('comptabilite.access') &&
+        !$user->can('access_comptabilite_module') &&
+        !$user->can('comptabilite.manage')
     ) {
         abort(403, 'Accès non autorisé.');
     }

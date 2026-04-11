@@ -1993,9 +1993,9 @@ class ESBTPResultatController extends Controller
      */
     public function previewMoyennes(Request $request)
     {
-        // Vérifier les permissions et les rôles
-        if (! Auth::check() || (! auth()->user()->hasRole('superAdmin') && ! auth()->user()->hasRole('secretaire'))) {
-            return redirect()->back()->with('error', 'Vous n\'avez pas les permissions nécessaires pour modifier les moyennes.');
+        // Vérifier les permissions
+        if (! Auth::check() || ! auth()->user()->can('resultats.export')) {
+            abort(403, 'Vous n\'avez pas les permissions nécessaires pour modifier les moyennes.');
         }
 
         // Validation déjà faite par PreviewMoyennesRequest si besoin
@@ -2319,9 +2319,9 @@ class ESBTPResultatController extends Controller
      */
     public function updateMoyennes(UpdateMoyennesRequest $request)
     {
-        // Vérifier les permissions et les rôles
-        if (! Auth::check() || (! auth()->user()->hasRole('superAdmin') && ! auth()->user()->hasRole('secretaire'))) {
-            return redirect()->back()->with('error', 'Vous n\'avez pas les permissions nécessaires pour modifier les moyennes.');
+        // Vérifier les permissions
+        if (! Auth::check() || ! auth()->user()->can('resultats.export')) {
+            abort(403, 'Vous n\'avez pas les permissions nécessaires pour modifier les moyennes.');
         }
 
         $etudiantId = $request->etudiant_id;
@@ -2503,8 +2503,8 @@ class ESBTPResultatController extends Controller
     public function deleteMoyenne(DeleteMoyenneRequest $request)
     {
         // Vérifier les permissions
-        if (! Auth::check() || (! auth()->user()->hasRole('superAdmin') && ! auth()->user()->hasRole('secretaire'))) {
-            return redirect()->back()->with('error', 'Vous n\'avez pas les permissions nécessaires pour supprimer les moyennes.');
+        if (! Auth::check() || ! auth()->user()->can('resultats.export')) {
+            abort(403, 'Vous n\'avez pas les permissions nécessaires pour supprimer les moyennes.');
         }
 
         $etudiantId = $request->etudiant_id;

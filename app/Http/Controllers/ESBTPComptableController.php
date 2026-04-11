@@ -80,13 +80,13 @@ class ESBTPComptableController extends Controller
 
     public function show(User $user)
     {
-        abort_unless($user->hasRole('comptable'), 404);
+        abort_unless($user->can('comptabilite.access'), 403);
         return view('esbtp.comptables.show', compact('user'));
     }
 
     public function update(Request $request, User $user)
     {
-        abort_unless($user->hasRole('comptable'), 404);
+        abort_unless($user->can('comptabilite.access'), 403);
 
         $validated = $request->validate([
             'name'       => 'required|string|max:255',
@@ -112,7 +112,7 @@ class ESBTPComptableController extends Controller
 
     public function toggleStatus(User $user)
     {
-        abort_unless($user->hasRole('comptable'), 404);
+        abort_unless($user->can('comptabilite.access'), 403);
 
         $user->update(['is_active' => !$user->is_active]);
 
@@ -177,7 +177,7 @@ class ESBTPComptableController extends Controller
 
     public function destroy(User $user)
     {
-        abort_unless($user->hasRole('comptable'), 404);
+        abort_unless($user->can('comptabilite.access'), 403);
 
         if ($user->id === Auth::id()) {
             return redirect()->back()->with('error', 'Vous ne pouvez pas supprimer votre propre compte.');

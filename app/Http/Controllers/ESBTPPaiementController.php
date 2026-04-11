@@ -956,8 +956,8 @@ class ESBTPPaiementController extends Controller
         $paiement = ESBTPPaiement::findOrFail($id);
         $this->authorize('update', $paiement);
 
-        // Vérifier que l'utilisateur est superadmin
-        if (!auth()->user()->hasRole('superAdmin')) {
+        // Vérifier que l'utilisateur a la permission de gérer les paiements
+        if (!auth()->user()->can('paiements.manage')) {
             return redirect()->route('esbtp.paiements.show', $id)
                 ->with('error', 'Seuls les super-administrateurs peuvent modifier les paiements.');
         }
@@ -1002,8 +1002,8 @@ class ESBTPPaiementController extends Controller
      */
     public function update(Request $request, $id)
     {
-        // Vérifier que l'utilisateur est superadmin
-        if (!auth()->user()->hasRole('superAdmin')) {
+        // Vérifier que l'utilisateur a la permission de gérer les paiements
+        if (!auth()->user()->can('paiements.manage')) {
             return redirect()->route('esbtp.paiements.show', $id)
                 ->with('error', 'Seuls les super-administrateurs peuvent modifier les paiements.');
         }
@@ -2374,7 +2374,7 @@ class ESBTPPaiementController extends Controller
     public function destroy(Request $request, ESBTPPaiement $paiement)
     {
         $user = $request->user();
-        if (!$user || !$user->hasRole('superAdmin')) {
+        if (!$user || !$user->can('paiements.manage')) {
             abort(403, 'Cette action est réservée au super administrateur.');
         }
 

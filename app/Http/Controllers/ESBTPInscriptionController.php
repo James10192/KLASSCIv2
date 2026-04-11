@@ -1063,9 +1063,9 @@ class ESBTPInscriptionController extends Controller
 
             if (
                 $inscription->status === "active" &&
-                !Auth::user()->hasRole("superAdmin")
+                !Auth::user()->can("inscriptions.manage")
             ) {
-                // Empêcher la modification de la filière, niveau et classe pour les inscriptions actives (sauf superAdmin)
+                // Empêcher la modification de la filière, niveau et classe pour les inscriptions actives (sauf utilisateurs autorisés)
                 unset($data["filiere_id"]);
                 unset($data["niveau_id"]);
                 unset($data["classe_id"]);
@@ -1078,7 +1078,7 @@ class ESBTPInscriptionController extends Controller
                 );
             } elseif (
                 $inscription->status === "active" &&
-                Auth::user()->hasRole("superAdmin")
+                Auth::user()->can("inscriptions.manage")
             ) {
                 \Log::info("SuperAdmin modifie une inscription active", [
                     "inscription_id" => $inscription->id,

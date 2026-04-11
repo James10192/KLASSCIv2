@@ -1310,8 +1310,8 @@ class ESBTPBulletinController extends Controller
     {
         try {
             // Vérifier que l'utilisateur est autorisé
-            if (! Auth::check() || ! Auth::user()->hasRole('superAdmin')) {
-                return redirect()->route('dashboard')->with('error', 'Accès non autorisé. Seul un SuperAdmin peut générer des bulletins.');
+            if (! Auth::check() || ! Auth::user()->can('bulletin.configure')) {
+                abort(403, 'Accès non autorisé. Vous n\'avez pas la permission de configurer les bulletins.');
             }
 
             // Récupérer les paramètres
