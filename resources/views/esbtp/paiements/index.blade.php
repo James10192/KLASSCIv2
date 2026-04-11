@@ -166,7 +166,7 @@
             @include('esbtp.paiements.partials.table', ['paiements' => $paiements])
         </div>
 
-        @if(auth()->user()->hasRole('superAdmin'))
+        @if(auth()->user()->can('access_admin'))
         <div id="bulk-actions-bar" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
              background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; padding: 15px 30px;
              border-radius: 50px; box-shadow: 0 10px 40px rgba(4, 83, 203, 0.4); z-index: 1050;
@@ -1404,7 +1404,7 @@ $(document).ready(function() {
 </div>
 
 <!-- Modal de rejet groupé -->
-@if(auth()->user()->hasRole('superAdmin'))
+@if(auth()->user()->can('access_admin'))
 <div class="modal fade" id="bulkRejetModal" tabindex="-1" aria-labelledby="bulkRejetModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">

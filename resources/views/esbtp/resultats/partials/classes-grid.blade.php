@@ -35,11 +35,11 @@
                     <a href="{{ route('esbtp.resultats.classe', $classe->id) }}" class="sr-cls-btn sr-cls-btn--primary">
                         <i class="fas fa-chart-bar"></i>Résultats
                     </a>
-                    @if(auth()->user()->hasRole('superAdmin'))
+                    @can('access_admin')
                         <a href="{{ route('esbtp.resultats.classe.edit', $classe->id) }}" class="sr-cls-btn sr-cls-btn--secondary">
                             <i class="fas fa-edit"></i>
                         </a>
-                    @endif
+                    @endcan
                 </div>
             </div>
         @endforeach

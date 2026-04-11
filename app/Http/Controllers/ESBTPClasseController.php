@@ -94,7 +94,7 @@ class ESBTPClasseController extends Controller
         }
 
         // Enseignant : ne voir que les classes où il a des séances dans l'emploi du temps
-        if ($user && $user->hasRole(['teacher', 'enseignant'])) {
+        if ($user && $user->can('can_teach')) {
             $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
             if ($teacher && $anneeCourante) {
                 $classeIds = ESBTPSeanceCours::query()
@@ -233,7 +233,7 @@ class ESBTPClasseController extends Controller
         }
 
         // Different view rendering based on user role
-        if ($user->hasRole("etudiant")) {
+        if ($user->can("can_view_student_features")) {
             // For students - read-only view
             return view(
                 "esbtp.classes.student_index",
@@ -490,7 +490,7 @@ class ESBTPClasseController extends Controller
             : date("Y") . "-" . (date("Y") + 1);
 
         // Different view rendering based on user role
-        if ($user->hasRole("etudiant")) {
+        if ($user->can("can_view_student_features")) {
             // For students - read-only view
             return view(
                 "esbtp.classes.student_show",

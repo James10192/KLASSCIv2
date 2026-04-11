@@ -338,7 +338,7 @@
                 </div>
                 @endif
 
-                @if(auth()->user()->hasRole('superAdmin'))
+                @can('access_admin')
                 <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}" class="ps-btn warning">
                     <i class="fas fa-edit"></i> Modifier
                 </a>
@@ -347,7 +347,7 @@
                     @csrf @method('DELETE')
                     <button type="submit" class="ps-btn danger"><i class="fas fa-trash"></i></button>
                 </form>
-                @endif
+                @endcan
 
                 @if($paiement->status === 'en_attente')
                 <form action="{{ route('esbtp.paiements.valider', $paiement->id) }}" method="POST" style="margin:0"

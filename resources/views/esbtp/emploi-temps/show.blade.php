@@ -398,7 +398,7 @@
                 @if (session('show_force_delete'))
                     <hr>
                     <div class="d-flex justify-content-end">
-                        @if(auth()->user()->hasRole('superAdmin') && auth()->user()->can('delete_timetables'))
+                        @if(auth()->user()->can('access_admin') && auth()->user()->can('delete_timetables'))
                         <form action="{{ route('esbtp.emploi-temps.destroy', ['emploi_temp' => $emploiTemps->id]) }}" method="POST">
                             @csrf
                             @method('DELETE')

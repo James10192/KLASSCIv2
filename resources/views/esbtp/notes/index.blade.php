@@ -384,7 +384,7 @@
                     </div>
 
                     {{-- Section 5: Enseignant (non-enseignants seulement) --}}
-                    @if(auth()->check() && !auth()->user()->hasRole(['teacher', 'enseignant']))
+                    @if(auth()->check() && !auth()->user()->can('can_teach'))
                     <div class="nm-eval-section">
                         <div class="nm-eval-section-header">
                             <span class="nm-eval-section-num">5</span>
@@ -456,7 +456,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fermer</button>
-                @if(auth()->user()->hasRole('superAdmin'))
+                @if(auth()->user()->can('access_admin'))
                 <a href="{{ route('esbtp.annees-universitaires.index') }}" class="btn btn-primary btn-sm">
                     <i class="fas fa-external-link-alt me-1"></i>Gérer les années
                 </a>

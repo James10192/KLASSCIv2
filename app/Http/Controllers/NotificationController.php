@@ -276,7 +276,7 @@ class NotificationController extends Controller
         $user = Auth::user();
         $query = Notification::query();
         
-        if ($user->hasRole('student') && $user->student) {
+        if ($user->can('can_view_student_features') && $user->student) {
             $query->where(function($q) use ($user) {
                 $q->where('recipient_type', 'all')
                   ->orWhere('recipient_type', 'students')
@@ -293,12 +293,12 @@ class NotificationController extends Controller
                         });
                   });
             });
-        } elseif ($user->hasRole('teacher') && $user->teacher) {
+        } elseif ($user->can('can_teach') && $user->teacher) {
             $query->where(function($q) {
                 $q->where('recipient_type', 'all')
                   ->orWhere('recipient_type', 'teachers');
             });
-        } elseif ($user->hasRole('parent') && $user->guardian) {
+        } elseif ($user->can('can_view_parent_features') && $user->guardian) {
             $query->where(function($q) {
                 $q->where('recipient_type', 'all')
                   ->orWhere('recipient_type', 'parents');

@@ -148,18 +148,18 @@
                 <div>
                     <h1>
                         <i class="fas fa-bell me-3"></i>
-                        @if(auth()->user()->hasRole('coordinateur'))
+                        @can('can_coordinate_academics')
                             Notifications — Coordination
                         @else
                             Mes Notifications
-                        @endif
+                        @endcan
                     </h1>
                     <p class="header-subtitle">
-                        @if(auth()->user()->hasRole('coordinateur'))
+                        @can('can_coordinate_academics')
                             Suivi des activités d'émargement et d'appel
                         @else
                             Restez informé des événements récents
-                        @endif
+                        @endcan
                     </p>
                 </div>
                 <div class="text-end">
@@ -174,7 +174,7 @@
         <div class="notifications-panel">
             <div class="notifications-toolbar">
                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                    @if(auth()->user()->hasRole('coordinateur'))
+                    @can('can_coordinate_academics')
                         {{-- Lien vers le tableau de bord des présences --}}
                         <a href="{{ route('esbtp.attendances.index') }}" class="btn btn-primary btn-sm">
                             <i class="fas fa-chart-bar me-1"></i> Présences & Tableau de Bord
@@ -194,7 +194,7 @@
                                 Retards
                             </button>
                         </div>
-                    @endif
+                    @endcan
                 </div>
                 <div>
                     @if($notifications->where('is_read', false)->isNotEmpty())
@@ -488,7 +488,7 @@
                                         </div>
                                         <div class="d-flex align-items-start gap-2 flex-shrink-0">
                                             {{-- Actions spécifiques selon le type de notification et le rôle --}}
-                                            @if(auth()->user()->hasRole('coordinateur'))
+                                            @can('can_coordinate_academics')
                                                 {{-- Actions pour coordinateurs --}}
                                                 @if(str_contains(strtolower($notification->title ?? ''), 'émargement'))
                                                     <a href="{{ $notification->link ?? route('esbtp.teacher-attendance.report') }}" class="btn btn-info btn-sm" onclick="event.stopPropagation();">
@@ -511,15 +511,15 @@
                                                         <i class="fas fa-chart-line me-1"></i> Voir rapport
                                                     </a>
                                                 @endif
-                                            @elseif(auth()->user()->hasRole('etudiant'))
+                                            @elsecan('can_view_student_features')
                                                 {{-- Actions pour étudiants --}}
                                                 @if(str_contains(strtolower($notification->title ?? ''), 'absence'))
                                                     <a href="{{ $notification->link ?? route('esbtp.mes-absences.index') }}" class="btn btn-primary btn-sm" onclick="event.stopPropagation();">
                                                         <i class="fas fa-file-alt me-1"></i> Justifier l'absence
                                                     </a>
                                                 @endif
-                                            @endif
-                                            
+                                            @endcan
+
                                             {{-- Bouton de suppression pour tous les rôles --}}
                                             <button class="btn btn-outline-danger btn-sm" onclick="deleteNotificationPage({{ $notification->id }})" title="Supprimer cette notification">
                                                 <i class="fas fa-trash-alt"></i>
@@ -599,7 +599,7 @@ document.querySelector('.mark-all-read')?.addEventListener('click', function(e) 
 });
 
 // Filtres pour coordinateurs
-@if(auth()->user()->hasRole('coordinateur'))
+@if(auth()->user()->can('can_coordinate_academics'))
 document.querySelectorAll('.filter-notifications').forEach(button => {
     button.addEventListener('click', function() {
         // Réinitialiser l'état des boutons
@@ -634,7 +634,7 @@ document.querySelectorAll('.filter-notifications').forEach(button => {
 });
 
 // Auto-refresh pour les coordinateurs (toutes les 30 secondes)
-@if(auth()->user()->hasRole('coordinateur'))
+@if(auth()->user()->can('can_coordinate_academics'))
 setInterval(function() {
     fetch('{{ route('notifications.unreadCount') }}')
         .then(response => response.json())

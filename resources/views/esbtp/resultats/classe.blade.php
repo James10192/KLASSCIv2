@@ -61,12 +61,12 @@
                     <a href="{{ route('esbtp.resultats.classes') }}" class="sr-hero-btn">
                         <i class="fas fa-arrow-left"></i>Retour
                     </a>
-                    @if(auth()->user()->hasRole('superAdmin'))
+                    @can('access_admin')
                         <a href="{{ route('esbtp.resultats.classe.edit', $classe->id) }}?annee_universitaire_id={{ $annee_id }}&semestre={{ $semestre }}"
                            class="sr-hero-btn--solid sr-hero-btn">
                             <i class="fas fa-edit"></i>Éditer groupé
                         </a>
-                    @endif
+                    @endcan
                 </div>
             </div>
         </div>

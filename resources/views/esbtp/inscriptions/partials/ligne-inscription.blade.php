@@ -7,7 +7,7 @@
     $isValidee = $inscription->status == 'active' && $inscription->workflow_step === 'etudiant_cree';
 @endphp
 <tr class="{{ $problemeClass }}" data-inscription-id="{{ $inscription->id }}">
-    @if(auth()->user()->hasRole('superAdmin'))
+    @can('access_admin')
     <td>
         @if($isNonValidee)
         <input type="checkbox" class="form-check-input inscription-checkbox"
@@ -15,7 +15,7 @@
                data-inscription-id="{{ $inscription->id }}">
         @endif
     </td>
-    @endif
+    @endcan
     <td style="max-width: 250px;">
         @if($hasProbleme)
             <div class="d-flex flex-column gap-2">

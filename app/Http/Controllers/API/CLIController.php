@@ -695,12 +695,12 @@ class CLIController extends BaseApiController
         }
 
         // Block deletion of last superAdmin
-        if ($user->hasRole('superAdmin') && User::role('superAdmin')->count() <= 1) {
+        if ($user->can('access_admin') && User::role('superAdmin')->count() <= 1) {
             return $this->errorResponse('Cannot delete the last superAdmin account', [], 422);
         }
 
         // Block deletion of serviceTechnique
-        if ($user->hasRole('serviceTechnique')) {
+        if ($user->can('module.technical_support.access')) {
             return $this->errorResponse('Cannot delete serviceTechnique accounts', [], 422);
         }
 

@@ -121,9 +121,9 @@ class BaseApiController extends Controller
             'user_context' => $user ? [
                 'id' => $user->id,
                 'role' => $user->getRoleNames()->first(),
-                'is_enseignant' => $user->hasRole('enseignant'),
-                'is_coordinateur' => $user->hasRole('coordinateur'),
-                'is_etudiant' => $user->hasRole('etudiant')
+                'is_enseignant' => $user->can('can_teach'),
+                'is_coordinateur' => $user->can('can_coordinate_academics'),
+                'is_etudiant' => $user->can('can_view_student_features')
             ] : null
         ];
     }
@@ -145,7 +145,32 @@ class BaseApiController extends Controller
             $roles = [$roles];
         }
 
-        return $user->hasAnyRole($roles);
+        // Map roles to permissions for permission-based checks
+        $roleToPermission = [
+            'superAdmin' => 'access_admin',
+            'secretaire' => 'can_manage_school',
+            'coordinateur' => 'can_coordinate_academics',
+            'enseignant' => 'can_teach',
+            'teacher' => 'can_teach',
+            'etudiant' => 'can_view_student_features',
+            'serviceTechnique' => 'module.technical_support.access',
+            'comptable' => 'comptabilite.access',
+        ];
+
+        $permissions = [];
+        foreach ($roles as $role) {
+            if (isset($roleToPermission[$role])) {
+                $permissions[] = $roleToPermission[$role];
+            }
+        }
+
+        $permissions = array_unique($permissions);
+
+        if (empty($permissions)) {
+            return false;
+        }
+
+        return $user->hasAnyPermission($permissions);
     }
 
     /**
@@ -183,16 +208,16 @@ class BaseApiController extends Controller
         }
 
         // Les coordinateurs et superAdmin ont accès à tout
-        if ($user->hasRole(['coordinateur', 'superAdmin'])) {
+        if ($user->hasAnyPermission(['access_admin', 'can_coordinate_academics'])) {
             return $query;
         }
 
         // Filtres spécifiques par rôle et contexte
-        if ($user->hasRole('enseignant')) {
+        if ($user->can('can_teach')) {
             return $this->applyEnseignantFilters($query, $context);
         }
 
-        if ($user->hasRole('etudiant')) {
+        if ($user->can('can_view_student_features')) {
             return $this->applyEtudiantFilters($query, $context);
         }
 

@@ -64,7 +64,7 @@ class ESBTPNoteController extends Controller
 
         // Enseignant : ne voir que les classes où il a des séances dans l'emploi du temps
         $user = Auth::user();
-        if ($user && $user->hasRole(['teacher', 'enseignant'])) {
+        if ($user && $user->can('can_teach')) {
             $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
             if ($teacher && $anneeCourante) {
                 $classeIds = ESBTPSeanceCours::query()
@@ -282,7 +282,7 @@ class ESBTPNoteController extends Controller
             $allClasses = $classes;
 
             $evaluationTypes = ESBTPEvaluation::getTypes();
-            $enseignants = Auth::user()->hasRole(['teacher', 'enseignant'])
+            $enseignants = Auth::user()->can('can_teach')
                 ? collect()
                 : User::whereHas('roles', fn ($q) => $q->whereIn('name', ['teacher', 'enseignant']))->orderBy('name')->get();
 
@@ -297,7 +297,7 @@ class ESBTPNoteController extends Controller
         $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
 
         $evaluationTypes = ESBTPEvaluation::getTypes();
-        $enseignants = Auth::user()->hasRole(['teacher', 'enseignant'])
+        $enseignants = Auth::user()->can('can_teach')
             ? collect()
             : User::whereHas('roles', fn ($q) => $q->whereIn('name', ['teacher', 'enseignant']))->orderBy('name')->get();
 
@@ -750,7 +750,7 @@ class ESBTPNoteController extends Controller
                 ->with('error', "La saisie des notes est disponible uniquement après la date d'évaluation.");
         }
 
-        if (($user->hasRole('enseignant') || $user->hasRole('teacher')) && $user->can('manage_own_notes')) {
+        if ($user->can('can_teach') && $user->can('manage_own_notes')) {
             $isOwner = $evaluation->enseignant_id === $user->id || $evaluation->created_by === $user->id;
             if (! $isOwner) {
                 return redirect()
@@ -899,7 +899,7 @@ class ESBTPNoteController extends Controller
         $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
         $user = Auth::user();
 
-        if (($user->hasRole('enseignant') || $user->hasRole('teacher')) && $user->can('manage_own_notes')) {
+        if ($user->can('can_teach') && $user->can('manage_own_notes')) {
             $isOwner = $evaluation->enseignant_id === $user->id || $evaluation->created_by === $user->id;
             if (! $isOwner) {
                 return redirect()->back()

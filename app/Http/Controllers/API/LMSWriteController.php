@@ -49,7 +49,7 @@ class LMSWriteController extends BaseApiController
         }
 
         // Vérifier que l'enseignant a le droit de saisir des notes pour cette évaluation
-        if (auth()->user()->hasRole('enseignant')) {
+        if (auth()->user()->can('can_teach') && !auth()->user()->can('can_coordinate_academics')) {
             $hasAccess = $evaluation->matiere->enseignants()
                 ->where('enseignant_id', auth()->id())
                 ->where('esbtp_enseignant_matiere.annee_universitaire_id', $evaluation->annee_universitaire_id)
@@ -228,7 +228,7 @@ class LMSWriteController extends BaseApiController
         }
 
         // Vérifier que l'enseignant a le droit de gérer ce cours
-        if (auth()->user()->hasRole('enseignant') && $cours->enseignant_id !== auth()->id()) {
+        if (auth()->user()->can('can_teach') && !auth()->user()->can('can_coordinate_academics') && $cours->enseignant_id !== auth()->id()) {
             return $this->errorResponse('Accès non autorisé à ce cours', [], 403);
         }
 
@@ -413,7 +413,7 @@ class LMSWriteController extends BaseApiController
         }
 
         // Vérifier que l'enseignant a le droit de modifier ce cours
-        if (auth()->user()->hasRole('enseignant') && $cours->enseignant_id !== auth()->id()) {
+        if (auth()->user()->can('can_teach') && !auth()->user()->can('can_coordinate_academics') && $cours->enseignant_id !== auth()->id()) {
             return $this->errorResponse('Accès non autorisé à ce cours', [], 403);
         }
 

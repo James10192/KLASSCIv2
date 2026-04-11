@@ -539,7 +539,7 @@
         }
 
         // Vérification d'accès superAdmin
-        const authUserIsSuperAdmin = @json(auth()->user()->hasRole('superAdmin'));
+        const authUserIsSuperAdmin = @json(auth()->user()->can('access_admin'));
 
         if (authUserIsSuperAdmin && generateBtn) {
             generateBtn.addEventListener('click', function() {

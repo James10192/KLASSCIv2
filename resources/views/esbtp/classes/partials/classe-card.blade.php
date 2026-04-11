@@ -75,20 +75,20 @@
                 <i class="fas fa-eye"></i>
             </a>
 
-            @if(auth()->user()->hasRole('superAdmin'))
+            @if(auth()->user()->can('access_admin'))
             {{-- Bouton "Modifier" ouvre modal AJAX --}}
             <button type="button" class="btn-acasi primary btn-open-edit-modal" style="padding: var(--space-xs);" data-classe-id="{{ $classe->id }}" title="Modifier">
                 <i class="fas fa-edit"></i>
             </button>
             @endif
 
-            @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur'))
+            @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school', 'can_coordinate_academics']))
             <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="btn-acasi secondary" style="padding: var(--space-xs);" title="Gérer les matières">
                 <i class="fas fa-book"></i>
             </a>
             @endif
 
-            @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('enseignant') || auth()->user()->hasRole('coordinateur'))
+            @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school', 'can_teach', 'can_coordinate_academics']))
             <a href="{{ route('esbtp.classes.liste-appel', ['classe' => $classe->id]) }}" class="btn-acasi primary" style="padding: var(--space-xs);" title="Liste d'appel" target="_blank">
                 <i class="fas fa-clipboard-list"></i>
             </a>
@@ -97,7 +97,7 @@
             </a>
             @endif
 
-            @if(auth()->user()->hasRole('superAdmin'))
+            @if(auth()->user()->can('access_admin'))
                 @if($classe->nombre_etudiants == 0)
                 <button type="button" class="btn-acasi danger" style="padding: var(--space-xs);" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $classe->id }}" title="Supprimer">
                     <i class="fas fa-trash"></i>
@@ -113,7 +113,7 @@
 </div>
 
 {{-- Modal de suppression --}}
-@if(auth()->user()->hasRole('superAdmin') && $classe->nombre_etudiants == 0)
+@if(auth()->user()->can('access_admin') && $classe->nombre_etudiants == 0)
 <div class="modal fade" id="deleteModal{{ $classe->id }}" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel{{ $classe->id }}" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">

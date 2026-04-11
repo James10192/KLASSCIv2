@@ -59,47 +59,47 @@ class DashboardController extends Controller
         $user = Auth::user();
 
         // Vérifier si l'utilisateur est du service technique
-        if ($user->hasRole('serviceTechnique')) {
+        if ($user->can('module.technical_support.access')) {
             return $this->serviceTechniqueDashboard();
         }
 
         // Vérifier si l'utilisateur est un super admin
-        if ($user->hasRole('superAdmin')) {
+        if ($user->can('access_admin')) {
             return $this->superAdminDashboard();
         }
 
         // Vérifier si l'utilisateur est un secrétaire
-        if ($user->hasRole('secretaire')) {
+        if ($user->can('can_manage_school')) {
             return $this->secretaireDashboard();
         }
 
         // Vérifier si l'utilisateur est un caissier
-        if ($user->hasRole('caissier')) {
+        if ($user->can('module.caisse.access')) {
             return $this->caissierDashboard();
         }
 
         // Vérifier si l'utilisateur est un comptable
-        if ($user->hasRole('comptable')) {
+        if ($user->can('comptabilite.access')) {
             return $this->comptableDashboard();
         }
 
         // Vérifier si l'utilisateur est un coordinateur
-        if ($user->hasRole('coordinateur')) {
+        if ($user->can('can_coordinate_academics')) {
             return $this->coordinateurDashboard();
         }
 
         // Vérifier si l'utilisateur est un enseignant
-        if ($user->hasRole(['teacher', 'enseignant'])) {
+        if ($user->can('can_teach')) {
             return redirect()->route('teacher.dashboard');
         }
 
         // Vérifier si l'utilisateur est un étudiant
-        if ($user->hasRole('etudiant')) {
+        if ($user->can('can_view_student_features')) {
             return $this->etudiantDashboard();
         }
 
         // Vérifier si l'utilisateur est un comptable
-        if ($user->hasRole('comptable')) {
+        if ($user->can('comptabilite.access')) {
             return redirect()->route('esbtp.comptabilite.dashboard');
         }
 
@@ -1059,7 +1059,7 @@ class DashboardController extends Controller
     public function coordinateurDashboardData()
     {
         $user = Auth::user();
-        if (!$user || !$user->hasRole('coordinateur')) {
+        if (!$user || !$user->can('can_coordinate_academics')) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -1263,7 +1263,7 @@ class DashboardController extends Controller
         $user = Auth::user();
 
         // Vérifier que l'utilisateur est bien super admin
-        if (!$user->hasRole('superAdmin')) {
+        if (!$user->can('access_admin')) {
             abort(403, 'Accès non autorisé');
         }
 
@@ -1428,7 +1428,7 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user->hasRole('secretaire')) {
+        if (!$user->can('can_manage_school')) {
             abort(403, 'Accès non autorisé');
         }
 
@@ -1442,7 +1442,7 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user->hasRole('etudiant')) {
+        if (!$user->can('can_view_student_features')) {
             abort(403, 'Accès non autorisé');
         }
         return $this->etudiantDashboard();
@@ -1534,7 +1534,7 @@ class DashboardController extends Controller
         $user = Auth::user();
 
         // Vérifier l'accès
-        if (!$user->hasRole('serviceTechnique')) {
+        if (!$user->can('module.technical_support.access')) {
             abort(403, 'Accès refusé : Cette section est réservée au Service Technique d\'African Digit Consulting');
         }
 

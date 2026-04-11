@@ -617,7 +617,7 @@
         </div>
 
         {{-- ── Section Coordinateur ────────────────────────────── --}}
-        @if(auth()->user() && auth()->user()->hasRole('coordinateur') && $coordinatorStats)
+        @if(auth()->user() && auth()->user()->can('can_coordinate_academics') && $coordinatorStats)
         <div class="coord-section">
             <div class="coord-section-header">
                 <div>
@@ -870,7 +870,7 @@
         </div>
 
         {{-- ── Activités & Résumé (Coordinateur) ───────────────── --}}
-        @if(auth()->user() && auth()->user()->hasRole('coordinateur') && $coordinatorStats)
+        @if(auth()->user() && auth()->user()->can('can_coordinate_academics') && $coordinatorStats)
         <div class="row g-3 mb-4">
             <div class="col-xl-8">
                 <div class="att-activity-card h-100">
@@ -1210,7 +1210,7 @@ const attendanceChart = new Chart(ctx, {
 function exportData()     { alert('Fonction d\'export en cours de développement'); }
 function showStatistics() { alert('Page de statistiques détaillées en cours de développement'); }
 
-@if(auth()->user() && auth()->user()->hasRole('coordinateur') && $coordinatorStats)
+@if(auth()->user() && auth()->user()->can('can_coordinate_academics') && $coordinatorStats)
 function refreshData() { location.reload(); }
 
 function generateDailyReport(event) {

@@ -16,7 +16,7 @@
                 <p class="header-subtitle">Organisation et suivi des classes par filière et niveau</p>
             </div>
             <div class="header-actions">
-                @if(auth()->user()->hasRole('superAdmin'))
+                @if(auth()->user()->can('access_admin'))
                 <form action="{{ route('esbtp.classes.sync-systeme-academique') }}" method="POST" style="display:inline;">
                     @csrf
                     <button type="submit" class="btn-acasi secondary" title="Synchroniser BTS/LMD depuis les niveaux d'études">

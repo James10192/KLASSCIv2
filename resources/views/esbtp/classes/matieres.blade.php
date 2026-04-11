@@ -74,7 +74,7 @@
                 <a href="{{ route('esbtp.classes.show', ['classe' => $classe->id]) }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left me-1"></i>Retour à la classe
                 </a>
-                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']))
                     <a href="{{ route('esbtp.matieres.index') }}" class="btn-acasi secondary">
                         <i class="fas fa-cogs me-1"></i>Gestion globale des matières
                     </a>

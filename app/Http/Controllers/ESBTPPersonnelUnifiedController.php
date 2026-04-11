@@ -133,7 +133,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         try {
             $this->authorize('manage-users');
         } catch (\Exception $e) {
-            if (!auth()->user()->hasAnyRole(['superAdmin', 'admin'])) {
+            if (!auth()->user()->can('access_admin')) {
                 abort(403, 'Accès non autorisé');
             }
         }
@@ -281,7 +281,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         try {
             $this->authorize('manage-users');
         } catch (\Exception $e) {
-            if (!auth()->user()->hasAnyRole(['superAdmin', 'admin'])) {
+            if (!auth()->user()->can('access_admin')) {
                 abort(403, 'Accès non autorisé');
             }
         }
@@ -371,7 +371,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         try {
             $this->authorize('manage-users');
         } catch (\Exception $e) {
-            if (!auth()->user()->hasAnyRole(['superAdmin', 'admin'])) {
+            if (!auth()->user()->can('access_admin')) {
                 abort(403, 'Accès non autorisé');
             }
         }
@@ -465,7 +465,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         try {
             $this->authorize('manage-users');
         } catch (\Exception $e) {
-            if (!auth()->user()->hasAnyRole(['superAdmin', 'admin'])) {
+            if (!auth()->user()->can('access_admin')) {
                 abort(403, 'Accès non autorisé');
             }
         }
@@ -523,7 +523,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         try {
             $this->authorize('manage-users');
         } catch (\Exception $e) {
-            if (!auth()->user()->hasAnyRole(['superAdmin', 'admin'])) {
+            if (!auth()->user()->can('access_admin')) {
                 abort(403, 'Accès non autorisé');
             }
         }
@@ -563,7 +563,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         try {
             $this->authorize('manage-users');
         } catch (\Exception $e) {
-            if (!auth()->user()->hasAnyRole(['superAdmin', 'admin'])) {
+            if (!auth()->user()->can('access_admin')) {
                 abort(403, 'Accès non autorisé');
             }
         }

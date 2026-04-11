@@ -19,7 +19,7 @@
                         <i class="fas fa-info-circle me-1"></i>Voir le fonctionnement
                     </button>
                 </div>
-                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('create_timetable'))
+                @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']) || auth()->user()->can('create_timetable'))
                     <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#quickGenerateModal">
                         <i class="fas fa-bolt me-1"></i>Créer maintenant
                     </button>
@@ -82,19 +82,19 @@
                 <a href="{{ route('esbtp.emploi-temps.show', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-moderne info" title="Voir">
                     <i class="fas fa-eye"></i>
                 </a>
-                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('edit_timetables'))
+                @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']) || auth()->user()->can('edit_timetables'))
                 <a href="{{ route('esbtp.emploi-temps.edit', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-moderne warning" title="Modifier">
                     <i class="fas fa-edit"></i>
                 </a>
                 @endif
-                @if(auth()->user()->hasRole('superAdmin') && auth()->user()->can('delete_timetables'))
+                @if(auth()->user()->can('access_admin') && auth()->user()->can('delete_timetables'))
                 <button type="button" class="btn-moderne danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $emploiTemps->id }}" title="Supprimer">
                     <i class="fas fa-trash"></i>
                 </button>
                 @endif
             </div>
 
-            @if(auth()->user()->hasRole('superAdmin') && auth()->user()->can('delete_timetables'))
+            @if(auth()->user()->can('access_admin') && auth()->user()->can('delete_timetables'))
             <!-- Modal de confirmation de suppression -->
             <div class="modal fade" id="deleteModal{{ $emploiTemps->id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ $emploiTemps->id }}" aria-hidden="true">
                 <div class="modal-dialog">

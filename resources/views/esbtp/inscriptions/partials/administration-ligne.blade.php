@@ -16,7 +16,7 @@
     data-matricule="{{ $inscription->etudiant->matricule ?? '' }}"
     data-classe-id="{{ $inscription->classe->id ?? '' }}"
     data-classe-label="{{ optional($inscription->classe)->nom ?? optional($inscription->classe)->name ?? '' }}">
-    @if(auth()->user()->hasRole('superAdmin'))
+    @can('access_admin')
     <td>
         @if($inscription->workflow_step !== 'etudiant_cree')
         <input type="checkbox" class="form-check-input inscription-checkbox"
@@ -24,7 +24,7 @@
                data-inscription-id="{{ $inscription->id }}">
         @endif
     </td>
-    @endif
+    @endcan
     <td><strong>{{ $inscription->etudiant->matricule ?? 'N/A' }}</strong></td>
     <td>{{ $inscription->etudiant->nom ?? '' }} {{ $inscription->etudiant->prenoms ?? '' }}</td>
     <td>{{ optional($inscription->filiere)->nom ?? optional($inscription->filiere)->name ?? 'N/A' }}</td>
@@ -96,7 +96,7 @@
                                 onclick="ouvrirModalChangerClasse({{ $inscription->id }})">
                             <i class="fas fa-exchange-alt me-1"></i>Changer classe
                         </button>
-                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                        @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']))
                             <button type="button" class="btn btn-sm btn-outline-danger"
                                     onclick="handleInscriptionValidation({{ $inscription->id }}, {{ $hasPayment ? 'true' : 'false' }}, true)">
                                 <i class="fas fa-bolt me-1"></i>Forcer validation

@@ -3,11 +3,11 @@
         <table class="table table-hover align-middle">
             <thead class="bg-light">
                 <tr>
-                    @if(auth()->user()->hasRole('superAdmin'))
+                    @can('access_admin')
                     <th style="width: 40px;">
                         <input type="checkbox" id="select-all-inscriptions" class="form-check-input">
                     </th>
-                    @endif
+                    @endcan
                     <th>Matricule</th>
                     <th>Nom complet</th>
                     <th>Filière</th>

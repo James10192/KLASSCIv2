@@ -22,7 +22,7 @@
                     Année courante: {{ $anneeUniversitaire->name }}
                 </span>
                 @endif
-                @if(auth()->check() && auth()->user() && !auth()->user()->hasRole(['teacher', 'enseignant']))
+                @if(auth()->check() && auth()->user() && !auth()->user()->can('can_teach'))
                 <a href="{{ route('esbtp.evaluations.index') }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>Retour à la liste
                 </a>
@@ -197,7 +197,7 @@
                                 @enderror
                                 <div class="form-hint mt-2" style="background: #f1f5f9; border-left: 3px solid var(--primary); padding: 10px 12px; border-radius: 6px;">
                                     <i class="fas fa-info-circle me-1"></i>
-                                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('coordinateur') || auth()->user()->hasRole('secretaire'))
+                                    @if(auth()->user()->hasAnyPermission(['access_admin', 'can_coordinate_academics', 'can_manage_school']))
                                         Pour rattacher une matière à une classe (via filière + niveau),
                                         allez sur <a href="{{ route('esbtp.matieres.index') }}" class="text-decoration-underline">Matières</a>
                                         puis cliquez sur <strong>Configurer les liaisons</strong> (icône <i class="fas fa-link"></i>) sur la matière,
@@ -288,7 +288,7 @@
                 </div>
 
                 <!-- Section 4: Assignation d'enseignant (non-enseignants uniquement) -->
-                @if(auth()->check() && auth()->user() && !auth()->user()->hasRole(['teacher', 'enseignant']))
+                @if(auth()->check() && auth()->user() && !auth()->user()->can('can_teach'))
                 <div class="main-card">
                     <div class="main-card-header">
                         <div class="main-card-title">

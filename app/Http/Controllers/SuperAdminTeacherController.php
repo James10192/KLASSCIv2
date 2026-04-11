@@ -232,7 +232,7 @@ class SuperAdminTeacherController extends Controller
             $user->save();
 
             // Ensure user has teacher role
-            if (!$user->hasRole('teacher')) {
+            if (!$user->can('can_teach')) {
                 $user->assignRole('teacher');
             }
 

@@ -84,32 +84,32 @@ class User extends Authenticatable
 
     public function isSuperAdmin()
     {
-        return $this->hasRole('superAdmin');
+        return $this->can('access_admin');
     }
 
     public function isSecretary()
     {
-        return $this->hasRole('secretaire');
+        return $this->can('can_manage_school');
     }
 
     public function isTeacher()
     {
-        return $this->hasRole('teacher');
+        return $this->can('can_teach');
     }
 
     public function isStudent()
     {
-        return $this->hasRole('etudiant');
+        return $this->can('can_view_student_features');
     }
 
     public function isParent()
     {
-        return $this->hasRole('parent');
+        return $this->can('can_view_parent_features');
     }
 
     public function isAdmin()
     {
-        return $this->hasAnyRole(['superAdmin']);
+        return $this->can('access_admin');
     }
 
     public function superAdmin()

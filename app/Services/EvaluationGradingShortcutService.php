@@ -25,10 +25,10 @@ class EvaluationGradingShortcutService
             ->where('is_published', true)
             ->where('notes_published', false);
 
-        $isTeacher = $user->hasRole('enseignant') || $user->hasRole('teacher');
-        $canSeeAll = $user->hasRole('superAdmin')
-            || $user->hasRole('secretaire')
-            || $user->hasRole('coordinateur')
+        $isTeacher = $user->can('can_teach');
+        $canSeeAll = $user->can('access_admin')
+            || $user->can('can_manage_school')
+            || $user->can('can_coordinate_academics')
             || $user->can('view_exams')
             || $user->can('view_evaluations');
 

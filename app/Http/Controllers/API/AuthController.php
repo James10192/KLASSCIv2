@@ -122,9 +122,9 @@ class AuthController extends BaseApiController
         ];
 
         // Ajouter des données spécifiques selon le rôle
-        if ($user->hasRole('enseignant')) {
+        if ($user->can('can_teach')) {
             $userData['enseignant_data'] = $this->getEnseignantData($user);
-        } elseif ($user->hasRole('etudiant')) {
+        } elseif ($user->can('can_view_student_features')) {
             // VÉRIFIER que l'étudiant a une inscription active pour l'année courante
             $etudiantData = $this->getEtudiantData($user);
 
@@ -181,9 +181,9 @@ class AuthController extends BaseApiController
         ];
 
         // Ajouter des données contextuelles selon le rôle
-        if ($user->hasRole('enseignant')) {
+        if ($user->can('can_teach')) {
             $userData['contexte_enseignant'] = $this->getEnseignantData($user);
-        } elseif ($user->hasRole('etudiant')) {
+        } elseif ($user->can('can_view_student_features')) {
             $userData['contexte_etudiant'] = $this->getEtudiantData($user);
         }
 

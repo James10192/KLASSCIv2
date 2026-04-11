@@ -1706,7 +1706,7 @@
             <span class="hero-avatar-status {{ $estInscritCetteAnnee ? 'actif' : 'inactif' }}"
                   title="{{ $estInscritCetteAnnee ? 'Inscrit ' . ($anneeCourante->name ?? '') : 'Non inscrit pour l\'année en cours' }}"></span>
             {{-- Bouton upload photo (superAdmin / secretaire) --}}
-            @if(auth()->user()->hasAnyRole(['superAdmin', 'secretaire']))
+            @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']))
                 <label class="hero-avatar-upload" id="heroPhotoUploadBtn" title="Modifier la photo">
                     <i class="fas fa-camera"></i>
                     <input type="file" accept="image/jpeg,image/png,image/jpg,image/gif"
@@ -1777,7 +1777,7 @@
                 <span class="hero-pill year"><i class="fas fa-calendar-alt"></i> {{ $anneeCourante->name }}</span>
             @endif
             <div class="hero-btns">
-                @if(auth()->user()->hasAnyRole(['superAdmin', 'secretaire']))
+                @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']))
                 <a href="{{ route('esbtp.etudiants.edit', $etudiant) }}" class="hero-btn primary">
                     <i class="fas fa-edit"></i> <span class="d-none d-sm-inline">Modifier</span>
                 </a>

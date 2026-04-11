@@ -55,7 +55,7 @@ class SearchController extends Controller
 
             foreach ($etudiants as $etudiant) {
                 // Si c'est un étudiant, ne montrer que son propre profil
-                if ($user->hasRole('etudiant') && $user->etudiant && $user->etudiant->id !== $etudiant->id) {
+                if ($user->can('can_view_student_features') && $user->etudiant && $user->etudiant->id !== $etudiant->id) {
                     continue;
                 }
 
@@ -72,7 +72,7 @@ class SearchController extends Controller
             }
 
             // Recherche de classes (pour admin et secrétaire)
-            if ($user->hasRole(['superAdmin', 'secretaire'])) {
+            if ($user->hasAnyPermission(['access_admin', 'can_manage_school'])) {
                 $classes = ESBTPClasse::where('name', 'LIKE', "%{$query}%")
                     ->orWhere('libelle', 'LIKE', "%{$query}%")
                     ->orWhere('code', 'LIKE', "%{$query}%")
@@ -95,7 +95,7 @@ class SearchController extends Controller
             }
 
             // Recherche de filières (pour admin et secrétaire)
-            if ($user->hasRole(['superAdmin', 'secretaire'])) {
+            if ($user->hasAnyPermission(['access_admin', 'can_manage_school'])) {
                 $filieres = ESBTPFiliere::where('name', 'LIKE', "%{$query}%")
                     ->orWhere('libelle', 'LIKE', "%{$query}%")
                     ->orWhere('description', 'LIKE', "%{$query}%")
@@ -117,7 +117,7 @@ class SearchController extends Controller
             }
 
             // Recherche de matières (pour admin et secrétaire)
-            if ($user->hasRole(['superAdmin', 'secretaire'])) {
+            if ($user->hasAnyPermission(['access_admin', 'can_manage_school'])) {
                 $matieres = ESBTPMatiere::where('name', 'LIKE', "%{$query}%")
                     ->orWhere('description', 'LIKE', "%{$query}%")
                     ->orWhere('code', 'LIKE', "%{$query}%")
@@ -139,7 +139,7 @@ class SearchController extends Controller
             }
 
             // Recherche d'enseignants (pour admin et secrétaire)
-            if ($user->hasRole(['superAdmin', 'secretaire'])) {
+            if ($user->hasAnyPermission(['access_admin', 'can_manage_school'])) {
                 $enseignants = ESBTPTeacher::where('matricule', 'LIKE', "%{$query}%")
                     ->orWhere('specialization', 'LIKE', "%{$query}%")
                     ->orWhereHas('user', function($q) use ($query) {
@@ -198,7 +198,7 @@ class SearchController extends Controller
 
         try {
             // Recherche d'étudiants
-            if (($type === 'all' || $type === 'etudiants') && ($user->can('view students') || $user->hasRole('etudiant'))) {
+            if (($type === 'all' || $type === 'etudiants') && ($user->can('view students') || $user->can('can_view_student_features'))) {
                 $etudiantsQuery = ESBTPEtudiant::where('nom', 'LIKE', "%{$query}%")
                     ->orWhere('prenoms', 'LIKE', "%{$query}%")
                     ->orWhere('matricule', 'LIKE', "%{$query}%")
@@ -206,7 +206,7 @@ class SearchController extends Controller
                     ->with(['classe.filiere', 'classe.niveauEtude']);
 
                 // Si c'est un étudiant, ne montrer que son propre profil
-                if ($user->hasRole('etudiant') && $user->etudiant) {
+                if ($user->can('can_view_student_features') && $user->etudiant) {
                     $etudiantsQuery->where('id', $user->etudiant->id);
                 }
 
@@ -236,7 +236,7 @@ class SearchController extends Controller
             }
 
             // Recherche d'enseignants
-            if (($type === 'all' || $type === 'enseignants') && ($user->can('view teachers') || $user->hasRole(['superAdmin', 'secretaire']))) {
+            if (($type === 'all' || $type === 'enseignants') && ($user->can('view teachers') || $user->hasAnyPermission(['access_admin', 'can_manage_school']))) {
                 $results['enseignants'] = ESBTPTeacher::where('matricule', 'LIKE', "%{$query}%")
                     ->orWhere('specialization', 'LIKE', "%{$query}%")
                     ->orWhereHas('user', function($q) use ($query) {
@@ -313,7 +313,7 @@ class SearchController extends Controller
     {
         $results = [];
 
-        if ($user->hasRole(['superAdmin', 'secretaire'])) {
+        if ($user->hasAnyPermission(['access_admin', 'can_manage_school'])) {
             // Recherche des secrétaires
             $secretaires = \App\Models\User::whereHas('roles', function($q) {
                 $q->where('name', 'secretaire');
@@ -382,7 +382,7 @@ class SearchController extends Controller
             'icon' => 'fas fa-tachometer-alt'
         ];
 
-        if ($user->hasRole(['superAdmin', 'secretaire'])) {
+        if ($user->hasAnyPermission(['access_admin', 'can_manage_school'])) {
             $items = array_merge($items, [
                 [
                     'title' => 'Gestion des étudiants',
@@ -422,7 +422,7 @@ class SearchController extends Controller
             ]);
         }
 
-        if ($user->hasRole('superAdmin')) {
+        if ($user->can('access_admin')) {
             $items = array_merge($items, [
                 [
                     'title' => 'Gestion des enseignants',
@@ -441,7 +441,7 @@ class SearchController extends Controller
             ]);
         }
 
-        if ($user->hasRole('teacher')) {
+        if ($user->can('can_teach')) {
             $items = array_merge($items, [
                 [
                     'title' => 'Mes cours',
@@ -467,7 +467,7 @@ class SearchController extends Controller
             ]);
         }
 
-        if ($user->hasRole('etudiant')) {
+        if ($user->can('can_view_student_features')) {
             $items = array_merge($items, [
                 [
                     'title' => 'Mon profil',
@@ -503,7 +503,7 @@ class SearchController extends Controller
     {
         $actions = [];
 
-        if ($user->hasRole(['superAdmin', 'secretaire'])) {
+        if ($user->hasAnyPermission(['access_admin', 'can_manage_school'])) {
             $actions = array_merge($actions, [
                 [
                     'title' => 'Inscrire un étudiant',
@@ -529,7 +529,7 @@ class SearchController extends Controller
             ]);
         }
 
-        if ($user->hasRole('superAdmin')) {
+        if ($user->can('access_admin')) {
             $actions = array_merge($actions, [
                 [
                     'title' => 'Ajouter un enseignant',
@@ -555,7 +555,7 @@ class SearchController extends Controller
             ]);
         }
 
-        if ($user->hasRole('teacher')) {
+        if ($user->can('can_teach')) {
             $actions = array_merge($actions, [
                 [
                     'title' => 'Saisir les présences',

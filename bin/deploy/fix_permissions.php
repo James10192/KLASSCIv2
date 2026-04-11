@@ -247,6 +247,15 @@ try {
         'resultats.export',
         'paywall.manage',
 
+        // Permissions identity-routing (migration hasRole → can)
+        'can_teach',
+        'can_manage_school',
+        'can_coordinate_academics',
+        'can_view_student_features',
+        'can_view_parent_features',
+        'module.technical_support.access',
+        'module.caisse.access',
+
         // Permissions Comptabilité (rôle comptable)
         'comptabilite.access',
         'comptabilite.dashboard.view',
@@ -347,10 +356,11 @@ try {
         'manage-users',
         'edit_enseignants',
         'edit_bulletins',
-        // Authorization permissions
+        // Authorization + identity permissions
         'inscriptions.manage',
         'resultats.export',
         'bulletin.configure',
+        'can_manage_school',
     ];
     $secretaireRole->syncPermissions($secretairePermissions);
     echo '✓ Secrétaire: '.count($secretairePermissions)." permissions accordées\n";
@@ -422,8 +432,9 @@ try {
         'module.academique.access',
         'module.etudiants.access',
         'module.communication.access',
-        // Manage users
+        // Manage users + identity
         'manage-users',
+        'can_coordinate_academics',
     ];
     $coordinateurRole->syncPermissions($coordinateurPermissions);
     echo '✓ Coordinateur: '.count($coordinateurPermissions)." permissions accordées\n";
@@ -443,10 +454,11 @@ try {
         'view_own_schedule',
         'send_messages', 'receive_messages',
         'view_annonces',
-        // Modules toggle
+        // Modules toggle + identity
         'module.notes_evaluations.access',
         'module.presences.access',
         'module.communication.access',
+        'can_teach',
     ];
     $enseignantRole->syncPermissions($enseignantPermissions);
 
@@ -471,6 +483,7 @@ try {
         'receive_messages',
         'view_annonces',
     ];
+    $etudiantPermissions[] = 'can_view_student_features';
     $etudiantRole->syncPermissions($etudiantPermissions);
     echo '✓ Étudiant: '.count($etudiantPermissions)." permissions accordées\n";
 
@@ -486,6 +499,7 @@ try {
         'receive_messages',
         'view_annonces',
     ];
+    $parentPermissions[] = 'can_view_parent_features';
     $parentRole->syncPermissions($parentPermissions);
     echo '✓ Parent: '.count($parentPermissions)." permissions accordées\n";
 
@@ -559,6 +573,7 @@ try {
         // Communication
         'send_messages', 'receive_messages',
         'view_annonces',
+        'module.caisse.access',
     ];
     $caissierRole->syncPermissions($caissierPermissions);
     echo '✓ Caissier: '.count($caissierPermissions)." permissions accordées\n";

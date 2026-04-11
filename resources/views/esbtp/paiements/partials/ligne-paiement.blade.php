@@ -1,7 +1,7 @@
 {{-- Partial réutilisable pour une ligne de paiement dans le tableau --}}
 <tr data-paiement-id="{{ $paiement->id }}">
     <td>
-        @if($paiement->status == 'en_attente' && auth()->user()->hasRole('superAdmin'))
+        @if($paiement->status == 'en_attente' && auth()->user()->can('access_admin'))
             <input type="checkbox" class="form-check-input paiement-checkbox"
                    value="{{ $paiement->id }}"
                    data-status="{{ $paiement->status }}">
@@ -118,7 +118,7 @@
                         </a>
                     @endcan
 
-                    @if($paiement->status == 'en_attente' && auth()->user()->hasRole('superAdmin'))
+                    @if($paiement->status == 'en_attente' && auth()->user()->can('access_admin'))
                         <button type="button"
                                 class="btn btn-outline-success valider-paiement-btn"
                                 title="Valider"
@@ -159,7 +159,7 @@
                     </div>
                 @endif
 
-                @if(auth()->user()->hasRole('superAdmin'))
+                @if(auth()->user()->can('access_admin'))
                     <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}"
                        class="btn btn-outline-warning btn-sm"
                        title="Modifier">
@@ -177,7 +177,7 @@
 </tr>
 
 <!-- Modal de rejet individuel -->
-@if($paiement->status == 'en_attente' && auth()->user()->hasRole('superAdmin'))
+@if($paiement->status == 'en_attente' && auth()->user()->can('access_admin'))
 <div class="modal fade" id="rejetModal{{ $paiement->id }}" tabindex="-1" aria-labelledby="rejetModalLabel{{ $paiement->id }}" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">

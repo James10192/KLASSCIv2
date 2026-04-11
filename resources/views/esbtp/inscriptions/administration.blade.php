@@ -484,7 +484,7 @@
     </div>
 </div>
 
-@if(auth()->user()->hasRole('superAdmin'))
+@can('access_admin')
 <div id="bulk-actions-bar" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
      background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; padding: 15px 30px;
      border-radius: 50px; box-shadow: 0 10px 40px rgba(4, 83, 203, 0.4); z-index: 1050;
@@ -520,7 +520,7 @@
     }
 }
 </style>
-@endif
+@endcan
 
 <div class="modal fade" id="bulkValidationModal" tabindex="-1" aria-labelledby="bulkValidationModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">

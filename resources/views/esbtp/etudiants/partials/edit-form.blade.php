@@ -51,8 +51,8 @@
                         <span id="matriculeMode" class="badge bg-info ms-1"></span>
                     </label>
                     <div class="input-group">
-                        <input type="text" class="form-control" id="matriculeInput" name="matricule" value="{{ old('matricule', $etudiant->matricule) }}" {{ auth()->user()->hasRole('superAdmin') ? '' : 'readonly' }}>
-                        @if(auth()->user()->hasRole('superAdmin'))
+                        <input type="text" class="form-control" id="matriculeInput" name="matricule" value="{{ old('matricule', $etudiant->matricule) }}" {{ auth()->user()->can('access_admin') ? '' : 'readonly' }}>
+                        @if(auth()->user()->can('access_admin'))
                             <button type="button" class="btn btn-outline-primary" id="generateMatriculeBtn" style="display: none;">
                                 <i class="fas fa-magic"></i> Générer
                             </button>
@@ -62,7 +62,7 @@
                         @endif
                     </div>
                     <small class="form-text text-muted" id="matriculeHelp">
-                        @if(auth()->user()->hasRole('superAdmin'))
+                        @if(auth()->user()->can('access_admin'))
                             Matricule unique de l'étudiant
                         @else
                             Le matricule ne peut pas être modifié.
@@ -72,15 +72,15 @@
                 </div>
                 <div class="col-md-4 mb-3">
                     <label for="nom" class="form-label">Nom</label>
-                    <input type="text" class="form-control" id="nom" name="nom" value="{{ old('nom', $etudiant->nom) }}" {{ auth()->user()->hasRole('superAdmin') ? '' : 'readonly' }}>
-                    @if(!auth()->user()->hasRole('superAdmin'))
+                    <input type="text" class="form-control" id="nom" name="nom" value="{{ old('nom', $etudiant->nom) }}" {{ auth()->user()->can('access_admin') ? '' : 'readonly' }}>
+                    @if(!auth()->user()->can('access_admin'))
                         <small class="form-text text-muted">Le nom ne peut pas être modifié.</small>
                     @endif
                 </div>
                 <div class="col-md-4 mb-3">
                     <label for="prenoms" class="form-label">Prénom(s)</label>
-                    <input type="text" class="form-control" id="prenoms" name="prenoms" value="{{ old('prenoms', $etudiant->prenoms) }}" {{ auth()->user()->hasRole('superAdmin') ? '' : 'readonly' }}>
-                    @if(!auth()->user()->hasRole('superAdmin'))
+                    <input type="text" class="form-control" id="prenoms" name="prenoms" value="{{ old('prenoms', $etudiant->prenoms) }}" {{ auth()->user()->can('access_admin') ? '' : 'readonly' }}>
+                    @if(!auth()->user()->can('access_admin'))
                         <small class="form-text text-muted">Les prénoms ne peuvent pas être modifiés.</small>
                     @endif
                 </div>
@@ -90,25 +90,25 @@
             <div class="row">
                 <div class="col-md-4 mb-3">
                     <label for="sexe" class="form-label">Genre</label>
-                    <select class="form-select" id="sexe" name="sexe" {{ auth()->user()->hasRole('superAdmin') ? '' : 'disabled' }}>
+                    <select class="form-select" id="sexe" name="sexe" {{ auth()->user()->can('access_admin') ? '' : 'disabled' }}>
                         <option value="M" {{ old('sexe', $etudiant->sexe) == 'M' ? 'selected' : '' }}>Masculin</option>
                         <option value="F" {{ old('sexe', $etudiant->sexe) == 'F' ? 'selected' : '' }}>Féminin</option>
                     </select>
-                    @if(!auth()->user()->hasRole('superAdmin'))
+                    @if(!auth()->user()->can('access_admin'))
                         <small class="form-text text-muted">Le genre ne peut pas être modifié.</small>
                     @endif
                 </div>
                 <div class="col-md-4 mb-3">
                     <label for="date_naissance" class="form-label">Date de naissance</label>
-                    <input type="date" class="form-control" id="date_naissance" name="date_naissance" value="{{ old('date_naissance', $etudiant->date_naissance ? $etudiant->date_naissance->format('Y-m-d') : '') }}" {{ auth()->user()->hasRole('superAdmin') ? '' : 'readonly' }}>
-                    @if(!auth()->user()->hasRole('superAdmin'))
+                    <input type="date" class="form-control" id="date_naissance" name="date_naissance" value="{{ old('date_naissance', $etudiant->date_naissance ? $etudiant->date_naissance->format('Y-m-d') : '') }}" {{ auth()->user()->can('access_admin') ? '' : 'readonly' }}>
+                    @if(!auth()->user()->can('access_admin'))
                         <small class="form-text text-muted">La date de naissance ne peut pas être modifiée.</small>
                     @endif
                 </div>
                 <div class="col-md-4 mb-3">
                     <label for="lieu_naissance" class="form-label">Lieu de naissance</label>
-                    <input type="text" class="form-control" id="lieu_naissance" name="lieu_naissance" value="{{ old('lieu_naissance', $etudiant->lieu_naissance) }}" {{ auth()->user()->hasRole('superAdmin') ? '' : 'readonly' }}>
-                    @if(!auth()->user()->hasRole('superAdmin'))
+                    <input type="text" class="form-control" id="lieu_naissance" name="lieu_naissance" value="{{ old('lieu_naissance', $etudiant->lieu_naissance) }}" {{ auth()->user()->can('access_admin') ? '' : 'readonly' }}>
+                    @if(!auth()->user()->can('access_admin'))
                         <small class="form-text text-muted">Le lieu de naissance ne peut pas être modifié.</small>
                     @endif
                 </div>
@@ -118,17 +118,17 @@
             <div class="row">
                 <div class="col-md-4 mb-3">
                     <label for="nationalite" class="form-label">Nationalité</label>
-                    <select class="form-select @error('nationalite') is-invalid @enderror" id="nationalite" name="nationalite" {{ auth()->user()->hasRole('superAdmin') ? '' : 'disabled' }}>
+                    <select class="form-select @error('nationalite') is-invalid @enderror" id="nationalite" name="nationalite" {{ auth()->user()->can('access_admin') ? '' : 'disabled' }}>
                         @include('esbtp.partials.nationality-options', ['selected' => old('nationalite', $etudiant->nationalite)])
                     </select>
-                    @if(auth()->user()->hasRole('superAdmin'))
+                    @if(auth()->user()->can('access_admin'))
                         @error('nationalite')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     @else
                         <small class="form-text text-muted">La nationalité ne peut pas être modifiée.</small>
                     @endif
-                    @unless(auth()->user()->hasRole('superAdmin'))
+                    @unless(auth()->user()->can('access_admin'))
                         <input type="hidden" name="nationalite" value="{{ old('nationalite', $etudiant->nationalite) }}">
                     @endunless
                 </div>

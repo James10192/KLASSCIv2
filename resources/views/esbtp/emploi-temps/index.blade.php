@@ -782,7 +782,7 @@
                             <i class="fas fa-layer-group"></i> Modifier rapidement
                         </button>
                     @endif
-                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('create_timetable'))
+                    @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']) || auth()->user()->can('create_timetable'))
                         <a href="{{ route('esbtp.emploi-temps.create') }}" class="et-header-btn et-header-btn--primary">
                             <i class="fas fa-plus-circle"></i> Nouveau
                         </a>
@@ -1218,7 +1218,7 @@
     </div>
 </div>
 
-@if(!empty($timetableShortcut) && ($timetableShortcut['show'] ?? false) && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->can('create_timetable')))
+@if(!empty($timetableShortcut) && ($timetableShortcut['show'] ?? false) && (auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']) || auth()->user()->can('create_timetable')))
 <div class="modal fade" id="quickGenerateModal" tabindex="-1" aria-labelledby="quickGenerateModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">

@@ -19,7 +19,7 @@
         <i class="fas fa-graduation-cap" style="font-size: 48px; margin-bottom: var(--space-lg); color: var(--neutral);"></i>
         <h5 style="color: var(--text-secondary); margin-bottom: var(--space-sm);">Aucune classe trouvée</h5>
         <p style="color: var(--text-muted);">Commencez par créer votre première classe.</p>
-        @if(auth()->user()->hasRole('superAdmin'))
+        @if(auth()->user()->can('access_admin'))
             <a href="{{ route('esbtp.classes.create') }}" class="btn-acasi primary" style="margin-top: var(--space-md);">
                 <i class="fas fa-plus-circle"></i>Créer une classe
             </a>

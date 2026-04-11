@@ -25,7 +25,7 @@ class NavbarController extends Controller
             ->concat($this->getEvaluationShortcutNotifications($user))
             ->concat($this->getEvaluationGradingShortcutNotifications($user));
 
-        if ($user->hasRole('superAdmin') || $user->hasRole('secretaire') || $user->hasRole('coordinateur')) {
+        if ($user->can('access_admin') || $user->can('can_manage_school') || $user->can('can_coordinate_academics')) {
             // Notifications pour admin/secrétaire/coordinateur
             $notifications = Notification::where('user_id', $user->id)
                 ->with('sender') // Load sender relationship
@@ -45,7 +45,7 @@ class NavbarController extends Controller
                         'sender' => $notification->sender ? $notification->sender->name : 'Système',
                     ];
                 });
-        } elseif ($user->hasRole('etudiant')) {
+        } elseif ($user->can('can_view_student_features')) {
             // Notifications pour étudiant
             $notifications = Notification::where('user_id', $user->id)
                 ->with('sender') // Load sender relationship
@@ -65,7 +65,7 @@ class NavbarController extends Controller
                         'sender' => $notification->sender ? $notification->sender->name : 'Système',
                     ];
                 });
-        } elseif ($user->hasRole('teacher')) {
+        } elseif ($user->can('can_teach')) {
             // Notifications pour enseignant
             $notifications = Notification::where('user_id', $user->id)
                 ->with('sender') // Load sender relationship
@@ -264,7 +264,7 @@ class NavbarController extends Controller
         $user = auth()->user();
         $messages = collect();
 
-        if ($user->hasRole('superAdmin') || $user->hasRole('secretaire') || $user->hasRole('coordinateur')) {
+        if ($user->can('access_admin') || $user->can('can_manage_school') || $user->can('can_coordinate_academics')) {
             // Messages pour admin/secrétaire/coordinateur - récupérer les annonces qui leur sont destinées
             $messages = ESBTPAnnonce::with('createdBy') // Charger la relation créateur
                 ->where(function ($query) {
@@ -299,7 +299,7 @@ class NavbarController extends Controller
                         'avatar' => null,
                     ];
                 });
-        } elseif ($user->hasRole('etudiant')) {
+        } elseif ($user->can('can_view_student_features')) {
             // Messages pour étudiant - récupérer seulement les annonces qui leur sont destinées
             $etudiant = ESBTPEtudiant::where('user_id', $user->id)->first();
             $classeId = $etudiant ? $etudiant->inscriptions()->anneeEnCours()->latest()->value('classe_id') : null;
@@ -344,7 +344,7 @@ class NavbarController extends Controller
                         'avatar' => null,
                     ];
                 });
-        } elseif ($user->hasRole('teacher')) {
+        } elseif ($user->can('can_teach')) {
             // Messages pour enseignant - récupérer les annonces qui leur sont destinées
             $messages = ESBTPAnnonce::with('createdBy') // Charger la relation créateur
                 ->where(function ($query) {
@@ -391,7 +391,7 @@ class NavbarController extends Controller
         $user = auth()->user();
         $actions = [];
 
-        if ($user->hasRole('superAdmin')) {
+        if ($user->can('access_admin')) {
             $actions = [
                 [
                     'title' => 'Nouvel étudiant',
@@ -430,7 +430,7 @@ class NavbarController extends Controller
                     'color' => 'info',
                 ],
             ];
-        } elseif ($user->hasRole('secretaire')) {
+        } elseif ($user->can('can_manage_school')) {
             $actions = [
                 [
                     'title' => 'Nouvel étudiant',
@@ -457,7 +457,7 @@ class NavbarController extends Controller
                     'color' => 'info',
                 ],
             ];
-        } elseif ($user->hasRole('etudiant')) {
+        } elseif ($user->can('can_view_student_features')) {
             $actions = [
                 [
                     'title' => 'Mon emploi du temps',
@@ -484,7 +484,7 @@ class NavbarController extends Controller
                     'color' => 'secondary',
                 ],
             ];
-        } elseif ($user->hasRole('teacher')) {
+        } elseif ($user->can('can_teach')) {
             $actions = [
                 [
                     'title' => 'Émargement',
@@ -601,7 +601,7 @@ class NavbarController extends Controller
         $user = auth()->user();
 
         // Seuls les admins/secrétaires peuvent supprimer des annonces
-        if ($user->hasRole(['superAdmin', 'secretaire'])) {
+        if ($user->hasAnyPermission(['access_admin', 'can_manage_school'])) {
             $annonce = ESBTPAnnonce::findOrFail($id);
             $annonce->delete();
 
@@ -619,7 +619,7 @@ class NavbarController extends Controller
         $user = auth()->user();
 
         // Seuls les admins/secrétaires peuvent supprimer toutes les annonces
-        if ($user->hasRole(['superAdmin', 'secretaire'])) {
+        if ($user->hasAnyPermission(['access_admin', 'can_manage_school'])) {
             ESBTPAnnonce::truncate(); // Supprimer toutes les annonces
 
             return response()->json(['success' => true]);
@@ -655,14 +655,14 @@ class NavbarController extends Controller
         $user = auth()->user();
         $stats = [];
 
-        if ($user->hasRole(['superAdmin', 'secretaire'])) {
+        if ($user->hasAnyPermission(['access_admin', 'can_manage_school'])) {
             $stats = [
                 'total_etudiants' => ESBTPEtudiant::count(),
                 'nouvelles_inscriptions' => ESBTPEtudiant::whereDate('created_at', today())->count(),
                 'evaluations_en_cours' => ESBTPEvaluation::whereDate('date', '>=', today())->count(),
                 'notes_en_attente' => ESBTPNote::whereNull('valeur')->count(),
             ];
-        } elseif ($user->hasRole('etudiant')) {
+        } elseif ($user->can('can_view_student_features')) {
             $etudiant = $user->etudiant;
             if ($etudiant) {
                 $stats = [

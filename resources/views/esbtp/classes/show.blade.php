@@ -349,13 +349,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 <p class="header-subtitle">{{ $classe->name }}</p>
             </div>
             <div class="header-actions">
-                @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur'))
+                @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school', 'can_coordinate_academics']))
                 <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="btn-acasi primary">
                     <i class="fas fa-book"></i>Gérer les matières
                 </a>
                 @endif
 
-                @if(auth()->user()->hasRole('superAdmin'))
+                @if(auth()->user()->can('access_admin'))
                 {{-- Lien "Modifier" avec return_url vers show actuelle --}}
                 <a href="{{ route('esbtp.classes.edit', array_merge(['classe' => $classe->id], ['return_url' => request()->fullUrl()])) }}" class="btn-acasi warning">
                     <i class="fas fa-edit"></i>Modifier
@@ -562,7 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <i class="fas fa-info-circle me-2"></i>
                             Les matières affichées proviennent du catalogue configuré pour cette filière / ce niveau et sont automatiquement prises en compte pour {{ $classe->name }}.
                         </div>
-                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur'))
+                        @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school', 'can_coordinate_academics']))
                             <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="btn btn-outline-primary btn-sm">
                                 <i class="fas fa-sliders-h me-1"></i>Gérer les matières de la classe
                             </a>
@@ -601,7 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 @else
                     <div class="alert alert-warning mb-0">
                         <i class="fas fa-exclamation-triangle me-2"></i>Aucune matière n'est encore configurée dans le catalogue pour cette filière / ce niveau.
-                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire'))
+                        @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']))
                             <a href="{{ route('esbtp.matieres.index') }}" class="alert-link">Compléter le paramétrage global</a>
                             <span class="mx-1">·</span>
                             <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="alert-link">Ajuster pour {{ $classe->name }}</a>
@@ -775,7 +775,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="main-card-subtitle" id="studentCountSubtitle">{{ $classe->etudiants->count() }} étudiant(s) inscrit(s) dans cette classe pour l'année courante</div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('coordinateur'))
+                    @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school', 'can_coordinate_academics']))
                     <button type="button" class="btn btn-sm btn-success d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addStudentsModal" title="Ajouter des étudiants">
                         <i class="fas fa-user-plus"></i>
                         <span class="d-none d-md-inline">Ajouter</span>
@@ -809,7 +809,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="mb-0 text-muted" style="font-size: 0.875rem;">Générer et télécharger les listes pour cette classe</p>
                     </div>
                     <div class="d-flex gap-3">
-                        @if(auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire') || auth()->user()->hasRole('enseignant') || auth()->user()->hasRole('coordinateur'))
+                        @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school', 'can_teach', 'can_coordinate_academics']))
 
                         <!-- Dropdown pour Liste d'Appel -->
                         <div class="btn-group" role="group">

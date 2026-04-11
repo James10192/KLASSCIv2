@@ -511,7 +511,7 @@ class ESBTPPlanningGeneralController extends Controller
      */
     public function coordinateur(Request $request)
     {
-        if (!Auth::user()->hasRole(["coordinateur", "superAdmin"])) {
+        if (!Auth::user()->hasAnyPermission(["access_admin", "can_coordinate_academics"])) {
             abort(403, "Accès réservé aux coordinateurs.");
         }
 
@@ -2158,11 +2158,10 @@ class ESBTPPlanningGeneralController extends Controller
     {
         // Vérifier les permissions
         if (
-            !Auth::user()->hasAnyRole([
-                "superAdmin",
-                "coordinateur",
-                "directeurEtudes",
-            ])
+            !Auth::user()->hasAnyPermission([
+                "access_admin",
+                "can_coordinate_academics",
+            ]) && !Auth::user()->hasRole("directeurEtudes")
         ) {
             abort(403, "Accès réservé aux administrateurs et coordinateurs.");
         }

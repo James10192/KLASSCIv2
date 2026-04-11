@@ -1577,7 +1577,7 @@
 
                     <!-- Personnel (non-superAdmin — superAdmin has accordion in Administration) -->
                     @can('manage_personnel')
-                        @if(!auth()->user()->hasRole('superAdmin'))
+                        @if(!auth()->user()->can('access_admin'))
                         <div class="menu-category">Personnel</div>
                         <div class="menu-item">
                             <a href="{{ route('esbtp.personnel.unified.index') }}" class="menu-link {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
@@ -1597,7 +1597,7 @@
                     @endcan
 
                     <!-- Coordinateur Section -->
-                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole('coordinateur'))
+                    @can('can_coordinate_academics')
                         <div class="menu-category">Coordination pédagogique</div>
 
                         <!-- Planning & Scheduling -->
@@ -1706,7 +1706,7 @@
                         </div>
                         @endcan
 
-                    @endif
+                    @endcan
 
                     <!-- Teaching Section -->
                     @can('module.emploi_temps.access')
@@ -1891,7 +1891,7 @@
                     @endcan
                     @endcan
 
-                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole(['teacher', 'enseignant']))
+                    @can('can_teach')
                         <div class="menu-category">Enseignement</div>
 
                         @can('view_classes')
@@ -1929,10 +1929,10 @@
                             </a>
                         </div>
                         @endcan
-                    @endif
+                    @endcan
 
                     <!-- Caissier Section -->
-                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole('caissier'))
+                    @can('module.caisse.access')
                         <div class="menu-category">Caisse</div>
 
                         <div class="menu-item">
@@ -2003,10 +2003,10 @@
                             </a>
                         </div>
                         @endcan
-                    @endif
+                    @endcan
 
                     <!-- Messages Section -->
-                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole('etudiant'))
+                    @can('can_view_student_features')
                         <div class="menu-category">Communication</div>
 
                         <!-- Messages -->
@@ -2019,7 +2019,7 @@
 
                         <!-- Notifications -->
                         <div class="menu-item">
-                            @if(auth()->check() && auth()->user() && auth()->user()->hasRole('etudiant'))
+                            @can('can_view_student_features')
                                 <a href="{{ route('esbtp.mes-notifications.index') }}" class="menu-link {{ Request::routeIs('esbtp.mes-notifications.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-bell"></i></div>
                                     <div class="menu-text">Mes notifications</div>
@@ -2029,9 +2029,9 @@
                                     <div class="menu-icon"><i class="fas fa-bell"></i></div>
                                     <div class="menu-text">Notifications</div>
                                 </a>
-                            @endif
+                            @endcan
                         </div>
-                    @endif
+                    @endcan
 
                     <!-- Accounting Section -->
                     @can('module.comptabilite.access')
@@ -2108,7 +2108,7 @@
                     @endcan
 
                     <!-- Service Technique Section - ADC Only -->
-                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole('serviceTechnique'))
+                    @can('module.technical_support.access')
                         <div class="menu-category">Service Technique ADC</div>
 
                         <!-- Configuration System -->
@@ -2137,7 +2137,7 @@
                                 </a>
                             </div>
                         </div>
-                    @endif
+                    @endcan
 
                     <!-- System Section -->
                     @can('manage_system')
@@ -2237,9 +2237,9 @@
                     <div class="menu-item">
                         @php
                             $profileRoute = 'admin.profile';
-                            if (auth()->user()->hasRole(['enseignant', 'teacher'])) {
+                            if (auth()->user()->can('can_teach')) {
                                 $profileRoute = 'teacher.profile';
-                            } elseif (auth()->user()->hasRole('coordinateur')) {
+                            } elseif (auth()->user()->can('can_coordinate_academics')) {
                                 $profileRoute = 'coordinateur.profile';
                             }
                         @endphp
@@ -2336,7 +2336,7 @@
                                 </div>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    @if(auth()->check() && auth()->user() && auth()->user()->hasRole('etudiant'))
+                                    @can('can_view_student_features')
                                         <a class="dropdown-item text-center view-all" href="{{ route('esbtp.mes-messages.index') }}">
                                             <i class="fas fa-envelope-open me-1"></i>
                                             Voir tous les messages
@@ -2346,7 +2346,7 @@
                                             <i class="fas fa-envelope-open me-1"></i>
                                             Voir tous les messages
                                         </a>
-                                    @endif
+                                    @endcan
                                 </li>
             </ul>
     </div>
@@ -2363,7 +2363,7 @@
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <div class="quick-actions-grid" id="quick-actions-list">
-                                        @if(auth()->check() && auth()->user() && (auth()->user()->hasRole('superAdmin') || auth()->user()->hasRole('secretaire')))
+                                        @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']))
                                             <a href="{{ route('esbtp.etudiants.create') }}" class="quick-action-item">
                                                 <div class="quick-action-icon" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
                                                     <i class="fas fa-user-plus"></i>
@@ -2388,7 +2388,7 @@
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle classe</span>
                                             </a>
-                                        @elseif(auth()->check() && auth()->user() && auth()->user()->hasRole('coordinateur'))
+                                        @elseif(auth()->user()->can('can_coordinate_academics'))
                                             <a href="{{ route('esbtp.emploi-temps.create') }}" class="quick-action-item">
                                                 <div class="quick-action-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
                                                     <i class="fas fa-calendar-plus"></i>
@@ -2407,7 +2407,7 @@
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle annonce</span>
                                             </a>
-                                        @elseif(auth()->check() && auth()->user() && auth()->user()->hasRole('etudiant'))
+                                        @elseif(auth()->user()->can('can_view_student_features'))
                                             <a href="{{ route('esbtp.mes-evaluations.index') }}" class="quick-action-item">
                                                 <div class="quick-action-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
                                                     <i class="fas fa-clipboard-list"></i>
@@ -2568,7 +2568,7 @@
                             ? \Carbon\Carbon::parse($anneeCouranteModal->end_date)
                             : null;
                         $anneeCouranteExpired = $anneeCouranteModal && $anneeCouranteEndDate && $anneeCouranteEndDate->isPast();
-                        $isSuperAdmin = auth()->user()?->hasRole('superAdmin');
+                        $isSuperAdmin = auth()->user()?->can('access_admin');
                         $canValidateInscriptions = auth()->user()?->can('inscriptions.validate');
                         $canAccessTimetable = auth()->user()?->can('view_timetables') || auth()->user()?->can('view-all-timetables');
                         $canAccessEvaluations = auth()->user()?->can('view_exams') || auth()->user()?->can('view_evaluations');

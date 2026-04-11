@@ -1331,7 +1331,7 @@ class ESBTPEtudiantController extends Controller
         $user = auth()->user();
 
         // Rediriger les non-étudiants vers leur profil approprié
-        if (!$user->hasRole('etudiant')) {
+        if (!$user->can('can_view_student_features')) {
             // Pour les administrateurs et secrétaires
             return redirect()->route('dashboard')->with('warning', 'Vous n\'avez pas accès au profil étudiant.');
         }
