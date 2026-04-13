@@ -1,0 +1,52 @@
+name: Laravel CI
+
+on:
+  pull_request:
+    branches: [presentation, main]
+
+jobs:
+  laravel-checks:
+    name: "Laravel Lint & Validation"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, json, tokenizer
+          tools: composer
+
+      - name: Get Composer Cache Directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Check PHP syntax errors
+        run: find app config routes -name "*.php" -exec php -l {} \; | grep -i "error" && exit 1 || true
+
+      - name: Check Blade syntax
+        run: |
+          echo "Checking for common Blade issues..."
+          # Check for unclosed directives
+          find resources/views -name "*.blade.php" -exec grep -l "@if\|@foreach\|@for\|@while" {} \; | while read f; do
+            opens=$(grep -c "@if\|@foreach\|@for\|@while" "$f" 2>/dev/null || echo 0)
+            closes=$(grep -c "@endif\|@endforeach\|@endfor\|@endwhile" "$f" 2>/dev/null || echo 0)
+            if [ "$opens" != "$closes" ]; then
+              echo "::warning file=$f::Mismatched Blade directives (opens=$opens, closes=$closes)"
+            fi
+          done
+
+      - name: Validate composer.json
+        run: composer validate --strict

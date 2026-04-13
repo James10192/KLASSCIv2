@@ -1,0 +1,85 @@
+name: Security & Quality Scan
+
+on:
+  push:
+    branches: [presentation, main]
+  pull_request:
+    branches: [presentation, main]
+  schedule:
+    # Scan hebdomadaire le dimanche à 6h GMT
+    - cron: '0 6 * * 0'
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  # Audit des dépendances PHP
+  composer-audit:
+    name: "Composer Security Audit"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Composer Audit
+        run: composer audit --format=json || true
+
+  # Audit des dépendances npm
+  npm-audit:
+    name: "npm Security Audit"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: npm audit
+        run: npm audit --audit-level=moderate || true
+
+  # Laravel security checks
+  laravel-security:
+    name: "Laravel Security Checks"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Check for .env in repo
+        run: |
+          if [ -f ".env" ]; then
+            echo "::error::.env file found in repository! This is a security risk."
+            exit 1
+          fi
+
+      - name: Check debug mode not in production configs
+        run: |
+          if grep -r "APP_DEBUG=true" .env.example 2>/dev/null; then
+            echo "::warning::APP_DEBUG=true found in .env.example"
+          fi
+
+      - name: Check for hardcoded secrets
+        run: |
+          # Search for potential hardcoded secrets (excluding .env.example patterns)
+          if grep -rn --include="*.php" -E "(password|secret|key)\s*=\s*['\"][^'\"]{8,}" app/ --exclude-dir=vendor 2>/dev/null | grep -v "password.*=" | head -5; then
+            echo "::warning::Potential hardcoded secrets found. Please review."
+          fi
