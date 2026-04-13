@@ -1836,13 +1836,15 @@
                             </a>
                         </div>
 
+                        {{-- Consultation : uniquement pour les users caisse SANS acces module etudiants complet --}}
+                        @if(!auth()->user()->can('module.etudiants.access'))
                         <div class="menu-category">Consultation</div>
 
                         @can('view_students')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.etudiants.index') }}" class="menu-link {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
-                                <div class="menu-text">Étudiants</div>
+                                <div class="menu-text">Etudiants</div>
                             </a>
                         </div>
                         @endcan
@@ -1857,10 +1859,11 @@
                         <div class="menu-item">
                             <a href="{{ route('esbtp.reinscription.index') }}" class="menu-link {{ Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-redo"></i></div>
-                                <div class="menu-text">Réinscriptions</div>
+                                <div class="menu-text">Reinscriptions</div>
                             </a>
                         </div>
                         @endcan
+                        @endif
 
                         <div class="menu-category">Comptabilité</div>
 
@@ -2001,8 +2004,8 @@
                     @endcan
                     @endcan
 
-                    <!-- Service Technique Section - ADC Only -->
-                    @can('module.technical_support.access')
+                    <!-- Service Technique Section - ADC Only (role-gated, not permission) -->
+                    @role('serviceTechnique')
                         <div class="menu-category">Service Technique ADC</div>
 
                         <!-- Configuration System -->
@@ -2031,7 +2034,7 @@
                                 </a>
                             </div>
                         </div>
-                    @endcan
+                    @endrole
 
                     <!-- System Section -->
                     @can('manage_system')

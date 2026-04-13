@@ -374,6 +374,64 @@
     }
 
     .section-icon.notifications { background: linear-gradient(135deg, #3498db, #2980b9); }
+    .section-icon.conduite { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+    .section-icon.ponderation { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+    .section-icon.tronc { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
+
+    /* ── Bulletin Config Premium Cards ────────────────────── */
+    .bc-grid { display: grid; gap: 12px; }
+    .bc-grid-2 { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+    .bc-grid-3 { grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); }
+
+    .bc-card {
+        display: flex; align-items: flex-start; gap: 14px;
+        padding: 16px; border-radius: 12px;
+        background: #f8fafc; border: 1px solid #e5e7eb;
+        transition: border-color .2s, box-shadow .2s;
+    }
+    .bc-card:hover {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(4, 83, 203, .06);
+    }
+
+    .bc-icon {
+        flex-shrink: 0; width: 40px; height: 40px;
+        border-radius: 10px; display: flex;
+        align-items: center; justify-content: center;
+        font-size: .95rem; color: #fff;
+    }
+    .bc-icon { background: linear-gradient(135deg, var(--primary), var(--secondary, #5e91de)); }
+
+    .bc-body { flex: 1; min-width: 0; }
+    .bc-label { font-weight: 600; color: #1e293b; font-size: .88rem; margin-bottom: 2px; }
+    .bc-desc { color: #64748b; font-size: .78rem; line-height: 1.4; margin-top: 4px; }
+
+    .bc-toggle { flex-shrink: 0; margin-left: auto; padding-top: 2px; }
+
+    .bc-input-row {
+        display: flex; align-items: center; gap: 14px;
+        padding: 14px 16px; border-radius: 12px;
+        background: #f8fafc; border: 1px solid #e5e7eb;
+    }
+    .bc-input-row .bc-icon { width: 36px; height: 36px; font-size: .85rem; }
+    .bc-input-row .form-control-modern { max-width: 100px; }
+
+    .bc-info-box {
+        padding: 16px; border-radius: 12px;
+        background: #f0f9ff; border: 1px solid #bae6fd;
+        margin-top: 16px; font-size: .84rem; color: #0c4a6e;
+    }
+    .bc-info-box strong { color: #075985; }
+    .bc-info-box ul { margin: 6px 0 0 16px; padding: 0; }
+    .bc-info-box li { margin-bottom: 3px; }
+
+    .bc-hint {
+        display: flex; align-items: center; gap: 8px;
+        padding: 12px 16px; border-radius: 10px;
+        background: #f8fafc; border: 1px solid #e5e7eb;
+        font-size: .82rem; color: #64748b; margin-top: 12px;
+    }
+    .bc-hint i { color: var(--primary); }
 </style>
 @endpush
 
@@ -823,583 +881,425 @@
                 <!-- Tab 3: Configuration Bulletin -->
                 <div class="tab-pane fade" id="bulletin" role="tabpanel">
 
-            <!-- Section: En-tête du Bulletin -->
+            <!-- Section 1: En-tete du Bulletin -->
             <div class="settings-section">
                 <div class="section-header">
-                    <div class="section-icon bulletin">
-                        <i class="fas fa-heading"></i>
-                    </div>
+                    <div class="section-icon bulletin"><i class="fas fa-heading"></i></div>
                     <div>
-                        <h3 class="section-title">En-tête du Bulletin</h3>
-                        <p class="section-description">Configuration des informations en haut du bulletin</p>
+                        <h3 class="section-title">En-tete du Bulletin</h3>
+                        <p class="section-description">Elements affiches dans l'en-tete du document</p>
                     </div>
                 </div>
 
-                <div class="settings-grid-3">
-                    <div class="form-group">
-                        <label class="form-label-modern">Afficher en-tête</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_header" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_header', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
+                <div class="bc-grid bc-grid-3">
+                    @php $headerToggles = [
+                        ['name' => 'bulletin_show_header', 'label' => 'Afficher en-tete', 'icon' => 'fa-file-alt', 'color' => '', 'default' => '1'],
+                        ['name' => 'bulletin_show_republic_info', 'label' => 'Info Republique', 'icon' => 'fa-flag', 'color' => '', 'default' => '1'],
+                        ['name' => 'bulletin_show_ministry_info', 'label' => 'Info Ministere', 'icon' => 'fa-landmark', 'color' => '', 'default' => '1'],
+                        ['name' => 'bulletin_show_school_info', 'label' => 'Info Ecole', 'icon' => 'fa-school', 'color' => '', 'default' => '1'],
+                        ['name' => 'bulletin_show_cycle_info', 'label' => 'Info Cycle', 'icon' => 'fa-graduation-cap', 'color' => '', 'default' => '1'],
+                    ]; @endphp
+                    @foreach($headerToggles as $t)
+                    <div class="bc-card">
+                        <div class="bc-icon {{ $t['color'] }}"><i class="fas {{ $t['icon'] }}"></i></div>
+                        <div class="bc-body"><div class="bc-label">{{ $t['label'] }}</div></div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="{{ $t['name'] }}" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get($t['name'], $t['default']) == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Info République</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_republic_info" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_republic_info', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Info Ministère</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_ministry_info" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_ministry_info', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Info École</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_school_info" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_school_info', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Info Cycle</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_cycle_info" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_cycle_info', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
+                    @endforeach
                 </div>
 
-                <div class="settings-grid">
-                    <div class="form-group">
-                        <label class="form-label-modern">Texte République</label>
-                        <input type="text" class="form-control form-control-modern"
-                               name="bulletin_republic_text"
-                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_republic_text', 'République de Côte d\'Ivoire') }}"
-                               placeholder="République de Côte d'Ivoire">
+                <div class="bc-grid bc-grid-2" style="margin-top: 16px;">
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-flag"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Texte Republique</div>
+                            <input type="text" class="form-control form-control-modern" name="bulletin_republic_text"
+                                   value="{{ \App\Helpers\SettingsHelper::get('bulletin_republic_text', 'République de Côte d\'Ivoire') }}"
+                                   placeholder="Republique de Cote d'Ivoire">
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Devise Union</label>
-                        <input type="text" class="form-control form-control-modern"
-                               name="bulletin_union_text"
-                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_union_text', 'Union-Discipline-Travail') }}"
-                               placeholder="Union-Discipline-Travail">
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-hands-holding"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Devise Union</div>
+                            <input type="text" class="form-control form-control-modern" name="bulletin_union_text"
+                                   value="{{ \App\Helpers\SettingsHelper::get('bulletin_union_text', 'Union-Discipline-Travail') }}"
+                                   placeholder="Union-Discipline-Travail">
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Texte Ministère</label>
-                        <input type="text" class="form-control form-control-modern"
-                               name="bulletin_ministry_text"
-                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_ministry_text', 'Ministère de l\'Enseignement Supérieur') }}"
-                               placeholder="Ministère de l'Enseignement Supérieur">
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-landmark"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Texte Ministere</div>
+                            <input type="text" class="form-control form-control-modern" name="bulletin_ministry_text"
+                                   value="{{ \App\Helpers\SettingsHelper::get('bulletin_ministry_text', 'Ministère de l\'Enseignement Supérieur') }}"
+                                   placeholder="Ministere de l'Enseignement Superieur">
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Texte Cycle</label>
-                        <input type="text" class="form-control form-control-modern"
-                               name="bulletin_cycle_text"
-                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_cycle_text', 'Brevet de Technicien Supérieur') }}"
-                               placeholder="Brevet de Technicien Supérieur">
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-graduation-cap"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Texte Cycle</div>
+                            <input type="text" class="form-control form-control-modern" name="bulletin_cycle_text"
+                                   value="{{ \App\Helpers\SettingsHelper::get('bulletin_cycle_text', 'Brevet de Technicien Supérieur') }}"
+                                   placeholder="Brevet de Technicien Superieur">
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Section: Affichage du Contenu -->
+            <!-- Section 2: Affichage du Contenu -->
             <div class="settings-section">
                 <div class="section-header">
-                    <div class="section-icon display">
-                        <i class="fas fa-eye"></i>
-                    </div>
+                    <div class="section-icon display"><i class="fas fa-eye"></i></div>
                     <div>
                         <h3 class="section-title">Affichage du Contenu</h3>
-                        <p class="section-description">Contrôle de l'affichage des différentes sections</p>
+                        <p class="section-description">Sections visibles sur le bulletin</p>
                     </div>
                     <div class="section-actions">
                         <button type="button" class="btn btn-sm btn-outline-success me-2" onclick="toggleSectionCheckboxes('content-section', true)">
                             <i class="fas fa-check-double"></i> Tout cocher
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-danger" onclick="toggleSectionCheckboxes('content-section', false)">
-                            <i class="fas fa-times"></i> Tout décocher
+                            <i class="fas fa-times"></i> Tout decocher
                         </button>
                     </div>
                 </div>
 
-                <div class="settings-grid-3" id="content-section">
-                    <div class="form-group">
-                        <label class="form-label-modern">Info Étudiant</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_student_info" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_student_info', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
+                <div class="bc-grid bc-grid-3" id="content-section">
+                    @php $contentToggles = [
+                        ['name' => 'bulletin_show_student_info', 'label' => 'Info Etudiant', 'icon' => 'fa-user', 'color' => 'blue'],
+                        ['name' => 'bulletin_show_matricule', 'label' => 'Matricule', 'icon' => 'fa-id-badge', 'color' => 'slate'],
+                        ['name' => 'bulletin_show_birth_date', 'label' => 'Date Naissance', 'icon' => 'fa-calendar-day', 'color' => 'cyan'],
+                        ['name' => 'bulletin_show_redoublant', 'label' => 'Redoublant', 'icon' => 'fa-redo-alt', 'color' => 'amber'],
+                        ['name' => 'bulletin_show_subjects_table', 'label' => 'Tableau Matieres', 'icon' => 'fa-table', 'color' => 'blue'],
+                        ['name' => 'bulletin_show_teachers', 'label' => 'Professeurs', 'icon' => 'fa-chalkboard-teacher', 'color' => 'green'],
+                        ['name' => 'bulletin_show_absences', 'label' => 'Absences', 'icon' => 'fa-user-clock', 'color' => 'red'],
+                        ['name' => 'bulletin_show_statistics', 'label' => 'Statistiques', 'icon' => 'fa-chart-bar', 'color' => 'purple'],
+                        ['name' => 'bulletin_show_signature', 'label' => 'Signature', 'icon' => 'fa-signature', 'color' => 'slate'],
+                        ['name' => 'bulletin_show_attendance_note', 'label' => 'Note d\'assiduite', 'icon' => 'fa-clipboard-check', 'color' => 'green'],
+                        ['name' => 'bulletin_show_council_decision', 'label' => 'Decision du conseil', 'icon' => 'fa-gavel', 'color' => 'amber'],
+                    ]; @endphp
+                    @foreach($contentToggles as $t)
+                    <div class="bc-card">
+                        <div class="bc-icon {{ $t['color'] }}"><i class="fas {{ $t['icon'] }}"></i></div>
+                        <div class="bc-body"><div class="bc-label">{{ $t['label'] }}</div></div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="{{ $t['name'] }}" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get($t['name'], '1') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Matricule</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_matricule" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_matricule', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Date Naissance</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_birth_date" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_birth_date', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Redoublant</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_redoublant" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_redoublant', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Tableau Matières</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_subjects_table" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_subjects_table', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Professeurs</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_teachers" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_teachers', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Absences</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_absences" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_absences', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Statistiques</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_statistics" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_statistics', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Signature</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_signature" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_signature', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Note d'assiduité</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_attendance_note" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_attendance_note', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Décision du conseil</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_council_decision" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_council_decision', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
+                    @endforeach
                 </div>
             </div>
 
-            <!-- Section: Statistiques de classe -->
+            <!-- Section 3: Statistiques de classe -->
             <div class="settings-section">
                 <div class="section-header">
-                    <div class="section-icon stats">
-                        <i class="fas fa-chart-bar"></i>
-                    </div>
+                    <div class="section-icon stats"><i class="fas fa-chart-bar"></i></div>
                     <div>
                         <h3 class="section-title">Statistiques de Classe</h3>
-                        <p class="section-description">Configuration de l'affichage des statistiques</p>
+                        <p class="section-description">Moyennes affichees en bas du bulletin</p>
                     </div>
                     <div class="section-actions">
                         <button type="button" class="btn btn-sm btn-outline-success me-2" onclick="toggleSectionCheckboxes('stats-section', true)">
                             <i class="fas fa-check-double"></i> Tout cocher
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-danger" onclick="toggleSectionCheckboxes('stats-section', false)">
-                            <i class="fas fa-times"></i> Tout décocher
+                            <i class="fas fa-times"></i> Tout decocher
                         </button>
                     </div>
                 </div>
 
-                <div class="settings-grid-3" id="stats-section">
-                    <div class="form-group">
-                        <label class="form-label-modern">Plus forte moyenne</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_highest_average" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_highest_average', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
+                <div class="bc-grid bc-grid-3" id="stats-section">
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-arrow-up"></i></div>
+                        <div class="bc-body"><div class="bc-label">Plus forte moyenne</div></div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="bulletin_show_highest_average" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get('bulletin_show_highest_average', '1') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Plus faible moyenne</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_lowest_average" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_lowest_average', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-arrow-down"></i></div>
+                        <div class="bc-body"><div class="bc-label">Plus faible moyenne</div></div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="bulletin_show_lowest_average" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get('bulletin_show_lowest_average', '1') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Moyenne de classe</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_class_average" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_class_average', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Section: Tronc Commun / Spécialisation -->
-            <div class="settings-section">
-                <div class="section-header">
-                    <div class="section-icon stats">
-                        <i class="fas fa-code-branch"></i>
-                    </div>
-                    <div>
-                        <h3 class="section-title">Tronc Commun / Spécialisation</h3>
-                        <p class="section-description">Configuration du système de tronc commun avec spécialisation en cours d'année</p>
-                    </div>
-                </div>
-
-                <div class="settings-grid-2">
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-toggle-on text-primary"></i>
-                            Activer le tronc commun
-                        </label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="setting_tronc_commun_enabled" value="1"
-                                   {{ \App\Helpers\SettingsHelper::get('tronc_commun_enabled', '0') == '1' ? 'checked' : '' }}>
-                            <span class="switch-slider"></span>
-                        </label>
-                        <small class="text-muted">Permet aux filières marquées "tronc commun" de proposer une spécialisation en cours d'année</small>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-clipboard-check text-success"></i>
-                            Reporter les notes S1 dans la MGA
-                        </label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="setting_tronc_commun_mga_include_s1" value="1"
-                                   {{ \App\Helpers\SettingsHelper::get('tronc_commun_mga_include_s1', '1') == '1' ? 'checked' : '' }}>
-                            <span class="switch-slider"></span>
-                        </label>
-                        <small class="text-muted">Inclure les notes du tronc commun (S1) dans le calcul de la Moyenne Générale Annuelle</small>
-                    </div>
-                </div>
-
-                <div class="settings-grid-2 mt-3">
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-money-bill-transfer text-warning"></i>
-                            Reporter les paiements
-                        </label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="setting_tronc_commun_report_paiements" value="1"
-                                   {{ \App\Helpers\SettingsHelper::get('tronc_commun_report_paiements', '1') == '1' ? 'checked' : '' }}>
-                            <span class="switch-slider"></span>
-                        </label>
-                        <small class="text-muted">Reporter automatiquement les paiements du tronc commun sur la spécialisation</small>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-file-lines text-info"></i>
-                            Reporter les notes
-                        </label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="setting_tronc_commun_report_notes" value="1"
-                                   {{ \App\Helpers\SettingsHelper::get('tronc_commun_report_notes', '1') == '1' ? 'checked' : '' }}>
-                            <span class="switch-slider"></span>
-                        </label>
-                        <small class="text-muted">Conserver les notes du S1 (tronc commun) accessibles depuis la spécialisation</small>
-                    </div>
-                </div>
-
-                <div class="settings-grid-2 mt-3">
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-id-card text-primary"></i>
-                            Afficher la classe d'origine sur le bulletin
-                        </label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="setting_tronc_commun_bulletin_show_origin" value="1"
-                                   {{ \App\Helpers\SettingsHelper::get('tronc_commun_bulletin_show_origin', '1') == '1' ? 'checked' : '' }}>
-                            <span class="switch-slider"></span>
-                        </label>
-                        <small class="text-muted">Mentionner la classe de tronc commun (S1) sur le bulletin de la spécialisation (S2)</small>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-link text-success"></i>
-                            Matières communes automatiques
-                        </label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="setting_tronc_commun_matieres_communes" value="1"
-                                   {{ \App\Helpers\SettingsHelper::get('tronc_commun_matieres_communes', '1') == '1' ? 'checked' : '' }}>
-                            <span class="switch-slider"></span>
-                        </label>
-                        <small class="text-muted">Détecter les matières partagées entre TC et spécialisation, reporter les notes automatiquement</small>
-                    </div>
-                </div>
-
-                <div class="settings-grid-2 mt-3">
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-calendar-check text-info"></i>
-                            Planning strict par semestre
-                        </label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="setting_tronc_commun_planning_semestre_strict" value="1"
-                                   {{ \App\Helpers\SettingsHelper::get('tronc_commun_planning_semestre_strict', '0') == '1' ? 'checked' : '' }}>
-                            <span class="switch-slider"></span>
-                        </label>
-                        <small class="text-muted">Restreindre le planning général : matières TC en S1 uniquement, matières spécialisation en S2 uniquement</small>
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-equals"></i></div>
+                        <div class="bc-body"><div class="bc-label">Moyenne de classe</div></div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="bulletin_show_class_average" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get('bulletin_show_class_average', '1') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Section: Pondération des semestres -->
+            <!-- Section 4: Tronc Commun / Specialisation -->
             <div class="settings-section">
                 <div class="section-header">
-                    <div class="section-icon stats">
-                        <i class="fas fa-balance-scale"></i>
-                    </div>
+                    <div class="section-icon tronc"><i class="fas fa-code-branch"></i></div>
                     <div>
-                        <h3 class="section-title">Pondération des semestres</h3>
-                        <p class="section-description">Coefficients utilisés pour calculer la moyenne générale annuelle (M.G.A)</p>
+                        <h3 class="section-title">Tronc Commun / Specialisation</h3>
+                        <p class="section-description">Systeme de tronc commun avec specialisation en cours d'annee</p>
                     </div>
                 </div>
 
-                <div class="settings-grid-2">
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-scale-balanced text-primary"></i>
-                            Coefficient Semestre 1
-                        </label>
-                        <input type="number" class="form-control form-control-modern threshold-input"
-                               name="setting_bulletin_semester1_weight"
-                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_semester1_weight', '1') }}"
-                               min="0" step="0.1">
+                <div class="bc-grid bc-grid-2">
+                    @php $tcToggles = [
+                        ['name' => 'setting_tronc_commun_enabled', 'key' => 'tronc_commun_enabled', 'label' => 'Activer le tronc commun', 'desc' => 'Permet aux filieres marquees "tronc commun" de proposer une specialisation en cours d\'annee', 'icon' => 'fa-toggle-on', 'color' => '', 'default' => '0'],
+                        ['name' => 'setting_tronc_commun_mga_include_s1', 'key' => 'tronc_commun_mga_include_s1', 'label' => 'Reporter les notes S1 dans la MGA', 'desc' => 'Inclure les notes du tronc commun (S1) dans le calcul de la Moyenne Generale Annuelle', 'icon' => 'fa-clipboard-check', 'color' => '', 'default' => '1'],
+                        ['name' => 'setting_tronc_commun_report_paiements', 'key' => 'tronc_commun_report_paiements', 'label' => 'Reporter les paiements', 'desc' => 'Reporter automatiquement les paiements du tronc commun sur la specialisation', 'icon' => 'fa-money-bill-transfer', 'color' => '', 'default' => '1'],
+                        ['name' => 'setting_tronc_commun_report_notes', 'key' => 'tronc_commun_report_notes', 'label' => 'Reporter les notes', 'desc' => 'Conserver les notes du S1 (tronc commun) accessibles depuis la specialisation', 'icon' => 'fa-file-lines', 'color' => '', 'default' => '1'],
+                        ['name' => 'setting_tronc_commun_bulletin_show_origin', 'key' => 'tronc_commun_bulletin_show_origin', 'label' => 'Afficher la classe d\'origine', 'desc' => 'Mentionner la classe de tronc commun (S1) sur le bulletin de la specialisation (S2)', 'icon' => 'fa-id-card', 'color' => '', 'default' => '1'],
+                        ['name' => 'setting_tronc_commun_matieres_communes', 'key' => 'tronc_commun_matieres_communes', 'label' => 'Matieres communes automatiques', 'desc' => 'Detecter les matieres partagees entre TC et specialisation, reporter les notes automatiquement', 'icon' => 'fa-link', 'color' => '', 'default' => '1'],
+                        ['name' => 'setting_tronc_commun_planning_semestre_strict', 'key' => 'tronc_commun_planning_semestre_strict', 'label' => 'Planning strict par semestre', 'desc' => 'Restreindre le planning general : matieres TC en S1 uniquement, matieres specialisation en S2 uniquement', 'icon' => 'fa-calendar-check', 'color' => '', 'default' => '0'],
+                    ]; @endphp
+                    @foreach($tcToggles as $t)
+                    <div class="bc-card">
+                        <div class="bc-icon {{ $t['color'] }}"><i class="fas {{ $t['icon'] }}"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">{{ $t['label'] }}</div>
+                            <div class="bc-desc">{{ $t['desc'] }}</div>
+                        </div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="{{ $t['name'] }}" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get($t['key'], $t['default']) == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-scale-balanced text-success"></i>
-                            Coefficient Semestre 2
-                        </label>
-                        <input type="number" class="form-control form-control-modern threshold-input"
-                               name="setting_bulletin_semester2_weight"
-                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_semester2_weight', '1') }}"
-                               min="0" step="0.1">
+                    @endforeach
+                </div>
+            </div>
+
+            <!-- Section 5: Ponderation des semestres -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon ponderation"><i class="fas fa-balance-scale"></i></div>
+                    <div>
+                        <h3 class="section-title">Ponderation des semestres</h3>
+                        <p class="section-description">Coefficients pour le calcul de la Moyenne Generale Annuelle (M.G.A)</p>
                     </div>
                 </div>
-                <small class="text-muted">
+
+                <div class="bc-grid bc-grid-2">
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-scale-balanced"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Coefficient Semestre 1</div>
+                            <input type="number" class="form-control form-control-modern" style="max-width: 100px;"
+                                   name="setting_bulletin_semester1_weight"
+                                   value="{{ \App\Helpers\SettingsHelper::get('bulletin_semester1_weight', '1') }}"
+                                   min="0" step="0.1">
+                        </div>
+                    </div>
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-scale-balanced"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Coefficient Semestre 2</div>
+                            <input type="number" class="form-control form-control-modern" style="max-width: 100px;"
+                                   name="setting_bulletin_semester2_weight"
+                                   value="{{ \App\Helpers\SettingsHelper::get('bulletin_semester2_weight', '1') }}"
+                                   min="0" step="0.1">
+                        </div>
+                    </div>
+                </div>
+                <div class="bc-hint">
                     <i class="fas fa-info-circle"></i>
-                    Exemple: S1 = 1, S2 = 2 ⟶ (S1*1 + S2*2) / 3. La somme est normalisee automatiquement.
-                </small>
+                    Exemple : S1 = 1, S2 = 2 -- (S1*1 + S2*2) / 3. La somme est normalisee automatiquement.
+                </div>
             </div>
 
-            <!-- Section: Note de Conduite -->
+            <!-- Section 6: Note de Conduite -->
             <div class="settings-section">
                 <div class="section-header">
-                    <div class="section-icon" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
-                        <i class="fas fa-user-shield"></i>
-                    </div>
+                    <div class="section-icon conduite"><i class="fas fa-user-shield"></i></div>
                     <div>
                         <h3 class="section-title">Note de Conduite</h3>
-                        <p class="section-description">Configuration de la note de conduite basée sur les absences</p>
+                        <p class="section-description">Note basee sur les absences de l'etudiant</p>
                     </div>
                 </div>
 
-                <div class="settings-grid-3">
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-toggle-on text-success"></i>
-                            Activer la note de conduite
-                        </label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_conduite_enabled" value="1"
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_conduite_enabled', '0') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
+                <div class="bc-grid bc-grid-2">
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-toggle-on"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Activer la note de conduite</div>
+                            <div class="bc-desc">Calculer et afficher une note de conduite sur le bulletin</div>
+                        </div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="bulletin_conduite_enabled" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get('bulletin_conduite_enabled', '0') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-list-ol text-info"></i>
-                            Absences par matière sur bulletin
-                        </label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_absences_par_matiere" value="1"
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_absences_par_matiere', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="settings-grid-2" style="margin-top: var(--space-md);">
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-star text-warning"></i>
-                            Note par défaut (/20)
-                        </label>
-                        <input type="number" class="form-control form-control-modern threshold-input"
-                               name="setting_conduite_note_defaut"
-                               value="{{ \App\Helpers\SettingsHelper::get('conduite_note_defaut', '16') }}"
-                               min="0" max="20" step="0.5">
-                        <small class="text-muted">Note de départ avant déduction des absences</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-clock text-danger"></i>
-                            Heures d'absence par point retiré
-                        </label>
-                        <input type="number" class="form-control form-control-modern threshold-input"
-                               name="setting_conduite_heures_par_point"
-                               value="{{ \App\Helpers\SettingsHelper::get('conduite_heures_par_point', '4') }}"
-                               min="1" max="20" step="1">
-                        <small class="text-muted">Chaque X heures d'absences = -1 point sur la note de conduite</small>
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-list-ol"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Absences par matiere sur bulletin</div>
+                            <div class="bc-desc">Detailler les absences matiere par matiere</div>
+                        </div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="bulletin_show_absences_par_matiere" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get('bulletin_show_absences_par_matiere', '1') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
-                <div style="margin-top: var(--space-md); padding: var(--space-md); background: #fef3cd; border-radius: var(--radius-medium); border: 1px solid #ffc107;">
-                    <strong><i class="fas fa-info-circle"></i> Barème des mentions de conduite :</strong>
-                    <ul style="margin: 8px 0 0 16px; padding: 0;">
-                        <li><strong>0/20</strong> → Blâme</li>
-                        <li><strong>05/20 à 10/20</strong> → Avertissement</li>
+                <div class="bc-grid bc-grid-2" style="margin-top: 12px;">
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-star"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Note par defaut (/20)</div>
+                            <input type="number" class="form-control form-control-modern" style="max-width: 100px;"
+                                   name="setting_conduite_note_defaut"
+                                   value="{{ \App\Helpers\SettingsHelper::get('conduite_note_defaut', '16') }}"
+                                   min="0" max="20" step="0.5">
+                            <div class="bc-desc">Note de depart avant deduction des absences</div>
+                        </div>
+                    </div>
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-clock"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Heures d'absence par point retire</div>
+                            <input type="number" class="form-control form-control-modern" style="max-width: 100px;"
+                                   name="setting_conduite_heures_par_point"
+                                   value="{{ \App\Helpers\SettingsHelper::get('conduite_heures_par_point', '4') }}"
+                                   min="1" max="20" step="1">
+                            <div class="bc-desc">Chaque X heures d'absences = -1 point</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bc-info-box">
+                    <strong><i class="fas fa-info-circle"></i> Bareme des mentions de conduite :</strong>
+                    <ul>
+                        <li><strong>0/20</strong> -- Blame</li>
+                        <li><strong>05/20 a 10/20</strong> -- Avertissement</li>
                     </ul>
-                    <strong style="display: block; margin-top: 8px;"><i class="fas fa-book"></i> Appréciations des notes :</strong>
-                    <ul style="margin: 8px 0 0 16px; padding: 0;">
-                        <li>00/20 = Nul · 01-06 = Médiocre · 07-09.98 = Insuffisant · 9.99-11.99 = Passable</li>
-                        <li>12-13.99 = Assez-bien · 14-15.99 = Bien · 16-17.99 = Très Bien · 18-20 = Excellent</li>
+                    <strong><i class="fas fa-book"></i> Appreciations des notes :</strong>
+                    <ul>
+                        <li>00/20 = Nul -- 01-06 = Mediocre -- 07-09.98 = Insuffisant -- 9.99-11.99 = Passable</li>
+                        <li>12-13.99 = Assez-bien -- 14-15.99 = Bien -- 16-17.99 = Tres Bien -- 18-20 = Excellent</li>
                     </ul>
                 </div>
             </div>
 
-            <!-- Section: Mentions et Seuils -->
+            <!-- Section 7: Mentions et Seuils -->
             <div class="settings-section">
                 <div class="section-header">
-                    <div class="section-icon mentions">
-                        <i class="fas fa-medal"></i>
-                    </div>
+                    <div class="section-icon mentions"><i class="fas fa-medal"></i></div>
                     <div>
                         <h3 class="section-title">Mentions et Seuils</h3>
-                        <p class="section-description">Configuration des mentions automatiques</p>
+                        <p class="section-description">Seuils de declenchement des mentions automatiques</p>
                     </div>
                 </div>
 
-                <div class="settings-grid-3">
-                    <div class="form-group">
-                        <label class="form-label-modern">Calcul Auto</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_auto_calculate_mention" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_auto_calculate_mention', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
+                <div class="bc-grid bc-grid-3">
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-calculator"></i></div>
+                        <div class="bc-body"><div class="bc-label">Calcul Auto</div></div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="bulletin_auto_calculate_mention" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get('bulletin_auto_calculate_mention', '1') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Félicitations</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_felicitation" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_felicitation', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-trophy"></i></div>
+                        <div class="bc-body"><div class="bc-label">Felicitations</div></div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="bulletin_show_felicitation" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get('bulletin_show_felicitation', '1') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">Encouragements</label>
-                        <label class="form-switch-modern">
-                            <input type="checkbox" name="bulletin_show_encouragement" value="1" 
-                                   {{ \App\Helpers\SettingsHelper::get('bulletin_show_encouragement', '1') == '1' ? 'checked' : '' }}>
-                            <span class="slider"></span>
-                        </label>
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-thumbs-up"></i></div>
+                        <div class="bc-body"><div class="bc-label">Encouragements</div></div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="bulletin_show_encouragement" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get('bulletin_show_encouragement', '1') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
-                <div class="settings-grid">
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-star text-warning"></i>
-                            Seuil Félicitations (/20)
-                        </label>
-                        <input type="number" class="form-control form-control-modern threshold-input"
-                               name="bulletin_felicitation_threshold"
-                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_felicitation_threshold', '16') }}"
-                               min="0" max="20" step="0.5">
+                <div class="bc-grid bc-grid-2" style="margin-top: 12px;">
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-star"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Seuil Felicitations (/20)</div>
+                            <input type="number" class="form-control form-control-modern" style="max-width: 100px;"
+                                   name="bulletin_felicitation_threshold"
+                                   value="{{ \App\Helpers\SettingsHelper::get('bulletin_felicitation_threshold', '16') }}"
+                                   min="0" max="20" step="0.5">
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-thumbs-up text-success"></i>
-                            Seuil Encouragements (/20)
-                        </label>
-                        <input type="number" class="form-control form-control-modern threshold-input"
-                               name="bulletin_encouragement_threshold"
-                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_encouragement_threshold', '14') }}"
-                               min="0" max="20" step="0.5">
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-thumbs-up"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Seuil Encouragements (/20)</div>
+                            <input type="number" class="form-control form-control-modern" style="max-width: 100px;"
+                                   name="bulletin_encouragement_threshold"
+                                   value="{{ \App\Helpers\SettingsHelper::get('bulletin_encouragement_threshold', '14') }}"
+                                   min="0" max="20" step="0.5">
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-award text-info"></i>
-                            Seuil Tableau d'honneur (/20)
-                        </label>
-                        <input type="number" class="form-control form-control-modern threshold-input"
-                               name="bulletin_honor_roll_threshold"
-                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_honor_roll_threshold', '12') }}"
-                               min="0" max="20" step="0.5">
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-award"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Seuil Tableau d'honneur (/20)</div>
+                            <input type="number" class="form-control form-control-modern" style="max-width: 100px;"
+                                   name="bulletin_honor_roll_threshold"
+                                   value="{{ \App\Helpers\SettingsHelper::get('bulletin_honor_roll_threshold', '12') }}"
+                                   min="0" max="20" step="0.5">
+                        </div>
                     </div>
-
-                    <div class="form-group">
-                        <label class="form-label-modern">
-                            <i class="fas fa-exclamation-triangle text-danger"></i>
-                            Seuil Avertissement (/20)
-                        </label>
-                        <input type="number" class="form-control form-control-modern threshold-input"
-                               name="bulletin_work_warning_threshold"
-                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_work_warning_threshold', '8') }}"
-                               min="0" max="20" step="0.5">
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Seuil Avertissement (/20)</div>
+                            <input type="number" class="form-control form-control-modern" style="max-width: 100px;"
+                                   name="bulletin_work_warning_threshold"
+                                   value="{{ \App\Helpers\SettingsHelper::get('bulletin_work_warning_threshold', '8') }}"
+                                   min="0" max="20" step="0.5">
+                        </div>
                     </div>
                 </div>
             </div>
