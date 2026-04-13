@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 
@@ -48,6 +49,167 @@ class CLIMaintenanceController extends BaseApiController
         return $this->successResponse([
             'commands' => $output,
         ], 'All caches cleared successfully');
+    }
+
+    /**
+     * GET /api/cli/logs — Read recent application logs (sanitized)
+     */
+    public function logs(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $lines = min((int) $request->get('lines', 50), 200);
+        $level = $request->get('level'); // error, warning, info, debug
+        $search = $request->get('search');
+
+        $logFile = storage_path('logs/laravel.log');
+
+        if (!file_exists($logFile)) {
+            return $this->successResponse(['entries' => [], 'total' => 0], 'Log file not found');
+        }
+
+        try {
+            // Read log entries from end of file (handles large stack traces)
+            $entries = $this->readLogEntries($logFile, $lines * 2);
+
+            // Filter by level
+            if ($level) {
+                $levelUpper = strtoupper($level);
+                $entries = array_filter($entries, function ($entry) use ($levelUpper) {
+                    return stripos($entry['level'], $levelUpper) !== false;
+                });
+            }
+
+            // Filter by search term
+            if ($search) {
+                $entries = array_filter($entries, function ($entry) use ($search) {
+                    return stripos($entry['message'], $search) !== false
+                        || stripos($entry['context'], $search) !== false;
+                });
+            }
+
+            // Sanitize sensitive data
+            $entries = array_map([$this, 'sanitizeLogEntry'], $entries);
+
+            // Take last N entries
+            $entries = array_slice(array_values($entries), -$lines);
+
+            return $this->successResponse([
+                'entries' => $entries,
+                'total' => count($entries),
+                'filters' => array_filter(['level' => $level, 'search' => $search]),
+                'log_file_size' => $this->formatBytes(filesize($logFile)),
+            ], 'Logs retrieved');
+        } catch (\Exception $e) {
+            Log::error('CLI: logs read failed', ['error' => $e->getMessage()]);
+            return $this->errorResponse('Failed to read logs', [], 500);
+        }
+    }
+
+    private function readLogEntries(string $filepath, int $maxEntries): array
+    {
+        $fileSize = filesize($filepath);
+        if ($fileSize === 0) {
+            return [];
+        }
+
+        // Read backwards in chunks to find log entries
+        $handle = fopen($filepath, 'r');
+        $chunkSize = 64 * 1024; // 64 KB chunks
+        $maxBytes = 2 * 1024 * 1024; // Read max 2 MB from end
+        $buffer = '';
+        $entries = [];
+        $bytesRead = 0;
+
+        $offset = max(0, $fileSize - $chunkSize);
+
+        while ($offset >= 0 && $bytesRead < $maxBytes) {
+            fseek($handle, $offset);
+            $chunk = fread($handle, min($chunkSize, $fileSize - $offset));
+            $buffer = $chunk . $buffer;
+            $bytesRead += strlen($chunk);
+
+            // Count log entry headers found so far
+            $headerCount = preg_match_all('/^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\]/m', $buffer);
+            if ($headerCount >= $maxEntries + 1) {
+                break; // We have enough entries
+            }
+
+            if ($offset === 0) {
+                break;
+            }
+            $offset = max(0, $offset - $chunkSize);
+        }
+
+        fclose($handle);
+
+        // Parse entries from buffer
+        $lines = explode("\n", $buffer);
+        $entries = [];
+        $current = null;
+
+        foreach ($lines as $line) {
+            $line = rtrim($line);
+            if ($line === '') {
+                continue;
+            }
+
+            if (preg_match('/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]\s+\w+\.(\w+):\s*(.*)$/', $line, $m)) {
+                if ($current !== null) {
+                    $entries[] = $current;
+                }
+                $current = [
+                    'timestamp' => $m[1],
+                    'level' => $m[2],
+                    'message' => $m[3],
+                    'context' => '',
+                ];
+            } elseif ($current !== null) {
+                $current['context'] .= ($current['context'] ? "\n" : '') . $line;
+            }
+        }
+
+        if ($current !== null) {
+            $entries[] = $current;
+        }
+
+        return $entries;
+    }
+
+    private function sanitizeLogEntry(array $entry): array
+    {
+        $sensitivePatterns = [
+            '/(?:password|passwd|pwd)\s*[:=]\s*\S+/i' => 'password=***REDACTED***',
+            '/(?:DB_PASSWORD|DB_USERNAME)\s*[:=]\s*\S+/i' => '$0=***REDACTED***',
+            '/(?:API_KEY|APP_KEY|SECRET|TOKEN)\s*[:=]\s*\S+/i' => '$0=***REDACTED***',
+            '/Bearer\s+[A-Za-z0-9|._-]+/i' => 'Bearer ***REDACTED***',
+            '/sk-[a-zA-Z0-9-]+/' => 'sk-***REDACTED***',
+        ];
+
+        foreach ($sensitivePatterns as $pattern => $replacement) {
+            $entry['message'] = preg_replace($pattern, $replacement, $entry['message']);
+            $entry['context'] = preg_replace($pattern, $replacement, $entry['context']);
+        }
+
+        // Truncate context to avoid massive stack traces
+        if (strlen($entry['context']) > 1000) {
+            $entry['context'] = substr($entry['context'], 0, 1000) . "\n... [truncated]";
+        }
+
+        return $entry;
+    }
+
+    private function formatBytes(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $i = 0;
+        while ($bytes >= 1024 && $i < count($units) - 1) {
+            $bytes /= 1024;
+            $i++;
+        }
+        return round($bytes, 1) . ' ' . $units[$i];
     }
 
     /**

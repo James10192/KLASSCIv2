@@ -58,52 +58,49 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        // Vérifier si l'utilisateur est du service technique
-        if ($user->can('module.technical_support.access')) {
-            return $this->serviceTechniqueDashboard();
-        }
-
-        // Vérifier si l'utilisateur est un super admin
-        if ($user->can('access_admin')) {
+        // SuperAdmin/Admin en premier — ils ont TOUTES les permissions,
+        // donc tout check permission-based matcherait. On utilise hasRole()
+        // car c'est du routing UI par rôle (pattern validé post-overhaul).
+        if ($user->hasRole(['superAdmin', 'admin'])) {
             return $this->superAdminDashboard();
         }
 
-        // Vérifier si l'utilisateur est un secrétaire
+        // Service technique — a aussi toutes les permissions, donc hasRole requis
+        if ($user->hasRole('serviceTechnique')) {
+            return $this->serviceTechniqueDashboard();
+        }
+
+        // Secrétaire
         if ($user->can('can_manage_school')) {
             return $this->secretaireDashboard();
         }
 
-        // Vérifier si l'utilisateur est un caissier
+        // Caissier
         if ($user->can('module.caisse.access')) {
             return $this->caissierDashboard();
         }
 
-        // Vérifier si l'utilisateur est un comptable
+        // Comptable
         if ($user->can('comptabilite.access')) {
             return $this->comptableDashboard();
         }
 
-        // Vérifier si l'utilisateur est un coordinateur
+        // Coordinateur
         if ($user->can('can_coordinate_academics')) {
             return $this->coordinateurDashboard();
         }
 
-        // Vérifier si l'utilisateur est un enseignant
+        // Enseignant
         if ($user->can('can_teach')) {
             return redirect()->route('teacher.dashboard');
         }
 
-        // Vérifier si l'utilisateur est un étudiant
+        // Étudiant
         if ($user->can('can_view_student_features')) {
             return $this->etudiantDashboard();
         }
 
-        // Vérifier si l'utilisateur est un comptable
-        if ($user->can('comptabilite.access')) {
-            return redirect()->route('esbtp.comptabilite.dashboard');
-        }
-
-        // Si aucun rôle spécifique n'est trouvé, afficher un tableau de bord générique
+        // Fallback — tableau de bord générique
         return view('dashboard.index', compact('user'));
     }
 

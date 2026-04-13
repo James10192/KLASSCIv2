@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/yabla/.claude/projects/**)",
+      "Read(//c/Users/yabla/.claude/skills/**)",
+      "Bash(bun scripts/init-skill.ts linkedin-post --path \"$HOME/.claude/skills\")",
+      "Edit(~/.claude/skills/linkedin-post/**)",
+      "WebSearch"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\yabla\\.claude\\skills\\linkedin-post\\scripts"
+    ]
+  }
+}

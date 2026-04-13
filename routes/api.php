@@ -250,6 +250,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     // Admin endpoints (strict throttle)
     Route::middleware('throttle:5,1')->group(function () {
         // Maintenance
+        Route::get('/logs', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'logs'])->name('logs');
         Route::post('/cache/clear', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'cacheClear'])->name('cache.clear');
         Route::post('/permissions/fix', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'permissionsFix'])->name('permissions.fix');
 
