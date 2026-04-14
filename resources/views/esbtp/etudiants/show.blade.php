@@ -2126,15 +2126,17 @@
                 sous réserve de son <strong>{{ $inscFutureSousReserve->condition_reserve ?? 'diplôme' }}</strong>.
                 L'inscription sera confirmée quand cette année deviendra l'année courante.
             </div>
+            @if(Route::has('esbtp.inscriptions.sous-reserve'))
             <a href="{{ route('esbtp.inscriptions.sous-reserve') }}" style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background:linear-gradient(135deg, #0453cb, #5e91de); color:#fff; border:none; border-radius:8px; font-size:.84rem; font-weight:600; text-decoration:none; cursor:pointer; box-shadow:0 2px 8px rgba(4,83,203,.25);">
                 <i class="fas fa-external-link-alt"></i> Gérer les réserves
             </a>
+            @endif
         </div>
     </div>
     @endif
 
     {{-- Bannière inscription future NON sous réserve (suggestion) --}}
-    @if($inscFutureNonReserve && !$inscFutureSousReserve)
+    @if($inscFutureNonReserve && !$inscFutureSousReserve && Route::has('esbtp.inscriptions.marquer-sous-reserve'))
     <div style="background:linear-gradient(135deg,#fef3c7,#fde68a); border:1.5px solid #f59e0b; border-left:5px solid #d97706; border-radius:10px; padding:16px 20px; margin-bottom:24px; display:flex; align-items:flex-start; gap:14px;">
         <div style="flex-shrink:0; width:36px; height:36px; background:#d97706; border-radius:50%; display:flex; align-items:center; justify-content:center;">
             <i class="fas fa-exclamation-triangle" style="color:#fff; font-size:.9rem;"></i>

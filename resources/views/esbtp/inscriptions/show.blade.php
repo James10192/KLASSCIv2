@@ -615,7 +615,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                     && optional($anneeCourante)->start_date
                     && $inscription->anneeUniversitaire->start_date > $anneeCourante->start_date;
             @endphp
-            @if($isFutureNonReserve)
+            @if($isFutureNonReserve && Route::has('esbtp.inscriptions.marquer-sous-reserve'))
             <div style="background:linear-gradient(135deg,#fef3c7,#fde68a); border:1.5px solid #f59e0b; border-left:5px solid #d97706; border-radius:10px; padding:16px 20px; margin-bottom:16px; display:flex; align-items:flex-start; gap:14px;">
                 <div style="flex-shrink:0; width:36px; height:36px; background:#d97706; border-radius:50%; display:flex; align-items:center; justify-content:center;">
                     <i class="fas fa-exclamation-triangle" style="color:#fff; font-size:.9rem;"></i>
@@ -652,7 +652,9 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                     <div style="color:#1e40af; font-size:.85rem; line-height:1.5; margin-bottom:8px;">
                         Cette inscription pour <strong>{{ $inscription->anneeUniversitaire->name ?? '' }}</strong> est sous réserve
                         de son <strong>{{ $inscription->condition_reserve ?? 'diplôme' }}</strong>.
+                        @if(Route::has('esbtp.inscriptions.sous-reserve'))
                         La réserve sera levée depuis la <a href="{{ route('esbtp.inscriptions.sous-reserve') }}" style="color:#0453cb; font-weight:600;">page de gestion des réserves</a>.
+                        @endif
                     </div>
                 </div>
             </div>
