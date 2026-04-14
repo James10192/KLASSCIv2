@@ -314,6 +314,99 @@ class CLIMaintenanceController extends BaseApiController
     }
 
     /**
+     * POST /api/cli/migrate — Run migrations + fix partial failures
+     */
+    public function migrate(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        try {
+            $results = ['steps' => []];
+
+            // 1. Check pending migrations
+            $exitCode = Artisan::call('migrate', ['--force' => true]);
+            $output = trim(Artisan::output());
+            $results['steps'][] = ['action' => 'migrate --force', 'exit_code' => $exitCode, 'output' => $output];
+
+            if ($exitCode !== 0 && str_contains($output, 'Column already exists')) {
+                // Partial migration failure — columns exist but index/migration record missing
+                $failedMigration = null;
+                if (preg_match('/Running.*?(\d{4}_\d{2}_\d{2}_\d+_\w+)/', $output, $m)) {
+                    $failedMigration = $m[1];
+                }
+
+                // Try to add the missing unique index
+                $indexCreated = false;
+                try {
+                    $existingIndexes = collect(DB::select('SHOW INDEX FROM esbtp_inscriptions'))
+                        ->pluck('Key_name')->unique()->toArray();
+
+                    if (!in_array('inscriptions_etudiant_annee_classe_unique', $existingIndexes)) {
+                        DB::statement('ALTER TABLE esbtp_inscriptions ADD UNIQUE inscriptions_etudiant_annee_classe_unique (etudiant_id, annee_universitaire_id, classe_id)');
+                        $indexCreated = true;
+                        $results['steps'][] = ['action' => 'create_unique_index', 'status' => 'created'];
+                    } else {
+                        $results['steps'][] = ['action' => 'create_unique_index', 'status' => 'already_exists'];
+                    }
+                } catch (\Exception $e) {
+                    $results['steps'][] = ['action' => 'create_unique_index', 'status' => 'failed', 'error' => $e->getMessage()];
+                }
+
+                // Drop old unique index on (etudiant_id, annee_universitaire_id, status) if exists
+                try {
+                    $indexes = DB::select('SHOW INDEX FROM esbtp_inscriptions');
+                    $indexMap = [];
+                    foreach ($indexes as $idx) {
+                        $indexMap[$idx->Key_name][] = $idx->Column_name;
+                    }
+                    foreach ($indexMap as $name => $cols) {
+                        sort($cols);
+                        $target = ['annee_universitaire_id', 'etudiant_id', 'status'];
+                        if ($cols === $target) {
+                            DB::statement("ALTER TABLE esbtp_inscriptions DROP INDEX `{$name}`");
+                            $results['steps'][] = ['action' => 'drop_old_index', 'index' => $name, 'status' => 'dropped'];
+                            break;
+                        }
+                    }
+                } catch (\Exception $e) {
+                    $results['steps'][] = ['action' => 'drop_old_index', 'status' => 'skipped', 'error' => $e->getMessage()];
+                }
+
+                // Mark migration as done
+                if ($failedMigration) {
+                    $exists = DB::table('migrations')->where('migration', $failedMigration)->exists();
+                    if (!$exists) {
+                        $batch = DB::table('migrations')->max('batch') + 1;
+                        DB::table('migrations')->insert(['migration' => $failedMigration, 'batch' => $batch]);
+                        $results['steps'][] = ['action' => 'mark_migration_done', 'migration' => $failedMigration, 'batch' => $batch];
+                    }
+                }
+
+                // Re-run remaining migrations
+                $exitCode2 = Artisan::call('migrate', ['--force' => true]);
+                $output2 = trim(Artisan::output());
+                $results['steps'][] = ['action' => 'migrate_retry', 'exit_code' => $exitCode2, 'output' => $output2];
+            }
+
+            // 2. Clear caches
+            Artisan::call('config:clear');
+            Artisan::call('cache:clear');
+            Artisan::call('view:clear');
+            Artisan::call('permission:cache-reset');
+            $results['steps'][] = ['action' => 'cache_clear', 'status' => 'done'];
+
+            $failed = collect($results['steps'])->contains(fn($s) => ($s['status'] ?? '') === 'failed');
+
+            return $this->successResponse($results, $failed ? 'Migration completed with warnings' : 'Migration completed successfully');
+        } catch (\Exception $e) {
+            Log::error('CLI: migrate failed', ['error' => $e->getMessage()]);
+            return $this->errorResponse('Migration failed: ' . $e->getMessage(), [], 500);
+        }
+    }
+
+    /**
      * POST /api/cli/permissions/fix — Sync all permissions and roles
      */
     public function permissionsFix(Request $request): JsonResponse
