@@ -2982,7 +2982,22 @@
     @else
 
     {{-- ══ BLOC ANNÉE EN COURS (toujours plat, jamais collapsible) ══ --}}
-    @if($acadIsNotCurrentYear)
+    @if($acadIsNotCurrentYear && ($inscFutureSousReserve ?? null))
+        {{-- Pré-inscrit sous réserve pour une année future --}}
+        <div class="fin-hero" style="margin-bottom:16px;">
+            <div class="fin-hero-year-badge" style="background:rgba(59,130,246,.12); border-color:rgba(59,130,246,.3);">
+                <i class="fas fa-clipboard-check" style="color:#0453cb;"></i>
+                <span style="color:#1e40af;">
+                    Pré-inscrit <strong>{{ $inscFutureSousReserve->anneeUniversitaire->name ?? '' }}</strong>
+                    sous réserve de son {{ $inscFutureSousReserve->condition_reserve ?? 'diplôme' }}
+                    @if($inscFutureSousReserve->classe) &middot; {{ $inscFutureSousReserve->classe->name }} @endif
+                </span>
+            </div>
+            <p style="margin:12px 0 0; font-size:.82rem; color:var(--k-muted); text-align:center;">
+                <i class="fas fa-info-circle" style="margin-right:5px;"></i>Résultats académiques non encore disponibles pour cette année. Consultez les années précédentes ci-dessous.
+            </p>
+        </div>
+    @elseif($acadIsNotCurrentYear)
         {{-- Pas de données pour l'année courante --}}
         <div class="fin-hero" style="margin-bottom:16px;">
             <div class="fin-hero-year-badge" style="background:rgba(239,68,68,.15); border-color:rgba(239,68,68,.3);">
@@ -3333,9 +3348,13 @@
     {{-- ══ AUTRES ANNÉES ══════════════════════════════════════ --}}
     @php
         /* Si l'année courante n'a pas de données, toutes les inscriptions vont ici
-           mais on exclut quand même l'inscription de l'année courante (sans données) */
+           mais on exclut l'inscription courante (sans données) et la future sous réserve (affichée dans le hero) */
+        $acadExcludeIds = collect([$anneeCourante?->id])->filter();
+        if ($inscFutureSousReserve ?? null) {
+            $acadExcludeIds->push($inscFutureSousReserve->annee_universitaire_id);
+        }
         $acadInscsPrec = $acadIsNotCurrentYear
-            ? $acadInscs->filter(fn($i) => $anneeCourante ? $i->annee_universitaire_id !== $anneeCourante->id : true)
+            ? $acadInscs->filter(fn($i) => !$acadExcludeIds->contains($i->annee_universitaire_id))
             : $acadAutres;
     @endphp
     @if($acadInscsPrec->count())
