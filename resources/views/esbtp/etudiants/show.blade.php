@@ -5528,7 +5528,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .etd-skeleton-input { height: 38px; width: 100%; }
 .etd-skeleton-msg { height: 52px; width: 100%; margin-bottom: 1rem; }
 </style>
-@if(isset($finInscActive) && $finInscActive)
+@if(isset($finInscRef) && $finInscRef)
 <div class="modal fade" id="etudiantPaymentModal" tabindex="-1" aria-labelledby="etudiantPaymentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content" style="border-radius:15px; border:none; box-shadow:0 10px 40px rgba(0,0,0,.2);">
@@ -5551,7 +5551,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div style="color:#084298;font-weight:500;margin-bottom:.25rem;">{{ $etudiant->nom_complet }}</div>
                                 <div style="color:#052c65;font-size:.9rem;">
                                     Matricule : <strong>{{ $etudiant->matricule ?? 'N/A' }}</strong>
-                                    <span id="etd-modal-classe-info">@if($finInscActive?->classe) · {{ $finInscActive->classe->name }} @endif</span>
+                                    <span id="etd-modal-classe-info">@if($finInscRef?->classe) · {{ $finInscRef->classe->name }} @endif</span>
                                 </div>
                             </div>
                         </div>
