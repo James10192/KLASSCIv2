@@ -2007,6 +2007,7 @@ class ESBTPInscriptionController extends Controller
             return redirect()->back()->with('info', 'Cette inscription n\'est pas sous réserve.');
         }
 
+        $inscription->load('etudiant');
         $inscription->leverReserve();
 
         return redirect()->back()->with('success',

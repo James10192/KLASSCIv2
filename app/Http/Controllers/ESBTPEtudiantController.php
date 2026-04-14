@@ -1523,10 +1523,13 @@ class ESBTPEtudiantController extends Controller
         // Récupérer les paramètres de l'école
         $settings = $this->getCertificateDisplaySettings();
 
+        $hasSousReserve = $inscriptions->contains(fn($i) => $i->is_sous_reserve);
+
         return view('esbtp.etudiants.certificat-preview', [
             'etudiant' => $etudiant,
             'inscriptions' => $inscriptions,
-            'settings' => $settings
+            'settings' => $settings,
+            'hasSousReserve' => $hasSousReserve,
         ]);
     }
 
@@ -1563,10 +1566,13 @@ class ESBTPEtudiantController extends Controller
             // Récupérer les paramètres de l'école
             $settings = $this->getCertificateDisplaySettings();
 
+            $hasSousReserve = $inscriptions->contains(fn($i) => $i->is_sous_reserve);
+
             $html = view('esbtp.etudiants.certificat', [
                 'etudiant' => $etudiant,
                 'inscriptions' => $inscriptions,
-                'settings' => $settings
+                'settings' => $settings,
+                'hasSousReserve' => $hasSousReserve,
             ])->render();
 
             $pdfService = app(\App\Services\ESBTPPDFService::class);

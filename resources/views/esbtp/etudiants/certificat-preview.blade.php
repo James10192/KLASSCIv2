@@ -193,10 +193,7 @@
             @endif
 
             <p>Matricule&nbsp;: <span class="doc-hl">{{ $etudiant->matricule }}</span></p>
-            @php
-                $hasSousReserve = $inscriptions->contains(fn($i) => $i->is_sous_reserve);
-            @endphp
-            @if($hasSousReserve)
+            @if($hasSousReserve ?? $inscriptions->contains(fn($i) => $i->is_sous_reserve))
             <p>Sera régulièrement inscrit(e) sur le registre des effectifs de l'année universitaire&nbsp;:</p>
             @else
             <p>Est régulièrement inscrit(e) sur le registre des effectifs de l'année universitaire&nbsp;:</p>
