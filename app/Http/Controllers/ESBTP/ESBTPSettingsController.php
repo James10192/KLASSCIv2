@@ -153,6 +153,34 @@ class ESBTPSettingsController extends Controller
                 );
             }
 
+            // Créer les settings tronc commun si inexistants
+            $troncCommunDefaults = [
+                'tronc_commun_enabled' => ['value' => '0', 'description' => 'Activer le tronc commun'],
+                'tronc_commun_mga_include_s1' => ['value' => '1', 'description' => 'Reporter les notes S1 dans la MGA'],
+                'tronc_commun_report_paiements' => ['value' => '1', 'description' => 'Reporter automatiquement les paiements du tronc commun'],
+                'tronc_commun_report_notes' => ['value' => '1', 'description' => 'Conserver les notes du S1 accessibles depuis la spécialisation'],
+                'tronc_commun_bulletin_show_origin' => ['value' => '1', 'description' => 'Mentionner la classe de tronc commun sur le bulletin'],
+                'tronc_commun_matieres_communes' => ['value' => '1', 'description' => 'Détecter les matières partagées entre TC et spécialisation'],
+                'tronc_commun_planning_semestre_strict' => ['value' => '0', 'description' => 'Restreindre le planning par semestre'],
+            ];
+
+            foreach ($troncCommunDefaults as $key => $attrs) {
+                Setting::firstOrCreate(
+                    ['key' => $key],
+                    [
+                        'value' => $attrs['value'],
+                        'type' => 'boolean',
+                        'group' => 'tronc_commun',
+                        'category' => 'tronc_commun',
+                        'description' => $attrs['description'],
+                        'is_required' => false,
+                        'default_value' => $attrs['value'],
+                        'validation_rules' => null,
+                        'sort_order' => 160,
+                    ]
+                );
+            }
+
             $allCheckboxSettings = Setting::whereIn('key', [
                 'bulletin_show_logo', 'bulletin_show_header', 'bulletin_show_republic_info',
                 'bulletin_show_ministry_info', 'bulletin_show_school_info', 'bulletin_show_cycle_info',
@@ -164,6 +192,10 @@ class ESBTPSettingsController extends Controller
                 'bulletin_auto_calculate_mention', 'bulletin_show_felicitation', 'bulletin_show_encouragement',
                 'certificat_show_classe', 'certificat_show_niveau', 'certificat_show_filiere',
                 'bulletin_conduite_enabled', 'bulletin_show_absences_par_matiere',
+                'tronc_commun_enabled', 'tronc_commun_mga_include_s1',
+                'tronc_commun_report_paiements', 'tronc_commun_report_notes',
+                'tronc_commun_bulletin_show_origin', 'tronc_commun_matieres_communes',
+                'tronc_commun_planning_semestre_strict',
             ])->get();
 
             foreach ($allCheckboxSettings as $setting) {
