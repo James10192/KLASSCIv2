@@ -325,16 +325,37 @@ class CLIMaintenanceController extends BaseApiController
         try {
             $results = ['steps' => []];
 
-            // 1. Check pending migrations
-            $exitCode = Artisan::call('migrate', ['--force' => true]);
-            $output = trim(Artisan::output());
-            $results['steps'][] = ['action' => 'migrate --force', 'exit_code' => $exitCode, 'output' => $output];
+            // 1. Try migrations — catch SQL exceptions for partial failures
+            $migrationError = null;
+            try {
+                $exitCode = Artisan::call('migrate', ['--force' => true]);
+                $output = trim(Artisan::output());
+                $results['steps'][] = ['action' => 'migrate --force', 'exit_code' => $exitCode, 'output' => $output];
+            } catch (\Exception $e) {
+                $exitCode = 1;
+                $output = $e->getMessage();
+                $migrationError = $output;
+                $results['steps'][] = ['action' => 'migrate --force', 'exit_code' => 1, 'output' => $output];
+            }
 
-            if ($exitCode !== 0 && str_contains($output, 'Column already exists')) {
+            if ($exitCode !== 0 && (str_contains($output, 'Column already exists') || str_contains($output, 'Duplicate column'))) {
                 // Partial migration failure — columns exist but index/migration record missing
+                // Find the failed migration name from output or pending list
                 $failedMigration = null;
-                if (preg_match('/Running.*?(\d{4}_\d{2}_\d{2}_\d+_\w+)/', $output, $m)) {
+                if (preg_match('/(\d{4}_\d{2}_\d{2}_\d+_\w+)/', $output, $m)) {
                     $failedMigration = $m[1];
+                }
+                if (!$failedMigration) {
+                    // Check for pending migrations that match the error context
+                    $pending = DB::table('migrations')->pluck('migration')->toArray();
+                    $files = glob(database_path('migrations/*.php'));
+                    foreach ($files as $file) {
+                        $name = pathinfo($file, PATHINFO_FILENAME);
+                        if (!in_array($name, $pending) && str_contains($name, 'inscription')) {
+                            $failedMigration = $name;
+                            break;
+                        }
+                    }
                 }
 
                 // Try to add the missing unique index
