@@ -371,12 +371,71 @@
 
                 <div class="alert-kl alert-kl-info mb-3">
                     <i class="fas fa-info-circle"></i>
-                    <span>Sélectionnez une classe. La filière, le niveau et l'année universitaire seront automatiquement associés.</span>
+                    <span>Sélectionnez une classe et l'année universitaire d'inscription.</span>
                 </div>
 
                 <div class="row">
-                    <div class="col-md-12">
+                    <div class="col-md-8">
                         @include('components.forms.class-selector')
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="annee_universitaire_id">
+                                <i class="fas fa-calendar-alt field-icon"></i> Année universitaire <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select @error('annee_universitaire_id') is-invalid @enderror"
+                                    name="annee_universitaire_id"
+                                    id="annee_universitaire_id"
+                                    required>
+                                @foreach($academicYears->sortByDesc('start_date') as $annee)
+                                    <option value="{{ $annee->id }}"
+                                        {{ (old('annee_universitaire_id', $anneeEnCours->id ?? '') == $annee->id) ? 'selected' : '' }}
+                                        data-is-current="{{ $annee->is_current ? '1' : '0' }}">
+                                        {{ $annee->name }}
+                                        @if($annee->is_current) (Année courante) @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('annee_universitaire_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Bloc inscription sous réserve (visible uniquement si année future) --}}
+                <div class="row mt-3" id="sous-reserve-block" style="display: none;">
+                    <div class="col-md-12">
+                        <div class="alert alert-warning border-left-warning" style="border-left: 4px solid #f59e0b; background: #fffbeb;">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-exclamation-triangle me-3 mt-1" style="color: #f59e0b; font-size: 1.2rem;"></i>
+                                <div class="flex-grow-1">
+                                    <strong style="color: #92400e;">Inscription pour une année future</strong>
+                                    <p class="mb-2 mt-1" style="color: #78350f; font-size: 13px;">
+                                        Cette inscription concerne une année universitaire qui n'est pas l'année courante.
+                                        Vous pouvez la marquer comme "sous réserve" (ex: en attente du Baccalauréat).
+                                    </p>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox"
+                                               name="is_sous_reserve" id="is_sous_reserve" value="1"
+                                               {{ old('is_sous_reserve') ? 'checked' : '' }}>
+                                        <label class="form-check-label fw-bold" for="is_sous_reserve" style="color: #92400e;">
+                                            Inscription sous réserve
+                                        </label>
+                                    </div>
+                                    <div id="condition-reserve-field" style="{{ old('is_sous_reserve') ? '' : 'display: none;' }}">
+                                        <label for="condition_reserve" class="form-label" style="color: #78350f; font-size: 13px;">
+                                            Condition / Motif de la réserve :
+                                        </label>
+                                        <input type="text" class="form-control form-control-sm"
+                                               name="condition_reserve" id="condition_reserve"
+                                               value="{{ old('condition_reserve', 'BACCALAURÉAT') }}"
+                                               placeholder="Ex: BACCALAURÉAT, BTS, BEPC..."
+                                               style="max-width: 350px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -797,6 +856,40 @@ document.addEventListener('DOMContentLoaded', function() {
     function resetDuplicateOverride() {
         duplicateState.override = false;
         if (duplicateOverrideInput) duplicateOverrideInput.value = '0';
+    }
+
+    // =============================================
+    // ANNÉE UNIVERSITAIRE + SOUS RÉSERVE
+    // =============================================
+    const anneeSelect = document.getElementById('annee_universitaire_id');
+    const sousReserveBlock = document.getElementById('sous-reserve-block');
+    const isSousReserveCheck = document.getElementById('is_sous_reserve');
+    const conditionField = document.getElementById('condition-reserve-field');
+
+    function updateSousReserveVisibility() {
+        if (!anneeSelect || !sousReserveBlock) return;
+        const selectedOption = anneeSelect.options[anneeSelect.selectedIndex];
+        const isCurrent = selectedOption?.dataset?.isCurrent === '1';
+        sousReserveBlock.style.display = isCurrent ? 'none' : '';
+        // Si on revient sur l'année courante, décocher sous réserve
+        if (isCurrent && isSousReserveCheck) {
+            isSousReserveCheck.checked = false;
+            if (conditionField) conditionField.style.display = 'none';
+        }
+    }
+
+    if (anneeSelect) {
+        anneeSelect.addEventListener('change', updateSousReserveVisibility);
+        // Exécuter au chargement pour gérer old()
+        updateSousReserveVisibility();
+    }
+
+    if (isSousReserveCheck) {
+        isSousReserveCheck.addEventListener('change', function() {
+            if (conditionField) {
+                conditionField.style.display = this.checked ? '' : 'none';
+            }
+        });
     }
 
     // =============================================

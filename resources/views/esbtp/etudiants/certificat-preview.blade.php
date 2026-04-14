@@ -104,15 +104,15 @@
     /* Footer */
     .doc-footer {
         display:flex; justify-content:space-between; align-items:flex-end;
-        margin-top:40px; gap:20px;
+        margin-top:80px; gap:20px;
     }
     .doc-date { font-style:italic; font-size:.85rem; color:var(--doc-muted); }
     .doc-signature {
         text-align:right; border-top:2px solid var(--doc-accent);
-        padding-top:12px; min-width:200px;
+        padding-top:24px; min-width:200px;
     }
     .doc-sig-title { font-weight:700; color:var(--doc-accent); font-size:.88rem; margin-bottom:8px; }
-    .doc-sig-name  { font-style:italic; color:var(--doc-muted); font-size:.84rem; margin-top:24px; }
+    .doc-sig-name  { font-style:italic; color:var(--doc-muted); font-size:.84rem; margin-top:48px; }
 
     .doc-note {
         margin-top:28px; text-align:center; font-size:.73rem;
@@ -193,7 +193,14 @@
             @endif
 
             <p>Matricule&nbsp;: <span class="doc-hl">{{ $etudiant->matricule }}</span></p>
-            <p>Est régulièrement inscrit(e) sur le registre des effectifs de l'année académique&nbsp;:</p>
+            @php
+                $hasSousReserve = $inscriptions->contains(fn($i) => $i->is_sous_reserve);
+            @endphp
+            @if($hasSousReserve)
+            <p>Sera régulièrement inscrit(e) sur le registre des effectifs de l'année universitaire&nbsp;:</p>
+            @else
+            <p>Est régulièrement inscrit(e) sur le registre des effectifs de l'année universitaire&nbsp;:</p>
+            @endif
 
             @php
                 $showClasse  = $settings['show_classe']  ?? true;
@@ -204,7 +211,7 @@
             <table class="doc-table">
                 <thead>
                     <tr>
-                        <th>Année scolaire</th>
+                        <th>Année universitaire</th>
                         @if($showClasse)<th>Classe suivie</th>@endif
                         @if($showNiveau)<th>Niveau d'étude</th>@endif
                         @if($showFiliere)<th>Filière</th>@endif
@@ -220,7 +227,11 @@
                             echo $rawYear
                                 ? (preg_match('/(\d{4}-\d{4})/', $rawYear, $m) ? $m[1] : $rawYear)
                                 : 'Non renseigné';
-                        @endphp</td>
+                        @endphp
+                        @if($inscription->is_sous_reserve)
+                            <br><small style="color:#d97706;font-weight:600;">Sous réserve{{ $inscription->condition_reserve ? ' de son ' . $inscription->condition_reserve : '' }}</small>
+                        @endif
+                        </td>
                         @if($showClasse)<td>{{ $inscription->classe->name ?? 'Non renseigné' }}</td>@endif
                         @if($showNiveau)<td>{{ $inscription->niveauEtude->name ?? 'Non renseigné' }}</td>@endif
                         @if($showFiliere)<td>{{ strtoupper($inscription->filiere->name ?? 'Non renseigné') }}</td>@endif

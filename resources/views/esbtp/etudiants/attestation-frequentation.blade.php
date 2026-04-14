@@ -173,7 +173,7 @@
 
         /* ── Footer signature — float layout DomPDF-safe ── */
         .doc-footer {
-            margin-top: 36px;
+            margin-top: 72px;
             width: 100%;
             overflow: hidden;
         }
@@ -184,7 +184,7 @@
             font-style: italic;
             color: {{ $pdfMuted }};
             font-size: 11px;
-            margin-top: 32px;
+            margin-top: 64px;
         }
 
         .doc-footer-sign {
@@ -192,8 +192,8 @@
             width: 48%;
             text-align: right;
             border-top: 2px solid {{ $pdfPrimary }};
-            padding-top: 10px;
-            min-height: 60px;
+            padding-top: 20px;
+            min-height: 120px;
         }
 
         .sign-title {
@@ -317,17 +317,22 @@
             @endif
 
             <p>
-                Est régulièrement inscrit(e) au titre de l'année scolaire
-                <span class="hl">
                 @php
                     $anneeText = $inscription->anneeUniversitaire->name
                         ?? $inscription->anneeUniversitaire->nom
                         ?? $inscription->anneeUniversitaire->libelle
                         ?? '';
-                    echo preg_match('/(\d{4}-\d{4})/', $anneeText, $matches)
+                    $anneeFormatted = preg_match('/(\d{4}-\d{4})/', $anneeText, $matches)
                         ? $matches[1] : $anneeText;
                 @endphp
-                </span>
+                @if($inscription->is_sous_reserve)
+                Sera régulièrement inscrit(e) au titre de l'année universitaire
+                <span class="hl">{{ $anneeFormatted }}</span>
+                sous réserve de son <span class="hl">{{ $inscription->condition_reserve ?? 'diplôme' }}</span>
+                @else
+                Est régulièrement inscrit(e) au titre de l'année universitaire
+                <span class="hl">{{ $anneeFormatted }}</span>
+                @endif
             </p>
 
             {{-- Bloc infos étudiant — fond clair + bordure gauche colorée --}}

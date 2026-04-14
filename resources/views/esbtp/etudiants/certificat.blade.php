@@ -168,7 +168,7 @@
 
         /* ── Footer signature — float layout DomPDF-safe ── */
         .doc-footer {
-            margin-top: 36px;
+            margin-top: 72px;
             width: 100%;
             overflow: hidden;
         }
@@ -179,7 +179,7 @@
             font-style: italic;
             color: {{ $pdfMuted }};
             font-size: 11px;
-            margin-top: 32px;
+            margin-top: 64px;
         }
 
         .doc-footer-sign {
@@ -187,8 +187,8 @@
             width: 48%;
             text-align: right;
             border-top: 2px solid {{ $pdfPrimary }};
-            padding-top: 10px;
-            min-height: 60px;
+            padding-top: 20px;
+            min-height: 120px;
         }
 
         .sign-title {
@@ -299,12 +299,19 @@
 
             <p>Matricule : <span class="hl">{{ $etudiant->matricule }}</span></p>
 
-            <p>Est régulièrement inscrit(e) sur le registre des effectifs de l'année académique :</p>
+            @php
+                $hasSousReserve = $inscriptions->contains(fn($i) => $i->is_sous_reserve);
+            @endphp
+            @if($hasSousReserve)
+            <p>Sera régulièrement inscrit(e) sur le registre des effectifs de l'année universitaire :</p>
+            @else
+            <p>Est régulièrement inscrit(e) sur le registre des effectifs de l'année universitaire :</p>
+            @endif
 
             <table class="doc-table">
                 <thead>
                     <tr>
-                        <th>Année scolaire</th>
+                        <th>Année universitaire</th>
                         @if($showClasse)<th>Classe suivie</th>@endif
                         @if($showNiveau)<th>Niveau d'étude</th>@endif
                         @if($showFiliere)<th>Filière</th>@endif
@@ -318,10 +325,14 @@
                             @php
                                 $rawAY = $inscription->anneeUniversitaire?->libelle
                                     ?? $inscription->anneeUniversitaire?->name ?? null;
-                                echo $rawAY
+                                $yearText = $rawAY
                                     ? (preg_match('/(\d{4}-\d{4})/', $rawAY, $m) ? $m[1] : $rawAY)
                                     : 'Non renseigné';
+                                echo $yearText;
                             @endphp
+                            @if($inscription->is_sous_reserve)
+                                <br><small style="color: #d97706; font-weight: 600;">Sous réserve{{ $inscription->condition_reserve ? ' de son ' . $inscription->condition_reserve : '' }}</small>
+                            @endif
                         </td>
                         @if($showClasse)<td>{{ $inscription->classe->name ?? 'Non renseigné' }}</td>@endif
                         @if($showNiveau)<td>{{ $inscription->niveauEtude->name ?? 'Non renseigné' }}</td>@endif

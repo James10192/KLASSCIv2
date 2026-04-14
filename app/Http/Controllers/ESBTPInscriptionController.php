@@ -1972,4 +1972,66 @@ class ESBTPInscriptionController extends Controller
             Log::error('Erreur désactivation reminder paiement: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Afficher la page de gestion des inscriptions sous réserve.
+     */
+    public function sousReserveIndex(Request $request)
+    {
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $annees = ESBTPAnneeUniversitaire::where('is_active', true)
+            ->orderByDesc('start_date')
+            ->get();
+
+        $anneeFilterId = $request->input('annee_id', $anneeEnCours?->id);
+
+        $inscriptions = ESBTPInscription::with([
+                'etudiant', 'classe', 'filiere', 'niveauEtude', 'anneeUniversitaire', 'paiements'
+            ])
+            ->where('is_sous_reserve', true)
+            ->when($anneeFilterId, fn($q) => $q->where('annee_universitaire_id', $anneeFilterId))
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('esbtp.inscriptions.sous-reserve', compact(
+            'inscriptions', 'annees', 'anneeEnCours', 'anneeFilterId'
+        ));
+    }
+
+    /**
+     * Lever la réserve d'une inscription individuelle.
+     */
+    public function leverReserve(ESBTPInscription $inscription)
+    {
+        if (!$inscription->is_sous_reserve) {
+            return redirect()->back()->with('info', 'Cette inscription n\'est pas sous réserve.');
+        }
+
+        $inscription->leverReserve();
+
+        return redirect()->back()->with('success',
+            'La réserve a été levée pour l\'inscription de ' .
+            ($inscription->etudiant->nom ?? '') . ' ' . ($inscription->etudiant->prenoms ?? '') . '.'
+        );
+    }
+
+    /**
+     * Lever les réserves en bulk pour les inscriptions sélectionnées.
+     */
+    public function leverReservesBulk(Request $request)
+    {
+        $ids = $request->input('inscription_ids', []);
+
+        if (empty($ids)) {
+            return redirect()->back()->with('error', 'Aucune inscription sélectionnée.');
+        }
+
+        $count = ESBTPInscription::whereIn('id', $ids)
+            ->where('is_sous_reserve', true)
+            ->update(['is_sous_reserve' => false, 'condition_reserve' => null]);
+
+        return redirect()->back()->with('success',
+            $count . ' inscription(s) ont été confirmée(s). La réserve a été levée.'
+        );
+    }
 }

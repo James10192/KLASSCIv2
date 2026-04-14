@@ -910,6 +910,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Routes pour validation groupée des inscriptions
             Route::post('/inscriptions/bulk-valider', [ESBTPInscriptionController::class, 'bulkValider'])->name('inscriptions.bulk-valider');
 
+            // Routes pour gestion des inscriptions sous réserve
+            Route::get('/inscriptions/sous-reserve', [ESBTPInscriptionController::class, 'sousReserveIndex'])->name('inscriptions.sous-reserve');
+            Route::post('/inscriptions/{inscription}/lever-reserve', [ESBTPInscriptionController::class, 'leverReserve'])->name('inscriptions.lever-reserve');
+            Route::post('/inscriptions/lever-reserves-bulk', [ESBTPInscriptionController::class, 'leverReservesBulk'])->name('inscriptions.lever-reserves-bulk');
+
             // Routes pour actions rapides sur inscriptions (modals AJAX)
             Route::get('/inscriptions/{inscription}/data', [ESBTPInscriptionApiController::class, 'getInscriptionData'])->name('inscriptions.data');
             Route::get('/inscriptions/{inscription}/paiement-en-attente', [ESBTPInscriptionApiController::class, 'getPaiementEnAttente'])->name('inscriptions.paiement-en-attente');

@@ -15,6 +15,9 @@ class StoreInscriptionRequest extends FormRequest
     {
         $rules = [
             'classe_id' => 'required|exists:esbtp_classes,id',
+            'annee_universitaire_id' => 'nullable|exists:esbtp_annee_universitaires,id',
+            'is_sous_reserve' => 'nullable|boolean',
+            'condition_reserve' => 'nullable|string|max:255',
             'nom' => 'required|string|max:100',
             'prenoms' => 'required|string|max:100',
             'sexe' => 'required|in:M,F',
@@ -63,6 +66,7 @@ class StoreInscriptionRequest extends FormRequest
     {
         $messages = [
             'classe_id.required' => 'Veuillez sélectionner une classe',
+            'annee_universitaire_id.exists' => 'L\'année universitaire sélectionnée est invalide',
             'nom.required' => 'Le nom est obligatoire',
             'prenoms.required' => 'Le(s) prénom(s) est/sont obligatoire(s)',
             'sexe.required' => 'Le genre est obligatoire',
