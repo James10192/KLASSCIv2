@@ -897,6 +897,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/inscriptions/check-transfert/{classe}', [ESBTPInscriptionApiController::class, 'checkTransfert'])->name('inscriptions.check-transfert');
             Route::get('/inscriptions/duplicates', [ESBTPInscriptionApiController::class, 'duplicates'])->name('inscriptions.duplicates');
             Route::post('/inscriptions/check-duplicates', [ESBTPInscriptionApiController::class, 'checkDuplicates'])->name('inscriptions.check-duplicates');
+            // Routes pour gestion des inscriptions sous réserve (AVANT les routes {inscription})
+            Route::get('/inscriptions/sous-reserve', [ESBTPInscriptionController::class, 'sousReserveIndex'])->name('inscriptions.sous-reserve');
+            Route::post('/inscriptions/lever-reserves-bulk', [ESBTPInscriptionController::class, 'leverReservesBulk'])->name('inscriptions.lever-reserves-bulk');
+
             Route::post('/inscriptions', [ESBTPInscriptionController::class, 'store'])->name('inscriptions.store');
             Route::get('/inscriptions/{inscription}', [ESBTPInscriptionController::class, 'show'])->name('inscriptions.show');
             Route::get('/inscriptions/{inscription}/situation-financiere/preview', [ESBTPInscriptionPaiementController::class, 'previewSituationFinanciere'])->name('inscriptions.situation-financiere.preview');
@@ -910,10 +914,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Routes pour validation groupée des inscriptions
             Route::post('/inscriptions/bulk-valider', [ESBTPInscriptionController::class, 'bulkValider'])->name('inscriptions.bulk-valider');
 
-            // Routes pour gestion des inscriptions sous réserve
-            Route::get('/inscriptions/sous-reserve', [ESBTPInscriptionController::class, 'sousReserveIndex'])->name('inscriptions.sous-reserve');
             Route::post('/inscriptions/{inscription}/lever-reserve', [ESBTPInscriptionController::class, 'leverReserve'])->name('inscriptions.lever-reserve');
-            Route::post('/inscriptions/lever-reserves-bulk', [ESBTPInscriptionController::class, 'leverReservesBulk'])->name('inscriptions.lever-reserves-bulk');
 
             // Routes pour actions rapides sur inscriptions (modals AJAX)
             Route::get('/inscriptions/{inscription}/data', [ESBTPInscriptionApiController::class, 'getInscriptionData'])->name('inscriptions.data');

@@ -370,18 +370,21 @@
                 </div>
 
                 <div class="alert-kl alert-kl-info mb-3">
-                    <i class="fas fa-info-circle"></i>
+                    <i class="fas fa-info-circle me-1"></i>
                     <span>Sélectionnez une classe et l'année universitaire d'inscription.</span>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-8">
+                <div class="row mb-3">
+                    <div class="col-md-12">
                         @include('components.forms.class-selector')
                     </div>
-                    <div class="col-md-4">
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
                         <div class="form-group">
                             <label for="annee_universitaire_id">
-                                <i class="fas fa-calendar-alt field-icon"></i> Année universitaire <span class="text-danger">*</span>
+                                <i class="fas fa-calendar-alt me-1"></i> Année universitaire <span class="text-danger">*</span>
                             </label>
                             <select class="form-select @error('annee_universitaire_id') is-invalid @enderror"
                                     name="annee_universitaire_id"
@@ -410,7 +413,7 @@
                             <div class="d-flex align-items-start">
                                 <i class="fas fa-exclamation-triangle me-3 mt-1" style="color: #f59e0b; font-size: 1.2rem;"></i>
                                 <div class="flex-grow-1">
-                                    <strong style="color: #92400e;">Inscription pour une année future</strong>
+                                    <strong style="color: #92400e;"><i class="fas fa-clock me-1"></i> Inscription pour une année future</strong>
                                     <p class="mb-2 mt-1" style="color: #78350f; font-size: 13px;">
                                         Cette inscription concerne une année universitaire qui n'est pas l'année courante.
                                         Vous pouvez la marquer comme "sous réserve" (ex: en attente du Baccalauréat).
@@ -420,12 +423,12 @@
                                                name="is_sous_reserve" id="is_sous_reserve" value="1"
                                                {{ old('is_sous_reserve') ? 'checked' : '' }}>
                                         <label class="form-check-label fw-bold" for="is_sous_reserve" style="color: #92400e;">
-                                            Inscription sous réserve
+                                            <i class="fas fa-file-signature me-1"></i> Inscription sous réserve
                                         </label>
                                     </div>
                                     <div id="condition-reserve-field" style="{{ old('is_sous_reserve') ? '' : 'display: none;' }}">
                                         <label for="condition_reserve" class="form-label" style="color: #78350f; font-size: 13px;">
-                                            Condition / Motif de la réserve :
+                                            <i class="fas fa-graduation-cap me-1"></i> Condition / Motif de la réserve :
                                         </label>
                                         <input type="text" class="form-control form-control-sm"
                                                name="condition_reserve" id="condition_reserve"
