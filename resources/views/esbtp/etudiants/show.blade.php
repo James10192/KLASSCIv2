@@ -3630,23 +3630,32 @@
         }
     @endphp
     <div class="fin-hero" style="margin-bottom:16px;">
+        @if($presInscCourante)
         <div class="fin-hero-year-badge">
             <i class="fas fa-calendar-check"></i>
             Année en cours :
             <strong>{{ $presAnneeCourante->name }}</strong>
-            @if($presInscCourante?->classe)
+            @if($presInscCourante->classe)
                 &middot; {{ $presInscCourante->classe->name }}
             @endif
         </div>
+        @elseif($inscFutureSousReserve ?? null)
+        <div class="fin-hero-year-badge" style="background:rgba(59,130,246,.12); border-color:rgba(59,130,246,.3);">
+            <i class="fas fa-clipboard-check" style="color:#0453cb;"></i>
+            <span style="color:#1e40af;">
+                Pré-inscrit <strong>{{ $inscFutureSousReserve->anneeUniversitaire->name ?? '' }}</strong>
+                sous réserve de son {{ $inscFutureSousReserve->condition_reserve ?? 'diplôme' }}
+                @if($inscFutureSousReserve->classe) &middot; {{ $inscFutureSousReserve->classe->name }} @endif
+            </span>
+        </div>
+        @else
+        <div class="fin-hero-year-badge" style="background:rgba(239,68,68,.15); border-color:rgba(239,68,68,.3);">
+            <i class="fas fa-calendar-times" style="color:#ef4444;"></i>
+            <span style="color:#ef4444;">Aucune inscription pour {{ $presAnneeCourante->name }}</span>
+        </div>
+        @endif
 
-        @if(!$presInscCourante && ($inscFutureSousReserve ?? null))
-            <div style="display:flex; align-items:center; gap:10px; padding:14px 16px; background:rgba(59,130,246,.06); border-radius:10px; border-left:3px solid #3b82f6;">
-                <i class="fas fa-clipboard-check" style="color:#0453cb; font-size:1.1rem; flex-shrink:0;"></i>
-                <span style="font-size:.84rem; color:#1e40af; font-weight:500;">
-                    Pré-inscrit <strong>{{ $inscFutureSousReserve->anneeUniversitaire->name ?? '' }}</strong> sous réserve — données de présence non encore disponibles.
-                </span>
-            </div>
-        @elseif(!$presInscCourante)
+        @if(!$presInscCourante && !($inscFutureSousReserve ?? null))
             <div style="display:flex; align-items:center; gap:10px; padding:14px 16px; background:rgba(239,68,68,.06); border-radius:10px; border-left:3px solid #ef4444;">
                 <i class="fas fa-exclamation-circle" style="color:#ef4444; font-size:1.1rem; flex-shrink:0;"></i>
                 <span style="font-size:.84rem; color:#991b1b; font-weight:500;">Aucune inscription pour {{ $presAnneeCourante->name }} — données de présence indisponibles.</span>
