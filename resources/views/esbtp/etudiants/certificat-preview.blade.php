@@ -7,7 +7,7 @@
 @include('pdf.partials.theme')
 @php
     $pdfSettings  = \App\Helpers\SettingsHelper::getPdfSettings();
-    $accentColor  = $pdfSettings['accent_color'] ?? $pdfSettings['primary_color'] ?? '#0453cb';
+    $accentColor  = $pdfSettings['primary_color'] ?? $pdfSettings['header_bg_color'] ?? '#0453cb';
     $accentText   = $pdfSettings['header_text_color'] ?? '#ffffff';
     $bodyText     = $pdfSettings['text_color']        ?? '#1f2937';
 @endphp
