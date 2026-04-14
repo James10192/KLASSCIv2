@@ -1670,6 +1670,28 @@
         || ($inscCourante->status === 'active' && $inscCourante->workflow_step !== 'etudiant_cree')
     );
 
+    // Inscription future sous réserve (ex: inscrit pour 2026-2027 sous réserve du BAC)
+    $inscFutureSousReserve = $anneeCourante
+        ? $etudiant->inscriptions->first(fn($i) =>
+            $i->is_sous_reserve
+            && $i->anneeUniversitaire
+            && $i->anneeUniversitaire->start_date
+            && $anneeCourante->start_date
+            && $i->anneeUniversitaire->start_date > $anneeCourante->start_date
+        )
+        : null;
+
+    // Inscription future NON sous réserve (pour suggérer de marquer)
+    $inscFutureNonReserve = $anneeCourante
+        ? $etudiant->inscriptions->first(fn($i) =>
+            !$i->is_sous_reserve
+            && $i->anneeUniversitaire
+            && $i->anneeUniversitaire->start_date
+            && $anneeCourante->start_date
+            && $i->anneeUniversitaire->start_date > $anneeCourante->start_date
+        )
+        : null;
+
     // Pré-inscription caissier : matricule PRE-* = infos à compléter
     $isPreInscription = $etudiant->matricule && str_starts_with($etudiant->matricule, 'PRE-') && $inscCourante;
     $preInscriptionMissing = [];
@@ -1752,6 +1774,10 @@
                 <span class="hero-pill"><i class="fas fa-id-card"></i> {{ $etudiant->matricule ?? 'Non attribué' }}</span>
                 @if($estInscritCetteAnnee)
                     <span class="hero-pill green"><i class="fas fa-circle" style="font-size:.45rem"></i> Inscrit {{ $anneeCourante->name ?? '' }}</span>
+                @elseif($inscFutureSousReserve)
+                    <span class="hero-pill" style="background:rgba(245,158,11,.3); color:#fcd34d; border-color:rgba(245,158,11,.5);">
+                        <i class="fas fa-clipboard-check" style="font-size:.6rem"></i> Pré-inscrit {{ $inscFutureSousReserve->anneeUniversitaire->name ?? '' }} (sous réserve)
+                    </span>
                 @else
                     <span class="hero-pill" style="background:rgba(255,255,255,0.15); color:#fff; border-color:rgba(255,255,255,0.4);">
                         <i class="fas fa-exclamation-circle" style="font-size:.7rem; color:#fbbf24;"></i> Non réinscrit {{ $anneeCourante ? $anneeCourante->name : '' }}
@@ -2086,6 +2112,53 @@
                 <input type="hidden" name="redirect_to" value="etudiant">
             </form>
             @endcan
+        </div>
+    </div>
+    @endif
+
+    {{-- Bannière inscription future sous réserve (info) --}}
+    @if($inscFutureSousReserve)
+    <div style="background:linear-gradient(135deg,#dbeafe,#bfdbfe); border:1.5px solid #3b82f6; border-left:5px solid #0453cb; border-radius:10px; padding:16px 20px; margin-bottom:24px; display:flex; align-items:flex-start; gap:14px;">
+        <div style="flex-shrink:0; width:36px; height:36px; background:#0453cb; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+            <i class="fas fa-clipboard-check" style="color:#fff; font-size:.9rem;"></i>
+        </div>
+        <div style="flex:1;">
+            <div style="font-weight:700; color:#1e3a5f; font-size:.95rem; margin-bottom:4px;">
+                Pré-inscrit pour {{ $inscFutureSousReserve->anneeUniversitaire->name ?? '' }}
+            </div>
+            <div style="color:#1e40af; font-size:.85rem; line-height:1.5; margin-bottom:8px;">
+                Cet étudiant est inscrit pour l'année <strong>{{ $inscFutureSousReserve->anneeUniversitaire->name ?? '' }}</strong>
+                sous réserve de son <strong>{{ $inscFutureSousReserve->condition_reserve ?? 'diplôme' }}</strong>.
+                L'inscription sera confirmée quand cette année deviendra l'année courante.
+            </div>
+            <a href="{{ route('esbtp.inscriptions.sous-reserve') }}" style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background:linear-gradient(135deg, #0453cb, #5e91de); color:#fff; border:none; border-radius:8px; font-size:.84rem; font-weight:600; text-decoration:none; cursor:pointer; box-shadow:0 2px 8px rgba(4,83,203,.25);">
+                <i class="fas fa-external-link-alt"></i> Gérer les réserves
+            </a>
+        </div>
+    </div>
+    @endif
+
+    {{-- Bannière inscription future NON sous réserve (suggestion) --}}
+    @if($inscFutureNonReserve && !$inscFutureSousReserve)
+    <div style="background:linear-gradient(135deg,#fef3c7,#fde68a); border:1.5px solid #f59e0b; border-left:5px solid #d97706; border-radius:10px; padding:16px 20px; margin-bottom:24px; display:flex; align-items:flex-start; gap:14px;">
+        <div style="flex-shrink:0; width:36px; height:36px; background:#d97706; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+            <i class="fas fa-exclamation-triangle" style="color:#fff; font-size:.9rem;"></i>
+        </div>
+        <div style="flex:1;">
+            <div style="font-weight:700; color:#92400e; font-size:.95rem; margin-bottom:4px;">
+                Inscription année future non marquée sous réserve
+            </div>
+            <div style="color:#78350f; font-size:.85rem; line-height:1.5; margin-bottom:8px;">
+                Cet étudiant a une inscription pour <strong>{{ $inscFutureNonReserve->anneeUniversitaire->name ?? '' }}</strong>
+                qui n'est pas marquée sous réserve. Souhaitez-vous la marquer ?
+            </div>
+            <form method="POST" action="{{ route('esbtp.inscriptions.marquer-sous-reserve', $inscFutureNonReserve) }}" style="display:inline-flex; gap:8px; align-items:center;">
+                @csrf
+                <input type="text" name="condition_reserve" value="BACCALAURÉAT" class="form-control form-control-sm" style="width:180px; font-size:.82rem;" placeholder="Condition...">
+                <button type="submit" style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background:linear-gradient(135deg, #d97706, #f59e0b); color:#fff; border:none; border-radius:8px; font-size:.84rem; font-weight:600; cursor:pointer; box-shadow:0 2px 8px rgba(217,119,6,.3);">
+                    <i class="fas fa-clipboard-check"></i> Marquer sous réserve
+                </button>
+            </form>
         </div>
     </div>
     @endif

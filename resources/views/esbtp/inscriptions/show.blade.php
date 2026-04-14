@@ -607,6 +607,59 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                 </div>
             @endif
 
+            {{-- Bannière inscription année future non marquée sous réserve --}}
+            @php
+                $showAnneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+                $isFutureNonReserve = $showAnneeCourante
+                    && !$inscription->is_sous_reserve
+                    && $inscription->anneeUniversitaire
+                    && $inscription->anneeUniversitaire->start_date
+                    && $showAnneeCourante->start_date
+                    && $inscription->anneeUniversitaire->start_date > $showAnneeCourante->start_date;
+            @endphp
+            @if($isFutureNonReserve)
+            <div style="background:linear-gradient(135deg,#fef3c7,#fde68a); border:1.5px solid #f59e0b; border-left:5px solid #d97706; border-radius:10px; padding:16px 20px; margin-bottom:16px; display:flex; align-items:flex-start; gap:14px;">
+                <div style="flex-shrink:0; width:36px; height:36px; background:#d97706; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-exclamation-triangle" style="color:#fff; font-size:.9rem;"></i>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-weight:700; color:#92400e; font-size:.95rem; margin-bottom:4px;">
+                        Inscription pour une année future
+                    </div>
+                    <div style="color:#78350f; font-size:.85rem; line-height:1.5; margin-bottom:8px;">
+                        Cette inscription concerne l'année <strong>{{ $inscription->anneeUniversitaire->name }}</strong> qui n'est pas encore l'année courante.
+                        Souhaitez-vous la marquer sous réserve (ex: en attente du Baccalauréat) ?
+                    </div>
+                    <form method="POST" action="{{ route('esbtp.inscriptions.marquer-sous-reserve', $inscription) }}" style="display:inline-flex; gap:8px; align-items:center;">
+                        @csrf
+                        <input type="text" name="condition_reserve" value="BACCALAURÉAT" class="form-control form-control-sm" style="width:180px; font-size:.82rem;" placeholder="Condition...">
+                        <button type="submit" style="display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background:linear-gradient(135deg, #d97706, #f59e0b); color:#fff; border:none; border-radius:8px; font-size:.84rem; font-weight:600; cursor:pointer; box-shadow:0 2px 8px rgba(217,119,6,.3);">
+                            <i class="fas fa-clipboard-check"></i> Marquer sous réserve
+                        </button>
+                    </form>
+                </div>
+            </div>
+            @endif
+
+            {{-- Bannière inscription sous réserve (info) --}}
+            @if($inscription->is_sous_reserve)
+            <div style="background:linear-gradient(135deg,#dbeafe,#bfdbfe); border:1.5px solid #3b82f6; border-left:5px solid #0453cb; border-radius:10px; padding:16px 20px; margin-bottom:16px; display:flex; align-items:flex-start; gap:14px;">
+                <div style="flex-shrink:0; width:36px; height:36px; background:#0453cb; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-info-circle" style="color:#fff; font-size:.9rem;"></i>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-weight:700; color:#1e3a5f; font-size:.95rem; margin-bottom:4px;">
+                        Inscription sous réserve
+                    </div>
+                    <div style="color:#1e40af; font-size:.85rem; line-height:1.5; margin-bottom:8px;">
+                        Cette inscription pour <strong>{{ $inscription->anneeUniversitaire->name ?? '' }}</strong> est sous réserve
+                        de son <strong>{{ $inscription->condition_reserve ?? 'diplôme' }}</strong>.
+                        La réserve sera levée depuis la <a href="{{ route('esbtp.inscriptions.sous-reserve') }}" style="color:#0453cb; font-weight:600;">page de gestion des réserves</a>.
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- Bannière pré-inscription caissier --}}
             @if($inscription->etudiant && $inscription->etudiant->matricule && str_starts_with($inscription->etudiant->matricule, 'PRE-'))
             @php

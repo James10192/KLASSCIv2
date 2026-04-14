@@ -393,7 +393,8 @@
                                 @foreach($academicYears->sortByDesc('start_date') as $annee)
                                     <option value="{{ $annee->id }}"
                                         {{ (old('annee_universitaire_id', $anneeEnCours->id ?? '') == $annee->id) ? 'selected' : '' }}
-                                        data-is-current="{{ $annee->is_current ? '1' : '0' }}">
+                                        data-is-current="{{ $annee->is_current ? '1' : '0' }}"
+                                        data-start-date="{{ $annee->start_date?->format('Y-m-d') ?? '' }}">
                                         {{ $annee->name }}
                                         @if($annee->is_current) (Année courante) @endif
                                     </option>
@@ -869,13 +870,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const isSousReserveCheck = document.getElementById('is_sous_reserve');
     const conditionField = document.getElementById('condition-reserve-field');
 
+    // Trouver la start_date de l'année courante pour comparer
+    const currentYearOption = anneeSelect ? [...anneeSelect.options].find(o => o.dataset.isCurrent === '1') : null;
+    const currentYearStartDate = currentYearOption?.dataset?.startDate || '';
+
     function updateSousReserveVisibility() {
         if (!anneeSelect || !sousReserveBlock) return;
         const selectedOption = anneeSelect.options[anneeSelect.selectedIndex];
         const isCurrent = selectedOption?.dataset?.isCurrent === '1';
-        sousReserveBlock.style.display = isCurrent ? 'none' : '';
-        // Si on revient sur l'année courante, décocher sous réserve
-        if (isCurrent && isSousReserveCheck) {
+        const startDate = selectedOption?.dataset?.startDate || '';
+        // Afficher sous réserve uniquement si année FUTURE (pas courante, pas passée)
+        const isFuture = !isCurrent && startDate && currentYearStartDate && startDate > currentYearStartDate;
+        sousReserveBlock.style.display = isFuture ? '' : 'none';
+        // Si pas future, décocher sous réserve
+        if (!isFuture && isSousReserveCheck) {
             isSousReserveCheck.checked = false;
             if (conditionField) conditionField.style.display = 'none';
         }

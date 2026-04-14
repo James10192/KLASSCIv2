@@ -201,9 +201,15 @@
         </div>
 
         {{-- Alerte workflow si inscription non finalisée --}}
-        @if(!empty($alerteWorkflow))
+        @if(!empty($alerteWorkflow) && !empty($hasFutureSousReserve))
+        <div class="doc-alert" style="background:rgba(59,130,246,.08); border-color:#3b82f6; color:#1e40af;">
+            <strong><i class="fas fa-info-circle me-1"></i> Information :</strong>
+            Cet étudiant a une inscription sous réserve pour une année future.
+            L'attestation sera disponible quand l'inscription sera confirmée.
+        </div>
+        @elseif(!empty($alerteWorkflow))
         <div class="doc-alert">
-            <strong>⚠️ Attention :</strong> Aucune inscription active et finalisée trouvée pour cet étudiant.
+            <strong><i class="fas fa-exclamation-triangle me-1"></i> Attention :</strong> Aucune inscription active et finalisée trouvée pour cet étudiant.
             Veuillez <a href="{{ route('esbtp.etudiants.show', $etudiant->id) }}" style="color:var(--doc-accent);">valider et finaliser l'inscription</a>
             (étape "Étudiant créé") avant de générer l'attestation.
         </div>
@@ -231,13 +237,10 @@
                         ?? $inscription->anneeUniversitaire->libelle ?? '';
                     $anneeFormatted = preg_match('/(\d{4}-\d{4})/', $anneeText, $m) ? $m[1] : $anneeText;
                 @endphp
-                @if($inscription->is_sous_reserve)
-                Sera régulièrement inscrit(e) au titre de l'année universitaire
-                <span class="doc-hl">{{ $anneeFormatted }}</span>
-                sous réserve de son <span class="doc-hl">{{ $inscription->condition_reserve ?? 'diplôme' }}</span>
-                @else
                 Est régulièrement inscrit(e) au titre de l'année universitaire
                 <span class="doc-hl">{{ $anneeFormatted }}</span>
+                @if($inscription->is_sous_reserve)
+                sous réserve de son <span class="doc-hl">{{ $inscription->condition_reserve ?? 'diplôme' }}</span>
                 @endif
             </p>
 

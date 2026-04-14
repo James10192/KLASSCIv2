@@ -213,14 +213,7 @@
         <p>Sous le matricule : <strong>{{ $etudiant->numero_etudiant ?? 'Non attribué' }}</strong></p>
     </div>
     
-    @php
-        $hasSousReserve = $inscriptions->contains(fn($i) => $i->is_sous_reserve);
-    @endphp
-    @if($hasSousReserve)
-    <p style="margin: 25px 0;">Sera régulièrement inscrit(e) sur le registre des effectifs de l'année universitaire :</p>
-    @else
     <p style="margin: 25px 0;">Est régulièrement inscrit(e) sur le registre des effectifs de l'année universitaire :</p>
-    @endif
 
     <!-- Tableau des inscriptions -->
     <table class="inscriptions-table">

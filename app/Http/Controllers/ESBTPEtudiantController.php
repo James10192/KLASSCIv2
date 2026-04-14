@@ -2184,11 +2184,22 @@ class ESBTPEtudiantController extends Controller
             return back()->with('error', 'Aucune inscription trouvée pour cet étudiant.');
         }
 
+        // Détecter si l'étudiant a une inscription future sous réserve
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $hasFutureSousReserve = $anneeCourante
+            ? $etudiant->inscriptions->contains(fn($i) =>
+                $i->is_sous_reserve
+                && $i->anneeUniversitaire
+                && optional($i->anneeUniversitaire)->start_date > $anneeCourante->start_date
+            )
+            : false;
+
         return view('esbtp.etudiants.attestation-frequentation-preview', [
             'etudiant' => $etudiant,
             'inscription' => $inscription,
             'settings' => $this->getCertificateDisplaySettings(),
             'alerteWorkflow' => $alerteWorkflow,
+            'hasFutureSousReserve' => $hasFutureSousReserve,
         ]);
     }
 
