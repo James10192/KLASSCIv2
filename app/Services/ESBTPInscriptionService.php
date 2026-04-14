@@ -824,6 +824,7 @@ class ESBTPInscriptionService
             'montant_scolarite' => $requestData['montant_scolarite'] ?? 0,
             'frais_inscription' => $requestData['frais_inscription'] ?? 0,
             'affectation_status' => $requestData['affectation_status'] ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
+            'is_boursier' => !empty($requestData['is_boursier']),
             'est_transfert' => !empty($requestData['est_transfert']),
             'etablissement_origine' => $requestData['etablissement_origine'] ?? null,
         ];

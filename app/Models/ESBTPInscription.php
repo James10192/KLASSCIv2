@@ -30,6 +30,7 @@ class ESBTPInscription extends Model
         'classe_id',
         'classe_alternative_id',
         'affectation_status', // Nouveau: statut d'affectation (affecté, réaffecté, non_affecté)
+        'is_boursier', // Étudiant boursier pour cette inscription
         'date_inscription',
         'type_inscription', // Première inscription, réinscription, etc.
         'status', // active, annulée, etc.
@@ -73,6 +74,7 @@ class ESBTPInscription extends Model
         'frais_inscription' => 'float',
         'comptabilite_activee' => 'boolean',
         'is_sous_reserve' => 'boolean',
+        'is_boursier' => 'boolean',
         'affectation_status' => 'string',
         'est_transfert' => 'boolean',
     ];

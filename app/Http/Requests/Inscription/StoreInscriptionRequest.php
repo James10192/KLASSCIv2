@@ -18,6 +18,7 @@ class StoreInscriptionRequest extends FormRequest
             'annee_universitaire_id' => 'nullable|exists:esbtp_annee_universitaires,id',
             'is_sous_reserve' => 'nullable|boolean',
             'condition_reserve' => 'nullable|string|max:255',
+            'is_boursier' => 'nullable|boolean',
             'nom' => 'required|string|max:100',
             'prenoms' => 'required|string|max:100',
             'sexe' => 'required|in:M,F',

@@ -479,12 +479,26 @@
                             Le statut influence les frais applicables selon la prise en charge étatique
                         </small>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-3">
                         <div class="affectation-info-card" id="affectation-info">
                             <span class="text-muted" style="font-size:13px;">
                                 <i class="fas fa-arrow-left me-2"></i>Sélectionnez un statut pour voir les détails
                             </span>
                         </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">
+                            <i class="fas fa-graduation-cap field-icon me-1"></i> Boursier
+                        </label>
+                        <div class="form-check form-switch mt-2">
+                            <input class="form-check-input" type="checkbox" name="is_boursier" id="is_boursier" value="1"
+                                   {{ old('is_boursier') ? 'checked' : '' }}>
+                            <label class="form-check-label" for="is_boursier">Étudiant boursier</label>
+                        </div>
+                        <small class="text-muted mt-1 d-block">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Apparaît sur l'attestation de fréquentation
+                        </small>
                     </div>
                 </div>
             </div>

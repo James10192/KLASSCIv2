@@ -1364,6 +1364,47 @@
                 </div>
             </div>
 
+            {{-- Section Attestation de Fréquentation --}}
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                        <i class="fas fa-file-certificate"></i>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Attestation de Fréquentation</h3>
+                        <p class="section-description">Récupérer automatiquement le statut d'affectation et boursier depuis l'inscription</p>
+                    </div>
+                </div>
+
+                <div class="settings-grid-2">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-university text-primary me-1"></i>
+                            Statut d'affectation automatique
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="attestation_auto_affectation" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('attestation_auto_affectation', '0') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                        <small class="text-muted d-block mt-1">Affiche directement "Affecté", "Réaffecté" ou "Non affecté" au lieu de laisser barrer manuellement</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-graduation-cap text-primary me-1"></i>
+                            Statut boursier automatique
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="checkbox" name="attestation_auto_boursier" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('attestation_auto_boursier', '0') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                        <small class="text-muted d-block mt-1">Affiche "Oui" ou "Non" depuis le champ boursier de l'inscription</small>
+                    </div>
+                </div>
+            </div>
+
                 </div>
                 <!-- End Tab 4: Documents -->
 

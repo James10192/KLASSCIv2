@@ -1717,6 +1717,10 @@ class ESBTPEtudiantController extends Controller
         $settings['show_niveau']  = \App\Helpers\SettingsHelper::get('certificat_show_niveau', '1') == '1';
         $settings['show_filiere'] = \App\Helpers\SettingsHelper::get('certificat_show_filiere', '1') == '1';
 
+        // Attestation de fréquentation : affectation et boursier automatiques
+        $settings['auto_affectation'] = \App\Helpers\SettingsHelper::get('attestation_auto_affectation', '0') == '1';
+        $settings['auto_boursier']    = \App\Helpers\SettingsHelper::get('attestation_auto_boursier', '0') == '1';
+
         return $settings;
     }
 

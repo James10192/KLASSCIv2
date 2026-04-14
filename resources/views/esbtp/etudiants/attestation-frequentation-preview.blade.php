@@ -262,9 +262,21 @@
             </div>
 
             <div class="doc-status-block">
-                <strong>Statut* :</strong> Affecté / Non affecté
+                @if($settings['auto_affectation'] ?? false)
+                    @php
+                        $affLabels = ['affecté' => 'Affecté', 'réaffecté' => 'Réaffecté', 'non_affecté' => 'Non affecté'];
+                        $affLabel = $affLabels[$inscription->affectation_status] ?? ucfirst($inscription->affectation_status ?? 'Affecté');
+                    @endphp
+                    <strong>Statut :</strong> {{ $affLabel }}
+                @else
+                    <strong>Statut* :</strong> Affecté / Non affecté
+                @endif
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                <strong>Boursier* :</strong> Oui / Non
+                @if($settings['auto_boursier'] ?? false)
+                    <strong>Boursier :</strong> {{ $inscription->is_boursier ? 'Oui' : 'Non' }}
+                @else
+                    <strong>Boursier* :</strong> Oui / Non
+                @endif
             </div>
 
             <p>En foi de quoi, la présente attestation lui est délivrée pour servir et valoir ce que de droit.</p>
