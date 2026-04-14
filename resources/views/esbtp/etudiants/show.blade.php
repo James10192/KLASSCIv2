@@ -2167,8 +2167,8 @@
         // Absences : uniquement année courante
         $kpiAbsTotal       = $totalAbsences; // null si pas inscrit cette année
 
-        // Inscription de référence : année courante uniquement
-        $kpiInscActive = $inscCourante ?? null;
+        // Inscription de référence : année courante, sinon future sous réserve
+        $kpiInscActive = $inscCourante ?? ($inscFutureSousReserve ?? null);
 
         $kpiPaiTotal = $kpiInscActive
             ? $kpiInscActive->paiements->where('status', 'validé')->sum('montant')
@@ -2539,7 +2539,7 @@
         <div style="padding:24px;color:var(--k-gray);font-size:.9rem;">Aucune inscription enregistrée.</div>
         @endforelse
         {{-- CTA Réinscription si pas encore inscrit pour l'année courante --}}
-        @if($anneeCourante && !$inscCourante)
+        @if($anneeCourante && !$inscCourante && !$inscFutureSousReserve)
         <a href="{{ route('esbtp.reinscription.show', $etudiant) }}" class="insc-card insc-cta-card">
             <div class="insc-card-accent inactif"></div>
             <div class="insc-card-inner" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;text-align:center;">
@@ -3620,7 +3620,14 @@
             @endif
         </div>
 
-        @if(!$presInscCourante)
+        @if(!$presInscCourante && ($inscFutureSousReserve ?? null))
+            <div style="display:flex; align-items:center; gap:10px; padding:14px 16px; background:rgba(59,130,246,.06); border-radius:10px; border-left:3px solid #3b82f6;">
+                <i class="fas fa-clipboard-check" style="color:#0453cb; font-size:1.1rem; flex-shrink:0;"></i>
+                <span style="font-size:.84rem; color:#1e40af; font-weight:500;">
+                    Pré-inscrit <strong>{{ $inscFutureSousReserve->anneeUniversitaire->name ?? '' }}</strong> sous réserve — données de présence non encore disponibles.
+                </span>
+            </div>
+        @elseif(!$presInscCourante)
             <div style="display:flex; align-items:center; gap:10px; padding:14px 16px; background:rgba(239,68,68,.06); border-radius:10px; border-left:3px solid #ef4444;">
                 <i class="fas fa-exclamation-circle" style="color:#ef4444; font-size:1.1rem; flex-shrink:0;"></i>
                 <span style="font-size:.84rem; color:#991b1b; font-weight:500;">Aucune inscription pour {{ $presAnneeCourante->name }} — données de présence indisponibles.</span>
