@@ -181,7 +181,7 @@ class ESBTPSettingsController extends Controller
                 );
             }
 
-            $allCheckboxSettings = Setting::whereIn('key', [
+            $allCheckboxSettings = Setting::whereIn('key', array_merge([
                 'bulletin_show_logo', 'bulletin_show_header', 'bulletin_show_republic_info',
                 'bulletin_show_ministry_info', 'bulletin_show_school_info', 'bulletin_show_cycle_info',
                 'bulletin_show_edition_date', 'bulletin_show_student_info', 'bulletin_show_matricule',
@@ -192,11 +192,7 @@ class ESBTPSettingsController extends Controller
                 'bulletin_auto_calculate_mention', 'bulletin_show_felicitation', 'bulletin_show_encouragement',
                 'certificat_show_classe', 'certificat_show_niveau', 'certificat_show_filiere',
                 'bulletin_conduite_enabled', 'bulletin_show_absences_par_matiere',
-                'tronc_commun_enabled', 'tronc_commun_mga_include_s1',
-                'tronc_commun_report_paiements', 'tronc_commun_report_notes',
-                'tronc_commun_bulletin_show_origin', 'tronc_commun_matieres_communes',
-                'tronc_commun_planning_semestre_strict',
-            ])->get();
+            ], array_keys($troncCommunDefaults)))->get();
 
             foreach ($allCheckboxSettings as $setting) {
                 $formKey = $setting->key;  // Les champs n'ont pas le préfixe "setting_"
