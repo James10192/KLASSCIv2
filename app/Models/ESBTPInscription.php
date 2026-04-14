@@ -564,18 +564,6 @@ class ESBTPInscription extends Model
     }
 
     /**
-     * Vérifie si l'inscription concerne une année future (pas l'année courante).
-     */
-    public function getIsFutureInscriptionAttribute(): bool
-    {
-        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        if (!$anneeEnCours) {
-            return false;
-        }
-        return $this->annee_universitaire_id !== $anneeEnCours->id;
-    }
-
-    /**
      * Lever la réserve de cette inscription.
      */
     public function leverReserve(): bool
