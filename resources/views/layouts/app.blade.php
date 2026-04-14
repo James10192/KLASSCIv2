@@ -1570,6 +1570,10 @@
                                     <div class="menu-text">Réinscriptions</div>
                                 </a>
                                 @endcan
+                                <a href="{{ route('esbtp.inscriptions.sous-reserve') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.sous-reserve') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
+                                    <div class="menu-text">Sous réserve</div>
+                                </a>
                             </div>
                         </div>
                     @endcan
@@ -1860,6 +1864,12 @@
                             <a href="{{ route('esbtp.reinscription.index') }}" class="menu-link {{ Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-redo"></i></div>
                                 <div class="menu-text">Reinscriptions</div>
+                            </a>
+                        </div>
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.inscriptions.sous-reserve') }}" class="menu-link {{ Request::routeIs('esbtp.inscriptions.sous-reserve') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
+                                <div class="menu-text">Sous réserve</div>
                             </a>
                         </div>
                         @endcan
