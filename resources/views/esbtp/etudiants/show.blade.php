@@ -3655,12 +3655,9 @@
         </div>
         @endif
 
-        @if(!$presInscCourante && !($inscFutureSousReserve ?? null))
-            <div style="display:flex; align-items:center; gap:10px; padding:14px 16px; background:rgba(239,68,68,.06); border-radius:10px; border-left:3px solid #ef4444;">
-                <i class="fas fa-exclamation-circle" style="color:#ef4444; font-size:1.1rem; flex-shrink:0;"></i>
-                <span style="font-size:.84rem; color:#991b1b; font-weight:500;">Aucune inscription pour {{ $presAnneeCourante->name }} — données de présence indisponibles.</span>
-            </div>
-        @elseif($totalCur === 0)
+        @if(!$presInscCourante)
+            {{-- Pas d'inscription courante — message déjà affiché dans le hero badge ci-dessus --}}
+        @elseif(($totalCur ?? 0) === 0)
             <div style="text-align:center; padding:28px 16px; color:var(--k-muted);">
                 <i class="fas fa-calendar-times" style="font-size:2rem; opacity:.25; display:block; margin-bottom:12px;"></i>
                 <p style="font-size:.84rem; margin:0; font-weight:500;">Aucune séance de présence enregistrée pour cette année.</p>
