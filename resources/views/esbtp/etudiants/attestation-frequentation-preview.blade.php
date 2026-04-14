@@ -7,12 +7,14 @@
 @include('pdf.partials.theme')
 @php
     $pdfSettings  = \App\Helpers\SettingsHelper::getPdfSettings();
-    $accentColor  = $pdfSettings['primary_color'] ?? $pdfSettings['header_bg_color'] ?? '#0453cb';
+    $headerBg     = $pdfSettings['header_bg_color']   ?? '#0453cb';
+    $accentColor  = $pdfSettings['primary_color']     ?? $headerBg;
     $accentText   = $pdfSettings['header_text_color'] ?? '#ffffff';
     $bodyText     = $pdfSettings['text_color']        ?? '#1f2937';
 @endphp
 <style>
     :root {
+        --doc-header-bg: {{ $headerBg }};
         --doc-accent: {{ $accentColor }};
         --doc-atext:  {{ $accentText }};
         --doc-body:   {{ $bodyText }};
@@ -47,7 +49,7 @@
 
     /* Header établissement */
     .doc-header {
-        background:var(--doc-accent); color:var(--doc-atext);
+        background:var(--doc-header-bg); color:var(--doc-atext);
         border-radius:10px; padding:20px 24px;
         display:flex; align-items:center; gap:18px;
         position:relative; overflow:hidden;
