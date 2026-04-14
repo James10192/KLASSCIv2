@@ -247,17 +247,47 @@ class CLIMaintenanceController extends BaseApiController
             $totalDeleted = 0;
 
             foreach ($duplicates as $dupe) {
-                $allIds = explode(',', $dupe->ids);
-                $keepId = $allIds[0]; // Keep the oldest
-                $deleteIds = array_slice($allIds, 1);
+                $allIds = array_map('intval', explode(',', $dupe->ids));
+
+                // Score each inscription: paiements count + notes count + status weight
+                $scores = [];
+                foreach ($allIds as $id) {
+                    $paiements = DB::table('esbtp_paiements')->where('inscription_id', $id)->count();
+                    $notes = DB::table('esbtp_notes')
+                        ->where('etudiant_id', $dupe->etudiant_id)
+                        ->where('classe_id', $dupe->classe_id)
+                        ->count();
+                    $inscription = DB::table('esbtp_inscriptions')->where('id', $id)->first();
+                    $statusWeight = match ($inscription->status ?? '') {
+                        'active' => 100,
+                        'en_attente' => 50,
+                        default => 0,
+                    };
+                    $workflowWeight = ($inscription->workflow_step ?? '') === 'etudiant_cree' ? 200 : 0;
+
+                    $scores[$id] = [
+                        'total' => $paiements + $statusWeight + $workflowWeight,
+                        'paiements' => $paiements,
+                        'notes' => $notes,
+                        'status' => $inscription->status ?? 'unknown',
+                        'workflow' => $inscription->workflow_step ?? 'unknown',
+                    ];
+                }
+
+                // Keep the one with highest score (ties: keep oldest = lowest id)
+                uasort($scores, fn($a, $b) => $b['total'] <=> $a['total']);
+                $keepId = array_key_first($scores);
+                $deleteIds = array_values(array_diff($allIds, [$keepId]));
 
                 $detail = [
                     'etudiant_id' => $dupe->etudiant_id,
                     'annee_universitaire_id' => $dupe->annee_universitaire_id,
                     'classe_id' => $dupe->classe_id,
                     'count' => $dupe->count,
-                    'keep_id' => (int) $keepId,
-                    'delete_ids' => array_map('intval', $deleteIds),
+                    'keep_id' => $keepId,
+                    'keep_reason' => $scores[$keepId],
+                    'delete_ids' => $deleteIds,
+                    'delete_scores' => array_map(fn($id) => $scores[$id], $deleteIds),
                 ];
 
                 if (!$dryRun) {
