@@ -1717,7 +1717,7 @@
             </div>
             {{-- Badge rond : vert seulement si inscrit cette année, sinon gris --}}
             <span class="hero-avatar-status {{ $estInscritCetteAnnee ? 'actif' : 'inactif' }}"
-                  title="{{ $estInscritCetteAnnee ? 'Inscrit ' . ($anneeCourante->name ?? '') : 'Non inscrit pour l\'année en cours' }}"></span>
+                  title="{{ $estInscritCetteAnnee ? 'Inscrit ' . ($anneeCourante->name ?? '') : ($inscFutureSousReserve ? 'Pré-inscrit ' . ($inscFutureSousReserve->anneeUniversitaire->name ?? '') . ' (sous réserve)' : 'Non inscrit pour l\'année en cours') }}"></span>
             {{-- Bouton upload photo (superAdmin / secretaire) --}}
             @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']))
                 <label class="hero-avatar-upload" id="heroPhotoUploadBtn" title="Modifier la photo">
@@ -1744,6 +1744,10 @@
                         @if($inscCourante->classe->filiere) · {{ $inscCourante->classe->filiere->name }} @endif
                         @if($inscCourante->classe->niveau) · {{ $inscCourante->classe->niveau->name ?? $inscCourante->classe->niveau->nom ?? '' }} @endif
                     @endif
+                @elseif($inscFutureSousReserve)
+                    {{ $inscFutureSousReserve->classe->name ?? '' }}
+                    @if($inscFutureSousReserve->filiere) · {{ $inscFutureSousReserve->filiere->name }} @endif
+                    <span style="color:rgba(255,255,255,0.75); font-style:italic;"> · {{ $inscFutureSousReserve->anneeUniversitaire->name ?? '' }} (sous réserve)</span>
                 @elseif($anneeCourante)
                     <span style="color:rgba(255,255,255,0.75); font-style:italic;">Non réinscrit pour {{ $anneeCourante->name }}</span>
                 @else
@@ -1968,8 +1972,8 @@
 {{-- ─── TAB: VUE D'ENSEMBLE ─────────────────────────────────────── --}}
 <div class="tab-panel active" id="tab-overview">
 
-    {{-- Bannière : étudiant non inscrit pour l'année courante --}}
-    @if($anneeCourante && !$inscCourante)
+    {{-- Bannière : étudiant non inscrit pour l'année courante (masquée si pré-inscrit sous réserve) --}}
+    @if($anneeCourante && !$inscCourante && !$inscFutureSousReserve)
     <div style="
         background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
         border: 1.5px solid #ffc107;
@@ -3927,6 +3931,27 @@
                 &middot; {{ $finInscActive->classe->name }}
             @endif
         </div>
+        @elseif($inscFutureSousReserve ?? null)
+        <div class="fin-hero-year-badge" style="background:rgba(59,130,246,.12); border-color:rgba(59,130,246,.3);">
+            <i class="fas fa-clipboard-check" style="color:#0453cb;"></i>
+            <span style="color:#1e40af;">
+                Pré-inscrit <strong>{{ $inscFutureSousReserve->anneeUniversitaire->name ?? '' }}</strong>
+                sous réserve de son {{ $inscFutureSousReserve->condition_reserve ?? 'diplôme' }}
+                @if($inscFutureSousReserve->classe) &middot; {{ $inscFutureSousReserve->classe->name }} @endif
+            </span>
+        </div>
+        @php
+            // Charger les frais de l'inscription future sous réserve pour affichage
+            $finInscFuture = $inscFutureSousReserve;
+            $finPaiementsFuture = collect();
+            foreach($finInscFuture->paiements ?? [] as $pai) {
+                $pai->_annee = $finInscFuture->anneeUniversitaire?->name ?? 'N/A';
+                $finPaiementsFuture->push($pai);
+            }
+            $finTotalPayeFuture = $finPaiementsFuture->filter(fn($p) => str_contains(strtolower($p->status ?? ''), 'valid'))->sum('montant');
+            $finTotalAttenduFuture = 0;
+            try { $finTotalAttenduFuture = $finInscFuture->fraisSubscriptions->sum('amount'); } catch(\Exception $e) {}
+        @endphp
         @else
         <div class="fin-hero-year-badge" style="background:rgba(239,68,68,.15); border-color:rgba(239,68,68,.3);">
             <i class="fas fa-calendar-times" style="color:#ef4444;"></i>
