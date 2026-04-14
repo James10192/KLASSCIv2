@@ -207,7 +207,7 @@
             color: {{ $pdfMuted }};
             font-style: italic;
             font-size: 10px;
-            margin-top: 18px;
+            margin-top: 40px;
         }
 
         .sign-note {

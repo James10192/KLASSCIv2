@@ -204,8 +204,8 @@
         @if(!empty($alerteWorkflow) && !empty($hasFutureSousReserve))
         <div class="doc-alert" style="background:rgba(59,130,246,.08); border-color:#3b82f6; color:#1e40af;">
             <strong><i class="fas fa-info-circle me-1"></i> Information :</strong>
-            Cet étudiant a une inscription sous réserve pour une année future.
-            L'attestation sera disponible quand l'inscription sera confirmée.
+            Cet étudiant a une pré-inscription sous réserve pour une année future.
+            L'attestation ci-dessous est générée à titre indicatif.
         </div>
         @elseif(!empty($alerteWorkflow))
         <div class="doc-alert">
