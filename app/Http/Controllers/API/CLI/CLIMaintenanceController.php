@@ -7,6 +7,7 @@ use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
@@ -210,6 +211,76 @@ class CLIMaintenanceController extends BaseApiController
             $i++;
         }
         return round($bytes, 1) . ' ' . $units[$i];
+    }
+
+    /**
+     * POST /api/cli/db/fix-duplicates — Find and remove duplicate inscriptions
+     */
+    public function fixDuplicates(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $dryRun = $request->boolean('dry_run', true);
+
+        try {
+            $duplicates = DB::table('esbtp_inscriptions')
+                ->select(
+                    'etudiant_id', 'annee_universitaire_id', 'classe_id',
+                    DB::raw('COUNT(*) as count'),
+                    DB::raw('GROUP_CONCAT(id ORDER BY id) as ids')
+                )
+                ->whereNull('deleted_at')
+                ->groupBy('etudiant_id', 'annee_universitaire_id', 'classe_id')
+                ->havingRaw('COUNT(*) > 1')
+                ->get();
+
+            if ($duplicates->isEmpty()) {
+                return $this->successResponse([
+                    'duplicates_found' => 0,
+                    'deleted' => 0,
+                ], 'No duplicates found');
+            }
+
+            $details = [];
+            $totalDeleted = 0;
+
+            foreach ($duplicates as $dupe) {
+                $allIds = explode(',', $dupe->ids);
+                $keepId = $allIds[0]; // Keep the oldest
+                $deleteIds = array_slice($allIds, 1);
+
+                $detail = [
+                    'etudiant_id' => $dupe->etudiant_id,
+                    'annee_universitaire_id' => $dupe->annee_universitaire_id,
+                    'classe_id' => $dupe->classe_id,
+                    'count' => $dupe->count,
+                    'keep_id' => (int) $keepId,
+                    'delete_ids' => array_map('intval', $deleteIds),
+                ];
+
+                if (!$dryRun) {
+                    $deleted = DB::table('esbtp_inscriptions')
+                        ->whereIn('id', $deleteIds)
+                        ->delete();
+                    $detail['deleted'] = $deleted;
+                    $totalDeleted += $deleted;
+                }
+
+                $details[] = $detail;
+            }
+
+            return $this->successResponse([
+                'dry_run' => $dryRun,
+                'duplicates_found' => $duplicates->count(),
+                'total_deleted' => $dryRun ? 0 : $totalDeleted,
+                'details' => $details,
+            ], $dryRun ? 'Dry run — no changes made' : "Deleted {$totalDeleted} duplicate inscriptions");
+        } catch (\Exception $e) {
+            Log::error('CLI: fix-duplicates failed', ['error' => $e->getMessage()]);
+            return $this->errorResponse('Failed: ' . $e->getMessage(), [], 500);
+        }
     }
 
     /**
