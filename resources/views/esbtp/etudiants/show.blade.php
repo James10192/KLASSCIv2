@@ -3881,33 +3881,38 @@
         $finInscActive = $finAnneeCourante
             ? $etudiant->inscriptions->first(fn($i) => $i->annee_universitaire_id === $finAnneeCourante->id)
             : null;
-        /* ── Autres inscriptions (toutes sauf l'active courante) ── */
-        $finAutresInscs  = $etudiant->inscriptions->filter(fn($i) => !$finInscActive || $i->id !== $finInscActive->id)->sortByDesc('created_at');
 
-        /* ── Collect paiements de l'inscription active ── */
+        /* ── Fallback : inscription future sous réserve comme référence ── */
+        $finUseFutureFallback = !$finInscActive && ($inscFutureSousReserve ?? null);
+        $finInscRef = $finInscActive ?? ($finUseFutureFallback ? $inscFutureSousReserve : null);
+
+        /* ── Autres inscriptions (exclure l'inscription de référence) ── */
+        $finAutresInscs = $etudiant->inscriptions->filter(fn($i) => !$finInscRef || $i->id !== $finInscRef->id)->sortByDesc('created_at');
+
+        /* ── Collect paiements de l'inscription de référence ── */
         $finPaiementsActive = collect();
-        if($finInscActive) {
-            foreach($finInscActive->paiements ?? [] as $pai) {
-                $pai->_annee = $finInscActive->anneeUniversitaire?->name ?? 'N/A';
+        if($finInscRef) {
+            foreach($finInscRef->paiements ?? [] as $pai) {
+                $pai->_annee = $finInscRef->anneeUniversitaire?->name ?? 'N/A';
                 $finPaiementsActive->push($pai);
             }
         }
         $finPaiementsActive = $finPaiementsActive->sortByDesc('date_paiement');
 
-        /* ── Calculs pour inscription active ── */
+        /* ── Calculs pour inscription de référence ── */
         $finTotalPaye    = $finPaiementsActive->filter(fn($p) => str_contains(strtolower($p->status ?? $p->statut ?? ''), 'valid'))->sum('montant');
         $finEnAttente    = $finPaiementsActive->filter(fn($p) => str_contains(strtolower($p->status ?? $p->statut ?? ''), 'attente'))->sum('montant');
         $finNbPaiements  = $finPaiementsActive->count();
         $finReliquats    = $statistiques['total_reliquats_entrants'] ?? 0;
 
         $finTotalAttendu = 0;
-        if($finInscActive) {
-            try { $finTotalAttendu = $finInscActive->fraisSubscriptions->sum('amount'); } catch(\Exception $e) {}
+        if($finInscRef) {
+            try { $finTotalAttendu = $finInscRef->fraisSubscriptions->sum('amount'); } catch(\Exception $e) {}
         }
 
-        // Reliquats entrants pour l'inscription active
+        // Reliquats entrants pour l'inscription de référence
         $finReliquatsActifs = isset($reliquatsEntrants) ? $reliquatsEntrants->filter(fn($r) =>
-            $finInscActive && $r->inscription_destination_id == $finInscActive->id
+            $finInscRef && $r->inscription_destination_id == $finInscRef->id
         ) : collect();
         $finTotalReliquat = $finReliquatsActifs->sum('montant_reliquat');
         $finReliquatPaye  = $finReliquatsActifs->sum('montant_regle');
@@ -3931,7 +3936,7 @@
                 &middot; {{ $finInscActive->classe->name }}
             @endif
         </div>
-        @elseif($inscFutureSousReserve ?? null)
+        @elseif($finUseFutureFallback)
         <div class="fin-hero-year-badge" style="background:rgba(59,130,246,.12); border-color:rgba(59,130,246,.3);">
             <i class="fas fa-clipboard-check" style="color:#0453cb;"></i>
             <span style="color:#1e40af;">
@@ -3940,18 +3945,6 @@
                 @if($inscFutureSousReserve->classe) &middot; {{ $inscFutureSousReserve->classe->name }} @endif
             </span>
         </div>
-        @php
-            // Charger les frais de l'inscription future sous réserve pour affichage
-            $finInscFuture = $inscFutureSousReserve;
-            $finPaiementsFuture = collect();
-            foreach($finInscFuture->paiements ?? [] as $pai) {
-                $pai->_annee = $finInscFuture->anneeUniversitaire?->name ?? 'N/A';
-                $finPaiementsFuture->push($pai);
-            }
-            $finTotalPayeFuture = $finPaiementsFuture->filter(fn($p) => str_contains(strtolower($p->status ?? ''), 'valid'))->sum('montant');
-            $finTotalAttenduFuture = 0;
-            try { $finTotalAttenduFuture = $finInscFuture->fraisSubscriptions->sum('amount'); } catch(\Exception $e) {}
-        @endphp
         @else
         <div class="fin-hero-year-badge" style="background:rgba(239,68,68,.15); border-color:rgba(239,68,68,.3);">
             <i class="fas fa-calendar-times" style="color:#ef4444;"></i>
@@ -4051,22 +4044,22 @@
             </div>
         </div>
 
-        {{-- Boutons actions financières --}}
+        {{-- Boutons actions financières (inscription courante ou future sous réserve) --}}
         <div style="text-align:center; margin-top:16px; display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
-            @if($finInscActive)
-            <a href="{{ route('esbtp.inscriptions.situation-financiere.preview', $finInscActive->id) }}"
+            @if($finInscRef)
+            <a href="{{ route('esbtp.inscriptions.situation-financiere.preview', $finInscRef->id) }}"
                class="hero-btn" style="display:inline-flex; align-items:center; gap:8px; padding:10px 24px; font-size:.88rem; border-radius:10px; background:linear-gradient(135deg, #059669, #10b981); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 4px 12px rgba(5,150,105,.3); text-decoration:none;">
                 <i class="fas fa-chart-line"></i> Situation Financière
             </a>
-            <a href="{{ route('esbtp.inscriptions.situation-financiere.pdf', $finInscActive->id) }}"
+            <a href="{{ route('esbtp.inscriptions.situation-financiere.pdf', $finInscRef->id) }}"
                class="hero-btn" style="display:inline-flex; align-items:center; gap:8px; padding:10px 24px; font-size:.88rem; border-radius:10px; background:linear-gradient(135deg, #dc2626, #ef4444); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 4px 12px rgba(220,38,38,.3); text-decoration:none;">
                 <i class="fas fa-file-pdf"></i> PDF Situation
             </a>
             @endif
-            @if($finInscActive && $finSolde > 0)
+            @if($finInscRef && $finSolde > 0)
             <button class="hero-btn primary" style="display:inline-flex; align-items:center; gap:8px; padding:10px 24px; font-size:.88rem; border-radius:10px; background:linear-gradient(135deg, var(--k-blue), var(--k-blue-2)); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 4px 12px rgba(4,83,203,.3);"
                     data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal"
-                    onclick="prepareEtudiantPaymentModal({{ $finInscActive->id }})">
+                    onclick="prepareEtudiantPaymentModal({{ $finInscRef->id }})">
                 <i class="fas fa-plus-circle"></i> Enregistrer un paiement
             </button>
             @endif
@@ -5558,7 +5551,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <div style="color:#084298;font-weight:500;margin-bottom:.25rem;">{{ $etudiant->nom_complet }}</div>
                                 <div style="color:#052c65;font-size:.9rem;">
                                     Matricule : <strong>{{ $etudiant->matricule ?? 'N/A' }}</strong>
-                                    <span id="etd-modal-classe-info">@if($finInscActive->classe) · {{ $finInscActive->classe->name }} @endif</span>
+                                    <span id="etd-modal-classe-info">@if($finInscActive?->classe) · {{ $finInscActive->classe->name }} @endif</span>
                                 </div>
                             </div>
                         </div>
