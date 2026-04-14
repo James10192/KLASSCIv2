@@ -1670,26 +1670,17 @@
         || ($inscCourante->status === 'active' && $inscCourante->workflow_step !== 'etudiant_cree')
     );
 
-    // Inscription future sous réserve (ex: inscrit pour 2026-2027 sous réserve du BAC)
+    // Inscriptions futures : filtrage commun (année start_date > courante)
+    $isFutureYear = fn($i) => optional($i->anneeUniversitaire)->start_date
+        && optional($anneeCourante)->start_date
+        && $i->anneeUniversitaire->start_date > $anneeCourante->start_date;
+
     $inscFutureSousReserve = $anneeCourante
-        ? $etudiant->inscriptions->first(fn($i) =>
-            $i->is_sous_reserve
-            && $i->anneeUniversitaire
-            && $i->anneeUniversitaire->start_date
-            && $anneeCourante->start_date
-            && $i->anneeUniversitaire->start_date > $anneeCourante->start_date
-        )
+        ? $etudiant->inscriptions->first(fn($i) => $i->is_sous_reserve && $isFutureYear($i))
         : null;
 
-    // Inscription future NON sous réserve (pour suggérer de marquer)
     $inscFutureNonReserve = $anneeCourante
-        ? $etudiant->inscriptions->first(fn($i) =>
-            !$i->is_sous_reserve
-            && $i->anneeUniversitaire
-            && $i->anneeUniversitaire->start_date
-            && $anneeCourante->start_date
-            && $i->anneeUniversitaire->start_date > $anneeCourante->start_date
-        )
+        ? $etudiant->inscriptions->first(fn($i) => !$i->is_sous_reserve && $isFutureYear($i))
         : null;
 
     // Pré-inscription caissier : matricule PRE-* = infos à compléter

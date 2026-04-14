@@ -828,6 +828,7 @@ class ESBTPInscriptionController extends Controller
         }
 
         $canViewFinancials = auth()->user()->can('viewFinancials', $inscription);
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         return view(
             "esbtp.inscriptions.show",
@@ -845,6 +846,7 @@ class ESBTPInscriptionController extends Controller
                 "reinscriptionData",
                 "classesDisponibles",
                 "canViewFinancials",
+                "anneeCourante",
             ),
         );
     }
@@ -2001,12 +2003,12 @@ class ESBTPInscriptionController extends Controller
 
         $inscriptions = $query->get();
 
-        // Stats pour les KPI cards
-        $allSousReserve = ESBTPInscription::where('is_sous_reserve', true);
+        // Stats calculées depuis la collection chargée (0 query supplémentaire)
+        $avecPaiement = $inscriptions->filter(fn($i) => $i->paiements->where('status', 'validé')->isNotEmpty())->count();
         $stats = [
-            'total' => (clone $allSousReserve)->count(),
-            'avec_paiement' => (clone $allSousReserve)->whereHas('paiements', fn($q) => $q->where('status', 'validé'))->count(),
-            'sans_paiement' => (clone $allSousReserve)->whereDoesntHave('paiements', fn($q) => $q->where('status', 'validé'))->count(),
+            'total' => $inscriptions->count(),
+            'avec_paiement' => $avecPaiement,
+            'sans_paiement' => $inscriptions->count() - $avecPaiement,
         ];
 
         return view('esbtp.inscriptions.sous-reserve', compact(

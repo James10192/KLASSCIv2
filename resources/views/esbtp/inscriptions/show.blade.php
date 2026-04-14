@@ -609,13 +609,11 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 
             {{-- Bannière inscription année future non marquée sous réserve --}}
             @php
-                $showAnneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
-                $isFutureNonReserve = $showAnneeCourante
+                $isFutureNonReserve = ($anneeCourante ?? null)
                     && !$inscription->is_sous_reserve
-                    && $inscription->anneeUniversitaire
-                    && $inscription->anneeUniversitaire->start_date
-                    && $showAnneeCourante->start_date
-                    && $inscription->anneeUniversitaire->start_date > $showAnneeCourante->start_date;
+                    && optional($inscription->anneeUniversitaire)->start_date
+                    && optional($anneeCourante)->start_date
+                    && $inscription->anneeUniversitaire->start_date > $anneeCourante->start_date;
             @endphp
             @if($isFutureNonReserve)
             <div style="background:linear-gradient(135deg,#fef3c7,#fde68a); border:1.5px solid #f59e0b; border-left:5px solid #d97706; border-radius:10px; padding:16px 20px; margin-bottom:16px; display:flex; align-items:flex-start; gap:14px;">
