@@ -33,6 +33,8 @@ class ESBTPInscription extends Model
         'date_inscription',
         'type_inscription', // Première inscription, réinscription, etc.
         'status', // active, annulée, etc.
+        'is_sous_reserve', // Inscription conditionnelle (ex: sous réserve du BAC)
+        'condition_reserve', // Motif de la réserve (ex: BACCALAURÉAT)
         'workflow_step', // Nouveau: étape du workflow
         'montant_scolarite',
         'frais_inscription',
@@ -70,6 +72,7 @@ class ESBTPInscription extends Model
         'montant_scolarite' => 'float',
         'frais_inscription' => 'float',
         'comptabilite_activee' => 'boolean',
+        'is_sous_reserve' => 'boolean',
         'affectation_status' => 'string',
         'est_transfert' => 'boolean',
     ];
@@ -550,5 +553,35 @@ class ESBTPInscription extends Model
         ];
         
         return $labels[$this->workflow_step] ?? $this->workflow_step;
+    }
+
+    /**
+     * Scope pour filtrer les inscriptions sous réserve.
+     */
+    public function scopeSousReserve($query)
+    {
+        return $query->where('is_sous_reserve', true);
+    }
+
+    /**
+     * Vérifie si l'inscription concerne une année future (pas l'année courante).
+     */
+    public function getIsFutureInscriptionAttribute(): bool
+    {
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (!$anneeEnCours) {
+            return false;
+        }
+        return $this->annee_universitaire_id !== $anneeEnCours->id;
+    }
+
+    /**
+     * Lever la réserve de cette inscription.
+     */
+    public function leverReserve(): bool
+    {
+        $this->is_sous_reserve = false;
+        $this->condition_reserve = null;
+        return $this->save();
     }
 }

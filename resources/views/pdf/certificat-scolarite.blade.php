@@ -137,22 +137,22 @@
         }
         
         .footer {
-            margin-top: 50px;
+            margin-top: 100px;
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
         }
-        
+
         .date {
             text-align: left;
         }
-        
+
         .signature {
             text-align: right;
         }
-        
+
         .signature-name {
-            margin-top: 40px;
+            margin-top: 80px;
             font-weight: bold;
         }
         
@@ -213,13 +213,20 @@
         <p>Sous le matricule : <strong>{{ $etudiant->numero_etudiant ?? 'Non attribué' }}</strong></p>
     </div>
     
-    <p style="margin: 25px 0;">Est régulièrement inscrit(e) sur le registre des effectifs de l'année académique :</p>
-    
+    @php
+        $hasSousReserve = $inscriptions->contains(fn($i) => $i->is_sous_reserve);
+    @endphp
+    @if($hasSousReserve)
+    <p style="margin: 25px 0;">Sera régulièrement inscrit(e) sur le registre des effectifs de l'année universitaire :</p>
+    @else
+    <p style="margin: 25px 0;">Est régulièrement inscrit(e) sur le registre des effectifs de l'année universitaire :</p>
+    @endif
+
     <!-- Tableau des inscriptions -->
     <table class="inscriptions-table">
         <thead>
             <tr>
-                <th>Année scolaire</th>
+                <th>Année universitaire</th>
                 <th>Classe suivie</th>
                 <th>Filière</th>
                 <th>Moyenne/20</th>
@@ -228,7 +235,12 @@
         <tbody>
             @forelse($inscriptions as $inscription)
             <tr>
-                <td>{{ $inscription->anneeUniversitaire->nom ?? 'Non renseigné' }}</td>
+                <td>
+                    {{ $inscription->anneeUniversitaire->nom ?? 'Non renseigné' }}
+                    @if($inscription->is_sous_reserve)
+                        <br><small style="color: #d97706; font-weight: bold;">Sous réserve{{ $inscription->condition_reserve ? ' de son ' . $inscription->condition_reserve : '' }}</small>
+                    @endif
+                </td>
                 <td>{{ $inscription->classe->nom ?? ($inscription->niveau->nom ?? 'Non renseigné') }}</td>
                 <td>{{ strtoupper($inscription->filiere->nom ?? 'Non renseigné') }}</td>
                 <td>

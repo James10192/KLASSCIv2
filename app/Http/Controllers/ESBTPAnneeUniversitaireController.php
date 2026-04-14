@@ -59,6 +59,17 @@ class ESBTPAnneeUniversitaireController extends Controller
         // Si cette année est définie comme l'année en cours, mettre à jour les autres années
         if ($request->has('is_current') && $request->is_current) {
             $anneeUniversitaire->setAsCurrent();
+
+            // Vérifier s'il y a des inscriptions sous réserve pour cette année
+            $sousReserveCount = \App\Models\ESBTPInscription::where('annee_universitaire_id', $anneeUniversitaire->id)
+                ->where('is_sous_reserve', true)
+                ->count();
+
+            if ($sousReserveCount > 0) {
+                return redirect()->route('esbtp.inscriptions.sous-reserve', ['annee_id' => $anneeUniversitaire->id])
+                    ->with('success', 'L\'année universitaire a été créée et définie comme l\'année en cours.')
+                    ->with('warning', $sousReserveCount . ' inscription(s) sous réserve détectée(s) pour cette année.');
+            }
         }
 
         // Rediriger avec un message de succès
@@ -116,6 +127,17 @@ class ESBTPAnneeUniversitaireController extends Controller
         // Si cette année est définie comme l'année en cours, mettre à jour les autres années
         if ($request->has('is_current') && $request->is_current) {
             $anneesUniversitaire->setAsCurrent();
+
+            // Vérifier s'il y a des inscriptions sous réserve pour cette année
+            $sousReserveCount = \App\Models\ESBTPInscription::where('annee_universitaire_id', $anneesUniversitaire->id)
+                ->where('is_sous_reserve', true)
+                ->count();
+
+            if ($sousReserveCount > 0) {
+                return redirect()->route('esbtp.inscriptions.sous-reserve', ['annee_id' => $anneesUniversitaire->id])
+                    ->with('success', 'L\'année universitaire a été mise à jour et définie comme l\'année en cours.')
+                    ->with('warning', $sousReserveCount . ' inscription(s) sous réserve détectée(s) pour cette année.');
+            }
         }
 
         // Rediriger avec un message de succès
@@ -155,18 +177,29 @@ class ESBTPAnneeUniversitaireController extends Controller
     {
         try {
             $result = $anneesUniversitaire->setAsCurrent();
-            
+
             if (!$result) {
                 return redirect()->route('esbtp.annees-universitaires.index')
                     ->with('error', 'Erreur lors de la définition de l\'année en cours.');
             }
-            
+
+            // Vérifier s'il y a des inscriptions sous réserve pour cette année
+            $sousReserveCount = \App\Models\ESBTPInscription::where('annee_universitaire_id', $anneesUniversitaire->id)
+                ->where('is_sous_reserve', true)
+                ->count();
+
+            if ($sousReserveCount > 0) {
+                return redirect()->route('esbtp.inscriptions.sous-reserve', ['annee_id' => $anneesUniversitaire->id])
+                    ->with('success', 'L\'année universitaire a été définie comme l\'année en cours.')
+                    ->with('warning', $sousReserveCount . ' inscription(s) sous réserve détectée(s) pour cette année. Veuillez confirmer ou annuler ces inscriptions.');
+            }
+
             return redirect()->route('esbtp.annees-universitaires.index')
                 ->with('success', 'L\'année universitaire a été définie comme l\'année en cours.');
-                
+
         } catch (\Exception $e) {
             \Log::error("setCurrent: Exception = " . $e->getMessage());
-            
+
             return redirect()->route('esbtp.annees-universitaires.index')
                 ->with('error', 'Erreur: ' . $e->getMessage());
         }

@@ -796,16 +796,28 @@ class ESBTPInscriptionService
      */
     public function prepareInscriptionData(ESBTPClasse $classe, array $requestData): array
     {
-        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        if (!$anneeCourante) {
-            throw new \Exception('Aucune année universitaire courante définie. Veuillez configurer l\'année courante.');
+        // Utiliser l'année fournie par le formulaire, sinon l'année courante
+        if (!empty($requestData['annee_universitaire_id'])) {
+            $annee = ESBTPAnneeUniversitaire::find($requestData['annee_universitaire_id']);
+            if (!$annee) {
+                throw new \Exception('L\'année universitaire sélectionnée est invalide.');
+            }
+        } else {
+            $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            if (!$annee) {
+                throw new \Exception('Aucune année universitaire courante définie. Veuillez configurer l\'année courante.');
+            }
         }
+
+        $isSousReserve = !empty($requestData['is_sous_reserve']);
 
         return [
             'date_inscription' => $requestData['date_inscription'] ?? now()->format('Y-m-d'),
             'classe_id' => $classe->id,
-            'annee_universitaire_id' => $anneeCourante->id,
+            'annee_universitaire_id' => $annee->id,
             'status' => 'en_attente',
+            'is_sous_reserve' => $isSousReserve,
+            'condition_reserve' => $isSousReserve ? ($requestData['condition_reserve'] ?? null) : null,
             'filiere_id' => $classe->filiere_id,
             'niveau_id' => $classe->niveau_etude_id,
             'type_inscription' => 'première_inscription',

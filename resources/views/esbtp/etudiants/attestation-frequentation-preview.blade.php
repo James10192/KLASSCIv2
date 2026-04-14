@@ -122,15 +122,15 @@
     /* Footer */
     .doc-footer {
         display:flex; justify-content:space-between; align-items:flex-end;
-        margin-top:40px; gap:20px;
+        margin-top:80px; gap:20px;
     }
     .doc-date { font-style:italic; font-size:.85rem; color:var(--doc-muted); }
     .doc-signature {
         text-align:right; border-top:2px solid var(--doc-accent);
-        padding-top:12px; min-width:200px;
+        padding-top:24px; min-width:200px;
     }
     .doc-sig-title { font-weight:700; color:var(--doc-accent); font-size:.88rem; margin-bottom:8px; }
-    .doc-sig-name  { font-style:italic; color:var(--doc-muted); font-size:.84rem; margin-top:24px; }
+    .doc-sig-name  { font-style:italic; color:var(--doc-muted); font-size:.84rem; margin-top:48px; }
     .doc-sig-note  { text-align:center; font-size:.73rem; font-style:italic; color:var(--doc-muted); margin:16px 0; }
 
     .doc-note {
@@ -225,15 +225,20 @@
             @endif
 
             <p>
-                Est régulièrement inscrit(e) au titre de l'année scolaire
-                <span class="doc-hl">
                 @php
                     $anneeText = $inscription->anneeUniversitaire->name
                         ?? $inscription->anneeUniversitaire->nom
                         ?? $inscription->anneeUniversitaire->libelle ?? '';
-                    echo preg_match('/(\d{4}-\d{4})/', $anneeText, $m) ? $m[1] : $anneeText;
+                    $anneeFormatted = preg_match('/(\d{4}-\d{4})/', $anneeText, $m) ? $m[1] : $anneeText;
                 @endphp
-                </span>
+                @if($inscription->is_sous_reserve)
+                Sera régulièrement inscrit(e) au titre de l'année universitaire
+                <span class="doc-hl">{{ $anneeFormatted }}</span>
+                sous réserve de son <span class="doc-hl">{{ $inscription->condition_reserve ?? 'diplôme' }}</span>
+                @else
+                Est régulièrement inscrit(e) au titre de l'année universitaire
+                <span class="doc-hl">{{ $anneeFormatted }}</span>
+                @endif
             </p>
 
             <div class="doc-student-block">
