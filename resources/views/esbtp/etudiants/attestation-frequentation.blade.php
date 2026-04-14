@@ -325,13 +325,10 @@
                     $anneeFormatted = preg_match('/(\d{4}-\d{4})/', $anneeText, $matches)
                         ? $matches[1] : $anneeText;
                 @endphp
-                @if($inscription->is_sous_reserve)
-                Sera régulièrement inscrit(e) au titre de l'année universitaire
-                <span class="hl">{{ $anneeFormatted }}</span>
-                sous réserve de son <span class="hl">{{ $inscription->condition_reserve ?? 'diplôme' }}</span>
-                @else
                 Est régulièrement inscrit(e) au titre de l'année universitaire
                 <span class="hl">{{ $anneeFormatted }}</span>
+                @if($inscription->is_sous_reserve)
+                sous réserve de son <span class="hl">{{ $inscription->condition_reserve ?? 'diplôme' }}</span>
                 @endif
             </p>
 

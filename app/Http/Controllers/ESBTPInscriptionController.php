@@ -828,6 +828,7 @@ class ESBTPInscriptionController extends Controller
         }
 
         $canViewFinancials = auth()->user()->can('viewFinancials', $inscription);
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         return view(
             "esbtp.inscriptions.show",
@@ -845,6 +846,7 @@ class ESBTPInscriptionController extends Controller
                 "reinscriptionData",
                 "classesDisponibles",
                 "canViewFinancials",
+                "anneeCourante",
             ),
         );
     }
@@ -1983,18 +1985,34 @@ class ESBTPInscriptionController extends Controller
             ->orderByDesc('start_date')
             ->get();
 
-        $anneeFilterId = $request->input('annee_id', $anneeEnCours?->id);
+        // Par défaut : toutes les années (pas filtré sur l'année courante)
+        $anneeFilterId = $request->input('annee_id');
+        $search = $request->input('search');
 
-        $inscriptions = ESBTPInscription::with([
+        $query = ESBTPInscription::with([
                 'etudiant', 'classe', 'filiere', 'niveauEtude', 'anneeUniversitaire', 'paiements'
             ])
             ->where('is_sous_reserve', true)
             ->when($anneeFilterId, fn($q) => $q->where('annee_universitaire_id', $anneeFilterId))
-            ->orderBy('created_at', 'desc')
-            ->get();
+            ->when($search, fn($q) => $q->whereHas('etudiant', fn($eq) =>
+                $eq->where('nom', 'like', "%{$search}%")
+                   ->orWhere('prenoms', 'like', "%{$search}%")
+                   ->orWhere('matricule', 'like', "%{$search}%")
+            ))
+            ->orderBy('created_at', 'desc');
+
+        $inscriptions = $query->get();
+
+        // Stats calculées depuis la collection chargée (0 query supplémentaire)
+        $avecPaiement = $inscriptions->filter(fn($i) => $i->paiements->where('status', 'validé')->isNotEmpty())->count();
+        $stats = [
+            'total' => $inscriptions->count(),
+            'avec_paiement' => $avecPaiement,
+            'sans_paiement' => $inscriptions->count() - $avecPaiement,
+        ];
 
         return view('esbtp.inscriptions.sous-reserve', compact(
-            'inscriptions', 'annees', 'anneeEnCours', 'anneeFilterId'
+            'inscriptions', 'annees', 'anneeEnCours', 'anneeFilterId', 'search', 'stats'
         ));
     }
 
@@ -2033,6 +2051,24 @@ class ESBTPInscriptionController extends Controller
 
         return redirect()->back()->with('success',
             $count . ' inscription(s) ont été confirmée(s). La réserve a été levée.'
+        );
+    }
+
+    /**
+     * Marquer une inscription comme sous réserve (depuis show pages).
+     */
+    public function marquerSousReserve(Request $request, ESBTPInscription $inscription)
+    {
+        if ($inscription->is_sous_reserve) {
+            return redirect()->back()->with('info', 'Cette inscription est déjà sous réserve.');
+        }
+
+        $inscription->is_sous_reserve = true;
+        $inscription->condition_reserve = $request->input('condition_reserve', 'BACCALAURÉAT');
+        $inscription->save();
+
+        return redirect()->back()->with('success',
+            'L\'inscription a été marquée sous réserve de son ' . $inscription->condition_reserve . '.'
         );
     }
 }

@@ -299,11 +299,7 @@
 
             <p>Matricule : <span class="hl">{{ $etudiant->matricule }}</span></p>
 
-            @if($hasSousReserve ?? $inscriptions->contains(fn($i) => $i->is_sous_reserve))
-            <p>Sera régulièrement inscrit(e) sur le registre des effectifs de l'année universitaire :</p>
-            @else
             <p>Est régulièrement inscrit(e) sur le registre des effectifs de l'année universitaire :</p>
-            @endif
 
             <table class="doc-table">
                 <thead>

@@ -915,6 +915,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('/inscriptions/bulk-valider', [ESBTPInscriptionController::class, 'bulkValider'])->name('inscriptions.bulk-valider');
 
             Route::post('/inscriptions/{inscription}/lever-reserve', [ESBTPInscriptionController::class, 'leverReserve'])->name('inscriptions.lever-reserve');
+            Route::post('/inscriptions/{inscription}/marquer-sous-reserve', [ESBTPInscriptionController::class, 'marquerSousReserve'])->name('inscriptions.marquer-sous-reserve');
 
             // Routes pour actions rapides sur inscriptions (modals AJAX)
             Route::get('/inscriptions/{inscription}/data', [ESBTPInscriptionApiController::class, 'getInscriptionData'])->name('inscriptions.data');
