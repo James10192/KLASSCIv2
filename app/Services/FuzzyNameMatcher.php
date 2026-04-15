@@ -158,6 +158,10 @@ class FuzzyNameMatcher
 
     /**
      * Calcule un score entre deux listes de tokens (0 à 100).
+     *
+     * Algorithme token-coverage : pour chaque token de recherche, trouve le
+     * meilleur match parmi les tokens candidats (exact > prefix > contains >
+     * levenshtein > similar_text). Order-independent par design.
      */
     protected function calculateTokenScore(array $searchTokens, array $candidateTokens): float
     {
@@ -165,25 +169,72 @@ class FuzzyNameMatcher
             return 0.0;
         }
 
-        $searchString = implode(' ', $searchTokens);
-        $candidateString = implode(' ', $candidateTokens);
-
-        similar_text($searchString, $candidateString, $overallSimilarity);
-
-        $tokenSimilarities = [];
+        // Score chaque search token contre tous les candidate tokens
+        $tokenScores = [];
         foreach ($searchTokens as $searchToken) {
             $best = 0.0;
+            $searchLen = strlen($searchToken);
+
             foreach ($candidateTokens as $candidateToken) {
+                $candidateLen = strlen($candidateToken);
+
+                // 1. Exact match
+                if ($searchToken === $candidateToken) {
+                    $best = 100.0;
+                    break;
+                }
+
+                // 2. Prefix match (l'un commence par l'autre)
+                if (str_starts_with($candidateToken, $searchToken) || str_starts_with($searchToken, $candidateToken)) {
+                    $best = max($best, 90.0);
+                    continue;
+                }
+
+                // 3. Contains (l'un contient l'autre)
+                if (str_contains($candidateToken, $searchToken) || str_contains($searchToken, $candidateToken)) {
+                    $best = max($best, 85.0);
+                    continue;
+                }
+
+                // 4. Levenshtein (seulement pour tokens > 2 chars — les tokens courts comme "ME", "DE" sont trop sensibles)
+                if ($searchLen > 2 && $candidateLen > 2) {
+                    $distance = levenshtein($searchToken, $candidateToken);
+                    if ($distance <= 1) {
+                        $best = max($best, 80.0);
+                        continue;
+                    }
+                    if ($distance <= 2) {
+                        $best = max($best, 70.0);
+                        continue;
+                    }
+                }
+
+                // 5. Fallback : similar_text pour les cas restants
                 similar_text($searchToken, $candidateToken, $similarity);
-                $best = max($best, $similarity);
+                if ($similarity > 70.0) {
+                    $best = max($best, $similarity * 0.8);
+                }
             }
-            $tokenSimilarities[] = $best;
+
+            $tokenScores[] = $best;
         }
 
-        $averageTokens = !empty($tokenSimilarities)
-            ? array_sum($tokenSimilarities) / count($tokenSimilarities)
-            : 0.0;
+        // Score = moyenne des meilleurs scores par token
+        $coverageScore = array_sum($tokenScores) / count($tokenScores);
 
-        return ($overallSimilarity * 0.7) + ($averageTokens * 0.3);
+        // Bonus bidirectionnel : si tous les candidate tokens sont aussi couverts
+        $reverseCovered = 0;
+        foreach ($candidateTokens as $candidateToken) {
+            foreach ($searchTokens as $searchToken) {
+                if ($searchToken === $candidateToken || str_starts_with($candidateToken, $searchToken) || str_contains($candidateToken, $searchToken)) {
+                    $reverseCovered++;
+                    break;
+                }
+            }
+        }
+        $reverseRatio = $reverseCovered / count($candidateTokens);
+        $bidirectionalBonus = min($reverseRatio * 10, 10.0);
+
+        return min(100.0, $coverageScore * 0.9 + $bidirectionalBonus);
     }
 }

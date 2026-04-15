@@ -59,13 +59,31 @@ class CLIStudentController extends BaseApiController
                   ->with('classe:id,name');
             }]);
 
-        // Search filter
+        // Search filter — tokenized for multi-word queries (e.g. "KADJO ME ARIELLE DIVINE")
         if ($request->filled('search')) {
             $search = $request->input('search');
-            $query->where(function ($q) use ($search) {
+            $searchTokens = collect(preg_split('/[\s,]+/u', $search, -1, PREG_SPLIT_NO_EMPTY))
+                ->map(fn ($token) => trim($token))
+                ->filter();
+
+            $query->where(function ($q) use ($search, $searchTokens) {
                 $q->where('nom', 'like', "%{$search}%")
                   ->orWhere('prenoms', 'like', "%{$search}%")
-                  ->orWhere('matricule', 'like', "%{$search}%");
+                  ->orWhere('matricule', 'like', "%{$search}%")
+                  ->orWhereRaw("CONCAT_WS(' ', nom, prenoms) LIKE ?", ["%{$search}%"])
+                  ->orWhereRaw("CONCAT_WS(' ', prenoms, nom) LIKE ?", ["%{$search}%"]);
+
+                if ($searchTokens->count() > 1) {
+                    $q->orWhere(function ($subQuery) use ($searchTokens) {
+                        foreach ($searchTokens as $token) {
+                            $subQuery->where(function ($inner) use ($token) {
+                                $inner->where('nom', 'like', "%{$token}%")
+                                      ->orWhere('prenoms', 'like', "%{$token}%")
+                                      ->orWhere('matricule', 'like', "%{$token}%");
+                            });
+                        }
+                    });
+                }
             });
         }
 
