@@ -195,6 +195,12 @@ class ESBTPStudentController extends Controller
                 ->limit(500)
                 ->get();
 
+            \Log::info('SEARCH_DEBUG', [
+                'search' => $search,
+                'candidates_count' => $candidates->count(),
+                'first_5_candidates' => $candidates->take(5)->map(fn ($e) => $e->nom . ' | ' . $e->prenoms)->toArray(),
+            ]);
+
             $scored = $matcher->match($search, $candidates, function ($etudiant) {
                 return [
                     'matricule' => $etudiant->matricule,
@@ -213,12 +219,26 @@ class ESBTPStudentController extends Controller
                     'full_name' => 8,
                     'reverse_full_name' => 8,
                 ],
-            ])->filter(function ($item) {
+            ]);
+
+            \Log::info('SEARCH_DEBUG_SCORED', [
+                'scored_count' => $scored->count(),
+                'top_5_scores' => $scored->take(5)->map(function ($e) {
+                    $s = isset($e->fuzzy_score) ? $e->fuzzy_score : 'NOT_SET';
+                    return ($e->nom ?? '?') . ' | ' . ($e->prenoms ?? '?') . ' => ' . $s;
+                })->toArray(),
+            ]);
+
+            $scored = $scored->filter(function ($item) {
                 $score = is_array($item)
                     ? ($item['fuzzy_score'] ?? null)
                     : (isset($item->fuzzy_score) ? $item->fuzzy_score : null);
                 return $score !== null && $score >= 80;
             })->values();
+
+            \Log::info('SEARCH_DEBUG_FILTERED', [
+                'after_filter_count' => $scored->count(),
+            ]);
 
             $total = $scored->count();
             $items = $scored->forPage($currentPage, $perPage)->values();
