@@ -855,6 +855,162 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 .is-stepper-mobile { display: none; }
 
 /* --- Responsive --- */
+/* --- Finance Summary Premium --- */
+.is-finance-summary {
+    background: linear-gradient(135deg, #f0f7ff 0%, #e8f0fe 100%);
+    border: 1px solid rgba(4,83,203,0.12);
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+}
+.is-finance-summary.paid {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border-color: rgba(16,185,129,0.2);
+}
+.is-finance-grid {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+}
+.is-finance-kpi {
+    flex: 1;
+    min-width: 140px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 0;
+}
+.is-finance-kpi-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(4,83,203,0.1);
+    color: #0453cb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+.is-finance-kpi-icon.success { background: rgba(16,185,129,0.1); color: #059669; }
+.is-finance-kpi-icon.danger { background: rgba(239,68,68,0.1); color: #dc2626; }
+.is-finance-kpi-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #64748b;
+    margin-bottom: 1px;
+}
+.is-finance-kpi-val {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #1e293b;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+.is-finance-kpi-val small { font-size: 0.65em; font-weight: 600; color: #94a3b8; }
+.is-finance-sep {
+    width: 1px;
+    height: 40px;
+    background: rgba(4,83,203,0.12);
+    margin: 0 16px;
+    flex-shrink: 0;
+}
+.is-finance-summary.paid .is-finance-sep { background: rgba(16,185,129,0.2); }
+
+/* --- Empty States Premium --- */
+.is-empty-state {
+    text-align: center;
+    padding: 32px 20px;
+}
+.is-empty-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: rgba(4,83,203,0.06);
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    margin: 0 auto 12px;
+}
+.is-empty-text {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 4px;
+}
+.is-empty-sub {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    max-width: 340px;
+    margin: 0 auto;
+    line-height: 1.5;
+}
+
+/* --- Alerts inside is-card premium --- */
+.is-card .alert {
+    border-radius: 10px;
+    border: none;
+    font-size: 0.85rem;
+}
+.is-card .alert-info {
+    background: rgba(59,130,246,0.06);
+    color: #1e40af;
+    border: 1px solid rgba(59,130,246,0.12);
+}
+.is-card .alert-success {
+    background: rgba(16,185,129,0.06);
+    color: #065f46;
+    border: 1px solid rgba(16,185,129,0.12);
+}
+.is-card .alert-warning {
+    background: rgba(245,158,11,0.06);
+    color: #92400e;
+    border: 1px solid rgba(245,158,11,0.12);
+}
+.is-card .alert-danger {
+    background: rgba(239,68,68,0.06);
+    color: #991b1b;
+    border: 1px solid rgba(239,68,68,0.12);
+}
+
+/* --- Tables inside is-card (payments, financial) --- */
+.is-card .table {
+    margin-bottom: 0;
+}
+.is-card .table thead th {
+    background: #f8fafc;
+    border-bottom: 2px solid #e2e8f0;
+    font-size: 0.73rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #64748b;
+    padding: 10px 12px;
+    white-space: nowrap;
+}
+.is-card .table tbody td {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+.is-card .table tbody tr:last-child td { border-bottom: none; }
+.is-card .table tbody tr:hover { background: rgba(4,83,203,0.02); }
+.is-card .table-sm td, .is-card .table-sm th { padding: 8px 10px; }
+
+/* --- Finance summary responsive --- */
+@media (max-width: 640px) {
+    .is-finance-grid { flex-direction: column; gap: 12px; }
+    .is-finance-sep { width: 100%; height: 1px; margin: 0; }
+    .is-finance-kpi-val { font-size: 1.1rem; }
+}
+
 /* --- Premium table styling inside is-card --- */
 .is-card .table-bordered {
     border: none;
@@ -1600,29 +1756,39 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                 $soldeGlobal = $totalAttendu - $totalPaye;
                                 $obligatoiresConfigures = collect($feeCategoriesWithRules)->where('is_mandatory', true)->where('is_configured', true)->count();
                                 $obligatoiresTotal = collect($feeCategoriesWithRules)->where('is_mandatory', true)->count();
+                                $progressPct = $totalAttendu > 0 ? min(100, round(($totalPaye / $totalAttendu) * 100)) : 0;
                             @endphp
-                            <div class="row">
-                                <div class="col-md-12">
-                                    <div class="alert alert-{{ $soldeGlobal <= 0 ? 'success' : 'warning' }}">
-                                        <h6><i class="fas fa-wallet me-2"></i>Résumé Financier</h6>
-                                        <div class="row">
-                                            <div class="col-md-3">
-                                                <strong>Total attendu:</strong><br>
-                                                <span class="fs-5">{{ number_format($totalAttendu, 0, ',', ' ') }} FCFA</span>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <strong>Total payé:</strong><br>
-                                                <span class="fs-5 text-success">{{ number_format($totalPaye, 0, ',', ' ') }} FCFA</span>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <strong>Solde:</strong><br>
-                                                <span class="fs-5 text-{{ $soldeGlobal <= 0 ? 'success' : 'danger' }}">{{ number_format($soldeGlobal, 0, ',', ' ') }} FCFA</span>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <small class="text-muted">{{ $obligatoiresConfigures }}/{{ $obligatoiresTotal }} frais obligatoires configurés</small>
-                                            </div>
+                            <div class="is-finance-summary {{ $soldeGlobal <= 0 ? 'paid' : '' }}">
+                                <div class="is-finance-grid">
+                                    <div class="is-finance-kpi">
+                                        <div class="is-finance-kpi-icon"><i class="fas fa-receipt"></i></div>
+                                        <div>
+                                            <div class="is-finance-kpi-label">Total attendu</div>
+                                            <div class="is-finance-kpi-val">{{ number_format($totalAttendu, 0, ',', ' ') }} <small>F</small></div>
                                         </div>
                                     </div>
+                                    <div class="is-finance-sep"></div>
+                                    <div class="is-finance-kpi">
+                                        <div class="is-finance-kpi-icon success"><i class="fas fa-check-circle"></i></div>
+                                        <div>
+                                            <div class="is-finance-kpi-label">Total payé</div>
+                                            <div class="is-finance-kpi-val" style="color:#059669;">{{ number_format($totalPaye, 0, ',', ' ') }} <small>F</small></div>
+                                        </div>
+                                    </div>
+                                    <div class="is-finance-sep"></div>
+                                    <div class="is-finance-kpi">
+                                        <div class="is-finance-kpi-icon {{ $soldeGlobal <= 0 ? 'success' : 'danger' }}"><i class="fas fa-{{ $soldeGlobal <= 0 ? 'check-double' : 'exclamation-circle' }}"></i></div>
+                                        <div>
+                                            <div class="is-finance-kpi-label">Solde restant</div>
+                                            <div class="is-finance-kpi-val" style="color:{{ $soldeGlobal <= 0 ? '#059669' : '#dc2626' }};">{{ number_format($soldeGlobal, 0, ',', ' ') }} <small>F</small></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="display:flex;align-items:center;gap:12px;margin-top:12px;">
+                                    <div class="is-progress-wrap" style="flex:1;margin-bottom:0;">
+                                        <div class="is-progress-bar" style="width:{{ $progressPct }}%;{{ $soldeGlobal <= 0 ? 'background:linear-gradient(90deg,#10b981,#059669);' : '' }}"></div>
+                                    </div>
+                                    <span style="font-size:0.75rem;font-weight:600;color:#64748b;white-space:nowrap;">{{ $progressPct }}% · {{ $obligatoiresConfigures }}/{{ $obligatoiresTotal }} frais obligatoires</span>
                                 </div>
                             </div>
                         </div>
@@ -1729,9 +1895,10 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                     @endforeach
                                 </div>
                             @else
-                                <div class="alert alert-info mb-0">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    Aucun parent ou tuteur n'est associé à cet étudiant.
+                                <div class="is-empty-state">
+                                    <div class="is-empty-icon"><i class="fas fa-users"></i></div>
+                                    <div class="is-empty-text">Aucun parent ou tuteur associé</div>
+                                    <div class="is-empty-sub">Les informations de contact parental n'ont pas encore été renseignées pour cet étudiant.</div>
                                 </div>
                             @endif
                         </div>
@@ -2141,9 +2308,9 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                         @empty
                                             <tr>
                                                 <td colspan="7" class="text-center py-4">
-                                                    <div class="alert alert-info mb-0">
-                                                        <i class="fas fa-info-circle me-2"></i>
-                                                        Aucune catégorie de frais configurée pour cette inscription.
+                                                    <div class="is-empty-state" style="padding:20px 12px;">
+                                                        <div class="is-empty-icon" style="width:40px;height:40px;font-size:1rem;border-radius:10px;"><i class="fas fa-receipt"></i></div>
+                                                        <div class="is-empty-text" style="font-size:0.82rem;">Aucune catégorie de frais configurée</div>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -2906,9 +3073,10 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                     </div>
                                 @endif
                             @else
-                                <div class="alert alert-info mb-0">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    Aucun paiement enregistré pour cette inscription.
+                                <div class="is-empty-state">
+                                    <div class="is-empty-icon"><i class="fas fa-money-bill-wave"></i></div>
+                                    <div class="is-empty-text">Aucun paiement enregistré</div>
+                                    <div class="is-empty-sub">Les paiements apparaîtront ici une fois effectués.</div>
                                 </div>
                             @endif
                         </div>
