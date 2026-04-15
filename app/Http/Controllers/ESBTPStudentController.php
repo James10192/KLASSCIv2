@@ -176,16 +176,19 @@ class ESBTPStudentController extends Controller
                   ->orWhereRaw("CONCAT_WS(' ', prenoms, nom) LIKE ?", [$likeSearch])
                   ->orWhereRaw("CONCAT_WS(' ', nom, prenoms) LIKE ?", [$likeSearch]);
 
-                if ($searchTokens->isNotEmpty()) {
+                // Token search: AND between tokens (each must match), OR within token (any field)
+                if ($searchTokens->count() > 1) {
                     $q->orWhere(function ($subQuery) use ($searchTokens, $escapeLike) {
                         foreach ($searchTokens as $token) {
                             $escapedToken = $escapeLike($token);
                             $likeToken = "%{$escapedToken}%";
-                            $subQuery->orWhere('nom', 'like', $likeToken)
-                                     ->orWhere('prenoms', 'like', $likeToken)
-                                     ->orWhere('matricule', 'like', $likeToken)
-                                     ->orWhere('email_personnel', 'like', $likeToken)
-                                     ->orWhere('telephone', 'like', $likeToken);
+                            $subQuery->where(function ($inner) use ($likeToken) {
+                                $inner->where('nom', 'like', $likeToken)
+                                      ->orWhere('prenoms', 'like', $likeToken)
+                                      ->orWhere('matricule', 'like', $likeToken)
+                                      ->orWhere('email_personnel', 'like', $likeToken)
+                                      ->orWhere('telephone', 'like', $likeToken);
+                            });
                         }
                     });
                 }
@@ -194,12 +197,6 @@ class ESBTPStudentController extends Controller
             $candidates = $candidatesQuery
                 ->limit(500)
                 ->get();
-
-            \Log::info('SEARCH_DEBUG', [
-                'search' => $search,
-                'candidates_count' => $candidates->count(),
-                'first_5_candidates' => $candidates->take(5)->map(fn ($e) => $e->nom . ' | ' . $e->prenoms)->toArray(),
-            ]);
 
             $scored = $matcher->match($search, $candidates, function ($etudiant) {
                 return [
@@ -219,26 +216,12 @@ class ESBTPStudentController extends Controller
                     'full_name' => 8,
                     'reverse_full_name' => 8,
                 ],
-            ]);
-
-            \Log::info('SEARCH_DEBUG_SCORED', [
-                'scored_count' => $scored->count(),
-                'top_5_scores' => $scored->take(5)->map(function ($e) {
-                    $s = isset($e->fuzzy_score) ? $e->fuzzy_score : 'NOT_SET';
-                    return ($e->nom ?? '?') . ' | ' . ($e->prenoms ?? '?') . ' => ' . $s;
-                })->toArray(),
-            ]);
-
-            $scored = $scored->filter(function ($item) {
+            ])->filter(function ($item) {
                 $score = is_array($item)
                     ? ($item['fuzzy_score'] ?? null)
                     : (isset($item->fuzzy_score) ? $item->fuzzy_score : null);
                 return $score !== null && $score >= 80;
             })->values();
-
-            \Log::info('SEARCH_DEBUG_FILTERED', [
-                'after_filter_count' => $scored->count(),
-            ]);
 
             $total = $scored->count();
             $items = $scored->forPage($currentPage, $perPage)->values();
