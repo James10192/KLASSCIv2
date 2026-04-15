@@ -1384,6 +1384,10 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                     <span class="is-info-lbl">Commune</span>
                                     <span class="is-info-val {{ !$inscription->etudiant->commune ? 'muted' : '' }}">{{ $inscription->etudiant->commune ?: 'Non renseignée' }}</span>
                                 </div>
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Adresse</span>
+                                    <span class="is-info-val {{ !$inscription->etudiant->adresse ? 'muted' : '' }}">{{ $inscription->etudiant->adresse ?: 'Non renseignée' }}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
