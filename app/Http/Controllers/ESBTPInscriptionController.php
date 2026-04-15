@@ -830,6 +830,13 @@ class ESBTPInscriptionController extends Controller
         $canViewFinancials = auth()->user()->can('viewFinancials', $inscription);
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
+        // Other inscriptions for this student (excluding current)
+        $otherInscriptions = ESBTPInscription::where('etudiant_id', $inscription->etudiant_id)
+            ->where('id', '!=', $inscription->id)
+            ->with(['anneeUniversitaire', 'classe', 'filiere'])
+            ->orderByDesc('created_at')
+            ->get();
+
         return view(
             "esbtp.inscriptions.show",
             compact(
@@ -847,6 +854,7 @@ class ESBTPInscriptionController extends Controller
                 "classesDisponibles",
                 "canViewFinancials",
                 "anneeCourante",
+                "otherInscriptions",
             ),
         );
     }

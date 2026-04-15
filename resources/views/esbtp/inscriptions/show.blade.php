@@ -1004,6 +1004,38 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 .is-card .table tbody tr:hover { background: rgba(4,83,203,0.02); }
 .is-card .table-sm td, .is-card .table-sm th { padding: 8px 10px; }
 
+/* --- Other Inscriptions Cards --- */
+.is-other-inscription-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 16px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    text-decoration: none;
+    min-width: 160px;
+    transition: all 0.2s ease;
+}
+.is-other-inscription-card:hover {
+    border-color: #0453cb;
+    box-shadow: 0 2px 8px rgba(4,83,203,0.12);
+    transform: translateY(-1px);
+}
+.is-other-inscription-year {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #0453cb;
+}
+.is-other-inscription-class {
+    font-size: 0.75rem;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
 /* --- Finance summary responsive --- */
 @media (max-width: 640px) {
     .is-finance-grid { flex-direction: column; gap: 12px; }
@@ -1082,6 +1114,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                     </div>
                 @endif
                 <div class="is-hero-text">
+                    <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.6);margin-bottom:2px;"><i class="fas fa-file-alt me-1"></i>Fiche Inscription</div>
                     <div class="is-hero-name">{{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</div>
                     <div class="is-hero-sub">Matricule : {{ $inscription->etudiant->matricule }} · {{ $inscription->filiere->name ?? '' }} · {{ $inscription->anneeUniversitaire->name ?? '' }}</div>
                     <div class="is-hero-pills">
@@ -1460,294 +1493,107 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                 <div class="is-section-icon"><i class="fas fa-graduation-cap"></i></div>
                                 <div class="is-section-title">Informations académiques</div>
                             </div>
-                            <div class="row">
-                                <div class="col-12 col-1600-6 mb-3">
-                                    <!-- Version Desktop : Table -->
-                                    <table class="table table-bordered table-desktop-1600">
-                                        <tr>
-                                            <th style="width: 40%">Filière</th>
-                                            <td>{{ $inscription->filiere->name }}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Niveau</th>
-                                            <td>{{ $inscription->niveau->name }}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Classe</th>
-                                            <td>
-                                                @if($inscription->classe)
-                                                    <span id="classe-name-desktop">{{ $inscription->classe->name }}</span>
-                                                @else
-                                                    <div class="classe-manquante-cell" id="classe-name-desktop">
-                                                        <span class="classe-manquante-badge">
-                                                            <i class="fas fa-exclamation-circle"></i> Non affecté
-                                                        </span>
-                                                        <button type="button" class="btn btn-sm btn-affecter-classe" data-bs-toggle="modal" data-bs-target="#affectationClasseModal" style="padding: 4px 12px; font-size: 0.78rem;">
-                                                            <i class="fas fa-user-plus"></i> Affecter
-                                                        </button>
-                                                    </div>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <th>Année universitaire</th>
-                                            <td>{{ $inscription->anneeUniversitaire->name }}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Statut d'affectation</th>
-                                            <td>
-                                                <span id="affectation-badge-desktop">
-                                                @if($inscription->affectation_status)
-                                                    @switch($inscription->affectation_status)
-                                                        @case('affecté')
-                                                            <span class="badge bg-success">
-                                                                <i class="fas fa-check-circle me-1"></i>Affecté
-                                                            </span>
-                                                            @break
-                                                        @case('réaffecté')
-                                                            <span class="badge bg-warning">
-                                                                <i class="fas fa-exchange-alt me-1"></i>Réaffecté
-                                                            </span>
-                                                            @break
-                                                        @case('non_affecté')
-                                                            <span class="badge bg-danger">
-                                                                <i class="fas fa-times-circle me-1"></i>Non affecté
-                                                            </span>
-                                                            @break
-                                                        @default
-                                                            <span class="badge bg-secondary">{{ $inscription->affectation_status }}</span>
-                                                    @endswitch
-                                                @else
-                                                    <span class="text-muted">Non renseigné</span>
-                                                @endif
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    </table>
-
-                                    <!-- Version Mobile : Liste -->
-                                    <div class="list-mobile-1600">
-                                        <div class="row g-1 small">
-                                            <div class="col-12 d-flex border-bottom py-2">
-                                                <div class="text-muted flex-shrink-0 me-2">Filière:</div>
-                                                <div class="fw-bold">{{ $inscription->filiere->name }}</div>
-                                            </div>
-                                            <div class="col-12 d-flex border-bottom py-2">
-                                                <div class="text-muted flex-shrink-0 me-2">Niveau:</div>
-                                                <div class="fw-bold">{{ $inscription->niveau->name }}</div>
-                                            </div>
-                                            <div class="col-12 d-flex border-bottom py-2">
-                                                <div class="text-muted flex-shrink-0 me-2">Classe:</div>
-                                                <div class="fw-bold" id="classe-name-mobile">
-                                                    @if($inscription->classe)
-                                                        {{ $inscription->classe->name }}
-                                                    @else
-                                                        <span class="classe-manquante-badge">
-                                                            <i class="fas fa-exclamation-circle"></i> Non affecté
-                                                        </span>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                            <div class="col-12 d-flex border-bottom py-2">
-                                                <div class="text-muted flex-shrink-0 me-2">Année universitaire:</div>
-                                                <div class="fw-bold">{{ $inscription->anneeUniversitaire->name }}</div>
-                                            </div>
-                                            <div class="col-12 d-flex border-bottom py-2">
-                                                <div class="text-muted flex-shrink-0 me-2">Statut:</div>
-                                                <div>
-                                                    @if($inscription->affectation_status)
-                                                        @switch($inscription->affectation_status)
-                                                            @case('affecté')
-                                                                <span class="badge bg-success">
-                                                                    <i class="fas fa-check-circle me-1"></i>Affecté
-                                                                </span>
-                                                                @break
-                                                            @case('réaffecté')
-                                                                <span class="badge bg-warning">
-                                                                    <i class="fas fa-exchange-alt me-1"></i>Réaffecté
-                                                                </span>
-                                                                @break
-                                                            @case('non_affecté')
-                                                                <span class="badge bg-danger">
-                                                                    <i class="fas fa-times-circle me-1"></i>Non affecté
-                                                                </span>
-                                                                @break
-                                                            @default
-                                                                <span class="badge bg-secondary">{{ $inscription->affectation_status }}</span>
-                                                        @endswitch
-                                                    @else
-                                                        <span class="text-muted">Non renseigné</span>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                            <div class="is-info-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Filière</span>
+                                    <span class="is-info-val">{{ $inscription->filiere->name }}</span>
                                 </div>
-                                <div class="col-12 col-1600-6 mb-3">
-                                    <!-- Version Desktop : Table -->
-                                    <table class="table table-bordered table-desktop-1600">
-                                        <tr>
-                                            <th style="width: 40%">Date d'inscription</th>
-                                            <td>{{ $inscription->date_inscription }}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Type d'inscription</th>
-                                            <td>
-                                                <span class="badge bg-{{ in_array($inscription->type_inscription, ['reinscription', 'réinscription']) ? 'info' : 'primary' }}">
-                                                    {{ in_array($inscription->type_inscription, ['reinscription', 'réinscription']) ? 'Réinscription' : ucfirst($inscription->type_inscription) }}
-                                                </span>
-
-                                                @if($inscription->est_transfert)
-                                                    <span class="badge bg-warning ms-2" title="Transfert d'un autre établissement">
-                                                        <i class="fas fa-exchange-alt me-1"></i>Transfert
-                                                    </span>
-                                                @endif
-                                            </td>
-                                        </tr>
-
-                                        @if($inscription->est_transfert && $inscription->etablissement_origine)
-                                        <tr>
-                                            <th>Établissement d'origine</th>
-                                            <td>
-                                                <i class="fas fa-school text-muted me-2"></i>{{ $inscription->etablissement_origine }}
-                                            </td>
-                                        </tr>
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Niveau</span>
+                                    <span class="is-info-val">{{ $inscription->niveau->name }}</span>
+                                </div>
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Classe</span>
+                                    <span class="is-info-val" id="classe-name-desktop">
+                                        @if($inscription->classe)
+                                            {{ $inscription->classe->name }}
+                                        @else
+                                            <div class="classe-manquante-cell">
+                                                <span class="classe-manquante-badge"><i class="fas fa-exclamation-circle"></i> Non affecté</span>
+                                                <button type="button" class="btn btn-sm btn-affecter-classe" data-bs-toggle="modal" data-bs-target="#affectationClasseModal" style="padding:4px 12px;font-size:0.78rem;"><i class="fas fa-user-plus"></i> Affecter</button>
+                                            </div>
                                         @endif
-
-                                        <tr>
-                                            <th>Observations</th>
-                                            <td>
-                                                @if(in_array($inscription->type_inscription, ['reinscription', 'réinscription']) && $reinscriptionData)
-                                                    <div class="reinscription-details" style="font-size: 0.95em;">
-                                                        @if(isset($reinscriptionData['decision']))
-                                                        <div class="mb-2">
-                                                            <strong>Décision académique:</strong>
-                                                            <span class="badge bg-{{ strtolower($reinscriptionData['decision']) === 'passage' ? 'success' : (strtolower($reinscriptionData['decision']) === 'redoublement' ? 'danger' : 'warning') }}">
-                                                                {{ $reinscriptionData['decision_label'] ?? $reinscriptionData['decision'] }}
-                                                            </span>
-                                                        </div>
-                                                        @endif
-
-                                                        <div class="mb-2">
-                                                            <strong>Statut d'affectation:</strong>
-                                                            <span class="text-muted">{{ $reinscriptionData['affectation_label'] }}</span>
-                                                        </div>
-
-                                                        @if(!$reinscriptionData['reliquat_gere'])
-                                                        <div class="mb-2">
-                                                            <strong>Reliquat:</strong>
-                                                            <span class="text-warning">
-                                                                <i class="fas fa-exclamation-triangle"></i>
-                                                                {{ number_format($reinscriptionData['reliquat_montant'], 0, ',', ' ') }} FCFA à régulariser
-                                                            </span>
-                                                        </div>
-                                                        @else
-                                                        <div class="mb-2">
-                                                            <strong>Reliquat:</strong>
-                                                            <span class="text-success">
-                                                                <i class="fas fa-check-circle"></i>
-                                                                Aucun reliquat en attente
-                                                            </span>
-                                                        </div>
-                                                        @endif
-
-                                                        @if(isset($reinscriptionData['notes']) && $reinscriptionData['notes'])
-                                                        <div class="mt-2 pt-2" style="border-top: 1px solid #dee2e6;">
-                                                            <strong>Notes complémentaires:</strong><br>
-                                                            <span class="text-muted">{{ $reinscriptionData['notes'] }}</span>
-                                                        </div>
-                                                        @endif
-                                                    </div>
-                                                @else
-                                                    {{ $inscription->observations ?: 'Aucune' }}
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    </table>
-
-                                    <!-- Version Mobile : Liste -->
-                                    <div class="list-mobile-1600">
-                                        <div class="row g-1 small">
-                                            <div class="col-12 d-flex border-bottom py-2">
-                                                <div class="text-muted flex-shrink-0 me-2">Date:</div>
-                                                <div class="fw-bold">{{ $inscription->date_inscription }}</div>
-                                            </div>
-                                            <div class="col-12 d-flex border-bottom py-2">
-                                                <div class="text-muted flex-shrink-0 me-2">Type:</div>
-                                                <div>
-                                                    <span class="badge bg-{{ in_array($inscription->type_inscription, ['reinscription', 'réinscription']) ? 'info' : 'primary' }}">
-                                                        {{ in_array($inscription->type_inscription, ['reinscription', 'réinscription']) ? 'Réinscription' : ucfirst($inscription->type_inscription) }}
-                                                    </span>
-                                                    @if($inscription->est_transfert)
-                                                        <span class="badge bg-warning ms-1" title="Transfert d'un autre établissement">
-                                                            <i class="fas fa-exchange-alt me-1"></i>Transfert
-                                                        </span>
-                                                    @endif
-                                                </div>
-                                            </div>
-
-                                            @if($inscription->est_transfert && $inscription->etablissement_origine)
-                                            <div class="col-12 d-flex border-bottom py-2">
-                                                <div class="text-muted flex-shrink-0 me-2">Établissement:</div>
-                                                <div class="fw-bold">
-                                                    <i class="fas fa-school text-muted me-1"></i>{{ $inscription->etablissement_origine }}
-                                                </div>
-                                            </div>
+                                    </span>
+                                </div>
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Année universitaire</span>
+                                    <span class="is-info-val">{{ $inscription->anneeUniversitaire->name }}</span>
+                                </div>
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Statut d'affectation</span>
+                                    <span class="is-info-val" id="affectation-badge-desktop">
+                                        @if($inscription->affectation_status)
+                                            @switch($inscription->affectation_status)
+                                                @case('affecté')
+                                                    <span class="is-badge success"><i class="fas fa-check-circle"></i> Affecté</span>
+                                                    @break
+                                                @case('réaffecté')
+                                                    <span class="is-badge warning"><i class="fas fa-exchange-alt"></i> Réaffecté</span>
+                                                    @break
+                                                @case('non_affecté')
+                                                    <span class="is-badge danger"><i class="fas fa-times-circle"></i> Non affecté</span>
+                                                    @break
+                                                @default
+                                                    <span class="is-badge secondary">{{ $inscription->affectation_status }}</span>
+                                            @endswitch
+                                        @else
+                                            <span class="is-info-val muted">Non renseigné</span>
+                                        @endif
+                                    </span>
+                                </div>
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Date d'inscription</span>
+                                    <span class="is-info-val">{{ $inscription->date_inscription ? \Carbon\Carbon::parse($inscription->date_inscription)->format('d/m/Y') : '—' }}</span>
+                                </div>
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Type d'inscription</span>
+                                    <span class="is-info-val">
+                                        <span class="is-badge {{ in_array($inscription->type_inscription, ['reinscription', 'réinscription']) ? 'info' : 'primary' }}">
+                                            {{ in_array($inscription->type_inscription, ['reinscription', 'réinscription']) ? 'Réinscription' : ucfirst($inscription->type_inscription) }}
+                                        </span>
+                                        @if($inscription->est_transfert)
+                                            <span class="is-badge warning ms-1"><i class="fas fa-exchange-alt"></i> Transfert</span>
+                                        @endif
+                                    </span>
+                                </div>
+                                @if($inscription->est_transfert && $inscription->etablissement_origine)
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Établissement d'origine</span>
+                                    <span class="is-info-val"><i class="fas fa-school me-1" style="color:#94a3b8;"></i>{{ $inscription->etablissement_origine }}</span>
+                                </div>
+                                @endif
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Observations</span>
+                                    <span class="is-info-val {{ !$inscription->observations && !(in_array($inscription->type_inscription, ['reinscription', 'réinscription']) && $reinscriptionData) ? 'muted' : '' }}">
+                                        @if(in_array($inscription->type_inscription, ['reinscription', 'réinscription']) && $reinscriptionData)
+                                            @if(isset($reinscriptionData['decision']))
+                                                <span class="is-badge {{ strtolower($reinscriptionData['decision']) === 'passage' ? 'success' : (strtolower($reinscriptionData['decision']) === 'redoublement' ? 'danger' : 'warning') }}">{{ $reinscriptionData['decision_label'] ?? $reinscriptionData['decision'] }}</span>
                                             @endif
-
-                                            <div class="col-12 border-bottom py-2">
-                                                <div class="text-muted mb-2">Observations:</div>
-                                                <div>
-                                                    @if(in_array($inscription->type_inscription, ['reinscription', 'réinscription']) && $reinscriptionData)
-                                                        <div class="reinscription-details">
-                                                            @if(isset($reinscriptionData['decision']))
-                                                            <div class="mb-2">
-                                                                <strong>Décision académique:</strong>
-                                                                <span class="badge bg-{{ strtolower($reinscriptionData['decision']) === 'passage' ? 'success' : (strtolower($reinscriptionData['decision']) === 'redoublement' ? 'danger' : 'warning') }}">
-                                                                    {{ $reinscriptionData['decision_label'] ?? $reinscriptionData['decision'] }}
-                                                                </span>
-                                                            </div>
-                                                            @endif
-
-                                                            <div class="mb-2">
-                                                                <strong>Statut d'affectation:</strong>
-                                                                <span class="text-muted">{{ $reinscriptionData['affectation_label'] }}</span>
-                                                            </div>
-
-                                                            @if(!$reinscriptionData['reliquat_gere'])
-                                                            <div class="mb-2">
-                                                                <strong>Reliquat:</strong>
-                                                                <span class="text-warning">
-                                                                    <i class="fas fa-exclamation-triangle"></i>
-                                                                    {{ number_format($reinscriptionData['reliquat_montant'], 0, ',', ' ') }} FCFA
-                                                                </span>
-                                                            </div>
-                                                            @else
-                                                            <div class="mb-2">
-                                                                <strong>Reliquat:</strong>
-                                                                <span class="text-success">
-                                                                    <i class="fas fa-check-circle"></i>
-                                                                    Aucun reliquat
-                                                                </span>
-                                                            </div>
-                                                            @endif
-
-                                                            @if(isset($reinscriptionData['notes']) && $reinscriptionData['notes'])
-                                                            <div class="mt-2 pt-2" style="border-top: 1px solid #dee2e6;">
-                                                                <strong>Notes:</strong><br>
-                                                                <span class="text-muted text-break">{{ $reinscriptionData['notes'] }}</span>
-                                                            </div>
-                                                            @endif
-                                                        </div>
-                                                    @else
-                                                        {{ $inscription->observations ?: 'Aucune' }}
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                            @if(!$reinscriptionData['reliquat_gere'])
+                                                <span class="is-badge warning ms-1"><i class="fas fa-exclamation-triangle"></i> {{ number_format($reinscriptionData['reliquat_montant'], 0, ',', ' ') }} F</span>
+                                            @endif
+                                        @else
+                                            {{ $inscription->observations ?: 'Aucune' }}
+                                        @endif
+                                    </span>
                                 </div>
                             </div>
+
+                            {{-- Autres inscriptions de cet étudiant --}}
+                            @if(isset($otherInscriptions) && $otherInscriptions->count() > 0)
+                            <div style="margin-bottom:16px;">
+                                <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#94a3b8;margin-bottom:8px;"><i class="fas fa-layer-group me-1"></i>Autres inscriptions</div>
+                                <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                                    @foreach($otherInscriptions as $otherInsc)
+                                    <a href="{{ route('esbtp.inscriptions.show', $otherInsc) }}" class="is-other-inscription-card">
+                                        <div class="is-other-inscription-year">{{ $otherInsc->anneeUniversitaire->name ?? '—' }}</div>
+                                        <div class="is-other-inscription-class">{{ $otherInsc->classe->name ?? $otherInsc->filiere->name ?? '—' }}</div>
+                                        <span class="is-badge {{ $otherInsc->status === 'active' ? 'success' : ($otherInsc->status === 'en_attente' ? 'warning' : 'danger') }}" style="font-size:0.65rem;padding:2px 8px;">{{ ucfirst($otherInsc->status) }}</span>
+                                    </a>
+                                    @endforeach
+                                </div>
+                            </div>
+                            @endif
 
                             @if($canViewFinancials ?? true)
                             @php
@@ -1784,11 +1630,14 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                         </div>
                                     </div>
                                 </div>
-                                <div style="display:flex;align-items:center;gap:12px;margin-top:12px;">
-                                    <div class="is-progress-wrap" style="flex:1;margin-bottom:0;">
-                                        <div class="is-progress-bar" style="width:{{ $progressPct }}%;{{ $soldeGlobal <= 0 ? 'background:linear-gradient(90deg,#10b981,#059669);' : '' }}"></div>
+                                <div style="margin-top:14px;">
+                                    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+                                        <span style="font-size:0.75rem;font-weight:700;color:#0453cb;">{{ $progressPct }}% payé</span>
+                                        <span style="font-size:0.72rem;font-weight:600;color:#94a3b8;">{{ $obligatoiresConfigures }}/{{ $obligatoiresTotal }} frais obligatoires configurés</span>
                                     </div>
-                                    <span style="font-size:0.75rem;font-weight:600;color:#64748b;white-space:nowrap;">{{ $progressPct }}% · {{ $obligatoiresConfigures }}/{{ $obligatoiresTotal }} frais obligatoires</span>
+                                    <div class="is-progress-wrap" style="margin-bottom:0;height:10px;border-radius:8px;">
+                                        <div class="is-progress-bar" style="width:{{ $progressPct }}%;border-radius:8px;{{ $soldeGlobal <= 0 ? 'background:linear-gradient(90deg,#10b981,#059669);' : '' }}"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
