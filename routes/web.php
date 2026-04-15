@@ -485,13 +485,6 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::delete('/bulk-delete', [ESBTPMatiereController::class, 'bulkDelete'])
                     ->name('bulk-delete')
                     ->middleware(['permission:delete_matieres|delete matieres']);
-                Route::get('attach-to-classes', [ESBTPMatiereController::class, 'attachToClasses'])
-                    ->name('attach-to-classes')
-                    ->middleware(['permission:view_matieres|view matieres']);
-                Route::post('process-attach-to-classes', [ESBTPMatiereController::class, 'processAttachToClasses'])
-                    ->name('process-attach-to-classes')
-                    ->middleware(['permission:edit_matieres|edit matieres']);
-
                 // Routes AJAX pour la configuration des liaisons
                 Route::get('{matiere}/liaisons', [ESBTPMatiereController::class, 'getLiaisons'])
                     ->name('liaisons')

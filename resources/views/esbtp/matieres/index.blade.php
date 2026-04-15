@@ -203,9 +203,6 @@ tr[data-matiere-id] {
                    value="{{ $filters['search'] ?? '' }}"
                    id="matieres-header-search">
             <div class="d-flex gap-2">
-                <a href="{{ route('esbtp.matieres.attach-to-classes') }}" class="btn-acasi secondary">
-                    <i class="fas fa-link"></i> Attacher aux classes
-                </a>
                 <a href="{{ route('esbtp.matieres.create') }}" class="btn-acasi primary">
                     <i class="fas fa-plus"></i> Ajouter une matière
                 </a>
