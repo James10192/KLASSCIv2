@@ -237,9 +237,9 @@ class ESBTPMatiereController extends Controller
         // Valider les données du formulaire
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:esbtp_matieres,code',
+            'code' => 'nullable|string|max:50|unique:esbtp_matieres,code',
             'description' => 'nullable|string',
-            'coefficient' => 'required|numeric|min:0',
+            'coefficient' => 'nullable|numeric|min:0',
             'niveau_etude_id' => 'nullable|exists:esbtp_niveau_etudes,id',
             'filiere_id' => 'nullable|exists:esbtp_filieres,id',
             'filieres' => 'nullable|array',
@@ -250,6 +250,23 @@ class ESBTPMatiereController extends Controller
             'couleur' => 'nullable|string|max:50',
             'is_active' => 'required|boolean',
         ]);
+
+        // Auto-generate code from name if not provided
+        if (empty($validatedData['code'])) {
+            $baseName = strtoupper(trim($validatedData['name']));
+            $baseCode = implode('', array_map(fn($w) => substr($w, 0, 3), preg_split('/\s+/', $baseName)));
+            $code = $baseCode;
+            $i = 1;
+            while (ESBTPMatiere::where('code', $code)->exists()) {
+                $code = $baseCode . $i++;
+            }
+            $validatedData['code'] = $code;
+        }
+
+        // Default coefficient if not provided
+        if (!isset($validatedData['coefficient']) || $validatedData['coefficient'] === null) {
+            $validatedData['coefficient'] = 1;
+        }
 
         // Ajouter l'identifiant de l'utilisateur courant
         $validatedData['created_by'] = Auth::id();
