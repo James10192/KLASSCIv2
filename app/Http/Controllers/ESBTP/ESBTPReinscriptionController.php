@@ -1023,13 +1023,10 @@ class ESBTPReinscriptionController extends Controller
             ]);
 
             $etudiants = $etudiants->filter(function ($item) {
-                $score = null;
-                if (is_array($item)) {
-                    $score = $item['fuzzy_score'] ?? null;
-                } elseif (is_object($item) && property_exists($item, 'fuzzy_score')) {
-                    $score = $item->fuzzy_score;
-                }
-                return $score === null || $score >= 80;
+                $score = is_array($item)
+                    ? ($item['fuzzy_score'] ?? null)
+                    : (isset($item->fuzzy_score) ? $item->fuzzy_score : null);
+                return $score !== null && $score >= 80;
             })->values();
         }
         
