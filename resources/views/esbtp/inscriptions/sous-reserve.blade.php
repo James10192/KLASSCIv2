@@ -45,7 +45,7 @@
         padding: 12px 16px; white-space: nowrap; border: none;
     }
     .sr-table tbody td { padding: 12px 16px; font-size: .85rem; color: #334155; vertical-align: middle; border-bottom: 1px solid #f1f5f9; }
-    .sr-table tbody tr:hover { background: rgba(4,83,203,.03); }
+    .sr-table tbody tr:hover { background: rgba(4,83,203,.03); cursor: pointer; }
     .sr-table tbody tr:last-child td { border-bottom: none; }
 
     .sr-badge {
@@ -240,7 +240,7 @@
                             </thead>
                             <tbody>
                                 @foreach($inscriptions as $inscription)
-                                <tr>
+                                <tr data-href="{{ route('esbtp.inscriptions.show', $inscription) }}">
                                     <td>
                                         <input class="form-check-input row-checkbox" type="checkbox" name="inscription_ids[]" value="{{ $inscription->id }}">
                                     </td>
@@ -358,6 +358,14 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!this.checked) selectAll.checked = false;
             if (document.querySelectorAll('.row-checkbox:checked').length === checkboxes.length) selectAll.checked = true;
             updateCount();
+        });
+    });
+
+    // Clickable rows — navigate to inscription detail
+    document.querySelectorAll('.sr-table tbody tr[data-href]').forEach(row => {
+        row.addEventListener('click', function(e) {
+            if (e.target.closest('input, button, a, form')) return;
+            window.location.href = this.dataset.href;
         });
     });
 });
