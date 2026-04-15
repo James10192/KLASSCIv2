@@ -147,70 +147,45 @@
 .mc-switch-text { font-size: 0.85rem; color: #334155; font-weight: 600; }
 .mc-switch-hint { font-size: 0.75rem; color: #94a3b8; }
 
-/* --- FN section reuse from index (scoped copy) --- */
-.mc-fn-section {
-    background: #f1f5f9; border-radius: 14px;
-    padding: 1.25rem; border: 1px solid #e2e8f0;
-}
-.mc-fn-header {
-    display: flex; align-items: center; gap: 0.75rem;
-    margin-bottom: 1rem; padding-bottom: 0.75rem;
-    border-bottom: 1px solid #e2e8f0;
-}
-.mc-fn-icon {
-    width: 34px; height: 34px; border-radius: 9px;
-    background: linear-gradient(135deg, #0453cb, #1a6ee8);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.8rem; color: #fff; flex-shrink: 0;
-}
-.mc-fn-title { font-size: 0.88rem; font-weight: 700; color: #1e293b; }
-.mc-fn-sub { font-size: 0.72rem; color: #64748b; }
-.mc-fn-counter {
-    margin-left: auto;
-    background: rgba(4,83,203,0.08); color: #0453cb;
-    font-size: 0.72rem; font-weight: 700;
-    padding: 0.2rem 0.65rem; border-radius: 20px;
-    border: 1px solid rgba(4,83,203,0.15);
-}
-
-/* Checkbox list premium */
-.mc-check-list {
-    max-height: 220px; overflow-y: auto;
-    border: 1px solid #e2e8f0; border-radius: 10px;
-    background: #fff; padding: 4px;
-}
-.mc-check-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8px 12px; border-radius: 8px;
-    transition: all 0.15s ease; cursor: pointer;
-}
-.mc-check-item:hover { background: rgba(4,83,203,0.04); }
-.mc-check-item input[type="checkbox"] {
-    width: 18px; height: 18px; border-radius: 4px;
-    border: 2px solid #cbd5e1; cursor: pointer;
-    accent-color: #0453cb;
-}
-.mc-check-item input[type="checkbox"]:checked { border-color: #0453cb; }
-.mc-check-item-label { font-size: 0.85rem; font-weight: 600; color: #1e293b; cursor: pointer; }
-.mc-check-item-code {
-    font-size: 0.7rem; font-weight: 600; color: #0453cb;
-    background: rgba(4,83,203,0.08); padding: 1px 6px;
-    border-radius: 4px; margin-left: auto;
-}
-.mc-check-item .badge { font-size: 0.65rem; }
-
-/* Combinations preview */
-.mc-combos {
-    padding: 14px; background: rgba(4,83,203,0.04);
-    border: 1px solid rgba(4,83,203,0.1); border-radius: 12px;
-}
-.mc-combo-badge {
-    display: inline-flex; align-items: center; gap: 4px;
-    padding: 4px 10px; border-radius: 8px;
-    background: linear-gradient(135deg, #0453cb, #1a6ee8);
-    color: #fff; font-size: 0.72rem; font-weight: 600;
-    margin: 3px;
-}
+/* --- FN section (copied from matieres/index modal) --- */
+.fn-section { background: #f1f5f9; border-radius: 14px; padding: 1.25rem; border: 1px solid #e2e8f0; }
+.fn-section-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0; }
+.fn-section-icon { width: 38px; height: 38px; background: linear-gradient(135deg, #0453cb, #1a6ee8); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 3px 10px rgba(4,83,203,0.28); }
+.fn-section-icon i { color: #fff; font-size: 0.9rem; }
+.fn-section-title { font-size: 0.95rem; font-weight: 700; color: #1e293b; margin: 0; }
+.fn-section-subtitle { font-size: 0.78rem; color: #64748b; margin: 0; }
+.fn-counter { margin-left: auto; background: rgba(4,83,203,0.08); color: #0453cb; font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.65rem; border-radius: 20px; border: 1px solid rgba(4,83,203,0.15); }
+.fn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+.fn-filiere-card { background: #fff; border-radius: 14px; box-shadow: 0 2px 8px rgba(4,83,203,0.08), 0 0 0 1px rgba(4,83,203,0.06); overflow: hidden; transition: all 0.22s cubic-bezier(0.4,0,0.2,1); animation: fn-fadeIn 0.3s ease both; }
+.fn-filiere-card:hover { box-shadow: 0 6px 24px rgba(4,83,203,0.14), 0 0 0 1.5px rgba(4,83,203,0.14); transform: translateY(-1px); }
+.fn-filiere-card.has-selection { box-shadow: 0 4px 20px rgba(4,83,203,0.18), 0 0 0 2px rgba(4,83,203,0.22); }
+.fn-filiere-header { padding: 0.85rem 1rem; background: linear-gradient(135deg, #f8faff, #eef3ff); border-bottom: 1px solid rgba(4,83,203,0.15); display: flex; align-items: center; gap: 0.6rem; }
+.fn-filiere-dot { width: 8px; height: 8px; border-radius: 50%; background: #0453cb; flex-shrink: 0; transition: all 0.22s; }
+.fn-filiere-card.has-selection .fn-filiere-dot { background: #059669; box-shadow: 0 0 0 3px rgba(5,150,105,0.2); }
+.fn-filiere-name { font-size: 0.82rem; font-weight: 700; color: #1e293b; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fn-filiere-code { font-size: 0.67rem; font-weight: 700; color: #0453cb; background: rgba(4,83,203,0.08); border: 1px solid rgba(4,83,203,0.15); border-radius: 6px; padding: 0.15rem 0.45rem; flex-shrink: 0; }
+.fn-filiere-sel-badge { font-size: 0.65rem; font-weight: 600; color: #059669; background: rgba(5,150,105,0.1); border-radius: 10px; padding: 0.15rem 0.4rem; display: none; flex-shrink: 0; }
+.fn-filiere-card.has-selection .fn-filiere-sel-badge { display: inline; }
+.fn-filiere-actions { padding: 0.5rem 1rem 0; display: flex; justify-content: flex-end; }
+.fn-select-all-btn { font-size: 0.7rem; color: #64748b; cursor: pointer; background: none; border: none; padding: 0.15rem 0.4rem; border-radius: 6px; transition: all 0.22s; font-weight: 500; display: flex; align-items: center; gap: 0.3rem; }
+.fn-select-all-btn:hover { color: #0453cb; background: rgba(4,83,203,0.08); }
+.fn-select-all-btn.all-selected { color: #059669; }
+.fn-niveaux-body { padding: 0.75rem 1rem 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.fn-niveau-checkbox { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+.fn-niveau-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.75rem; border-radius: 22px; border: 1.5px solid #e2e8f0; background: #f8fafc; color: #64748b; font-size: 0.775rem; font-weight: 600; cursor: pointer; user-select: none; transition: all 0.22s; white-space: nowrap; }
+.fn-niveau-pill .fn-pill-check { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid currentColor; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.22s; font-size: 0.6rem; }
+.fn-niveau-pill .fn-pill-check i { opacity: 0; transform: scale(0.4); transition: all 0.22s; }
+.fn-niveau-pill .fn-pill-code { font-size: 0.64rem; opacity: 0.65; font-weight: 500; }
+.fn-niveau-pill:hover { border-color: #0453cb; color: #0453cb; background: rgba(4,83,203,0.06); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(4,83,203,0.12); }
+.fn-niveau-pill.active { background: linear-gradient(135deg, #0453cb, #1a6ee8); border-color: #0453cb; color: #fff; box-shadow: 0 3px 12px rgba(4,83,203,0.32); transform: translateY(-1px); }
+.fn-niveau-pill.active .fn-pill-check { border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.25); }
+.fn-niveau-pill.active .fn-pill-check i { opacity: 1; transform: scale(1); color: #fff; }
+.fn-niveau-pill.active:hover { background: linear-gradient(135deg, #0342a8, #1058cc); box-shadow: 0 4px 16px rgba(4,83,203,0.4); color: #fff; }
+.fn-empty-niveaux { width: 100%; text-align: center; padding: 1rem 0.5rem; color: #64748b; font-size: 0.78rem; }
+@keyframes fn-fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.fn-filiere-card:nth-child(1) { animation-delay: 0.04s; } .fn-filiere-card:nth-child(2) { animation-delay: 0.08s; } .fn-filiere-card:nth-child(3) { animation-delay: 0.12s; }
+.fn-filiere-card:nth-child(4) { animation-delay: 0.16s; } .fn-filiere-card:nth-child(5) { animation-delay: 0.20s; } .fn-filiere-card:nth-child(6) { animation-delay: 0.24s; }
+@media (max-width: 600px) { .fn-grid { grid-template-columns: 1fr; } }
 
 /* --- Responsive --- */
 @media (max-width: 768px) {
@@ -354,86 +329,67 @@
                 </div>
             </div>
 
-            <!-- Colonne droite : Associations -->
+            <!-- Colonne droite : Liaisons Filières × Niveaux -->
             <div class="col-md-6">
                 <div class="mc-card">
                     <div class="mc-card-header">
                         <div class="mc-card-header-icon"><i class="fas fa-link"></i></div>
                         <div>
-                            <div class="mc-card-header-title">Associations</div>
-                            <div class="mc-card-header-sub">Filières et niveaux d'étude</div>
+                            <div class="mc-card-header-title">Liaisons Filières & Niveaux</div>
+                            <div class="mc-card-header-sub">Cliquez sur un niveau pour activer la liaison</div>
                         </div>
                     </div>
                     <div class="mc-card-body">
-                        <!-- Filières -->
-                        <div class="mb-4">
-                            <div class="mc-fn-header" style="margin-bottom:10px;padding-bottom:8px;">
-                                <div class="mc-fn-icon"><i class="fas fa-graduation-cap"></i></div>
+                        <div class="fn-section" @error('liaisons') style="border-color:#dc2626;" @enderror>
+                            <div class="fn-section-header">
+                                <div class="fn-section-icon"><i class="fas fa-graduation-cap"></i></div>
                                 <div>
-                                    <div class="mc-fn-title">Filières</div>
-                                    <div class="mc-fn-sub">Sélection multiple autorisée</div>
+                                    <p class="fn-section-title">Filières & Niveaux</p>
+                                    <p class="fn-section-subtitle">Cliquez sur un niveau pour activer la liaison</p>
                                 </div>
-                                <span class="mc-fn-counter" id="mc-filiere-counter">0 sélectionnée(s)</span>
+                                <span class="fn-counter" id="mc-fn-global-counter">0 sélection</span>
                             </div>
-                            <div class="mc-check-list @error('filieres') is-invalid @enderror">
+
+                            <div class="fn-grid" id="mc-filieres-niveaux-grid">
                                 @foreach($filieres as $filiere)
-                                <label class="mc-check-item" for="create_filiere_{{ $filiere->id }}">
-                                    <input class="filiere-check" type="checkbox"
-                                           value="{{ $filiere->id }}"
-                                           id="create_filiere_{{ $filiere->id }}"
-                                           name="filieres[]"
-                                           {{ in_array($filiere->id, old('filieres', isset($preselectedFiliereId) ? [$preselectedFiliereId] : [])) ? 'checked' : '' }}>
-                                    <span class="mc-check-item-label">{{ $filiere->name }}</span>
-                                    @if($filiere->code)
-                                        <span class="mc-check-item-code">{{ $filiere->code }}</span>
-                                    @endif
-                                    @if(isset($preselectedFiliereId) && $filiere->id == $preselectedFiliereId)
-                                        <span class="badge bg-success ms-1" style="font-size:0.6rem;padding:2px 6px;">Pré-sélectionnée</span>
-                                    @endif
-                                </label>
-                                @endforeach
-                            </div>
-                            @error('filieres') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
-                        </div>
-
-                        <!-- Niveaux -->
-                        <div class="mb-4">
-                            <div class="mc-fn-header" style="margin-bottom:10px;padding-bottom:8px;">
-                                <div class="mc-fn-icon"><i class="fas fa-layer-group"></i></div>
-                                <div>
-                                    <div class="mc-fn-title">Niveaux d'étude</div>
-                                    <div class="mc-fn-sub">Sélection multiple autorisée</div>
+                                <div class="fn-filiere-card" data-filiere-id="{{ $filiere->id }}" id="mc-fn-card-{{ $filiere->id }}">
+                                    <div class="fn-filiere-header">
+                                        <span class="fn-filiere-dot"></span>
+                                        <span class="fn-filiere-name" title="{{ $filiere->name }}">{{ $filiere->name }}</span>
+                                        @if($filiere->code)
+                                            <span class="fn-filiere-code">{{ $filiere->code }}</span>
+                                        @endif
+                                        <span class="fn-filiere-sel-badge" id="mc-fn-badge-{{ $filiere->id }}">&#10003;</span>
+                                    </div>
+                                    <div class="fn-filiere-actions">
+                                        <button type="button" class="fn-select-all-btn" id="mc-fn-selectall-{{ $filiere->id }}"
+                                                onclick="mcFnToggleAll({{ $filiere->id }}, this)">
+                                            <i class="fas fa-check-double"></i><span>Tout sélectionner</span>
+                                        </button>
+                                    </div>
+                                    <div class="fn-niveaux-body">
+                                        @forelse($niveauxEtudes as $niveau)
+                                        <span class="fn-niveau-pill" id="mc-fn-pill-{{ $filiere->id }}-{{ $niveau->id }}"
+                                              onclick="mcFnToggle(this, {{ $filiere->id }}, {{ $niveau->id }})"
+                                              title="{{ $niveau->name }}">
+                                            <span class="fn-pill-check"><i class="fas fa-check"></i></span>
+                                            {{ $niveau->name }}
+                                            @if($niveau->code)
+                                                <span class="fn-pill-code">{{ $niveau->code }}</span>
+                                            @endif
+                                        </span>
+                                        @empty
+                                        <div class="fn-empty-niveaux"><i class="fas fa-inbox me-1"></i>Aucun niveau</div>
+                                        @endforelse
+                                    </div>
                                 </div>
-                                <span class="mc-fn-counter" id="mc-niveau-counter">0 sélectionné(s)</span>
-                            </div>
-                            <div class="mc-check-list @error('niveaux') is-invalid @enderror">
-                                @foreach($niveauxEtudes as $niveau)
-                                <label class="mc-check-item" for="create_niveau_{{ $niveau->id }}">
-                                    <input class="niveau-check" type="checkbox"
-                                           value="{{ $niveau->id }}"
-                                           id="create_niveau_{{ $niveau->id }}"
-                                           name="niveaux[]"
-                                           {{ in_array($niveau->id, old('niveaux', isset($preselectedNiveauId) ? [$preselectedNiveauId] : [])) ? 'checked' : '' }}>
-                                    <span class="mc-check-item-label">{{ $niveau->name }}</span>
-                                    @if($niveau->code)
-                                        <span class="mc-check-item-code">{{ $niveau->code }}</span>
-                                    @endif
-                                    @if(isset($preselectedNiveauId) && $niveau->id == $preselectedNiveauId)
-                                        <span class="badge bg-success ms-1" style="font-size:0.6rem;padding:2px 6px;">Pré-sélectionné</span>
-                                    @endif
-                                </label>
                                 @endforeach
                             </div>
-                            @error('niveaux') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                         </div>
+                        @error('liaisons') <div style="color:#dc2626;font-size:0.82rem;margin-top:8px;">{{ $message }}</div> @enderror
 
-                        <!-- Aperçu combinaisons -->
-                        <div id="create-combinations-preview" class="mc-combos">
-                            <div class="d-flex align-items-center gap-2" style="color:#64748b;font-size:0.82rem;">
-                                <i class="fas fa-info-circle"></i>
-                                Sélectionnez des filières et des niveaux pour voir les combinaisons.
-                            </div>
-                        </div>
+                        <!-- Hidden inputs container (populated by JS) -->
+                        <div id="mc-liaisons-hidden"></div>
                     </div>
                 </div>
             </div>
@@ -466,63 +422,70 @@ $(document).ready(function() {
             }
         }
     });
-
-    // Update counters
-    function updateCounters() {
-        const fCount = $('.filiere-check:checked').length;
-        const nCount = $('.niveau-check:checked').length;
-        $('#mc-filiere-counter').text(fCount + ' sélectionnée(s)');
-        $('#mc-niveau-counter').text(nCount + ' sélectionné(s)');
-    }
-
-    // Update combinations preview
-    function updateCreateCombinationsPreview() {
-        const selectedFilieres = [];
-        const selectedNiveaux = [];
-
-        $('.filiere-check:checked').each(function() {
-            selectedFilieres.push($(this).next('.mc-check-item-label').text().trim());
-        });
-
-        $('.niveau-check:checked').each(function() {
-            selectedNiveaux.push($(this).next('.mc-check-item-label').text().trim());
-        });
-
-        const previewDiv = $('#create-combinations-preview');
-
-        if (selectedFilieres.length === 0 || selectedNiveaux.length === 0) {
-            previewDiv.html(`
-                <div class="d-flex align-items-center gap-2" style="color:#64748b;font-size:0.82rem;">
-                    <i class="fas fa-info-circle"></i>
-                    Sélectionnez au moins une filière et un niveau pour voir les combinaisons.
-                </div>
-            `);
-            return;
-        }
-
-        let html = `<div style="font-size:0.78rem;font-weight:700;color:#0453cb;margin-bottom:8px;">
-            <i class="fas fa-check-circle me-1"></i>${selectedFilieres.length * selectedNiveaux.length} combinaison(s)
-        </div><div style="display:flex;flex-wrap:wrap;">`;
-
-        selectedFilieres.forEach(filiere => {
-            selectedNiveaux.forEach(niveau => {
-                html += `<span class="mc-combo-badge"><i class="fas fa-link" style="font-size:0.6rem;"></i>${filiere} ↔ ${niveau}</span>`;
-            });
-        });
-
-        html += '</div>';
-        previewDiv.html(html);
-
-        updateCounters();
-    }
-
-    $(document).on('change', '.filiere-check, .niveau-check', function() {
-        updateCreateCombinationsPreview();
-        updateCounters();
-    });
-
-    updateCreateCombinationsPreview();
-    updateCounters();
 });
+
+// ═══ Filières × Niveaux pill-based liaisons (mc-fn-*) ═══
+
+/** Toggle a single niveau pill */
+function mcFnToggle(pillEl, filiereId, niveauId) {
+    pillEl.classList.toggle('active');
+    mcFnUpdateCard(filiereId);
+    mcFnUpdateCounter();
+    mcFnSyncHiddenInputs();
+}
+
+/** Toggle all niveaux for a filière */
+function mcFnToggleAll(filiereId, btn) {
+    const card = document.getElementById('mc-fn-card-' + filiereId);
+    const pills = card.querySelectorAll('.fn-niveau-pill');
+    const allActive = Array.from(pills).every(p => p.classList.contains('active'));
+    pills.forEach(p => p.classList.toggle('active', !allActive));
+    mcFnUpdateCard(filiereId);
+    mcFnUpdateCounter();
+    mcFnSyncHiddenInputs();
+}
+
+/** Update a filière card visual state */
+function mcFnUpdateCard(filiereId) {
+    const card = document.getElementById('mc-fn-card-' + filiereId);
+    const pills = card.querySelectorAll('.fn-niveau-pill');
+    const btn = document.getElementById('mc-fn-selectall-' + filiereId);
+    const activeCount = card.querySelectorAll('.fn-niveau-pill.active').length;
+    card.classList.toggle('has-selection', activeCount > 0);
+    if (btn) {
+        const allSelected = activeCount === pills.length && pills.length > 0;
+        btn.classList.toggle('all-selected', allSelected);
+        const icon = btn.querySelector('i');
+        const span = btn.querySelector('span');
+        if (allSelected) { icon.className = 'fas fa-times-circle'; span.textContent = 'Tout désélectionner'; }
+        else { icon.className = 'fas fa-check-double'; span.textContent = 'Tout sélectionner'; }
+    }
+}
+
+/** Update global counter */
+function mcFnUpdateCounter() {
+    const total = document.querySelectorAll('#mc-filieres-niveaux-grid .fn-niveau-pill.active').length;
+    const counter = document.getElementById('mc-fn-global-counter');
+    if (counter) counter.textContent = total + ' sélection' + (total > 1 ? 's' : '');
+}
+
+/** Sync hidden inputs for form submission: liaisons[0][filiere_id], liaisons[0][niveau_id] */
+function mcFnSyncHiddenInputs() {
+    const container = document.getElementById('mc-liaisons-hidden');
+    container.innerHTML = '';
+    let idx = 0;
+    document.querySelectorAll('#mc-filieres-niveaux-grid .fn-niveau-pill.active').forEach(pill => {
+        const card = pill.closest('.fn-filiere-card');
+        const filiereId = card.dataset.filiereId;
+        // Extract niveau ID from pill ID: mc-fn-pill-{filiereId}-{niveauId}
+        const pillId = pill.id; // mc-fn-pill-X-Y
+        const parts = pillId.split('-');
+        const niveauId = parts[parts.length - 1];
+
+        container.innerHTML += `<input type="hidden" name="liaisons[${idx}][filiere_id]" value="${filiereId}">`;
+        container.innerHTML += `<input type="hidden" name="liaisons[${idx}][niveau_id]" value="${niveauId}">`;
+        idx++;
+    });
+}
 </script>
 @endsection

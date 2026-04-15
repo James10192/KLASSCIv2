@@ -246,6 +246,9 @@ class ESBTPMatiereController extends Controller
             'filieres.*' => 'exists:esbtp_filieres,id',
             'niveaux' => 'nullable|array',
             'niveaux.*' => 'exists:esbtp_niveau_etudes,id',
+            'liaisons' => 'nullable|array',
+            'liaisons.*.filiere_id' => 'required_with:liaisons|exists:esbtp_filieres,id',
+            'liaisons.*.niveau_id' => 'required_with:liaisons|exists:esbtp_niveau_etudes,id',
             'type_formation' => 'required|in:generale,technologique_professionnelle',
             'couleur' => 'nullable|string|max:50',
             'is_active' => 'required|boolean',
@@ -292,14 +295,34 @@ class ESBTPMatiereController extends Controller
             $niveauIds = [$request->niveau_etude_id];
         }
 
-        // Attacher les filières
+        // Attacher les filières (mode legacy — cartésien)
         if (! empty($filiereIds)) {
             $matiere->filieres()->attach($filiereIds);
         }
 
-        // Attacher les niveaux d'études
+        // Attacher les niveaux d'études (mode legacy — cartésien)
         if (! empty($niveauIds)) {
             $matiere->niveaux()->attach($niveauIds);
+        }
+
+        // Mode liaisons précises (filière × niveau pairs from create form)
+        if ($request->has('liaisons') && is_array($request->liaisons)) {
+            $seen = [];
+            foreach ($request->liaisons as $liaison) {
+                $key = ($liaison['filiere_id'] ?? 0) . '_' . ($liaison['niveau_id'] ?? 0);
+                if (isset($seen[$key])) continue;
+                $seen[$key] = true;
+
+                \App\Models\ESBTPMatiereFilierNiveau::create([
+                    'matiere_id'      => $matiere->id,
+                    'filiere_id'      => $liaison['filiere_id'],
+                    'niveau_etude_id' => $liaison['niveau_id'],
+                ]);
+
+                // Also attach to pivot tables for compatibility
+                $matiere->filieres()->syncWithoutDetaching([$liaison['filiere_id']]);
+                $matiere->niveaux()->syncWithoutDetaching([$liaison['niveau_id']]);
+            }
         }
 
         // Rediriger avec un message de succès
