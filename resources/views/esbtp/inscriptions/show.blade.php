@@ -1384,10 +1384,6 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                     <span class="is-info-lbl">Commune</span>
                                     <span class="is-info-val {{ !$inscription->etudiant->commune ? 'muted' : '' }}">{{ $inscription->etudiant->commune ?: 'Non renseignée' }}</span>
                                 </div>
-                                <div class="is-info-row">
-                                    <span class="is-info-lbl">Adresse</span>
-                                    <span class="is-info-val {{ !$inscription->etudiant->adresse ? 'muted' : '' }}">{{ $inscription->etudiant->adresse ?: 'Non renseignée' }}</span>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -1709,77 +1705,31 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                 </button>
                                             </h2>
                                             <div id="collapse{{ $index }}" class="accordion-collapse collapse {{ $index == 0 ? 'show' : '' }}" aria-labelledby="heading{{ $index }}" data-bs-parent="#accordionParents">
-                                                <div class="accordion-body">
-                                                    <div class="row">
-                                                        <div class="col-12 col-1600-6 mb-3">
-                                                            <!-- Version Desktop : Table -->
-                                                            <table class="table table-bordered table-desktop-1600">
-                                                                <tr>
-                                                                    <th style="width: 40%">Nom complet</th>
-                                                                    <td>{{ $parent->nom }} {{ $parent->prenoms }}</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th>Relation</th>
-                                                                    <td>{{ $parent->pivot->relation }}</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th>Téléphone</th>
-                                                                    <td>{{ $parent->telephone ?: 'Non renseigné' }}</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th>Email</th>
-                                                                    <td>{{ $parent->email ?: 'Non renseigné' }}</td>
-                                                                </tr>
-                                                            </table>
-
-                                                            <!-- Version Mobile : Liste -->
-                                                            <div class="list-mobile-1600">
-                                                                <div class="row g-1 small">
-                                                                    <div class="col-12 d-flex border-bottom py-2">
-                                                                        <div class="text-muted flex-shrink-0 me-2">Nom complet:</div>
-                                                                        <div class="fw-bold">{{ $parent->nom }} {{ $parent->prenoms }}</div>
-                                                                    </div>
-                                                                    <div class="col-12 d-flex border-bottom py-2">
-                                                                        <div class="text-muted flex-shrink-0 me-2">Relation:</div>
-                                                                        <div class="fw-bold">{{ $parent->pivot->relation }}</div>
-                                                                    </div>
-                                                                    <div class="col-12 d-flex border-bottom py-2">
-                                                                        <div class="text-muted flex-shrink-0 me-2">Téléphone:</div>
-                                                                        <div class="fw-bold">{{ $parent->telephone ?: 'Non renseigné' }}</div>
-                                                                    </div>
-                                                                    <div class="col-12 d-flex border-bottom py-2">
-                                                                        <div class="text-muted flex-shrink-0 me-2">Email:</div>
-                                                                        <div class="fw-bold text-break">{{ $parent->email ?: 'Non renseigné' }}</div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
+                                                <div class="accordion-body" style="padding:16px;">
+                                                    <div class="is-info-grid" style="grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));">
+                                                        <div class="is-info-row">
+                                                            <span class="is-info-lbl">Nom complet</span>
+                                                            <span class="is-info-val">{{ $parent->nom }} {{ $parent->prenoms }}</span>
                                                         </div>
-                                                        <div class="col-12 col-1600-6 mb-3">
-                                                            <!-- Version Desktop : Table -->
-                                                            <table class="table table-bordered table-desktop-1600">
-                                                                <tr>
-                                                                    <th style="width: 40%">Profession</th>
-                                                                    <td>{{ $parent->profession ?: 'Non renseignée' }}</td>
-                                                                </tr>
-                                                                <tr>
-                                                                    <th>Adresse</th>
-                                                                    <td>{{ $parent->adresse ?: 'Non renseignée' }}</td>
-                                                                </tr>
-                                                            </table>
-
-                                                            <!-- Version Mobile : Liste -->
-                                                            <div class="list-mobile-1600">
-                                                                <div class="row g-1 small">
-                                                                    <div class="col-12 d-flex border-bottom py-2">
-                                                                        <div class="text-muted flex-shrink-0 me-2">Profession:</div>
-                                                                        <div class="fw-bold">{{ $parent->profession ?: 'Non renseignée' }}</div>
-                                                                    </div>
-                                                                    <div class="col-12 d-flex border-bottom py-2">
-                                                                        <div class="text-muted flex-shrink-0 me-2">Adresse:</div>
-                                                                        <div class="fw-bold text-break">{{ $parent->adresse ?: 'Non renseignée' }}</div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
+                                                        <div class="is-info-row">
+                                                            <span class="is-info-lbl">Relation</span>
+                                                            <span class="is-info-val">{{ $parent->pivot->relation }}</span>
+                                                        </div>
+                                                        <div class="is-info-row">
+                                                            <span class="is-info-lbl">Téléphone</span>
+                                                            <span class="is-info-val {{ !$parent->telephone ? 'muted' : '' }}">{{ $parent->telephone ?: 'Non renseigné' }}</span>
+                                                        </div>
+                                                        <div class="is-info-row">
+                                                            <span class="is-info-lbl">Email</span>
+                                                            <span class="is-info-val {{ !$parent->email ? 'muted' : '' }}" style="word-break:break-all;">{{ $parent->email ?: 'Non renseigné' }}</span>
+                                                        </div>
+                                                        <div class="is-info-row">
+                                                            <span class="is-info-lbl">Profession</span>
+                                                            <span class="is-info-val {{ !$parent->profession ? 'muted' : '' }}">{{ $parent->profession ?: 'Non renseignée' }}</span>
+                                                        </div>
+                                                        <div class="is-info-row">
+                                                            <span class="is-info-lbl">Adresse</span>
+                                                            <span class="is-info-val {{ !$parent->adresse ? 'muted' : '' }}">{{ $parent->adresse ?: 'Non renseignée' }}</span>
                                                         </div>
                                                     </div>
                                                 </div>
