@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
+use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPNote;
+use App\Services\ClassStudentService;
 use App\Services\ESBTPInscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -14,11 +16,13 @@ use Illuminate\Support\Facades\Log;
 class CLIStudentController extends BaseApiController
 {
     protected ESBTPInscriptionService $inscriptionService;
+    protected ClassStudentService $classStudentService;
 
-    public function __construct(ESBTPInscriptionService $inscriptionService)
+    public function __construct(ESBTPInscriptionService $inscriptionService, ClassStudentService $classStudentService)
     {
         parent::__construct();
         $this->inscriptionService = $inscriptionService;
+        $this->classStudentService = $classStudentService;
     }
 
     /**
@@ -294,5 +298,239 @@ class CLIStudentController extends BaseApiController
             ]);
             return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
         }
+    }
+
+    /**
+     * POST /api/cli/inscriptions/move — Move students to correct class
+     */
+    public function moveStudents(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:write')) {
+            return $this->errorResponse('Token missing cli:write ability', [], 403);
+        }
+
+        $moves = $request->input('moves', []);
+        if (empty($moves)) {
+            return $this->errorResponse('No moves provided. Expected: {moves: [{etudiant_id, from_classe_id, to_classe_id}, ...]}', [], 422);
+        }
+
+        $annee = $this->getAnneeCouraante();
+        if (!$annee) {
+            return $this->errorResponse('No active academic year', [], 422);
+        }
+
+        $moved = [];
+        $warnings = [];
+        $skipped = [];
+        $errors = [];
+
+        foreach ($moves as $move) {
+            $etudiantId = $move['etudiant_id'] ?? null;
+            $fromClasseId = $move['from_classe_id'] ?? null;
+            $toClasseId = $move['to_classe_id'] ?? null;
+
+            if (!$etudiantId || !$fromClasseId || !$toClasseId) {
+                $errors[] = ['etudiant_id' => $etudiantId, 'reason' => 'missing_fields'];
+                continue;
+            }
+
+            // Pre-check: inscription exists in source class
+            $inscription = ESBTPInscription::where('etudiant_id', $etudiantId)
+                ->where('annee_universitaire_id', $annee->id)
+                ->where('classe_id', $fromClasseId)
+                ->first();
+
+            if (!$inscription) {
+                $errors[] = ['etudiant_id' => $etudiantId, 'reason' => 'no_inscription_in_source_class', 'from' => $fromClasseId];
+                continue;
+            }
+
+            if ($inscription->status !== 'active') {
+                $errors[] = ['etudiant_id' => $etudiantId, 'reason' => 'inscription_not_active', 'status' => $inscription->status];
+                continue;
+            }
+
+            // Pre-check: no existing inscription in target class
+            $existsInTarget = ESBTPInscription::where('etudiant_id', $etudiantId)
+                ->where('annee_universitaire_id', $annee->id)
+                ->where('classe_id', $toClasseId)
+                ->exists();
+
+            if ($existsInTarget) {
+                $skipped[] = ['etudiant_id' => $etudiantId, 'reason' => 'already_in_target_class', 'to' => $toClasseId];
+                continue;
+            }
+
+            // Check for existing data (notes/resultats/bulletins) in source class
+            $fromClasse = ESBTPClasse::find($fromClasseId);
+            $toClasse = ESBTPClasse::find($toClasseId);
+
+            if (!$fromClasse || !$toClasse) {
+                $errors[] = ['etudiant_id' => $etudiantId, 'reason' => 'classe_not_found'];
+                continue;
+            }
+
+            $dataCheck = $this->classStudentService->checkStudentData($fromClasse, [$etudiantId]);
+            $hasData = $dataCheck['has_any_data'] ?? false;
+
+            if ($hasData) {
+                $studentData = $dataCheck['students'][0] ?? [];
+                $warnings[] = [
+                    'etudiant_id' => $etudiantId,
+                    'nom' => $studentData['nom'] ?? '',
+                    'notes' => $studentData['notes_count'] ?? 0,
+                    'resultats' => $studentData['resultats_count'] ?? 0,
+                    'bulletins' => $studentData['bulletins_count'] ?? 0,
+                    'message' => 'Student has data in source class — will be archived',
+                ];
+            }
+
+            // Execute move: call addStudents with single student (per-student transaction)
+            try {
+                $result = $this->classStudentService->addStudents($toClasse, [$etudiantId]);
+
+                if ($result['added'] > 0) {
+                    $etudiant = ESBTPEtudiant::find($etudiantId);
+                    $moved[] = [
+                        'etudiant_id' => $etudiantId,
+                        'nom' => $etudiant ? trim($etudiant->nom . ' ' . $etudiant->prenoms) : '',
+                        'from' => $fromClasse->name,
+                        'to' => $toClasse->name,
+                        'had_data' => $hasData,
+                    ];
+                } else {
+                    $errors[] = [
+                        'etudiant_id' => $etudiantId,
+                        'reason' => 'service_error',
+                        'details' => $result['errors'],
+                    ];
+                }
+            } catch (\Exception $e) {
+                $errors[] = ['etudiant_id' => $etudiantId, 'reason' => 'exception', 'message' => $e->getMessage()];
+            }
+        }
+
+        Log::info('CLI: moveStudents completed', [
+            'moved' => count($moved),
+            'warnings' => count($warnings),
+            'skipped' => count($skipped),
+            'errors' => count($errors),
+            'user_id' => $request->user()->id,
+        ]);
+
+        return $this->successResponse([
+            'moved' => $moved,
+            'warnings' => $warnings,
+            'skipped' => $skipped,
+            'errors' => $errors,
+            'summary' => [
+                'moved' => count($moved),
+                'warnings' => count($warnings),
+                'skipped' => count($skipped),
+                'errors' => count($errors),
+            ],
+        ], count($moved) . ' student(s) moved');
+    }
+
+    /**
+     * POST /api/cli/inscriptions/validate-bulk — Bulk validate inscriptions
+     */
+    public function bulkValidate(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:write')) {
+            return $this->errorResponse('Token missing cli:write ability', [], 403);
+        }
+
+        $annee = $this->getAnneeCouraante();
+        if (!$annee) {
+            return $this->errorResponse('No active academic year', [], 422);
+        }
+
+        // Get inscriptions to validate: by IDs or by class
+        $inscriptionIds = $request->input('inscription_ids', []);
+
+        if (empty($inscriptionIds) && $request->filled('classe_id')) {
+            $inscriptionIds = ESBTPInscription::where('annee_universitaire_id', $annee->id)
+                ->where('classe_id', $request->input('classe_id'))
+                ->where(function ($q) {
+                    $q->where('status', '!=', 'active')
+                      ->orWhere('workflow_step', '!=', 'etudiant_cree');
+                })
+                ->pluck('id')
+                ->toArray();
+        }
+
+        if (empty($inscriptionIds)) {
+            return $this->successResponse(['validated' => [], 'skipped' => [], 'errors' => []], 'No inscriptions to validate');
+        }
+
+        $validated = [];
+        $skipped = [];
+        $errors = [];
+        $userId = $request->user()->id;
+
+        foreach ($inscriptionIds as $inscriptionId) {
+            $inscription = ESBTPInscription::with('etudiant:id,nom,prenoms')->find($inscriptionId);
+
+            if (!$inscription) {
+                $errors[] = ['id' => $inscriptionId, 'reason' => 'not_found'];
+                continue;
+            }
+
+            // Already validated
+            if ($inscription->status === 'active' && $inscription->workflow_step === 'etudiant_cree') {
+                $skipped[] = [
+                    'id' => $inscriptionId,
+                    'nom' => trim(($inscription->etudiant?->nom ?? '') . ' ' . ($inscription->etudiant?->prenoms ?? '')),
+                    'reason' => 'already_validated',
+                ];
+                continue;
+            }
+
+            // Check payment
+            $hasValidPayment = $inscription->paiements()->where('status', 'validé')->exists();
+            if (!$hasValidPayment) {
+                $hasPending = $inscription->paiements()->where('status', 'en_attente')->exists();
+                $skipped[] = [
+                    'id' => $inscriptionId,
+                    'nom' => trim(($inscription->etudiant?->nom ?? '') . ' ' . ($inscription->etudiant?->prenoms ?? '')),
+                    'reason' => $hasPending ? 'paiement_en_attente' : 'sans_paiement',
+                ];
+                continue;
+            }
+
+            try {
+                $result = $this->inscriptionService->validerInscription($inscriptionId, $userId);
+
+                if ($result['success']) {
+                    $validated[] = [
+                        'id' => $inscriptionId,
+                        'nom' => trim(($inscription->etudiant?->nom ?? '') . ' ' . ($inscription->etudiant?->prenoms ?? '')),
+                    ];
+                } else {
+                    $errors[] = ['id' => $inscriptionId, 'reason' => 'service_error', 'message' => $result['message']];
+                }
+            } catch (\Exception $e) {
+                $errors[] = ['id' => $inscriptionId, 'reason' => 'exception', 'message' => $e->getMessage()];
+            }
+        }
+
+        Log::info('CLI: bulkValidate completed', [
+            'validated' => count($validated),
+            'skipped' => count($skipped),
+            'errors' => count($errors),
+            'user_id' => $userId,
+        ]);
+
+        return $this->successResponse([
+            'validated' => $validated,
+            'skipped' => $skipped,
+            'errors' => $errors,
+            'summary' => [
+                'validated' => count($validated),
+                'skipped' => count($skipped),
+                'errors' => count($errors),
+            ],
+        ], count($validated) . ' inscription(s) validated');
     }
 }
