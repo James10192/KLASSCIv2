@@ -148,7 +148,7 @@
 .mc-switch-hint { font-size: 0.75rem; color: #94a3b8; }
 
 /* --- FN section (copied from matieres/index modal) --- */
-.fn-section { background: #f1f5f9; border-radius: 14px; padding: 1.25rem; border: 1px solid #e2e8f0; }
+.fn-section { background: #f1f5f9; border-radius: 14px; padding: 1.25rem; border: 1px solid #e2e8f0; max-height: 520px; overflow-y: auto; }
 .fn-section-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0; }
 .fn-section-icon { width: 38px; height: 38px; background: linear-gradient(135deg, #0453cb, #1a6ee8); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 3px 10px rgba(4,83,203,0.28); }
 .fn-section-icon i { color: #fff; font-size: 0.9rem; }
