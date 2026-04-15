@@ -860,7 +860,8 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
     background: linear-gradient(135deg, #f0f7ff 0%, #e8f0fe 100%);
     border: 1px solid rgba(4,83,203,0.12);
     border-radius: 14px;
-    padding: 20px 24px;
+    padding: 16px 20px;
+    margin-top: 20px;
     margin-bottom: 16px;
 }
 .is-finance-summary.paid {
@@ -875,11 +876,11 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 }
 .is-finance-kpi {
     flex: 1;
-    min-width: 140px;
+    min-width: 120px;
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 4px 0;
+    gap: 10px;
+    padding: 2px 0;
 }
 .is-finance-kpi-icon {
     width: 40px;
@@ -913,9 +914,9 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 .is-finance-kpi-val small { font-size: 0.65em; font-weight: 600; color: #94a3b8; }
 .is-finance-sep {
     width: 1px;
-    height: 40px;
+    height: 36px;
     background: rgba(4,83,203,0.12);
-    margin: 0 16px;
+    margin: 0 12px;
     flex-shrink: 0;
 }
 .is-finance-summary.paid .is-finance-sep { background: rgba(16,185,129,0.2); }
@@ -978,31 +979,74 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
     border: 1px solid rgba(239,68,68,0.12);
 }
 
-/* --- Tables inside is-card (payments, financial) --- */
+/* --- Tables inside is-card (payments, financial) — PREMIUM --- */
 .is-card .table {
     margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
 }
+.is-card .table.table-bordered { border: none; }
+.is-card .table.table-bordered > :not(caption) > * > * { border: none; }
+.is-card .table.table-striped > tbody > tr:nth-of-type(odd) > * { background: transparent; }
 .is-card .table thead th {
-    background: #f8fafc;
-    border-bottom: 2px solid #e2e8f0;
-    font-size: 0.73rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: none !important;
+    border-bottom: 2px solid #e2e8f0 !important;
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
     color: #64748b;
-    padding: 10px 12px;
+    padding: 12px 14px;
     white-space: nowrap;
 }
 .is-card .table tbody td {
-    padding: 10px 12px;
+    padding: 14px;
     font-size: 0.85rem;
     color: #334155;
-    border-bottom: 1px solid #f1f5f9;
+    border: none !important;
+    border-bottom: 1px solid #f1f5f9 !important;
     vertical-align: middle;
 }
-.is-card .table tbody tr:last-child td { border-bottom: none; }
+.is-card .table tbody tr:last-child td { border-bottom: none !important; }
 .is-card .table tbody tr:hover { background: rgba(4,83,203,0.02); }
-.is-card .table-sm td, .is-card .table-sm th { padding: 8px 10px; }
+.is-card .table tbody tr.reliquat-row { background: rgba(245,158,11,0.03); }
+.is-card .table tbody tr.reliquat-row:hover { background: rgba(245,158,11,0.06); }
+.is-card .table tfoot tr { border-top: 2px solid #e2e8f0; }
+.is-card .table tfoot th {
+    background: #f8fafc !important;
+    border: none !important;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #0453cb;
+    padding: 12px 14px;
+}
+.is-card .table.table-success, .is-card .table tfoot tr.table-success > * {
+    background: rgba(16,185,129,0.04) !important;
+    color: #059669;
+}
+.is-card .table-sm td, .is-card .table-sm th { padding: 10px 12px; }
+
+/* Payment section titles premium */
+.is-card h6.text-success, .is-card h6.text-warning, .is-card h6.text-danger {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 12px !important;
+}
+.is-card h6.text-success { background: rgba(16,185,129,0.06); }
+.is-card h6.text-warning { background: rgba(245,158,11,0.06); }
+.is-card h6.text-danger { background: rgba(239,68,68,0.06); }
+
+/* btn-group inside tables */
+.is-card .btn-group .btn-sm {
+    border-radius: 6px !important;
+    padding: 5px 10px;
+    font-size: 0.78rem;
+}
+.is-card .btn-group { gap: 4px; }
 
 /* --- Other Inscriptions Cards --- */
 .is-other-inscription-card {
