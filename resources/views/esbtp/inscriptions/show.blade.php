@@ -521,56 +521,464 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 }
 .affectation-status-chip i { font-size: 0.8rem; }
 .btn-affecter-submit .spinner-border { width: 16px; height: 16px; border-width: 2px; }
+
+/* ═══════════════════════════════════════════════════════════
+   INSCRIPTION SHOW — PREMIUM REDESIGN (is-* namespace)
+   ═══════════════════════════════════════════════════════════ */
+
+/* --- Hero Section --- */
+.is-hero {
+    background: linear-gradient(135deg, #0453cb 0%, #1b64d4 50%, #5e91de 100%);
+    padding: 28px 32px 24px;
+    margin: -24px -24px 0;
+    position: relative;
+    overflow: hidden;
+}
+.is-hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: radial-gradient(circle at 20% 80%, rgba(255,255,255,0.06) 0%, transparent 50%),
+                       radial-gradient(circle at 80% 20%, rgba(255,255,255,0.04) 0%, transparent 50%);
+}
+.is-hero-inner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    max-width: 1280px;
+    flex-wrap: wrap;
+}
+.is-hero-avatar {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.5);
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+.is-hero-avatar-placeholder {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.7);
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+.is-hero-text { flex: 1; min-width: 200px; }
+.is-hero-name {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+}
+.is-hero-sub {
+    font-size: 0.88rem;
+    color: rgba(255,255,255,0.8);
+    margin-bottom: 10px;
+}
+.is-hero-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.is-hero-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+.is-hero-pill.success { background: rgba(16,185,129,0.25); border-color: rgba(16,185,129,0.4); }
+.is-hero-pill.warning { background: rgba(245,158,11,0.25); border-color: rgba(245,158,11,0.4); }
+.is-hero-pill.danger { background: rgba(239,68,68,0.25); border-color: rgba(239,68,68,0.4); }
+.is-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-left: auto;
+}
+.is-hero-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.is-hero-btn:hover {
+    background: rgba(255,255,255,0.22);
+    color: #fff;
+    transform: translateY(-1px);
+}
+.is-hero-btn.primary {
+    background: rgba(255,255,255,0.95);
+    color: #0453cb;
+    border-color: transparent;
+    font-weight: 700;
+}
+.is-hero-btn.primary:hover {
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    color: #0453cb;
+}
+.is-hero-btn.success-btn {
+    background: rgba(16,185,129,0.9);
+    border-color: rgba(16,185,129,0.5);
+}
+.is-hero-btn.success-btn:hover { background: #10b981; }
+
+/* --- Cards --- */
+.is-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    margin-bottom: 16px;
+    overflow: hidden;
+    transition: box-shadow 0.25s ease;
+}
+.is-card:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.06); }
+.is-card-body { padding: 20px 24px; }
+
+/* --- Section Headers --- */
+.is-section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f1f5f9;
+}
+.is-section-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0453cb, #5e91de);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+.is-section-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #1e293b;
+    letter-spacing: -0.01em;
+}
+
+/* --- Info Grid (replaces table-bordered) --- */
+.is-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0;
+}
+.is-info-row {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 14px;
+    border-bottom: 1px solid #f1f5f9;
+}
+.is-info-row:last-child { border-bottom: none; }
+.is-info-lbl {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+    margin-bottom: 2px;
+}
+.is-info-val {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+.is-info-val.muted { color: #94a3b8; font-weight: 400; font-style: italic; }
+
+/* --- Badges --- */
+.is-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.is-badge.success { background: rgba(16,185,129,0.1); color: #059669; border: 1px solid rgba(16,185,129,0.2); }
+.is-badge.warning { background: rgba(245,158,11,0.1); color: #d97706; border: 1px solid rgba(245,158,11,0.2); }
+.is-badge.danger { background: rgba(239,68,68,0.1); color: #dc2626; border: 1px solid rgba(239,68,68,0.2); }
+.is-badge.info { background: rgba(59,130,246,0.1); color: #2563eb; border: 1px solid rgba(59,130,246,0.2); }
+.is-badge.primary { background: rgba(4,83,203,0.1); color: #0453cb; border: 1px solid rgba(4,83,203,0.2); }
+.is-badge.secondary { background: rgba(100,116,139,0.1); color: #475569; border: 1px solid rgba(100,116,139,0.2); }
+
+/* --- Workflow Stepper Premium --- */
+.is-stepper { display: flex; align-items: flex-start; gap: 0; padding: 8px 0; }
+.is-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    text-align: center;
+}
+.is-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 18px;
+    left: calc(50% + 20px);
+    width: calc(100% - 40px);
+    height: 2px;
+    background: #e2e8f0;
+}
+.is-step.completed:not(:last-child)::after { background: #10b981; }
+.is-step-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    position: relative;
+    z-index: 1;
+    transition: all 0.3s ease;
+}
+.is-step.completed .is-step-circle {
+    background: #10b981;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(16,185,129,0.3);
+}
+.is-step.current .is-step-circle {
+    background: linear-gradient(135deg, #0453cb, #5e91de);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(4,83,203,0.3);
+    animation: is-pulse 2s ease infinite;
+}
+.is-step.pending .is-step-circle {
+    background: #f1f5f9;
+    color: #94a3b8;
+    border: 2px solid #e2e8f0;
+}
+@keyframes is-pulse {
+    0%, 100% { box-shadow: 0 2px 8px rgba(4,83,203,0.3); }
+    50% { box-shadow: 0 2px 16px rgba(4,83,203,0.5); }
+}
+.is-step-label {
+    margin-top: 8px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    max-width: 80px;
+    line-height: 1.3;
+}
+.is-step.completed .is-step-label { color: #059669; }
+.is-step.current .is-step-label { color: #0453cb; }
+.is-step.pending .is-step-label { color: #94a3b8; }
+
+/* --- Progress Bar Premium --- */
+.is-progress-wrap {
+    background: #f1f5f9;
+    border-radius: 6px;
+    height: 8px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+.is-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #0453cb, #5e91de);
+    border-radius: 6px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+.is-progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: is-shimmer 2s ease infinite;
+}
+@keyframes is-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* --- Status Row --- */
+.is-status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+.is-status-row:last-child { border-bottom: none; }
+.is-status-lbl { font-size: 0.85rem; color: #64748b; }
+
+/* --- Validation Info --- */
+.is-validation-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-top: 12px;
+}
+.is-validation-box.success { background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.15); }
+.is-validation-box.warning { background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.15); }
+.is-validation-box-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; flex-shrink: 0;
+}
+.is-validation-box.success .is-validation-box-icon { background: rgba(16,185,129,0.15); color: #059669; }
+.is-validation-box.warning .is-validation-box-icon { background: rgba(245,158,11,0.15); color: #d97706; }
+.is-validation-box-text { font-size: 0.82rem; color: #334155; line-height: 1.4; }
+
+/* --- Mobile Stepper --- */
+.is-stepper-mobile { display: none; }
+
+/* --- Responsive --- */
+/* --- Premium table styling inside is-card --- */
+.is-card .table-bordered {
+    border: none;
+    margin-bottom: 0;
+}
+.is-card .table-bordered th {
+    background: #f8fafc;
+    border: none;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 10px 14px;
+    vertical-align: middle;
+}
+.is-card .table-bordered td {
+    border: none;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: #1e293b;
+    padding: 10px 14px;
+    vertical-align: middle;
+}
+.is-card .table-bordered tr:last-child th,
+.is-card .table-bordered tr:last-child td { border-bottom: none; }
+
+/* --- Premium badges inside is-card --- */
+.is-card .badge.bg-success { background: rgba(16,185,129,0.12) !important; color: #059669; font-weight: 600; }
+.is-card .badge.bg-warning { background: rgba(245,158,11,0.12) !important; color: #d97706; font-weight: 600; }
+.is-card .badge.bg-danger { background: rgba(239,68,68,0.12) !important; color: #dc2626; font-weight: 600; }
+.is-card .badge.bg-info { background: rgba(59,130,246,0.12) !important; color: #2563eb; font-weight: 600; }
+.is-card .badge.bg-primary { background: rgba(4,83,203,0.12) !important; color: #0453cb; font-weight: 600; }
+.is-card .badge.bg-secondary { background: rgba(100,116,139,0.12) !important; color: #475569; font-weight: 600; }
+
+/* --- Accordion inside is-card --- */
+.is-card .accordion-item { border: 1px solid #e2e8f0; border-radius: 10px !important; margin-bottom: 8px; overflow: hidden; }
+.is-card .accordion-button { font-weight: 600; font-size: 0.88rem; color: #1e293b; padding: 12px 16px; }
+.is-card .accordion-button:not(.collapsed) { background: rgba(4,83,203,0.04); color: #0453cb; }
+.is-card .accordion-button:focus { box-shadow: 0 0 0 2px rgba(4,83,203,0.15); }
+
+@media (max-width: 768px) {
+    .is-hero { padding: 20px 16px; margin: -16px -16px 0; }
+    .is-hero-inner { gap: 14px; }
+    .is-hero-avatar, .is-hero-avatar-placeholder { width: 64px; height: 64px; font-size: 1.5rem; }
+    .is-hero-name { font-size: 1.15rem; }
+    .is-hero-actions { width: 100%; margin-left: 0; margin-top: 8px; }
+    .is-card-body { padding: 16px; }
+    .is-info-grid { grid-template-columns: 1fr; }
+    .is-stepper { display: none; }
+    .is-stepper-mobile { display: block; }
+}
 </style>
 @endsection
 
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header moderne -->
-        <div class="dashboard-header">
-            <div class="header-left">
-                <h1>{{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</h1>
-                <p class="header-subtitle">Détails de l'inscription - Matricule: {{ $inscription->etudiant->matricule }}</p>
-            </div>
-            <div class="header-actions d-flex flex-wrap gap-2">
-                @can('inscriptions.validate')
-                    <a href="{{ route('esbtp.inscriptions.administration') }}" class="btn-acasi primary">
-                        <i class="fas fa-cog"></i>
-                        <span class="d-none d-md-inline ms-1">Administration</span>
+        <!-- Hero Premium -->
+        <div class="is-hero">
+            <div class="is-hero-inner">
+                @if($inscription->etudiant->photo_url)
+                    <img src="{{ $inscription->etudiant->photo_url }}" alt="Photo" class="is-hero-avatar">
+                @else
+                    <div class="is-hero-avatar-placeholder">
+                        <i class="fas fa-user"></i>
+                    </div>
+                @endif
+                <div class="is-hero-text">
+                    <div class="is-hero-name">{{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</div>
+                    <div class="is-hero-sub">Matricule : {{ $inscription->etudiant->matricule }} · {{ $inscription->filiere->name ?? '' }} · {{ $inscription->anneeUniversitaire->name ?? '' }}</div>
+                    <div class="is-hero-pills">
+                        <span class="is-hero-pill {{ $inscription->status === 'active' ? 'success' : ($inscription->status === 'en_attente' ? 'warning' : 'danger') }}">
+                            <i class="fas fa-{{ $inscription->status === 'active' ? 'check-circle' : ($inscription->status === 'en_attente' ? 'clock' : 'times-circle') }}"></i>
+                            {{ ucfirst($inscription->status) }}
+                        </span>
+                        @if($inscription->workflow_step)
+                        <span class="is-hero-pill">
+                            <i class="fas fa-tasks"></i> {{ $inscription->workflow_step_label ?? ucfirst(str_replace('_', ' ', $inscription->workflow_step)) }}
+                        </span>
+                        @endif
+                        @if($inscription->is_sous_reserve)
+                        <span class="is-hero-pill warning">
+                            <i class="fas fa-exclamation-triangle"></i> Sous réserve
+                        </span>
+                        @endif
+                    </div>
+                </div>
+                <div class="is-hero-actions">
+                    @can('inscriptions.validate')
+                        <a href="{{ route('esbtp.inscriptions.administration') }}" class="is-hero-btn">
+                            <i class="fas fa-cog"></i>
+                            <span class="d-none d-md-inline">Administration</span>
+                        </a>
+                        @if(auth()->user()->can('inscriptions.validate') && $inscription->status === 'en_attente' && !$inscription->paiement_validation_id)
+                            <button class="is-hero-btn primary" data-bs-toggle="modal" data-bs-target="#paymentModal" onclick="preparePaymentModal({{ $inscription->id }})">
+                                <i class="fas fa-credit-card"></i>
+                                <span class="d-none d-lg-inline">Valider avec paiement</span>
+                            </button>
+                        @endif
+                        @if(!($inscription->status === 'active' && $inscription->workflow_step === 'etudiant_cree'))
+                            <button class="is-hero-btn success-btn" data-bs-toggle="modal" data-bs-target="#validationModal" onclick="openValidationModal({{ $inscription->id }})">
+                                <i class="fas fa-check"></i>
+                                <span class="d-none d-lg-inline">Valider</span>
+                            </button>
+                        @endif
+                    @endcan
+                    @can('inscriptions.edit')
+                        <a href="{{ route('esbtp.inscriptions.edit', $inscription) }}" class="is-hero-btn">
+                            <i class="fas fa-edit"></i>
+                            <span class="d-none d-sm-inline">Modifier</span>
+                        </a>
+                    @endcan
+                    <a href="{{ route('esbtp.etudiants.show', $inscription->etudiant) }}" class="is-hero-btn primary">
+                        <i class="fas fa-user"></i>
+                        <span class="d-none d-md-inline">Fiche étudiant</span>
                     </a>
-
-                    @if(auth()->user()->can('inscriptions.validate') && $inscription->status === 'en_attente' && !$inscription->paiement_validation_id)
-                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#paymentModal" onclick="preparePaymentModal({{ $inscription->id }})">
-                            <i class="fas fa-credit-card"></i>
-                            <span class="d-none d-lg-inline ms-1">Valider avec paiement</span>
-                        </button>
-                    @endif
-
-                    @if(!($inscription->status === 'active' && $inscription->workflow_step === 'etudiant_cree'))
-                        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#validationModal" onclick="openValidationModal({{ $inscription->id }})">
-                            <i class="fas fa-check"></i>
-                            <span class="d-none d-lg-inline ms-1">Valider</span>
-                        </button>
-                    @endif
-                @endcan
-
-                @can('inscriptions.edit')
-                    <a href="{{ route('esbtp.inscriptions.edit', $inscription) }}" class="btn-acasi secondary">
-                        <i class="fas fa-edit"></i>
-                        <span class="d-none d-sm-inline ms-1">Modifier</span>
+                    <a href="{{ route('esbtp.etudiants.index') }}" class="is-hero-btn">
+                        <i class="fas fa-arrow-left"></i>
+                        <span class="d-none d-sm-inline">Retour</span>
                     </a>
-                @endcan
-
-                <a href="{{ route('esbtp.etudiants.show', $inscription->etudiant) }}" class="btn-acasi primary">
-                    <i class="fas fa-user"></i>
-                    <span class="d-none d-md-inline ms-1">Étudiant</span>
-                </a>
-
-                <a href="{{ route('esbtp.etudiants.index') }}" class="btn-acasi secondary">
-                    <i class="fas fa-arrow-left"></i>
-                    <span class="d-none d-sm-inline ms-1">Retour</span>
-                </a>
+                </div>
             </div>
         </div>
 
@@ -700,258 +1108,137 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
             <div class="row">
                 <div class="col-12 col-md-5 col-lg-4">
                     <!-- Informations étudiant -->
-                    <div class="card-moderne">
-                        <div class="p-lg">
-                            <div class="section-title mb-md">
-                                <i class="fas fa-user me-2"></i>Informations de l'étudiant
+                    <div class="is-card">
+                        <div class="is-card-body">
+                            <div class="is-section-header">
+                                <div class="is-section-icon"><i class="fas fa-user"></i></div>
+                                <div class="is-section-title">Informations de l'étudiant</div>
+                                <span class="ms-auto is-badge {{ $inscription->etudiant->statut == 'actif' ? 'success' : 'danger' }}">
+                                    <i class="fas fa-{{ $inscription->etudiant->statut == 'actif' ? 'check-circle' : 'times-circle' }}"></i>
+                                    {{ ucfirst($inscription->etudiant->statut ?? 'inconnu') }}
+                                </span>
                             </div>
-                            <div class="text-center mb-4">
-                                @if($inscription->etudiant->photo_url)
-                                    <img src="{{ $inscription->etudiant->photo_url }}" alt="Photo de profil" class="rounded-circle img-thumbnail" style="width: 150px; height: 150px; object-fit: cover;">
-                                @else
-                                    <div class="bg-light d-flex align-items-center justify-content-center rounded-circle mx-auto" style="width: 150px; height: 150px;">
-                                        <i class="fas fa-user fa-5x text-secondary"></i>
-                                    </div>
-                                @endif
-                                <h5 class="mt-3">{{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</h5>
-                                <p class="text-muted">
-                                    Matricule: <strong>{{ $inscription->etudiant->matricule }}</strong>
-                                </p>
-                                <div class="mb-2">
-                                    @if($inscription->etudiant->statut == 'actif')
-                                        <span class="badge bg-success">Actif</span>
-                                    @else
-                                        <span class="badge bg-danger">Inactif</span>
-                                    @endif
+                            <div class="is-info-grid">
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Genre</span>
+                                    <span class="is-info-val">{{ $inscription->etudiant->sexe == 'M' ? 'Masculin' : 'Féminin' }}</span>
                                 </div>
-                            </div>
-
-                            <!-- Version Desktop : Table -->
-                            <table class="table table-bordered table-desktop-1600">
-                                <tr>
-                                    <th style="width: 40%">Genre</th>
-                                    <td>{{ $inscription->etudiant->sexe == 'M' ? 'Masculin' : 'Féminin' }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Date de naissance</th>
-                                    <td>{{ \Carbon\Carbon::parse($inscription->etudiant->date_naissance)->format('d-m-Y') }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Lieu de naissance</th>
-                                    <td>{{ $inscription->etudiant->lieu_naissance ?: 'Non renseigné' }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Nationalité</th>
-                                    <td>{{ $inscription->etudiant->nationalite ?: 'Non renseignée' }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Téléphone</th>
-                                    <td>{{ $inscription->etudiant->telephone }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Email</th>
-                                    <td>{{ $inscription->etudiant->email_personnel ?: 'Non renseigné' }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Ville de résidence</th>
-                                    <td>{{ $inscription->etudiant->ville ?: 'Non renseignée' }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Commune de résidence</th>
-                                    <td>{{ $inscription->etudiant->commune ?: 'Non renseignée' }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Adresse</th>
-                                    <td>{{ $inscription->etudiant->adresse ?: 'Non renseignée' }}</td>
-                                </tr>
-                            </table>
-
-                            <!-- Version Mobile : Liste format table -->
-                            <div class="list-mobile-1600">
-                                <div class="row g-1 small">
-                                    <div class="col-12 d-flex border-bottom py-2">
-                                        <div class="text-muted flex-shrink-0 me-2">Genre:</div>
-                                        <div class="fw-bold">{{ $inscription->etudiant->sexe == 'M' ? 'Masculin' : 'Féminin' }}</div>
-                                    </div>
-                                    <div class="col-12 d-flex border-bottom py-2">
-                                        <div class="text-muted flex-shrink-0 me-2">Date de naissance:</div>
-                                        <div class="fw-bold">{{ \Carbon\Carbon::parse($inscription->etudiant->date_naissance)->format('d-m-Y') }}</div>
-                                    </div>
-                                    <div class="col-12 d-flex border-bottom py-2">
-                                        <div class="text-muted flex-shrink-0 me-2">Lieu de naissance:</div>
-                                        <div class="fw-bold">{{ $inscription->etudiant->lieu_naissance ?: 'Non renseigné' }}</div>
-                                    </div>
-                                    <div class="col-12 d-flex border-bottom py-2">
-                                        <div class="text-muted flex-shrink-0 me-2">Nationalité:</div>
-                                        <div class="fw-bold">{{ $inscription->etudiant->nationalite ?: 'Non renseignée' }}</div>
-                                    </div>
-                                    <div class="col-12 d-flex border-bottom py-2">
-                                        <div class="text-muted flex-shrink-0 me-2">Téléphone:</div>
-                                        <div class="fw-bold">{{ $inscription->etudiant->telephone }}</div>
-                                    </div>
-                                    <div class="col-12 d-flex border-bottom py-2">
-                                        <div class="text-muted flex-shrink-0 me-2">Email:</div>
-                                        <div class="fw-bold text-break">{{ $inscription->etudiant->email_personnel ?: 'Non renseigné' }}</div>
-                                    </div>
-                                    <div class="col-12 d-flex border-bottom py-2">
-                                        <div class="text-muted flex-shrink-0 me-2">Ville:</div>
-                                        <div class="fw-bold">{{ $inscription->etudiant->ville ?: 'Non renseignée' }}</div>
-                                    </div>
-                                    <div class="col-12 d-flex border-bottom py-2">
-                                        <div class="text-muted flex-shrink-0 me-2">Commune:</div>
-                                        <div class="fw-bold">{{ $inscription->etudiant->commune ?: 'Non renseignée' }}</div>
-                                    </div>
-                                    <div class="col-12 d-flex border-bottom py-2">
-                                        <div class="text-muted flex-shrink-0 me-2">Adresse:</div>
-                                        <div class="fw-bold">{{ $inscription->etudiant->adresse ?: 'Non renseignée' }}</div>
-                                    </div>
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Date de naissance</span>
+                                    <span class="is-info-val">{{ \Carbon\Carbon::parse($inscription->etudiant->date_naissance)->format('d/m/Y') }}</span>
+                                </div>
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Lieu de naissance</span>
+                                    <span class="is-info-val {{ !$inscription->etudiant->lieu_naissance ? 'muted' : '' }}">{{ $inscription->etudiant->lieu_naissance ?: 'Non renseigné' }}</span>
+                                </div>
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Nationalité</span>
+                                    <span class="is-info-val {{ !$inscription->etudiant->nationalite ? 'muted' : '' }}">{{ $inscription->etudiant->nationalite ?: 'Non renseignée' }}</span>
+                                </div>
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Téléphone</span>
+                                    <span class="is-info-val">{{ $inscription->etudiant->telephone ?: 'Non renseigné' }}</span>
+                                </div>
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Email</span>
+                                    <span class="is-info-val {{ !$inscription->etudiant->email_personnel ? 'muted' : '' }}" style="word-break:break-all;">{{ $inscription->etudiant->email_personnel ?: 'Non renseigné' }}</span>
+                                </div>
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Ville</span>
+                                    <span class="is-info-val {{ !$inscription->etudiant->ville ? 'muted' : '' }}">{{ $inscription->etudiant->ville ?: 'Non renseignée' }}</span>
+                                </div>
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Commune</span>
+                                    <span class="is-info-val {{ !$inscription->etudiant->commune ? 'muted' : '' }}">{{ $inscription->etudiant->commune ?: 'Non renseignée' }}</span>
+                                </div>
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Adresse</span>
+                                    <span class="is-info-val {{ !$inscription->etudiant->adresse ? 'muted' : '' }}">{{ $inscription->etudiant->adresse ?: 'Non renseignée' }}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Statut de l'inscription -->
-                    <div class="card-moderne mt-4">
-                        <div class="p-lg">
-                            <div class="section-title mb-md">
-                                <i class="fas fa-chart-line me-2"></i>Statut de l'inscription
+                    <div class="is-card">
+                        <div class="is-card-body">
+                            <div class="is-section-header">
+                                <div class="is-section-icon"><i class="fas fa-chart-line"></i></div>
+                                <div class="is-section-title">Statut de l'inscription</div>
                             </div>
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span>Étape du workflow:</span>
-                                    @switch($inscription->workflow_step)
-                                        @case('prospect')
-                                            <span class="badge bg-secondary">
-                                                <i class="fas fa-user-plus me-1"></i>Prospect
-                                            </span>
-                                            @break
-                                        @case('documents_complets')
-                                            <span class="badge bg-info">
-                                                <i class="fas fa-file-check me-1"></i>Documents complets
-                                            </span>
-                                            @break
-                                        @case('en_validation')
-                                            <span class="badge bg-warning">
-                                                <i class="fas fa-hourglass-half me-1"></i>En validation
-                                            </span>
-                                            @break
-                                        @case('valide')
-                                            <span class="badge bg-success">
-                                                <i class="fas fa-check me-1"></i>Validé
-                                            </span>
-                                            @break
-                                        @case('etudiant_cree')
-                                            <span class="badge bg-primary">
-                                                <i class="fas fa-graduation-cap me-1"></i>Étudiant créé
-                                            </span>
-                                            @break
-                                        @default
-                                            <span class="badge bg-light text-dark">{{ $inscription->workflow_step }}</span>
-                                    @endswitch
-                                </div>
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <span>Statut:</span>
-                                    <span class="badge bg-{{ $inscription->status === 'active' ? 'success' : ($inscription->status === 'en_attente' ? 'warning' : 'danger') }}">
-                                        {{ ucfirst($inscription->status) }}
-                                    </span>
-                                </div>
+
+                            <div class="is-status-row">
+                                <span class="is-status-lbl">Statut</span>
+                                <span class="is-badge {{ $inscription->status === 'active' ? 'success' : ($inscription->status === 'en_attente' ? 'warning' : 'danger') }}">
+                                    <i class="fas fa-{{ $inscription->status === 'active' ? 'check-circle' : ($inscription->status === 'en_attente' ? 'clock' : 'times-circle') }}"></i>
+                                    {{ ucfirst($inscription->status) }}
+                                </span>
                             </div>
 
                             @php
                                 $steps = [
-                                    'prospect' => ['label' => 'Prospect', 'icon' => 'fas fa-user-plus', 'color' => 'secondary'],
-                                    'documents_complets' => ['label' => 'Documents complets', 'icon' => 'fas fa-file-check', 'color' => 'info'],
-                                    'en_validation' => ['label' => 'En validation', 'icon' => 'fas fa-hourglass-half', 'color' => 'warning'],
-                                    'valide' => ['label' => 'Validé', 'icon' => 'fas fa-check', 'color' => 'success'],
-                                    'etudiant_cree' => ['label' => 'Étudiant créé', 'icon' => 'fas fa-graduation-cap', 'color' => 'primary']
+                                    'prospect' => ['label' => 'Prospect', 'icon' => 'fas fa-user-plus'],
+                                    'documents_complets' => ['label' => 'Documents', 'icon' => 'fas fa-file-check'],
+                                    'en_validation' => ['label' => 'Validation', 'icon' => 'fas fa-hourglass-half'],
+                                    'valide' => ['label' => 'Validé', 'icon' => 'fas fa-check'],
+                                    'etudiant_cree' => ['label' => 'Créé', 'icon' => 'fas fa-graduation-cap']
                                 ];
                                 $stepKeys = array_keys($steps);
                                 $currentStepIndex = array_search($inscription->workflow_step, $stepKeys);
                                 $progress = $currentStepIndex !== false ? (($currentStepIndex + 1) / count($stepKeys)) * 100 : 0;
                             @endphp
-                            
-                            <div class="progress mb-3" style="height: 25px;">
-                                <div class="progress-bar progress-bar-striped" role="progressbar" style="width: {{ $progress }}%">
-                                    {{ round($progress) }}%
-                                </div>
+
+                            <div class="is-progress-wrap" title="{{ round($progress) }}%">
+                                <div class="is-progress-bar" style="width: {{ $progress }}%"></div>
                             </div>
 
-                            <!-- Étapes détaillées du workflow -->
-
-                            <!-- Desktop : Layout horizontal -->
-                            <div class="workflow-steps d-none d-md-block">
-                                <div class="row">
-                                    @foreach($steps as $stepKey => $stepInfo)
-                                        @php
-                                            $stepIndex = array_search($stepKey, $stepKeys);
-                                            $isCompleted = $stepIndex < $currentStepIndex;
-                                            $isCurrent = $stepKey === $inscription->workflow_step;
-                                            $isPending = $stepIndex > $currentStepIndex;
-                                        @endphp
-                                        <div class="col">
-                                            <div class="text-center">
-                                                <div class="workflow-step-icon mb-2">
-                                                    @if($isCompleted)
-                                                        <div class="badge bg-success rounded-circle p-3">
-                                                            <i class="fas fa-check fa-lg"></i>
-                                                        </div>
-                                                    @elseif($isCurrent)
-                                                        <div class="badge bg-{{ $stepInfo['color'] }} rounded-circle p-3">
-                                                            <i class="{{ $stepInfo['icon'] }} fa-lg"></i>
-                                                        </div>
-                                                    @else
-                                                        <div class="badge bg-light text-muted rounded-circle p-3">
-                                                            <i class="{{ $stepInfo['icon'] }} fa-lg"></i>
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                                <div class="workflow-step-label">
-                                                    <small class="text-{{ $isCompleted ? 'success' : ($isCurrent ? $stepInfo['color'] : 'muted') }}">
-                                                        <strong>{{ $stepInfo['label'] }}</strong>
-                                                    </small>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-
-                            <!-- Mobile : Layout vertical -->
-                            <div class="workflow-steps-mobile d-md-none">
+                            <!-- Desktop : Stepper horizontal premium -->
+                            <div class="is-stepper d-none d-md-flex">
                                 @foreach($steps as $stepKey => $stepInfo)
                                     @php
                                         $stepIndex = array_search($stepKey, $stepKeys);
                                         $isCompleted = $stepIndex < $currentStepIndex;
                                         $isCurrent = $stepKey === $inscription->workflow_step;
-                                        $isPending = $stepIndex > $currentStepIndex;
+                                    @endphp
+                                    <div class="is-step {{ $isCompleted ? 'completed' : ($isCurrent ? 'current' : 'pending') }}">
+                                        <div class="is-step-circle">
+                                            @if($isCompleted)
+                                                <i class="fas fa-check"></i>
+                                            @else
+                                                <i class="{{ $stepInfo['icon'] }}"></i>
+                                            @endif
+                                        </div>
+                                        <div class="is-step-label">{{ $stepInfo['label'] }}</div>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <!-- Mobile : Stepper vertical -->
+                            <div class="is-stepper-mobile d-md-none">
+                                @foreach($steps as $stepKey => $stepInfo)
+                                    @php
+                                        $stepIndex = array_search($stepKey, $stepKeys);
+                                        $isCompleted = $stepIndex < $currentStepIndex;
+                                        $isCurrent = $stepKey === $inscription->workflow_step;
                                     @endphp
                                     <div class="d-flex align-items-center mb-3 pb-3 {{ !$loop->last ? 'border-bottom' : '' }}">
                                         <div class="me-3 flex-shrink-0">
-                                            @if($isCompleted)
-                                                <div class="badge bg-success rounded-circle p-3" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
-                                                    <i class="fas fa-check fa-lg"></i>
-                                                </div>
-                                            @elseif($isCurrent)
-                                                <div class="badge bg-{{ $stepInfo['color'] }} rounded-circle p-3" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
-                                                    <i class="{{ $stepInfo['icon'] }} fa-lg"></i>
-                                                </div>
-                                            @else
-                                                <div class="badge bg-light text-muted rounded-circle p-3" style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
-                                                    <i class="{{ $stepInfo['icon'] }} fa-lg"></i>
-                                                </div>
-                                            @endif
+                                            <div class="is-step-circle" style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.85rem;{{ $isCompleted ? 'background:#10b981;color:#fff;' : ($isCurrent ? 'background:linear-gradient(135deg,#0453cb,#5e91de);color:#fff;' : 'background:#f1f5f9;color:#94a3b8;border:2px solid #e2e8f0;') }}">
+                                                @if($isCompleted)
+                                                    <i class="fas fa-check"></i>
+                                                @else
+                                                    <i class="{{ $stepInfo['icon'] }}"></i>
+                                                @endif
+                                            </div>
                                         </div>
                                         <div class="flex-grow-1">
-                                            <div class="fw-bold text-{{ $isCompleted ? 'success' : ($isCurrent ? $stepInfo['color'] : 'muted') }}">
+                                            <div class="fw-bold" style="color:{{ $isCompleted ? '#059669' : ($isCurrent ? '#0453cb' : '#94a3b8') }};font-size:0.88rem;">
                                                 {{ $stepInfo['label'] }}
                                             </div>
-                                            <small class="text-muted">
-                                                @if($isCompleted)
-                                                    <i class="fas fa-check-circle me-1"></i>Complété
-                                                @elseif($isCurrent)
-                                                    <i class="fas fa-arrow-right me-1"></i>En cours
-                                                @else
-                                                    <i class="fas fa-clock me-1"></i>En attente
+                                            <small style="color:#94a3b8;font-size:0.75rem;">
+                                                @if($isCompleted) <i class="fas fa-check-circle me-1"></i>Complété
+                                                @elseif($isCurrent) <i class="fas fa-arrow-right me-1"></i>En cours
+                                                @else <i class="fas fa-clock me-1"></i>En attente
                                                 @endif
                                             </small>
                                         </div>
@@ -960,25 +1247,29 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                             </div>
 
                             @if($inscription->paiement_validation_id)
-                                <div class="alert alert-success">
-                                    <i class="fas fa-check-circle me-2"></i>
-                                    Paiement associé
+                                <div class="is-validation-box success">
+                                    <div class="is-validation-box-icon"><i class="fas fa-check-circle"></i></div>
+                                    <div class="is-validation-box-text">Paiement associé à cette inscription</div>
                                 </div>
                             @else
-                                <div class="alert alert-warning">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>
-                                    Aucun paiement associé
+                                <div class="is-validation-box warning">
+                                    <div class="is-validation-box-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                                    <div class="is-validation-box-text">Aucun paiement associé</div>
                                 </div>
                             @endif
-                            
+
                             @if($inscription->date_validation)
-                                <p><strong>Date de validation:</strong><br>
-                                {{ \Carbon\Carbon::parse($inscription->date_validation)->format('d/m/Y à H:i') }}</p>
+                                <div class="is-info-row" style="margin-top:8px;">
+                                    <span class="is-info-lbl">Date de validation</span>
+                                    <span class="is-info-val">{{ \Carbon\Carbon::parse($inscription->date_validation)->format('d/m/Y à H:i') }}</span>
+                                </div>
                             @endif
-                            
+
                             @if($inscription->validated_by)
-                                <p><strong>Validé par:</strong><br>
-                                {{ \App\Models\User::find($inscription->validated_by)->name ?? 'Utilisateur inconnu' }}</p>
+                                <div class="is-info-row">
+                                    <span class="is-info-lbl">Validé par</span>
+                                    <span class="is-info-val">{{ \App\Models\User::find($inscription->validated_by)->name ?? 'Utilisateur inconnu' }}</span>
+                                </div>
                             @endif
                         </div>
                     </div>
@@ -1007,10 +1298,11 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                     @endif
 
                     <!-- Informations de l'inscription -->
-                    <div class="card-moderne mb-4">
-                        <div class="p-lg">
-                            <div class="section-title mb-md">
-                                <i class="fas fa-graduation-cap me-2"></i>Informations académiques
+                    <div class="is-card">
+                        <div class="is-card-body">
+                            <div class="is-section-header">
+                                <div class="is-section-icon"><i class="fas fa-graduation-cap"></i></div>
+                                <div class="is-section-title">Informations académiques</div>
                             </div>
                             <div class="row">
                                 <div class="col-12 col-1600-6 mb-3">
@@ -1339,10 +1631,11 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                     @endif {{-- canViewFinancials: Résumé Financier --}}
 
                     <!-- Parents / Tuteurs -->
-                    <div class="card-moderne mb-4">
-                        <div class="p-lg">
-                            <div class="section-title mb-md">
-                                <i class="fas fa-users me-2"></i>Parents / Tuteurs
+                    <div class="is-card">
+                        <div class="is-card-body">
+                            <div class="is-section-header">
+                                <div class="is-section-icon"><i class="fas fa-users"></i></div>
+                                <div class="is-section-title">Parents / Tuteurs</div>
                             </div>
                             @if($inscription->etudiant->parents->count() > 0)
                                 <div class="accordion" id="accordionParents">
@@ -1446,10 +1739,11 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 
                     @if($canViewFinancials ?? true)
                     <!-- Situation financière détaillée -->
-                    <div class="card-moderne mb-4">
-                        <div class="p-lg">
-                            <div class="section-title mb-md">
-                                <i class="fas fa-chart-line me-2"></i>Situation Financière Détaillée
+                    <div class="is-card">
+                        <div class="is-card-body">
+                            <div class="is-section-header">
+                                <div class="is-section-icon"><i class="fas fa-chart-line"></i></div>
+                                <div class="is-section-title">Situation Financière Détaillée</div>
                             </div>
 
                             <style>
@@ -2241,12 +2535,13 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 
                     <!-- Frais optionnels disponibles -->
                     @if(($canViewFinancials ?? true) && isset($availableOptionalCategories) && $availableOptionalCategories->count() > 0)
-                    <div class="card-moderne mb-4">
-                        <div class="p-lg">
-                            <div class="section-title mb-md">
-                                <i class="fas fa-plus-circle me-2"></i>Frais Optionnels Disponibles
-                                <button type="button" class="btn btn-sm btn-primary float-end" data-bs-toggle="modal" data-bs-target="#subscriptionModal">
-                                    <i class="fas fa-plus me-1"></i>Souscrire l'étudiant à un frais
+                    <div class="is-card">
+                        <div class="is-card-body">
+                            <div class="is-section-header">
+                                <div class="is-section-icon"><i class="fas fa-plus-circle"></i></div>
+                                <div class="is-section-title">Frais Optionnels Disponibles</div>
+                                <button type="button" class="btn btn-sm btn-primary ms-auto" style="border-radius:8px;font-size:0.8rem;" data-bs-toggle="modal" data-bs-target="#subscriptionModal">
+                                    <i class="fas fa-plus me-1"></i>Souscrire
                                 </button>
                             </div>
                             <div class="d-flex align-items-center gap-2 mb-3 px-3 py-2 rounded-3" style="background: rgba(6,182,212,0.07); border: 1px solid rgba(6,182,212,0.2);">
@@ -2300,12 +2595,12 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 
                     @if($canViewFinancials ?? true)
                     <!-- Paiements liés à l'inscription -->
-                    <div class="card-moderne">
-                        <div class="p-lg">
-                            <div class="section-title mb-md d-flex justify-content-between align-items-center">
-                                <span>
-                                    <i class="fas fa-money-bill-wave me-2"></i>Paiements liés à cette inscription
-                                </span>
+                    <div class="is-card">
+                        <div class="is-card-body">
+                            <div class="is-section-header" style="flex-wrap:wrap;">
+                                <div class="is-section-icon"><i class="fas fa-money-bill-wave"></i></div>
+                                <div class="is-section-title">Paiements liés à cette inscription</div>
+                                <div class="ms-auto">
                                 <div class="dropdown pdf-dropdown">
                                     <button class="btn btn-outline-success dropdown-toggle" type="button"
                                             id="situationFinanciereDropdown" data-bs-toggle="dropdown"
@@ -2324,6 +2619,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                             </a>
                                         </li>
                                     </ul>
+                                </div>
                                 </div>
                             </div>
                             @php
@@ -2622,10 +2918,11 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 
                     {{-- Section Reliquats --}}
                     @if(($canViewFinancials ?? true) && (isset($reliquatsEntrants) && $reliquatsEntrants->count() > 0 || isset($reliquatsSortants) && $reliquatsSortants->count() > 0))
-                        <div class="card-moderne mt-4">
-                            <div class="p-lg">
-                                <div class="section-title mb-md">
-                                    <i class="fas fa-exchange-alt"></i>Reliquats liés à cette inscription
+                        <div class="is-card" style="margin-top:16px;">
+                            <div class="is-card-body">
+                                <div class="is-section-header">
+                                    <div class="is-section-icon"><i class="fas fa-exchange-alt"></i></div>
+                                    <div class="is-section-title">Reliquats liés à cette inscription</div>
                                 </div>
 
                                 @if(isset($reliquatsEntrants) && $reliquatsEntrants->count() > 0)
