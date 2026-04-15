@@ -48,26 +48,26 @@
                 @endif
 
                 <!-- Informations de l'étudiant (lecture seule) -->
-                <div class="row mb-4">
-                    <div class="col-md-12">
-                        <h5 class="font-weight-bold">Informations de l'étudiant</h5>
-                        <hr>
-
-                        <div class="alert alert-info">
-                            <p class="mb-0"><strong>Étudiant :</strong> {{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</p>
-                            <p class="mb-0"><strong>Matricule :</strong> {{ $inscription->etudiant->matricule }}</p>
-                            <p class="mb-0"><strong>Date de naissance :</strong> {{ $inscription->etudiant->date_naissance?->format('d/m/Y') ?? 'Non renseignée' }}</p>
-                            <p class="mb-0"><strong>Pour modifier les informations de l'étudiant, veuillez utiliser la page de profil de l'étudiant.</strong></p>
+                <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;background:rgba(4,83,203,0.04);border:1px solid rgba(4,83,203,0.1);border-radius:12px;margin-bottom:20px;">
+                    <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#0453cb,#5e91de);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="display:flex;flex-wrap:wrap;gap:16px;font-size:0.85rem;color:#334155;line-height:1.6;">
+                            <span><span style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#94a3b8;display:block;">Étudiant</span><strong style="color:#1e293b;">{{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }}</strong></span>
+                            <span><span style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#94a3b8;display:block;">Matricule</span><strong style="color:#1e293b;">{{ $inscription->etudiant->matricule }}</strong></span>
+                            <span><span style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#94a3b8;display:block;">Date de naissance</span><strong style="color:#1e293b;">{{ $inscription->etudiant->date_naissance?->format('d/m/Y') ?? 'Non renseignée' }}</strong></span>
                         </div>
+                        <a href="{{ route('esbtp.etudiants.show', $inscription->etudiant) }}" style="font-size:0.78rem;color:#0453cb;font-weight:600;margin-top:6px;display:inline-flex;align-items:center;gap:4px;">
+                            <i class="fas fa-external-link-alt" style="font-size:0.65rem;"></i> Modifier le profil étudiant
+                        </a>
                     </div>
                 </div>
 
                 <!-- Informations de l'inscription -->
-                <div class="row mb-4">
-                    <div class="col-md-12">
-                        <h5 class="font-weight-bold">Informations de l'inscription</h5>
-                        <hr>
-                    </div>
+                <div style="display:flex;align-items:center;gap:10px;font-size:0.88rem;font-weight:700;color:#1e293b;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #f1f5f9;">
+                    <span style="width:28px;height:28px;border-radius:8px;background:rgba(4,83,203,0.08);color:#0453cb;display:flex;align-items:center;justify-content:center;font-size:0.75rem;"><i class="fas fa-graduation-cap"></i></span>
+                    Informations de l'inscription
                 </div>
 
                 <div class="row mb-3">
@@ -114,9 +114,10 @@
                 <!-- Section Transfert (visible seulement si type_inscription = 'première_inscription') -->
                 <div class="row mb-3" id="transfert-section" style="display: {{ old('type_inscription', $inscription->type_inscription) == 'première_inscription' ? 'flex' : 'none' }}">
                     <div class="col-md-12">
-                        <h6 class="font-weight-bold text-primary mb-3">
-                            <i class="fas fa-exchange-alt me-2"></i>Informations de transfert
-                        </h6>
+                        <div style="display:flex;align-items:center;gap:10px;font-size:0.85rem;font-weight:700;color:#1e293b;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #f1f5f9;">
+                            <span style="width:28px;height:28px;border-radius:8px;background:rgba(245,158,11,0.1);color:#d97706;display:flex;align-items:center;justify-content:center;font-size:0.75rem;"><i class="fas fa-exchange-alt"></i></span>
+                            Informations de transfert
+                        </div>
                     </div>
 
                     <div class="col-md-6">
