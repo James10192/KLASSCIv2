@@ -864,7 +864,7 @@ function renderNotesGrid(students, sortedEvaluations) {
                     <div class="nm-student-name">
                         <div class="nm-student-avatar">${initials.toUpperCase()}</div>
                         <div class="nm-student-info">
-                            <div class="nm-student-fullname">${student.nom} ${student.prenoms}</div>
+                            <div class="nm-student-fullname" title="${student.nom} ${student.prenoms}">${student.nom} ${student.prenoms}</div>
                             <div class="nm-student-matricule">${student.matricule || ''}</div>
                         </div>
                     </div>
@@ -1160,12 +1160,15 @@ function calculateClassAverages() {
         noteInputs.each(function() {
             const studentId = $(this).data('student-id');
             const isAbsent = $(`#absent-${studentId}-${evalId}`).is(':checked');
-            const noteValue = parseFloat($(this).val()) || 0;
+            const rawValue = $(this).val();
 
-            if (!isAbsent && !isNaN(noteValue)) {
-                const normalizedNote = (noteValue / params.bareme) * 20;
-                total += normalizedNote;
-                count++;
+            if (!isAbsent && rawValue !== '' && rawValue !== null && rawValue !== undefined) {
+                const noteValue = parseFloat(rawValue);
+                if (!isNaN(noteValue)) {
+                    const normalizedNote = (noteValue / params.bareme) * 20;
+                    total += normalizedNote;
+                    count++;
+                }
             }
         });
 

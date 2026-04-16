@@ -769,8 +769,8 @@
     left: 0;
     z-index: 6;
     background: #fff;
-    width: 185px;
-    min-width: 185px;
+    width: 200px;
+    min-width: 200px;
     border-right: none !important;
 }
 /* Shadow indicator on student col when scrolled (header + footer only) */
@@ -998,7 +998,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 140px;
+    max-width: 160px;
 }
 .nm-student-matricule {
     font-size: 0.65rem;
@@ -1341,7 +1341,7 @@
         max-height: 100vh !important;
     }
     .nm-grid-table .notes-student-col {
-        width: 130px;
-        min-width: 130px;
+        width: 150px;
+        min-width: 150px;
     }
 }
