@@ -1568,6 +1568,157 @@
         .et-card-btn--primary { margin-left: 0; flex: 1; justify-content: center; }
         .et-card__actions { flex-wrap: wrap; }
     }
+
+    /* ══════════════════════════════════════════════
+       Vue Compact row-dense — pour tenants 30+ classes
+       ══════════════════════════════════════════════ */
+    .emplois-compact-container {
+        flex-direction: column;
+        gap: .4rem;
+        width: 100%;
+    }
+
+    /* Mobile < 768px : masquer le toggle compact (fallback cards) */
+    @media (max-width: 767.98px) {
+        .emploi-view-toggle label.et-toggle-compact,
+        .emploi-view-toggle #compactView { display: none; }
+    }
+
+    .et-row {
+        display: flex;
+        align-items: stretch;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 1px 2px rgba(15,23,42,.04);
+        transition: box-shadow .18s ease, border-color .18s ease, transform .18s ease;
+        min-height: 64px;
+    }
+    .et-row:hover {
+        box-shadow: 0 4px 14px rgba(4,83,203,.08);
+        border-color: #cbd5e1;
+        transform: translateY(-1px);
+    }
+    .et-row__stripe {
+        width: 4px;
+        flex-shrink: 0;
+    }
+    .et-row__content {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 2fr 1.3fr auto auto;
+        gap: 1rem;
+        align-items: center;
+        padding: .7rem 1rem;
+        min-width: 0;
+    }
+    .et-row__titles { min-width: 0; }
+    .et-row__title {
+        margin: 0 0 .1rem 0;
+        font-size: .88rem;
+        font-weight: 700;
+        color: #0f172a;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .et-row__subtitle {
+        font-size: .72rem;
+        color: #64748b;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .et-row__subtitle .et-card__sep { color: #cbd5e1; margin: 0 .2rem; }
+    .et-row__meta {
+        display: flex;
+        flex-direction: column;
+        gap: .1rem;
+        font-size: .76rem;
+        color: #475569;
+        min-width: 0;
+    }
+    .et-row__meta-line {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .et-row__meta-line i { color: #94a3b8; font-size: .72rem; }
+    .et-row__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .25rem;
+        padding: .2rem .6rem;
+        border-radius: 999px;
+        font-size: .68rem;
+        font-weight: 700;
+        line-height: 1.3;
+        flex-shrink: 0;
+    }
+    .et-row__badge i { font-size: .62rem; }
+    .et-row__badge--danger  { background: #fee2e2; color: #b91c1c; }
+    .et-row__badge--success { background: rgba(16,185,129,.14); color: #047857; }
+    .et-row__badge--warning { background: rgba(245,158,11,.15); color: #b45309; }
+    .et-row__badge--info    { background: rgba(4,83,203,.1); color: #0453cb; }
+    .et-row__actions {
+        display: flex;
+        align-items: center;
+        gap: .3rem;
+        flex-shrink: 0;
+    }
+    .et-row__btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px; height: 32px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #64748b;
+        cursor: pointer;
+        transition: all .15s ease;
+        text-decoration: none;
+    }
+    .et-row__btn:hover { border-color: #0453cb; color: #0453cb; background: rgba(4,83,203,.04); }
+    .et-row__btn--pdf { color: #b91c1c; }
+    .et-row__btn--pdf:hover { border-color: #dc2626; color: #b91c1c; background: #fee2e2; }
+    .et-row__btn--primary {
+        width: auto;
+        padding: 0 .85rem;
+        gap: .35rem;
+        background: linear-gradient(135deg, #0453cb, #3b7ddb);
+        color: #fff;
+        border-color: transparent;
+        font-size: .78rem;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(4,83,203,.18);
+    }
+    .et-row__btn--primary:hover {
+        background: linear-gradient(135deg, #033a8e, #0453cb);
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(4,83,203,.25);
+    }
+    .et-row__fresh {
+        font-size: .68rem;
+        color: #94a3b8;
+        margin-top: .1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Responsive compact : réduire à 2 colonnes en <1200px */
+    @media (max-width: 1199.98px) {
+        .et-row__content {
+            grid-template-columns: 1fr auto auto;
+        }
+        .et-row__meta { display: none; }
+    }
 </style>
 @endsection
 
@@ -1790,6 +1941,11 @@
                                         <i class="fas fa-th-large"></i> Cards
                                     </label>
 
+                                    <input type="radio" class="btn-check" name="viewMode" id="compactView">
+                                    <label class="btn btn-outline-secondary et-toggle-compact" for="compactView">
+                                        <i class="fas fa-bars"></i> Compact
+                                    </label>
+
                                     <input type="radio" class="btn-check" name="viewMode" id="tableView">
                                     <label class="btn btn-outline-secondary" for="tableView">
                                         <i class="fas fa-table"></i> Tableau
@@ -1806,6 +1962,13 @@
                                 'timetableShortcut' => $timetableShortcut ?? null,
                                 'previousWeekValue' => $previousWeekValue ?? null,
                                 'previousWeekPlanningCount' => $previousWeekPlanningCount ?? 0,
+                            ])
+                        </div>
+
+                        <!-- Vue compact row-dense (masquée par défaut) -->
+                        <div id="compactContainer" class="emplois-compact-container" style="display: none;">
+                            @include('esbtp.emploi-temps.partials.cards-compact', [
+                                'emploisTemps' => $emploisTemps,
                             ])
                         </div>
 
@@ -2557,20 +2720,38 @@ document.addEventListener('DOMContentLoaded', function () {
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Basculer entre les vues
+        // Basculer entre les vues (cards / compact / tableau)
         const cardView = document.getElementById('cardView');
+        const compactView = document.getElementById('compactView');
         const tableView = document.getElementById('tableView');
         const cardsContainer = document.getElementById('cardsContainer');
+        const compactContainer = document.getElementById('compactContainer');
         const tableContainer = document.getElementById('tableContainer');
-        
+
+        const MOBILE_BREAKPOINT = 768;
+        const isMobile = () => window.innerWidth < MOBILE_BREAKPOINT;
+
         // Gérer le changement de vue
         function toggleView() {
+            // Mobile < 768px : compact force fallback sur cards (UX row-dense impossible sur écran étroit)
+            if (compactView.checked && isMobile()) {
+                compactView.checked = false;
+                cardView.checked = true;
+            }
+
             if (cardView.checked) {
                 cardsContainer.style.display = 'grid';
+                compactContainer.style.display = 'none';
                 tableContainer.style.display = 'none';
                 localStorage.setItem('emploiTempsViewMode', 'cards');
+            } else if (compactView.checked) {
+                cardsContainer.style.display = 'none';
+                compactContainer.style.display = 'flex';
+                tableContainer.style.display = 'none';
+                localStorage.setItem('emploiTempsViewMode', 'compact');
             } else if (tableView.checked) {
                 cardsContainer.style.display = 'none';
+                compactContainer.style.display = 'none';
                 tableContainer.style.display = 'block';
                 localStorage.setItem('emploiTempsViewMode', 'table');
 
@@ -2583,19 +2764,29 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         }
-        
+
         cardView.addEventListener('change', toggleView);
+        compactView.addEventListener('change', toggleView);
         tableView.addEventListener('change', toggleView);
-        
+
+        // Si on redimensionne sous 768px en mode compact → fallback cards
+        window.addEventListener('resize', () => {
+            if (compactView.checked && isMobile()) {
+                cardView.checked = true;
+                toggleView();
+            }
+        });
+
         // Restaurer la vue préférée de l'utilisateur
         const savedViewMode = localStorage.getItem('emploiTempsViewMode');
         if (savedViewMode === 'table') {
             tableView.checked = true;
-            toggleView();
+        } else if (savedViewMode === 'compact' && !isMobile()) {
+            compactView.checked = true;
         } else {
             cardView.checked = true;
-            toggleView();
         }
+        toggleView();
         
         // Initialize DataTable (seulement quand nécessaire)
         function initializeDataTable() {
