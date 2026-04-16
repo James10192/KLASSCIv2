@@ -12,15 +12,17 @@
     }
 
     .annonce-header {
-        background-color: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-lg);
-        box-shadow: var(--shadow-card);
+        background: linear-gradient(135deg, #071631 0%, #0a2d6e 35%, #0453cb 70%, #3674d1 100%);
+        border-radius: 18px;
+        padding: 2rem;
+        margin-bottom: 1.75rem;
+        box-shadow: 0 8px 32px rgba(4,83,203,.18), 0 2px 8px rgba(15,23,42,.1), inset 0 1px 0 rgba(255,255,255,.08);
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: var(--space-md);
+        gap: 1rem;
+        position: relative;
+        overflow: hidden;
     }
 
     .header-content {
@@ -29,11 +31,12 @@
     }
 
     .annonce-title {
-        font-size: var(--title-main);
+        font-size: 1.45rem;
         font-weight: 700;
-        color: var(--primary);
-        margin: 0 0 var(--space-sm) 0;
+        color: #fff;
+        margin: 0 0 .75rem 0;
         line-height: 1.2;
+        letter-spacing: -.3px;
     }
 
     .annonce-meta {
@@ -46,20 +49,31 @@
     .meta-item {
         display: flex;
         align-items: center;
-        gap: var(--space-xs);
-        font-size: var(--text-small);
-        color: var(--text-secondary);
+        gap: .3rem;
+        font-size: .78rem;
+        color: rgba(255,255,255,.6);
     }
 
     .meta-icon {
-        color: var(--accent-blue);
+        color: rgba(255,255,255,.45);
         width: 16px;
     }
 
     .header-actions {
         display: flex;
-        gap: var(--space-sm);
+        gap: .6rem;
         flex-shrink: 0;
+    }
+    .header-actions .btn-acasi {
+        background: rgba(255,255,255,.07);
+        color: rgba(255,255,255,.85);
+        border: 1px solid rgba(255,255,255,.15);
+        border-radius: 9px;
+        font-size: .8rem;
+    }
+    .header-actions .btn-acasi:hover {
+        background: rgba(255,255,255,.14);
+        color: #fff;
     }
 
     .priority-badge {
@@ -75,18 +89,19 @@
     }
 
     .priority-badge.normal {
-        background-color: rgba(107, 114, 128, 0.1);
-        color: var(--neutral);
+        background: rgba(255,255,255,.1);
+        color: rgba(255,255,255,.7);
     }
 
     .priority-badge.important {
-        background-color: rgba(245, 158, 11, 0.1);
-        color: var(--warning);
+        background: rgba(94,145,222,.2);
+        color: #93b8e8;
     }
 
     .priority-badge.urgent {
-        background-color: rgba(239, 68, 68, 0.1);
-        color: var(--danger);
+        background: rgba(255,255,255,.15);
+        color: #fff;
+        font-weight: 700;
     }
 
     .status-badge {
@@ -99,19 +114,19 @@
     }
 
     .status-badge.published {
-        background-color: rgba(16, 185, 129, 0.1);
-        color: var(--success);
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
     }
 
     .status-badge.draft {
-        background-color: rgba(107, 114, 128, 0.1);
-        color: var(--neutral);
+        background: rgba(255,255,255,.1);
+        color: rgba(255,255,255,.6);
     }
 
     .status-badge.expired {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        color: white;
-        animation: pulse 2s infinite;
+        background: rgba(255,255,255,.12);
+        color: rgba(255,255,255,.8);
+        font-weight: 700;
     }
 
     @keyframes pulse {
@@ -129,18 +144,18 @@
     }
 
     .type-badge.global {
-        background-color: rgba(30, 58, 138, 0.1);
-        color: var(--primary);
+        background: rgba(255,255,255,.1);
+        color: rgba(255,255,255,.75);
     }
 
     .type-badge.class {
-        background-color: rgba(6, 182, 212, 0.1);
-        color: var(--accent-blue);
+        background: rgba(94,145,222,.15);
+        color: #93b8e8;
     }
 
     .type-badge.student {
-        background-color: rgba(249, 115, 22, 0.1);
-        color: var(--accent-orange);
+        background: rgba(94,145,222,.15);
+        color: #93b8e8;
     }
 
     .content-grid {

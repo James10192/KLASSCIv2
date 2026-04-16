@@ -123,8 +123,8 @@
 
 .stat-icon.primary { background: linear-gradient(135deg, #0453cb, #1b64d4); }
 .stat-icon.success { background: linear-gradient(135deg, #10b981, #059669); }
-.stat-icon.warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
-.stat-icon.danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.stat-icon.warning { background: linear-gradient(135deg, #5e91de, #3b7ddb); }
+.stat-icon.danger { background: linear-gradient(135deg, #0f172a, #334155); }
 
 .stat-content h3 {
     font-size: 2rem;
@@ -882,6 +882,34 @@
         @endif
     </div>
     
+    {{-- Modal de confirmation de suppression --}}
+    <div class="modal fade" id="deleteAnnonceModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content" style="border:none;border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(15,23,42,.15);">
+                <div class="modal-header" style="background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;border:none;padding:1.25rem 1.5rem;">
+                    <h5 class="modal-title" style="font-size:.95rem;font-weight:600;">
+                        <i class="fas fa-trash-alt" style="margin-right:.4rem;opacity:.8;"></i>
+                        Supprimer l'annonce
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="padding:1.5rem;text-align:center;">
+                    <div style="width:56px;height:56px;border-radius:14px;background:rgba(239,68,68,.08);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.3rem;color:#dc2626;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <p style="font-weight:600;color:#1e293b;margin-bottom:.5rem;">Cette action est irréversible</p>
+                    <p style="font-size:.85rem;color:#64748b;">L'annonce sera définitivement supprimée.</p>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #e2e8f0;padding:1rem 1.5rem;gap:.5rem;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:9px;font-size:.82rem;">Annuler</button>
+                    <button type="button" id="confirmDeleteBtn" class="btn btn-danger" style="border-radius:9px;font-size:.82rem;">
+                        <i class="fas fa-trash-alt" style="margin-right:.3rem;"></i>Supprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     </div>
 </div>
 @endsection
@@ -918,29 +946,36 @@ document.getElementById('searchInput').addEventListener('input', function() {
     });
 });
 
-// Fonction de suppression d'annonce
+// Fonction de suppression d'annonce via modal Bootstrap
+let pendingDeleteId = null;
+
 function deleteAnnonce(id) {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette annonce ?')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{{ route("esbtp.annonces.index") }}/' + id;
-
-        const csrfToken = document.createElement('input');
-        csrfToken.type = 'hidden';
-        csrfToken.name = '_token';
-        csrfToken.value = '{{ csrf_token() }}';
-
-        const methodField = document.createElement('input');
-        methodField.type = 'hidden';
-        methodField.name = '_method';
-        methodField.value = 'DELETE';
-
-        form.appendChild(csrfToken);
-        form.appendChild(methodField);
-        document.body.appendChild(form);
-
-        form.submit();
-    }
+    pendingDeleteId = id;
+    const modal = new bootstrap.Modal(document.getElementById('deleteAnnonceModal'));
+    modal.show();
 }
+
+document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+    if (!pendingDeleteId) return;
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ route("esbtp.annonces.index") }}/' + pendingDeleteId;
+
+    const csrfToken = document.createElement('input');
+    csrfToken.type = 'hidden';
+    csrfToken.name = '_token';
+    csrfToken.value = '{{ csrf_token() }}';
+
+    const methodField = document.createElement('input');
+    methodField.type = 'hidden';
+    methodField.name = '_method';
+    methodField.value = 'DELETE';
+
+    form.appendChild(csrfToken);
+    form.appendChild(methodField);
+    document.body.appendChild(form);
+    form.submit();
+});
 </script>
 @endpush

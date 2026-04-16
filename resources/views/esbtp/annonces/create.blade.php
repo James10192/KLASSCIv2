@@ -22,8 +22,8 @@
         padding: 0.6rem 0.75rem;
     }
     .form-control:focus, .form-select:focus {
-        border-color: var(--esbtp-green);
-        box-shadow: 0 0 0 0.15rem rgba(1, 99, 47, 0.15);
+        border-color: #0453cb;
+        box-shadow: 0 0 0 0.15rem rgba(4, 83, 203, 0.15);
     }
 
     /* Styles Choices.js modernes */
@@ -60,9 +60,9 @@
     }
 
     .choices__inner:focus-within {
-        border-color: var(--esbtp-green);
+        border-color: #0453cb;
         transform: translateY(-2px);
-        box-shadow: 0 10px 25px rgba(1, 99, 47, 0.3);
+        box-shadow: 0 10px 25px rgba(4, 83, 203, 0.3);
     }
 
     .choices__inner:focus-within::before {
@@ -112,7 +112,7 @@
         left: -100%;
         width: 100%;
         height: 100%;
-        background: var(--esbtp-green);
+        background: #0453cb;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         z-index: -1;
     }
@@ -675,14 +675,22 @@
 <div class="dashboard-acasi">
     <div class="main-content">
         <!-- Header Section -->
-        <div class="dashboard-header">
-            <div class="header-left">
-                <h1><i class="fas fa-plus-circle me-2"></i>Créer une annonce</h1>
-                <p class="header-subtitle">Diffusion d'informations aux étudiants et au personnel</p>
-            </div>
-            <div class="header-actions">
-                <a href="{{ route('esbtp.annonces.index') }}" class="btn-acasi secondary">
-                    <i class="fas fa-arrow-left"></i>Retour à la liste
+        <div style="background:linear-gradient(135deg,#071631 0%,#0a2d6e 35%,#0453cb 70%,#3674d1 100%);position:relative;overflow:hidden;padding:2rem 2rem 1.75rem;border-radius:18px;margin-bottom:1.75rem;box-shadow:0 8px 32px rgba(4,83,203,.18),0 2px 8px rgba(15,23,42,.1),inset 0 1px 0 rgba(255,255,255,.08);">
+            <div style="position:absolute;inset:0;background:radial-gradient(ellipse 50% 70% at 90% 30%,rgba(94,145,222,.15) 0%,transparent 70%);pointer-events:none;"></div>
+            <div style="position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+                <div>
+                    <div style="display:inline-flex;align-items:center;gap:.35rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:6px;padding:.2rem .6rem;font-size:.65rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:.5rem;">
+                        <i class="fas fa-bullhorn" style="font-size:.6rem;"></i>
+                        Communication
+                    </div>
+                    <h1 style="font-size:1.45rem;font-weight:700;color:#fff;margin:0;letter-spacing:-.3px;">
+                        <i class="fas fa-plus-circle" style="margin-right:.4rem;opacity:.75;font-size:.85em;"></i>
+                        Créer une annonce
+                    </h1>
+                    <p style="color:rgba(255,255,255,.5);font-size:.82rem;margin:.3rem 0 0;">Diffusion d'informations aux étudiants et au personnel</p>
+                </div>
+                <a href="{{ route('esbtp.annonces.index') }}" style="background:rgba(255,255,255,.07);color:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.15);padding:.5rem 1.1rem;border-radius:9px;font-weight:500;font-size:.8rem;text-decoration:none;display:inline-flex;align-items:center;gap:.4rem;transition:all .2s;">
+                    <i class="fas fa-arrow-left"></i> Retour
                 </a>
             </div>
         </div>
@@ -1442,15 +1450,15 @@
         // Prévisualisation de la notification de niveau d'urgence
         $('#priorite').change(function() {
             const priorite = $(this).val();
-            let bgColor = 'var(--esbtp-light-green)';
-            let textColor = 'var(--esbtp-green)';
+            let bgColor = 'rgba(4, 83, 203, 0.08)';
+            let textColor = '#0453cb';
 
             if (priorite == 1) {
-                bgColor = 'var(--esbtp-light-orange)';
-                textColor = 'var(--esbtp-orange)';
+                bgColor = 'rgba(94, 145, 222, 0.12)';
+                textColor = '#2563eb';
             } else if (priorite == 2) {
-                bgColor = '#f8d7da';
-                textColor = '#842029';
+                bgColor = 'rgba(15, 23, 42, 0.08)';
+                textColor = '#0f172a';
             }
 
             $(this).css({

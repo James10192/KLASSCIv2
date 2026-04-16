@@ -12,32 +12,45 @@
     }
 
     .messages-header {
-        background-color: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-lg);
-        box-shadow: var(--shadow-card);
+        background: linear-gradient(135deg, #071631 0%, #0a2d6e 35%, #0453cb 70%, #3674d1 100%);
+        border-radius: 18px;
+        padding: 2rem;
+        margin-bottom: 1.75rem;
+        box-shadow: 0 8px 32px rgba(4,83,203,.18), 0 2px 8px rgba(15,23,42,.1), inset 0 1px 0 rgba(255,255,255,.08);
         display: flex;
         justify-content: space-between;
         align-items: center;
         flex-wrap: wrap;
-        gap: var(--space-md);
+        gap: 1rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .messages-header::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(ellipse 50% 70% at 90% 30%, rgba(94,145,222,.15) 0%, transparent 70%);
+        pointer-events: none;
     }
 
     .header-title {
-        font-size: var(--title-main);
+        font-size: 1.45rem;
         font-weight: 700;
-        color: var(--primary);
+        color: #fff;
         margin: 0;
         display: flex;
         align-items: center;
-        gap: var(--space-sm);
+        gap: .5rem;
+        position: relative;
+        z-index: 1;
     }
 
     .header-subtitle {
-        color: var(--text-secondary);
-        font-size: var(--text-normal);
-        margin: var(--space-xs) 0 0 0;
+        color: rgba(255,255,255,.5);
+        font-size: .82rem;
+        margin: .3rem 0 0 0;
+        position: relative;
+        z-index: 1;
     }
 
     .filters-container {
@@ -47,45 +60,48 @@
         flex-wrap: wrap;
     }
 
+    .filters-container {
+        position: relative;
+        z-index: 1;
+    }
+
     .filter-btn {
-        background-color: transparent;
-        border: 1px solid var(--accent-blue);
-        color: var(--accent-blue);
-        padding: var(--space-sm) var(--space-md);
-        border-radius: var(--radius-large);
-        font-size: var(--text-small);
+        background: rgba(255,255,255,.08);
+        border: 1px solid rgba(255,255,255,.18);
+        color: rgba(255,255,255,.75);
+        padding: .45rem .9rem;
+        border-radius: 20px;
+        font-size: .75rem;
         font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.3px;
         cursor: pointer;
         transition: all 0.2s ease;
         display: flex;
         align-items: center;
-        gap: var(--space-xs);
+        gap: .35rem;
         text-decoration: none;
     }
 
     .filter-btn:hover {
-        background-color: var(--accent-blue);
-        color: white;
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-elevated);
+        background: rgba(255,255,255,.15);
+        color: #fff;
     }
 
     .filter-btn.active {
-        background-color: var(--primary);
-        color: white;
-        border-color: var(--primary);
+        background: rgba(255,255,255,.2);
+        color: #fff;
+        border-color: rgba(255,255,255,.35);
+        box-shadow: 0 2px 8px rgba(0,0,0,.15);
     }
 
     .filter-badge {
-        background-color: rgba(255, 255, 255, 0.2);
-        color: white;
-        padding: 2px 8px;
-        border-radius: var(--radius-circle);
-        font-size: 11px;
-        font-weight: 600;
-        margin-left: var(--space-xs);
+        background: rgba(255,255,255,.2);
+        color: #fff;
+        padding: 1px 7px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 700;
+        margin-left: .2rem;
     }
 
     .messages-grid {
@@ -94,27 +110,28 @@
     }
 
     .message-card {
-        background-color: var(--surface);
-        border-radius: var(--radius-medium);
-        box-shadow: var(--shadow-card);
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
         overflow: hidden;
         transition: all 0.2s ease;
         position: relative;
     }
 
     .message-card:hover {
-        box-shadow: var(--shadow-hover);
-        transform: translateY(-1px);
+        box-shadow: 0 8px 30px rgba(4,83,203,.08), 0 2px 8px rgba(15,23,42,.04);
+        transform: translateY(-2px);
     }
 
     .message-card.unread {
-        border-left: 4px solid var(--accent-orange);
-        background: linear-gradient(135deg, rgba(249, 115, 22, 0.02), rgba(249, 115, 22, 0.01));
+        border-left: 4px solid #0453cb;
+        background: linear-gradient(135deg, rgba(4,83,203,.02), rgba(4,83,203,.01));
     }
 
     .message-card.urgent {
-        border-left: 4px solid var(--danger);
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(239, 68, 68, 0.02));
+        border-left: 4px solid #0f172a;
+        background: linear-gradient(135deg, rgba(15,23,42,.03), rgba(15,23,42,.01));
     }
 
     .message-header {
@@ -201,17 +218,17 @@
     }
 
     .status-badge.new {
-        background-color: var(--accent-orange);
+        background: #0453cb;
         color: white;
     }
 
     .status-badge.urgent {
-        background-color: var(--danger);
+        background: #0f172a;
         color: white;
     }
 
     .status-badge.read {
-        background-color: var(--neutral);
+        background: #64748b;
         color: white;
     }
 
@@ -223,15 +240,15 @@
     }
 
     .priority-indicator.high {
-        background-color: var(--danger);
+        background-color: #0f172a;
     }
 
     .priority-indicator.medium {
-        background-color: var(--warning);
+        background-color: #5e91de;
     }
 
     .priority-indicator.normal {
-        background-color: var(--success);
+        background-color: #10b981;
     }
 
     .empty-state {
@@ -337,8 +354,8 @@
     }
 
     .stat-card.total .stat-number { color: var(--primary); }
-    .stat-card.unread .stat-number { color: var(--accent-orange); }
-    .stat-card.urgent .stat-number { color: var(--danger); }
+    .stat-card.unread .stat-number { color: #0453cb; }
+    .stat-card.urgent .stat-number { color: #0f172a; }
 
     /* Responsive */
     @media (max-width: 768px) {
