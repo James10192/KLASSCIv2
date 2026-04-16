@@ -995,6 +995,10 @@ function saveNote(studentId, evaluationId, noteValue) {
         url: '{{ route("esbtp.notes.save-ajax") }}',
         method: 'POST',
         dataType: 'json',
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
         data: {
             _token: '{{ csrf_token() }}',
             etudiant_id: studentId,
@@ -1041,6 +1045,10 @@ function toggleAbsence(studentId, evaluationId, isAbsent) {
             url: '{{ route("esbtp.notes.save-ajax") }}',
             method: 'POST',
             dataType: 'json',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             data: {
                 _token: '{{ csrf_token() }}',
                 etudiant_id: studentId,
@@ -1233,6 +1241,10 @@ $('#saveAllNotesBtn').on('click', function() {
         url: '{{ route("esbtp.notes.save-ajax-bulk") }}',
         method: 'POST',
         dataType: 'json',
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
         data: {
             _token: '{{ csrf_token() }}',
             notes: notesPayload

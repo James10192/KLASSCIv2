@@ -44,8 +44,13 @@ class Handler extends ExceptionHandler
 
     public function render($request, Throwable $e)
     {
+        $isAjax = $request->expectsJson()
+            || $request->ajax()
+            || str_contains($request->path(), 'ajax')
+            || str_contains($request->path(), 'api/');
+
         if ($e instanceof TokenMismatchException) {
-            if ($request->expectsJson()) {
+            if ($isAjax) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Votre session a expiré. Veuillez rafraîchir la page et réessayer.',
@@ -58,7 +63,7 @@ class Handler extends ExceptionHandler
         }
 
         if ($e instanceof UnauthorizedException) {
-            if ($request->expectsJson()) {
+            if ($isAjax) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Vous n\'avez pas la permission d\'effectuer cette action.',
