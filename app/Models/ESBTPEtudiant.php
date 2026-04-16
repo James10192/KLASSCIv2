@@ -134,6 +134,11 @@ class ESBTPEtudiant extends Model
         return $this->hasMany(ESBTPEtudiantDocument::class, 'etudiant_id');
     }
 
+    public function relances()
+    {
+        return $this->hasMany(ESBTPRelance::class, 'etudiant_id');
+    }
+
     /**
      * Obtenir l'inscription active de l'étudiant.
      *

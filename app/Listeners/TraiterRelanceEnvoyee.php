@@ -77,26 +77,23 @@ class TraiterRelanceEnvoyee implements ShouldQueue
 
         switch ($relance->niveau) {
             case 1:
-                // Premier niveau: notifier seulement les comptables
                 $utilisateursANotifier = User::role(['comptable'])->get();
                 $typeNotification = 'info';
                 break;
 
             case 2:
-                // Deuxième niveau: notifier comptables et directeurs
-                $utilisateursANotifier = User::role(['comptable', 'directeur'])->get();
+                $utilisateursANotifier = User::role(['comptable', 'coordinateur'])->get();
                 $typeNotification = 'warning';
                 break;
 
             case 3:
             default:
-                // Troisième niveau et plus: notifier tous les responsables
-                $utilisateursANotifier = User::role(['comptable', 'directeur', 'superAdmin'])->get();
+                $utilisateursANotifier = User::role(['comptable', 'coordinateur', 'superAdmin'])->get();
                 $typeNotification = 'error';
                 break;
         }
 
-        $message = "Une relance de niveau {$relance->niveau} a été envoyée à {$relance->etudiant->nom_complet} pour un montant de {$relance->montant_du} FCFA.";
+        $message = "Une relance de niveau {$relance->niveau} a été envoyée à {$relance->etudiant->nom_complet}.";
 
         foreach ($utilisateursANotifier as $utilisateur) {
             $this->notificationService->createNotification(
@@ -115,16 +112,31 @@ class TraiterRelanceEnvoyee implements ShouldQueue
      */
     private function programmerProchaineRelance($relance): void
     {
-        // Si ce n'est pas la relance finale, programmer la suivante
-        if ($relance->niveau < 3 && $relance->statut === 'envoyee') {
-            Log::info("Programmation de la prochaine relance", [
-                'relance_actuelle_id' => $relance->id,
-                'niveau_suivant' => $relance->niveau + 1
-            ]);
-
-            // Ici on pourrait créer un job pour programmer automatiquement la prochaine relance
-            // Par exemple après 7 jours pour le niveau 2, 14 jours pour le niveau 3
+        if ($relance->niveau >= 3 || $relance->statut !== 'envoyee') {
+            return;
         }
+
+        $prochainNiveau = $relance->niveau + 1;
+
+        // Lire les délais depuis settings, sinon défaut 7j/14j
+        $delaiKey = "relances.delai_niveau_{$prochainNiveau}";
+        $delaiJours = (int) (\DB::table('settings')->where('key', $delaiKey)->value('value') ?? ($prochainNiveau === 2 ? 7 : 14));
+
+        \App\Models\ESBTPRelance::create([
+            'etudiant_id'      => $relance->etudiant_id,
+            'facture_id'       => $relance->facture_id,
+            'type'             => $relance->type,
+            'niveau'           => $prochainNiveau,
+            'template_utilise' => "relance_niveau_{$prochainNiveau}",
+            'date_envoi'       => now()->addDays($delaiJours),
+            'statut'           => 'planifiee',
+        ]);
+
+        Log::info("Prochaine relance programmée", [
+            'relance_actuelle_id' => $relance->id,
+            'niveau_suivant'      => $prochainNiveau,
+            'delai_jours'         => $delaiJours,
+        ]);
     }
 
     /**

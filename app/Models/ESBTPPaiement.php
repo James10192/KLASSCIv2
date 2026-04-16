@@ -210,6 +210,11 @@ class ESBTPPaiement extends Model implements Auditable
         return $this->belongsTo(ESBTPInscription::class, 'inscription_id');
     }
 
+    public function relance()
+    {
+        return $this->belongsTo(ESBTPRelance::class, 'relance_id');
+    }
+
     /**
      * Utilisateur qui a créé l'entrée.
      *

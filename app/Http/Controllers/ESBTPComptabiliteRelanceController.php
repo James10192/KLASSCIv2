@@ -16,10 +16,7 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPClasse;
 use App\Models\User;
 use App\Services\ComptabiliteService;
-use App\Services\PerformanceMonitoringService;
-use App\Services\AnalyticsPredictifService;
-use App\Services\AIAnalyticsService;
-use App\Services\BonDepenseService;
+use App\Services\RelanceCalculationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -33,18 +30,9 @@ class ESBTPComptabiliteRelanceController extends Controller
     /**
      * Constructeur avec injection des services optimisés
      */
-    public function __construct(
-        ComptabiliteService $comptabiliteService,
-        PerformanceMonitoringService $performanceMonitor,
-        AnalyticsPredictifService $analyticsPredictifService,
-        AIAnalyticsService $aiAnalyticsService,
-        BonDepenseService $bonDepenseService
-    ) {
+    public function __construct(ComptabiliteService $comptabiliteService)
+    {
         $this->comptabiliteService = $comptabiliteService;
-        $this->performanceMonitor = $performanceMonitor;
-        $this->analyticsPredictifService = $analyticsPredictifService;
-        $this->aiAnalyticsService = $aiAnalyticsService;
-        $this->bonDepenseService = $bonDepenseService;
 
         $this->middleware('auth');
         $this->middleware('comptabilite.access');
@@ -65,72 +53,25 @@ class ESBTPComptabiliteRelanceController extends Controller
             abort(404, 'Étudiant introuvable.');
         }
 
-        // Calculs financiers — alignés avec suivi-catégories (fix fraisSubscriptions->sum)
-        $allCategories = \App\Models\ESBTPFraisCategory::where('is_active', true)->get();
-        $subsByInscription = \App\Models\ESBTPFraisSubscription::where('is_active', true)
-            ->where('inscription_id', $inscription->id)
-            ->get()
-            ->groupBy('inscription_id');
-        $allConfigurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
-            ->whereIn('frais_category_id', $allCategories->pluck('id'))
-            ->get()
-            ->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
+        $calcService = app(RelanceCalculationService::class)->preloadForSingle($inscription);
 
-        $totalDu = $this->calculerTotalDuParInscription($inscription, $allCategories, $subsByInscription, $allConfigurations);
-        $totalPaye = $inscription->paiements->sum('montant');
-        $soldeRestant = max(0, $totalDu - $totalPaye);
+        $totalDu         = $calcService->calculerTotalDu($inscription);
+        $totalPaye       = $inscription->paiements->sum('montant');
+        $soldeRestant    = max(0, $totalDu - $totalPaye);
         $pourcentagePaye = $totalDu > 0 ? min(100, round($totalPaye / $totalDu * 100)) : 0;
+        $fraisImpayés    = $calcService->calculerFraisDetail($inscription);
 
-        // Frais par catégorie — même logique que calculerTotalDuParInscription()
-        // Inclut les catégories obligatoires sans subscription (via config/default_amount)
-        $inscriptionSubsDetail = $subsByInscription->get($inscription->id, collect());
-        $fraisDetail = [];
-        foreach ($allCategories as $category) {
-            $sub = $inscriptionSubsDetail->where('frais_category_id', $category->id)->first();
-            if ($category->is_mandatory) {
-                if ($sub) {
-                    $montant = $sub->amount;
-                } else {
-                    $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
-                    $config = $allConfigurations->get($configKey, collect())->first();
-                    $montant = $config
-                        ? $config->getMontantByStatus($inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS)
-                        : $category->default_amount;
-                }
-            } else {
-                $montant = $sub ? $sub->amount : 0;
-            }
-            if ($montant <= 0) continue;
-            $paye = $inscription->paiements
-                ->where('frais_category_id', $category->id)
-                ->sum('montant');
-            $fraisDetail[] = [
-                'name'   => $category->name,
-                'amount' => $montant,
-                'paye'   => $paye,
-            ];
-        }
-        $fraisImpayés = collect($fraisDetail)->values();
+        $riskInfo  = $calcService->getRiskLevel($totalDu, $totalPaye);
+        $riskLevel = $riskInfo['risk'];
+        $riskLabel = $riskInfo['label'];
+        $riskColor = $riskInfo['color'];
 
-        // Niveau de risque selon le solde restant à payer
-        if ($soldeRestant <= 0) {
-            $riskLevel = 'low'; $riskLabel = 'À jour'; $riskColor = '#10b981';
-        } elseif ($totalDu > 0 && ($soldeRestant / $totalDu) <= 0.25) {
-            $riskLevel = 'medium'; $riskLabel = 'Presque soldé'; $riskColor = '#5e91de';
-        } elseif ($totalPaye > 0) {
-            $riskLevel = 'high'; $riskLabel = 'En cours'; $riskColor = '#0453cb';
-        } else {
-            $riskLevel = 'critical'; $riskLabel = 'Impayé'; $riskColor = '#1e293b';
-        }
-
-        // Autres inscriptions de l'étudiant (pour navigation multi-années)
         $autresInscriptions = \App\Models\ESBTPInscription::with(['anneeUniversitaire', 'classe'])
             ->where('etudiant_id', $etudiant->id)
             ->where('id', '!=', $inscription->id)
             ->orderByDesc('id')
             ->get();
 
-        // Historique relances
         try {
             $historique = \App\Models\Notification::where('notifiable_id', $etudiant->user_id ?? 0)
                 ->where('notifiable_type', \App\Models\User::class)
@@ -167,7 +108,7 @@ class ESBTPComptabiliteRelanceController extends Controller
         $anneeActive = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $anneeId     = $anneeId ?: optional($anneeActive)->id;
 
-        // Query de base : inscriptions actives avec solde potentiel non nul
+        // Query de base : inscriptions actives avec workflow complet
         $query = \App\Models\ESBTPInscription::with([
             'etudiant',
             'classe.filiere',
@@ -175,59 +116,20 @@ class ESBTPComptabiliteRelanceController extends Controller
             'fraisSubscriptions',
             'paiements' => fn ($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at'),
         ])
+        ->where('workflow_step', 'etudiant_cree')
         ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
         ->when($classeId, fn ($q) => $q->where('classe_id', $classeId))
         ->when($filiereId, fn ($q) => $q->whereHas('classe', fn ($c) => $c->where('filiere_id', $filiereId)))
         ->when($search, fn ($q) => $q->whereHas('etudiant', fn ($e) => $e->where('nom', 'like', "%$search%")->orWhere('prenoms', 'like', "%$search%")->orWhere('matricule', 'like', "%$search%")))
         ->latest('created_at');
 
-        // Calculer risk levels en PHP (après fetch)
+        // Calculer risk levels via le service partagé
         $allInscriptions = $query->get();
 
-        // Pré-charger catégories et configurations une seule fois (évite N+1 dans la map)
-        $relCategories = \App\Models\ESBTPFraisCategory::where('is_active', true)->get();
-        $relInscriptionIds = $allInscriptions->pluck('id')->toArray();
-        $relSubscriptions = \App\Models\ESBTPFraisSubscription::where('is_active', true)
-            ->whereIn('inscription_id', $relInscriptionIds)
-            ->get()
-            ->groupBy('inscription_id');
-        $relConfigurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
-            ->whereIn('frais_category_id', $relCategories->pluck('id'))
-            ->get()
-            ->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
-
-        $rows = $allInscriptions->map(function ($inscription) use ($relCategories, $relSubscriptions, $relConfigurations) {
-            $totalDu            = $this->calculerTotalDuParInscription($inscription, $relCategories, $relSubscriptions, $relConfigurations);
-            $totalPaye          = $inscription->paiements->where('status', 'validé')->sum('montant');
-            $totalPayeEnAttente = $inscription->paiements->where('status', 'en_attente')->sum('montant');
-            $soldeRestant       = max(0, $totalDu - $totalPaye);
-            $pourcentage        = $totalDu > 0 ? min(100, round($totalPaye / $totalDu * 100)) : 100;
-
-            if ($soldeRestant <= 0) {
-                $risk = 'low'; $riskLabel = 'À jour';
-            } elseif ($totalDu > 0 && ($soldeRestant / $totalDu) <= 0.25) {
-                $risk = 'medium'; $riskLabel = 'Presque soldé';
-            } elseif ($totalPaye > 0) {
-                $risk = 'high'; $riskLabel = 'En cours';
-            } else {
-                $risk = 'critical'; $riskLabel = 'Impayé';
-            }
-
-            return (object) compact('inscription', 'totalDu', 'totalPaye', 'totalPayeEnAttente', 'soldeRestant', 'pourcentage', 'risk', 'riskLabel');
-        });
-
-        // KPIs globaux calculés sur TOUTES les lignes (avant filtrage risk)
-        // Les counts des tabs doivent refléter le total réel, pas le filtre actif
-        $allRowsWithDebt = $rows->filter(fn ($r) => $r->soldeRestant > 0);
-        $kpis = [
-            'total_impaye'      => $allRowsWithDebt->sum(fn ($r) => $r->soldeRestant),
-            'total_en_attente'  => $rows->sum(fn ($r) => $r->totalPayeEnAttente),
-            'count_critical'    => $rows->where('risk', 'critical')->count(),
-            'count_high'        => $rows->where('risk', 'high')->count(),
-            'count_medium'      => $rows->where('risk', 'medium')->count(),
-            'count_low'         => $rows->where('risk', 'low')->count(),
-            'total_etudiants'   => $allRowsWithDebt->count(),
-        ];
+        $calcService = app(RelanceCalculationService::class)->preloadForInscriptions($allInscriptions);
+        $batch = $calcService->buildBatch($allInscriptions);
+        $rows  = $batch['rows'];
+        $kpis  = $batch['kpis'];
 
         // Filtrer par risque pour l'affichage du tableau uniquement
         if ($riskFilter) {
@@ -296,46 +198,27 @@ class ESBTPComptabiliteRelanceController extends Controller
             'etudiant', 'classe.filiere', 'anneeUniversitaire', 'fraisSubscriptions',
             'paiements' => fn ($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at'),
         ])
+        ->where('workflow_step', 'etudiant_cree')
         ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
         ->when($classeId, fn ($q) => $q->where('classe_id', $classeId))
         ->when($filiereId, fn ($q) => $q->whereHas('classe', fn ($c) => $c->where('filiere_id', $filiereId)))
         ->when($search, fn ($q) => $q->whereHas('etudiant', fn ($e) => $e->where('nom', 'like', "%$search%")->orWhere('prenoms', 'like', "%$search%")->orWhere('matricule', 'like', "%$search%")))
         ->get();
 
-        // Pré-charger catégories et configurations pour éviter N+1 dans la map
-        $xlsCategories = \App\Models\ESBTPFraisCategory::where('is_active', true)->get();
-        $xlsSubscriptions = \App\Models\ESBTPFraisSubscription::where('is_active', true)
-            ->whereIn('inscription_id', $allInscriptions->pluck('id')->toArray())
-            ->get()->groupBy('inscription_id');
-        $xlsConfigurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
-            ->whereIn('frais_category_id', $xlsCategories->pluck('id'))
-            ->get()->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
+        $calcService = app(RelanceCalculationService::class)->preloadForInscriptions($allInscriptions);
 
-        $rows = $allInscriptions->map(function ($inscription) use ($xlsCategories, $xlsSubscriptions, $xlsConfigurations) {
-            $totalDu      = $this->calculerTotalDuParInscription($inscription, $xlsCategories, $xlsSubscriptions, $xlsConfigurations);
-            $totalPaye    = $inscription->paiements->where('status', 'validé')->sum('montant');
-            $soldeRestant = max(0, $totalDu - $totalPaye);
-
-            if ($soldeRestant <= 0) {
-                $risk = 'low';
-            } elseif ($totalDu > 0 && ($soldeRestant / $totalDu) <= 0.25) {
-                $risk = 'medium';
-            } elseif ($totalPaye > 0) {
-                $risk = 'high';
-            } else {
-                $risk = 'critical';
-            }
-
+        $rows = $allInscriptions->map(function ($inscription) use ($calcService) {
+            $row = $calcService->buildRow($inscription);
             return [
                 'matricule'    => $inscription->etudiant->matricule ?? 'N/A',
                 'nom'          => $inscription->etudiant->nom ?? '',
                 'prenoms'      => $inscription->etudiant->prenoms ?? '',
                 'classe'       => $inscription->classe->name ?? 'N/A',
                 'filiere'      => $inscription->classe->filiere->name ?? 'N/A',
-                'total_du'     => $totalDu,
-                'total_paye'   => $totalPaye,
-                'solde_restant'=> $soldeRestant,
-                'risk_level'   => $risk,
+                'total_du'     => $row->totalDu,
+                'total_paye'   => $row->totalPaye,
+                'solde_restant'=> $row->soldeRestant,
+                'risk_level'   => $row->risk,
             ];
         })->filter(fn ($r) => $r['solde_restant'] > 0);
 
@@ -394,46 +277,27 @@ class ESBTPComptabiliteRelanceController extends Controller
             'etudiant', 'classe.filiere', 'anneeUniversitaire', 'fraisSubscriptions',
             'paiements' => fn ($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at'),
         ])
+        ->where('workflow_step', 'etudiant_cree')
         ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
         ->when($classeId, fn ($q) => $q->where('classe_id', $classeId))
         ->when($filiereId, fn ($q) => $q->whereHas('classe', fn ($c) => $c->where('filiere_id', $filiereId)))
         ->when($search, fn ($q) => $q->whereHas('etudiant', fn ($e) => $e->where('nom', 'like', "%$search%")->orWhere('prenoms', 'like', "%$search%")->orWhere('matricule', 'like', "%$search%")))
         ->get();
 
-        // Pré-charger catégories et configurations pour éviter N+1 dans la map
-        $expCategories = \App\Models\ESBTPFraisCategory::where('is_active', true)->get();
-        $expSubscriptions = \App\Models\ESBTPFraisSubscription::where('is_active', true)
-            ->whereIn('inscription_id', $allInscriptions->pluck('id')->toArray())
-            ->get()->groupBy('inscription_id');
-        $expConfigurations = \App\Models\ESBTPFraisConfiguration::where('is_active', true)
-            ->whereIn('frais_category_id', $expCategories->pluck('id'))
-            ->get()->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
+        $calcService = app(RelanceCalculationService::class)->preloadForInscriptions($allInscriptions);
 
-        $relances = $allInscriptions->map(function ($inscription) use ($expCategories, $expSubscriptions, $expConfigurations) {
-            $totalDu      = $this->calculerTotalDuParInscription($inscription, $expCategories, $expSubscriptions, $expConfigurations);
-            $totalPaye    = $inscription->paiements->where('status', 'validé')->sum('montant');
-            $soldeRestant = max(0, $totalDu - $totalPaye);
-
-            if ($soldeRestant <= 0) {
-                $risk = 'low';
-            } elseif ($totalDu > 0 && ($soldeRestant / $totalDu) <= 0.25) {
-                $risk = 'medium';
-            } elseif ($totalPaye > 0) {
-                $risk = 'high';
-            } else {
-                $risk = 'critical';
-            }
-
+        $relances = $allInscriptions->map(function ($inscription) use ($calcService) {
+            $row = $calcService->buildRow($inscription);
             return [
                 'matricule'    => $inscription->etudiant->matricule ?? 'N/A',
                 'nom'          => $inscription->etudiant->nom ?? '',
                 'prenoms'      => $inscription->etudiant->prenoms ?? '',
                 'classe'       => $inscription->classe->name ?? 'N/A',
                 'filiere'      => $inscription->classe->filiere->name ?? 'N/A',
-                'total_du'     => $totalDu,
-                'total_paye'   => $totalPaye,
-                'solde_restant'=> $soldeRestant,
-                'risk_level'   => $risk,
+                'total_du'     => $row->totalDu,
+                'total_paye'   => $row->totalPaye,
+                'solde_restant'=> $row->soldeRestant,
+                'risk_level'   => $row->risk,
             ];
         })->filter(fn ($r) => $r['solde_restant'] > 0);
 
@@ -588,24 +452,41 @@ class ESBTPComptabiliteRelanceController extends Controller
      */
     public function apercuRelances(Request $request)
     {
-        $dette = $request->input('dette', 50000);
-        $jours = $request->input('jours', 30);
+        $seuilDette = (float) $request->input('dette', 50000);
 
-        $etudiants = \App\Models\ESBTPEtudiant::whereHas('factures', function($query) use ($dette, $jours) {
-            $query->where('status', 'impayee')
-                  ->where('montant_total', '>=', $dette)
-                  ->where('date_echeance', '<', now()->subDays($jours));
-        })->with('factures')->get();
+        $calcService = app(RelanceCalculationService::class);
+        $anneeActive = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        $totalDette = $etudiants->sum(function($etudiant) {
-            return $etudiant->factures->where('status', 'impayee')->sum('montant_total');
+        if (!$anneeActive) {
+            return response()->json(['success' => true, 'count' => 0, 'total_dette' => '0', 'moyenne_dette' => '0']);
+        }
+
+        $inscriptions = \App\Models\ESBTPInscription::with([
+            'etudiant', 'fraisSubscriptions',
+            'paiements' => fn($q) => $q->where('status', 'validé')->whereNull('deleted_at'),
+        ])
+            ->where('annee_universitaire_id', $anneeActive->id)
+            ->where('status', 'active')
+            ->where('workflow_step', 'etudiant_cree')
+            ->get();
+
+        $calcService->preloadForInscriptions($inscriptions);
+
+        $etudiantsAvecDette = $inscriptions->filter(function ($ins) use ($calcService, $seuilDette) {
+            $dette = max(0, $calcService->calculerTotalDu($ins) - $ins->paiements->sum('montant'));
+            return $dette >= $seuilDette;
         });
 
-        $moyenneDette = $etudiants->count() > 0 ? $totalDette / $etudiants->count() : 0;
+        $totalDette = $etudiantsAvecDette->sum(function ($ins) use ($calcService) {
+            return max(0, $calcService->calculerTotalDu($ins) - $ins->paiements->sum('montant'));
+        });
+
+        $count = $etudiantsAvecDette->count();
+        $moyenneDette = $count > 0 ? $totalDette / $count : 0;
 
         return response()->json([
             'success' => true,
-            'count' => $etudiants->count(),
+            'count' => $count,
             'total_dette' => number_format($totalDette, 0, ',', ' '),
             'moyenne_dette' => number_format($moyenneDette, 0, ',', ' ')
         ]);
@@ -625,20 +506,76 @@ class ESBTPComptabiliteRelanceController extends Controller
         ]);
 
         try {
-            $notificationService = app(\App\Services\NotificationService::class);
+            // Utiliser les paramètres de l'utilisateur
+            $calcService = app(RelanceCalculationService::class);
+            $anneeActive = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-            // Utiliser la logique de planification du service
-            $result = $notificationService->planifierRelances();
+            if (!$anneeActive) {
+                return response()->json(['success' => false, 'message' => 'Aucune année universitaire active.']);
+            }
+
+            $inscriptions = \App\Models\ESBTPInscription::with([
+                'etudiant', 'fraisSubscriptions',
+                'paiements' => fn($q) => $q->where('status', 'validé')->whereNull('deleted_at'),
+            ])
+                ->where('annee_universitaire_id', $anneeActive->id)
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree')
+                ->get();
+
+            $calcService->preloadForInscriptions($inscriptions);
+
+            $critereDette = (float) $request->input('critere_dette');
+            $typeRelance  = $request->input('type_relance');
+            $dateEnvoi    = $request->input('date_envoi');
+            $relancesPlanifiees = 0;
+
+            foreach ($inscriptions as $inscription) {
+                $totalDu   = $calcService->calculerTotalDu($inscription);
+                $totalPaye = $inscription->paiements->sum('montant');
+                $dette     = max(0, $totalDu - $totalPaye);
+
+                if ($dette < $critereDette) continue;
+
+                // Vérifier pas de relance récente (7 jours)
+                $relanceRecente = \App\Models\ESBTPRelance::where('etudiant_id', $inscription->etudiant_id)
+                    ->where('created_at', '>', now()->subDays(7))
+                    ->where('statut', 'envoyee')
+                    ->exists();
+
+                if ($relanceRecente) continue;
+
+                // Niveau = dernier niveau + 1 (max 3)
+                $dernierNiveau = \App\Models\ESBTPRelance::where('etudiant_id', $inscription->etudiant_id)
+                    ->orderByDesc('niveau')->value('niveau') ?? 0;
+
+                $niveau = min(3, $dernierNiveau + 1);
+
+                $type = $typeRelance === 'auto'
+                    ? match($niveau) { 1 => 'email', 2 => 'sms', default => 'email' }
+                    : $typeRelance;
+
+                \App\Models\ESBTPRelance::create([
+                    'etudiant_id'      => $inscription->etudiant_id,
+                    'type'             => $type,
+                    'niveau'           => $niveau,
+                    'template_utilise' => "relance_niveau_{$niveau}",
+                    'date_envoi'       => $dateEnvoi,
+                    'statut'           => 'planifiee',
+                ]);
+
+                $relancesPlanifiees++;
+            }
 
             return response()->json([
                 'success' => true,
-                'message' => "Relances planifiées avec succès: {$result['relances_planifiees']} relances créées"
+                'message' => "Relances planifiées avec succès : {$relancesPlanifiees} relances créées"
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la planification: ' . $e->getMessage()
+                'message' => 'Erreur lors de la planification : ' . $e->getMessage()
             ]);
         }
     }
@@ -695,12 +632,22 @@ class ESBTPComptabiliteRelanceController extends Controller
     public function sauvegarderTemplates(Request $request)
     {
         $request->validate([
-            'type' => 'required|string|in:email,sms,courrier'
+            'type' => 'required|string|in:email,sms,courrier',
+            'templates' => 'required|array',
+            'templates.*.niveau' => 'required|integer|min:1|max:3',
+            'templates.*.contenu' => 'required|string|max:5000',
         ]);
 
         try {
-            // Logique de sauvegarde des templates
-            // À implémenter selon la structure de configuration choisie
+            $type = $request->input('type');
+
+            foreach ($request->input('templates') as $tpl) {
+                $key = "relances.template_{$type}_niveau_{$tpl['niveau']}";
+                \DB::table('settings')->updateOrInsert(
+                    ['key' => $key],
+                    ['value' => $tpl['contenu'], 'group' => 'relances', 'updated_at' => now(), 'created_at' => now()]
+                );
+            }
 
             return response()->json([
                 'success' => true,
@@ -992,11 +939,11 @@ class ESBTPComptabiliteRelanceController extends Controller
      */
     private function calculerTauxGlobalEfficacite()
     {
-        $totalRelances = \App\Models\ESBTPRelance::where('status', 'envoyee')->count();
+        $totalRelances = \App\Models\ESBTPRelance::where('statut', 'envoyee')->count();
 
         if ($totalRelances == 0) return 0;
 
-        $relancesEfficaces = \App\Models\ESBTPRelance::where('status', 'envoyee')
+        $relancesEfficaces = \App\Models\ESBTPRelance::where('statut', 'envoyee')
             ->whereHas('etudiant.paiements', function($query) {
                 $query->where('created_at', '>', \DB::raw('esbtp_relances.date_envoi'))
                       ->where('created_at', '<', \DB::raw('DATE_ADD(esbtp_relances.date_envoi, INTERVAL 30 DAY)'));
@@ -1009,7 +956,7 @@ class ESBTPComptabiliteRelanceController extends Controller
 
     private function calculerConversionsTotal()
     {
-        return \App\Models\ESBTPRelance::where('status', 'envoyee')
+        return \App\Models\ESBTPRelance::where('statut', 'envoyee')
             ->whereMonth('date_envoi', now()->month)
             ->whereYear('date_envoi', now()->year)
             ->whereHas('etudiant.paiements', function($query) {
@@ -1022,7 +969,7 @@ class ESBTPComptabiliteRelanceController extends Controller
 
     private function calculerDelaiMoyenReponse()
     {
-        $relancesAvecPaiement = \App\Models\ESBTPRelance::where('status', 'envoyee')
+        $relancesAvecPaiement = \App\Models\ESBTPRelance::where('statut', 'envoyee')
             ->whereHas('etudiant.paiements', function($query) {
                 $query->where('created_at', '>', \DB::raw('esbtp_relances.date_envoi'));
             })
@@ -1101,17 +1048,19 @@ class ESBTPComptabiliteRelanceController extends Controller
 
     private function exportPDFAnalytics($statistiques, $periode, $inclureGraphiques)
     {
-        // Implémentation de l'export PDF
-        $pdf = \PDF::loadView('esbtp.comptabilite.relances.analytics-pdf', compact('statistiques', 'periode', 'inclureGraphiques'));
-        return $pdf->download('analytics-relances-' . now()->format('Y-m-d') . '.pdf');
+        return response()->json([
+            'success' => false,
+            'message' => 'Export PDF analytics non disponible. Utilisez l\'export CSV.'
+        ], 501);
     }
 
 
     private function exportExcelAnalytics($statistiques, $periode)
     {
-        // Implémentation de l'export Excel
-        // À implémenter avec Maatwebsite\Excel
-        return response()->json(['message' => 'Export Excel en cours de développement']);
+        return response()->json([
+            'success' => false,
+            'message' => 'Export Excel analytics non disponible. Utilisez l\'export CSV.'
+        ], 501);
     }
 
 
@@ -1139,36 +1088,4 @@ class ESBTPComptabiliteRelanceController extends Controller
 
         return response()->stream($callback, 200, $headers);
     }
-
-    /**
-     * Calculer le total dû par inscription en utilisant les données pré-chargées
-     */
-    private function calculerTotalDuParInscription($inscription, $categories, $subscriptionsByInscription, $configurations): float
-    {
-        $inscriptionSubs = $subscriptionsByInscription->get($inscription->id, collect());
-        $totalDu = 0;
-
-        foreach ($categories as $category) {
-            $sub = $inscriptionSubs->where('frais_category_id', $category->id)->first();
-            if ($category->is_mandatory) {
-                if ($sub) {
-                    $montant = $sub->amount;
-                } else {
-                    $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
-                    $config = $configurations->get($configKey, collect())->first();
-                    $montant = $config
-                        ? $config->getMontantByStatus($inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS)
-                        : $category->default_amount;
-                }
-            } else {
-                $montant = $sub ? $sub->amount : 0;
-            }
-            if ($montant > 0) {
-                $totalDu += $montant;
-            }
-        }
-
-        return (float) $totalDu;
-    }
-
 }

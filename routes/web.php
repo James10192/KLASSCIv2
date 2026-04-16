@@ -1525,9 +1525,11 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
         Route::post('/executer', [ESBTPComptabiliteRelanceController::class, 'executerRelances'])->name('executer')
             ->middleware(['permission:comptabilite.relances.send', 'throttle:5,1']);
 
-        // Configuration
-        Route::post('/config/templates', [ESBTPComptabiliteRelanceController::class, 'sauvegarderTemplates'])->name('config.templates');
-        Route::post('/config/parametres', [ESBTPComptabiliteRelanceController::class, 'sauvegarderParametres'])->name('config.parametres');
+        // Configuration (superAdmin/comptable uniquement)
+        Route::post('/config/templates', [ESBTPComptabiliteRelanceController::class, 'sauvegarderTemplates'])->name('config.templates')
+            ->middleware(['permission:comptabilite.relances.send']);
+        Route::post('/config/parametres', [ESBTPComptabiliteRelanceController::class, 'sauvegarderParametres'])->name('config.parametres')
+            ->middleware(['permission:comptabilite.relances.send']);
         Route::post('/config/preview', [ESBTPComptabiliteRelanceController::class, 'previewTemplate'])->name('config.preview');
 
         // Aperçus et statistiques

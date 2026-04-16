@@ -47,9 +47,8 @@ class RelanceEnvoyee implements ShouldBroadcast
         return [
             'relance_id' => $this->relance->id,
             'etudiant_nom' => $this->relance->etudiant->nom_complet ?? 'Inconnu',
-            'montant_du' => $this->relance->montant_du,
             'niveau' => $this->relance->niveau,
-            'canal' => $this->relance->canal,
+            'type' => $this->relance->type,
             'statut' => $this->relance->statut,
             'date_envoi' => $this->relance->date_envoi?->toIso8601String(),
             'timestamp' => now()->toIso8601String()

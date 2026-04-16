@@ -78,17 +78,15 @@ class NotificationService
 
             $contenu = $this->personaliserMessage($template, $etudiant, $relance);
 
-            // Simulation d'envoi SMS (à remplacer par votre service SMS)
-            // SMS::send($etudiant->telephone, $contenu);
-
+            // SMS non implémenté — ne pas mentir au user
             $relance->update([
-                'statut' => 'envoyee',
-                'date_envoi' => now(),
+                'statut' => 'echec',
                 'contenu_message' => $contenu,
-                'response_data' => json_encode(['status' => 'success', 'sms_id' => 'SMS_' . time()])
+                'response_data' => json_encode(['error' => 'SMS non configuré — aucun fournisseur SMS actif'])
             ]);
 
-            return ['success' => true, 'message' => 'SMS envoyé avec succès'];
+            Log::warning('Tentative envoi SMS relance sans fournisseur configuré', ['relance_id' => $relance->id]);
+            return ['success' => false, 'message' => 'Envoi SMS non disponible — aucun fournisseur configuré'];
 
         } catch (\Exception $e) {
             $relance->update([
@@ -168,16 +166,11 @@ class NotificationService
      */
     private function creerRelance($etudiant, $niveau)
     {
-        $facture = ESBTPFacture::where('etudiant_id', $etudiant->id)
-            ->where('statut', 'impayee')
-            ->first();
-
         $type = $this->determinerTypeRelance($niveau);
         $dateEnvoi = $this->calculerDateEnvoi($niveau);
 
         return ESBTPRelance::create([
             'etudiant_id' => $etudiant->id,
-            'facture_id' => $facture?->id,
             'type' => $type,
             'niveau' => $niveau,
             'template_utilise' => "relance_niveau_{$niveau}",
@@ -187,20 +180,54 @@ class NotificationService
     }
 
     /**
-     * Récupère les étudiants à relancer
+     * Récupère les étudiants à relancer — utilise le vrai système de frais
+     * (FraisSubscription/FraisCategory), pas ESBTPFacture.
      */
     private function getEtudiantsARelancer()
     {
-        // Étudiants avec des factures impayées depuis plus de 30 jours
-        return ESBTPEtudiant::whereHas('factures', function($query) {
-            $query->where('statut', 'impayee')
-                  ->where('date_echeance', '<', Carbon::now()->subDays(30));
-        })
-        ->whereDoesntHave('relances', function($query) {
-            $query->where('created_at', '>', Carbon::now()->subDays(7)) // Pas de relance dans les 7 derniers jours
-                  ->where('statut', 'envoyee');
-        })
-        ->get();
+        $calcService = app(RelanceCalculationService::class);
+
+        // Lire le seuil depuis settings
+        $montantMinimum = (int) (DB::table('settings')->where('key', 'relances.montant_minimum')->value('value') ?? 50000);
+
+        $anneeActive = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (!$anneeActive) return collect();
+
+        // Inscriptions actives avec workflow complet
+        $inscriptions = \App\Models\ESBTPInscription::with([
+            'etudiant',
+            'fraisSubscriptions',
+            'paiements' => fn($q) => $q->where('status', 'validé')->whereNull('deleted_at'),
+        ])
+            ->where('annee_universitaire_id', $anneeActive->id)
+            ->where('status', 'active')
+            ->where('workflow_step', 'etudiant_cree')
+            ->get();
+
+        if ($inscriptions->isEmpty()) return collect();
+
+        $calcService->preloadForInscriptions($inscriptions);
+
+        // Filtrer : dette >= seuil, pas de relance envoyée dans les 7 derniers jours
+        return $inscriptions
+            ->filter(function ($ins) use ($calcService, $montantMinimum) {
+                $totalDu   = $calcService->calculerTotalDu($ins);
+                $totalPaye = $ins->paiements->sum('montant');
+                $dette     = max(0, $totalDu - $totalPaye);
+
+                if ($dette < $montantMinimum) return false;
+
+                // Pas de relance récente (7 jours)
+                $relanceRecente = ESBTPRelance::where('etudiant_id', $ins->etudiant_id)
+                    ->where('created_at', '>', Carbon::now()->subDays(7))
+                    ->where('statut', 'envoyee')
+                    ->exists();
+
+                return !$relanceRecente;
+            })
+            ->map(fn($ins) => $ins->etudiant)
+            ->unique('id')
+            ->values();
     }
 
     /**
@@ -279,19 +306,11 @@ class NotificationService
     }
 
     /**
-     * Calcule la dette totale d'un étudiant
+     * Calcule la dette totale d'un étudiant via le vrai système de frais.
      */
-    private function calculerDette($etudiant)
+    public function calculerDette($etudiant)
     {
-        $totalFactures = ESBTPFacture::where('etudiant_id', $etudiant->id)
-            ->where('statut', 'impayee')
-            ->sum('montant_total');
-
-        $totalPaiements = ESBTPPaiement::where('etudiant_id', $etudiant->id)
-            ->where('statut', 'completé')
-            ->sum('montant');
-
-        return max(0, $totalFactures - $totalPaiements);
+        return app(RelanceCalculationService::class)->calculerDetteEtudiant($etudiant);
     }
 
     /**
@@ -299,18 +318,14 @@ class NotificationService
      */
     private function genererCourrierRelance($relance)
     {
-        try {
-            // Ici vous pourriez générer un PDF avec dompdf
-            $relance->update([
-                'statut' => 'envoyee',
-                'date_envoi' => now(),
-                'response_data' => json_encode(['status' => 'courrier_genere'])
-            ]);
+        // Courrier PDF non implémenté — ne pas mentir au user
+        $relance->update([
+            'statut' => 'echec',
+            'response_data' => json_encode(['error' => 'Génération courrier PDF non implémentée'])
+        ]);
 
-            return ['success' => true, 'message' => 'Courrier généré'];
-        } catch (\Exception $e) {
-            return ['success' => false, 'message' => $e->getMessage()];
-        }
+        Log::warning('Tentative génération courrier relance non implémentée', ['relance_id' => $relance->id]);
+        return ['success' => false, 'message' => 'Génération de courrier non disponible'];
     }
 
     /**
@@ -1197,16 +1212,11 @@ class NotificationService
      */
     private function creerRelanceAvancee($etudiant, $niveau, $type, $segment)
     {
-        $facture = ESBTPFacture::where('etudiant_id', $etudiant->id)
-            ->where('statut', 'impayee')
-            ->first();
-
         $templatePersonnalise = $this->getTemplatePersonnalise($niveau, $segment);
         $dateEnvoi = $this->calculerDateEnvoiSegment($niveau, $segment);
 
         return ESBTPRelance::create([
             'etudiant_id' => $etudiant->id,
-            'facture_id' => $facture?->id,
             'type' => $type,
             'niveau' => $niveau,
             'template_utilise' => $templatePersonnalise,
@@ -1255,16 +1265,23 @@ class NotificationService
      */
     private function calculerJoursRetard($etudiant)
     {
-        $factureAncienne = ESBTPFacture::where('etudiant_id', $etudiant->id)
-            ->where('statut', 'impayee')
-            ->orderBy('date_echeance', 'asc')
+        // Basé sur la première relance envoyée, ou la date d'inscription
+        $premiereRelance = ESBTPRelance::where('etudiant_id', $etudiant->id)
+            ->where('statut', 'envoyee')
+            ->orderBy('date_envoi', 'asc')
             ->first();
 
-        if (!$factureAncienne || !$factureAncienne->date_echeance) {
-            return 0;
+        if ($premiereRelance && $premiereRelance->date_envoi) {
+            return $premiereRelance->date_envoi->diffInDays(now(), false);
         }
 
-        return Carbon::parse($factureAncienne->date_echeance)->diffInDays(now(), false);
+        // Sinon, jours depuis le début de l'année universitaire
+        $anneeActive = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if ($anneeActive && $anneeActive->date_debut) {
+            return Carbon::parse($anneeActive->date_debut)->diffInDays(now(), false);
+        }
+
+        return 0;
     }
 
     /**
