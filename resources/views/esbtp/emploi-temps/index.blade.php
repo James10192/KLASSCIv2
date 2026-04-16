@@ -1819,12 +1819,15 @@
                 <span class="et-chip__count">{{ $edtExpiresCount ?? 0 }}</span>
             </button>
             <div class="et-chips-separator"></div>
-            @if(($classesSansEdtCount ?? 0) > 0)
-                <a href="#raccourciEmploisTemps" class="et-chip et-chip--link">
+            @if(($classesSansEdtCount ?? 0) > 0 && (auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']) || auth()->user()->can('create_timetable')))
+                <button type="button"
+                        class="et-chip et-chip--link"
+                        data-bs-toggle="modal"
+                        data-bs-target="#quickGenerateModal">
                     <span class="et-chip__dot et-chip__dot--muted"></span>
                     <span class="et-chip__label">{{ $classesSansEdtCount }} classe{{ $classesSansEdtCount > 1 ? 's' : '' }} sans emploi du temps</span>
                     <i class="fas fa-arrow-right"></i>
-                </a>
+                </button>
             @endif
         </div>
 
