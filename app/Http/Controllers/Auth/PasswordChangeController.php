@@ -32,37 +32,34 @@ class PasswordChangeController extends Controller
      */
     public function updatePassword(Request $request)
     {
+        $user = auth()->user();
+
+        // Vérifier le mot de passe actuel EN PREMIER (avant la validation du nouveau)
+        if (!Hash::check($request->current_password, $user->password)) {
+            return back()->withErrors([
+                'current_password' => 'Le mot de passe actuel est incorrect. Vérifiez que vous avez bien saisi votre mot de passe actuel (celui utilisé pour vous connecter).'
+            ])->withInput($request->only('current_password'));
+        }
+
+        // Valider le nouveau mot de passe seulement après confirmation du mot de passe actuel
         $request->validate([
             'current_password' => ['required'],
             'password' => ['required', 'confirmed', Password::min(8)
                 ->letters()
-                ->mixedCase()
                 ->numbers()
-                ->symbols()
             ],
         ], [
             'current_password.required' => 'Le mot de passe actuel est requis.',
             'password.required' => 'Le nouveau mot de passe est requis.',
-            'password.confirmed' => 'La confirmation du mot de passe ne correspond pas.',
-            'password.min' => 'Le mot de passe doit contenir au moins 8 caractères.',
-            'password.letters' => 'Le mot de passe doit contenir au moins une lettre.',
-            'password.mixed_case' => 'Le mot de passe doit contenir au moins une majuscule et une minuscule.',
-            'password.numbers' => 'Le mot de passe doit contenir au moins un chiffre.',
-            'password.symbols' => 'Le mot de passe doit contenir au moins un symbole.',
+            'password.confirmed' => 'La confirmation du mot de passe ne correspond pas. Vérifiez que les deux champs "Nouveau mot de passe" sont identiques.',
+            'password.min' => 'Le nouveau mot de passe doit contenir au moins 8 caractères.',
+            'password.letters' => 'Le nouveau mot de passe doit contenir au moins une lettre.',
+            'password.numbers' => 'Le nouveau mot de passe doit contenir au moins un chiffre.',
         ]);
 
-        $user = auth()->user();
-
-        // Vérifier le mot de passe actuel
-        if (!Hash::check($request->current_password, $user->password)) {
-            return back()->withErrors([
-                'current_password' => 'Le mot de passe actuel est incorrect.'
-            ]);
-        }
-
-        // Mettre à jour le mot de passe
+        // Mettre à jour le mot de passe (le mutateur setPasswordAttribute hashe automatiquement)
         $user->update([
-            'password' => Hash::make($request->password)
+            'password' => $request->password,
         ]);
 
         // Marquer que l'utilisateur a changé son mot de passe
@@ -71,7 +68,9 @@ class PasswordChangeController extends Controller
         // Marquer la première connexion si nécessaire
         $this->userService->markFirstLogin($user);
 
-        return redirect()->route('dashboard')->with('success', 
+        \Log::info('Mot de passe changé avec succès', ['user_id' => $user->id, 'email' => $user->email]);
+
+        return redirect()->route('dashboard')->with('success',
             'Votre mot de passe a été changé avec succès. Bienvenue dans le système ESBTP!');
     }
 }
