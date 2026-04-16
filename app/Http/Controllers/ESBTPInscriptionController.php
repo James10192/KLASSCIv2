@@ -973,7 +973,7 @@ class ESBTPInscriptionController extends Controller
 
             if (
                 $inscription->status === "active" &&
-                !Auth::user()->can("inscriptions.manage")
+                !Auth::user()->can("access_admin")
             ) {
                 // Empêcher la modification de la filière, niveau et classe pour les inscriptions actives (sauf utilisateurs autorisés)
                 unset($data["filiere_id"]);
