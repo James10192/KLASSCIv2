@@ -243,7 +243,7 @@ class ESBTPClasseController extends Controller
         }
 
         // Different view rendering based on user role
-        if ($user->can("can_view_student_features")) {
+        if ($user->hasRole('etudiant')) {
             // For students - read-only view
             return view(
                 "esbtp.classes.student_index",
@@ -473,7 +473,7 @@ class ESBTPClasseController extends Controller
             : date("Y") . "-" . (date("Y") + 1);
 
         // Different view rendering based on user role
-        if ($user->can("can_view_student_features")) {
+        if ($user->hasRole('etudiant')) {
             // For students - read-only view
             return view(
                 "esbtp.classes.student_show",
