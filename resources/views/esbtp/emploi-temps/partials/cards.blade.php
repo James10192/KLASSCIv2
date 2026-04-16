@@ -1,5 +1,10 @@
+@php
+    // Palette monochrome bleue KLASSCI — stripe gauche stable par filière
+    $etStripePalette = ['#0a3d8f', '#0453cb', '#1e5fc4', '#2d6dc8', '#3b7ddb', '#4a8bd9', '#5e91de', '#7aa8e4'];
+@endphp
+
 @if(!empty($timetableShortcut) && ($timetableShortcut['show'] ?? false))
-    <div class="emploi-card emploi-shortcut-card">
+    <div class="emploi-card emploi-shortcut-card" id="raccourciEmploisTemps">
         <div class="emploi-card-body">
             <div class="emploi-shortcut-title">
                 <i class="fas fa-calendar-exclamation me-2"></i>Raccourci emplois du temps
@@ -41,101 +46,154 @@
         $isUpcoming = $startDate && $startDate->gt($today);
         $isCurrentPeriod = $startDate && $endDate && $today->between($startDate, $endDate);
         $isExpiringSoon = $endDate && $endDate->gte($today) && $endDate->diffInDays($today) <= 3;
+
+        // Statut pour les chips (aligne sur statusFilter côté Alpine)
+        $cardStatus = $isExpired ? 'expired' : ($isCurrentPeriod ? 'active' : 'upcoming');
+
+        // Couleur stripe stable par filière (hash monochrome bleu)
+        $filiereName = $emploiTemps->classe->filiere->name ?? '—';
+        $stripeIdx = hexdec(substr(md5($filiereName), 0, 4)) % count($etStripePalette);
+        $stripeColor = $etStripePalette[$stripeIdx];
+
+        // Meta : séances + heures (eager loaded, pas de N+1)
+        $seancesCount = $emploiTemps->seances_count ?? ($emploiTemps->seances?->count() ?? 0);
+        $totalMinutes = ($emploiTemps->seances ?? collect())->sum(function ($s) {
+            if (!$s->heure_debut || !$s->heure_fin) return 0;
+            return \Carbon\Carbon::parse($s->heure_debut)->diffInMinutes(\Carbon\Carbon::parse($s->heure_fin));
+        });
+        $totalHours = intdiv((int) $totalMinutes, 60);
+        $totalRemMinutes = (int) $totalMinutes % 60;
+
+        // Haystack pour la recherche inline (classe + filière + niveau)
+        $searchHaystack = strtolower(trim(
+            ($emploiTemps->classe->name ?? '') . ' ' .
+            ($emploiTemps->classe->filiere->name ?? '') . ' ' .
+            ($emploiTemps->classe->niveau->name ?? '')
+        ));
+
+        $canEdit = auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']) || auth()->user()->can('edit_timetables');
+        $canDelete = auth()->user()->can('access_admin') && auth()->user()->can('delete_timetables');
     @endphp
-    <div class="emploi-card {{ $isCurrentPeriod ? 'active' : '' }} {{ $isExpired ? 'expired' : '' }} {{ $isUpcoming ? 'upcoming' : '' }}">
-        <div class="emploi-card-header">
-            <h6 class="emploi-card-title">
-                <i class="fas fa-calendar-alt me-2"></i>
-                {{ $emploiTemps->titre ?? 'Emploi du temps' }}
-            </h6>
-            <div class="emploi-status-badges">
-                @if($isExpired)
-                    <span class="badge-moderne danger">Expiré</span>
-                @elseif($isCurrentPeriod)
-                    <span class="badge-moderne success">Actif</span>
-                @elseif($isUpcoming)
-                    <span class="badge-moderne secondary">Inactif</span>
-                @else
-                    <span class="badge-moderne secondary">Inactif</span>
-                @endif
-                @if($isExpiringSoon && !$isExpired)
-                    <span class="badge-moderne warning">Expire bientôt</span>
-                @endif
-            </div>
-        </div>
 
-        <div class="emploi-card-body">
-            <div class="emploi-info-list">
-                <div class="emploi-info-row">
-                    <i class="fas fa-users"></i>
-                    <span class="emploi-info-key">Classe</span>
-                    <span class="emploi-info-val">{{ $emploiTemps->classe->name ?? 'Non définie' }}</span>
-                </div>
-                <div class="emploi-info-row">
-                    <i class="fas fa-sitemap"></i>
-                    <span class="emploi-info-key">Filière</span>
-                    <span class="emploi-info-val">{{ $emploiTemps->classe->filiere->name ?? 'Non définie' }}</span>
-                </div>
-                <div class="emploi-info-row">
-                    <i class="fas fa-layer-group"></i>
-                    <span class="emploi-info-key">Niveau</span>
-                    <span class="emploi-info-val">{{ $emploiTemps->classe->niveau->name ?? 'Non défini' }}</span>
-                </div>
-                <div class="emploi-info-row">
-                    <i class="fas fa-calendar"></i>
-                    <span class="emploi-info-key">Année</span>
-                    <span class="emploi-info-val">{{ Str::limit($emploiTemps->annee->name ?? 'Non définie', 15) }}</span>
-                </div>
-            </div>
+    <div class="et-card et-card--{{ $cardStatus }}"
+         data-status="{{ $cardStatus }}"
+         data-search="{{ $searchHaystack }}"
+         x-show="(statusFilter === 'all' || statusFilter === '{{ $cardStatus }}')
+                 && (searchQuery.trim() === '' || $el.dataset.search.includes(searchQuery.toLowerCase()))"
+         x-transition.opacity>
 
-            <div class="emploi-info-pills">
-                <span class="emploi-info-pill primary">
-                    <i class="fas fa-clock"></i>
-                    Période:
-                    @if($emploiTemps->semestre == 'Semestre 1')
-                        S1
-                    @elseif($emploiTemps->semestre == 'Semestre 2')
-                        S2
-                    @else
-                        Année
+        <span class="et-card__stripe" style="background: {{ $stripeColor }};" aria-hidden="true"></span>
+
+        <div class="et-card__inner">
+            <div class="et-card__head">
+                <div class="et-card__titles">
+                    <h6 class="et-card__title">{{ $emploiTemps->classe->name ?? 'Classe inconnue' }}</h6>
+                    <div class="et-card__subtitle">
+                        <span>{{ $filiereName }}</span>
+                        <span class="et-card__sep">·</span>
+                        <span>{{ $emploiTemps->classe->niveau->name ?? 'Niveau inconnu' }}</span>
+                    </div>
+                </div>
+                <div class="et-card__badges">
+                    @if($isExpired)
+                        <span class="et-card__badge et-card__badge--danger">
+                            <i class="fas fa-circle-exclamation"></i>Expiré
+                        </span>
+                    @elseif($isCurrentPeriod)
+                        <span class="et-card__badge et-card__badge--success">
+                            <i class="fas fa-circle-check"></i>Actif
+                        </span>
+                    @elseif($isUpcoming)
+                        <span class="et-card__badge et-card__badge--info">
+                            <i class="fas fa-calendar"></i>À venir
+                        </span>
                     @endif
-                </span>
-                @if($emploiTemps->date_debut && $emploiTemps->date_fin)
-                    <span class="emploi-info-pill info">
+                    @if($isExpiringSoon && !$isExpired)
+                        <span class="et-card__badge et-card__badge--warning">
+                            <i class="fas fa-clock"></i>Expire bientôt
+                        </span>
+                    @endif
+                </div>
+            </div>
+
+            <div class="et-card__meta">
+                @if($startDate && $endDate)
+                    <span class="et-card__meta-item">
                         <i class="fas fa-calendar-day"></i>
-                        Dates:
-                        {{ \Carbon\Carbon::parse($emploiTemps->date_debut)->format('d/m/Y') }}
-                        <i class="fas fa-arrow-right mx-1"></i>
-                        {{ \Carbon\Carbon::parse($emploiTemps->date_fin)->format('d/m/Y') }}
+                        {{ $startDate->isoFormat('D MMM') }} → {{ $endDate->isoFormat('D MMM YYYY') }}
+                    </span>
+                @endif
+                <span class="et-card__meta-item">
+                    <i class="fas fa-layer-group"></i>
+                    {{ $seancesCount }} séance{{ $seancesCount > 1 ? 's' : '' }}
+                </span>
+                @if($totalMinutes > 0)
+                    <span class="et-card__meta-item">
+                        <i class="fas fa-clock"></i>
+                        {{ $totalHours }}h{{ $totalRemMinutes > 0 ? str_pad((string) $totalRemMinutes, 2, '0', STR_PAD_LEFT) : '' }}
+                    </span>
+                @endif
+                @if($emploiTemps->semestre && $emploiTemps->semestre !== 'Année')
+                    <span class="et-card__meta-item et-card__meta-item--muted">
+                        {{ $emploiTemps->semestre === 'Semestre 1' ? 'S1' : ($emploiTemps->semestre === 'Semestre 2' ? 'S2' : $emploiTemps->semestre) }}
                     </span>
                 @endif
             </div>
 
-            <div class="emploi-actions">
+            @if($emploiTemps->updatedBy || $emploiTemps->updated_at)
+                <div class="et-card__footer">
+                    <i class="fas fa-user-pen"></i>
+                    Modifié {{ $emploiTemps->updated_at?->diffForHumans() }}
+                    @if($emploiTemps->updatedBy)
+                        par {{ $emploiTemps->updatedBy->name }}
+                    @endif
+                </div>
+            @endif
+
+            <div class="et-card__actions">
                 <a href="{{ route('esbtp.emploi-temps.export-pdf', $emploiTemps->id) }}"
-                   class="btn-pdf" title="Exporter en PDF">
-                    <i class="fas fa-file-pdf"></i>PDF
+                   class="et-card-btn et-card-btn--ghost"
+                   title="Exporter en PDF">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>PDF</span>
                 </a>
                 <a href="{{ route('esbtp.emploi-temps.show', $emploiTemps->id) }}"
-                   class="btn btn-sm btn-outline-primary" title="Voir">
-                    <i class="fas fa-eye"></i>
+                   class="et-card-btn et-card-btn--primary"
+                   title="Ouvrir l'emploi du temps">
+                    <span>Ouvrir</span>
+                    <i class="fas fa-arrow-right"></i>
                 </a>
-                @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']) || auth()->user()->can('edit_timetables'))
-                <a href="{{ route('esbtp.emploi-temps.edit', $emploiTemps->id) }}"
-                   class="btn btn-sm btn-outline-warning" title="Modifier">
-                    <i class="fas fa-edit"></i>
-                </a>
-                @endif
-                @if(auth()->user()->can('access_admin') && auth()->user()->can('delete_timetables'))
-                <form action="{{ route('esbtp.emploi-temps.destroy', $emploiTemps->id) }}"
-                      method="POST" style="display: inline;"
-                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet emploi du temps ?')">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </form>
+                @if($canEdit || $canDelete)
+                    <div class="et-card__menu" x-data="{ open: false }" @click.outside="open = false">
+                        <button type="button"
+                                class="et-card-btn et-card-btn--icon"
+                                @click="open = !open"
+                                :aria-expanded="open.toString()"
+                                aria-label="Plus d'actions">
+                            <i class="fas fa-ellipsis-vertical"></i>
+                        </button>
+                        <div class="et-card__menu-pop"
+                             x-show="open"
+                             x-transition.opacity.duration.150ms
+                             style="display: none;">
+                            @if($canEdit)
+                                <a href="{{ route('esbtp.emploi-temps.edit', $emploiTemps->id) }}" class="et-card__menu-item">
+                                    <i class="fas fa-edit"></i>Modifier
+                                </a>
+                            @endif
+                            @if($canDelete)
+                                <form action="{{ route('esbtp.emploi-temps.destroy', $emploiTemps->id) }}"
+                                      method="POST"
+                                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet emploi du temps ?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="et-card__menu-item et-card__menu-item--danger">
+                                        <i class="fas fa-trash"></i>Supprimer
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
+                    </div>
                 @endif
             </div>
         </div>
@@ -152,3 +210,20 @@
         </div>
     </div>
 @endforelse
+
+{{-- Empty-state client-side : visible quand chip + recherche masquent toutes les cards --}}
+@if($emploisTemps->isNotEmpty())
+    <div class="et-empty-filter"
+         x-show="hasActiveFilter && visibleCardsCount === 0"
+         x-cloak
+         style="display: none;">
+        <i class="fas fa-filter"></i>
+        <div>Aucun emploi du temps ne correspond au filtre actuel.</div>
+        <button type="button"
+                class="et-card-btn et-card-btn--ghost mt-3"
+                @click="statusFilter = 'all'; searchQuery = ''">
+            <i class="fas fa-times"></i>Réinitialiser les filtres
+        </button>
+    </div>
+@endif
+
