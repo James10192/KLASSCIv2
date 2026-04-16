@@ -190,15 +190,19 @@
                                 <label for="payment_deadline_days" class="form-label-moderne">
                                     <i class="fas fa-calendar-alt me-1"></i>Délai de paiement (jours) <span class="color-danger">*</span>
                                 </label>
-                                <input type="number" 
-                                       class="form-input-moderne @error('payment_deadline_days') is-invalid @enderror" 
-                                       id="payment_deadline_days" 
-                                       name="payment_deadline_days" 
-                                       value="{{ old('payment_deadline_days', $fraisCategory->payment_deadline_days) }}" 
-                                       min="1" 
+                                <input type="number"
+                                       class="form-input-moderne @error('payment_deadline_days') is-invalid @enderror"
+                                       id="payment_deadline_days"
+                                       name="payment_deadline_days"
+                                       value="{{ old('payment_deadline_days', $fraisCategory->payment_deadline_days) }}"
+                                       min="1"
                                        max="365"
                                        placeholder="30"
                                        required>
+                                <small style="display:block;margin-top:.3rem;color:#64748b;font-size:.75rem;">
+                                    <i class="fas fa-info-circle" style="margin-right:.25rem;"></i>
+                                    Nombre de jours accordés après l'inscription pour régler ces frais.
+                                </small>
                                 @error('payment_deadline_days')
                                     <div style="color: var(--danger); font-size: var(--text-small); margin-top: var(--space-xs);">{{ $message }}</div>
                                 @enderror

@@ -161,14 +161,17 @@ class ESBTPRelance extends Model
 
     public function calculerProchaineDateEnvoi()
     {
-        $delais = [
-            1 => 0,    // Immédiat
-            2 => 7,    // 7 jours après niveau 1
-            3 => 14    // 14 jours après niveau 1
-        ];
+        // Lire les délais depuis settings (source unique de vérité)
+        $delaiKey = "relances.delai_niveau_{$this->niveau}";
+        $delaiSettings = \DB::table('settings')->where('key', $delaiKey)->value('value');
 
-        $delai = $delais[$this->niveau] ?? 0;
-        return now()->addDays($delai);
+        if ($delaiSettings !== null) {
+            return now()->addDays((int) $delaiSettings);
+        }
+
+        // Fallback si settings non configurés
+        $fallback = [1 => 0, 2 => 7, 3 => 14];
+        return now()->addDays($fallback[$this->niveau] ?? 0);
     }
 
     public function estEnRetard()

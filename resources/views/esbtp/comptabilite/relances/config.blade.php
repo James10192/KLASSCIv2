@@ -830,7 +830,7 @@
 
                         {{-- Délais --}}
                         <div class="mb-3">
-                            <label class="cfg-label">Délais de relance (jours de retard)</label>
+                            <label class="cfg-label">Jours de retard avant relance</label>
                             <div style="border:1px solid var(--cfg-border);border-radius:12px;padding:.25rem .9rem;">
                                 @foreach([1 => ['1er rappel', 'delay-num-1', 'delai_niveau_1'], 2 => ['2ème rappel', 'delay-num-2', 'delai_niveau_2'], 3 => ['Dernière relance', 'delay-num-3', 'delai_niveau_3']] as $n => $d)
                                 <div class="delay-row">
@@ -849,7 +849,10 @@
                                 </div>
                                 @endforeach
                             </div>
-                            <div class="cfg-hint">Nombre de jours de retard avant chaque niveau</div>
+                            <div class="cfg-hint" style="line-height:1.5;">
+                                Nombre de jours de retard <strong>après la date d'échéance</strong> avant d'envoyer chaque niveau de relance.
+                                La date d'échéance est calculée depuis l'inscription + le délai de paiement configuré dans les frais.
+                            </div>
                         </div>
 
                         {{-- Montant minimum --}}
@@ -861,7 +864,7 @@
                                    value="{{ old('montant_minimum', $parametres['montant_minimum']) }}"
                                    min="0" step="1000"
                                    placeholder="Ex : 10 000">
-                            <div class="cfg-hint">Seuil minimum pour déclencher une relance</div>
+                            <div class="cfg-hint">Seuls les étudiants avec une dette supérieure ou égale à ce montant recevront des relances.</div>
                             @error('montant_minimum')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
@@ -873,7 +876,7 @@
                                        {{ $parametres['relances_automatiques'] ? 'checked' : '' }}>
                                 <div>
                                     <div class="cfg-toggle-label">Relances automatiques</div>
-                                    <div class="cfg-toggle-hint">Planification auto selon les délais configurés</div>
+                                    <div class="cfg-toggle-hint">Le système vérifie quotidiennement les échéances dépassées et envoie les relances selon les délais ci-dessus.</div>
                                 </div>
                             </div>
                         </div>

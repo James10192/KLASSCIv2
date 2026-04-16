@@ -526,6 +526,7 @@ class ESBTPComptabiliteRelanceController extends Controller
             $calcService->preloadForInscriptions($inscriptions);
 
             $critereDette = (float) $request->input('critere_dette');
+            $critereJours = (int) $request->input('critere_jours');
             $typeRelance  = $request->input('type_relance');
             $dateEnvoi    = $request->input('date_envoi');
             $relancesPlanifiees = 0;
@@ -536,6 +537,10 @@ class ESBTPComptabiliteRelanceController extends Controller
                 $dette     = max(0, $totalDu - $totalPaye);
 
                 if ($dette < $critereDette) continue;
+
+                // Vérifier que l'échéance est dépassée de X jours
+                $joursRetard = $calcService->getJoursRetard($inscription);
+                if ($joursRetard < $critereJours) continue;
 
                 // Vérifier pas de relance récente (7 jours)
                 $relanceRecente = \App\Models\ESBTPRelance::where('etudiant_id', $inscription->etudiant_id)

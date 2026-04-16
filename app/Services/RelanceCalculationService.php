@@ -242,4 +242,52 @@ class RelanceCalculationService
     {
         return $this->categories;
     }
+
+    /**
+     * Calcule la date d'échéance d'une inscription.
+     * = inscription.created_at + min(payment_deadline_days) de toutes les catégories obligatoires.
+     *
+     * Priorité : config filière/niveau > catégorie > défaut 30j
+     */
+    public function getDateEcheance(ESBTPInscription $inscription): \Carbon\Carbon
+    {
+        $minDeadline = null;
+
+        foreach ($this->categories as $category) {
+            if (!$category->is_mandatory) continue;
+
+            // Chercher l'override config filière/niveau
+            $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
+            $config = $this->configurations->get($configKey, collect())->first();
+
+            $deadline = $config && $config->payment_deadline_days
+                ? $config->payment_deadline_days
+                : ($category->payment_deadline_days ?? 30);
+
+            if ($minDeadline === null || $deadline < $minDeadline) {
+                $minDeadline = $deadline;
+            }
+        }
+
+        return $inscription->created_at->copy()->addDays($minDeadline ?? 30);
+    }
+
+    /**
+     * Calcule le nombre de jours de retard d'une inscription.
+     * Retourne 0 si pas encore en retard.
+     */
+    public function getJoursRetard(ESBTPInscription $inscription): int
+    {
+        $echeance = $this->getDateEcheance($inscription);
+        $jours = $echeance->diffInDays(now(), false);
+        return max(0, (int) $jours);
+    }
+
+    /**
+     * Vérifie si une inscription est en retard de paiement.
+     */
+    public function isOverdue(ESBTPInscription $inscription): bool
+    {
+        return $this->getJoursRetard($inscription) > 0;
+    }
 }

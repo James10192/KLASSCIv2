@@ -208,14 +208,21 @@ class NotificationService
 
         $calcService->preloadForInscriptions($inscriptions);
 
-        // Filtrer : dette >= seuil, pas de relance envoyée dans les 7 derniers jours
+        // Lire le délai du 1er rappel depuis settings (jours de retard minimum)
+        $delaiNiveau1 = (int) (DB::table('settings')->where('key', 'relances.delai_niveau_1')->value('value') ?? 60);
+
+        // Filtrer : dette >= seuil + échéance dépassée + pas de relance récente
         return $inscriptions
-            ->filter(function ($ins) use ($calcService, $montantMinimum) {
+            ->filter(function ($ins) use ($calcService, $montantMinimum, $delaiNiveau1) {
                 $totalDu   = $calcService->calculerTotalDu($ins);
                 $totalPaye = $ins->paiements->sum('montant');
                 $dette     = max(0, $totalDu - $totalPaye);
 
                 if ($dette < $montantMinimum) return false;
+
+                // Vérifier que l'échéance est dépassée (jours de retard >= seuil configuré)
+                $joursRetard = $calcService->getJoursRetard($ins);
+                if ($joursRetard < $delaiNiveau1) return false;
 
                 // Pas de relance récente (7 jours)
                 $relanceRecente = ESBTPRelance::where('etudiant_id', $ins->etudiant_id)
@@ -237,13 +244,30 @@ class NotificationService
     {
         $dette = $this->calculerDette($etudiant);
 
+        // Calculer la date d'échéance réelle depuis l'inscription active
+        $dateEcheance = 'N/A';
+        $joursRetard = 0;
+        $calcService = app(RelanceCalculationService::class);
+
+        $inscriptionActive = $etudiant->inscription;
+        if ($inscriptionActive) {
+            $calcService->preloadForSingle($inscriptionActive);
+            $dateEcheance = $calcService->getDateEcheance($inscriptionActive)->format('d/m/Y');
+            $joursRetard = $calcService->getJoursRetard($inscriptionActive);
+        }
+
+        $nomEcole = \App\Models\Setting::get('school_name', config('app.name'));
+
         $variables = [
             '{nom}' => $etudiant->nom,
             '{prenom}' => $etudiant->prenoms,
             '{montant_dette}' => number_format($dette, 0, ',', ' ') . ' FCFA',
             '{niveau_relance}' => $relance->niveau,
             '{date}' => Carbon::now()->format('d/m/Y'),
-            '{ecole}' => 'École Supérieure du Bâtiment et des Travaux Publics'
+            '{date_echeance}' => $dateEcheance,
+            '{jours_retard}' => $joursRetard,
+            '{ecole}' => $nomEcole,
+            '{nom_ecole}' => $nomEcole,
         ];
 
         return str_replace(array_keys($variables), array_values($variables), $template);
@@ -297,9 +321,18 @@ class NotificationService
      */
     private function calculerDateEnvoi($niveau)
     {
+        // Lire depuis settings (source unique de vérité)
+        $delaiKey = "relances.delai_niveau_{$niveau}";
+        $delaiSettings = DB::table('settings')->where('key', $delaiKey)->value('value');
+
+        if ($delaiSettings !== null) {
+            return now()->addDays((int) $delaiSettings);
+        }
+
+        // Fallback si settings non configurés
         return match($niveau) {
-            1 => now(), // Immédiat
-            2 => now()->addDays(7), // 7 jours après niveau 1
+            1 => now(),
+            2 => now()->addDays(7),
             3 => now()->addDays(14), // 14 jours après niveau 1
             default => now()
         };

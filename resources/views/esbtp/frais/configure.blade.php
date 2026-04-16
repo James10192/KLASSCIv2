@@ -3,314 +3,294 @@
 @section('title', 'Configuration des Frais - KLASSCI')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-/* Styles spécifiques pour la configuration des frais */
-.configuration-card {
-    border: 2px solid transparent;
-    transition: all 0.3s ease;
+/* ───────────────────────────────────────────────
+   FRAIS CONFIGURE — KLASSCI Premium v2
+   Namespace: fc-*
+──────────────────────────────────────────────── */
+:root {
+    --fc-primary:    #0453cb;
+    --fc-primary-d:  #033a8e;
+    --fc-secondary:  #5e91de;
+    --fc-dark:       #0f172a;
+    --fc-text:       #1e293b;
+    --fc-muted:      #64748b;
+    --fc-success:    #10b981;
+    --fc-warning:    #f59e0b;
+    --fc-danger:     #ef4444;
+    --fc-surface:    #f8fafc;
+    --fc-white:      #ffffff;
+    --fc-border:     #e2e8f0;
+    --fc-shadow-sm:  0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+    --fc-shadow-md:  0 4px 16px rgba(4,83,203,.06), 0 1px 3px rgba(15,23,42,.04);
+    --fc-shadow-lg:  0 8px 30px rgba(4,83,203,.08), 0 2px 8px rgba(15,23,42,.04);
+    --fc-radius:     14px;
+}
+
+/* ── HERO ── */
+.fc-hero {
+    background: linear-gradient(135deg, #071631 0%, #0a2d6e 35%, #0453cb 70%, #3674d1 100%);
+    position: relative;
+    overflow: hidden;
+    padding: 2rem 2rem 1.75rem;
+    border-radius: 18px;
+    margin-bottom: 1.75rem;
+    box-shadow: 0 8px 32px rgba(4,83,203,.18), 0 2px 8px rgba(15,23,42,.1), inset 0 1px 0 rgba(255,255,255,.08);
+}
+.fc-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 50% 70% at 90% 30%, rgba(94,145,222,.15) 0%, transparent 70%);
+    pointer-events: none;
+}
+.fc-hero-inner { position: relative; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+.fc-hero-label {
+    display: inline-flex; align-items: center; gap: .35rem;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 6px; padding: .2rem .6rem;
+    font-size: .65rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.55);
+    margin-bottom: .5rem;
+}
+.fc-hero-title { font-size: 1.45rem; font-weight: 700; color: #fff; margin: 0; letter-spacing: -.3px; }
+.fc-hero-sub { color: rgba(255,255,255,.5); font-size: .82rem; margin: .3rem 0 0; }
+.fc-hero-actions { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+.fc-btn-ghost {
+    background: rgba(255,255,255,.07); color: rgba(255,255,255,.85); border: 1px solid rgba(255,255,255,.15);
+    padding: .5rem 1.1rem; border-radius: 9px; font-weight: 500; font-size: .8rem; text-decoration: none;
+    transition: all .2s ease; display: inline-flex; align-items: center; gap: .4rem;
+}
+.fc-btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+
+/* ── INFO BAR ── */
+.fc-info-bar {
+    background: var(--fc-white);
+    border: 1px solid var(--fc-border);
+    border-radius: var(--fc-radius);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: var(--fc-shadow-sm);
+}
+.fc-info-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: rgba(4,83,203,.06); color: var(--fc-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: .95rem; flex-shrink: 0;
+}
+.fc-info-text { font-size: .82rem; color: var(--fc-muted); line-height: 1.5; }
+.fc-info-text strong { color: var(--fc-text); }
+
+/* ── ALERTS ── */
+.fc-alert {
+    border-radius: var(--fc-radius);
+    padding: .85rem 1.1rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    font-size: .85rem;
+    font-weight: 500;
+}
+.fc-alert.is-success { background: rgba(16,185,129,.06); border: 1px solid rgba(16,185,129,.2); color: #065f46; }
+.fc-alert.is-error   { background: rgba(239,68,68,.06); border: 1px solid rgba(239,68,68,.2); color: #991b1b; }
+
+/* ── CLASSES GRID ── */
+.fc-section-title {
+    font-size: .9rem; font-weight: 700; color: var(--fc-text); margin-bottom: 1.25rem;
+    display: flex; align-items: center; gap: .5rem;
+}
+.fc-section-title i {
+    width: 32px; height: 32px; border-radius: 9px;
+    background: rgba(4,83,203,.07); color: var(--fc-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: .8rem;
+}
+.fc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+}
+
+/* ── CLASS CARD ── */
+.fc-card {
+    background: var(--fc-white);
+    border: 1.5px solid var(--fc-border);
+    border-radius: var(--fc-radius);
+    padding: 1.25rem;
+    transition: all .25s ease;
+    box-shadow: var(--fc-shadow-sm);
     position: relative;
     overflow: hidden;
 }
-
-.configuration-card::before {
+.fc-card:hover {
+    box-shadow: var(--fc-shadow-lg);
+    transform: translateY(-3px);
+}
+.fc-card::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, transparent, var(--primary), transparent);
-    opacity: 0;
-    transition: opacity 0.3s ease;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: 14px 14px 0 0;
+    transition: opacity .2s;
+}
+.fc-card.is-complete::before  { background: var(--fc-success); }
+.fc-card.is-partial::before   { background: var(--fc-warning); }
+.fc-card.is-empty::before     { background: var(--fc-danger); }
+
+.fc-card-header { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+.fc-card-icon {
+    width: 42px; height: 42px; border-radius: 11px;
+    background: linear-gradient(135deg, var(--fc-primary), var(--fc-secondary));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: .95rem; flex-shrink: 0;
+    box-shadow: 0 3px 8px rgba(4,83,203,.2);
+}
+.fc-card-name { font-weight: 700; color: var(--fc-text); font-size: .9rem; line-height: 1.2; }
+.fc-card-meta { font-size: .72rem; color: var(--fc-muted); margin-top: 2px; }
+.fc-card-students { font-size: .7rem; color: var(--fc-muted); margin-top: 2px; }
+
+/* Stats row */
+.fc-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .6rem;
+    margin-bottom: 1rem;
+}
+.fc-stat {
+    text-align: center;
+    padding: .6rem .5rem;
+    border-radius: 9px;
+    background: var(--fc-surface);
+}
+.fc-stat-value { font-size: 1.1rem; font-weight: 800; line-height: 1; }
+.fc-stat-label { font-size: .65rem; font-weight: 600; margin-top: .2rem; text-transform: uppercase; letter-spacing: .04em; }
+.fc-stat.is-oblig .fc-stat-value { color: var(--fc-primary); }
+.fc-stat.is-oblig .fc-stat-label { color: var(--fc-primary); }
+.fc-stat.is-opt .fc-stat-value   { color: var(--fc-secondary); }
+.fc-stat.is-opt .fc-stat-label   { color: var(--fc-secondary); }
+
+/* Progress ring */
+.fc-ring { text-align: center; margin-bottom: 1rem; }
+.fc-ring svg { filter: drop-shadow(0 1px 3px rgba(0,0,0,.08)); }
+.fc-ring circle { transition: stroke-dashoffset .6s ease; transform: rotate(-90deg); transform-origin: 50% 50%; }
+.fc-ring-pct {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    font-size: .7rem; font-weight: 800; color: var(--fc-text);
 }
 
-.configuration-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-elevated);
+/* Status badge */
+.fc-badge {
+    display: inline-flex; align-items: center; gap: .3rem;
+    padding: .25rem .65rem; border-radius: 8px;
+    font-size: .68rem; font-weight: 600;
+    margin-bottom: 1rem;
 }
+.fc-badge.is-complete { background: rgba(16,185,129,.08); color: #059669; }
+.fc-badge.is-partial  { background: rgba(245,158,11,.08); color: #b45309; }
+.fc-badge.is-empty    { background: rgba(239,68,68,.08); color: #dc2626; }
 
-.configuration-card:hover::before {
-    opacity: 1;
-}
-
-.configuration-card.configured {
-    border-color: rgba(16, 185, 129, 0.3);
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.02));
-}
-
-.configuration-card.configured::before {
-    background: linear-gradient(90deg, transparent, var(--success), transparent);
-}
-
-.configuration-card.partial {
-    border-color: rgba(245, 158, 11, 0.3);
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.02));
-}
-
-.configuration-card.partial::before {
-    background: linear-gradient(90deg, transparent, var(--warning), transparent);
-}
-
-.configuration-card.not-configured {
-    border-color: rgba(239, 68, 68, 0.3);
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.02));
-}
-
-.configuration-card.not-configured::before {
-    background: linear-gradient(90deg, transparent, var(--danger), transparent);
-}
-
-.class-icon {
-    width: 50px;
-    height: 50px;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    border-radius: var(--radius-circle);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 20px;
-    margin-bottom: var(--space-md);
-}
-
-.progress-ring {
-    width: 60px;
-    height: 60px;
-    margin: var(--space-sm) auto;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.progress-ring circle {
-    transition: stroke-dashoffset 0.6s ease-in-out;
-    transform: rotate(-90deg);
-    transform-origin: 50% 50%;
-}
-
-.progress-ring svg {
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
-}
-
-.stats-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-xs);
-    padding: var(--space-xs) var(--space-sm);
-    border-radius: var(--radius-small);
-    font-size: var(--text-small);
-    font-weight: 600;
-}
-
-.modal-backdrop {
-    background-color: rgba(0, 0, 0, 0.8) !important;
-}
-
-.configuration-modal {
-    backdrop-filter: blur(8px);
-}
-
-.category-config-card {
-    border: 2px solid rgba(0,0,0,0.05);
-    transition: all 0.2s ease;
-}
-
-.category-config-card:hover {
-    border-color: var(--primary);
-    box-shadow: var(--shadow-elevated);
-}
-
-.category-config-card.mandatory {
-    border-left: 4px solid var(--danger);
-}
-
-.category-config-card.optional {
-    border-left: 4px solid var(--accent-blue);
-}
-
-/* Styles pour les onglets de configuration */
-.nav-tabs {
-    border-bottom: 2px solid #e5e7eb;
-    margin-bottom: var(--space-lg);
-}
-
-.nav-tabs .nav-link {
-    border: none;
-    padding: var(--space-md) var(--space-lg);
-    color: var(--text-secondary);
-    font-weight: 500;
-    border-radius: var(--radius-small) var(--radius-small) 0 0;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-}
-
-.nav-tabs .nav-link:hover {
-    background-color: rgba(30, 58, 138, 0.05);
-    color: var(--primary);
-    border-color: transparent;
-}
-
-.nav-tabs .nav-link.active {
-    background-color: var(--primary);
-    color: white;
-    border-color: var(--primary);
-    position: relative;
-}
-
-.nav-tabs .nav-link.active::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background-color: var(--primary);
-}
-
-.nav-tabs .nav-link .badge {
-    font-size: var(--text-small);
-    padding: 2px 6px;
-    border-radius: var(--radius-small);
-}
-
-.nav-tabs .nav-link.active .badge {
-    background-color: rgba(255, 255, 255, 0.2) !important;
-    color: white !important;
-}
-
-/* Configuration forms */
-.config-category-card {
-    background: var(--surface);
-    border: 1px solid #e5e7eb;
-    border-radius: var(--radius-medium);
-    padding: var(--space-lg);
-    margin-bottom: var(--space-md);
-    transition: all 0.2s ease;
-}
-
-.config-category-card:hover {
-    box-shadow: var(--shadow-elevated);
-    transform: translateY(-1px);
-}
-
-.config-category-card.mandatory {
-    border-left: 4px solid var(--danger);
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(239, 68, 68, 0.01));
-}
-
-.config-category-card.optional {
-    border-left: 4px solid var(--success);
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(16, 185, 129, 0.01));
-}
-
-.config-option-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-sm);
-    border: 1px solid #e5e7eb;
-    border-radius: var(--radius-small);
-    margin-bottom: var(--space-sm);
-    background: var(--background);
-    transition: all 0.2s ease;
-}
-
-.config-option-item:hover {
-    background: rgba(30, 58, 138, 0.05);
-    border-color: var(--primary);
-}
-
-.config-option-item:last-child {
-    margin-bottom: 0;
-}
-
-.option-details {
-    flex: 1;
-}
-
-.option-name {
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: var(--space-xs);
-}
-
-.option-description {
-    font-size: var(--text-small);
-    color: var(--text-secondary);
-}
-
-.option-price {
-    font-weight: 700;
-    color: var(--primary);
-    margin-left: var(--space-md);
-}
-
-.add-option-btn {
+/* Configure button */
+.fc-btn-config {
     width: 100%;
-    padding: var(--space-md);
-    border: 2px dashed #d1d5db;
-    background: transparent;
-    border-radius: var(--radius-small);
-    color: var(--text-secondary);
-    font-size: var(--text-small);
-    font-weight: 500;
+    background: var(--fc-primary);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: .65rem 1rem;
+    font-size: .82rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    transition: all .2s;
+    box-shadow: 0 2px 6px rgba(4,83,203,.18);
+}
+.fc-btn-config:hover {
+    background: var(--fc-primary-d);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(4,83,203,.25);
 }
 
-.add-option-btn:hover {
-    border-color: var(--primary);
-    color: var(--primary);
-    background: rgba(30, 58, 138, 0.05);
-}
-
-/* Modal Configuration Fix - Flexbox Centering */
+/* ── MODAL ── */
 #configurationModal.modal.show {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    z-index: 1055 !important;
-    padding: 1rem !important;
-    box-sizing: border-box !important;
+    display: flex !important; align-items: center !important; justify-content: center !important;
+    position: fixed !important; inset: 0 !important; z-index: 1055 !important; padding: 1rem !important;
 }
-
 #configurationModal.modal.show .modal-dialog {
-    position: static !important;
-    margin: 0 !important;
-    max-width: 90vw !important;
-    width: 900px !important;
-    max-height: 90vh !important;
-    transform: none !important;
-    display: flex !important;
-    flex-direction: column !important;
+    position: static !important; margin: 0 !important;
+    max-width: 90vw !important; width: 900px !important; max-height: 90vh !important;
+    transform: none !important; display: flex !important; flex-direction: column !important;
 }
-
 #configurationModal .modal-content {
-    background: white !important;
-    border-radius: var(--radius-medium) !important;
-    box-shadow: var(--shadow-elevated) !important;
-    max-height: 100% !important;
-    overflow: hidden !important;
-    display: flex !important;
-    flex-direction: column !important;
+    background: var(--fc-white) !important;
+    border-radius: 18px !important;
+    box-shadow: 0 20px 60px rgba(15,23,42,.15), 0 4px 16px rgba(4,83,203,.1) !important;
+    max-height: 100% !important; overflow: hidden !important;
+    display: flex !important; flex-direction: column !important;
+    border: none !important;
 }
-
-#configurationModal .modal-body {
-    overflow-y: auto !important;
-    flex-grow: 1 !important;
+#configurationModal .modal-header {
+    background: linear-gradient(135deg, #071631 0%, #0453cb 100%) !important;
+    color: #fff !important;
+    padding: 1.25rem 1.5rem !important;
+    border: none !important;
+    border-radius: 18px 18px 0 0 !important;
 }
+#configurationModal .modal-header .modal-title { font-size: 1rem; font-weight: 600; }
+#configurationModal .modal-body { overflow-y: auto !important; flex-grow: 1 !important; padding: 1.5rem !important; }
+#configurationModal .modal-footer {
+    border-top: 1px solid var(--fc-border) !important;
+    padding: 1rem 1.5rem !important;
+    gap: .5rem;
+}
+#configurationModal .modal-footer .btn-secondary {
+    background: var(--fc-surface); color: var(--fc-muted); border: 1.5px solid var(--fc-border);
+    border-radius: 9px; font-weight: 500; font-size: .82rem; padding: .5rem 1rem;
+}
+#configurationModal .modal-footer .btn-primary {
+    background: var(--fc-primary); border: none; border-radius: 9px;
+    font-weight: 600; font-size: .82rem; padding: .5rem 1.25rem;
+    box-shadow: 0 2px 6px rgba(4,83,203,.2);
+}
+#configurationModal .modal-footer .btn-primary:hover { background: var(--fc-primary-d); }
 
-#configurationModal .modal-backdrop {
-    z-index: 1054 !important;
+/* Modal info bar */
+.fc-modal-info {
+    background: rgba(4,83,203,.04);
+    border: 1px solid rgba(4,83,203,.12);
+    border-radius: 10px;
+    padding: .75rem 1rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    font-size: .82rem;
+    color: var(--fc-text);
+}
+.fc-modal-info i { color: var(--fc-primary); font-size: .9rem; }
+
+/* ── EMPTY STATE ── */
+.fc-empty {
+    text-align: center; padding: 3rem 2rem; color: var(--fc-muted);
+}
+.fc-empty i { font-size: 2.5rem; opacity: .15; margin-bottom: 1rem; display: block; }
+.fc-empty p { font-size: .85rem; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+    .fc-grid { grid-template-columns: 1fr; }
+    .fc-hero { padding: 1.5rem; border-radius: 14px; }
+    .fc-hero-title { font-size: 1.2rem; }
+}
+@media (max-width: 576px) {
+    #configurationModal.modal.show { padding: .5rem !important; }
+    #configurationModal.modal.show .modal-dialog { max-width: 95vw !important; width: 95vw !important; }
 }
 </style>
 @endpush
@@ -318,260 +298,204 @@
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header moderne -->
-        <div class="dashboard-header">
-            <div class="header-left">
-                <h1>Configuration des Frais</h1>
-                <p class="header-subtitle">Configuration des tarifs par classe et filière</p>
-            </div>
-            <div class="header-actions">
-                <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi accent-blue" title="Configurer les frais optionnels (transport, cantine)">
-                    <i class="fas fa-sliders-h"></i>Frais Optionnels
-                </a>
-                <a href="{{ route('esbtp.frais.index') }}" class="btn-acasi primary">
-                    <i class="fas fa-arrow-left"></i>Retour
-                </a>
+
+        {{-- ── HERO ── --}}
+        <div class="fc-hero">
+            <div class="fc-hero-inner">
+                <div>
+                    <div class="fc-hero-label">
+                        <i class="fas fa-coins" style="font-size:.6rem;"></i>
+                        Gestion des frais
+                    </div>
+                    <h1 class="fc-hero-title">
+                        <i class="fas fa-sliders-h" style="margin-right:.4rem;opacity:.75;font-size:.85em;"></i>
+                        Configuration des Frais par Classe
+                    </h1>
+                    <p class="fc-hero-sub">Configurez les tarifs obligatoires pour chaque combinaison filière et niveau</p>
+                </div>
+                <div class="fc-hero-actions">
+                    <a href="{{ route('esbtp.frais.optional-config') }}" class="fc-btn-ghost">
+                        <i class="fas fa-puzzle-piece"></i> Frais Optionnels
+                    </a>
+                    <a href="{{ route('esbtp.frais.index') }}" class="fc-btn-ghost">
+                        <i class="fas fa-arrow-left"></i> Retour
+                    </a>
+                </div>
             </div>
         </div>
 
-        <!-- Messages d'état -->
+        {{-- ── ALERTS ── --}}
         @if(session('success'))
-            <div class="card-moderne" style="background: rgba(16, 185, 129, 0.1); border-left: 4px solid var(--success); margin-bottom: var(--space-lg);">
-                <div style="padding: var(--space-md);">
-                    <div class="color-success font-semibold">
-                        <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-                    </div>
-                </div>
+            <div class="fc-alert is-success">
+                <i class="fas fa-check-circle"></i>
+                {{ session('success') }}
             </div>
         @endif
-
         @if(session('error'))
-            <div class="card-moderne" style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--danger); margin-bottom: var(--space-lg);">
-                <div style="padding: var(--space-md);">
-                    <div class="color-danger font-semibold">
-                        <i class="fas fa-exclamation-triangle me-2"></i>{{ session('error') }}
-                    </div>
-                </div>
+            <div class="fc-alert is-error">
+                <i class="fas fa-exclamation-triangle"></i>
+                {{ session('error') }}
             </div>
         @endif
 
-        <!-- Section instructions moderne -->
-        <div class="soldes-section">
-            <div class="soldes-grid">
-                <div class="card-moderne solde-card">
-                    <div class="solde-title">
-                        <i class="fas fa-info-circle me-2"></i>Guide de Configuration
-                    </div>
-                    <div style="color: var(--text-primary); font-size: var(--text-normal); line-height: 1.6;">
-                        <div class="mb-sm"><strong>Classe = Filière + Niveau d'étude</strong></div>
-                        <div class="mb-sm">• Configurez les frais pour chaque classe</div>
-                        <div class="mb-sm">• Les frais <span class="badge danger">obligatoires</span> doivent être configurés</div>
-                        <div>• Les frais <span class="badge primary">optionnels</span> sont facultatifs</div>
-                    </div>
-                </div>
-                
-                <div class="card-moderne solde-card">
-                    <div class="solde-title">
-                        <i class="fas fa-tools me-2"></i>Actions Rapides
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
-                        <a href="{{ route('esbtp.frais.index') }}" class="btn-acasi secondary" style="justify-content: center;">
-                            <i class="fas fa-list"></i>Gérer les Catégories
-                        </a>
-                        <a href="{{ route('esbtp.frais.create') }}" class="btn-acasi primary" style="justify-content: center;">
-                            <i class="fas fa-plus"></i>Nouvelle Catégorie
-                        </a>
-                    </div>
-                </div>
+        {{-- ── INFO BAR ── --}}
+        <div class="fc-info-bar">
+            <div class="fc-info-icon"><i class="fas fa-info"></i></div>
+            <div class="fc-info-text">
+                <strong>Classe = Filière + Niveau.</strong>
+                Cliquez sur une carte pour configurer les montants des frais obligatoires.
+                Les frais <span style="color:var(--fc-danger);font-weight:600;">obligatoires</span> doivent tous être configurés pour chaque classe.
             </div>
         </div>
 
-        <!-- Liste des classes moderne -->
-        <div class="card-moderne" style="padding: var(--space-lg);">
-            <div class="section-title">
-                <i class="fas fa-graduation-cap me-2"></i>Classes et Configuration des Frais
-            </div>
-            
-            @if($classes->count() > 0)
-                <div class="resultats-grid" style="margin-top: var(--space-lg);">
-                    @foreach($classes as $classe)
-                        @php
-                            $statusClass = '';
-                            $statusIcon = '';
-                            $statusText = '';
-                            
-                            if($classe->obligatoires_configures == $classe->total_obligatoires) {
-                                $statusClass = 'configured';
-                                $statusIcon = 'fa-check-circle';
-                                $statusText = 'Complet';
-                            } elseif($classe->obligatoires_configures > 0) {
-                                $statusClass = 'partial';
-                                $statusIcon = 'fa-exclamation-triangle';
-                                $statusText = 'Partiel';
-                            } else {
-                                $statusClass = 'not-configured';
-                                $statusIcon = 'fa-times-circle';
-                                $statusText = 'Non configuré';
-                            }
-                        @endphp
-                        
-                        <div class="card-moderne configuration-card {{ $statusClass }} animate-slide-up">
-                            <div class="resultat-card" style="padding: var(--space-lg);">
-                                <!-- Header avec icône de classe -->
-                                <div style="display: flex; align-items: center; margin-bottom: var(--space-lg);">
-                                    <div class="class-icon">
-                                        <i class="fas fa-graduation-cap"></i>
-                                    </div>
-                                    <div style="flex: 1;">
-                                        <div class="resultat-title" style="margin-bottom: var(--space-xs); color: var(--primary);">
-                                            {{ $classe->name }}
-                                        </div>
-                                        <div style="font-size: var(--text-small); color: var(--text-secondary);">
-                                            {{ $classe->filiere->name }} • {{ $classe->niveau->name }}
-                                        </div>
-                                        <div style="font-size: var(--text-small); color: var(--text-muted); margin-top: var(--space-xs);">
-                                            <i class="fas fa-users me-1"></i>{{ $classe->effectif }} étudiants
-                                        </div>
-                                    </div>
-                                </div>
+        {{-- ── CLASSES GRID ── --}}
+        <div class="fc-section-title">
+            <i class="fas fa-graduation-cap"></i>
+            Classes ({{ $classes->count() }})
+        </div>
 
-                                <!-- Statistiques de configuration -->
-                                <div style="margin-bottom: var(--space-lg);">
-                                    <div class="resultat-title" style="margin-bottom: var(--space-sm);">Configuration des frais</div>
-                                    
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);">
-                                        <div style="text-align: center; padding: var(--space-sm); background: rgba(239, 68, 68, 0.1); border-radius: var(--radius-small);">
-                                            <div style="font-size: var(--amount-medium); font-weight: 700; color: var(--danger);">
-                                                {{ $classe->obligatoires_configures }}/{{ $classe->total_obligatoires }}
-                                            </div>
-                                            <div style="font-size: var(--text-small); color: var(--danger); font-weight: 600;">Obligatoires</div>
-                                        </div>
-                                        <div style="text-align: center; padding: var(--space-sm); background: rgba(59, 130, 246, 0.1); border-radius: var(--radius-small);">
-                                            @if($classe->optionnels_configures > 0)
-                                                <div style="font-size: var(--amount-medium); font-weight: 700; color: var(--accent-blue);">
-                                                    {{ $classe->optionnels_configures }}
-                                                </div>
-                                                <div style="font-size: var(--text-small); color: var(--accent-blue); font-weight: 600;">Assignés</div>
-                                            @else
-                                                <div style="font-size: var(--amount-medium); font-weight: 700; color: var(--text-muted);">
-                                                    <i class="fas fa-minus"></i>
-                                                </div>
-                                                <div style="font-size: var(--text-small); color: var(--text-muted); font-weight: 600;">Non assignés</div>
-                                            @endif
-                                        </div>
-                                    </div>
+        @if($classes->count() > 0)
+            <div class="fc-grid">
+                @foreach($classes as $classe)
+                    @php
+                        $totalRequired = $classe->total_obligatoires;
+                        $totalConfigured = $classe->obligatoires_configures;
+                        $percentage = $totalRequired > 0 ? ($totalConfigured / $totalRequired) * 100 : 0;
+                        $circumference = 2 * 3.14159 * 22;
+                        $strokeDashoffset = $circumference - ($percentage / 100) * $circumference;
 
-                                    <!-- Progress ring pour le statut général -->
-                                    @php
-                                        $totalRequired = $classe->total_obligatoires;
-                                        $totalConfigured = $classe->obligatoires_configures;
-                                        $percentage = $totalRequired > 0 ? ($totalConfigured / $totalRequired) * 100 : 0;
-                                        $circumference = 2 * 3.14159 * 25; // rayon de 25
-                                        $strokeDashoffset = $circumference - ($percentage / 100) * $circumference;
-                                    @endphp
-                                    
-                                    <div style="display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-md);">
-                                        <div class="progress-ring">
-                                            <svg width="60" height="60">
-                                                <circle cx="30" cy="30" r="25" stroke="#e5e7eb" stroke-width="4" fill="transparent"/>
-                                                <circle cx="30" cy="30" r="25" 
-                                                        stroke="{{ $percentage == 100 ? '#10b981' : ($percentage > 0 ? '#f59e0b' : '#ef4444') }}" 
-                                                        stroke-width="4" 
-                                                        fill="transparent"
-                                                        stroke-dasharray="{{ $circumference }}"
-                                                        stroke-dashoffset="{{ $strokeDashoffset }}"/>
-                                            </svg>
-                                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: var(--text-small); font-weight: 700; color: var(--text-primary);">
-                                                {{ number_format($percentage, 0) }}%
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                        if ($totalConfigured == $totalRequired) {
+                            $statusClass = 'is-complete';
+                            $statusIcon = 'fa-check-circle';
+                            $statusText = 'Complet';
+                            $ringColor = '#10b981';
+                        } elseif ($totalConfigured > 0) {
+                            $statusClass = 'is-partial';
+                            $statusIcon = 'fa-exclamation-triangle';
+                            $statusText = 'Partiel';
+                            $ringColor = '#f59e0b';
+                        } else {
+                            $statusClass = 'is-empty';
+                            $statusIcon = 'fa-times-circle';
+                            $statusText = 'Non configuré';
+                            $ringColor = '#ef4444';
+                        }
+                    @endphp
 
-                                <!-- Badges de statut -->
-                                <div style="display: flex; justify-content: center; margin-bottom: var(--space-lg);">
-                                    <span class="stats-badge {{ $statusClass == 'configured' ? 'bg-success' : ($statusClass == 'partial' ? 'bg-warning' : 'bg-danger') }}" 
-                                          style="color: white;">
-                                        <i class="fas {{ $statusIcon }}"></i>{{ $statusText }}
-                                    </span>
-                                </div>
+                    <div class="fc-card {{ $statusClass }}">
+                        <div class="fc-card-header">
+                            <div class="fc-card-icon">
+                                <i class="fas fa-graduation-cap"></i>
+                            </div>
+                            <div>
+                                <div class="fc-card-name">{{ $classe->name }}</div>
+                                <div class="fc-card-meta">{{ $classe->filiere->name }} · {{ $classe->niveau->name }}</div>
+                                <div class="fc-card-students"><i class="fas fa-users" style="margin-right:.25rem;"></i>{{ $classe->effectif }} étudiants</div>
+                            </div>
+                        </div>
 
-                                <!-- Actions -->
-                                <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
-                                    <button type="button" 
-                                            class="btn-acasi primary configure-btn" 
-                                            style="width: 100%; justify-content: center;" 
-                                            title="Configurer les frais pour cette classe"
-                                            data-filiere-id="{{ $classe->filiere->id }}"
-                                            data-niveau-id="{{ $classe->niveau->id }}"
-                                            data-filiere-name="{{ $classe->filiere->name }}"
-                                            data-niveau-name="{{ $classe->niveau->name }}"
-                                            onclick="openConfigurationModal(this)">
-                                        <i class="fas fa-cogs"></i>
-                                        <span class="configure-text">Configurer les Frais</span>
-                                    </button>
-                                    
-                                    @if($classe->configurations->count() > 0)
-                                    @endif
+                        <div class="fc-stats">
+                            <div class="fc-stat is-oblig">
+                                <div class="fc-stat-value">{{ $totalConfigured }}/{{ $totalRequired }}</div>
+                                <div class="fc-stat-label">Obligatoires</div>
+                            </div>
+                            <div class="fc-stat is-opt">
+                                @if($classe->optionnels_configures > 0)
+                                    <div class="fc-stat-value">{{ $classe->optionnels_configures }}</div>
+                                    <div class="fc-stat-label">Optionnels</div>
+                                @else
+                                    <div class="fc-stat-value" style="color:var(--fc-muted);">—</div>
+                                    <div class="fc-stat-label" style="color:var(--fc-muted);">Optionnels</div>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="fc-ring" style="position:relative;display:inline-block;width:100%;">
+                            <div style="display:flex;align-items:center;justify-content:center;">
+                                <div style="position:relative;width:52px;height:52px;">
+                                    <svg width="52" height="52">
+                                        <circle cx="26" cy="26" r="22" stroke="#e9eef5" stroke-width="4" fill="transparent"/>
+                                        <circle cx="26" cy="26" r="22"
+                                                stroke="{{ $ringColor }}"
+                                                stroke-width="4"
+                                                fill="transparent"
+                                                stroke-linecap="round"
+                                                stroke-dasharray="{{ $circumference }}"
+                                                stroke-dashoffset="{{ $strokeDashoffset }}"/>
+                                    </svg>
+                                    <div class="fc-ring-pct">{{ number_format($percentage, 0) }}%</div>
                                 </div>
                             </div>
                         </div>
-                    @endforeach
-                </div>
-            @else
-                <div class="empty-state">
-                    <i class="fas fa-graduation-cap"></i>
-                    <p>Aucune classe trouvée</p>
-                    <div style="font-size: var(--text-small); color: var(--text-muted); margin-top: var(--space-sm);">
-                        Vérifiez que vous avez des filières et niveaux d'étude actifs
-                    </div>
-                </div>
-            @endif
-        </div>
 
-        <!-- Modal Simple pour Configuration des Frais par Classe -->
+                        <div style="text-align:center;">
+                            <span class="fc-badge {{ $statusClass }}">
+                                <i class="fas {{ $statusIcon }}" style="font-size:.65em;"></i>
+                                {{ $statusText }}
+                            </span>
+                        </div>
+
+                        <button type="button"
+                                class="fc-btn-config configure-btn"
+                                data-filiere-id="{{ $classe->filiere->id }}"
+                                data-niveau-id="{{ $classe->niveau->id }}"
+                                data-filiere-name="{{ $classe->filiere->name }}"
+                                data-niveau-name="{{ $classe->niveau->name }}"
+                                onclick="openConfigurationModal(this)">
+                            <i class="fas fa-cogs"></i>
+                            <span class="configure-text">Configurer les Frais</span>
+                        </button>
+                    </div>
+                @endforeach
+            </div>
+        @else
+            <div class="fc-empty">
+                <i class="fas fa-graduation-cap"></i>
+                <p>Aucune classe trouvée. Vérifiez que vous avez des filières et niveaux actifs.</p>
+            </div>
+        @endif
+
+        {{-- ── MODAL ── --}}
         <div class="modal fade" id="configurationModal" tabindex="-1" aria-labelledby="configurationModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
-                    <!-- Header simple -->
-                    <div class="modal-header bg-primary text-white">
+                    <div class="modal-header">
                         <h5 class="modal-title" id="configurationModalLabel">
-                            <i class="fas fa-graduation-cap me-2"></i>Configuration des Frais par Classe
+                            <i class="fas fa-cogs" style="margin-right:.4rem;opacity:.8;"></i>
+                            Configuration des Frais
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
                     </div>
 
-                    <!-- Body simple -->
                     <div class="modal-body">
-                        <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>Classe :</strong> <span id="modalClasseInfo">-</span><br>
-                            <small>Configurez les frais obligatoires pour cette classe (inscription, scolarité, examens).</small>
+                        <div class="fc-modal-info">
+                            <i class="fas fa-graduation-cap"></i>
+                            <div>
+                                <strong>Classe :</strong> <span id="modalClasseInfo">-</span><br>
+                                <small style="color:var(--fc-muted);">Configurez les montants des frais obligatoires pour cette combinaison filière/niveau.</small>
+                            </div>
                         </div>
 
-                        <!-- Formulaire simple -->
                         <form id="configurationForm" method="POST" action="{{ route('esbtp.frais.update-configuration') }}">
                             @csrf
                             <input type="hidden" id="modalFiliereId" name="filiere_id">
                             <input type="hidden" id="modalNiveauId" name="niveau_id">
 
                             <div id="categoriesContainer">
-                                <!-- Les catégories seront chargées ici par AJAX -->
-                                <div class="text-center py-4">
-                                    <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
-                                    <p class="mt-2 text-muted">Chargement des catégories...</p>
+                                <div style="text-align:center;padding:2rem;">
+                                    <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;color:var(--fc-primary);"></i>
+                                    <p style="margin-top:.75rem;color:var(--fc-muted);font-size:.85rem;">Chargement des catégories...</p>
                                 </div>
                             </div>
                         </form>
                     </div>
 
-                    <!-- Footer simple -->
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                            <i class="fas fa-times me-1"></i>Annuler
+                            <i class="fas fa-times" style="margin-right:.3rem;"></i>Annuler
                         </button>
                         <button type="button" id="saveConfigurationBtn" class="btn btn-primary">
-                            <i class="fas fa-save me-1"></i>Enregistrer
+                            <i class="fas fa-save" style="margin-right:.3rem;"></i>Enregistrer
                         </button>
                     </div>
                 </div>
@@ -582,139 +506,41 @@
 </div>
 @endsection
 
-@push('styles')
-<style>
-/* Styles spécifiques pour améliorer l'intégration avec dashboard-moderne.css */
-
-/* Styles supplémentaires pour la responsivité du modal */
-@media (max-width: 576px) {
-    #configurationModal.modal.show {
-        padding: 0.5rem !important;
-    }
-    
-    #configurationModal.modal.show .modal-dialog {
-        max-width: 95vw !important;
-        width: 95vw !important;
-    }
-}
-
-/* Assurer que le backdrop couvre tout le viewport */
-#configurationModal .modal-backdrop {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-}
-
-.me-1 {
-    margin-right: 0.25rem;
-}
-
-.me-2 {
-    margin-right: 0.5rem;
-}
-
-.ms-2 {
-    margin-left: 0.5rem;
-}
-
-/* Amélioration responsive pour les grilles */
-@media (max-width: 768px) {
-    .resultats-grid {
-        grid-template-columns: 1fr !important;
-    }
-    
-    .kpi-grid {
-        grid-template-columns: 1fr !important;
-    }
-    
-    .soldes-grid {
-        grid-template-columns: 1fr !important;
-    }
-}
-
-/* Effets hover pour les cards de classe */
-.kpi-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-hover);
-}
-
-/* Animation pour les inputs de configuration */
-input[type="number"]:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.1);
-}
-
-/* Configuration section highlight */
-#configuration-section {
-    position: relative;
-}
-
-#configuration-section::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(45deg, var(--accent-blue), var(--primary), var(--accent-blue));
-    border-radius: var(--radius-medium);
-    z-index: -1;
-    opacity: 0.3;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% { opacity: 0.3; }
-    50% { opacity: 0.6; }
-    100% { opacity: 0.3; }
-}
-</style>
-@endpush
-
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     debugLog('DOM ready - Simple modal system');
-    
-    // Fonction simple pour ouvrir le modal
+
     window.openConfigurationModal = function(button) {
         debugLog('Opening configuration modal...');
-        
+
         const filiereId = button.dataset.filiereId;
         const niveauId = button.dataset.niveauId;
         const filiereName = button.dataset.filiereName;
         const niveauName = button.dataset.niveauName;
-        
-        // Vérifier Bootstrap
+
         if (typeof bootstrap === 'undefined') {
             alert('Bootstrap non disponible');
             return;
         }
-        
-        // Mettre à jour les informations du modal
+
         document.getElementById('modalFiliereId').value = filiereId;
         document.getElementById('modalNiveauId').value = niveauId;
         document.getElementById('modalClasseInfo').textContent = `${filiereName} - ${niveauName}`;
-        
-        // Ouvrir le modal
+
         const modalElement = document.getElementById('configurationModal');
         const modal = new bootstrap.Modal(modalElement);
         modal.show();
-        
-        // Charger les catégories après ouverture
+
         modalElement.addEventListener('shown.bs.modal', function() {
             loadCategories(filiereId, niveauId);
         }, { once: true });
     };
-    
-    // Fonction pour charger les catégories
+
     function loadCategories(filiereId, niveauId) {
         const container = document.getElementById('categoriesContainer');
         const url = `{{ route('esbtp.frais.get-categories') }}?filiere_id=${filiereId}&niveau_id=${niveauId}&type=mandatory`;
-        
+
         fetch(url)
             .then(response => response.json())
             .then(data => {
@@ -729,31 +555,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 container.innerHTML = '<div class="alert alert-danger">Erreur de chargement</div>';
             });
     }
-    
-    // Fonction pour copier un montant sur tous les statuts
+
     window.copyToAll = function(categoryId, sourceField) {
         const sourceInput = document.getElementById(`${sourceField}_${categoryId}`);
         if (!sourceInput || !sourceInput.value) {
             alert('Veuillez d\'abord saisir le montant source');
             return;
         }
-        
+
         const value = sourceInput.value;
         const fields = ['amount_affecte', 'amount_reaffecte', 'amount_non_affecte'];
-        
+
         fields.forEach(field => {
             const input = document.getElementById(`${field}_${categoryId}`);
             if (input) {
                 input.value = value;
-                // Animation visuelle
                 input.style.backgroundColor = '#e6fffa';
-                setTimeout(() => {
-                    input.style.backgroundColor = '';
-                }, 500);
+                setTimeout(() => { input.style.backgroundColor = ''; }, 500);
             }
         });
-        
-        // Feedback visuel
+
         const btn = event.target.closest('button');
         const originalText = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-check"></i> Copié!';
@@ -764,11 +585,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 1500);
     };
 
-    // Gestionnaire de sauvegarde
     document.getElementById('saveConfigurationBtn').addEventListener('click', function() {
         const form = document.getElementById('configurationForm');
         const formData = new FormData(form);
-        
+
         fetch(form.action, {
             method: 'POST',
             body: formData,

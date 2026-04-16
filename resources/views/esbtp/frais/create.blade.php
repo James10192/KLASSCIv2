@@ -309,16 +309,20 @@
                         </div>
                         
                         <div class="form-floating-modern">
-                            <input type="number" 
-                                   class="@error('payment_deadline_days') is-invalid @enderror" 
-                                   id="payment_deadline_days" 
-                                   name="payment_deadline_days" 
-                                   value="{{ old('payment_deadline_days', 30) }}" 
-                                   min="1" 
-                                   max="365" 
-                                   required 
+                            <input type="number"
+                                   class="@error('payment_deadline_days') is-invalid @enderror"
+                                   id="payment_deadline_days"
+                                   name="payment_deadline_days"
+                                   value="{{ old('payment_deadline_days', 30) }}"
+                                   min="1"
+                                   max="365"
+                                   required
                                    placeholder=" ">
                             <label for="payment_deadline_days">Délai de paiement (jours) <span class="color-danger">*</span></label>
+                            <small style="display:block;margin-top:.3rem;color:#64748b;font-size:.75rem;">
+                                <i class="fas fa-info-circle" style="margin-right:.25rem;"></i>
+                                Nombre de jours accordés après l'inscription pour régler ces frais. Passé ce délai, l'étudiant sera considéré en retard.
+                            </small>
                             @error('payment_deadline_days')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror

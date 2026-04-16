@@ -35,15 +35,19 @@
             </div>
             <div>
                 <label style="font-size: var(--text-small); font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-xs); display: block;">
-                    Échéance (jours)
+                    Échéance (jours après inscription)
                 </label>
-                <input type="number" 
+                <input type="number"
                        style="width: 100%; padding: var(--space-sm); border: 1px solid #e5e7eb; border-radius: var(--radius-small); font-size: var(--text-normal);"
-                       name="categories[{{ $category->id }}][deadline_days]" 
-                       value="{{ $existingConfiguration->payment_deadline_days ?? $category->payment_deadline_days }}" 
-                       min="1" 
+                       name="categories[{{ $category->id }}][deadline_days]"
+                       value="{{ $existingConfiguration->payment_deadline_days ?? $category->payment_deadline_days }}"
+                       min="1"
                        max="365"
+                       placeholder="{{ $category->payment_deadline_days ?? 30 }}"
                        {{ $category->is_mandatory ? 'required' : '' }}>
+                <small style="display:block;margin-top:.2rem;color:#64748b;font-size:.7rem;">
+                    Défaut : {{ $category->payment_deadline_days ?? 30 }}j. Vide = défaut catégorie.
+                </small>
             </div>
         </div>
         

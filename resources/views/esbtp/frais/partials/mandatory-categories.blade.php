@@ -139,21 +139,25 @@
         <!-- Échéance de paiement -->
         <div class="form-group-moderne" style="margin-bottom: 0;">
             <label class="form-label-moderne" for="deadline_{{ $category->id }}">
-                <i class="fas fa-calendar-alt me-1"></i>Échéance (jours)
+                <i class="fas fa-calendar-alt me-1"></i>Échéance (jours après inscription)
             </label>
             <div style="display: grid; grid-template-columns: 1fr auto; gap: var(--space-sm); align-items: center;">
-                <input type="number" 
-                       id="deadline_{{ $category->id }}" 
-                       name="categories[{{ $category->id }}][deadline_days]" 
-                       class="form-input-moderne" 
+                <input type="number"
+                       id="deadline_{{ $category->id }}"
+                       name="categories[{{ $category->id }}][deadline_days]"
+                       class="form-input-moderne"
                        value="{{ $existingConfig ? $existingConfig->payment_deadline_days : $category->payment_deadline_days }}"
-                       min="1" 
+                       min="1"
                        max="365"
-                       placeholder="Nombre de jours">
+                       placeholder="{{ $category->payment_deadline_days ?? 30 }}">
                 <span style="font-size: var(--text-small); color: var(--text-secondary); white-space: nowrap;">
-                    jours après inscription
+                    jours
                 </span>
             </div>
+            <small style="display:block;margin-top:.3rem;color:#64748b;font-size:.72rem;">
+                <i class="fas fa-info-circle" style="margin-right:.2rem;"></i>
+                Défaut catégorie : {{ $category->payment_deadline_days ?? 30 }} jours. Laissez vide pour utiliser le défaut.
+            </small>
         </div>
 
         <!-- Statut actuel -->
