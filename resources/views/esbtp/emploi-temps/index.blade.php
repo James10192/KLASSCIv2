@@ -761,10 +761,12 @@
 
     /* ══════════════════════════════════════════════
        Width containment — prevent horizontal overflow
-       (main-content is flex: 1 with default min-width: auto)
+       (nextadmin-main/content are flex: 1 with default min-width: auto,
+        which lets intrinsically wide children overflow the viewport)
        ══════════════════════════════════════════════ */
-    .dashboard-acasi > .main-content { min-width: 0; }
-    .dashboard-acasi > .main-content > * { max-width: 100%; }
+    .nextadmin-main,
+    .nextadmin-content { min-width: 0; }
+    .nextadmin-content > * { max-width: 100%; }
 
     /* ══════════════════════════════════════════════
        KPI refresh — monochrome bleu (premium redesign)
