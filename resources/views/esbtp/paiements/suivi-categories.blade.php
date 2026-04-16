@@ -569,9 +569,11 @@
                 bindExportButtons();
             }
 
-            // Update URL if needed
-            if (data.url && pushState) {
-                window.history.pushState({ url: data.url }, '', data.url);
+            // Update URL — push INDEX url (not /refresh AJAX endpoint)
+            // so browser back button loads the real page, not the JSON endpoint
+            if (pushState) {
+                const indexUrl = buildIndexUrl();
+                window.history.pushState({ url: indexUrl }, '', indexUrl);
             }
 
             // Reinitialize tooltips if needed
@@ -686,9 +688,14 @@
         bindExportButtons();
 
         // Handle browser back/forward buttons
+        // event.state.url is an INDEX url — convert to /refresh AJAX url
         window.addEventListener('popstate', function(event) {
             if (event.state && event.state.url) {
-                fetchSuiviData(event.state.url, { pushState: false });
+                var refreshUrl = event.state.url.replace(
+                    '{{ route("esbtp.paiements.suivi-categories") }}',
+                    '{{ route("esbtp.paiements.suivi-categories.refresh") }}'
+                );
+                fetchSuiviData(refreshUrl, { pushState: false });
             }
         });
 
