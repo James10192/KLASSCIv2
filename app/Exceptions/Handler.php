@@ -5,6 +5,7 @@ namespace App\Exceptions;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Session\TokenMismatchException;
 use RuntimeException;
+use Spatie\Permission\Exceptions\UnauthorizedException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -44,9 +45,25 @@ class Handler extends ExceptionHandler
     public function render($request, Throwable $e)
     {
         if ($e instanceof TokenMismatchException) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Votre session a expiré. Veuillez rafraîchir la page et réessayer.',
+                ], 419);
+            }
+
             return redirect()->back()
                 ->withInput($request->except('password', 'password_confirmation'))
                 ->with('warning', 'Votre session a expiré. Veuillez réessayer.');
+        }
+
+        if ($e instanceof UnauthorizedException) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Vous n\'avez pas la permission d\'effectuer cette action.',
+                ], 403);
+            }
         }
 
         if ($e instanceof CoefficientMissingException) {

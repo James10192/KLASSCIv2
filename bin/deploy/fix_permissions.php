@@ -393,9 +393,9 @@ try {
         'view_niveaux_etudes',
         // Matières
         'view_matieres', 'edit_matieres', 'create_matieres',
-        // Notes — full CRUD
-        'view_notes', 'create_notes', 'edit_notes', 'edit_existing_notes',
-        'view_grades', 'create_grade', 'edit_grades', 'delete_grades',
+        // Notes — création et consultation uniquement (pas de modification)
+        'view_notes', 'create_notes',
+        'view_grades', 'create_grade',
         // Évaluations
         'view_evaluations', 'create_evaluations', 'edit_evaluations', 'view_exams',
         // Bulletins
