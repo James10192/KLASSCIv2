@@ -1259,7 +1259,9 @@ class ESBTPClasseController extends Controller
                         "inscription_id" => $inscription->id,
                     ];
                 })
-                ->sortBy([["nom", "asc"], ["prenoms", "asc"]])
+                ->sortBy(function ($student) {
+                    return mb_strtolower($student['nom'] . ' ' . $student['prenoms']);
+                })
                 ->values();
 
             \Log::info("✅ [API] students - Success", [

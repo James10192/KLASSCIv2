@@ -787,7 +787,11 @@ function buildNotesGrid() {
                 return;
             }
 
-            cachedStudents = response.students || [];
+            cachedStudents = (response.students || []).sort((a, b) => {
+                const nameA = ((a.nom || '') + ' ' + (a.prenoms || '')).toLowerCase();
+                const nameB = ((b.nom || '') + ' ' + (b.prenoms || '')).toLowerCase();
+                return nameA.localeCompare(nameB, 'fr');
+            });
             cachedStudentsClassId = currentClassId;
             renderNotesGrid(cachedStudents, sortedEvaluations);
         },
@@ -864,7 +868,7 @@ function renderNotesGrid(students, sortedEvaluations) {
                     <div class="nm-student-name">
                         <div class="nm-student-avatar">${initials.toUpperCase()}</div>
                         <div class="nm-student-info">
-                            <div class="nm-student-fullname">${student.nom} ${student.prenoms}</div>
+                            <div class="nm-student-fullname" title="${student.nom} ${student.prenoms}">${student.nom} ${student.prenoms}</div>
                             <div class="nm-student-matricule">${student.matricule || ''}</div>
                         </div>
                     </div>
@@ -1160,12 +1164,15 @@ function calculateClassAverages() {
         noteInputs.each(function() {
             const studentId = $(this).data('student-id');
             const isAbsent = $(`#absent-${studentId}-${evalId}`).is(':checked');
-            const noteValue = parseFloat($(this).val()) || 0;
+            const rawValue = $(this).val();
 
-            if (!isAbsent && !isNaN(noteValue)) {
-                const normalizedNote = (noteValue / params.bareme) * 20;
-                total += normalizedNote;
-                count++;
+            if (!isAbsent && rawValue !== '') {
+                const noteValue = parseFloat(rawValue);
+                if (!isNaN(noteValue)) {
+                    const normalizedNote = (noteValue / params.bareme) * 20;
+                    total += normalizedNote;
+                    count++;
+                }
             }
         });
 
