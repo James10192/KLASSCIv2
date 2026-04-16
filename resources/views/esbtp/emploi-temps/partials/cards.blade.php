@@ -112,14 +112,21 @@
             </div>
 
             <div class="emploi-actions">
+                <a href="{{ route('esbtp.emploi-temps.export-pdf', $emploiTemps->id) }}"
+                   class="btn-pdf" title="Exporter en PDF">
+                    <i class="fas fa-file-pdf"></i>PDF
+                </a>
                 <a href="{{ route('esbtp.emploi-temps.show', $emploiTemps->id) }}"
                    class="btn btn-sm btn-outline-primary" title="Voir">
                     <i class="fas fa-eye"></i>
                 </a>
+                @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']) || auth()->user()->can('edit_timetables'))
                 <a href="{{ route('esbtp.emploi-temps.edit', $emploiTemps->id) }}"
                    class="btn btn-sm btn-outline-warning" title="Modifier">
                     <i class="fas fa-edit"></i>
                 </a>
+                @endif
+                @if(auth()->user()->can('access_admin') && auth()->user()->can('delete_timetables'))
                 <form action="{{ route('esbtp.emploi-temps.destroy', $emploiTemps->id) }}"
                       method="POST" style="display: inline;"
                       onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet emploi du temps ?')">
@@ -129,6 +136,7 @@
                         <i class="fas fa-trash"></i>
                     </button>
                 </form>
+                @endif
             </div>
         </div>
     </div>

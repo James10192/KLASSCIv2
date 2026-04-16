@@ -79,6 +79,9 @@
         </td>
         <td class="col-actions">
             <div class="btn-group-moderne">
+                <a href="{{ route('esbtp.emploi-temps.export-pdf', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-moderne info" title="Exporter PDF" style="background:#fff;border:1px solid #e2e8f0;color:#0453cb;">
+                    <i class="fas fa-file-pdf"></i>
+                </a>
                 <a href="{{ route('esbtp.emploi-temps.show', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-moderne info" title="Voir">
                     <i class="fas fa-eye"></i>
                 </a>

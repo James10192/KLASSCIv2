@@ -755,6 +755,294 @@
     @media (max-width: 480px) {
         .et-kpi-grid { grid-template-columns: 1fr; }
     }
+
+    /* ══════════════════════════════════════════════
+       KPI refresh — monochrome bleu (premium redesign)
+       ══════════════════════════════════════════════ */
+    .et-kpi { background: #fff; color: #1e293b; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06); }
+    .et-kpi::after { display: none; }
+    .et-kpi:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(4,83,203,.08), 0 2px 8px rgba(15,23,42,.04); }
+    .et-kpi .et-kpi-icon { color: #0453cb; background: linear-gradient(135deg, rgba(4,83,203,.1), rgba(59,125,219,.15)); width: 44px; height: 44px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin: 0 auto var(--space-sm); }
+    .et-kpi .et-kpi-value { color: #0f172a; }
+    .et-kpi .et-kpi-value--sm { font-size: 1.05rem; line-height: 1.25; }
+    .et-kpi .et-kpi-label { color: #64748b; font-weight: 600; }
+    .et-kpi--primary { box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06); }
+    .et-kpi--primary .et-kpi-icon { color: #fff; background: linear-gradient(135deg, #0453cb, #3b7ddb); }
+    .et-kpi--success .et-kpi-icon { color: #059669; background: rgba(16,185,129,.12); }
+    .et-kpi--accent .et-kpi-icon { color: #0453cb; background: rgba(4,83,203,.1); }
+    .et-kpi--soft .et-kpi-icon { color: #475569; background: rgba(148,163,184,.14); }
+
+    /* ══════════════════════════════════════════════
+       Week navigator (et-week-*)
+       ══════════════════════════════════════════════ */
+    .et-week-nav {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: .9rem 1.1rem;
+        margin-bottom: .75rem;
+        box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .et-week-nav-left { display: flex; align-items: center; gap: .65rem; flex: 1; min-width: 320px; }
+    .et-week-nav-right { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+
+    .et-week-current {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: .25rem;
+        min-width: 220px;
+        padding: .2rem .5rem;
+    }
+    .et-week-current-top {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        font-size: .95rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .et-week-current-top i { color: #0453cb; }
+    .et-week-current-meta {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        flex-wrap: wrap;
+    }
+    .et-week-meta-item {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        font-size: .78rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+    .et-week-meta-item i { font-size: .75rem; color: #94a3b8; }
+
+    .et-week-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        padding: .5rem .9rem;
+        border-radius: 10px;
+        font-size: .82rem;
+        font-weight: 600;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #1e293b;
+        cursor: pointer;
+        transition: all .2s ease;
+    }
+    .et-week-btn:hover:not(:disabled) {
+        border-color: #0453cb;
+        color: #0453cb;
+        background: rgba(4,83,203,.04);
+    }
+    .et-week-btn:disabled { opacity: .45; cursor: not-allowed; }
+    .et-week-btn--icon { width: 38px; height: 38px; padding: 0; justify-content: center; }
+    .et-week-btn--primary {
+        background: linear-gradient(135deg, #0453cb, #3b7ddb);
+        color: #fff;
+        border-color: transparent;
+        box-shadow: 0 4px 12px rgba(4,83,203,.2);
+    }
+    .et-week-btn--primary:hover:not(:disabled) { background: linear-gradient(135deg, #033a8e, #0453cb); color: #fff; }
+    .et-week-btn--ghost { background: transparent; border-color: #e2e8f0; }
+
+    .et-week-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-size: .72rem;
+        font-weight: 700;
+        letter-spacing: .2px;
+    }
+    .et-week-chip--current { background: rgba(16,185,129,.14); color: #047857; }
+    .et-week-chip--past    { background: rgba(148,163,184,.16); color: #475569; }
+    .et-week-chip--upcoming{ background: rgba(4,83,203,.12); color: #0453cb; }
+
+    /* Rail horizontal des semaines */
+    .et-week-rail {
+        display: flex;
+        gap: .5rem;
+        overflow-x: auto;
+        padding: .25rem .2rem .75rem;
+        margin-bottom: 1rem;
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 transparent;
+    }
+    .et-week-rail::-webkit-scrollbar { height: 6px; }
+    .et-week-rail::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+    .et-week-pill {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: .15rem;
+        padding: .45rem .75rem;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        font-size: .78rem;
+        font-weight: 600;
+        color: #475569;
+        cursor: pointer;
+        transition: all .18s ease;
+        flex-shrink: 0;
+        min-width: 125px;
+    }
+    .et-week-pill:hover { border-color: #0453cb; color: #0453cb; }
+    .et-week-pill-range { white-space: nowrap; }
+    .et-week-pill-count {
+        font-size: .66rem;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: .3px;
+    }
+    .et-week-pill.is-active {
+        background: linear-gradient(135deg, #0453cb, #3b7ddb);
+        border-color: transparent;
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(4,83,203,.22);
+    }
+    .et-week-pill.is-active .et-week-pill-count { color: rgba(255,255,255,.75); }
+    .et-week-pill--current:not(.is-active) { border-color: rgba(16,185,129,.45); }
+    .et-week-pill--current:not(.is-active) .et-week-pill-range::after {
+        content: '•';
+        color: #10b981;
+        margin-left: 4px;
+    }
+
+    /* Modal Week picker */
+    .et-week-modal .modal-content {
+        border: none;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 20px 50px rgba(15,23,42,.22);
+    }
+    .et-week-modal .modal-header {
+        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+        color: #fff;
+        border: none;
+    }
+    .et-week-modal .modal-body { background: #f8fafc; padding: 1.25rem 1.5rem 1.5rem; }
+    .et-week-modal-toolbar {
+        display: flex;
+        gap: .6rem;
+        margin-bottom: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .et-week-modal-toolbar .form-control { flex: 1; min-width: 220px; border-radius: 10px; border: 1px solid #e2e8f0; }
+    .et-week-modal-toolbar .form-control:focus { border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.12); }
+    .et-week-modal-list { display: flex; flex-direction: column; gap: 1.25rem; }
+    .et-week-modal-group-title {
+        font-size: .78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .6px;
+        color: #64748b;
+        margin-bottom: .5rem;
+        padding-left: .25rem;
+    }
+    .et-week-modal-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: .6rem;
+    }
+    .et-week-modal-item {
+        display: flex;
+        flex-direction: column;
+        gap: .45rem;
+        padding: .75rem .9rem;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        text-align: left;
+        cursor: pointer;
+        transition: all .18s ease;
+    }
+    .et-week-modal-item:hover {
+        border-color: #0453cb;
+        box-shadow: 0 4px 16px rgba(4,83,203,.1);
+        transform: translateY(-1px);
+    }
+    .et-week-modal-item.is-active {
+        border-color: transparent;
+        background: linear-gradient(135deg, #0453cb, #3b7ddb);
+        color: #fff;
+        box-shadow: 0 6px 18px rgba(4,83,203,.25);
+    }
+    .et-week-modal-item.is-active .et-week-chip { background: rgba(255,255,255,.22); color: #fff; }
+    .et-week-modal-item-range { font-weight: 700; font-size: .9rem; color: inherit; }
+    .et-week-modal-item.is-active .et-week-modal-item-range { color: #fff; }
+    .et-week-modal-item-meta {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        font-size: .75rem;
+        color: #64748b;
+        flex-wrap: wrap;
+    }
+    .et-week-modal-item.is-active .et-week-modal-item-meta { color: rgba(255,255,255,.85); }
+
+    /* ══════════════════════════════════════════════
+       Cards refresh (monochrome)
+       ══════════════════════════════════════════════ */
+    .emploi-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+        transition: all .22s ease;
+    }
+    .emploi-card:hover {
+        box-shadow: 0 8px 30px rgba(4,83,203,.08), 0 2px 8px rgba(15,23,42,.04);
+        transform: translateY(-2px);
+    }
+    .emploi-card::before { background: #0453cb; }
+    .emploi-card.active::before   { background: #10b981; }
+    .emploi-card.expired::before  { background: #94a3b8; }
+    .emploi-card.upcoming::before { background: #3b7ddb; }
+    .emploi-card-title { color: #0f172a; }
+
+    .emploi-info-pill { background: rgba(4,83,203,.08); border-color: rgba(4,83,203,.18); color: #0453cb; }
+    .emploi-info-pill.primary { background: rgba(4,83,203,.1); border-color: rgba(4,83,203,.22); color: #0453cb; }
+    .emploi-info-pill.info    { background: rgba(59,125,219,.1); border-color: rgba(59,125,219,.22); color: #1e40af; }
+    .emploi-info-pill.success { background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.22); color: #047857; }
+
+    .emploi-actions .btn-moderne.primary,
+    .emploi-actions .btn-pdf {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        color: #0453cb;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: .78rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        transition: all .18s ease;
+        text-decoration: none;
+    }
+    .emploi-actions .btn-pdf:hover {
+        background: rgba(4,83,203,.08);
+        border-color: #0453cb;
+        color: #0453cb;
+    }
+
+    @media (max-width: 768px) {
+        .et-week-nav { padding: .75rem; }
+        .et-week-nav-left { min-width: 100%; }
+        .et-week-nav-right { width: 100%; justify-content: stretch; }
+        .et-week-nav-right .et-week-btn { flex: 1; justify-content: center; }
+    }
 </style>
 @endsection
 
@@ -808,26 +1096,93 @@
         <!-- KPI Grid premium -->
         <div class="et-kpi-grid">
             <div class="et-kpi et-kpi--primary">
-                <div class="et-kpi-icon"><i class="fas fa-calendar"></i></div>
-                <div class="et-kpi-value">{{ $totalEmploisTemps }}</div>
-                <div class="et-kpi-label">Total emplois du temps</div>
+                <div class="et-kpi-icon"><i class="fas fa-calendar-week"></i></div>
+                <div class="et-kpi-value">{{ $totalSemaines ?? 0 }}</div>
+                <div class="et-kpi-label">Semaines planifiées</div>
             </div>
             <div class="et-kpi et-kpi--success">
                 <div class="et-kpi-icon"><i class="fas fa-check-circle"></i></div>
                 <div class="et-kpi-value">{{ $emploisTempsActifsCount }}</div>
-                <div class="et-kpi-label">Actifs (periode en cours)</div>
+                <div class="et-kpi-label">Plannings actifs cette semaine</div>
             </div>
-            <div class="et-kpi et-kpi--cyan">
-                <div class="et-kpi-icon"><i class="fas fa-chalkboard-teacher"></i></div>
-                <div class="et-kpi-value">{{ $totalSeances }}</div>
-                <div class="et-kpi-label">Total seances de cours</div>
+            <div class="et-kpi et-kpi--accent">
+                <div class="et-kpi-icon"><i class="fas fa-users"></i></div>
+                <div class="et-kpi-value">{{ $totalClassesPlanifiees ?? 0 }}</div>
+                <div class="et-kpi-label">Classes planifiées</div>
             </div>
-            <div class="et-kpi et-kpi--warning">
+            <div class="et-kpi et-kpi--soft">
                 <div class="et-kpi-icon"><i class="fas fa-graduation-cap"></i></div>
-                <div class="et-kpi-value">{{ $anneeUniversitaireCourante->name ?? 'N/A' }}</div>
-                <div class="et-kpi-label">Annee universitaire</div>
+                <div class="et-kpi-value et-kpi-value--sm">{{ $anneeUniversitaireCourante->name ?? 'N/A' }}</div>
+                <div class="et-kpi-label">Année universitaire</div>
             </div>
         </div>
+
+        <!-- Navigateur de semaine -->
+        @php
+            $semainesList = $semaines ?? collect();
+            $semaineActive = $semainesList->firstWhere('value', request('semaine'))
+                ?? $semainesList->firstWhere('value', $semaineCouranteValue ?? null);
+            $semaineIndex = $semaineActive ? $semainesList->search(fn ($s) => $s['value'] === $semaineActive['value']) : null;
+        @endphp
+        @if($semainesList->isNotEmpty())
+            <div class="et-week-nav">
+                <div class="et-week-nav-left">
+                    <button type="button" class="et-week-btn et-week-btn--icon" id="weekPrevBtn" aria-label="Semaine précédente" {{ $semaineIndex === 0 ? 'disabled' : '' }}>
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="et-week-current">
+                        <div class="et-week-current-top">
+                            <i class="fas fa-calendar-week"></i>
+                            <span id="weekCurrentLabel">
+                                @if($semaineActive)
+                                    Semaine du {{ $semaineActive['label_long'] }}
+                                @else
+                                    Toutes les semaines
+                                @endif
+                            </span>
+                        </div>
+                        <div class="et-week-current-meta" id="weekCurrentMeta">
+                            @if($semaineActive)
+                                <span class="et-week-chip et-week-chip--{{ $semaineActive['status'] }}">
+                                    @if($semaineActive['status'] === 'current') Semaine en cours
+                                    @elseif($semaineActive['status'] === 'past') Semaine passée
+                                    @else À venir
+                                    @endif
+                                </span>
+                                <span class="et-week-meta-item"><i class="fas fa-layer-group"></i>{{ $semaineActive['count'] }} planning(s)</span>
+                            @else
+                                <span class="et-week-meta-item text-muted">Aucune semaine sélectionnée</span>
+                            @endif
+                        </div>
+                    </div>
+                    <button type="button" class="et-week-btn et-week-btn--icon" id="weekNextBtn" aria-label="Semaine suivante" {{ $semaineIndex === $semainesList->count() - 1 ? 'disabled' : '' }}>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="et-week-nav-right">
+                    <button type="button" class="et-week-btn et-week-btn--ghost" id="weekTodayBtn" {{ ! $semaineCouranteValue ? 'disabled' : '' }}>
+                        <i class="fas fa-crosshairs"></i>Semaine courante
+                    </button>
+                    <button type="button" class="et-week-btn et-week-btn--ghost" id="weekAllBtn">
+                        <i class="fas fa-list"></i>Toutes
+                    </button>
+                    <button type="button" class="et-week-btn et-week-btn--primary" data-bs-toggle="modal" data-bs-target="#weekPickerModal">
+                        <i class="fas fa-calendar-alt"></i>Choisir une semaine
+                    </button>
+                </div>
+            </div>
+            <div class="et-week-rail" id="weekRail">
+                @foreach($semainesList as $s)
+                    <button type="button"
+                            class="et-week-pill {{ $semaineActive && $semaineActive['value'] === $s['value'] ? 'is-active' : '' }} et-week-pill--{{ $s['status'] }}"
+                            data-week-value="{{ $s['value'] }}"
+                            title="{{ $s['label_long'] }} · {{ $s['count'] }} planning(s)">
+                        <span class="et-week-pill-range">{{ $s['label_short'] }}</span>
+                        <span class="et-week-pill-count">{{ $s['count'] }}</span>
+                    </button>
+                @endforeach
+            </div>
+        @endif
 
         <!-- Alerts -->
         @if (session('success'))
@@ -944,35 +1299,15 @@
                             </select>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="semaine" class="form-label">
-                                <i class="fas fa-calendar-week me-1"></i>Semaine
-                            </label>
-                            <select class="form-select" id="semaine" name="semaine">
-                                <option value="">Toutes les semaines</option>
-                                @php
-                                    // Récupérer toutes les plages de dates distinctes des emplois du temps
-                                    $semaines = \App\Models\ESBTPEmploiTemps::select('date_debut', 'date_fin')
-                                        ->whereNotNull('date_debut')
-                                        ->whereNotNull('date_fin')
-                                        ->distinct()
-                                        ->orderBy('date_debut', 'desc')
-                                        ->get()
-                                        ->map(function($emploi) {
-                                            return [
-                                                'value' => $emploi->date_debut . '|' . $emploi->date_fin,
-                                                'label' => \Carbon\Carbon::parse($emploi->date_debut)->format('d/m/Y') . ' - ' . \Carbon\Carbon::parse($emploi->date_fin)->format('d/m/Y')
-                                            ];
-                                        })
-                                        ->unique('value');
-                                @endphp
-                                @foreach($semaines as $semaine)
-                                    <option value="{{ $semaine['value'] }}" {{ request('semaine') == $semaine['value'] ? 'selected' : '' }}>
-                                        {{ $semaine['label'] }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
+                        {{-- Semaine : piloté par le navigateur au-dessus, select caché pour compat AJAX --}}
+                        <select class="d-none" id="semaine" name="semaine" aria-hidden="true">
+                            <option value="">Toutes les semaines</option>
+                            @foreach($semainesList as $s)
+                                <option value="{{ $s['value'] }}" {{ request('semaine') == $s['value'] ? 'selected' : '' }}>
+                                    {{ $s['label_long'] }}
+                                </option>
+                            @endforeach
+                        </select>
 
                         <div class="mb-3">
                             <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: 8px;">
@@ -1178,6 +1513,60 @@
         </div>
     </div>
 </div>
+
+@if($semainesList->isNotEmpty())
+<div class="modal fade et-week-modal" id="weekPickerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-calendar-alt me-2"></i>Choisir une semaine</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="et-week-modal-toolbar">
+                    <input type="text" class="form-control" id="weekPickerSearch" placeholder="Rechercher une date (ex: 14/04, avril)…">
+                    <button type="button" class="et-week-btn et-week-btn--ghost" id="weekPickerClear">
+                        <i class="fas fa-list"></i>Voir toutes les semaines
+                    </button>
+                </div>
+                @php
+                    $grouped = $semainesList->groupBy('month_key');
+                @endphp
+                <div class="et-week-modal-list">
+                    @foreach($grouped as $monthKey => $weeks)
+                        <div class="et-week-modal-group" data-month="{{ strtolower($monthKey) }}">
+                            <div class="et-week-modal-group-title">{{ ucfirst($monthKey) }}</div>
+                            <div class="et-week-modal-grid">
+                                @foreach($weeks as $s)
+                                    <button type="button"
+                                            class="et-week-modal-item et-week-pill--{{ $s['status'] }} {{ $semaineActive && $semaineActive['value'] === $s['value'] ? 'is-active' : '' }}"
+                                            data-week-value="{{ $s['value'] }}"
+                                            data-week-search="{{ strtolower($s['label_long']) }}">
+                                        <div class="et-week-modal-item-range">
+                                            {{ $s['start']->isoFormat('DD MMM') }}
+                                            <i class="fas fa-arrow-right mx-1"></i>
+                                            {{ $s['end']->isoFormat('DD MMM YYYY') }}
+                                        </div>
+                                        <div class="et-week-modal-item-meta">
+                                            <span class="et-week-chip et-week-chip--{{ $s['status'] }}">
+                                                @if($s['status'] === 'current') En cours
+                                                @elseif($s['status'] === 'past') Passée
+                                                @else À venir
+                                                @endif
+                                            </span>
+                                            <span><i class="fas fa-layer-group me-1"></i>{{ $s['count'] }} EDT</span>
+                                        </div>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 @endsection
 
 <!-- Modal pour les instructions de changement d'année -->
@@ -1770,5 +2159,128 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     });
+</script>
+@endpush
+
+@push('scripts')
+<script>
+(function () {
+    const weekSelect = document.getElementById('semaine');
+    if (!weekSelect) { return; }
+
+    const prevBtn = document.getElementById('weekPrevBtn');
+    const nextBtn = document.getElementById('weekNextBtn');
+    const todayBtn = document.getElementById('weekTodayBtn');
+    const allBtn = document.getElementById('weekAllBtn');
+    const rail = document.getElementById('weekRail');
+    const pickerSearch = document.getElementById('weekPickerSearch');
+    const pickerClear = document.getElementById('weekPickerClear');
+    const pickerModal = document.getElementById('weekPickerModal');
+
+    const currentLabel = document.getElementById('weekCurrentLabel');
+    const currentMeta = document.getElementById('weekCurrentMeta');
+
+    const values = Array.from(weekSelect.options)
+        .map(o => o.value)
+        .filter(v => v !== '');
+
+    function setWeek(value) {
+        if (weekSelect.value === value) { return; }
+        weekSelect.value = value;
+        weekSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        syncActiveState(value);
+    }
+
+    function syncActiveState(value) {
+        document.querySelectorAll('[data-week-value]').forEach(el => {
+            el.classList.toggle('is-active', el.dataset.weekValue === value);
+        });
+        if (prevBtn && nextBtn) {
+            const idx = values.indexOf(value);
+            prevBtn.disabled = idx <= 0;
+            nextBtn.disabled = idx === -1 || idx >= values.length - 1;
+        }
+        const activePill = rail ? rail.querySelector('.et-week-pill.is-active') : null;
+        if (activePill) {
+            activePill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+        const activeLabel = weekSelect.options[weekSelect.selectedIndex]?.textContent?.trim() || '';
+        if (currentLabel) {
+            currentLabel.textContent = value ? 'Semaine du ' + activeLabel : 'Toutes les semaines';
+        }
+        if (currentMeta) {
+            const pill = document.querySelector('.et-week-pill[data-week-value="' + value + '"]');
+            const count = pill ? pill.querySelector('.et-week-pill-count')?.textContent?.trim() : null;
+            const statusClass = pill ? Array.from(pill.classList).find(c => c.startsWith('et-week-pill--')) : null;
+            const statusKey = statusClass ? statusClass.replace('et-week-pill--', '') : null;
+            const statusLabel = { current: 'Semaine en cours', past: 'Semaine passée', upcoming: 'À venir' }[statusKey] || '';
+            if (value && count !== null) {
+                currentMeta.innerHTML = '<span class="et-week-chip et-week-chip--' + (statusKey || 'upcoming') + '">' + statusLabel + '</span>' +
+                    '<span class="et-week-meta-item"><i class="fas fa-layer-group"></i>' + count + ' planning(s)</span>';
+            } else {
+                currentMeta.innerHTML = '<span class="et-week-meta-item text-muted">Affichage de toutes les semaines</span>';
+            }
+        }
+    }
+
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            const idx = values.indexOf(weekSelect.value);
+            if (idx > 0) { setWeek(values[idx - 1]); }
+        });
+    }
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            const idx = values.indexOf(weekSelect.value);
+            if (idx !== -1 && idx < values.length - 1) { setWeek(values[idx + 1]); }
+        });
+    }
+    if (todayBtn) {
+        const todayValue = @json($semaineCouranteValue ?? null);
+        todayBtn.addEventListener('click', () => { if (todayValue) { setWeek(todayValue); } });
+    }
+    if (allBtn) {
+        allBtn.addEventListener('click', () => { setWeek(''); });
+    }
+    if (rail) {
+        rail.querySelectorAll('.et-week-pill').forEach(pill => {
+            pill.addEventListener('click', () => setWeek(pill.dataset.weekValue));
+        });
+    }
+    if (pickerModal) {
+        pickerModal.querySelectorAll('.et-week-modal-item').forEach(item => {
+            item.addEventListener('click', () => {
+                setWeek(item.dataset.weekValue);
+                if (typeof bootstrap !== 'undefined') {
+                    bootstrap.Modal.getInstance(pickerModal)?.hide();
+                }
+            });
+        });
+    }
+    if (pickerSearch) {
+        pickerSearch.addEventListener('input', function () {
+            const q = this.value.toLowerCase().trim();
+            document.querySelectorAll('.et-week-modal-item').forEach(item => {
+                const match = !q || (item.dataset.weekSearch || '').includes(q) || (item.closest('.et-week-modal-group')?.dataset.month || '').includes(q);
+                item.classList.toggle('d-none', !match);
+            });
+            document.querySelectorAll('.et-week-modal-group').forEach(group => {
+                const hasVisible = Array.from(group.querySelectorAll('.et-week-modal-item')).some(i => !i.classList.contains('d-none'));
+                group.classList.toggle('d-none', !hasVisible);
+            });
+        });
+    }
+    if (pickerClear) {
+        pickerClear.addEventListener('click', () => {
+            setWeek('');
+            if (typeof bootstrap !== 'undefined' && pickerModal) {
+                bootstrap.Modal.getInstance(pickerModal)?.hide();
+            }
+            if (pickerSearch) { pickerSearch.value = ''; pickerSearch.dispatchEvent(new Event('input')); }
+        });
+    }
+
+    syncActiveState(weekSelect.value);
+})();
 </script>
 @endpush
