@@ -83,9 +83,8 @@
                     </p>
                     <ul style="font-size: var(--text-small); color: var(--text-secondary); margin: 0; padding-left: var(--space-md);">
                         <li>Au moins 8 caractères</li>
-                        <li>Au moins une lettre majuscule et une minuscule</li>
+                        <li>Au moins une lettre</li>
                         <li>Au moins un chiffre</li>
-                        <li>Au moins un symbole spécial (!@#$%^&*)</li>
                     </ul>
                 </div>
             </div>

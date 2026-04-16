@@ -41,6 +41,14 @@ class ForcePasswordChange
 
         // Vérifier si l'utilisateur doit changer son mot de passe (premier login)
         if ($user->must_change_password) {
+            if ($request->expectsJson() || $request->ajax() || str_contains($request->path(), 'ajax')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Veuillez d\'abord changer votre mot de passe.',
+                    'redirect' => route('password.change.form'),
+                ], 403);
+            }
+
             return redirect()->route('password.change.form')
                 ->with('password_change_reason', 'first_login')
                 ->with('warning', 'Bienvenue ! Pour sécuriser votre compte, veuillez créer un mot de passe personnalisé.');
@@ -48,6 +56,14 @@ class ForcePasswordChange
 
         // Vérifier si le mot de passe est expiré (> X mois)
         if (\App\Services\UserService::isPasswordExpired($user)) {
+            if ($request->expectsJson() || $request->ajax() || str_contains($request->path(), 'ajax')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Votre mot de passe a expiré. Veuillez le changer.',
+                    'redirect' => route('password.change.form'),
+                ], 403);
+            }
+
             return redirect()->route('password.change.form')
                 ->with('password_change_reason', 'expired')
                 ->with('warning', 'Votre mot de passe a expiré. Pour la sécurité de votre compte, veuillez en créer un nouveau.');
