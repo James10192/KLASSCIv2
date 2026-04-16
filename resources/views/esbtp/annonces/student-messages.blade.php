@@ -11,43 +11,43 @@
         padding: var(--space-lg);
     }
 
+    /* Hero — same pattern as planning-header (ph-hero) */
     .messages-header {
-        background: var(--surface);
-        border-radius: var(--radius-medium);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-lg);
-        box-shadow: var(--shadow-card);
+        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+        border-radius: 18px;
+        padding: 2rem 2.5rem 1.5rem;
+        margin-bottom: 1.25rem;
+        color: #fff;
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
         flex-wrap: wrap;
-        gap: var(--space-md);
+        gap: 1rem;
         position: relative;
-        overflow: hidden;
-    }
-    .messages-header::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #0453cb, #5e91de);
-        border-radius: var(--radius-medium) var(--radius-medium) 0 0;
     }
 
     .header-title {
-        font-size: var(--title-main);
+        font-size: 1.45rem;
         font-weight: 700;
-        color: var(--primary);
+        color: #fff;
         margin: 0;
         display: flex;
         align-items: center;
-        gap: var(--space-sm);
+        gap: .75rem;
+    }
+    .header-title i {
+        width: 48px; height: 48px;
+        border-radius: 14px;
+        background: rgba(255,255,255,.12);
+        border: 1px solid rgba(255,255,255,.15);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.2rem;
     }
 
     .header-subtitle {
-        color: var(--text-secondary);
-        font-size: var(--text-normal);
-        margin: var(--space-xs) 0 0 0;
+        color: rgba(255,255,255,.7);
+        font-size: .88rem;
+        margin: .3rem 0 0 0;
     }
 
     .filters-container {
@@ -58,43 +58,43 @@
     }
 
     .filter-btn {
-        background: transparent;
-        border: 1.5px solid #0453cb;
-        color: #0453cb;
-        padding: var(--space-sm) var(--space-md);
-        border-radius: 20px;
-        font-size: var(--text-small);
+        background: rgba(255,255,255,.12);
+        border: 1px solid rgba(255,255,255,.2);
+        color: rgba(255,255,255,.85);
+        padding: .5rem 1rem;
+        border-radius: 10px;
+        font-size: .82rem;
         font-weight: 600;
-        letter-spacing: 0.3px;
         cursor: pointer;
         transition: all 0.2s ease;
-        display: flex;
+        display: inline-flex;
         align-items: center;
-        gap: var(--space-xs);
+        gap: .4rem;
         text-decoration: none;
     }
 
     .filter-btn:hover {
-        background: #0453cb;
+        background: rgba(255,255,255,.2);
         color: #fff;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(4,83,203,.25);
     }
 
     .filter-btn.active {
-        background: #0453cb;
-        color: #fff;
-        border-color: #0453cb;
+        background: #fff;
+        color: #0453cb;
+        border-color: transparent;
     }
 
     .filter-badge {
-        background: rgba(255,255,255,.2);
+        background: rgba(255,255,255,.25);
         color: inherit;
         padding: 1px 7px;
         border-radius: 20px;
         font-size: 10px;
         font-weight: 700;
-        margin-left: var(--space-xs);
+        margin-left: .2rem;
+    }
+    .filter-btn.active .filter-badge {
+        background: rgba(4,83,203,.12);
     }
 
     .messages-grid {
@@ -317,59 +317,45 @@
         width: 16px;
     }
 
+    /* Stats KPIs — integrated in hero like planning-header ph-kpis */
     .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: var(--space-lg);
-        margin-bottom: var(--space-lg);
+        display: flex;
+        gap: .75rem;
+        margin-top: 1.5rem;
+        flex-wrap: wrap;
     }
 
     .stat-card {
-        background: var(--surface);
-        padding: var(--space-lg);
-        border-radius: var(--radius-medium);
-        text-align: center;
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        box-shadow: var(--shadow-card);
-        position: relative;
-        overflow: hidden;
-        transition: all .2s ease;
+        flex: 1;
+        min-width: 140px;
+        background: rgba(255,255,255,.1);
+        border: 1px solid rgba(255,255,255,.15);
+        border-radius: 12px;
+        padding: .9rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        transition: background .2s;
     }
     .stat-card:hover {
-        box-shadow: 0 4px 16px rgba(0,0,0,.08);
-        transform: translateY(-2px);
-    }
-    .stat-card::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 4px;
-        border-radius: var(--radius-medium) var(--radius-medium) 0 0;
-        background: linear-gradient(90deg, #0453cb, #5e91de);
+        background: rgba(255,255,255,.15);
     }
 
     .stat-number {
-        font-size: 2.2rem;
-        font-weight: 900;
-        color: var(--text-primary);
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #fff;
         line-height: 1;
-        margin-bottom: var(--space-sm);
     }
 
     .stat-label {
-        font-size: var(--text-sm);
-        color: var(--text-secondary);
+        font-size: .72rem;
+        color: rgba(255,255,255,.65);
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-weight: 600;
+        letter-spacing: 0.3px;
+        font-weight: 500;
+        margin-top: .15rem;
     }
-
-    .stat-card.total .stat-number { color: var(--primary); }
-    .stat-card.unread .stat-number { color: #0453cb; }
-    .stat-card.urgent .stat-number { color: #0f172a; }
-    .stat-card.total::before { background: linear-gradient(90deg, #0453cb, #5e91de); }
-    .stat-card.unread::before { background: linear-gradient(90deg, #5e91de, #93b8e8); }
-    .stat-card.urgent::before { background: linear-gradient(90deg, #0f172a, #334155); }
 
     /* Responsive */
     @media (max-width: 768px) {
@@ -379,13 +365,17 @@
 
         .messages-header {
             flex-direction: column;
-            align-items: stretch;
-            text-align: center;
+            padding: 1.5rem 1.25rem 1.25rem;
+            border-radius: 14px;
         }
 
         .filters-container {
-            justify-content: center;
+            justify-content: flex-start;
             margin-top: var(--space-md);
+        }
+
+        .stats-grid {
+            flex-direction: column;
         }
 
         .message-header {
@@ -445,24 +435,29 @@
             </button>
             @endif
         </div>
-    </div>
-
-    <!-- Statistiques rapides -->
-    <div class="stats-grid">
-        <div class="stat-card total card-moderne">
-            <div class="stat-number">{{ $stats['total'] }}</div>
-            <div class="stat-label">Total</div>
+        <!-- KPIs intégrés dans le hero -->
+        <div class="stats-grid">
+            <div class="stat-card total">
+                <div>
+                    <div class="stat-number">{{ $stats['total'] }}</div>
+                    <div class="stat-label">Total</div>
+                </div>
+            </div>
+            <div class="stat-card unread">
+                <div>
+                    <div class="stat-number">{{ $stats['unread'] }}</div>
+                    <div class="stat-label">Non lus</div>
+                </div>
+            </div>
+            @if($stats['urgent'] > 0)
+            <div class="stat-card urgent">
+                <div>
+                    <div class="stat-number">{{ $stats['urgent'] }}</div>
+                    <div class="stat-label">Urgent</div>
+                </div>
+            </div>
+            @endif
         </div>
-        <div class="stat-card unread card-moderne">
-            <div class="stat-number">{{ $stats['unread'] }}</div>
-            <div class="stat-label">Non lus</div>
-        </div>
-        @if($stats['urgent'] > 0)
-        <div class="stat-card urgent card-moderne">
-            <div class="stat-number">{{ $stats['urgent'] }}</div>
-            <div class="stat-label">Urgent</div>
-        </div>
-        @endif
     </div>
 
     <!-- Messages -->
