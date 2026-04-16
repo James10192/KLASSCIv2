@@ -787,7 +787,11 @@ function buildNotesGrid() {
                 return;
             }
 
-            cachedStudents = response.students || [];
+            cachedStudents = (response.students || []).sort((a, b) => {
+                const nameA = ((a.nom || '') + ' ' + (a.prenoms || '')).toLowerCase();
+                const nameB = ((b.nom || '') + ' ' + (b.prenoms || '')).toLowerCase();
+                return nameA.localeCompare(nameB, 'fr');
+            });
             cachedStudentsClassId = currentClassId;
             renderNotesGrid(cachedStudents, sortedEvaluations);
         },
@@ -798,13 +802,6 @@ function buildNotesGrid() {
 }
 
 function renderNotesGrid(students, sortedEvaluations) {
-    // Tri alphabétique par nom complet (nom + prénoms)
-    students.sort((a, b) => {
-        const nameA = ((a.nom || '') + ' ' + (a.prenoms || '')).toLowerCase();
-        const nameB = ((b.nom || '') + ' ' + (b.prenoms || '')).toLowerCase();
-        return nameA.localeCompare(nameB, 'fr');
-    });
-
     // Construire l'en-tête
     const thead = $('#notesGrid thead');
     thead.empty();
@@ -1169,7 +1166,7 @@ function calculateClassAverages() {
             const isAbsent = $(`#absent-${studentId}-${evalId}`).is(':checked');
             const rawValue = $(this).val();
 
-            if (!isAbsent && rawValue !== '' && rawValue !== null && rawValue !== undefined) {
+            if (!isAbsent && rawValue !== '') {
                 const noteValue = parseFloat(rawValue);
                 if (!isNaN(noteValue)) {
                     const normalizedNote = (noteValue / params.bareme) * 20;
