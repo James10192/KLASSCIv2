@@ -10,7 +10,7 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Détails de la classe: {{ $classe->name }}</h5>
                     <div>
-                        <a href="{{ route('student.classes.index') }}" class="btn btn-secondary">
+                        <a href="{{ route('esbtp.student.classes.index') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-1"></i>Retour à la liste
                         </a>
                     </div>

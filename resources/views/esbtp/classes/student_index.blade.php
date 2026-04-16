@@ -64,7 +64,7 @@
                                         </td>
                                         <td>
                                             <div class="btn-group" role="group">
-                                                <a href="{{ route('student.classes.show', ['classe' => $classe->id]) }}" class="btn btn-sm btn-info" title="Voir les détails">
+                                                <a href="{{ route('esbtp.student.classes.show', ['classe' => $classe->id]) }}" class="btn btn-sm btn-info" title="Voir les détails">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
                                             </div>
