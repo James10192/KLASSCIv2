@@ -1875,6 +1875,8 @@
                         @endcan
                         @endif
 
+                        {{-- Comptabilité simplifiée : uniquement pour les users caisse SANS accès module comptabilité complet --}}
+                        @if(!auth()->user()->can('module.comptabilite.access'))
                         <div class="menu-category">Comptabilité</div>
 
                         <div class="menu-item">
@@ -1910,6 +1912,7 @@
                             </a>
                         </div>
                         @endcan
+                        @endif
                     @endcan
 
                     <!-- Messages Section -->

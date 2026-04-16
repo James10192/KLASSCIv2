@@ -5,379 +5,667 @@
 @push('styles')
 <style>
 /* ───────────────────────────────────────────────
-   RELANCES INDEX — KLASSCI Blue Intelligence
-   Palette: #0453cb (primary) · #5e91de (secondary)
-            #1e293b (dark) · #10b981 (success)
-            #64748b (muted) · #f1f5f9 (surface)
+   RELANCES INDEX — KLASSCI Premium Design v2
+   Namespace: rl-*
+   Palette: #0453cb → #5e91de (monochrome bleu)
 ──────────────────────────────────────────────── */
 :root {
     --rl-primary:    #0453cb;
+    --rl-primary-d:  #033a8e;
     --rl-secondary:  #5e91de;
-    --rl-dark:       #1e293b;
-    --rl-success:    #10b981;
+    --rl-accent:     #3b7ddb;
+    --rl-dark:       #0f172a;
+    --rl-text:       #1e293b;
     --rl-muted:      #64748b;
-    --rl-surface:    #f1f5f9;
+    --rl-success:    #10b981;
+    --rl-surface:    #f8fafc;
     --rl-white:      #ffffff;
     --rl-border:     #e2e8f0;
+    --rl-shadow-sm:  0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+    --rl-shadow-md:  0 4px 16px rgba(4,83,203,.06), 0 1px 3px rgba(15,23,42,.04);
+    --rl-shadow-lg:  0 8px 30px rgba(4,83,203,.08), 0 2px 8px rgba(15,23,42,.04);
+    --rl-shadow-xl:  0 12px 40px rgba(4,83,203,.12), 0 4px 12px rgba(15,23,42,.06);
+    --rl-radius:     14px;
+    --rl-radius-sm:  10px;
 }
 
-/* ── HERO HEADER ── */
-.rel-hero {
-    background: linear-gradient(135deg, #0c1a3a 0%, #0453cb 60%, #1a4fa8 100%);
+/* ── HERO ── */
+.rl-hero {
+    background: linear-gradient(135deg, #071631 0%, #0a2d6e 35%, #0453cb 70%, #3674d1 100%);
     position: relative;
     overflow: hidden;
-    padding: 2rem 2rem 1.5rem;
-    border-radius: 16px;
-    margin-bottom: 1.5rem;
+    padding: 2.25rem 2.25rem 2rem;
+    border-radius: 18px;
+    margin-bottom: 1.75rem;
+    box-shadow:
+        0 8px 32px rgba(4,83,203,.18),
+        0 2px 8px rgba(15,23,42,.1),
+        inset 0 1px 0 rgba(255,255,255,.08);
 }
-.rel-hero::before {
+.rl-hero::before {
     content: '';
     position: absolute;
     inset: 0;
     background:
-        radial-gradient(ellipse 60% 80% at 85% 50%, rgba(94,145,222,.18) 0%, transparent 70%),
-        url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='30' cy='30' r='1' fill='rgba(255,255,255,.04)'/%3E%3C/svg%3E");
+        radial-gradient(ellipse 50% 70% at 90% 30%, rgba(94,145,222,.15) 0%, transparent 70%),
+        radial-gradient(circle at 10% 80%, rgba(255,255,255,.03) 0%, transparent 50%);
     pointer-events: none;
 }
-.rel-hero-title {
-    font-size: 1.6rem;
+.rl-hero::after {
+    content: '';
+    position: absolute;
+    right: -40px; top: -40px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(94,145,222,.12) 0%, transparent 70%);
+    pointer-events: none;
+}
+.rl-hero-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.rl-hero-label {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 6px;
+    padding: .2rem .6rem;
+    font-size: .65rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.6);
+    margin-bottom: .6rem;
+}
+.rl-hero-title {
+    font-size: 1.55rem;
     font-weight: 700;
     color: #fff;
     margin: 0;
-    letter-spacing: -.3px;
+    letter-spacing: -.4px;
+    line-height: 1.2;
 }
-.rel-hero-sub {
-    color: rgba(255,255,255,.65);
-    font-size: .85rem;
-    margin: .25rem 0 0;
+.rl-hero-title .rl-year-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    background: rgba(16,185,129,.15);
+    color: #34d399;
+    border: 1px solid rgba(16,185,129,.3);
+    border-radius: 20px;
+    padding: .15rem .6rem;
+    font-size: .6rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    vertical-align: middle;
+    margin-left: .5rem;
 }
-.rel-hero-actions { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
-.btn-hero-ghost {
-    background: rgba(255,255,255,.12);
-    color: #fff;
-    border: 1px solid rgba(255,255,255,.25);
-    padding: .55rem 1.2rem;
-    border-radius: 8px;
+.rl-hero-sub {
+    color: rgba(255,255,255,.5);
+    font-size: .82rem;
+    margin: .35rem 0 0;
+    font-weight: 400;
+}
+.rl-hero-actions {
+    display: flex;
+    gap: .6rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.rl-btn-ghost {
+    background: rgba(255,255,255,.07);
+    color: rgba(255,255,255,.85);
+    border: 1px solid rgba(255,255,255,.15);
+    padding: .5rem 1.1rem;
+    border-radius: 9px;
     font-weight: 500;
-    font-size: .85rem;
+    font-size: .8rem;
     text-decoration: none;
-    transition: background .15s;
-    display: inline-flex; align-items: center; gap: .4rem;
+    transition: all .2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    backdrop-filter: blur(4px);
 }
-.btn-hero-ghost:hover { background: rgba(255,255,255,.2); color: #fff; }
+.rl-btn-ghost:hover {
+    background: rgba(255,255,255,.14);
+    color: #fff;
+    border-color: rgba(255,255,255,.28);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,.15);
+}
+
+/* ── CONFIG BANNER ── */
+.rl-config-banner {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border: 1.5px solid #fbbf24;
+    border-radius: var(--rl-radius);
+    padding: .85rem 1.25rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    box-shadow: 0 2px 8px rgba(251,191,36,.1);
+}
+.rl-config-banner-text {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    color: #92400e;
+    font-weight: 600;
+    font-size: .85rem;
+}
+.rl-config-banner-btn {
+    background: var(--rl-primary);
+    color: #fff;
+    padding: .45rem 1rem;
+    border-radius: 8px;
+    font-size: .8rem;
+    font-weight: 600;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: all .15s;
+}
+.rl-config-banner-btn:hover {
+    background: var(--rl-primary-d);
+    color: #fff;
+    transform: translateY(-1px);
+}
 
 /* ── KPI STRIP ── */
-.kpi-strip {
+.rl-kpi-strip {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     gap: 1rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.75rem;
 }
-.kpi-card {
+.rl-kpi {
     background: var(--rl-white);
     border: 1px solid var(--rl-border);
-    border-radius: 12px;
-    padding: 1.1rem 1.25rem;
+    border-radius: var(--rl-radius);
+    padding: 1.15rem 1.25rem;
     position: relative;
     overflow: hidden;
-    transition: box-shadow .2s;
-    cursor: pointer;
+    transition: all .25s ease;
+    cursor: default;
+    box-shadow: var(--rl-shadow-sm);
 }
-.kpi-card:hover { box-shadow: 0 4px 20px rgba(4,83,203,.1); }
-.kpi-card::after {
+.rl-kpi[data-risk] { cursor: pointer; }
+.rl-kpi:hover {
+    box-shadow: var(--rl-shadow-lg);
+    transform: translateY(-2px);
+}
+/* Left accent bar */
+.rl-kpi::before {
     content: '';
     position: absolute;
     left: 0; top: 0; bottom: 0;
     width: 4px;
-    border-radius: 12px 0 0 12px;
 }
-.kpi-card.impaye::after   { background: var(--rl-primary); }
-.kpi-card.pending::after  { background: #f59e0b; }
-.kpi-card.critical::after { background: var(--rl-dark); }
-.kpi-card.high::after     { background: var(--rl-primary); }
-.kpi-card.medium::after   { background: var(--rl-secondary); }
-.kpi-card.low::after      { background: var(--rl-success); }
-.kpi-label {
-    font-size: .72rem;
+.rl-kpi.is-impaye::before   { background: linear-gradient(180deg, var(--rl-primary), var(--rl-secondary)); }
+.rl-kpi.is-pending::before  { background: linear-gradient(180deg, #f59e0b, #fbbf24); }
+.rl-kpi.is-critical::before { background: linear-gradient(180deg, var(--rl-dark), #334155); }
+.rl-kpi.is-high::before     { background: linear-gradient(180deg, var(--rl-primary), var(--rl-accent)); }
+.rl-kpi.is-medium::before   { background: linear-gradient(180deg, var(--rl-secondary), #93b8e8); }
+.rl-kpi.is-low::before      { background: linear-gradient(180deg, var(--rl-success), #34d399); }
+
+/* Icon circle */
+.rl-kpi-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .85rem;
+    margin-bottom: .75rem;
+    flex-shrink: 0;
+}
+.rl-kpi.is-impaye .rl-kpi-icon   { background: rgba(4,83,203,.08); color: var(--rl-primary); }
+.rl-kpi.is-pending .rl-kpi-icon  { background: rgba(245,158,11,.08); color: #d97706; }
+.rl-kpi.is-critical .rl-kpi-icon { background: rgba(15,23,42,.06); color: var(--rl-dark); }
+.rl-kpi.is-high .rl-kpi-icon     { background: rgba(4,83,203,.08); color: var(--rl-primary); }
+.rl-kpi.is-medium .rl-kpi-icon   { background: rgba(94,145,222,.1); color: var(--rl-secondary); }
+.rl-kpi.is-low .rl-kpi-icon      { background: rgba(16,185,129,.08); color: var(--rl-success); }
+
+.rl-kpi-label {
+    font-size: .68rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: .06em;
+    letter-spacing: .07em;
     color: var(--rl-muted);
     margin-bottom: .3rem;
 }
-.kpi-value {
-    font-size: 1.45rem;
-    font-weight: 700;
-    color: var(--rl-dark);
+.rl-kpi-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--rl-text);
     line-height: 1;
+    letter-spacing: -.3px;
 }
-.kpi-value.big { font-size: 1.05rem; }
-.kpi-sub {
-    font-size: .7rem;
+.rl-kpi-value.is-amount { font-size: 1.1rem; }
+.rl-kpi-unit {
+    font-size: .6em;
+    font-weight: 400;
     color: var(--rl-muted);
-    margin-top: .35rem;
+    margin-left: .15em;
+}
+.rl-kpi-hint {
+    font-size: .68rem;
+    color: var(--rl-muted);
+    margin-top: .4rem;
     display: flex;
     align-items: center;
     gap: .3rem;
     line-height: 1.3;
 }
-.kpi-sub.pending-hint { color: #b45309; }
-.kpi-sub.info-hint    { color: #64748b; }
-.kpi-icon {
-    position: absolute;
-    right: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 1.6rem;
-    opacity: .07;
-}
-
-/* ── Pending badge in table ── */
-.pending-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: .25rem;
-    background: rgba(245,158,11,.1);
-    border: 1px solid rgba(245,158,11,.3);
-    color: #b45309;
-    border-radius: 6px;
-    padding: .18rem .5rem;
-    font-size: .68rem;
-    font-weight: 600;
-    white-space: nowrap;
-    margin-top: .2rem;
-}
+.rl-kpi-hint.is-warning { color: #b45309; }
 
 /* ── FILTERS BAR ── */
-.filters-bar {
+.rl-filters {
     background: var(--rl-white);
     border: 1px solid var(--rl-border);
-    border-radius: 12px;
-    padding: 1rem 1.25rem;
+    border-radius: var(--rl-radius);
+    padding: 1.1rem 1.25rem;
     margin-bottom: 1.25rem;
     display: flex;
     gap: .75rem;
     flex-wrap: wrap;
     align-items: flex-end;
+    box-shadow: var(--rl-shadow-sm);
 }
-.filter-group { display: flex; flex-direction: column; gap: .3rem; min-width: 140px; flex: 1; }
-.filter-label { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--rl-muted); }
-.filter-control {
-    border: 1px solid var(--rl-border);
-    border-radius: 8px;
-    padding: .45rem .75rem;
-    font-size: .85rem;
-    color: var(--rl-dark);
+.rl-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    min-width: 140px;
+    flex: 1;
+}
+.rl-filter-label {
+    font-size: .68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--rl-muted);
+}
+.rl-filter-input {
+    border: 1.5px solid var(--rl-border);
+    border-radius: 9px;
+    padding: .5rem .75rem;
+    font-size: .82rem;
+    color: var(--rl-text);
     background: var(--rl-surface);
-    transition: border-color .15s;
+    transition: all .2s ease;
     height: 38px;
+    outline: none;
 }
-.filter-control:focus { outline: none; border-color: var(--rl-primary); background: #fff; }
-.search-wrap { position: relative; }
-.search-wrap .search-icon { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: var(--rl-muted); font-size: .85rem; pointer-events: none; }
-.search-wrap .filter-control { padding-left: 2.2rem; width: 100%; }
-.btn-filter {
+.rl-filter-input:focus {
+    border-color: var(--rl-primary);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(4,83,203,.08);
+}
+.rl-search-wrap { position: relative; }
+.rl-search-wrap .rl-search-icon {
+    position: absolute;
+    left: .75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--rl-muted);
+    font-size: .82rem;
+    pointer-events: none;
+}
+.rl-search-wrap .rl-filter-input { padding-left: 2.2rem; width: 100%; }
+.rl-btn-filter {
     background: var(--rl-primary);
     color: #fff;
     border: none;
-    border-radius: 8px;
-    padding: .45rem 1rem;
-    font-size: .85rem;
+    border-radius: 9px;
+    padding: .5rem 1.1rem;
+    font-size: .82rem;
     font-weight: 600;
     cursor: pointer;
     height: 38px;
-    display: inline-flex; align-items: center; gap: .4rem;
-    transition: opacity .15s;
-    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    transition: all .2s;
+    box-shadow: 0 2px 6px rgba(4,83,203,.2);
 }
-.btn-filter:hover { opacity: .88; color: #fff; }
-.btn-filter-ghost {
+.rl-btn-filter:hover {
+    background: var(--rl-primary-d);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(4,83,203,.25);
+}
+.rl-btn-reset {
     background: transparent;
     color: var(--rl-muted);
-    border: 1px solid var(--rl-border);
-    border-radius: 8px;
-    padding: .45rem .9rem;
-    font-size: .8rem;
+    border: 1.5px solid var(--rl-border);
+    border-radius: 9px;
+    padding: .5rem .9rem;
+    font-size: .78rem;
     cursor: pointer;
     height: 38px;
-    display: inline-flex; align-items: center; gap: .35rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
     text-decoration: none;
-    transition: border-color .15s, color .15s;
+    transition: all .2s;
 }
-.btn-filter-ghost:hover { border-color: var(--rl-primary); color: var(--rl-primary); }
+.rl-btn-reset:hover {
+    border-color: var(--rl-primary);
+    color: var(--rl-primary);
+    background: rgba(4,83,203,.03);
+}
 
 /* ── RISK TABS ── */
-.risk-tabs {
+.rl-tabs {
     display: flex;
     gap: .5rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.15rem;
     flex-wrap: wrap;
     align-items: center;
+    padding: .25rem;
+    background: rgba(241,245,249,.5);
+    border-radius: 24px;
+    width: fit-content;
 }
 .risk-tab {
-    padding: .4rem .9rem;
+    padding: .45rem 1rem;
     border-radius: 20px;
-    font-size: .78rem;
+    font-size: .76rem;
     font-weight: 600;
     cursor: pointer;
     border: none;
     background: transparent;
     text-decoration: none;
-    display: inline-flex; align-items: center; gap: .35rem;
-    transition: opacity .15s, transform .1s, box-shadow .15s;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    transition: all .2s ease;
     position: relative;
+    color: var(--rl-muted);
 }
-.risk-tab:hover { transform: translateY(-1px); }
+.risk-tab:hover {
+    background: rgba(4,83,203,.05);
+    color: var(--rl-text);
+}
+.risk-tab .rl-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.risk-tab.all .rl-dot      { background: var(--rl-text); }
+.risk-tab.critical .rl-dot { background: var(--rl-dark); }
+.risk-tab.high .rl-dot     { background: var(--rl-primary); }
+.risk-tab.medium .rl-dot   { background: var(--rl-secondary); }
 
-/* Inactive state — subtle outline */
-.risk-tab.all      { color: var(--rl-dark);      border: 1.5px solid rgba(30,41,59,.25);    }
-.risk-tab.critical { color: var(--rl-dark);       border: 1.5px solid rgba(30,41,59,.2);     }
-.risk-tab.high     { color: var(--rl-primary);    border: 1.5px solid rgba(4,83,203,.25);    }
-.risk-tab.medium   { color: #2563eb;              border: 1.5px solid rgba(94,145,222,.3);   }
+/* Active states */
+.risk-tab.all.active {
+    background: var(--rl-dark);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(15,23,42,.2);
+}
+.risk-tab.all.active .rl-dot { background: #fff; }
+.risk-tab.critical.active {
+    background: var(--rl-dark);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(15,23,42,.2);
+}
+.risk-tab.critical.active .rl-dot { background: #fff; }
+.risk-tab.high.active {
+    background: var(--rl-primary);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(4,83,203,.25);
+}
+.risk-tab.high.active .rl-dot { background: #fff; }
+.risk-tab.medium.active {
+    background: var(--rl-secondary);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(94,145,222,.25);
+}
+.risk-tab.medium.active .rl-dot { background: #fff; }
 
-/* Active state — filled */
-.risk-tab.all.active      { background: var(--rl-dark);      color: #fff; border-color: var(--rl-dark);      box-shadow: 0 2px 8px rgba(30,41,59,.3); }
-.risk-tab.critical.active { background: var(--rl-dark);      color: #fff; border-color: var(--rl-dark);      box-shadow: 0 2px 8px rgba(30,41,59,.3); }
-.risk-tab.high.active     { background: var(--rl-primary);   color: #fff; border-color: var(--rl-primary);   box-shadow: 0 2px 8px rgba(4,83,203,.3); }
-.risk-tab.medium.active   { background: var(--rl-secondary); color: #fff; border-color: var(--rl-secondary); box-shadow: 0 2px 8px rgba(94,145,222,.3); }
+.risk-tab .tab-count {
+    font-weight: 500;
+    opacity: .7;
+    font-size: .72rem;
+}
 
 /* ── TABLE ── */
 .rel-table-wrap {
     background: var(--rl-white);
     border: 1px solid var(--rl-border);
-    border-radius: 12px;
+    border-radius: var(--rl-radius);
     overflow: hidden;
     position: relative;
     min-height: 120px;
+    box-shadow: var(--rl-shadow-md);
 }
 .rel-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: .85rem;
+    font-size: .83rem;
 }
 .rel-table thead {
-    background: var(--rl-surface);
-    border-bottom: 1px solid var(--rl-border);
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-bottom: 2px solid var(--rl-border);
 }
 .rel-table th {
-    padding: .75rem 1rem;
+    padding: .8rem 1rem;
     text-align: left;
-    font-size: .7rem;
+    font-size: .67rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: .07em;
+    letter-spacing: .08em;
     color: var(--rl-muted);
     white-space: nowrap;
 }
 .rel-table td {
-    padding: .85rem 1rem;
+    padding: .9rem 1rem;
     border-bottom: 1px solid #f1f5f9;
     vertical-align: middle;
+    color: var(--rl-text);
 }
 .rel-table tr:last-child td { border-bottom: none; }
-.rel-table tbody tr:hover td { background: #f8fafc; }
+.rel-table tbody tr {
+    transition: all .15s ease;
+}
+.rel-table tbody tr:hover td {
+    background: rgba(4,83,203,.015);
+}
 
 /* Student cell */
 .stud-cell { display: flex; align-items: center; gap: .75rem; }
 .stud-avatar {
-    width: 36px; height: 36px;
-    border-radius: 50%;
+    width: 38px; height: 38px;
+    border-radius: 10px;
     background: linear-gradient(135deg, var(--rl-primary), var(--rl-secondary));
     display: flex; align-items: center; justify-content: center;
     color: #fff;
     font-weight: 700;
-    font-size: .8rem;
+    font-size: .78rem;
     flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(4,83,203,.2);
+    letter-spacing: .5px;
 }
-.stud-name { font-weight: 600; color: var(--rl-dark); font-size: .88rem; line-height: 1.2; }
-.stud-matricule { font-size: .72rem; color: var(--rl-muted); }
+.stud-name {
+    font-weight: 600;
+    color: var(--rl-text);
+    font-size: .85rem;
+    line-height: 1.2;
+}
+.stud-matricule {
+    font-size: .7rem;
+    color: var(--rl-muted);
+    margin-top: 1px;
+    font-weight: 500;
+    letter-spacing: .02em;
+}
 
 /* Risk badge */
 .rbadge {
-    display: inline-flex; align-items: center; gap: .3rem;
-    padding: .25rem .65rem;
-    border-radius: 20px;
-    font-size: .72rem;
-    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .3rem .7rem;
+    border-radius: 8px;
+    font-size: .7rem;
+    font-weight: 600;
     white-space: nowrap;
+    letter-spacing: .01em;
 }
-.rbadge.critical { background: rgba(30,41,59,.1); color: var(--rl-dark); border: 1px solid rgba(30,41,59,.2); }
-.rbadge.high     { background: rgba(4,83,203,.1);  color: var(--rl-primary); border: 1px solid rgba(4,83,203,.2); }
-.rbadge.medium   { background: rgba(94,145,222,.12); color: #2563eb; border: 1px solid rgba(94,145,222,.25); }
-.rbadge.low      { background: rgba(16,185,129,.1); color: #059669; border: 1px solid rgba(16,185,129,.2); }
+.rbadge.critical { background: rgba(15,23,42,.06); color: var(--rl-dark); }
+.rbadge.high     { background: rgba(4,83,203,.07); color: var(--rl-primary); }
+.rbadge.medium   { background: rgba(94,145,222,.08); color: #2563eb; }
+.rbadge.low      { background: rgba(16,185,129,.07); color: #059669; }
 
 /* Progress bar */
-.pbar-wrap { display: flex; align-items: center; gap: .6rem; min-width: 110px; }
+.pbar-wrap { display: flex; align-items: center; gap: .6rem; min-width: 120px; }
 .pbar-track {
     flex: 1;
-    height: 5px;
-    background: #e2e8f0;
+    height: 6px;
+    background: #e9eef5;
     border-radius: 10px;
     overflow: hidden;
 }
-.pbar-fill { height: 100%; border-radius: 10px; transition: width .4s ease; }
-.pbar-fill.full    { background: var(--rl-success); }
-.pbar-fill.partial { background: var(--rl-secondary); }
-.pbar-fill.low-pay { background: var(--rl-primary); }
+.pbar-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width .5s cubic-bezier(.4,0,.2,1);
+}
+.pbar-fill.full    { background: linear-gradient(90deg, var(--rl-success), #34d399); }
+.pbar-fill.partial { background: linear-gradient(90deg, var(--rl-primary), var(--rl-secondary)); }
+.pbar-fill.low-pay { background: linear-gradient(90deg, var(--rl-primary-d), var(--rl-primary)); }
 .pbar-fill.none    { background: var(--rl-dark); width: 4px !important; }
-.pbar-pct { font-size: .72rem; font-weight: 700; color: var(--rl-muted); white-space: nowrap; min-width: 28px; }
+.pbar-pct {
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--rl-muted);
+    white-space: nowrap;
+    min-width: 30px;
+    text-align: right;
+}
 
 /* Amount cells */
-.amount-cell { font-weight: 600; white-space: nowrap; }
-.amount-unit { font-size: .7em; opacity: .5; }
+.amount-cell { font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.amount-unit { font-size: .65em; font-weight: 400; opacity: .45; margin-left: .15em; }
 .amount-red  { color: var(--rl-primary); }
+
+/* Pending badge */
+.pending-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    background: rgba(245,158,11,.06);
+    border: 1px solid rgba(245,158,11,.2);
+    color: #b45309;
+    border-radius: 6px;
+    padding: .18rem .5rem;
+    font-size: .65rem;
+    font-weight: 600;
+    white-space: nowrap;
+    margin-top: .25rem;
+}
 
 /* Action buttons */
 .act-btn {
-    display: inline-flex; align-items: center; gap: .3rem;
-    padding: .35rem .75rem;
-    border-radius: 7px;
-    font-size: .75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .4rem .8rem;
+    border-radius: 8px;
+    font-size: .73rem;
     font-weight: 600;
     text-decoration: none;
     border: none;
     cursor: pointer;
-    transition: opacity .15s, transform .1s;
+    transition: all .2s ease;
     white-space: nowrap;
 }
-.act-btn:hover { opacity: .85; transform: translateY(-1px); }
-.act-btn.primary { background: var(--rl-primary); color: #fff; }
-.act-btn.ghost   { background: transparent; border: 1px solid var(--rl-border); color: var(--rl-muted); }
-.act-btn.ghost:hover { border-color: var(--rl-primary); color: var(--rl-primary); }
+.act-btn:hover { transform: translateY(-1px); }
+.act-btn.primary {
+    background: var(--rl-primary);
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(4,83,203,.18);
+}
+.act-btn.primary:hover {
+    background: var(--rl-primary-d);
+    box-shadow: 0 4px 12px rgba(4,83,203,.25);
+    color: #fff;
+}
+.act-btn.ghost {
+    background: transparent;
+    border: 1.5px solid var(--rl-border);
+    color: var(--rl-muted);
+}
+.act-btn.ghost:hover {
+    border-color: var(--rl-primary);
+    color: var(--rl-primary);
+    background: rgba(4,83,203,.03);
+}
 
 /* ── EMPTY STATE ── */
-.empty-state { text-align: center; padding: 4rem 2rem; color: var(--rl-muted); }
-.empty-state .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: .25; color: var(--rl-success); }
-.empty-state h5 { font-weight: 600; color: var(--rl-dark); margin-bottom: .5rem; }
-.empty-state p { font-size: .85rem; }
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--rl-muted);
+}
+.empty-state .empty-icon {
+    width: 60px; height: 60px;
+    border-radius: 16px;
+    background: rgba(16,185,129,.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.25rem;
+    font-size: 1.5rem;
+    color: var(--rl-success);
+}
+.empty-state h5 { font-weight: 600; color: var(--rl-text); margin-bottom: .4rem; }
+.empty-state p { font-size: .83rem; max-width: 320px; margin: 0 auto; line-height: 1.5; }
 
 /* ── PAGINATION ── */
 .rel-pagination {
     padding: 1rem 1.25rem;
     border-top: 1px solid var(--rl-border);
-    display: flex; align-items: center; justify-content: space-between;
-    flex-wrap: wrap; gap: .75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .75rem;
 }
-.rel-pagination .page-info { font-size: .8rem; color: var(--rl-muted); }
+.rel-pagination .page-info {
+    font-size: .78rem;
+    color: var(--rl-muted);
+    font-weight: 500;
+}
 
 /* ── LOADING OVERLAY ── */
 .rel-loading {
     position: absolute;
     inset: 0;
-    background: rgba(255,255,255,.75);
+    background: rgba(255,255,255,.8);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 10;
-    border-radius: 12px;
-    backdrop-filter: blur(2px);
+    border-radius: var(--rl-radius);
+    backdrop-filter: blur(3px);
     opacity: 0;
     pointer-events: none;
     transition: opacity .2s;
 }
 .rel-loading.visible { opacity: 1; pointer-events: all; }
 .rel-spinner {
-    width: 28px; height: 28px;
+    width: 30px; height: 30px;
     border: 3px solid var(--rl-border);
     border-top-color: var(--rl-primary);
     border-radius: 50%;
@@ -391,15 +679,19 @@
     .rel-table td:nth-child(3) { display: none; }
 }
 @media (max-width: 768px) {
-    .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+    .rl-kpi-strip { grid-template-columns: repeat(2, 1fr); }
     .rel-table th:nth-child(5),
     .rel-table td:nth-child(5) { display: none; }
-    .rel-hero-title { font-size: 1.25rem; }
+    .rl-hero { padding: 1.5rem; border-radius: 14px; }
+    .rl-hero-title { font-size: 1.2rem; }
+    .rl-tabs { width: 100%; }
 }
 @media (max-width: 576px) {
-    .filters-bar { flex-direction: column; }
-    .filter-group { min-width: 100%; }
-    .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+    .rl-filters { flex-direction: column; }
+    .rl-filter-group { min-width: 100%; }
+    .rl-kpi-strip { grid-template-columns: 1fr; }
+    .rl-hero-actions { width: 100%; }
+    .rl-btn-ghost { flex: 1; justify-content: center; font-size: .75rem; }
 }
 </style>
 @endpush
@@ -409,37 +701,39 @@
 <div class="main-content">
 
     {{-- ── HERO ── --}}
-    <div class="rel-hero">
-        <div style="position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+    <div class="rl-hero">
+        <div class="rl-hero-inner">
             <div>
-                <h1 class="rel-hero-title">
-                    <i class="fas fa-bell-slash" style="margin-right:.5rem;opacity:.8;"></i>
+                <div class="rl-hero-label">
+                    <i class="fas fa-chart-line" style="font-size:.6rem;"></i>
+                    Comptabilité
+                </div>
+                <h1 class="rl-hero-title">
+                    <i class="fas fa-bell" style="margin-right:.4rem;opacity:.75;font-size:.9em;"></i>
                     Gestion des Relances
                     @if($anneeActive)
-                        <span style="display:inline-flex;align-items:center;gap:.3rem;background:rgba(16,185,129,.18);color:#10b981;border:1px solid rgba(16,185,129,.35);border-radius:20px;padding:.15rem .65rem;font-size:.6rem;font-weight:600;letter-spacing:.04em;vertical-align:middle;margin-left:.5rem;">
-                            <i class="fas fa-circle" style="font-size:.4rem;"></i>
+                        <span class="rl-year-badge">
+                            <i class="fas fa-circle" style="font-size:.35rem;"></i>
                             {{ $anneeActive->name }}
                         </span>
                     @endif
                 </h1>
-                <p class="rel-hero-sub">
-                    Étudiants avec soldes impayés &mdash; toutes années filtrables
-                </p>
+                <p class="rl-hero-sub">Suivi des soldes impayés et relances de paiement</p>
             </div>
-            <div class="rel-hero-actions">
+            <div class="rl-hero-actions">
                 @can('comptabilite.reports.export')
-                <a href="{{ route('esbtp.comptabilite.relances.export-excel', request()->query()) }}" class="btn-hero-ghost">
+                <a href="{{ route('esbtp.comptabilite.relances.export-excel', request()->query()) }}" class="rl-btn-ghost">
                     <i class="fas fa-file-excel"></i> Excel
                 </a>
-                <a href="{{ route('esbtp.comptabilite.relances.export-pdf', request()->query()) }}" class="btn-hero-ghost">
+                <a href="{{ route('esbtp.comptabilite.relances.export-pdf', request()->query()) }}" class="rl-btn-ghost">
                     <i class="fas fa-file-pdf"></i> PDF
                 </a>
                 @endcan
-                <a href="{{ route('esbtp.comptabilite.relances.config') }}" class="btn-hero-ghost">
+                <a href="{{ route('esbtp.comptabilite.relances.config') }}" class="rl-btn-ghost">
                     <i class="fas fa-cog"></i> Configuration
                 </a>
-                <a href="{{ route('esbtp.paiements.index') }}" class="btn-hero-ghost">
-                    <i class="fas fa-list-alt"></i> Tous les paiements
+                <a href="{{ route('esbtp.paiements.index') }}" class="rl-btn-ghost">
+                    <i class="fas fa-list-alt"></i> Paiements
                 </a>
             </div>
         </div>
@@ -447,94 +741,88 @@
 
     {{-- ── BANNER CONFIG MANQUANTE ── --}}
     @if($configManquante)
-    <div style="background:linear-gradient(90deg,#fff8e1 0%,#fffde7 100%);border:1.5px solid #f59e0b;border-radius:12px;padding:.9rem 1.2rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
-        <div style="display:flex;align-items:center;gap:.6rem;color:#92400e;">
-            <i class="fas fa-exclamation-triangle" style="font-size:1.1rem;"></i>
-            <span style="font-weight:600;font-size:.9rem;">Les délais de relance ne sont pas configurés — les niveaux de risque ne peuvent pas être calculés.</span>
+    <div class="rl-config-banner">
+        <div class="rl-config-banner-text">
+            <i class="fas fa-exclamation-triangle" style="font-size:1rem;"></i>
+            Les délais de relance ne sont pas configurés.
         </div>
-        <a href="{{ route('esbtp.comptabilite.relances.config') }}" style="background:#0453cb;color:#fff;padding:.45rem 1rem;border-radius:8px;font-size:.82rem;font-weight:600;white-space:nowrap;text-decoration:none;">
-            <i class="fas fa-cog me-1"></i> Configurer maintenant
+        <a href="{{ route('esbtp.comptabilite.relances.config') }}" class="rl-config-banner-btn">
+            <i class="fas fa-cog me-1"></i> Configurer
         </a>
     </div>
     @endif
 
     {{-- ── KPI STRIP ── --}}
-    <div class="kpi-strip">
+    <div class="rl-kpi-strip">
 
-        {{-- Total impayé (validé uniquement) --}}
-        <div class="kpi-card impaye">
-            <div class="kpi-label">Total impayé</div>
-            <div class="kpi-value big">
+        {{-- Total impayé --}}
+        <div class="rl-kpi is-impaye">
+            <div class="rl-kpi-icon"><i class="fas fa-coins"></i></div>
+            <div class="rl-kpi-label">Total impayé</div>
+            <div class="rl-kpi-value is-amount">
                 <span id="kpi-total-impaye">{{ number_format($kpis['total_impaye'], 0, ',', ' ') }}</span>
-                <span style="font-size:.65em;font-weight:400;color:var(--rl-muted);">FCFA</span>
+                <span class="rl-kpi-unit">FCFA</span>
             </div>
-            @if(($kpis['total_en_attente'] ?? 0) > 0)
-            <div class="kpi-sub info-hint">
-                <i class="fas fa-info-circle" style="font-size:.7em;"></i>
+            <div class="rl-kpi-hint">
+                <i class="fas fa-shield-alt" style="font-size:.65em;"></i>
                 Paiements validés uniquement
             </div>
-            @else
-            <div class="kpi-sub info-hint">
-                <i class="fas fa-shield-check" style="font-size:.7em;"></i>
-                Soldes confirmés
-            </div>
-            @endif
-            <i class="fas fa-exclamation-circle kpi-icon"></i>
         </div>
 
-        {{-- Paiements en attente de validation --}}
-        <div class="kpi-card pending" title="Paiements enregistrés mais non encore validés par le secrétariat">
-            <div class="kpi-label">En attente de validation</div>
-            <div class="kpi-value big">
+        {{-- En attente --}}
+        <div class="rl-kpi is-pending" title="Paiements enregistrés mais non encore validés">
+            <div class="rl-kpi-icon"><i class="fas fa-clock"></i></div>
+            <div class="rl-kpi-label">En attente de validation</div>
+            <div class="rl-kpi-value is-amount">
                 <span id="kpi-total-en-attente">{{ number_format($kpis['total_en_attente'] ?? 0, 0, ',', ' ') }}</span>
-                <span style="font-size:.65em;font-weight:400;color:var(--rl-muted);">FCFA</span>
+                <span class="rl-kpi-unit">FCFA</span>
             </div>
-            <div class="kpi-sub pending-hint">
-                <i class="fas fa-clock" style="font-size:.7em;"></i>
+            <div class="rl-kpi-hint is-warning">
+                <i class="fas fa-info-circle" style="font-size:.65em;"></i>
                 Non déduits du solde
             </div>
-            <i class="fas fa-clock kpi-icon" style="color:#f59e0b;"></i>
         </div>
 
-        <div class="kpi-card critical" data-risk="critical" title="Cliquer pour filtrer">
-            <div class="kpi-label">Impayés (0% réglé)</div>
-            <div class="kpi-value" id="kpi-count-critical">{{ $kpis['count_critical'] }}</div>
-            <i class="fas fa-ban kpi-icon"></i>
+        <div class="rl-kpi is-critical" data-risk="critical" title="Cliquer pour filtrer">
+            <div class="rl-kpi-icon"><i class="fas fa-ban"></i></div>
+            <div class="rl-kpi-label">Impayés (0% réglé)</div>
+            <div class="rl-kpi-value" id="kpi-count-critical">{{ $kpis['count_critical'] }}</div>
         </div>
-        <div class="kpi-card high" data-risk="high" title="Cliquer pour filtrer">
-            <div class="kpi-label">En cours (partiel)</div>
-            <div class="kpi-value" id="kpi-count-high">{{ $kpis['count_high'] }}</div>
-            <i class="fas fa-hourglass-half kpi-icon"></i>
+
+        <div class="rl-kpi is-high" data-risk="high" title="Cliquer pour filtrer">
+            <div class="rl-kpi-icon"><i class="fas fa-hourglass-half"></i></div>
+            <div class="rl-kpi-label">En cours (partiel)</div>
+            <div class="rl-kpi-value" id="kpi-count-high">{{ $kpis['count_high'] }}</div>
         </div>
-        <div class="kpi-card medium" data-risk="medium" title="Cliquer pour filtrer">
-            <div class="kpi-label">Presque soldés (≥ 75%)</div>
-            <div class="kpi-value" id="kpi-count-medium">{{ $kpis['count_medium'] }}</div>
-            <i class="fas fa-tasks kpi-icon"></i>
+
+        <div class="rl-kpi is-medium" data-risk="medium" title="Cliquer pour filtrer">
+            <div class="rl-kpi-icon"><i class="fas fa-tasks"></i></div>
+            <div class="rl-kpi-label">Presque soldés (≥ 75%)</div>
+            <div class="rl-kpi-value" id="kpi-count-medium">{{ $kpis['count_medium'] }}</div>
         </div>
-        <div class="kpi-card low">
-            <div class="kpi-label">À jour</div>
-            <div class="kpi-value" id="kpi-count-low">{{ $kpis['count_low'] }}</div>
-            <i class="fas fa-check-circle kpi-icon"></i>
+
+        <div class="rl-kpi is-low">
+            <div class="rl-kpi-icon"><i class="fas fa-check-circle"></i></div>
+            <div class="rl-kpi-label">À jour</div>
+            <div class="rl-kpi-value" id="kpi-count-low">{{ $kpis['count_low'] }}</div>
         </div>
     </div>
 
     {{-- ── FILTERS ── --}}
     <form id="relances-filters-form" method="GET" action="{{ route('esbtp.comptabilite.relances.index') }}">
-        <div class="filters-bar">
+        <div class="rl-filters">
 
-            {{-- Recherche --}}
-            <div class="filter-group" style="flex:2;min-width:200px;">
-                <label class="filter-label">Recherche</label>
-                <div class="search-wrap">
-                    <i class="fas fa-search search-icon"></i>
-                    <input type="text" name="search" id="filter-search" class="filter-control" placeholder="Nom, prénom, matricule…" value="{{ $search }}">
+            <div class="rl-filter-group" style="flex:2;min-width:200px;">
+                <label class="rl-filter-label">Recherche</label>
+                <div class="rl-search-wrap">
+                    <i class="fas fa-search rl-search-icon"></i>
+                    <input type="text" name="search" id="filter-search" class="rl-filter-input" placeholder="Nom, prénom, matricule…" value="{{ $search }}">
                 </div>
             </div>
 
-            {{-- Filière --}}
-            <div class="filter-group">
-                <label class="filter-label">Filière</label>
-                <select name="filiere_id" class="filter-control">
+            <div class="rl-filter-group">
+                <label class="rl-filter-label">Filière</label>
+                <select name="filiere_id" class="rl-filter-input">
                     <option value="">Toutes</option>
                     @foreach ($filieres as $f)
                         <option value="{{ $f->id }}" {{ $filiereId == $f->id ? 'selected' : '' }}>{{ $f->name }}</option>
@@ -542,10 +830,9 @@
                 </select>
             </div>
 
-            {{-- Classe --}}
-            <div class="filter-group">
-                <label class="filter-label">Classe</label>
-                <select name="classe_id" class="filter-control">
+            <div class="rl-filter-group">
+                <label class="rl-filter-label">Classe</label>
+                <select name="classe_id" class="rl-filter-input">
                     <option value="">Toutes</option>
                     @foreach ($classes as $c)
                         <option value="{{ $c->id }}" {{ $classeId == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
@@ -553,73 +840,62 @@
                 </select>
             </div>
 
-            {{-- Année --}}
-            <div class="filter-group">
-                <label class="filter-label">Année</label>
-                <select name="annee_id" class="filter-control">
+            <div class="rl-filter-group">
+                <label class="rl-filter-label">Année</label>
+                <select name="annee_id" class="rl-filter-input">
                     @foreach ($annees as $a)
                         <option value="{{ $a->id }}" {{ $anneeId == $a->id ? 'selected' : '' }}>{{ $a->name }}@if($a->is_current) (en cours)@endif</option>
                     @endforeach
                 </select>
             </div>
 
-            {{-- Par page --}}
-            <div class="filter-group" style="min-width:90px;max-width:110px;">
-                <label class="filter-label">Par page</label>
-                <select name="per_page" class="filter-control">
+            <div class="rl-filter-group" style="min-width:90px;max-width:110px;">
+                <label class="rl-filter-label">Par page</label>
+                <select name="per_page" class="rl-filter-input">
                     @foreach ([10, 25, 50, 100] as $pp)
                         <option value="{{ $pp }}" {{ $perPage == $pp ? 'selected' : '' }}>{{ $pp }}</option>
                     @endforeach
                 </select>
             </div>
 
-            {{-- Champ caché pour le filtre de risque actif --}}
             <input type="hidden" name="risk" id="risk-hidden" value="{{ $riskFilter }}">
 
             <div style="display:flex;gap:.5rem;align-items:flex-end;">
-                <button type="submit" class="btn-filter"><i class="fas fa-filter"></i> Filtrer</button>
-                <button type="button" id="btn-reset" class="btn-filter-ghost"><i class="fas fa-times"></i> Reset</button>
+                <button type="submit" class="rl-btn-filter"><i class="fas fa-filter"></i> Filtrer</button>
+                <button type="button" id="btn-reset" class="rl-btn-reset"><i class="fas fa-times"></i> Reset</button>
             </div>
         </div>
     </form>
 
     {{-- ── RISK TABS ── --}}
-    <div class="risk-tabs" id="risk-tabs">
-        <button type="button" class="risk-tab all {{ !$riskFilter ? 'active' : '' }}"
-                data-risk="">
-            <i class="fas fa-list"></i>
-            Tous avec dettes <span class="tab-count">(<span id="tab-count-all">{{ $kpis['total_etudiants'] }}</span>)</span>
+    <div class="rl-tabs" id="risk-tabs">
+        <button type="button" class="risk-tab all {{ !$riskFilter ? 'active' : '' }}" data-risk="">
+            <span class="rl-dot"></span>
+            Tous <span class="tab-count">(<span id="tab-count-all">{{ $kpis['total_etudiants'] }}</span>)</span>
         </button>
-        <button type="button" class="risk-tab critical {{ $riskFilter === 'critical' ? 'active' : '' }}"
-                data-risk="critical"
-                title="Aucun paiement effectué — 0% du total réglé">
-            <i class="fas fa-ban"></i>
+        <button type="button" class="risk-tab critical {{ $riskFilter === 'critical' ? 'active' : '' }}" data-risk="critical"
+                title="Aucun paiement effectué">
+            <span class="rl-dot"></span>
             Impayés <span class="tab-count">(<span id="tab-count-critical">{{ $kpis['count_critical'] }}</span>)</span>
         </button>
-        <button type="button" class="risk-tab high {{ $riskFilter === 'high' ? 'active' : '' }}"
-                data-risk="high"
-                title="Paiement commencé mais solde important encore dû (> 25% restant)">
-            <i class="fas fa-hourglass-half"></i>
+        <button type="button" class="risk-tab high {{ $riskFilter === 'high' ? 'active' : '' }}" data-risk="high"
+                title="Paiement partiel (> 25% restant)">
+            <span class="rl-dot"></span>
             En cours <span class="tab-count">(<span id="tab-count-high">{{ $kpis['count_high'] }}</span>)</span>
         </button>
-        <button type="button" class="risk-tab medium {{ $riskFilter === 'medium' ? 'active' : '' }}"
-                data-risk="medium"
-                title="Au moins 75% réglé — faible solde restant (≤ 25% du total)">
-            <i class="fas fa-tasks"></i>
+        <button type="button" class="risk-tab medium {{ $riskFilter === 'medium' ? 'active' : '' }}" data-risk="medium"
+                title="Au moins 75% réglé">
+            <span class="rl-dot"></span>
             Presque soldés <span class="tab-count">(<span id="tab-count-medium">{{ $kpis['count_medium'] }}</span>)</span>
         </button>
     </div>
 
     {{-- ── TABLE WRAP (cible AJAX) ── --}}
     <div class="rel-table-wrap" id="relances-table-wrap">
-
-        {{-- Spinner overlay --}}
         <div class="rel-loading" id="relances-loading">
             <div class="rel-spinner"></div>
         </div>
-
         @include('esbtp.comptabilite.relances._table')
-
     </div>
 
 </div>
@@ -638,7 +914,6 @@
     const tabs       = document.querySelectorAll('#risk-tabs .risk-tab');
     const btnReset   = document.getElementById('btn-reset');
 
-    /* ── helpers ── */
     function showLoader()  { loading.classList.add('visible'); }
     function hideLoader()  { loading.classList.remove('visible'); }
 
@@ -649,10 +924,6 @@
         });
     }
 
-    /**
-     * Fetch table HTML via AJAX and inject into wrapper (below the spinner).
-     * Also updates browser URL so refresh / back button work correctly.
-     */
     function fetchTable(params) {
         showLoader();
 
@@ -663,7 +934,6 @@
             }
         });
 
-        // Update browser URL (no reload)
         window.history.pushState({}, '', url.toString());
 
         fetch(url.toString(), {
@@ -671,19 +941,15 @@
         })
         .then(r => r.json())
         .then(data => {
-            // Replace table content (keep spinner in place)
             const tmp = document.createElement('div');
             tmp.innerHTML = data.table;
 
-            // Remove old table content (everything except the spinner)
             Array.from(tableWrap.children).forEach(child => {
                 if (!child.classList.contains('rel-loading')) child.remove();
             });
 
-            // Append new content
             Array.from(tmp.childNodes).forEach(node => tableWrap.appendChild(node));
 
-            // Update KPI cards
             const kpis = data.kpis;
             if (kpis) {
                 const fmt = v => new Intl.NumberFormat('fr-FR').format(v);
@@ -700,7 +966,6 @@
                 set('tab-count-medium',     kpis.count_medium);
             }
 
-            // Wire pagination links to AJAX too
             wirePaginationLinks();
             hideLoader();
         })
@@ -715,20 +980,20 @@
         return params;
     }
 
-    /* ── Tab click → AJAX ── */
+    /* Tab click */
     tabs.forEach(btn => {
         btn.addEventListener('click', function () {
             const risk = this.dataset.risk;
             riskHidden.value = risk;
             setActiveTab(risk);
             const params = collectFormParams();
-            params.page = 1; // reset to first page on tab change
+            params.page = 1;
             fetchTable(params);
         });
     });
 
-    /* ── KPI card click → same as tab click ── */
-    document.querySelectorAll('.kpi-card[data-risk]').forEach(card => {
+    /* KPI card click */
+    document.querySelectorAll('.rl-kpi[data-risk]').forEach(card => {
         card.addEventListener('click', function () {
             const risk = this.dataset.risk;
             riskHidden.value = risk;
@@ -739,7 +1004,7 @@
         });
     });
 
-    /* ── Form submit → AJAX ── */
+    /* Form submit */
     form.addEventListener('submit', function (e) {
         e.preventDefault();
         const params = collectFormParams();
@@ -747,7 +1012,7 @@
         fetchTable(params);
     });
 
-    /* ── Reset button ── */
+    /* Reset */
     btnReset.addEventListener('click', function () {
         form.reset();
         riskHidden.value = '';
@@ -755,14 +1020,14 @@
         fetchTable({ page: 1 });
     });
 
-    /* ── Per-page select → auto submit ── */
+    /* Per-page auto submit */
     form.querySelector('select[name="per_page"]').addEventListener('change', function () {
         const params = collectFormParams();
         params.page = 1;
         fetchTable(params);
     });
 
-    /* ── Wire pagination links ── */
+    /* Pagination links */
     function wirePaginationLinks() {
         tableWrap.querySelectorAll('.pagination a[href]').forEach(link => {
             link.addEventListener('click', function (e) {
@@ -776,9 +1041,7 @@
         });
     }
 
-    // Wire initial pagination links
     wirePaginationLinks();
-
 })();
 </script>
 @endpush
