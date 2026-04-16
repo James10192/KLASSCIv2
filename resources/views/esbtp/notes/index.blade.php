@@ -798,6 +798,13 @@ function buildNotesGrid() {
 }
 
 function renderNotesGrid(students, sortedEvaluations) {
+    // Tri alphabétique par nom complet (nom + prénoms)
+    students.sort((a, b) => {
+        const nameA = ((a.nom || '') + ' ' + (a.prenoms || '')).toLowerCase();
+        const nameB = ((b.nom || '') + ' ' + (b.prenoms || '')).toLowerCase();
+        return nameA.localeCompare(nameB, 'fr');
+    });
+
     // Construire l'en-tête
     const thead = $('#notesGrid thead');
     thead.empty();
