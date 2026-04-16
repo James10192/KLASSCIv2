@@ -74,10 +74,13 @@
     /* ── KPI Grid ─────────────────────────────────────────────────── */
     .et-kpi-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: var(--space-md);
         margin-bottom: var(--space-lg);
     }
+    .et-kpi { min-width: 0; overflow: hidden; }
+    .et-kpi .et-kpi-value,
+    .et-kpi .et-kpi-label { overflow: hidden; text-overflow: ellipsis; }
     .et-kpi {
         border-radius: var(--radius-medium);
         padding: var(--space-lg) var(--space-md);
@@ -757,6 +760,13 @@
     }
 
     /* ══════════════════════════════════════════════
+       Width containment — prevent horizontal overflow
+       (main-content is flex: 1 with default min-width: auto)
+       ══════════════════════════════════════════════ */
+    .dashboard-acasi > .main-content { min-width: 0; }
+    .dashboard-acasi > .main-content > * { max-width: 100%; }
+
+    /* ══════════════════════════════════════════════
        KPI refresh — monochrome bleu (premium redesign)
        ══════════════════════════════════════════════ */
     .et-kpi { background: #fff; color: #1e293b; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06); }
@@ -788,16 +798,23 @@
         gap: 1rem;
         flex-wrap: wrap;
     }
-    .et-week-nav-left { display: flex; align-items: center; gap: .65rem; flex: 1; min-width: 320px; }
-    .et-week-nav-right { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+    .et-week-nav-left { display: flex; align-items: center; gap: .65rem; flex: 1 1 280px; min-width: 0; }
+    .et-week-nav-right { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; min-width: 0; }
 
     .et-week-current {
-        flex: 1;
+        flex: 1 1 0;
         display: flex;
         flex-direction: column;
         gap: .25rem;
-        min-width: 220px;
+        min-width: 0;
         padding: .2rem .5rem;
+        overflow: hidden;
+    }
+    .et-week-current-top span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
     }
     .et-week-current-top {
         display: flex;
@@ -872,10 +889,15 @@
         display: flex;
         gap: .5rem;
         overflow-x: auto;
+        overflow-y: hidden;
         padding: .25rem .2rem .75rem;
         margin-bottom: 1rem;
         scrollbar-width: thin;
         scrollbar-color: #cbd5e1 transparent;
+        min-width: 0;
+        max-width: 100%;
+        width: 100%;
+        box-sizing: border-box;
     }
     .et-week-rail::-webkit-scrollbar { height: 6px; }
     .et-week-rail::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
@@ -884,17 +906,17 @@
         flex-direction: column;
         align-items: flex-start;
         gap: .15rem;
-        padding: .45rem .75rem;
+        padding: .4rem .7rem;
         border-radius: 10px;
         border: 1px solid #e2e8f0;
         background: #fff;
-        font-size: .78rem;
+        font-size: .76rem;
         font-weight: 600;
         color: #475569;
         cursor: pointer;
         transition: all .18s ease;
         flex-shrink: 0;
-        min-width: 125px;
+        min-width: 108px;
     }
     .et-week-pill:hover { border-color: #0453cb; color: #0453cb; }
     .et-week-pill-range { white-space: nowrap; }
