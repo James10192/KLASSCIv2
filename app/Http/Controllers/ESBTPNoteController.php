@@ -543,14 +543,22 @@ class ESBTPNoteController extends Controller
      */
     public function saveNoteAjax(Request $request)
     {
-        $request->validate([
-            'etudiant_id'   => 'required|exists:esbtp_etudiants,id',
-            'evaluation_id' => 'required|exists:esbtp_evaluations,id',
-            'note'          => 'nullable|numeric|min:0',
-            'is_absent'     => 'nullable|string',
-        ]);
-
         try {
+            $validator = \Validator::make($request->all(), [
+                'etudiant_id'   => 'required|exists:esbtp_etudiants,id',
+                'evaluation_id' => 'required|exists:esbtp_evaluations,id',
+                'note'          => 'nullable|numeric|min:0',
+                'is_absent'     => 'nullable|string',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $validator->errors()->first(),
+                    'errors'  => $validator->errors()->toArray(),
+                ], 422);
+            }
+
             $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
 
             if (! $evaluation->is_published) {
@@ -605,13 +613,21 @@ class ESBTPNoteController extends Controller
      */
     public function saveNotesAjaxBulk(Request $request)
     {
-        $request->validate([
+        $validator = \Validator::make($request->all(), [
             'notes'                 => 'required|array|min:1',
             'notes.*.etudiant_id'   => 'required|integer',
             'notes.*.evaluation_id' => 'required|integer',
             'notes.*.note'          => 'nullable|numeric|min:0',
             'notes.*.is_absent'     => 'nullable|string',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'errors'  => $validator->errors()->toArray(),
+            ], 422);
+        }
 
         $errors = 0;
         $saved  = 0;
