@@ -136,13 +136,78 @@ class ESBTPEmploiTempsController extends Controller
         // Passer l'année courante avec le bon nom pour la vue
         $anneeUniversitaireCourante = $anneeEnCours;
 
+        // Statistiques par semaines — indépendantes des filtres (calculées sur l'année courante)
+        $semainesStats = $this->buildSemainesStats($anneeEnCours);
+        $semaines = $semainesStats['semaines'];
+        $totalSemaines = $semainesStats['totalSemaines'];
+        $totalClassesPlanifiees = $semainesStats['totalClassesPlanifiees'];
+        $semaineCouranteValue = $semainesStats['semaineCouranteValue'];
+
         $timetableShortcut = app(TimetableShortcutService::class)->getShortcutSummary($anneeEnCours);
 
         return view('esbtp.emploi-temps.index', compact(
             'emploisTemps', 'filieres', 'niveaux', 'classes', 'annees', 'anneeUniversitaireCourante',
             'totalEmploisTemps', 'emploisTempsActifsCount', 'totalSeances', 'emploisTempsAnneeEnCours', 'timetableShortcut',
-            'emploisTempsActifs'
+            'emploisTempsActifs', 'totalSemaines', 'totalClassesPlanifiees', 'semaines', 'semaineCouranteValue'
         ));
+    }
+
+    /**
+     * Construit les statistiques par semaine pour une année universitaire donnée.
+     * Retourne : totalSemaines, totalClassesPlanifiees, semaines[], semaineCouranteValue.
+     */
+    private function buildSemainesStats(?ESBTPAnneeUniversitaire $annee): array
+    {
+        $query = ESBTPEmploiTemps::query()
+            ->whereNotNull('date_debut')
+            ->whereNotNull('date_fin');
+
+        if ($annee) {
+            $query->where('annee_universitaire_id', $annee->id);
+        }
+
+        $rows = $query->select('date_debut', 'date_fin', 'classe_id')->get();
+
+        $today = Carbon::today();
+        $byRange = [];
+        $classesIds = [];
+
+        foreach ($rows as $row) {
+            $key = $row->date_debut.'|'.$row->date_fin;
+            if (! isset($byRange[$key])) {
+                $start = Carbon::parse($row->date_debut);
+                $end = Carbon::parse($row->date_fin);
+                $status = $today->between($start, $end)
+                    ? 'current'
+                    : ($end->lt($today) ? 'past' : 'upcoming');
+                $byRange[$key] = [
+                    'value' => $key,
+                    'start' => $start,
+                    'end' => $end,
+                    'label_short' => $start->isoFormat('DD MMM').' → '.$end->isoFormat('DD MMM'),
+                    'label_long' => $start->isoFormat('DD MMM YYYY').' → '.$end->isoFormat('DD MMM YYYY'),
+                    'month_key' => $start->isoFormat('MMMM YYYY'),
+                    'count' => 0,
+                    'status' => $status,
+                ];
+            }
+            $byRange[$key]['count']++;
+            $classesIds[$row->classe_id] = true;
+        }
+
+        $semaines = collect(array_values($byRange))
+            ->sortBy(fn ($s) => $s['start']->timestamp)
+            ->values();
+
+        $semaineCourante = $semaines->firstWhere('status', 'current');
+        $semaineCouranteValue = $semaineCourante['value'] ?? ($semaines->last()['value'] ?? null);
+
+        return [
+            'totalSemaines' => $semaines->count(),
+            'totalClassesPlanifiees' => count($classesIds),
+            'semaines' => $semaines,
+            'semaineCouranteValue' => $semaineCouranteValue,
+        ];
     }
 
     /**
