@@ -88,7 +88,7 @@ class PaywallMiddleware
 
         if ($status['is_blocked']) {
             // Si c'est une requête AJAX, retourner du JSON
-            if ($request->expectsJson()) {
+            if ($request->expectsJson() || $request->ajax() || str_contains($request->path(), 'ajax')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Accès bloqué par le paywall',
