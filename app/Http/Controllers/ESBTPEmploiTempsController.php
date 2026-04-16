@@ -156,11 +156,13 @@ class ESBTPEmploiTempsController extends Controller
         $anneeUniversitaireCourante = $anneeEnCours;
 
         // Statistiques par semaines — indépendantes des filtres (calculées sur l'année courante)
-        $semainesStats = $this->buildSemainesStats($anneeEnCours);
+        $semainesStats = $this->buildSemainesStats($anneeEnCours, $request->input('semaine'));
         $semaines = $semainesStats['semaines'];
         $totalSemaines = $semainesStats['totalSemaines'];
         $totalClassesPlanifiees = $semainesStats['totalClassesPlanifiees'];
         $semaineCouranteValue = $semainesStats['semaineCouranteValue'];
+        $previousWeekValue = $semainesStats['previousWeekValue'];
+        $previousWeekPlanningCount = $semainesStats['previousWeekPlanningCount'];
 
         $timetableShortcut = app(TimetableShortcutService::class)->getShortcutSummary($anneeEnCours);
 
@@ -168,15 +170,22 @@ class ESBTPEmploiTempsController extends Controller
             'emploisTemps', 'filieres', 'niveaux', 'classes', 'annees', 'anneeUniversitaireCourante',
             'totalEmploisTemps', 'emploisTempsActifsCount', 'totalSeances', 'emploisTempsAnneeEnCours', 'timetableShortcut',
             'emploisTempsActifs', 'totalSemaines', 'totalClassesPlanifiees', 'semaines', 'semaineCouranteValue',
-            'edtExpiresCount', 'totalClassesTenant', 'classesSansEdtCount'
+            'edtExpiresCount', 'totalClassesTenant', 'classesSansEdtCount',
+            'previousWeekValue', 'previousWeekPlanningCount'
         ));
     }
 
     /**
      * Construit les statistiques par semaine pour une année universitaire donnée.
-     * Retourne : totalSemaines, totalClassesPlanifiees, semaines[], semaineCouranteValue.
+     * Retourne : totalSemaines, totalClassesPlanifiees, semaines[], semaineCouranteValue,
+     * previousWeekValue, previousWeekPlanningCount.
+     *
+     * @param  string|null  $requestedWeek  Format "Y-m-d|Y-m-d" — la semaine actuellement
+     *                                      sélectionnée par l'utilisateur (paramètre ?semaine=).
+     *                                      Si elle est vide (aucun planning), on calcule la semaine
+     *                                      précédente pour proposer l'action "Dupliquer".
      */
-    private function buildSemainesStats(?ESBTPAnneeUniversitaire $annee): array
+    private function buildSemainesStats(?ESBTPAnneeUniversitaire $annee, ?string $requestedWeek = null): array
     {
         $query = ESBTPEmploiTemps::query()
             ->whereNotNull('date_debut')
@@ -222,11 +231,39 @@ class ESBTPEmploiTempsController extends Controller
         $semaineCourante = $semaines->firstWhere('status', 'current');
         $semaineCouranteValue = $semaineCourante['value'] ?? null;
 
+        // Détection "semaine précédente" pour l'empty-state "dupliquer".
+        // Si l'utilisateur a sélectionné une semaine avec ?semaine=X|Y, et que cette semaine
+        // n'existe pas dans $byRange (aucun planning), on cherche la plus récente semaine
+        // antérieure à la date de début demandée qui contient au moins un planning.
+        $previousWeekValue = null;
+        $previousWeekPlanningCount = 0;
+
+        if ($requestedWeek && ! isset($byRange[$requestedWeek])) {
+            $dates = explode('|', $requestedWeek);
+            if (count($dates) === 2) {
+                try {
+                    $requestedStart = Carbon::parse($dates[0]);
+                    $candidate = $semaines
+                        ->filter(fn ($s) => $s['start']->lt($requestedStart) && $s['count'] > 0)
+                        ->sortByDesc(fn ($s) => $s['start']->timestamp)
+                        ->first();
+                    if ($candidate) {
+                        $previousWeekValue = $candidate['value'];
+                        $previousWeekPlanningCount = $candidate['count'];
+                    }
+                } catch (\Throwable $e) {
+                    // Format invalide, pas de détection
+                }
+            }
+        }
+
         return [
             'totalSemaines' => $semaines->count(),
             'totalClassesPlanifiees' => count($classesIds),
             'semaines' => $semaines,
             'semaineCouranteValue' => $semaineCouranteValue,
+            'previousWeekValue' => $previousWeekValue,
+            'previousWeekPlanningCount' => $previousWeekPlanningCount,
         ];
     }
 
@@ -2213,6 +2250,155 @@ class ESBTPEmploiTempsController extends Controller
             'conflicts' => $conflictsPayload,
             'total_conflicts' => $totalConflicts,
         ]);
+    }
+
+    /**
+     * Duplique tous les emplois du temps d'une semaine source vers une semaine cible.
+     * Utilisé par l'empty-state "La semaine précédente avait X plannings. Dupliquer →".
+     *
+     * Format des paramètres : "YYYY-MM-DD|YYYY-MM-DD" (date_debut|date_fin).
+     * Les conflits enseignants sont détectés via collectAvailabilityConflicts() ; les
+     * séances en conflit sont simplement ignorées (l'EDT est créé sans ces séances).
+     * Les classes qui ont déjà un EDT pour la semaine cible sont sautées (idempotence).
+     */
+    public function duplicateWeek(Request $request)
+    {
+        $user = auth()->user();
+        if (! $user || ! $user->can('create_timetable')) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            // Format accepté : "YYYY-MM-DD|YYYY-MM-DD" ou "YYYY-MM-DD HH:MM:SS|YYYY-MM-DD HH:MM:SS"
+            // (les pills du rail incluent le time, le format court reste supporté pour les liens).
+            'source_semaine' => ['required', 'string', 'regex:/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?\|\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/'],
+            'target_semaine' => ['required', 'string', 'regex:/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?\|\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', 'different:source_semaine'],
+        ]);
+
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (! $anneeEnCours) {
+            return redirect()->back()->with('error', "Aucune année universitaire active n'est définie.");
+        }
+
+        [$sourceStart, $sourceEnd] = array_map('trim', explode('|', $validated['source_semaine']));
+        [$targetStart, $targetEnd] = array_map('trim', explode('|', $validated['target_semaine']));
+
+        try {
+            $targetStartCarbon = Carbon::parse($targetStart);
+            $targetEndCarbon = Carbon::parse($targetEnd);
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Dates cibles invalides.');
+        }
+
+        $sources = ESBTPEmploiTemps::with(['seances.teacher.availabilities', 'seances.matiere'])
+            ->where('annee_universitaire_id', $anneeEnCours->id)
+            ->whereDate('date_debut', $sourceStart)
+            ->whereDate('date_fin', $sourceEnd)
+            ->get();
+
+        if ($sources->isEmpty()) {
+            return redirect()->back()->with('info', "Aucun emploi du temps trouvé pour la semaine source.");
+        }
+
+        $createdCount = 0;
+        $skippedCount = 0;
+        $availabilitySkipCount = 0;
+        $today = Carbon::today();
+        $isActiveTarget = $targetStartCarbon->lte($today) && $targetEndCarbon->gte($today);
+
+        DB::beginTransaction();
+        try {
+            foreach ($sources as $source) {
+                $alreadyExists = ESBTPEmploiTemps::where('annee_universitaire_id', $anneeEnCours->id)
+                    ->where('classe_id', $source->classe_id)
+                    ->whereDate('date_debut', $targetStartCarbon->toDateString())
+                    ->whereDate('date_fin', $targetEndCarbon->toDateString())
+                    ->exists();
+
+                if ($alreadyExists) {
+                    $skippedCount++;
+                    continue;
+                }
+
+                $availabilityConflicts = $this->collectAvailabilityConflicts($source->seances, $targetStartCarbon);
+                $conflictIds = collect($availabilityConflicts)->pluck('seance_id')->filter()->all();
+
+                $periodeLabel = sprintf(
+                    'Semaine %s-%s',
+                    $targetStartCarbon->format('d/m'),
+                    $targetEndCarbon->format('d/m')
+                );
+
+                $classeName = $source->classe->name ?? 'Classe';
+                $newEmploiTemps = ESBTPEmploiTemps::create([
+                    'titre' => "Emploi du temps - {$classeName} ({$periodeLabel})",
+                    'classe_id' => $source->classe_id,
+                    'annee_universitaire_id' => $anneeEnCours->id,
+                    'semestre' => $source->semestre,
+                    'date_debut' => $targetStartCarbon->toDateString(),
+                    'date_fin' => $targetEndCarbon->toDateString(),
+                    'is_active' => $isActiveTarget,
+                    'is_current' => false,
+                    'created_by' => $user->id,
+                    'updated_by' => $user->id,
+                ]);
+
+                foreach ($source->seances as $seance) {
+                    if (in_array($seance->id, $conflictIds, true)) {
+                        $availabilitySkipCount++;
+                        continue;
+                    }
+                    $newSeance = $seance->replicate();
+                    $newSeance->emploi_temps_id = $newEmploiTemps->id;
+                    $newSeance->classe_id = $source->classe_id;
+                    $newSeance->annee_universitaire_id = $anneeEnCours->id;
+                    $newSeance->homework_evaluation_id = null;
+                    $newSeance->is_active = $isActiveTarget;
+
+                    $dayOffset = is_numeric($seance->jour) ? ((int) $seance->jour - 1) : 0;
+                    $newDateSeance = $targetStartCarbon->copy()->addDays($dayOffset);
+                    $newSeance->date_seance = $newDateSeance->toDateString();
+
+                    if ($seance->homework_due_date && $seance->date_seance) {
+                        $deltaDays = Carbon::parse($seance->date_seance)->diffInDays($newDateSeance, false);
+                        $newSeance->homework_due_date = Carbon::parse($seance->homework_due_date)->addDays($deltaDays)->toDateString();
+                    }
+
+                    $newSeance->save();
+                }
+
+                $createdCount++;
+            }
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            \Log::error('Erreur duplication semaine', [
+                'source' => $validated['source_semaine'],
+                'target' => $validated['target_semaine'],
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with('error', "Erreur lors de la duplication : {$e->getMessage()}");
+        }
+
+        if ($createdCount === 0) {
+            return redirect()
+                ->to(route('esbtp.emploi-temps.index', ['semaine' => $validated['target_semaine']]))
+                ->with('info', "Aucun nouvel emploi du temps créé ({$skippedCount} classe(s) déjà présente(s) sur la semaine cible).");
+        }
+
+        $message = "{$createdCount} emploi(s) du temps dupliqué(s) vers la semaine cible.";
+        if ($skippedCount > 0) {
+            $message .= " {$skippedCount} classe(s) ignorée(s) (EDT déjà présent).";
+        }
+        if ($availabilitySkipCount > 0) {
+            $message .= " {$availabilitySkipCount} séance(s) omise(s) (conflits enseignant).";
+        }
+
+        return redirect()
+            ->to(route('esbtp.emploi-temps.index', ['semaine' => $validated['target_semaine']]))
+            ->with('success', $message);
     }
 
     private function collectAvailabilityConflicts($seances, Carbon $targetStart): array

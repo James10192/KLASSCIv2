@@ -542,6 +542,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('emploi-temps.quick-generate.preview')
                 ->middleware(['permission:create_timetable']);
 
+            Route::post('emploi-temps/duplicate-week', [ESBTPEmploiTempsController::class, 'duplicateWeek'])
+                ->name('emploi-temps.duplicate-week')
+                ->middleware(['permission:create_timetable']);
+
             Route::get('emploi-temps/bulk-edit', [ESBTPEmploiTempsController::class, 'bulkEdit'])
                 ->name('emploi-temps.bulk-edit')
                 ->middleware(['permission:edit_timetables']);
