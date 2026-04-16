@@ -1483,6 +1483,85 @@
 
     [x-cloak] { display: none !important; }
 
+    /* ══════════════════════════════════════════════
+       Empty-state intelligent : "Dupliquer la semaine précédente"
+       ══════════════════════════════════════════════ */
+    .et-duplicate-empty {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+        padding: 1.75rem 1.5rem;
+        background: linear-gradient(135deg, #f0f7ff 0%, #fafcff 100%);
+        border: 1px solid #cfe0f5;
+        border-radius: 16px;
+        box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+    }
+    .et-duplicate-empty__icon {
+        flex-shrink: 0;
+        width: 56px; height: 56px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #0453cb, #3b7ddb);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        color: #fff;
+        box-shadow: 0 6px 18px rgba(4,83,203,.22);
+    }
+    .et-duplicate-empty__body { flex: 1; min-width: 0; }
+    .et-duplicate-empty__title {
+        margin: 0 0 .3rem 0;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .et-duplicate-empty__text {
+        margin: 0 0 .85rem 0;
+        font-size: .88rem;
+        color: #475569;
+        line-height: 1.5;
+    }
+    .et-duplicate-empty__text strong { color: #0f172a; font-weight: 700; }
+    .et-duplicate-empty__form {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin: 0;
+    }
+    .et-duplicate-empty__btn {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .65rem 1.3rem;
+        border-radius: 10px;
+        border: none;
+        background: linear-gradient(135deg, #0453cb, #3b7ddb);
+        color: #fff;
+        font-size: .88rem;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(4,83,203,.24);
+        transition: all .2s ease;
+    }
+    .et-duplicate-empty__btn:hover {
+        background: linear-gradient(135deg, #033a8e, #0453cb);
+        box-shadow: 0 6px 20px rgba(4,83,203,.32);
+        transform: translateY(-1px);
+    }
+    .et-duplicate-empty__link {
+        color: #0453cb;
+        font-size: .82rem;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    .et-duplicate-empty__link:hover { text-decoration: underline; }
+
+    @media (max-width: 576px) {
+        .et-duplicate-empty { flex-direction: column; align-items: flex-start; padding: 1.25rem; }
+        .et-duplicate-empty__btn { width: 100%; justify-content: center; }
+    }
+
     @media (max-width: 576px) {
         .et-card__head { flex-direction: column; }
         .et-card__badges { width: 100%; }
@@ -1722,7 +1801,12 @@
                     <div class="card-body">
                         <!-- Vue en cards (par défaut) -->
                         <div id="cardsContainer" class="emplois-cards-container">
-                            @include('esbtp.emploi-temps.partials.cards', ['emploisTemps' => $emploisTemps, 'timetableShortcut' => $timetableShortcut ?? null])
+                            @include('esbtp.emploi-temps.partials.cards', [
+                                'emploisTemps' => $emploisTemps,
+                                'timetableShortcut' => $timetableShortcut ?? null,
+                                'previousWeekValue' => $previousWeekValue ?? null,
+                                'previousWeekPlanningCount' => $previousWeekPlanningCount ?? 0,
+                            ])
                         </div>
 
                         <!-- Vue tableau (masquée par défaut) -->

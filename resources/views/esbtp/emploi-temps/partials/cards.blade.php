@@ -199,16 +199,62 @@
         </div>
     </div>
 @empty
-    <div class="empty-state-card">
-        <div class="text-center py-5">
-            <i class="fas fa-calendar-times fa-4x text-muted mb-4"></i>
-            <h5 class="text-muted mb-2">Aucun emploi du temps trouvé</h5>
-            <p class="text-muted mb-4">Créez votre premier emploi du temps pour commencer.</p>
-            <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn btn-primary">
-                <i class="fas fa-plus me-2"></i>Créer un emploi du temps
-            </a>
+    @php
+        // L'utilisateur filtre sur une semaine ?semaine=X|Y qui est vide, et la semaine
+        // précédente contient des plannings → on propose la duplication.
+        $requestedWeek = request('semaine');
+        $canDuplicate = ! empty($previousWeekValue ?? null)
+            && ($previousWeekPlanningCount ?? 0) > 0
+            && ! empty($requestedWeek)
+            && (auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']) || auth()->user()->can('create_timetable'));
+    @endphp
+    @if($canDuplicate)
+        @php
+            [$prevStart, $prevEnd] = array_map('trim', explode('|', $previousWeekValue));
+            [$targetStart, $targetEnd] = array_map('trim', explode('|', $requestedWeek));
+            $prevLabel = \Carbon\Carbon::parse($prevStart)->isoFormat('D MMM') . ' → ' . \Carbon\Carbon::parse($prevEnd)->isoFormat('D MMM YYYY');
+            $targetLabel = \Carbon\Carbon::parse($targetStart)->isoFormat('D MMM') . ' → ' . \Carbon\Carbon::parse($targetEnd)->isoFormat('D MMM YYYY');
+        @endphp
+        <div class="et-duplicate-empty">
+            <div class="et-duplicate-empty__icon">
+                <i class="fas fa-copy"></i>
+            </div>
+            <div class="et-duplicate-empty__body">
+                <h5 class="et-duplicate-empty__title">Semaine vide</h5>
+                <p class="et-duplicate-empty__text">
+                    Aucun emploi du temps pour la semaine du <strong>{{ $targetLabel }}</strong>.
+                    La semaine précédente du <strong>{{ $prevLabel }}</strong> en contient
+                    <strong>{{ $previousWeekPlanningCount }}</strong>.
+                </p>
+                <form action="{{ route('esbtp.emploi-temps.duplicate-week') }}"
+                      method="POST"
+                      class="et-duplicate-empty__form"
+                      onsubmit="return confirm('Dupliquer {{ $previousWeekPlanningCount }} emploi(s) du temps vers la semaine cible ?\n\nLes séances avec conflits enseignant seront ignorées. Les classes déjà planifiées ne seront pas écrasées.')">
+                    @csrf
+                    <input type="hidden" name="source_semaine" value="{{ $previousWeekValue }}">
+                    <input type="hidden" name="target_semaine" value="{{ $requestedWeek }}">
+                    <button type="submit" class="et-duplicate-empty__btn">
+                        <i class="fas fa-wand-magic-sparkles"></i>
+                        Dupliquer pour cette semaine
+                    </button>
+                    <a href="{{ route('esbtp.emploi-temps.create') }}" class="et-duplicate-empty__link">
+                        Ou créer manuellement →
+                    </a>
+                </form>
+            </div>
         </div>
-    </div>
+    @else
+        <div class="empty-state-card">
+            <div class="text-center py-5">
+                <i class="fas fa-calendar-times fa-4x text-muted mb-4"></i>
+                <h5 class="text-muted mb-2">Aucun emploi du temps trouvé</h5>
+                <p class="text-muted mb-4">Créez votre premier emploi du temps pour commencer.</p>
+                <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Créer un emploi du temps
+                </a>
+            </div>
+        </div>
+    @endif
 @endforelse
 
 {{-- Empty-state client-side : visible quand chip + recherche masquent toutes les cards --}}
