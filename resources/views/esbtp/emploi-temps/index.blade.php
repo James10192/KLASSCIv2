@@ -532,15 +532,20 @@
         -webkit-overflow-scrolling: touch;
     }
     
-    /* Conteneur des cards */
+    /* Conteneur des cards — redesign v2 : stack 1 colonne (cards horizontales), 2 colonnes ≥ 1600px */
     .emplois-cards-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: var(--space-md);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
         margin-bottom: var(--space-lg);
-        align-items: stretch;
-        grid-auto-flow: row dense;
         width: 100%;
+    }
+    @media (min-width: 1600px) {
+        .emplois-cards-container {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: var(--space-md);
+        }
     }
 
     .emploi-card {
@@ -578,16 +583,11 @@
         transition: all 0.3s ease;
     }
 
-    /* Responsive pour les cards */
-    @media (min-width: 1400px) {
-        .emplois-cards-container {
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        }
-    }
-
+    /* Responsive pour les cards (redesign v2 stack — les rules historiques neutralisées) */
     @media (max-width: 991px) {
         .emplois-cards-container {
-            grid-template-columns: 1fr;
+            display: flex;
+            flex-direction: column;
         }
     }
 
@@ -1067,12 +1067,434 @@
         .et-week-nav-right { width: 100%; justify-content: stretch; }
         .et-week-nav-right .et-week-btn { flex: 1; justify-content: center; }
     }
+
+    /* ══════════════════════════════════════════════
+       Redesign v2 — alert strip, chips, search, sticky
+       ══════════════════════════════════════════════ */
+
+    /* Alert strip (conditionnelle, visible uniquement si expirés > 0) */
+    .et-alert-strip {
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        padding: .7rem 1rem;
+        margin-bottom: .85rem;
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 12px;
+        color: #991b1b;
+        max-height: 48px;
+        font-size: .86rem;
+    }
+    .et-alert-strip__icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px; height: 28px;
+        border-radius: 8px;
+        background: rgba(220, 38, 38, .12);
+        color: #dc2626;
+        flex-shrink: 0;
+    }
+    .et-alert-strip__body { flex: 1; min-width: 0; }
+    .et-alert-strip__body strong { color: #b91c1c; font-weight: 700; }
+    .et-alert-strip__hint { color: #7f1d1d; opacity: .75; }
+    .et-alert-strip__action {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        padding: .4rem .85rem;
+        border-radius: 8px;
+        border: 1px solid #dc2626;
+        background: #fff;
+        color: #b91c1c;
+        font-size: .8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .18s ease;
+        flex-shrink: 0;
+    }
+    .et-alert-strip__action:hover { background: #dc2626; color: #fff; }
+
+    /* Chips filtrantes */
+    .et-chips-bar {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }
+    .et-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        padding: .45rem .85rem;
+        border-radius: 999px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #475569;
+        font-size: .82rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .18s ease;
+        text-decoration: none;
+        line-height: 1.2;
+    }
+    .et-chip:hover { border-color: #0453cb; color: #0453cb; background: rgba(4,83,203,.03); }
+    .et-chip.is-active {
+        background: linear-gradient(135deg, #0453cb, #3b7ddb);
+        border-color: transparent;
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(4,83,203,.22);
+    }
+    .et-chip__count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: rgba(15,23,42,.06);
+        color: #475569;
+        font-size: .72rem;
+        font-weight: 700;
+    }
+    .et-chip.is-active .et-chip__count { background: rgba(255,255,255,.22); color: #fff; }
+    .et-chip__dot {
+        display: inline-block;
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .et-chip__dot--success { background: #10b981; box-shadow: 0 0 0 3px rgba(16,185,129,.18); }
+    .et-chip__dot--danger  { background: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,.18); }
+    .et-chip__dot--muted   { background: #94a3b8; box-shadow: 0 0 0 3px rgba(148,163,184,.18); }
+    .et-chips-separator {
+        width: 1px;
+        height: 24px;
+        background: #e2e8f0;
+        margin: 0 .25rem;
+    }
+    .et-chip--link {
+        color: #0453cb;
+        border-style: dashed;
+        border-color: #cbd5e1;
+    }
+    .et-chip--link:hover { border-style: solid; }
+    .et-chip--link i { font-size: .7rem; opacity: .7; }
+
+    /* Recherche inline dans le header de la liste */
+    .et-list-card__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: .75rem;
+    }
+    .et-list-card__tools {
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        flex-wrap: wrap;
+    }
+    .et-search-inline {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+    }
+    .et-search-inline > i.fa-search {
+        position: absolute;
+        left: .75rem;
+        color: #94a3b8;
+        font-size: .8rem;
+        pointer-events: none;
+    }
+    .et-search-inline__input {
+        padding: .4rem .75rem .4rem 2rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: .82rem;
+        width: 220px;
+        background: #fff;
+        transition: all .18s ease;
+    }
+    .et-search-inline__input:focus {
+        outline: none;
+        border-color: #0453cb;
+        box-shadow: 0 0 0 3px rgba(4,83,203,.08);
+        width: 260px;
+    }
+    .et-search-inline__clear {
+        position: absolute;
+        right: .3rem;
+        padding: .2rem .4rem;
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        font-size: .9rem;
+    }
+    .et-search-inline__clear:hover { color: #dc2626; }
+
+    /* Sticky week-navigator au scroll */
+    .et-week-nav {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        backdrop-filter: blur(6px);
+        background: rgba(255,255,255,.96);
+    }
+
+    /* Current week pill : bordure dorée discrète */
+    .et-week-pill--current:not(.is-active) {
+        border-color: #facc15 !important;
+        box-shadow: 0 0 0 2px rgba(250,204,21,.12);
+    }
+    .et-week-pill--current:not(.is-active) .et-week-pill-range::after {
+        content: '•';
+        color: #facc15;
+        margin-left: 4px;
+    }
+
+    /* Empty-state quand le filtre masque toutes les cards */
+    .et-empty-filter {
+        padding: 2.5rem 1rem;
+        text-align: center;
+        color: #64748b;
+        background: #f8fafc;
+        border: 1px dashed #cbd5e1;
+        border-radius: 12px;
+        font-size: .88rem;
+    }
+    .et-empty-filter i { font-size: 1.6rem; color: #94a3b8; margin-bottom: .5rem; display: block; }
+
+    @media (max-width: 768px) {
+        .et-alert-strip { max-height: none; flex-wrap: wrap; }
+        .et-alert-strip__action { margin-left: auto; }
+        .et-search-inline__input,
+        .et-search-inline__input:focus { width: 100%; }
+        .et-search-inline { flex: 1 1 100%; }
+        .et-list-card__tools { width: 100%; }
+    }
+
+    /* ══════════════════════════════════════════════
+       Card EDT v1 — redesign compact premium
+       ══════════════════════════════════════════════ */
+    .et-card {
+        position: relative;
+        display: flex;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        margin-bottom: .85rem;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+        transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+    }
+    .et-card:hover {
+        box-shadow: 0 8px 30px rgba(4,83,203,.08), 0 2px 8px rgba(15,23,42,.04);
+        transform: translateY(-1px);
+        border-color: #cbd5e1;
+    }
+    .et-card__stripe {
+        width: 4px;
+        flex-shrink: 0;
+        display: block;
+    }
+    .et-card__inner {
+        flex: 1;
+        padding: 1rem 1.1rem;
+        display: flex;
+        flex-direction: column;
+        gap: .7rem;
+        min-width: 0;
+    }
+
+    /* Head : titre + badges */
+    .et-card__head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: .75rem;
+        flex-wrap: wrap;
+    }
+    .et-card__titles { flex: 1; min-width: 0; }
+    .et-card__title {
+        margin: 0 0 .15rem 0;
+        font-size: .98rem;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.3;
+    }
+    .et-card__subtitle {
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+        font-size: .78rem;
+        color: #64748b;
+        font-weight: 500;
+        flex-wrap: wrap;
+    }
+    .et-card__sep { color: #cbd5e1; font-weight: 400; }
+    .et-card__badges { display: flex; gap: .35rem; flex-wrap: wrap; flex-shrink: 0; }
+    .et-card__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .2rem .55rem;
+        border-radius: 999px;
+        font-size: .7rem;
+        font-weight: 700;
+        line-height: 1.4;
+    }
+    .et-card__badge i { font-size: .65rem; }
+    .et-card__badge--danger  { background: #fee2e2; color: #b91c1c; }
+    .et-card__badge--success { background: rgba(16,185,129,.14); color: #047857; }
+    .et-card__badge--warning { background: rgba(245,158,11,.15); color: #b45309; }
+    .et-card__badge--info    { background: rgba(4,83,203,.1); color: #0453cb; }
+
+    /* Meta row */
+    .et-card__meta {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        font-size: .82rem;
+        color: #475569;
+    }
+    .et-card__meta-item {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        font-weight: 500;
+    }
+    .et-card__meta-item i { color: #94a3b8; font-size: .78rem; }
+    .et-card__meta-item--muted {
+        padding: .1rem .5rem;
+        border-radius: 6px;
+        background: #f1f5f9;
+        font-size: .72rem;
+        font-weight: 700;
+        color: #475569;
+    }
+
+    /* Footer fraîcheur */
+    .et-card__footer {
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+        font-size: .72rem;
+        color: #94a3b8;
+        padding-top: .5rem;
+        border-top: 1px dashed #e2e8f0;
+    }
+    .et-card__footer i { font-size: .7rem; }
+
+    /* Actions */
+    .et-card__actions {
+        display: flex;
+        align-items: center;
+        gap: .45rem;
+        margin-top: .25rem;
+    }
+    .et-card-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        padding: .5rem .85rem;
+        border-radius: 10px;
+        font-size: .8rem;
+        font-weight: 600;
+        text-decoration: none;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #475569;
+        cursor: pointer;
+        transition: all .18s ease;
+        white-space: nowrap;
+    }
+    .et-card-btn:hover { border-color: #0453cb; color: #0453cb; background: rgba(4,83,203,.04); }
+    .et-card-btn--ghost { color: #b91c1c; }
+    .et-card-btn--ghost:hover { border-color: #dc2626; color: #b91c1c; background: #fee2e2; }
+    .et-card-btn--primary {
+        background: linear-gradient(135deg, #0453cb, #3b7ddb);
+        border-color: transparent;
+        color: #fff;
+        margin-left: auto;
+        box-shadow: 0 4px 12px rgba(4,83,203,.22);
+    }
+    .et-card-btn--primary:hover {
+        background: linear-gradient(135deg, #033a8e, #0453cb);
+        color: #fff;
+        box-shadow: 0 6px 18px rgba(4,83,203,.3);
+    }
+    .et-card-btn--icon {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        justify-content: center;
+        color: #64748b;
+    }
+
+    /* Menu popover (edit / delete) */
+    .et-card__menu { position: relative; }
+    .et-card__menu-pop {
+        position: absolute;
+        top: calc(100% + 4px);
+        right: 0;
+        min-width: 160px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(15,23,42,.12), 0 4px 12px rgba(15,23,42,.06);
+        padding: .3rem;
+        z-index: 50;
+    }
+    .et-card__menu-pop a,
+    .et-card__menu-pop button,
+    .et-card__menu-item {
+        display: flex;
+        align-items: center;
+        gap: .55rem;
+        width: 100%;
+        padding: .5rem .75rem;
+        border-radius: 7px;
+        font-size: .82rem;
+        color: #1e293b;
+        text-decoration: none;
+        background: transparent;
+        border: none;
+        text-align: left;
+        cursor: pointer;
+        transition: background .15s ease;
+    }
+    .et-card__menu-pop a:hover,
+    .et-card__menu-item:hover { background: rgba(4,83,203,.08); color: #0453cb; }
+    .et-card__menu-item--danger { color: #b91c1c; }
+    .et-card__menu-item--danger:hover { background: #fee2e2; color: #b91c1c; }
+    .et-card__menu-pop form { margin: 0; }
+    .et-card__menu-pop i { width: 14px; text-align: center; color: #94a3b8; }
+    .et-card__menu-pop a:hover i,
+    .et-card__menu-item:hover i { color: inherit; }
+
+    /* Décoration subtile selon statut (bordure gauche existante via stripe suffit, on garde) */
+    .et-card--expired { background: #fffcfc; }
+    .et-card--active { background: #fafffe; }
+
+    [x-cloak] { display: none !important; }
+
+    @media (max-width: 576px) {
+        .et-card__head { flex-direction: column; }
+        .et-card__badges { width: 100%; }
+        .et-card-btn--primary { margin-left: 0; flex: 1; justify-content: center; }
+        .et-card__actions { flex-wrap: wrap; }
+    }
 </style>
 @endsection
 
 @section('content')
 <div class="dashboard-acasi">
-    <div class="main-content">
+    <div class="main-content" x-data="{ statusFilter: '{{ request('status_chip', 'all') }}', searchQuery: '' }">
         <!-- Header premium -->
         <div class="emploi-temps-header">
             <div class="et-header-inner">
@@ -1082,7 +1504,7 @@
                     </div>
                     <div>
                         <h1>Gestion des emplois du temps</h1>
-                        <p class="et-subtitle">Administration avancee des plannings scolaires</p>
+                        <p class="et-subtitle">{{ $anneeUniversitaireCourante->name ?? 'Aucune année active' }} · {{ $totalClassesTenant ?? 0 }} classes au total</p>
                     </div>
                 </div>
                 <div class="et-header-actions">
@@ -1117,28 +1539,45 @@
             </div>
         @endif
 
-        <!-- KPI Grid premium -->
-        <div class="et-kpi-grid">
-            <div class="et-kpi et-kpi--primary">
-                <div class="et-kpi-icon"><i class="fas fa-calendar-week"></i></div>
-                <div class="et-kpi-value">{{ $totalSemaines ?? 0 }}</div>
-                <div class="et-kpi-label">Semaines planifiées</div>
+        {{-- Alert strip conditionnelle : visible uniquement si des EDT sont expirés --}}
+        @if(($edtExpiresCount ?? 0) > 0)
+            <div class="et-alert-strip" role="alert">
+                <div class="et-alert-strip__icon"><i class="fas fa-circle-exclamation"></i></div>
+                <div class="et-alert-strip__body">
+                    <strong>{{ $edtExpiresCount }}</strong> emploi{{ $edtExpiresCount > 1 ? 's' : '' }} du temps expiré{{ $edtExpiresCount > 1 ? 's' : '' }}
+                    <span class="et-alert-strip__hint">— à renouveler pour éviter toute rupture de planning</span>
+                </div>
+                <button type="button" class="et-alert-strip__action" @click="statusFilter = 'expired'; document.getElementById('emploisListAnchor')?.scrollIntoView({behavior:'smooth', block:'start'})">
+                    Voir les expirés
+                    <i class="fas fa-arrow-right"></i>
+                </button>
             </div>
-            <div class="et-kpi et-kpi--success">
-                <div class="et-kpi-icon"><i class="fas fa-check-circle"></i></div>
-                <div class="et-kpi-value">{{ $emploisTempsActifsCount }}</div>
-                <div class="et-kpi-label">Plannings actifs cette semaine</div>
-            </div>
-            <div class="et-kpi et-kpi--accent">
-                <div class="et-kpi-icon"><i class="fas fa-users"></i></div>
-                <div class="et-kpi-value">{{ $totalClassesPlanifiees ?? 0 }}</div>
-                <div class="et-kpi-label">Classes planifiées</div>
-            </div>
-            <div class="et-kpi et-kpi--soft">
-                <div class="et-kpi-icon"><i class="fas fa-graduation-cap"></i></div>
-                <div class="et-kpi-value et-kpi-value--sm">{{ $anneeUniversitaireCourante->name ?? 'N/A' }}</div>
-                <div class="et-kpi-label">Année universitaire</div>
-            </div>
+        @endif
+
+        {{-- Chips filtrantes (Alpine) : filtrage client-side des cards par statut --}}
+        <div class="et-chips-bar">
+            <button type="button" class="et-chip" :class="{ 'is-active': statusFilter === 'all' }" @click="statusFilter = 'all'">
+                <span class="et-chip__label">Tout</span>
+                <span class="et-chip__count">{{ $emploisTemps->count() }}</span>
+            </button>
+            <button type="button" class="et-chip" :class="{ 'is-active': statusFilter === 'active' }" @click="statusFilter = 'active'">
+                <span class="et-chip__dot et-chip__dot--success"></span>
+                <span class="et-chip__label">Actif</span>
+                <span class="et-chip__count">{{ $emploisTempsActifsCount }}</span>
+            </button>
+            <button type="button" class="et-chip" :class="{ 'is-active': statusFilter === 'expired' }" @click="statusFilter = 'expired'">
+                <span class="et-chip__dot et-chip__dot--danger"></span>
+                <span class="et-chip__label">Expiré</span>
+                <span class="et-chip__count">{{ $edtExpiresCount ?? 0 }}</span>
+            </button>
+            <div class="et-chips-separator"></div>
+            @if(($classesSansEdtCount ?? 0) > 0)
+                <a href="#raccourciEmploisTemps" class="et-chip et-chip--link">
+                    <span class="et-chip__dot et-chip__dot--muted"></span>
+                    <span class="et-chip__label">{{ $classesSansEdtCount }} classe{{ $classesSansEdtCount > 1 ? 's' : '' }} sans emploi du temps</span>
+                    <i class="fas fa-arrow-right"></i>
+                </a>
+            @endif
         </div>
 
         <!-- Navigateur de semaine -->
@@ -1225,23 +1664,40 @@
 
         <div class="row">
             <!-- Main content -->
-            <div class="col-lg-8">
+            <div class="col-lg-8" id="emploisListAnchor">
                 <div class="et-list-card">
-                    <div class="card-header">
+                    <div class="card-header et-list-card__header">
                         <h5 class="mb-0">
                             <i class="fas fa-calendar-alt me-2"></i>Liste des emplois du temps
                         </h5>
-                        <div class="emploi-view-toggle">
-                            <div class="btn-group btn-group-sm" role="group">
-                                <input type="radio" class="btn-check" name="viewMode" id="cardView" checked>
-                                <label class="btn btn-outline-secondary" for="cardView">
-                                    <i class="fas fa-th-large"></i> Cards
-                                </label>
-                                
-                                <input type="radio" class="btn-check" name="viewMode" id="tableView">
-                                <label class="btn btn-outline-secondary" for="tableView">
-                                    <i class="fas fa-table"></i> Tableau
-                                </label>
+                        <div class="et-list-card__tools">
+                            <div class="et-search-inline">
+                                <i class="fas fa-search"></i>
+                                <input type="search"
+                                       class="et-search-inline__input"
+                                       placeholder="Filtrer par classe ou filière..."
+                                       x-model.debounce.300ms="searchQuery"
+                                       aria-label="Filtrer les emplois du temps">
+                                <button type="button"
+                                        class="et-search-inline__clear"
+                                        x-show="searchQuery.length > 0"
+                                        @click="searchQuery = ''"
+                                        aria-label="Effacer la recherche">
+                                    <i class="fas fa-times-circle"></i>
+                                </button>
+                            </div>
+                            <div class="emploi-view-toggle">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <input type="radio" class="btn-check" name="viewMode" id="cardView" checked>
+                                    <label class="btn btn-outline-secondary" for="cardView">
+                                        <i class="fas fa-th-large"></i> Cards
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="viewMode" id="tableView">
+                                    <label class="btn btn-outline-secondary" for="tableView">
+                                        <i class="fas fa-table"></i> Tableau
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>

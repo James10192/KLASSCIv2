@@ -42,7 +42,12 @@ class ESBTPEmploiTempsController extends Controller
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         // Filtrer les emplois du temps par année courante
-        $emploisTempsQuery = ESBTPEmploiTemps::with(['classe.filiere', 'classe.niveau', 'seances']);
+        $emploisTempsQuery = ESBTPEmploiTemps::with([
+            'classe.filiere',
+            'classe.niveau',
+            'seances:id,emploi_temps_id,heure_debut,heure_fin',
+            'updatedBy:id,name',
+        ])->withCount('seances');
 
         if ($anneeEnCours) {
             $emploisTempsQuery->where('annee_universitaire_id', $anneeEnCours->id);
@@ -128,10 +133,24 @@ class ESBTPEmploiTempsController extends Controller
             return $today->between($startDate, $endDate);
         });
         $emploisTempsActifsCount = $emploisTempsActifs->count();
-        $totalSeances = ESBTPSeanceCours::count();
+
+        // Séances de l'année courante uniquement (bug précédent : count app-wide)
+        $totalSeances = ESBTPSeanceCours::whereHas('emploiTemps', function ($q) use ($anneeEnCours) {
+            if ($anneeEnCours) {
+                $q->where('annee_universitaire_id', $anneeEnCours->id);
+            }
+        })->count();
 
         // Emplois du temps de l'année en cours (déjà filtrés)
         $emploisTempsAnneeEnCours = $emploisTemps->count();
+
+        // Compteurs pour les chips filtrantes (redesign v2)
+        $edtExpiresCount = $emploisTemps->filter(function ($et) use ($today) {
+            return $et->date_fin && Carbon::parse($et->date_fin)->lt($today);
+        })->count();
+        $totalClassesTenant = ESBTPClasse::where('is_active', true)->count();
+        $classesAvecEdtActifIds = $emploisTempsActifs->pluck('classe_id')->unique();
+        $classesSansEdtCount = max(0, $totalClassesTenant - $classesAvecEdtActifIds->count());
 
         // Passer l'année courante avec le bon nom pour la vue
         $anneeUniversitaireCourante = $anneeEnCours;
@@ -148,7 +167,8 @@ class ESBTPEmploiTempsController extends Controller
         return view('esbtp.emploi-temps.index', compact(
             'emploisTemps', 'filieres', 'niveaux', 'classes', 'annees', 'anneeUniversitaireCourante',
             'totalEmploisTemps', 'emploisTempsActifsCount', 'totalSeances', 'emploisTempsAnneeEnCours', 'timetableShortcut',
-            'emploisTempsActifs', 'totalSemaines', 'totalClassesPlanifiees', 'semaines', 'semaineCouranteValue'
+            'emploisTempsActifs', 'totalSemaines', 'totalClassesPlanifiees', 'semaines', 'semaineCouranteValue',
+            'edtExpiresCount', 'totalClassesTenant', 'classesSansEdtCount'
         ));
     }
 
