@@ -200,7 +200,7 @@ class ESBTPEmploiTempsController extends Controller
             ->values();
 
         $semaineCourante = $semaines->firstWhere('status', 'current');
-        $semaineCouranteValue = $semaineCourante['value'] ?? ($semaines->last()['value'] ?? null);
+        $semaineCouranteValue = $semaineCourante['value'] ?? null;
 
         return [
             'totalSemaines' => $semaines->count(),
