@@ -11,43 +11,50 @@
         padding: var(--space-lg);
     }
 
-    /* Hero — same pattern as planning-header (ph-hero) */
+    /* Hero — exact planning-header (ph-hero) pattern */
     .messages-header {
         background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
         border-radius: 18px;
         padding: 2rem 2.5rem 1.5rem;
         margin-bottom: 1.25rem;
         color: #fff;
+        position: relative;
+    }
+
+    .sm-hero-top {
         display: flex;
-        justify-content: space-between;
         align-items: flex-start;
+        justify-content: space-between;
         flex-wrap: wrap;
         gap: 1rem;
-        position: relative;
+    }
+    .sm-hero-left {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .sm-hero-icon {
+        width: 52px; height: 52px;
+        border-radius: 14px;
+        background: rgba(255,255,255,.12);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255,255,255,.15);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.35rem; flex-shrink: 0; color: #fff;
     }
 
     .header-title {
         font-size: 1.45rem;
         font-weight: 700;
         color: #fff;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: .75rem;
-    }
-    .header-title i {
-        width: 48px; height: 48px;
-        border-radius: 14px;
-        background: rgba(255,255,255,.12);
-        border: 1px solid rgba(255,255,255,.15);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.2rem;
+        margin: 0 0 .2rem;
+        letter-spacing: -.02em;
     }
 
     .header-subtitle {
         color: rgba(255,255,255,.7);
         font-size: .88rem;
-        margin: .3rem 0 0 0;
+        margin: 0;
     }
 
     .filters-container {
@@ -399,48 +406,44 @@
 <div class="messages-page">
     <!-- Header avec statistiques -->
     <div class="messages-header">
-        <div class="header-left">
-            <h1 class="header-title">
-                <i class="fas fa-envelope-open-text"></i>
-                Mes Messages
-            </h1>
-            <p class="header-subtitle">Consultez et gérez vos messages importants</p>
+        {{-- Row 1 : titre + filtres --}}
+        <div class="sm-hero-top">
+            <div class="sm-hero-left">
+                <div class="sm-hero-icon"><i class="fas fa-envelope-open-text"></i></div>
+                <div>
+                    <h1 class="header-title">Mes Messages</h1>
+                    <p class="header-subtitle">Consultez et gérez vos messages importants</p>
+                </div>
+            </div>
+            <div class="filters-container">
+                <button class="filter-btn active" id="filterAll" data-filter="all">
+                    <i class="fas fa-inbox"></i> Tous
+                    <span class="filter-badge">{{ $stats['total'] }}</span>
+                </button>
+                <button class="filter-btn" id="filterUnread" data-filter="unread">
+                    <i class="fas fa-envelope"></i> Non lus
+                    <span class="filter-badge">{{ $stats['unread'] }}</span>
+                </button>
+                @if($stats['urgent'] > 0)
+                <button class="filter-btn" id="filterUrgent" data-filter="urgent">
+                    <i class="fas fa-exclamation-triangle"></i> Urgent
+                    <span class="filter-badge">{{ $stats['urgent'] }}</span>
+                </button>
+                @endif
+                @if($stats['unread'] > 0)
+                <button class="filter-btn" id="markAllRead" style="background:#fff;color:#0453cb;border-color:transparent;">
+                    <i class="fas fa-check-double"></i> Tout marquer lu
+                </button>
+                @endif
+            </div>
         </div>
-        
-        <div class="filters-container">
-            <button class="filter-btn active" id="filterAll" data-filter="all">
-                <i class="fas fa-inbox"></i>
-                Tous
-                <span class="filter-badge">{{ $stats['total'] }}</span>
-            </button>
-            
-            <button class="filter-btn" id="filterUnread" data-filter="unread">
-                <i class="fas fa-envelope"></i>
-                Non lus
-                <span class="filter-badge">{{ $stats['unread'] }}</span>
-            </button>
-            
-            @if($stats['urgent'] > 0)
-            <button class="filter-btn" id="filterUrgent" data-filter="urgent">
-                <i class="fas fa-exclamation-triangle"></i>
-                Urgent
-                <span class="filter-badge">{{ $stats['urgent'] }}</span>
-            </button>
-            @endif
 
-            @if($stats['unread'] > 0)
-            <button class="btn-acasi primary" id="markAllRead">
-                <i class="fas fa-check-double"></i>
-                Tout marquer comme lu
-            </button>
-            @endif
-        </div>
-        <!-- KPIs intégrés dans le hero -->
+        {{-- Row 2 : KPIs --}}
         <div class="stats-grid">
             <div class="stat-card total">
                 <div>
                     <div class="stat-number">{{ $stats['total'] }}</div>
-                    <div class="stat-label">Total</div>
+                    <div class="stat-label">Messages</div>
                 </div>
             </div>
             <div class="stat-card unread">
