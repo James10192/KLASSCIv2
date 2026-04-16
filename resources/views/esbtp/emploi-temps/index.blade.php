@@ -2833,6 +2833,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     // Update cards container
                     document.getElementById('cardsContainer').innerHTML = data.html_cards;
 
+                    // Update compact container (3e vue row-dense)
+                    if (data.html_compact !== undefined) {
+                        document.getElementById('compactContainer').innerHTML = data.html_compact;
+                    }
+
                     // Update table body
                     document.getElementById('tableBody').innerHTML = data.html_table;
 

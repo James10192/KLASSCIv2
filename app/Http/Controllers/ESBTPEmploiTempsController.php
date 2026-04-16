@@ -2022,6 +2022,7 @@ class ESBTPEmploiTempsController extends Controller
         return response()->json([
             'success' => true,
             'html_cards' => view('esbtp.emploi-temps.partials.cards', compact('emploisTemps', 'timetableShortcut'))->render(),
+            'html_compact' => view('esbtp.emploi-temps.partials.cards-compact', compact('emploisTemps'))->render(),
             'html_table' => view('esbtp.emploi-temps.partials.table-rows', compact('emploisTemps', 'timetableShortcut'))->render(),
             'count' => $emploisTemps->count(),
         ]);
