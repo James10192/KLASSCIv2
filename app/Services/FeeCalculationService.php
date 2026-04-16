@@ -32,6 +32,22 @@ class FeeCalculationService
         $configurations = null,
         $subscriptions = null
     ): float {
+        // Toujours prioriser la subscription individuelle (montant personnalisé pour cet étudiant)
+        if ($subscriptions) {
+            $inscSubs = $subscriptions->get($inscription->id, collect());
+            $sub = $inscSubs->where('frais_category_id', $category->id)->first();
+        } else {
+            $sub = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
+                ->where('frais_category_id', $category->id)
+                ->where('is_active', true)
+                ->first();
+        }
+
+        if ($sub) {
+            return (float) $sub->amount;
+        }
+
+        // Pas de subscription → fallback selon le type
         if ($category->is_mandatory) {
             if ($configurations) {
                 $configKey = static::buildConfigKey($category->id, $inscription->filiere_id, $inscription->niveau_id);
@@ -50,17 +66,7 @@ class FeeCalculationService
                 : $category->default_amount;
         }
 
-        // Frais optionnel : vérifier la souscription
-        if ($subscriptions) {
-            $inscSubs = $subscriptions->get($inscription->id, collect());
-            $sub = $inscSubs->where('frais_category_id', $category->id)->first();
-        } else {
-            $sub = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
-                ->where('frais_category_id', $category->id)
-                ->where('is_active', true)
-                ->first();
-        }
-
-        return $sub ? (float) $sub->amount : 0;
+        // Frais optionnel sans subscription → pas concerné
+        return 0;
     }
 }
