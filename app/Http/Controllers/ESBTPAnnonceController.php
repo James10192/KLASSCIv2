@@ -377,9 +377,29 @@ class ESBTPAnnonceController extends Controller
      */
     public function studentMessages()
     {
-        // Récupérer l'étudiant connecté
         $user = Auth::user();
-        $etudiant = ESBTPEtudiant::where('user_id', $user->id)->firstOrFail();
+        $etudiant = ESBTPEtudiant::where('user_id', $user->id)->first();
+
+        // Si l'utilisateur n'est pas un étudiant (superAdmin, secrétaire, etc.),
+        // afficher toutes les annonces publiées au lieu de crasher en 404
+        if (!$etudiant) {
+            $messages = ESBTPAnnonce::where('is_published', true)
+                ->where('date_publication', '<=', now())
+                ->where(function($q) {
+                    $q->whereNull('date_expiration')->orWhere('date_expiration', '>=', now());
+                })
+                ->orderBy('priorite', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->paginate(10);
+
+            $stats = [
+                'total' => $messages->total(),
+                'unread' => 0,
+                'urgent' => 0,
+            ];
+
+            return view('esbtp.annonces.student-messages', compact('messages', 'stats', 'etudiant'));
+        }
 
         // Récupérer la classe de l'année universitaire en cours
         $classeId = $etudiant->inscriptions()

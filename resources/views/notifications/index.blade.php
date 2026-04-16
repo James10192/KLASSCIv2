@@ -148,18 +148,10 @@
                 <div>
                     <h1>
                         <i class="fas fa-bell me-3"></i>
-                        @can('can_coordinate_academics')
-                            Notifications — Coordination
-                        @else
-                            Mes Notifications
-                        @endcan
+                        Notifications
                     </h1>
                     <p class="header-subtitle">
-                        @can('can_coordinate_academics')
-                            Suivi des activités d'émargement et d'appel
-                        @else
-                            Restez informé des événements récents
-                        @endcan
+                        Restez informé des événements récents
                     </p>
                 </div>
                 <div class="text-end">
