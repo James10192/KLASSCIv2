@@ -1494,7 +1494,25 @@
 
 @section('content')
 <div class="dashboard-acasi">
-    <div class="main-content" x-data="{ statusFilter: '{{ request('status_chip', 'all') }}', searchQuery: '' }">
+    <div class="main-content" x-data="{
+        statusFilter: '{{ request('status_chip', 'all') }}',
+        searchQuery: '',
+        matchesCard(status, haystack) {
+            if (this.statusFilter !== 'all' && this.statusFilter !== status) return false;
+            const q = this.searchQuery.trim().toLowerCase();
+            return q === '' || (haystack || '').includes(q);
+        },
+        get visibleCardsCount() {
+            let n = 0;
+            document.querySelectorAll('.et-card[data-status]').forEach(el => {
+                if (this.matchesCard(el.dataset.status, el.dataset.search)) n++;
+            });
+            return n;
+        },
+        get hasActiveFilter() {
+            return this.statusFilter !== 'all' || this.searchQuery.trim() !== '';
+        }
+    }">
         <!-- Header premium -->
         <div class="emploi-temps-header">
             <div class="et-header-inner">

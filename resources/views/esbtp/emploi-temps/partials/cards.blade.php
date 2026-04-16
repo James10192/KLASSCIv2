@@ -79,7 +79,7 @@
          data-status="{{ $cardStatus }}"
          data-search="{{ $searchHaystack }}"
          x-show="(statusFilter === 'all' || statusFilter === '{{ $cardStatus }}')
-                 && (searchQuery.trim() === '' || '{{ addslashes($searchHaystack) }}'.includes(searchQuery.toLowerCase()))"
+                 && (searchQuery.trim() === '' || $el.dataset.search.includes(searchQuery.toLowerCase()))"
          x-transition.opacity>
 
         <span class="et-card__stripe" style="background: {{ $stripeColor }};" aria-hidden="true"></span>
@@ -210,4 +210,20 @@
         </div>
     </div>
 @endforelse
+
+{{-- Empty-state client-side : visible quand chip + recherche masquent toutes les cards --}}
+@if($emploisTemps->isNotEmpty())
+    <div class="et-empty-filter"
+         x-show="hasActiveFilter && visibleCardsCount === 0"
+         x-cloak
+         style="display: none;">
+        <i class="fas fa-filter"></i>
+        <div>Aucun emploi du temps ne correspond au filtre actuel.</div>
+        <button type="button"
+                class="et-card-btn et-card-btn--ghost mt-3"
+                @click="statusFilter = 'all'; searchQuery = ''">
+            <i class="fas fa-times"></i>Réinitialiser les filtres
+        </button>
+    </div>
+@endif
 
