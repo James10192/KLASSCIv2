@@ -12,17 +12,25 @@
     }
 
     .annonce-header {
-        background: linear-gradient(135deg, #071631 0%, #0a2d6e 35%, #0453cb 70%, #3674d1 100%);
-        border-radius: 18px;
-        padding: 2rem;
-        margin-bottom: 1.75rem;
-        box-shadow: 0 8px 32px rgba(4,83,203,.18), 0 2px 8px rgba(15,23,42,.1), inset 0 1px 0 rgba(255,255,255,.08);
+        background: var(--surface);
+        border-radius: var(--radius-medium);
+        padding: var(--space-lg);
+        margin-bottom: var(--space-lg);
+        box-shadow: var(--shadow-card);
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 1rem;
+        gap: var(--space-md);
         position: relative;
         overflow: hidden;
+    }
+    .annonce-header::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #0453cb, #5e91de);
+        border-radius: var(--radius-medium) var(--radius-medium) 0 0;
     }
 
     .header-content {
@@ -31,12 +39,11 @@
     }
 
     .annonce-title {
-        font-size: 1.45rem;
+        font-size: var(--title-main);
         font-weight: 700;
-        color: #fff;
-        margin: 0 0 .75rem 0;
+        color: var(--primary);
+        margin: 0 0 var(--space-sm) 0;
         line-height: 1.2;
-        letter-spacing: -.3px;
     }
 
     .annonce-meta {
@@ -49,31 +56,20 @@
     .meta-item {
         display: flex;
         align-items: center;
-        gap: .3rem;
-        font-size: .78rem;
-        color: rgba(255,255,255,.6);
+        gap: var(--space-xs);
+        font-size: var(--text-small);
+        color: var(--text-secondary);
     }
 
     .meta-icon {
-        color: rgba(255,255,255,.45);
+        color: var(--primary);
         width: 16px;
     }
 
     .header-actions {
         display: flex;
-        gap: .6rem;
+        gap: var(--space-sm);
         flex-shrink: 0;
-    }
-    .header-actions .btn-acasi {
-        background: rgba(255,255,255,.07);
-        color: rgba(255,255,255,.85);
-        border: 1px solid rgba(255,255,255,.15);
-        border-radius: 9px;
-        font-size: .8rem;
-    }
-    .header-actions .btn-acasi:hover {
-        background: rgba(255,255,255,.14);
-        color: #fff;
     }
 
     .priority-badge {
@@ -89,18 +85,18 @@
     }
 
     .priority-badge.normal {
-        background: rgba(255,255,255,.1);
-        color: rgba(255,255,255,.7);
+        background: rgba(107, 114, 128, 0.1);
+        color: var(--neutral);
     }
 
     .priority-badge.important {
-        background: rgba(94,145,222,.2);
-        color: #93b8e8;
+        background: rgba(4, 83, 203, 0.1);
+        color: #0453cb;
     }
 
     .priority-badge.urgent {
-        background: rgba(255,255,255,.15);
-        color: #fff;
+        background: rgba(15, 23, 42, 0.08);
+        color: #0f172a;
         font-weight: 700;
     }
 
@@ -114,18 +110,18 @@
     }
 
     .status-badge.published {
-        background: rgba(16, 185, 129, 0.15);
-        color: #34d399;
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--success);
     }
 
     .status-badge.draft {
-        background: rgba(255,255,255,.1);
-        color: rgba(255,255,255,.6);
+        background: rgba(107, 114, 128, 0.1);
+        color: var(--neutral);
     }
 
     .status-badge.expired {
-        background: rgba(255,255,255,.12);
-        color: rgba(255,255,255,.8);
+        background: rgba(15, 23, 42, 0.06);
+        color: #0f172a;
         font-weight: 700;
     }
 
@@ -144,18 +140,18 @@
     }
 
     .type-badge.global {
-        background: rgba(255,255,255,.1);
-        color: rgba(255,255,255,.75);
+        background: rgba(4, 83, 203, 0.08);
+        color: var(--primary);
     }
 
     .type-badge.class {
-        background: rgba(94,145,222,.15);
-        color: #93b8e8;
+        background: rgba(94, 145, 222, 0.1);
+        color: #2563eb;
     }
 
     .type-badge.student {
-        background: rgba(94,145,222,.15);
-        color: #93b8e8;
+        background: rgba(94, 145, 222, 0.1);
+        color: #2563eb;
     }
 
     .content-grid {
