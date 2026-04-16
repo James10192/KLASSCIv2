@@ -19,7 +19,119 @@ Cette rule s'active quand on redesign une page Blade (vue) avec du CSS premium.
 --surface:    #f8fafc     /* Fond léger */
 ```
 
-**INTERDIT** : purple `#7c3aed`, amber `#f59e0b` (sauf warnings fonctionnels), rouge `#ef4444`, multicolore, AI slop (dark mode, gradient orbs, bento grids, glassmorphism, animated counters).
+**INTERDIT** : purple `#7c3aed`, amber `#f59e0b` (sauf warnings fonctionnels), rouge `#ef4444`, multicolore, AI slop (dark mode, gradient orbs, bento grids, glassmorphism, animated counters), `--esbtp-green` (variable morte).
+
+## Modèle de référence : Planning Général (`planning-header`)
+
+**TOUJOURS copier le pattern du composant `planning-header.blade.php` (`ph-*`) pour les headers de page.** Ne pas inventer un nouveau design de header à chaque page.
+
+### Structure du hero (2 rangées)
+```
+Rangée 1 (sm-hero-top / ph-hero-top) :
+  GAUCHE : icône carré 52px + titre h1 + sous-titre
+  DROITE : boutons d'action / filtres
+
+Rangée 2 (stats-grid / ph-kpis) :
+  KPIs en cards semi-transparentes, pleine largeur
+```
+
+### CSS du hero (copier tel quel, adapter le préfixe)
+```css
+.XX-hero {
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+    border-radius: 18px;
+    padding: 2rem 2.5rem 1.5rem;
+    color: #fff;
+    margin-bottom: 1.25rem;
+}
+
+.XX-hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.XX-hero-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.XX-hero-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.35rem; flex-shrink: 0; color: #fff;
+}
+
+/* Titre : BLANC sur fond bleu, jamais bleu sur bleu */
+.XX-hero h1 { font-size: 1.45rem; font-weight: 700; color: #fff; margin: 0; }
+.XX-hero p { color: rgba(255,255,255,.7); font-size: .88rem; margin: 0; }
+```
+
+### KPIs dans le hero (rangée 2)
+```css
+.XX-kpis {
+    display: flex;
+    gap: .75rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.XX-kpi {
+    flex: 1; min-width: 140px;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 12px;
+    padding: .9rem 1rem;
+    display: flex; align-items: center; gap: .75rem;
+}
+
+.XX-kpi-value { font-size: 1.35rem; font-weight: 700; color: #fff; }
+.XX-kpi-label { font-size: .72rem; color: rgba(255,255,255,.65); margin-top: .15rem; }
+```
+
+### Boutons dans le hero
+```css
+/* Glass (fond bleu) */
+.XX-btn--glass {
+    background: rgba(255,255,255,.15);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 10px;
+    padding: .5rem 1rem;
+    font-size: .82rem;
+    font-weight: 600;
+}
+
+/* Action principale (blanc) */
+.XX-btn--white {
+    background: #fff;
+    color: #0453cb;
+    border-color: transparent;
+}
+```
+
+## Pages SANS hero (formulaires)
+
+Les pages de formulaire (create, edit) utilisent le **`dashboard-header` standard** de `dashboard-moderne.css` — pas de hero gradient. Le hero est réservé aux pages de listing/dashboard.
+
+```blade
+<div class="dashboard-header">
+    <div class="header-left">
+        <h1><i class="fas fa-plus-circle me-2"></i>Titre</h1>
+        <p class="header-subtitle">Sous-titre</p>
+    </div>
+    <div class="header-actions">
+        <a href="..." class="btn-acasi secondary"><i class="fas fa-arrow-left"></i>Retour</a>
+    </div>
+</div>
+```
 
 ## Namespace CSS (OBLIGATOIRE)
 
@@ -31,55 +143,42 @@ Chaque page a son propre namespace pour éviter les conflits avec les classes gl
 | inscriptions.edit | `ie-*` | `ie-hero`, `ie-card` |
 | matieres.create | `mc-*` | `mc-hero`, `mc-card` |
 | relances.index | `rl-*` | `rl-hero`, `rl-kpi`, `rl-filters` |
+| frais.configure | `fc-*` | `fc-hero`, `fc-card`, `fc-grid` |
 | notes.index | `nm-*` | `nm-hero`, `nm-card` |
 | situation financière | `sf-*` | `sf-hero` |
+| student-messages | `sm-*` | `sm-hero-top`, `sm-hero-icon` |
+| planning-header | `ph-*` | `ph-hero`, `ph-kpi`, `ph-tab` (composant réutilisable) |
 
 Pour une nouvelle page : choisir un préfixe 2-3 lettres unique, documenter ici.
 
-## Composants premium récurrents
-
-### Hero
-```css
-.XX-hero {
-    background: linear-gradient(135deg, #071631 0%, #0a2d6e 35%, #0453cb 70%, #3674d1 100%);
-    border-radius: 18px;
-    padding: 2.25rem;
-    box-shadow: 0 8px 32px rgba(4,83,203,.18), 0 2px 8px rgba(15,23,42,.1),
-                inset 0 1px 0 rgba(255,255,255,.08);
-}
-/* ::before = radial highlights, ::after = decorative circle */
-```
-
-### Card premium
+## Card premium (sous le hero)
 ```css
 .XX-card {
     background: #fff;
     border: 1px solid #e2e8f0;
     border-radius: 14px;
-    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06); /* sm */
-    /* hover → 0 8px 30px rgba(4,83,203,.08), 0 2px 8px rgba(15,23,42,.04) */ /* lg */
+    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+}
+.XX-card:hover {
+    box-shadow: 0 8px 30px rgba(4,83,203,.08), 0 2px 8px rgba(15,23,42,.04);
+    transform: translateY(-2px);
 }
 ```
 
-### Icônes dans carrés teintés
-```css
-.XX-icon {
-    width: 36px; height: 36px;
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(4,83,203,.08);
-    color: var(--XX-primary);
-}
-```
-
-### Section header
+## Section header (icône + titre)
 ```css
 .XX-section-header {
-    /* Icône dans cercle gradient + titre + sous-titre */
+    display: flex; align-items: center; gap: .75rem;
+}
+.XX-section-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: .95rem;
 }
 ```
 
-### Ombres multicouches (3 niveaux)
+## Ombres multicouches (3 niveaux)
 ```css
 --shadow-sm: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
 --shadow-md: 0 4px 16px rgba(4,83,203,.06), 0 1px 3px rgba(15,23,42,.04);
@@ -88,11 +187,13 @@ Pour une nouvelle page : choisir un préfixe 2-3 lettres unique, documenter ici.
 
 ## Règles absolues
 
-1. **Garder TOUS les éléments fonctionnels** — ne jamais supprimer un élément HTML qui a du JS attaché
-2. **Ne jamais casser le JS** — conserver les IDs, data-attributes, class names référencés par JS
-3. **CSS inline dans `<style>` block** avec `@push('styles')` — pas de fichier CSS séparé
-4. **Mobile-first** — `@media` breakpoints pour 992px, 768px, 576px
-5. **Spacing 8px grid** — `0.5rem`, `1rem`, `1.5rem`, `2rem`
-6. **Font weights** : 400 (body), 500 (medium), 600 (semi), 700 (bold), 800 (extra)
-7. **Transitions** : `all .2s ease` ou `all .15s ease` — jamais > .3s
-8. **Border-radius** : 8-10px (petits), 12-14px (cards), 16-18px (hero)
+1. **Copier le pattern planning-header** pour les headers de page — ne pas inventer
+2. **Hero = pages listing/dashboard SEULEMENT** — pas sur les formulaires (create/edit)
+3. **Titre BLANC sur hero bleu** — jamais bleu sur bleu
+4. **Garder TOUS les éléments fonctionnels** — ne jamais supprimer un élément HTML qui a du JS attaché
+5. **Ne jamais casser le JS** — conserver les IDs, data-attributes, class names référencés par JS
+6. **CSS inline dans `<style>` block** avec `@push('styles')` — pas de fichier CSS séparé
+7. **Mobile-first** — `@media` breakpoints pour 992px, 768px, 576px
+8. **Spacing 8px grid** — `0.5rem`, `1rem`, `1.5rem`, `2rem`
+9. **Transitions** : `all .2s ease` — jamais > .3s
+10. **Border-radius** : 8-10px (petits), 12-14px (cards), 18px (hero)
