@@ -298,11 +298,9 @@
             .timeline-grid {
                 border: 1px solid #dbeafe;
                 border-radius: 18px;
-                overflow: hidden;
                 box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
                 background: #ffffff;
-                max-height: 100vh;
-                overflow-y: auto;
+                /* overflow visible assure par .egh-body parent pour laisser respirer les dropdowns */
             }
             .timeline-grid .timeline-header {
                 display: contents;
@@ -402,31 +400,101 @@
                 margin-left: 8px;
                 opacity: 0.6;
             }
-            .timeline-grid .timeline-session-actions {
-                opacity: 0;
-                transition: opacity 0.2s ease;
+            /* Kebab menu sur seance card — persistent desktop / tap-to-reveal touch */
+            .timeline-grid .timeline-session-kebab {
+                position: absolute;
+                top: 6px;
+                right: 6px;
+                width: 26px;
+                height: 26px;
+                border-radius: 7px;
+                background: rgba(255,255,255,0.18);
+                color: #fff;
+                border: 1px solid rgba(255,255,255,0.22);
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                font-size: 0.72rem;
+                opacity: 0.6;
+                transition: opacity 0.15s ease, background 0.15s ease;
+                padding: 0;
+                backdrop-filter: blur(6px);
             }
-            .timeline-grid .timeline-session:hover .timeline-session-actions {
+            .timeline-grid .timeline-session:hover .timeline-session-kebab {
                 opacity: 1;
             }
+            .timeline-grid .timeline-session-kebab:hover,
+            .timeline-grid .timeline-session-kebab:focus {
+                background: rgba(255,255,255,0.3);
+                opacity: 1;
+                outline: none;
+            }
+            /* Touch devices : kebab toujours visible (pas de hover possible) */
+            @media (hover: none) {
+                .timeline-grid .timeline-session-kebab { opacity: 1; }
+            }
+
+            .timeline-grid .timeline-session-dropdown {
+                background: #fff;
+                border: 1px solid #e2e8f0;
+                border-radius: 10px;
+                box-shadow: 0 12px 28px rgba(15,23,42,0.18);
+                padding: .3rem;
+                min-width: 180px;
+                z-index: 20;
+            }
+            .timeline-grid .timeline-session-dropdown .dropdown-item {
+                color: #1e293b;
+                padding: .45rem .7rem;
+                border-radius: 7px;
+                font-size: .82rem;
+                display: flex;
+                align-items: center;
+                gap: .5rem;
+            }
+            .timeline-grid .timeline-session-dropdown .dropdown-item:hover {
+                background: #f1f5f9;
+                color: #0453cb;
+            }
+            .timeline-grid .timeline-session-dropdown .dropdown-item i {
+                width: 16px;
+                text-align: center;
+                color: #0453cb;
+            }
+            .timeline-grid .timeline-session-dropdown .dropdown-item.text-danger i { color: #dc2626; }
+            .timeline-grid .timeline-session-dropdown .dropdown-item.text-danger:hover { background: rgba(220,38,38,.06); color: #b91c1c; }
+
+            /* Empty cell "+" : discret par defaut, emphase au hover */
             .timeline-grid .timeline-slot-add {
                 width: 26px;
                 height: 26px;
                 border-radius: 50%;
-                border: 2px dashed #3b82f6;
-                color: #1d4ed8;
-                background: #ffffff;
+                border: 1.5px dashed #cbd5e1;
+                color: #94a3b8;
+                background: rgba(255,255,255,0.4);
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 0.75rem;
-                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
-                transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+                font-size: 0.7rem;
+                opacity: 0.45;
+                transition: all 0.2s ease;
+                text-decoration: none;
+            }
+            .timeline-grid .timeline-day-background:hover ~ .timeline-slot-add,
+            .timeline-grid .timeline-slot-add:hover {
+                opacity: 1;
+                border-color: #0453cb;
+                background: #fff;
+                color: #0453cb;
+                box-shadow: 0 4px 12px rgba(4, 83, 203, 0.2);
             }
             .timeline-grid .timeline-slot-add:hover {
-                background: #1d4ed8;
-                color: #ffffff;
-                transform: translate(-50%, -50%) scale(1.05);
+                transform: translate(-50%, -50%) scale(1.1);
+            }
+            /* Touch : toujours visible */
+            @media (hover: none) {
+                .timeline-grid .timeline-slot-add { opacity: 0.7; }
             }
         </style>
     @endonce
@@ -482,7 +550,9 @@
 
             @foreach($timelineSessions[$daySlug] ?? [] as $session)
                 <div class="timeline-session type-{{ $session['type'] }}"
-                     style="grid-column: {{ $columnIndex }}; grid-row: {{ $session['gridRowStart'] }} / {{ $session['gridRowEnd'] }}; background: {{ $session['background'] }}; color: {{ $session['textColor'] }}; justify-self: center; width: 95%; transform: translateY(12px);">
+                     data-seance-id="{{ $session['id'] }}"
+                     data-seance-matiere="{{ $session['matiere'] }}"
+                     style="position: relative; grid-column: {{ $columnIndex }}; grid-row: {{ $session['gridRowStart'] }} / {{ $session['gridRowEnd'] }}; background: {{ $session['background'] }}; color: {{ $session['textColor'] }}; justify-self: center; width: 95%; transform: translateY(12px);">
                     <div class="timeline-session-type">{{ $session['typeLabel'] }}</div>
                     <div class="timeline-session-subject">{{ $session['matiere'] }}</div>
                     <div class="timeline-session-bottom">
@@ -501,19 +571,32 @@
                     @endif
 
                     @if($interactive)
-                        <div class="timeline-session-actions">
-                            <div class="btn-group btn-group-sm">
-                                <a href="{{ route('esbtp.seances-cours.edit', $session['id']) }}" class="btn btn-light btn-sm">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <form action="{{ route('esbtp.seances-cours.destroy', $session['id']) }}" method="POST" class="d-inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-light btn-sm" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette séance ?');">
-                                        <i class="fas fa-trash"></i>
+                        <div class="dropdown" style="position: absolute; top: 4px; right: 4px;">
+                            <button type="button"
+                                    class="timeline-session-kebab"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false"
+                                    aria-label="Actions séance {{ $session['matiere'] }}">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end timeline-session-dropdown">
+                                @can('edit_timetables')
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('esbtp.seances-cours.edit', $session['id']) }}">
+                                        <i class="fas fa-edit"></i> Modifier
+                                    </a>
+                                </li>
+                                @endcan
+                                @can('delete_timetables')
+                                <li>
+                                    <button type="button"
+                                            class="dropdown-item text-danger"
+                                            onclick="window.etsDeleteSeance({{ $session['id'] }}, @js($session['matiere']))">
+                                        <i class="fas fa-trash"></i> Supprimer
                                     </button>
-                                </form>
-                            </div>
+                                </li>
+                                @endcan
+                            </ul>
                         </div>
                     @endif
                 </div>
