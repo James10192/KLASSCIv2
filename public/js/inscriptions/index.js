@@ -31,8 +31,57 @@
             window.toastr[type](message);
             return;
         }
-        // Fallback : alert classique
-        alert(message);
+
+        // Toast inline premium monochrome KLASSCI (fallback si toastr absent)
+        const iconMap = {
+            success: 'fa-check-circle',
+            info: 'fa-info-circle',
+            warning: 'fa-exclamation-triangle',
+            error: 'fa-exclamation-circle',
+        };
+        const colorMap = {
+            success: { bg: '#ecfdf5', border: '#a7f3d0', color: '#065f46' },
+            info: { bg: '#eff6ff', border: '#bfdbfe', color: '#0453cb' },
+            warning: { bg: '#fffbeb', border: '#fde68a', color: '#92400e' },
+            error: { bg: '#fef2f2', border: '#fecaca', color: '#991b1b' },
+        };
+        const c = colorMap[type] || colorMap.info;
+        const icon = iconMap[type] || iconMap.info;
+
+        const toast = document.createElement('div');
+        toast.setAttribute('role', 'alert');
+        toast.style.cssText = `
+            position: fixed; top: 24px; right: 24px; z-index: 10000;
+            min-width: 280px; max-width: 440px;
+            padding: .85rem 1.1rem; padding-right: 2.5rem;
+            background: ${c.bg}; border: 1px solid ${c.border};
+            border-left: 4px solid ${c.color};
+            color: ${c.color}; border-radius: 12px;
+            font-size: .88rem; font-weight: 500; line-height: 1.45;
+            box-shadow: 0 10px 30px rgba(15,23,42,.15);
+            display: flex; align-items: center; gap: .6rem;
+            opacity: 0; transform: translateX(20px);
+            transition: opacity .25s ease, transform .25s ease;
+            cursor: pointer;
+        `;
+        toast.innerHTML = `
+            <i class="fas ${icon}" style="font-size:1rem;flex-shrink:0;"></i>
+            <span style="flex:1;">${String(message).replace(/[<>]/g, '')}</span>
+            <button type="button" aria-label="Fermer" style="position:absolute;top:.4rem;right:.5rem;background:transparent;border:none;color:inherit;opacity:.6;cursor:pointer;font-size:.8rem;"><i class="fas fa-times"></i></button>
+        `;
+        document.body.appendChild(toast);
+        requestAnimationFrame(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(0)';
+        });
+
+        const dismiss = () => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(20px)';
+            setTimeout(() => toast.remove(), 250);
+        };
+        toast.addEventListener('click', dismiss);
+        setTimeout(dismiss, 5000);
     }
 
     function setRowLoading(inscriptionId, isLoading) {
