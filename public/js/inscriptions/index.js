@@ -531,16 +531,96 @@
 
     window.iiBulkAnnuler = function () {
         const ids = Array.from(document.querySelectorAll('.inscription-checkbox:checked')).map((cb) => cb.value);
-        if (!ids.length) return;
-        showToast(`Action bulk Annuler en cours de développement (${ids.length} sélection(s))`, 'info');
-        // TODO PR2 : endpoint bulk-annuler + modal motif
+        if (!ids.length) {
+            showToast('Veuillez sélectionner au moins une inscription.', 'warning');
+            return;
+        }
+        // Préparer le modal bulk-annuler avec le count
+        const countEl = document.getElementById('ii-bulk-annuler-count');
+        if (countEl) countEl.textContent = ids.length;
+        const motifEl = document.getElementById('ii-bulk-annuler-motif');
+        if (motifEl) motifEl.value = '';
+        const modalEl = document.getElementById('ii-modal-bulk-annuler');
+        if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
     };
+
+    // Submit du bulk-annuler modal
+    const bulkAnnulerForm = document.getElementById('ii-form-bulk-annuler');
+    if (bulkAnnulerForm) {
+        bulkAnnulerForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const motif = document.getElementById('ii-bulk-annuler-motif').value.trim();
+            if (!motif) return;
+            const ids = Array.from(document.querySelectorAll('.inscription-checkbox:checked')).map((cb) => cb.value);
+            if (!ids.length) return;
+
+            const formData = new FormData();
+            formData.append('_token', CSRF_TOKEN);
+            formData.append('motif', motif);
+            ids.forEach((id) => formData.append('inscription_ids[]', id));
+
+            ids.forEach((id) => setRowLoading(id, true));
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            const origHTML = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Traitement...';
+
+            fetch(ROUTES.bulkAnnuler, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            })
+                .then((r) => r.json())
+                .then((data) => {
+                    bootstrap.Modal.getInstance(document.getElementById('ii-modal-bulk-annuler')).hide();
+                    if (data.success) {
+                        showToast(data.message, data.error_count > 0 ? 'warning' : 'success');
+                        (data.processed_ids || ids).forEach((id) => {
+                            const hasErr = data.errors && data.errors[id];
+                            refreshLigne(id, hasErr ? 'reject' : 'cancel');
+                        });
+                    } else {
+                        showToast(data.message || 'Erreur annulation.', 'error');
+                    }
+                    clearSelection();
+                })
+                .catch((err) => {
+                    debugError('[inscriptions] bulk-annuler:', err);
+                    showToast('Erreur lors de l\'annulation.', 'error');
+                    ids.forEach((id) => setRowLoading(id, false));
+                })
+                .finally(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = origHTML;
+                });
+        });
+    }
 
     window.iiBulkExporter = function () {
         const ids = Array.from(document.querySelectorAll('.inscription-checkbox:checked')).map((cb) => cb.value);
-        if (!ids.length) return;
-        showToast(`Export de la sélection en cours de développement (${ids.length} sélection(s))`, 'info');
-        // TODO PR2 : endpoint export sélection
+        if (!ids.length) {
+            showToast('Veuillez sélectionner au moins une inscription.', 'warning');
+            return;
+        }
+        // Soumettre un form POST invisible pour déclencher le téléchargement CSV
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = ROUTES.bulkExport;
+        form.style.display = 'none';
+        const csrf = document.createElement('input');
+        csrf.name = '_token';
+        csrf.value = CSRF_TOKEN;
+        form.appendChild(csrf);
+        ids.forEach((id) => {
+            const input = document.createElement('input');
+            input.name = 'inscription_ids[]';
+            input.value = id;
+            form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        form.submit();
+        setTimeout(() => form.remove(), 1000);
+        showToast(`Export CSV de ${ids.length} inscription(s)...`, 'info');
     };
 
     // ====================================================================

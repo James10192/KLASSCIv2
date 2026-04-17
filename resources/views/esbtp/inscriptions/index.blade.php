@@ -767,6 +767,39 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
     </div>
 </div>
 
+{{-- Modal Bulk Annuler (selection) --}}
+<div class="modal fade" id="ii-modal-bulk-annuler" tabindex="-1" aria-labelledby="iiBulkAnnulerLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header ii-modal-header">
+                <h5 class="modal-title" id="iiBulkAnnulerLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Annuler la sélection
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <form id="ii-form-bulk-annuler">
+                <div class="modal-body">
+                    <p>Annuler <strong id="ii-bulk-annuler-count">0</strong> inscription(s) sélectionnée(s) ?</p>
+                    <div class="mb-3">
+                        <label for="ii-bulk-annuler-motif" class="form-label fw-bold">Motif d'annulation <span class="text-danger">*</span></label>
+                        <textarea id="ii-bulk-annuler-motif" class="form-control" rows="3" required placeholder="Ce motif s'appliquera à toutes les inscriptions sélectionnées..."></textarea>
+                    </div>
+                    <div class="ii-info-box" style="margin-top:0;">
+                        <i class="fas fa-info-circle"></i>
+                        <div>Les inscriptions sélectionnées seront toutes marquées comme annulées avec ce motif. Elles pourront être réactivées ultérieurement.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-outline-danger">
+                        <i class="fas fa-times-circle me-1"></i>Confirmer l'annulation
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {{-- Modal Annuler une inscription --}}
 <div class="modal fade" id="ii-modal-annuler" tabindex="-1" aria-labelledby="iiModalAnnulerLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -1010,6 +1043,8 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
     window.KLASSCI_INSCRIPTIONS_ROUTES = {
         index: "{{ route('esbtp.inscriptions.index') }}",
         bulkValider: "{{ route('esbtp.inscriptions.bulk-valider') }}",
+        bulkAnnuler: "{{ route('esbtp.inscriptions.bulk-annuler') }}",
+        bulkExport: "{{ route('esbtp.inscriptions.bulk-export') }}",
         refreshLigne: "/esbtp/inscriptions/:id/refresh-ligne",
         valider: "/esbtp/inscriptions/:id/valider",
         annuler: "/esbtp/inscriptions/:id/annuler",

@@ -1586,6 +1586,100 @@ class ESBTPInscriptionController extends Controller
     }
 
     /**
+     * Annulation groupee (bulk) d'inscriptions selectionnees.
+     */
+    public function bulkAnnuler(Request $request)
+    {
+        $request->validate([
+            "inscription_ids" => "required|array|min:1",
+            "inscription_ids.*" => "integer|exists:esbtp_inscriptions,id",
+            "motif" => "required|string|min:3|max:500",
+        ]);
+
+        $ids = $request->input("inscription_ids");
+        $motif = $request->input("motif");
+        $userId = Auth::id();
+        $successCount = 0;
+        $errors = [];
+
+        foreach ($ids as $id) {
+            try {
+                $result = $this->inscriptionService->annulerInscription($id, $motif, $userId);
+                if ($result["success"] ?? false) {
+                    $successCount++;
+                } else {
+                    $errors[$id] = $result["message"] ?? "Erreur inconnue";
+                }
+            } catch (\Exception $e) {
+                $errors[$id] = $e->getMessage();
+            }
+        }
+
+        return response()->json([
+            "success" => $successCount > 0,
+            "message" => $successCount . " inscription(s) annulee(s)." . (count($errors) > 0 ? " " . count($errors) . " echec(s)." : ""),
+            "success_count" => $successCount,
+            "error_count" => count($errors),
+            "errors" => $errors,
+            "processed_ids" => $ids,
+        ]);
+    }
+
+    /**
+     * Export CSV des inscriptions selectionnees.
+     */
+    public function bulkExport(Request $request)
+    {
+        $request->validate([
+            "inscription_ids" => "required|array|min:1",
+            "inscription_ids.*" => "integer|exists:esbtp_inscriptions,id",
+        ]);
+
+        $inscriptions = ESBTPInscription::whereIn("id", $request->input("inscription_ids"))
+            ->with(["etudiant", "filiere", "niveau", "classe", "anneeUniversitaire"])
+            ->get();
+
+        $filename = "inscriptions-export-" . now()->format("Y-m-d-His") . ".csv";
+
+        return response()->streamDownload(function () use ($inscriptions) {
+            $out = fopen("php://output", "w");
+            // BOM UTF-8 pour Excel
+            fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($out, [
+                "N° Inscription",
+                "Matricule",
+                "Nom",
+                "Prenoms",
+                "Filiere",
+                "Niveau",
+                "Classe",
+                "Annee",
+                "Statut",
+                "Workflow",
+                "Date inscription",
+            ], ";");
+            foreach ($inscriptions as $ins) {
+                fputcsv($out, [
+                    $ins->numero_inscription ?? "",
+                    $ins->etudiant->matricule ?? "",
+                    $ins->etudiant->nom ?? "",
+                    $ins->etudiant->prenoms ?? "",
+                    $ins->filiere->name ?? "",
+                    $ins->niveau->name ?? "",
+                    $ins->classe->name ?? "",
+                    $ins->anneeUniversitaire->name ?? "",
+                    $ins->status ?? "",
+                    $ins->workflow_step ?? "",
+                    optional($ins->created_at)->format("d/m/Y") ?? "",
+                ], ";");
+            }
+            fclose($out);
+        }, $filename, [
+            "Content-Type" => "text/csv; charset=UTF-8",
+        ]);
+    }
+
+    /**
      * Rafraîchir une ligne d'inscription spécifique (AJAX pour mise à jour partielle)
      */
     public function refreshLigne(ESBTPInscription $inscription)
