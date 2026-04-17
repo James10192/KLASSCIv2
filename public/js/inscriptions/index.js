@@ -848,18 +848,15 @@
                     refreshLigne(id, 'validate');
                     if (data.message) showToast(data.message, 'success');
                 } else {
-                    setRowLoading(id, false);
                     showToast(data.message || 'Erreur validation.', 'error');
-                    // Red highlight sur erreur pour feedback visuel
-                    const row = document.querySelector(`tr[data-inscription-id="${id}"]`);
-                    if (row) triggerRowHighlight(row, 'reject');
+                    // Refresh la ligne pour afficher le chip probleme + bouton d'action rapide
+                    // (Creer paiement / Valider paiement / Changer classe) + flash rouge
+                    refreshLigne(id, 'reject');
                 }
             })
             .catch(() => {
-                setRowLoading(id, false);
                 showToast('Erreur validation.', 'error');
-                const row = document.querySelector(`tr[data-inscription-id="${id}"]`);
-                if (row) triggerRowHighlight(row, 'reject');
+                refreshLigne(id, 'reject');
             });
     });
 
