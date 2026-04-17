@@ -1,5 +1,119 @@
 @props(['seances' => collect(), 'emploiTemps'])
 
+@once
+<style>
+    .els-table thead th {
+        background: #f8fafc;
+        color: #64748b;
+        font-size: .72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        padding: .7rem .9rem;
+        border-bottom: 1px solid #e2e8f0;
+        white-space: nowrap;
+    }
+    .els-table tbody td {
+        padding: .8rem .9rem;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: .86rem;
+        color: #1e293b;
+        vertical-align: middle;
+    }
+    .els-table tbody tr:hover { background: rgba(4,83,203,.025); }
+    .els-type-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .28rem .6rem;
+        border-radius: 8px;
+        font-size: .7rem;
+        font-weight: 600;
+        letter-spacing: .3px;
+    }
+    .els-type-badge--course {
+        background: rgba(4,83,203,.1);
+        color: #033a8e;
+    }
+    .els-type-badge--homework {
+        background: rgba(59,125,219,.12);
+        color: #0453cb;
+        border: 1px dashed rgba(4,83,203,.35);
+    }
+    .els-type-badge--break {
+        background: rgba(94,145,222,.15);
+        color: #0453cb;
+        opacity: .75;
+    }
+    .els-type-badge--lunch {
+        background: rgba(148,163,184,.18);
+        color: #475569;
+    }
+    .els-matiere-icon {
+        width: 30px; height: 30px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #0453cb, #3b7ddb);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: .75rem;
+        flex-shrink: 0;
+    }
+    .els-status-active {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .25rem .55rem;
+        border-radius: 7px;
+        font-size: .7rem;
+        font-weight: 600;
+        background: rgba(16,185,129,.1);
+        color: #065f46;
+    }
+    .els-status-inactive {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .25rem .55rem;
+        border-radius: 7px;
+        font-size: .7rem;
+        font-weight: 600;
+        background: rgba(148,163,184,.15);
+        color: #475569;
+    }
+    .els-repartition {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-top: 1rem;
+    }
+    .els-repartition-item {
+        text-align: center;
+        padding: .5rem;
+    }
+    .els-repartition-value {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #0453cb;
+        line-height: 1;
+    }
+    .els-repartition-label {
+        font-size: .72rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        margin-top: .35rem;
+    }
+    .els-repartition-pct {
+        font-size: .7rem;
+        color: #94a3b8;
+        margin-top: .15rem;
+    }
+</style>
+@endonce
+
 <div class="main-card mb-4">
     <div class="main-card-header">
         <div class="main-card-title">
@@ -11,28 +125,28 @@
     <div class="main-card-body">
         @if($seances && $seances->count() > 0)
             <div class="table-responsive">
-                <table class="table table-striped table-hover mb-0">
-                    <thead class="table-dark">
+                <table class="table els-table mb-0">
+                    <thead>
                         <tr>
-                            <th width="8%">#</th>
-                            <th width="20%">Matière</th>
+                            <th width="6%">#</th>
+                            <th width="22%">Matière</th>
                             <th width="18%">Enseignant</th>
                             <th width="10%">Type</th>
-                            <th width="12%">Jour</th>
+                            <th width="10%">Jour</th>
                             <th width="12%">Heure</th>
-                            <th width="8%">Durée</th>
-                            <th width="7%">Statut</th>
-                            <th width="5%">Actions</th>
+                            <th width="7%">Durée</th>
+                            <th width="8%">Statut</th>
+                            <th width="7%" class="text-end">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($seances->sortBy([['jour', 'asc'], ['heure_debut', 'asc']]) as $index => $seance)
                         <tr>
-                            <td class="text-center fw-bold">{{ $index + 1 }}</td>
+                            <td class="text-center fw-bold text-muted">{{ $index + 1 }}</td>
                             <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 25px; height: 25px; flex-shrink: 0;">
-                                        <i class="fas fa-book" style="font-size: 10px;"></i>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="els-matiere-icon">
+                                        <i class="fas fa-book"></i>
                                     </div>
                                     <strong>{{ $seance->matiere->name ?? 'Non définie' }}</strong>
                                 </div>
@@ -51,22 +165,16 @@
                             </td>
                             <td>
                                 @php
-                                    $typeColors = [
-                                        'course' => 'primary',
-                                        'homework' => 'success', 
-                                        'break' => 'warning',
-                                        'lunch' => 'info'
-                                    ];
                                     $typeLabels = [
                                         'course' => 'COURS',
-                                        'homework' => 'DEVOIR', 
+                                        'homework' => 'DEVOIR',
                                         'break' => 'RÉCRÉATION',
                                         'lunch' => 'PAUSE'
                                     ];
-                                    $typeColor = $typeColors[$seance->type] ?? 'primary';
-                                    $typeLabel = $typeLabels[$seance->type] ?? 'COURS';
+                                    $typeKey = $seance->type ?? 'course';
+                                    $typeLabel = $typeLabels[$typeKey] ?? 'COURS';
                                 @endphp
-                                <span class="badge bg-{{ $typeColor }}">
+                                <span class="els-type-badge els-type-badge--{{ $typeKey }}">
                                     {{ $typeLabel }}
                                 </span>
                             </td>
@@ -99,30 +207,35 @@
                                     $fin = \Carbon\Carbon::parse($seance->heure_fin);
                                     $duree = $debut->diffInHours($fin);
                                 @endphp
-                                <span class="badge bg-secondary">{{ $duree }}h</span>
+                                <small class="text-muted">{{ $duree }}h</small>
                             </td>
                             <td class="text-center">
                                 @if($seance->is_active ?? true)
-                                    <span class="badge bg-success">
+                                    <span class="els-status-active">
                                         <i class="fas fa-check"></i> Actif
                                     </span>
                                 @else
-                                    <span class="badge bg-warning">
+                                    <span class="els-status-inactive">
                                         <i class="fas fa-pause"></i> Inactif
                                     </span>
                                 @endif
                             </td>
                             <td class="text-center">
-                                <div class="btn-group btn-group-sm">
-                                    <button type="button" class="btn btn-sm btn-outline-primary" 
-                                            data-bs-toggle="tooltip" title="Modifier">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Actions séance">
+                                    @can('edit_timetables')
+                                    <a href="{{ route('esbtp.seances-cours.edit', $seance->id) }}"
+                                       class="btn btn-sm btn-outline-primary"
+                                       data-bs-toggle="tooltip" title="Modifier">
                                         <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                    </a>
+                                    @endcan
+                                    @can('delete_timetables')
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
                                             data-bs-toggle="tooltip" title="Supprimer"
-                                            onclick="if(confirm('Êtes-vous sûr de vouloir supprimer cette séance ?')) { /* Action supprimer */ }">
+                                            onclick="window.etsDeleteSeance({{ $seance->id }}, @js($seance->matiere->name ?? 'Séance'))">
                                         <i class="fas fa-trash"></i>
                                     </button>
+                                    @endcan
                                 </div>
                             </td>
                         </tr>
@@ -132,12 +245,12 @@
             </div>
             
             <!-- Résumé par type de séance -->
-            <div class="mt-3 p-3 bg-light rounded">
-                <h6 class="mb-2">
-                    <i class="fas fa-chart-bar text-primary me-1"></i>
+            <div class="els-repartition">
+                <h6 class="mb-3" style="color: #0453cb; font-size: .88rem; font-weight: 700;">
+                    <i class="fas fa-chart-bar me-1"></i>
                     Répartition par type de séance
                 </h6>
-                <div class="row">
+                <div class="row g-2">
                     @php
                         $repartition = [
                             'course' => $seances->where('type', 'course')->count(),
@@ -146,32 +259,21 @@
                             'lunch' => $seances->where('type', 'lunch')->count(),
                         ];
                         $total = $seances->count();
-                        
-                        $typeColors = [
-                            'course' => 'primary',
-                            'homework' => 'success', 
-                            'break' => 'warning',
-                            'lunch' => 'info'
-                        ];
                         $typeLabels = [
                             'course' => 'COURS',
-                            'homework' => 'DEVOIRS', 
+                            'homework' => 'DEVOIRS',
                             'break' => 'RÉCRÉATIONS',
                             'lunch' => 'PAUSES'
                         ];
                     @endphp
-                    
+
                     @foreach($repartition as $type => $count)
                         @if($count > 0)
-                        <div class="col-md-3 col-6 mb-2">
-                            <div class="text-center">
-                                <div class="h4 mb-1 text-{{ $typeColors[$type] }}">
-                                    {{ $count }}
-                                </div>
-                                <small class="text-muted">
-                                    {{ $typeLabels[$type] }}
-                                    <br>({{ $total > 0 ? round(($count / $total) * 100, 1) : 0 }}%)
-                                </small>
+                        <div class="col-md-3 col-6">
+                            <div class="els-repartition-item">
+                                <div class="els-repartition-value">{{ $count }}</div>
+                                <div class="els-repartition-label">{{ $typeLabels[$type] }}</div>
+                                <div class="els-repartition-pct">{{ $total > 0 ? round(($count / $total) * 100, 1) : 0 }}%</div>
                             </div>
                         </div>
                         @endif
@@ -179,18 +281,18 @@
                 </div>
             </div>
         @else
-            <div class="alert alert-info mb-0">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-calendar-plus fa-2x me-3 text-primary"></i>
-                    <div>
-                        <h6><strong>Aucune séance programmée</strong></h6>
-                        <p class="mb-2">Cet emploi du temps ne contient aucune séance.</p>
-                        <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id]) }}"
-                           class="btn btn-primary btn-sm">
-                            <i class="fas fa-plus me-1"></i>Ajouter la première séance
-                        </a>
-                    </div>
+            <div class="text-center py-4" style="border: 1px dashed #cbd5e1; border-radius: 12px; background: #f8fafc;">
+                <div style="width:64px; height:64px; margin:0 auto 1rem; border-radius:50%; background:linear-gradient(135deg, rgba(4,83,203,.08), rgba(59,125,219,.12)); display:flex; align-items:center; justify-content:center;">
+                    <i class="fas fa-calendar-plus" style="color:#0453cb; font-size:1.5rem;"></i>
                 </div>
+                <h6 style="color:#1e293b; font-weight:600;">Aucune séance programmée</h6>
+                <p class="text-muted mb-3" style="font-size:.88rem;">Cet emploi du temps ne contient aucune séance.</p>
+                @can('create_timetable')
+                <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id]) }}"
+                   class="btn btn-primary btn-sm" style="border-radius:9px; font-weight:600;">
+                    <i class="fas fa-plus me-1"></i>Ajouter la première séance
+                </a>
+                @endcan
             </div>
         @endif
     </div>

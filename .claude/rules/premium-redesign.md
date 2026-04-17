@@ -15,11 +15,33 @@ Cette rule s'active quand on redesign une page Blade (vue) avec du CSS premium.
 --dark:       #0f172a     /* Texte principal */
 --text:       #1e293b     /* Texte body */
 --muted:      #64748b     /* Labels, hints */
---success:    #10b981     /* Statuts positifs uniquement */
 --surface:    #f8fafc     /* Fond léger */
 ```
 
-**INTERDIT** : purple `#7c3aed`, amber `#f59e0b` (sauf warnings fonctionnels), rouge `#ef4444`, multicolore, AI slop (dark mode, gradient orbs, bento grids, glassmorphism, animated counters), `--esbtp-green` (variable morte).
+### Couleurs sémantiques autorisées (exception à la règle monochrome)
+
+Les couleurs sémantiques **success/warning/danger** sont autorisées **quand elles portent du sens fonctionnel** — ne JAMAIS les utiliser comme simple décoration ou pour différencier des catégories neutres.
+
+```css
+--success: #10b981    /* Succès : paiement validé, action réussie, statut OK */
+--warning: #f59e0b    /* Alerte : paiement en attente, délai approchant, à surveiller */
+--danger:  #dc2626    /* Danger : suppression, erreur critique, paiement rejeté, delete confirm */
+```
+
+**Exemples d'usage correct (sens fonctionnel) :**
+- Badge "Payé" → vert success, "En attente" → orange warning, "Annulé" → rouge danger
+- Bouton "Supprimer" / "Archiver" → `btn-danger` (a11y + convention universelle)
+- Alert "Paiement échoué" → alert-danger, "Paiement imminent" → alert-warning
+- Modal header destructif ("Annuler inscription") → gradient rouge
+
+**Exemples d'usage INCORRECT (décoration, différenciation neutre) :**
+- Badges Types de séances CM/TD/TP → multicolore (bleu/vert/orange) → **FAUX** — utiliser monochrome tonal (opacity + icône + border-style)
+- KPIs dashboard "Total étudiants" → couleur différente par KPI → **FAUX** — tous en bleu
+- Boutons d'action secondaires colorés → **FAUX** — ghost/outline bleu
+
+**Principe** : si la couleur porte une information sémantique que l'œil doit capter en <1 seconde (statut, niveau d'alerte, action destructive), elle est autorisée. Sinon, monochrome bleu.
+
+**INTERDIT** : purple `#7c3aed`, multicolore décoratif, AI slop (dark mode, gradient orbs, bento grids, glassmorphism, animated counters), `--esbtp-green` (variable morte), couleurs arbitraires pour différencier des catégories neutres.
 
 ## Modèle de référence : Planning Général (`planning-header`)
 
