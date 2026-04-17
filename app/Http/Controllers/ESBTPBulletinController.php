@@ -265,11 +265,14 @@ class ESBTPBulletinController extends Controller
                 }
 
                 // Calculer les absences pour la période du bulletin
+                // (priorité à la saisie manuelle par matière si présente)
                 $donneeAbsences = $this->absenceService->calculerDetailAbsences(
                     $request->etudiant_id,
                     $request->classe_id,
                     $dateDebut,
-                    $dateFin
+                    $dateFin,
+                    $anneeUniversitaire->id,
+                    $request->periode
                 );
 
                 // Intégrer les absences au bulletin
@@ -492,7 +495,9 @@ class ESBTPBulletinController extends Controller
                         $bulletin->etudiant_id,
                         $bulletin->classe_id,
                         $bulletin->anneeUniversitaire->date_debut,
-                        $bulletin->anneeUniversitaire->date_fin
+                        $bulletin->anneeUniversitaire->date_fin,
+                        $bulletin->annee_universitaire_id,
+                        $bulletin->periode
                     );
 
                     $bulletin->absences_justifiees = $absencesAttendance['justifiees'];

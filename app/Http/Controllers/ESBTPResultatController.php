@@ -461,7 +461,9 @@ class ESBTPResultatController extends Controller
                     $r['etudiant']->id,
                     $classe->id,
                     $anneeObj->date_debut ?? null,
-                    $anneeObj->date_fin ?? null
+                    $anneeObj->date_fin ?? null,
+                    $annee_universitaire_id,
+                    $periode ?: 'annuel'
                 );
                 $noteAssid = $this->bulletinService->calculerNoteAssiduite($absences['justifiees'] ?? 0, $absences['non_justifiees'] ?? 0);
                 $r['note_assiduite'] = $noteAssid;
@@ -795,7 +797,9 @@ class ESBTPResultatController extends Controller
                 $etudiant->id,
                 $classe->id,
                 $anneeUniversitaire->date_debut ?? null,
-                $anneeUniversitaire->date_fin ?? null
+                $anneeUniversitaire->date_fin ?? null,
+                $anneeUniversitaire->id,
+                $periode ?: 'annuel'
             );
             $noteAssiduite = $this->bulletinService->calculerNoteAssiduite($absences['justifiees'] ?? 0, $absences['non_justifiees'] ?? 0);
             $moyenneAvecAssiduite = $moyenneGenerale + $noteAssiduite;
@@ -953,8 +957,16 @@ class ESBTPResultatController extends Controller
                     if ($showAssid && $annee_universitaire_id) {
                         $anneeObj = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
                         if ($anneeObj) {
+                            $periodeForManual = $semestre ? 'semestre'.$semestre : 'annuel';
                             foreach ($moyennes as $etudiantId => &$moy) {
-                                $abs = $this->absenceService->calculerDetailAbsences($etudiantId, $classe_id ?? 0, $anneeObj->date_debut ?? null, $anneeObj->date_fin ?? null);
+                                $abs = $this->absenceService->calculerDetailAbsences(
+                                    $etudiantId,
+                                    $classe_id ?? 0,
+                                    $anneeObj->date_debut ?? null,
+                                    $anneeObj->date_fin ?? null,
+                                    $annee_universitaire_id,
+                                    $periodeForManual
+                                );
                                 $noteAssid = $this->bulletinService->calculerNoteAssiduite($abs['justifiees'] ?? 0, $abs['non_justifiees'] ?? 0);
                                 $moy += $noteAssid;
                             }

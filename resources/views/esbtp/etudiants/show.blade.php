@@ -3751,6 +3751,56 @@
                 <span>{{ $presConstatTextCur }}</span>
             </div>
         @endif
+
+        @if($presInscCourante)
+            @php
+                $manualHoursCur = \App\Models\ESBTPAttendanceManualHours::with('matiere:id,name')
+                    ->where('etudiant_id', $etudiant->id)
+                    ->where('annee_universitaire_id', $presAnneeCourante->id)
+                    ->orderBy('matiere_id')
+                    ->orderBy('periode')
+                    ->get();
+            @endphp
+            @if($manualHoursCur->isNotEmpty())
+                <div class="et-manual-hours" style="margin-top:18px; padding-top:16px; border-top:1px solid rgba(255,255,255,.08);">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                        <i class="fas fa-list-check" style="color:#0453cb;"></i>
+                        <span style="font-size:.82rem; font-weight:600; color:var(--k-text);">Saisie manuelle (heures par matière)</span>
+                        <span class="amh-chip amh-chip--blue" style="margin-left:auto; display:inline-flex; align-items:center; gap:.3rem; font-size:.65rem; font-weight:600; padding:.18rem .55rem; border-radius:999px; background:#dbeafe; color:#1e40af;">
+                            <i class="fas fa-star"></i>Source prioritaire sur bulletin
+                        </span>
+                    </div>
+                    <div style="overflow-x:auto; border:1px solid var(--k-border); border-radius:10px;">
+                        <table style="width:100%; border-collapse:collapse; font-size:.8rem;">
+                            <thead>
+                                <tr style="background:rgba(4,83,203,.04);">
+                                    <th style="text-align:left; padding:.55rem .75rem; color:var(--k-muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.04em;">Matière</th>
+                                    <th style="text-align:left; padding:.55rem .75rem; color:var(--k-muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.04em;">Période</th>
+                                    <th style="text-align:right; padding:.55rem .75rem; color:var(--k-muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.04em;">Présence</th>
+                                    <th style="text-align:right; padding:.55rem .75rem; color:var(--k-muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.04em;">Abs. just.</th>
+                                    <th style="text-align:right; padding:.55rem .75rem; color:var(--k-muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.04em;">Abs. non just.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($manualHoursCur as $mh)
+                                    <tr style="border-top:1px solid var(--k-border);">
+                                        <td style="padding:.5rem .75rem; color:var(--k-text); font-weight:500;">{{ optional($mh->matiere)->name ?? '—' }}</td>
+                                        <td style="padding:.5rem .75rem; color:var(--k-muted);">{{ ucfirst(str_replace('semestre', 'Semestre ', $mh->periode)) }}</td>
+                                        <td style="padding:.5rem .75rem; text-align:right; color:#10b981; font-weight:600;">{{ rtrim(rtrim(number_format((float) $mh->heures_presence, 2, '.', ''), '0'), '.') }}h</td>
+                                        <td style="padding:.5rem .75rem; text-align:right; color:#3b82f6; font-weight:600;">{{ rtrim(rtrim(number_format((float) $mh->heures_absence_justifiees, 2, '.', ''), '0'), '.') }}h</td>
+                                        <td style="padding:.5rem .75rem; text-align:right; color:#ef4444; font-weight:600;">{{ rtrim(rtrim(number_format((float) $mh->heures_absence_non_justifiees, 2, '.', ''), '0'), '.') }}h</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <p style="font-size:.72rem; color:var(--k-muted); margin:.6rem 0 0 0; font-style:italic;">
+                        <i class="fas fa-info-circle"></i>
+                        Pour ces matières et périodes, le bulletin utilise ces heures manuelles au lieu des séances.
+                    </p>
+                </div>
+            @endif
+        @endif
     </div>
     @endif
 
