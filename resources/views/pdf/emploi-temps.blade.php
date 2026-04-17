@@ -59,102 +59,59 @@
         }
 
         /* ═══════════════════════════════════════════════
-           Footer — legende + signature + metadata
+           Footer — legende horizontale pleine largeur
            ═══════════════════════════════════════════════ */
-        .footer-section {
+        .legend-bar {
             margin-top: 8px;
-            display: table;
-            width: 100%;
-            page-break-inside: avoid;
-        }
-        .footer-left,
-        .footer-right {
-            display: table-cell;
-            vertical-align: top;
-            padding: 6px 8px;
-        }
-        .footer-left {
-            width: 60%;
+            padding: 6px 10px;
             background: #f8fafc;
             border: 1px solid #e5e7eb;
             border-radius: 6px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            page-break-inside: avoid;
         }
-        .footer-right {
-            width: 40%;
-            padding-left: 12px;
-            text-align: right;
-        }
-
         .legend-title {
             font-size: 8px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.4px;
             color: #1f2937;
-            margin-bottom: 5px;
+            margin-right: 6px;
         }
         .legend-items {
             margin: 0;
             padding: 0;
             list-style: none;
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         .legend-item {
-            display: inline-block;
-            margin-right: 8px;
-            margin-bottom: 2px;
-            font-size: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 8.5px;
             color: #374151;
         }
         .legend-color {
             display: inline-block;
-            width: 9px;
-            height: 9px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            margin-right: 3px;
             vertical-align: middle;
             border: 1px solid rgba(0,0,0,0.1);
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
         }
 
-        .signature-block {
-            font-size: 8.5px;
-            color: #1f2937;
-        }
-        .signature-title {
-            font-size: 7.5px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            color: #6b7280;
-            margin-bottom: 3px;
-        }
-        .signature-name {
-            font-weight: 700;
-            color: #1f2937;
-            margin-bottom: 1px;
-        }
-        .signature-role {
-            font-size: 7.5px;
-            color: #6b7280;
-            font-style: italic;
-            margin-bottom: 8px;
-        }
-        .signature-line {
-            display: inline-block;
-            border-bottom: 1px solid #9ca3af;
-            width: 120px;
-            margin-top: 18px;
-            font-size: 7px;
-            color: #9ca3af;
-        }
-
         .generation-info {
             text-align: center;
             font-size: 7.5px;
             color: #9ca3af;
-            margin-top: 6px;
-            padding-top: 5px;
-            border-top: 1px solid #e5e7eb;
+            margin-top: 4px;
         }
 
         /* Forcer l'impression couleur */
@@ -172,10 +129,6 @@
         $hdrBg     = $pdfCfg['header_bg_color']    ?? $pdfCfg['primary_color'] ?? '#0453cb';
         $hdrText   = $pdfCfg['header_text_color']  ?? '#ffffff';
         $primary   = $pdfCfg['primary_color']      ?? '#0453cb';
-
-        // Signature directeur (optional)
-        $directorName  = $settings['director_name']  ?? '';
-        $directorTitle = $settings['director_title'] ?? 'Directeur';
 
         // Periode / Semaine
         $periode = $emploiTemps->semestre ?? 'Annee complete';
@@ -278,51 +231,30 @@
         </div>
 
         {{-- ═══════════════════════════════════════════════
-             FOOTER — legende (60%) + signature (40%)
+             FOOTER — legende seule (affichage tableau)
              ═══════════════════════════════════════════════ --}}
-        <div class="footer-section">
-            <div class="footer-left">
-                <div class="legend-title">Légende des types de séance</div>
-                <ul class="legend-items">
-                    @foreach($sessionTypeLabels as $type => $label)
-                        @php
-                            $swatch = $sessionTypeSwatches[$type] ?? ($sessionTypeColors[$type] ?? $sessionTypeColors['default']);
-                            $count  = $sessionTypeStats[$type] ?? 0;
-                        @endphp
-                        <li class="legend-item">
-                            <span class="legend-color" style="background: {{ $swatch['bg'] ?? '#0453cb' }};"></span>
-                            <strong>{{ $label }}</strong>
-                            @if($count > 0)
-                                <span style="color: #6b7280;">({{ $count }})</span>
-                            @endif
-                        </li>
-                    @endforeach
-                </ul>
-            </div>
-
-            <div class="footer-right">
-                @if($directorName)
-                    <div class="signature-block">
-                        <div class="signature-title">{{ $etablissement['ville'] ?? '' }}, le {{ now()->format('d/m/Y') }}</div>
-                        <div class="signature-name">{{ $directorName }}</div>
-                        <div class="signature-role">{{ $directorTitle }}</div>
-                        <div class="signature-line">Signature</div>
-                    </div>
-                @else
-                    <div class="signature-block">
-                        <div class="signature-title">Fait à {{ $etablissement['ville'] ?? '—' }}</div>
-                        <div class="signature-name">le {{ now()->format('d/m/Y') }}</div>
-                        <div class="signature-line">Signature et cachet</div>
-                    </div>
-                @endif
-            </div>
+        <div class="legend-bar">
+            <div class="legend-title">Légende</div>
+            <ul class="legend-items">
+                @foreach($sessionTypeLabels as $type => $label)
+                    @php
+                        $swatch = $sessionTypeSwatches[$type] ?? ($sessionTypeColors[$type] ?? $sessionTypeColors['default']);
+                        $count  = $sessionTypeStats[$type] ?? 0;
+                    @endphp
+                    <li class="legend-item">
+                        <span class="legend-color" style="background: {{ $swatch['bg'] ?? '#0453cb' }};"></span>
+                        <strong>{{ $label }}</strong>
+                        @if($count > 0)
+                            <span style="color: #6b7280;">({{ $count }})</span>
+                        @endif
+                    </li>
+                @endforeach
+            </ul>
         </div>
 
-        {{-- Ligne meta generation --}}
+        {{-- Ligne meta generation (discret) --}}
         <div class="generation-info">
-            Document généré le {{ now()->format('d/m/Y à H:i') }}
-            @if(auth()->check()) · par {{ auth()->user()->name }} @endif
-            · {{ $etablissement['nom'] ?? 'KLASSCI' }}
+            Document généré le {{ now()->format('d/m/Y à H:i') }} · {{ $etablissement['nom'] ?? 'KLASSCI' }}
         </div>
     </div>
 </body>

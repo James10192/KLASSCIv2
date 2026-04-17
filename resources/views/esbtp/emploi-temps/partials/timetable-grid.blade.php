@@ -154,8 +154,10 @@
         ];
     }
 
-    // PDF: segments plus compacts pour tenir sur une seule page A4 landscape
-    $segmentHeight = $variant === 'pdf' ? 9 : 26;
+    // PDF: hauteur de segment optimisee pour remplir toute la page A4 landscape
+    // sans passer sur une 2eme page (44 segments * 12px = 528px, laisse de la place
+    // pour header + legende + generation-info)
+    $segmentHeight = $variant === 'pdf' ? 12 : 26;
 
     $defaultLabels = [
         ESBTPSeanceCours::TYPE_COURSE => 'Cours',
