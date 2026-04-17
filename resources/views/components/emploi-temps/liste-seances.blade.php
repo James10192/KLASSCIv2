@@ -111,18 +111,30 @@
         color: #94a3b8;
         margin-top: .15rem;
     }
+    .els-wrap {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        box-shadow: 0 1px 3px rgba(15,23,42,.04);
+        overflow: hidden;
+    }
 </style>
 @endonce
 
-<div class="main-card mb-4">
-    <div class="main-card-header">
-        <div class="main-card-title">
-            <i class="fas fa-list-ul"></i>
-            Liste des séances
+<div class="els-wrap">
+    <div style="padding: 1rem 1.25rem; border-bottom: 1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;">
+        <div style="display:flex; align-items:center; gap:.55rem; font-weight:700; color:#0f172a; font-size:.9rem;">
+            <i class="fas fa-list-ul" style="color:#0453cb;"></i>
+            {{ $seances->count() }} séance(s) programmée(s)
         </div>
-        <div class="main-card-subtitle">{{ $seances->count() }} séance(s) programmée(s)</div>
+        @can('create_timetable')
+        <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id]) }}"
+           class="btn btn-sm btn-primary" style="border-radius:9px; font-weight:600; background:#0453cb; border-color:#0453cb;">
+            <i class="fas fa-plus me-1"></i>Ajouter
+        </a>
+        @endcan
     </div>
-    <div class="main-card-body">
+    <div style="padding: 0 1.25rem 1rem;">
         @if($seances && $seances->count() > 0)
             <div class="table-responsive">
                 <table class="table els-table mb-0">

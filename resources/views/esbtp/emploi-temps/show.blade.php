@@ -213,6 +213,92 @@
     }
 
     /* ═══════════════════════════════════════════════════════════
+       Tabs Infos / Planification / Liste seances (sous la grille)
+       ═══════════════════════════════════════════════════════════ */
+    .ets-tabs-wrap {
+        margin-top: 1.25rem;
+    }
+    [x-cloak] { display: none !important; }
+
+    .ets-tabs {
+        display: flex;
+        gap: .25rem;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: .4rem;
+        margin-bottom: 1rem;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    .ets-tabs::-webkit-scrollbar { display: none; }
+
+    .ets-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        padding: .6rem 1rem;
+        border: none;
+        background: transparent;
+        color: #64748b;
+        font-size: .85rem;
+        font-weight: 500;
+        border-radius: 10px;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: all .18s ease;
+    }
+    .ets-tab:hover:not(.is-active) {
+        background: #f1f5f9;
+        color: #0453cb;
+    }
+    .ets-tab:focus-visible {
+        outline: 2px solid #0453cb;
+        outline-offset: 2px;
+    }
+    .ets-tab.is-active {
+        background: #0453cb;
+        color: #fff;
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(4,83,203,.25);
+    }
+    .ets-tab i { font-size: .78rem; }
+
+    .ets-tab-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        height: 20px;
+        padding: 0 .4rem;
+        margin-left: .25rem;
+        background: rgba(100,116,139,.15);
+        color: #475569;
+        border-radius: 99px;
+        font-size: .7rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    .ets-tab.is-active .ets-tab-count {
+        background: rgba(255,255,255,.22);
+        color: #fff;
+    }
+
+    .ets-tab-panel {
+        animation: etsFadeIn .2s ease-out;
+    }
+    @keyframes etsFadeIn {
+        from { opacity: 0; transform: translateY(4px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 768px) {
+        .ets-tab { padding: .5rem .75rem; font-size: .78rem; }
+        .ets-tab i { font-size: .72rem; }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
        Modal config volumes — gradient bleu KLASSCI (pattern PR #220)
        ═══════════════════════════════════════════════════════════ */
     .ets-config-modal .modal-content {
@@ -791,11 +877,6 @@
                 </div>
             </div>
         @endif
-        <!-- Section: Planification Académique -->
-        <x-emploi-temps.planification-section 
-            :planificationData="$planificationData" 
-            :emploiTemps="$emploiTemps" />
-
         @if (session('warning'))
             <div class="alert alert-warning alert-dismissible fade show" role="alert">
                 <h5><i class="fas fa-exclamation-triangle me-2"></i>Attention</h5>
@@ -819,12 +900,6 @@
             </div>
         @endif
 
-        <!-- Section: Informations et Statistiques -->
-        <x-emploi-temps.info-stats-section 
-            :emploiTemps="$emploiTemps" 
-            :matiereStats="$matiereStats ?? []" />
-
-
         @php
             if (!isset($timeSlots) || !is_array($timeSlots) || empty($timeSlots)) {
                 $timeSlots = [];
@@ -838,17 +913,95 @@
             }
         @endphp
 
-        <!-- Section: Grille horaire (pleine largeur) -->
-        <x-emploi-temps.grille-horaire 
-            :seances="$emploiTemps->seances ?? collect()" 
+        {{-- ═══════════════════════════════════════════════════════════
+             GRILLE HORAIRE (focus principal, pleine largeur)
+             ═══════════════════════════════════════════════════════════ --}}
+        <x-emploi-temps.grille-horaire
+            :seances="$emploiTemps->seances ?? collect()"
             :emploiTemps="$emploiTemps"
             :timeSlots="$timeSlots"
             :days="$days" />
 
-        <!-- Section: Liste des séances (pleine largeur) -->
-        <x-emploi-temps.liste-seances 
-            :seances="$emploiTemps->seances ?? collect()" 
-            :emploiTemps="$emploiTemps" />
+        {{-- ═══════════════════════════════════════════════════════════
+             TABS : Infos / Planification / Liste séances
+             Alpine x-show + URL hash sync
+             ═══════════════════════════════════════════════════════════ --}}
+        <div class="ets-tabs-wrap"
+             x-data="{
+                tab: (window.location.hash.replace('#','') || 'infos'),
+                switch(t) {
+                    this.tab = t;
+                    history.replaceState({}, '', '#' + t);
+                }
+             }"
+             x-init="window.addEventListener('hashchange', () => { tab = window.location.hash.replace('#','') || 'infos'; })"
+             @keydown.arrow-left.prevent="$refs.tablist && (() => { const b = $refs.tablist.querySelectorAll('[role=tab]'); const i = [...b].findIndex(x => x.getAttribute('aria-selected') === 'true'); const prev = b[(i - 1 + b.length) % b.length]; prev.focus(); prev.click(); })()"
+             @keydown.arrow-right.prevent="$refs.tablist && (() => { const b = $refs.tablist.querySelectorAll('[role=tab]'); const i = [...b].findIndex(x => x.getAttribute('aria-selected') === 'true'); const next = b[(i + 1) % b.length]; next.focus(); next.click(); })()">
+
+            <div class="ets-tabs" role="tablist" x-ref="tablist" aria-label="Sections emploi du temps">
+                <button type="button"
+                        class="ets-tab"
+                        role="tab"
+                        :aria-selected="tab === 'infos' ? 'true' : 'false'"
+                        :class="{ 'is-active': tab === 'infos' }"
+                        @click="switch('infos')"
+                        id="ets-tab-infos">
+                    <i class="fas fa-info-circle"></i> Informations
+                </button>
+                <button type="button"
+                        class="ets-tab"
+                        role="tab"
+                        :aria-selected="tab === 'planif' ? 'true' : 'false'"
+                        :class="{ 'is-active': tab === 'planif' }"
+                        @click="switch('planif')"
+                        id="ets-tab-planif">
+                    <i class="fas fa-calendar-check"></i> Planification académique
+                </button>
+                <button type="button"
+                        class="ets-tab"
+                        role="tab"
+                        :aria-selected="tab === 'liste' ? 'true' : 'false'"
+                        :class="{ 'is-active': tab === 'liste' }"
+                        @click="switch('liste')"
+                        id="ets-tab-liste">
+                    <i class="fas fa-list-ul"></i> Liste des séances
+                    <span class="ets-tab-count">{{ $emploiTemps->seances->count() }}</span>
+                </button>
+            </div>
+
+            {{-- Tab: Infos (fusion infos + stats) --}}
+            <div class="ets-tab-panel"
+                 x-show="tab === 'infos'"
+                 x-cloak
+                 role="tabpanel"
+                 aria-labelledby="ets-tab-infos">
+                <x-emploi-temps.info-stats-section
+                    :emploiTemps="$emploiTemps"
+                    :matiereStats="$matiereStats ?? []" />
+            </div>
+
+            {{-- Tab: Planification (progress bars monochrome) --}}
+            <div class="ets-tab-panel"
+                 x-show="tab === 'planif'"
+                 x-cloak
+                 role="tabpanel"
+                 aria-labelledby="ets-tab-planif">
+                <x-emploi-temps.planification-section
+                    :planificationData="$planificationData"
+                    :emploiTemps="$emploiTemps" />
+            </div>
+
+            {{-- Tab: Liste séances --}}
+            <div class="ets-tab-panel"
+                 x-show="tab === 'liste'"
+                 x-cloak
+                 role="tabpanel"
+                 aria-labelledby="ets-tab-liste">
+                <x-emploi-temps.liste-seances
+                    :seances="$emploiTemps->seances ?? collect()"
+                    :emploiTemps="$emploiTemps" />
+            </div>
+        </div>
     </div>
 </div>
 
