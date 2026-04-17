@@ -1251,7 +1251,7 @@ class ESBTPInscriptionController extends Controller
     public function administration(Request $request)
     {
         // Récupérer les filtres
-        $search = $request->input("search");
+        $search = (string) $request->input("search", "");
         $filiere = $request->input("filiere");
         $niveau = $request->input("niveau");
         $annee = $request->input("annee");
@@ -1282,7 +1282,7 @@ class ESBTPInscriptionController extends Controller
             });
 
         // Appliquer les filtres
-        if ($search) {
+        if ($search !== "") {
             $query->whereHas("etudiant", function ($q) use ($search) {
                 $q->where("matricule", "like", "%{$search}%")
                     ->orWhere("nom", "like", "%{$search}%")
@@ -1326,8 +1326,31 @@ class ESBTPInscriptionController extends Controller
             });
         }
 
+        // Tri server-side (whitelist anti SQL injection)
+        $sortableColumns = [
+            "created_at",
+            "updated_at",
+            "workflow_step",
+            "status",
+        ];
+        $sort = (string) $request->input("sort", "created_at");
+        if (!in_array($sort, $sortableColumns, true)) {
+            $sort = "created_at";
+        }
+        $dir = strtolower((string) $request->input("dir", "desc"));
+        if (!in_array($dir, ["asc", "desc"], true)) {
+            $dir = "desc";
+        }
+        $query->orderBy($sort, $dir);
+
+        // Pagination (whitelist per_page)
+        $perPage = (int) $request->input("per_page", 25);
+        if (!in_array($perPage, [15, 25, 50, 100], true)) {
+            $perPage = 25;
+        }
+
         // Récupérer les inscriptions
-        $inscriptions = $query->latest()->paginate(20);
+        $inscriptions = $query->paginate($perPage)->appends($request->query());
 
         $inscriptions->getCollection()->transform(function ($inscription) {
             $availability = $this->workflowService->checkClassAvailability(
@@ -1411,6 +1434,7 @@ class ESBTPInscriptionController extends Controller
                     ],
                 )->render(),
                 "url" => $request->fullUrl(),
+                "stats" => $stats,
             ]);
         }
 
@@ -2164,32 +2188,66 @@ class ESBTPInscriptionController extends Controller
 
         // Par défaut : toutes les années (pas filtré sur l'année courante)
         $anneeFilterId = $request->input('annee_id');
-        $search = $request->input('search');
+        $search = (string) $request->input('search', '');
+        $condition = (string) $request->input('condition', '');
+        $hasPayment = (string) $request->input('has_payment', '');
+
+        // Tri server-side (whitelist)
+        $sortableColumns = ['created_at', 'condition_reserve', 'workflow_step'];
+        $sort = (string) $request->input('sort', 'created_at');
+        if (!in_array($sort, $sortableColumns, true)) {
+            $sort = 'created_at';
+        }
+        $dir = strtolower((string) $request->input('dir', 'desc'));
+        if (!in_array($dir, ['asc', 'desc'], true)) {
+            $dir = 'desc';
+        }
+
+        // Pagination whitelist
+        $perPage = (int) $request->input('per_page', 25);
+        if (!in_array($perPage, [15, 25, 50, 100], true)) {
+            $perPage = 25;
+        }
 
         $query = ESBTPInscription::with([
                 'etudiant', 'classe', 'filiere', 'niveauEtude', 'anneeUniversitaire', 'paiements'
             ])
             ->where('is_sous_reserve', true)
             ->when($anneeFilterId, fn($q) => $q->where('annee_universitaire_id', $anneeFilterId))
-            ->when($search, fn($q) => $q->whereHas('etudiant', fn($eq) =>
+            ->when($search !== '', fn($q) => $q->whereHas('etudiant', fn($eq) =>
                 $eq->where('nom', 'like', "%{$search}%")
                    ->orWhere('prenoms', 'like', "%{$search}%")
                    ->orWhere('matricule', 'like', "%{$search}%")
             ))
-            ->orderBy('created_at', 'desc');
+            ->when($condition !== '', fn($q) => $q->where('condition_reserve', $condition))
+            ->when($hasPayment === 'yes', fn($q) => $q->whereHas('paiements', fn($pq) => $pq->where('status', 'validé')))
+            ->when($hasPayment === 'no', fn($q) => $q->whereDoesntHave('paiements', fn($pq) => $pq->where('status', 'validé')))
+            ->orderBy($sort, $dir);
 
-        $inscriptions = $query->get();
+        $inscriptions = $query->paginate($perPage)->appends($request->query());
 
-        // Stats calculées depuis la collection chargée (0 query supplémentaire)
-        $avecPaiement = $inscriptions->filter(fn($i) => $i->paiements->where('status', 'validé')->isNotEmpty())->count();
+        // Stats globales (non filtrees par filtres, juste is_sous_reserve)
+        $statsBase = ESBTPInscription::where('is_sous_reserve', true)
+            ->when($anneeFilterId, fn($q) => $q->where('annee_universitaire_id', $anneeFilterId));
         $stats = [
-            'total' => $inscriptions->count(),
-            'avec_paiement' => $avecPaiement,
-            'sans_paiement' => $inscriptions->count() - $avecPaiement,
+            'total' => (clone $statsBase)->count(),
+            'avec_paiement' => (clone $statsBase)->whereHas('paiements', fn($q) => $q->where('status', 'validé'))->count(),
+            'sans_paiement' => (clone $statsBase)->whereDoesntHave('paiements', fn($q) => $q->where('status', 'validé'))->count(),
         ];
 
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('esbtp.inscriptions.partials.sous-reserve-results', [
+                    'inscriptions' => $inscriptions,
+                    'anneeEnCours' => $anneeEnCours,
+                ])->render(),
+                'url' => $request->fullUrl(),
+                'stats' => $stats,
+            ]);
+        }
+
         return view('esbtp.inscriptions.sous-reserve', compact(
-            'inscriptions', 'annees', 'anneeEnCours', 'anneeFilterId', 'search', 'stats'
+            'inscriptions', 'annees', 'anneeEnCours', 'anneeFilterId', 'search', 'condition', 'hasPayment', 'stats'
         ));
     }
 
@@ -2216,9 +2274,15 @@ class ESBTPInscriptionController extends Controller
      */
     public function leverReservesBulk(Request $request)
     {
-        $ids = $request->input('inscription_ids', []);
+        $ids = (array) $request->input('inscription_ids', []);
 
         if (empty($ids)) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Aucune inscription sélectionnée.',
+                ], 422);
+            }
             return redirect()->back()->with('error', 'Aucune inscription sélectionnée.');
         }
 
@@ -2226,9 +2290,18 @@ class ESBTPInscriptionController extends Controller
             ->where('is_sous_reserve', true)
             ->update(['is_sous_reserve' => false, 'condition_reserve' => null]);
 
-        return redirect()->back()->with('success',
-            $count . ' inscription(s) ont été confirmée(s). La réserve a été levée.'
-        );
+        $message = $count . ' inscription(s) ont été confirmée(s). La réserve a été levée.';
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'count' => $count,
+                'processed_ids' => array_map('intval', $ids),
+            ]);
+        }
+
+        return redirect()->back()->with('success', $message);
     }
 
     /**

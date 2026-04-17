@@ -4,6 +4,7 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/inscriptions-common.css') }}">
 <style>
     .kpi-card {
         border-radius: var(--radius-medium);
@@ -278,250 +279,198 @@
 
 @section('content')
 <div class="dashboard-acasi">
-    <div class="main-content" style="padding: 1.5rem; max-width: 100%; overflow-x: hidden;">
-        <!-- Header moderne -->
-        <div class="dashboard-header">
-            <div class="header-left">
-                <h1><i class="fas fa-user-check me-2"></i>Administration des Inscriptions</h1>
-                <p class="header-subtitle">Gestion et validation des inscriptions en attente</p>
+    <div class="main-content" style="padding: 1.25rem; max-width: 100%;">
+
+        {{-- ================================================================
+             HERO
+             ================================================================ --}}
+        <div class="ii-hero">
+            <div class="ii-hero-top">
+                <div class="ii-hero-left">
+                    <div class="ii-hero-icon">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <div>
+                        <h1>Administration des Inscriptions</h1>
+                        <p>Validation des inscriptions en attente · gestion des paiements et du workflow</p>
+                        <span class="ii-hero-chip">
+                            <i class="fas fa-calendar-alt"></i>
+                            @if($anneeEnCours)
+                                {{ $anneeEnCours->name }}
+                            @else
+                                Aucune année courante
+                            @endif
+                        </span>
+                    </div>
+                </div>
+                <div class="ii-hero-actions">
+                    <a href="{{ route('esbtp.inscriptions.index') }}" class="ii-btn ii-btn--glass">
+                        <i class="fas fa-arrow-left"></i> Retour aux inscriptions
+                    </a>
+                    <a href="{{ route('esbtp.inscriptions.create') }}" class="ii-btn ii-btn--white">
+                        <i class="fas fa-plus"></i> Nouvelle inscription
+                    </a>
+                </div>
             </div>
-            <div class="header-actions">
-                <input type="search" class="search-bar" placeholder="Rechercher une inscription..." value="{{ request('search') }}">
-                <span class="badge rounded-pill bg-light text-dark me-2">
-                    <i class="fas fa-calendar me-1"></i>
-                    {{ $anneeEnCours->name ?? 'Année non définie' }}
-                </span>
-                <span class="text-muted me-2">{{ \Carbon\Carbon::now()->isoFormat('dddd D MMMM YYYY') }}</span>
+
+            {{-- 6 KPIs cliquables (filter par workflow_step / has_payment) --}}
+            <div class="ii-kpis">
+                <button type="button" class="ii-kpi {{ !request('workflow_step') && !request('has_payment') ? 'is-active' : '' }}" data-kpi="total_en_attente" data-filter-type="clear">
+                    <div class="ii-kpi-icon"><i class="fas fa-clock"></i></div>
+                    <div class="ii-kpi-content">
+                        <div class="ii-kpi-value" data-kpi-value>{{ $stats['total_en_attente'] }}</div>
+                        <div class="ii-kpi-label">Total</div>
+                    </div>
+                </button>
+                <button type="button" class="ii-kpi {{ request('has_payment') === 'yes' ? 'is-active' : '' }}" data-kpi="avec_paiement" data-filter-type="has_payment" data-filter-value="yes">
+                    <div class="ii-kpi-icon"><i class="fas fa-money-bill-wave"></i></div>
+                    <div class="ii-kpi-content">
+                        <div class="ii-kpi-value" data-kpi-value>{{ $stats['avec_paiement'] }}</div>
+                        <div class="ii-kpi-label">Avec paiement</div>
+                    </div>
+                </button>
+                <button type="button" class="ii-kpi {{ request('has_payment') === 'no' ? 'is-active' : '' }}" data-kpi="sans_paiement" data-filter-type="has_payment" data-filter-value="no">
+                    <div class="ii-kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="ii-kpi-content">
+                        <div class="ii-kpi-value" data-kpi-value>{{ $stats['sans_paiement'] }}</div>
+                        <div class="ii-kpi-label">Sans paiement</div>
+                    </div>
+                </button>
+                <button type="button" class="ii-kpi {{ request('workflow_step') === 'prospect' ? 'is-active' : '' }}" data-kpi="prospects" data-filter-type="workflow_step" data-filter-value="prospect">
+                    <div class="ii-kpi-icon"><i class="fas fa-user-plus"></i></div>
+                    <div class="ii-kpi-content">
+                        <div class="ii-kpi-value" data-kpi-value>{{ $stats['prospects'] }}</div>
+                        <div class="ii-kpi-label">Prospects</div>
+                    </div>
+                </button>
+                <button type="button" class="ii-kpi {{ request('workflow_step') === 'documents_complets' ? 'is-active' : '' }}" data-kpi="documents_complets" data-filter-type="workflow_step" data-filter-value="documents_complets">
+                    <div class="ii-kpi-icon"><i class="fas fa-folder-open"></i></div>
+                    <div class="ii-kpi-content">
+                        <div class="ii-kpi-value" data-kpi-value>{{ $stats['documents_complets'] }}</div>
+                        <div class="ii-kpi-label">Documents</div>
+                    </div>
+                </button>
+                <button type="button" class="ii-kpi {{ request('workflow_step') === 'en_validation' ? 'is-active' : '' }}" data-kpi="en_validation" data-filter-type="workflow_step" data-filter-value="en_validation">
+                    <div class="ii-kpi-icon"><i class="fas fa-hourglass-half"></i></div>
+                    <div class="ii-kpi-content">
+                        <div class="ii-kpi-value" data-kpi-value>{{ $stats['en_validation'] }}</div>
+                        <div class="ii-kpi-label">En validation</div>
+                    </div>
+                </button>
             </div>
         </div>
 
-        <div class="card-moderne mb-lg">
-            <div class="p-lg">
-                <div class="section-title mb-md">
-                    <i class="fas fa-calendar-alt me-2"></i>Année Académique Active
-                </div>
-                <div style="display: flex; gap: var(--space-md); align-items: end;">
-                    <div style="flex: 1; max-width: 300px;">
-                        <label for="annee_academique" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Académique Courante</label>
-                        <select name="annee_academique" id="annee_academique" class="year-selector" style="width: 100%; background-color: #f8f9fa; cursor: not-allowed;" disabled>
-                            <option value="{{ $anneeEnCours->id ?? '' }}" selected>
-                                {{ $anneeEnCours->name ?? 'Aucune année définie' }} (Année en cours)
-                            </option>
-                        </select>
-                    </div>
-                    <button type="button" class="btn-acasi secondary" onclick="showYearChangeInfo()" title="Comment changer d'année ?">
-                        <i class="fas fa-info-circle"></i>Changer d'année
-                    </button>
-                </div>
-                <div class="mt-3">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Les inscriptions affichées correspondent à l'année académique courante.
-                        @if($inscriptions->isEmpty())
-                            <strong class="text-warning">Aucune inscription trouvée pour cette année.</strong>
-                        @endif
-                    </small>
-                </div>
-                @if($inscriptions->isEmpty())
-                    <div class="mt-3">
-                        <div class="alert alert-warning d-flex align-items-center" role="alert">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            <div>
-                                <strong>Aucune inscription pour l'année {{ $anneeEnCours->name ?? 'courante' }}</strong><br>
-                                <small>Il y a {{ \App\Models\ESBTPInscription::count() }} inscriptions au total dans la base, mais aucune pour l'année académique active.
-                                Utilisez le bouton "Changer d'année" pour consulter les inscriptions d'autres années.</small>
-                            </div>
-                        </div>
-                    </div>
-                @endif
+        {{-- ================================================================
+             TOOLBAR
+             ================================================================ --}}
+        <div class="ii-toolbar">
+            <div class="ii-search">
+                <i class="fas fa-search"></i>
+                <input type="search" id="ia-search" placeholder="Matricule, nom, prénom..." value="{{ $search }}">
             </div>
+            <select id="ia-filiere" class="ii-select" aria-label="Filière">
+                <option value="">Toutes les filières</option>
+                @foreach($filieres as $fil)
+                    <option value="{{ $fil->id }}" {{ request('filiere') == $fil->id ? 'selected' : '' }}>
+                        {{ $fil->name ?? $fil->nom }}
+                    </option>
+                @endforeach
+            </select>
+            <select id="ia-niveau" class="ii-select" aria-label="Niveau">
+                <option value="">Tous les niveaux</option>
+                @foreach($niveaux as $niv)
+                    <option value="{{ $niv->id }}" {{ request('niveau') == $niv->id ? 'selected' : '' }}>
+                        {{ $niv->name ?? $niv->libelle ?? $niv->nom }}
+                    </option>
+                @endforeach
+            </select>
+            <select id="ia-annee" class="ii-select" aria-label="Année">
+                <option value="">Année courante</option>
+                @foreach($annees as $annee)
+                    <option value="{{ $annee->id }}" {{ request('annee') == $annee->id ? 'selected' : '' }}>
+                        {{ $annee->name }}@if($annee->is_current) (Courante)@endif
+                    </option>
+                @endforeach
+            </select>
+            <button type="button" class="ii-btn ii-btn--ghost" id="ia-reset">
+                <i class="fas fa-rotate-left"></i> Réinitialiser
+            </button>
         </div>
 
-        <div class="p-lg">
-            <!-- Statistiques -->
-            <div class="row g-3 mb-4">
-                <div class="col-lg-3 col-md-6 col-12">
-                    <div class="card-moderne kpi-card">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <div class="text-muted small text-uppercase">Total en attente</div>
-                                <div class="h4 mb-1">{{ $stats['total_en_attente'] }}</div>
-                                <div class="small text-muted">Toutes les demandes</div>
-                            </div>
-                            <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.12); color: var(--warning);">
-                                <i class="fas fa-clock"></i>
-                            </div>
-                        </div>
-                    </div>
+        {{-- ================================================================
+             RESULTS
+             ================================================================ --}}
+        <div class="ii-results-card" id="ia-results-card">
+            <div class="ii-results-header">
+                <div class="ii-results-count">
+                    <strong id="ia-total">{{ $inscriptions->total() }}</strong> inscription(s) en attente
                 </div>
-                <div class="col-lg-3 col-md-6 col-12">
-                    <div class="card-moderne kpi-card">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <div class="text-muted small text-uppercase">Avec paiement</div>
-                                <div class="h4 mb-1">{{ $stats['avec_paiement'] }}</div>
-                                <div class="small text-muted">Payés ou en attente</div>
-                            </div>
-                            <div class="kpi-icon" style="background: rgba(16, 185, 129, 0.12); color: var(--success);">
-                                <i class="fas fa-credit-card"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6 col-12">
-                    <div class="card-moderne kpi-card">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <div class="text-muted small text-uppercase">Sans paiement</div>
-                                <div class="h4 mb-1">{{ $stats['sans_paiement'] }}</div>
-                                <div class="small text-muted">Nécessitent un règlement</div>
-                            </div>
-                            <div class="kpi-icon" style="background: rgba(245, 158, 11, 0.12); color: var(--warning);">
-                                <i class="fas fa-exclamation-triangle"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-3 col-md-6 col-12">
-                    <div class="card-moderne kpi-card">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <div class="text-muted small text-uppercase">Prospects</div>
-                                <div class="h4 mb-1">{{ $stats['prospects'] }}</div>
-                                <div class="small text-muted">Étape initiale</div>
-                            </div>
-                            <div class="kpi-icon" style="background: rgba(6, 182, 212, 0.12); color: var(--accent-blue);">
-                                <i class="fas fa-user-plus"></i>
-                            </div>
-                        </div>
-                    </div>
+                <div class="ii-per-page">
+                    <span>Afficher</span>
+                    <select id="ia-per-page" aria-label="Lignes par page">
+                        @foreach([15, 25, 50, 100] as $opt)
+                            <option value="{{ $opt }}" {{ request('per_page', 25) == $opt ? 'selected' : '' }}>{{ $opt }}</option>
+                        @endforeach
+                    </select>
+                    <span>par page</span>
                 </div>
             </div>
-
-            <!-- Filtres de recherche -->
-            <div class="card-moderne mb-4">
-                <div class="p-lg">
-                    <div class="section-title mb-md">
-                        <i class="fas fa-filter"></i>Filtrer les inscriptions en attente
-                    </div>
-                    <form method="GET" action="{{ route('esbtp.inscriptions.administration') }}" id="inscriptions-admin-filter-form">
-                        <div class="row">
-                            <div class="col-md-3 mb-3">
-                                <label for="filter-search" class="form-label">
-                                    <i class="fas fa-search me-1"></i>Recherche par nom ou matricule
-                                </label>
-                                <input type="text" class="form-control" id="filter-search" name="search" value="{{ request('search') }}" placeholder="Tapez pour rechercher...">
-                            </div>
-                            <div class="col-md-2 mb-3">
-                                <label for="filiere" class="form-label">
-                                    <i class="fas fa-graduation-cap me-1"></i>Filière
-                                </label>
-                                <select class="form-select" id="filiere" name="filiere">
-                                    <option value="">Toutes les filières</option>
-                                    @foreach($filieres as $fil)
-                                        <option value="{{ $fil->id }}" {{ request('filiere') == $fil->id ? 'selected' : '' }}>
-                                            {{ $fil->name ?? $fil->nom }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-2 mb-3">
-                                <label for="niveau" class="form-label">
-                                    <i class="fas fa-layer-group me-1"></i>Niveau d'études
-                                </label>
-                                <select class="form-select" id="niveau" name="niveau">
-                                    <option value="">Tous les niveaux</option>
-                                    @foreach($niveaux as $niv)
-                                        <option value="{{ $niv->id }}" {{ request('niveau') == $niv->id ? 'selected' : '' }}>
-                                            {{ $niv->name ?? $niv->libelle ?? $niv->nom }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-2 mb-3">
-                                <label for="workflow_step" class="form-label">
-                                    <i class="fas fa-tasks me-1"></i>Étape du workflow
-                                </label>
-                                <select class="form-select" id="workflow_step" name="workflow_step">
-                                    <option value="">Toutes les étapes</option>
-                                    <option value="prospect" {{ request('workflow_step') == 'prospect' ? 'selected' : '' }}>Prospect</option>
-                                    <option value="documents_complets" {{ request('workflow_step') == 'documents_complets' ? 'selected' : '' }}>Documents complets</option>
-                                    <option value="en_validation" {{ request('workflow_step') == 'en_validation' ? 'selected' : '' }}>En validation</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2 mb-3">
-                                <label for="has_payment" class="form-label">
-                                    <i class="fas fa-credit-card me-1"></i>Statut paiement
-                                </label>
-                                <select class="form-select" id="has_payment" name="has_payment">
-                                    <option value="">Tous</option>
-                                    <option value="yes" {{ request('has_payment') == 'yes' ? 'selected' : '' }}>Avec paiement</option>
-                                    <option value="no" {{ request('has_payment') == 'no' ? 'selected' : '' }}>Sans paiement</option>
-                                </select>
-                            </div>
-                            <div class="col-md-1 mb-3 d-flex align-items-end">
-                                <button type="submit" class="btn-acasi primary w-100">
-                                    <i class="fas fa-search"></i>Filtrer
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Liste des inscriptions -->
-            <div class="card-moderne">
-                <div class="p-lg">
-                    <div class="section-title mb-md">
-                        <i class="fas fa-list"></i>Inscriptions en attente de validation ({{ $inscriptions->total() }})
-                    </div>
-                    <div id="inscriptions-admin-results">
-                        @include('esbtp.inscriptions.partials.administration-results', ['inscriptions' => $inscriptions])
-                    </div>
-                </div>
+            <div id="inscriptions-admin-results">
+                @include('esbtp.inscriptions.partials.administration-results', ['inscriptions' => $inscriptions])
             </div>
         </div>
     </div>
 </div>
 
 @can('access_admin')
-<div id="bulk-actions-bar" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-     background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; padding: 15px 30px;
-     border-radius: 50px; box-shadow: 0 10px 40px rgba(4, 83, 203, 0.4); z-index: 1050;
-     animation: slideUp 0.3s ease-out;">
-    <div style="display: flex; align-items: center; gap: 20px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-            <i class="fas fa-check-circle" style="font-size: 1.2rem;"></i>
-            <span id="selected-count" style="font-weight: 600; font-size: 1.1rem;">0</span>
-            <span style="opacity: 0.9;">inscription(s) sélectionnée(s)</span>
-        </div>
-        <div style="display: flex; gap: 10px;">
-            <button type="button" class="btn btn-light btn-sm" onclick="openBulkValidationModal()"
-                    style="padding: 8px 20px; border-radius: 25px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                <i class="fas fa-check-double me-1"></i>Valider la sélection
-            </button>
-            <button type="button" class="btn btn-outline-light btn-sm" onclick="clearInscriptionSelection()"
-                    style="padding: 8px 20px; border-radius: 25px; font-weight: 600;">
-                <i class="fas fa-times me-1"></i>Annuler
-            </button>
+{{-- Bulk bar premium --}}
+<div class="ii-bulk-bar" id="bulk-actions-bar">
+    <div class="ii-bulk-count">
+        <i class="fas fa-check-circle"></i>
+        <span id="selected-count">0</span> sélectionnée(s)
+    </div>
+    <button type="button" class="ii-btn ii-btn--white" onclick="openBulkValidationModal()">
+        <i class="fas fa-check-double"></i> Valider
+    </button>
+    <button type="button" class="ii-btn ii-btn--glass" onclick="iaBulkAnnuler()">
+        <i class="fas fa-ban"></i> Annuler
+    </button>
+    <button type="button" class="ii-btn ii-btn--glass" onclick="iaBulkExporter()">
+        <i class="fas fa-file-export"></i> CSV
+    </button>
+    <button type="button" class="ii-btn ii-btn--glass" onclick="clearInscriptionSelection()" title="Fermer">
+        <i class="fas fa-times"></i>
+    </button>
+</div>
+@endcan
+
+{{-- Modal bulk annuler --}}
+<div class="modal fade" id="ia-modal-bulk-annuler" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border:none; border-radius:14px; overflow:hidden;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%); color:#fff; border:none;">
+                <h5 class="modal-title"><i class="fas fa-ban me-2"></i>Annuler les inscriptions</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info mb-3" style="background:rgba(4,83,203,.06); border:1px solid rgba(4,83,203,.15); color:var(--ii-primary-d);">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong id="ia-bulk-annuler-count">0</strong> inscription(s) vont être annulée(s). Cette action est irréversible.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Motif d'annulation <span class="text-danger">*</span></label>
+                    <textarea id="ia-bulk-annuler-motif" class="form-control" rows="3" minlength="3" maxlength="500" placeholder="Raison de l'annulation..." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="border:none;">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Retour</button>
+                <button type="button" class="btn btn-danger" id="ia-bulk-annuler-submit" style="font-weight:600;">
+                    <i class="fas fa-ban me-1"></i>Confirmer l'annulation
+                </button>
+            </div>
         </div>
     </div>
 </div>
-
-<style>
-@keyframes slideUp {
-    from {
-        bottom: -100px;
-        opacity: 0;
-    }
-    to {
-        bottom: 20px;
-        opacity: 1;
-    }
-}
-</style>
-@endcan
-
 <div class="modal fade" id="bulkValidationModal" tabindex="-1" aria-labelledby="bulkValidationModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content klassci-payment-modal">
@@ -874,6 +823,15 @@
 @endsection
 
 @push('scripts')
+<script>
+    window.KLASSCI_ADMIN_ROUTES = {
+        administration: '{{ route('esbtp.inscriptions.administration') }}',
+        bulkAnnuler: '{{ route('esbtp.inscriptions.bulk-annuler') }}',
+        bulkExport: '{{ route('esbtp.inscriptions.bulk-export') }}',
+        csrf: '{{ csrf_token() }}',
+    };
+</script>
+<script src="{{ asset('js/inscriptions/common.js') }}"></script>
 <script>
     const ADMIN_REFRESH_CONTEXT = 'administration';
     const ADMIN_BASE_URL = "{{ route('esbtp.inscriptions.administration') }}";
@@ -1883,4 +1841,5 @@
         }
     });
 </script>
+<script src="{{ asset('js/inscriptions/administration.js') }}"></script>
 @endpush
