@@ -1,125 +1,223 @@
-{{-- Partial réutilisable pour une ligne d'inscription dans le tableau --}}
+{{--
+    Partial : UNE ligne d'inscription dans la table.
+    Inclus par :
+      - esbtp.inscriptions.partials.results (render initial + AJAX filtre)
+      - ESBTPInscriptionController::refreshLigne (AJAX refresh après action)
+
+    Design premium namespace ii-*, monochrome bleu KLASSCI.
+    - Photo étudiant + HSL fallback
+    - Row cliquable via data-row-href (JS delegation, pas stretched-link)
+    - Badge statut via Blade component <x-inscription-status-badge>
+    - Actions inline + kebab menu pour secondaires
+    - Modals globaux pilotés par data-bs-target + data-inscription-id
+
+    Paramètres requis :
+      - $inscription : ESBTPInscription eager-loaded (etudiant, filiere, niveau, anneeUniversitaire)
+--}}
 @php
     $hasProbleme = session('inscriptions_problemes') && isset(session('inscriptions_problemes')[$inscription->id]);
     $problemeInfo = $hasProbleme ? session('inscriptions_problemes')[$inscription->id] : null;
-    $problemeClass = $hasProbleme ? ($problemeInfo['type'] === 'error' ? 'table-danger' : 'table-warning') : '';
-    $isNonValidee = $inscription->workflow_step !== 'etudiant_cree';
-    $isValidee = $inscription->status == 'active' && $inscription->workflow_step === 'etudiant_cree';
+    $problemeClass = $hasProbleme ? ($problemeInfo['type'] === 'error' ? 'ii-row--error' : 'ii-row--warn') : '';
+
+    $etudiant = $inscription->etudiant;
+    $nomComplet = $etudiant ? trim(($etudiant->nom ?? '').' '.($etudiant->prenoms ?? '')) : 'Étudiant inconnu';
+    $initials = $etudiant
+        ? strtoupper(mb_substr($etudiant->nom ?? '', 0, 1).mb_substr($etudiant->prenoms ?? '', 0, 1))
+        : '?';
+    $avatarHue = hexdec(substr(md5($nomComplet ?: (string) $inscription->id), 0, 4)) % 360;
+
+    $raison = $problemeInfo['message'] ?? '';
+    $isPaiementNonValide = $hasProbleme && str_contains($raison, 'paiement') && str_contains($raison, 'validé');
+    $isClassePleine = $hasProbleme && (str_contains($raison, 'Classe pleine') || str_contains($raison, 'classe pleine'));
+    $isSansPaiement = $hasProbleme && (str_contains($raison, 'Aucun paiement') || str_contains($raison, 'sans paiement'));
+
+    $showHref = auth()->user()->can('inscriptions.view')
+        ? route('esbtp.inscriptions.show', $inscription->id)
+        : null;
+
+    $canValidate = auth()->user()->can('inscriptions.validate');
+    $isNonValidee = $inscription->status === 'en_attente'
+        || $inscription->status === 'pending'
+        || ($inscription->status === 'active' && $inscription->workflow_step !== 'etudiant_cree');
 @endphp
-<tr class="{{ $problemeClass }}" data-inscription-id="{{ $inscription->id }}">
-    @can('access_admin')
-    <td>
-        @if($isNonValidee)
-        <input type="checkbox" class="form-check-input inscription-checkbox"
-               value="{{ $inscription->id }}"
-               data-inscription-id="{{ $inscription->id }}">
-        @endif
-    </td>
+<tr class="ii-row {{ $problemeClass }}"
+    data-inscription-id="{{ $inscription->id }}"
+    data-matricule="{{ $etudiant->matricule ?? '' }}"
+    data-nom="{{ $nomComplet }}"
+    @if($showHref) data-row-href="{{ $showHref }}" @endif>
+
+    @can('inscriptions.validate')
+        <td class="ii-col-check" data-no-row-click>
+            @if($isNonValidee)
+                <input type="checkbox"
+                       class="form-check-input inscription-checkbox"
+                       value="{{ $inscription->id }}"
+                       data-inscription-id="{{ $inscription->id }}"
+                       aria-label="Sélectionner l'inscription {{ $nomComplet }}">
+            @endif
+        </td>
     @endcan
-    <td style="max-width: 250px;">
-        @if($hasProbleme)
-            <div class="d-flex flex-column gap-2">
-                <span class="badge {{ $problemeInfo['type'] === 'error' ? 'bg-danger' : 'bg-warning text-dark' }} d-inline-flex align-items-start"
-                      style="font-size: 0.75rem; white-space: normal; word-wrap: break-word; text-align: left; line-height: 1.3;">
-                    <i class="fas {{ $problemeInfo['type'] === 'error' ? 'fa-exclamation-circle' : 'fa-exclamation-triangle' }} me-1 mt-1" style="flex-shrink: 0;"></i>
-                    <span style="word-break: break-word;">{{ $problemeInfo['message'] }}</span>
-                </span>
 
-                @php
-                    $raison = $problemeInfo['message'];
-                    $isPaiementNonValide = str_contains($raison, 'paiement') && str_contains($raison, 'validé');
-                    $isClassePleine = str_contains($raison, 'Classe pleine') || str_contains($raison, 'classe pleine');
-                    $isSansPaiement = str_contains($raison, 'Aucun paiement') || str_contains($raison, 'sans paiement');
-                @endphp
-
-                @if($isPaiementNonValide)
-                    <button type="button" class="btn btn-sm btn-action-quick"
-                            onclick="ouvrirModalValiderPaiement({{ $inscription->id }})"
-                            style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
-                        <i class="fas fa-check-circle me-1"></i>Valider paiement
-                    </button>
-                @elseif($isClassePleine)
-                    <button type="button" class="btn btn-sm btn-action-quick"
-                            onclick="ouvrirModalChangerClasse({{ $inscription->id }})"
-                            style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
-                        <i class="fas fa-exchange-alt me-1"></i>Changer classe
-                    </button>
-                @elseif($isSansPaiement)
-                    <button type="button" class="btn btn-sm btn-action-quick"
-                            onclick="ouvrirModalCreerPaiement({{ $inscription->id }})"
-                            style="background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-size: 0.75rem; font-weight: 600;">
-                        <i class="fas fa-plus-circle me-1"></i>Créer paiement
-                    </button>
+    {{-- Étudiant : photo + nom + matricule + N° inscription --}}
+    <td class="ii-col-etu">
+        <div class="ii-etu-cell">
+            <span class="ii-avatar"
+                  @if($etudiant && $etudiant->photo_url)
+                      style="background:transparent;padding:0;overflow:hidden;"
+                  @else
+                      style="background: hsl({{ $avatarHue }}, 55%, 92%); color: hsl({{ $avatarHue }}, 50%, 35%);"
+                  @endif>
+                @if($etudiant && $etudiant->photo_url)
+                    <img src="{{ $etudiant->photo_url }}"
+                         alt="{{ $nomComplet }}"
+                         width="36" height="36"
+                         loading="lazy"
+                         style="width:100%;height:100%;object-fit:cover;border-radius:50%;"
+                         onerror="this.onerror=null;this.parentElement.style.background='hsl({{ $avatarHue }}, 55%, 92%)';this.parentElement.style.color='hsl({{ $avatarHue }}, 50%, 35%)';this.outerHTML='{{ $initials }}';">
+                @else
+                    {{ $initials }}
                 @endif
+            </span>
+            <div class="ii-etu-body">
+                <div class="ii-etu-name">{{ $nomComplet }}</div>
+                <div class="ii-etu-meta">
+                    <span class="ii-matricule">{{ $etudiant->matricule ?? 'N/A' }}</span>
+                    <span class="ii-separator">·</span>
+                    <span class="ii-numero">{{ $inscription->numero_inscription ?? '—' }}</span>
+                </div>
             </div>
-        @else
-            {{ $inscription->numero_inscription }}
+        </div>
+    </td>
+
+    {{-- Filière / Niveau (fusionnés) --}}
+    <td class="ii-col-filiere">
+        <div class="ii-filiere-cell">
+            <div class="ii-filiere-name">{{ $inscription->filiere->name ?? ($inscription->filiere->nom ?? 'N/A') }}</div>
+            <div class="ii-filiere-niveau">{{ $inscription->niveau->name ?? ($inscription->niveau->nom ?? '') }}</div>
+        </div>
+    </td>
+
+    {{-- Année --}}
+    <td class="ii-col-annee">
+        {{ $inscription->anneeUniversitaire->name ?? ($inscription->anneeUniversitaire->annee_scolaire ?? 'N/A') }}
+    </td>
+
+    {{-- Statut via Blade component --}}
+    <td class="ii-col-status">
+        <x-inscription-status-badge :inscription="$inscription" />
+        @if($hasProbleme)
+            <div class="ii-probleme-chip" data-no-row-click>
+                <i class="fas {{ $problemeInfo['type'] === 'error' ? 'fa-exclamation-circle' : 'fa-exclamation-triangle' }}"></i>
+                <span>{{ \Illuminate\Support\Str::limit($problemeInfo['message'], 60) }}</span>
+            </div>
+            @if($isPaiementNonValide)
+                @can('paiements.validate')
+                    <button type="button" class="ii-btn-quick"
+                            onclick="event.stopPropagation(); ouvrirModalValiderPaiement({{ $inscription->id }})"
+                            data-no-row-click>
+                        <i class="fas fa-check-circle"></i>Valider paiement
+                    </button>
+                @endcan
+            @elseif($isClassePleine)
+                @can('inscriptions.validate')
+                    <button type="button" class="ii-btn-quick"
+                            onclick="event.stopPropagation(); ouvrirModalChangerClasse({{ $inscription->id }})"
+                            data-no-row-click>
+                        <i class="fas fa-exchange-alt"></i>Changer classe
+                    </button>
+                @endcan
+            @elseif($isSansPaiement)
+                @can('paiements.create')
+                    <button type="button" class="ii-btn-quick"
+                            onclick="event.stopPropagation(); ouvrirModalCreerPaiement({{ $inscription->id }})"
+                            data-no-row-click>
+                        <i class="fas fa-plus-circle"></i>Créer paiement
+                    </button>
+                @endcan
+            @endif
         @endif
     </td>
-    <td>{{ $inscription->etudiant->matricule ?? 'N/A' }}</td>
-    <td>{{ $inscription->etudiant->nom ?? '' }} {{ $inscription->etudiant->prenoms ?? '' }}</td>
-    <td>{{ $inscription->filiere->name ?? ($inscription->filiere->nom ?? 'N/A') }}</td>
-    <td>{{ $inscription->niveau->name ?? ($inscription->niveau->nom ?? 'N/A') }}</td>
-    <td>{{ $inscription->anneeUniversitaire->name ?? ($inscription->anneeUniversitaire->annee_scolaire ?? 'N/A') }}</td>
-    <td>
-        @if($isNonValidee)
-            <span class="badge bg-warning text-dark px-3 py-2">En attente</span>
-        @elseif($isValidee)
-            <span class="badge bg-success px-3 py-2">Validée</span>
-        @elseif($inscription->status == 'cancelled')
-            <span class="badge bg-danger px-3 py-2">Annulée</span>
-        @else
-            <span class="badge bg-secondary px-3 py-2">{{ ucfirst($inscription->status) }}</span>
-        @endif
-    </td>
-    <td>{{ $inscription->created_at->format('d/m/Y') }}</td>
-    <td>
+
+    {{-- Date inscription --}}
+    <td class="ii-col-date">{{ $inscription->created_at->format('d/m/Y') }}</td>
+
+    {{-- Actions : inline + kebab pour secondaires --}}
+    <td class="ii-col-actions" data-no-row-click>
         <div class="inscription-actions-wrapper" data-inscription-actions="{{ $inscription->id }}">
-            <div class="d-flex inscription-actions-buttons">
-            @can('inscriptions.view')
-            <a href="{{ route('esbtp.inscriptions.show', $inscription->id) }}" class="btn btn-primary btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" title="Détails">
-                <i class="fas fa-eye"></i>
-            </a>
-            @endcan
+            <div class="inscription-actions-buttons ii-actions">
+                @if($inscription->status === 'pending' || $inscription->status === 'en_attente')
+                    @can('valider inscriptions')
+                        <button type="button"
+                                class="ii-btn ii-btn--primary valider-btn"
+                                data-id="{{ $inscription->id }}"
+                                title="Valider l'inscription">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <form id="valider-form-{{ $inscription->id }}"
+                              action="{{ route('esbtp.inscriptions.valider', $inscription->id) }}"
+                              method="POST" style="display:none;">
+                            @csrf
+                            @method('PUT')
+                        </form>
+                    @endcan
+                @endif
 
-            @can('edit inscriptions')
-            @if($inscription->status == 'pending')
-            <a href="{{ route('esbtp.inscriptions.edit', $inscription->id) }}" class="btn btn-warning btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" title="Modifier">
-                <i class="fas fa-edit"></i>
-            </a>
-            @endif
-            @endcan
-
-            @if($inscription->status == 'pending')
-                @can('valider inscriptions')
-                <button type="button" class="btn btn-success btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1 valider-btn"
-                        data-id="{{ $inscription->id }}" title="Valider l'inscription">
-                    <i class="fas fa-check"></i>
-                </button>
-                <form id="valider-form-{{ $inscription->id }}" action="{{ route('esbtp.inscriptions.valider', $inscription->id) }}" method="POST" style="display: none;">
-                    @csrf
-                    @method('PUT')
-                </form>
-                @endcan
-            @endif
-
-            @if($inscription->status == 'pending')
-                @can('annuler inscriptions')
-                <button type="button" class="btn btn-warning btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1 annuler-btn"
-                        data-id="{{ $inscription->id }}" data-bs-toggle="modal"
-                        data-bs-target="#annulerModal{{ $inscription->id }}" title="Annuler l'inscription">
-                    <i class="fas fa-times"></i>
-                </button>
-                @endcan
-            @endif
-
-            @can('delete inscriptions')
-            <button type="button" class="btn btn-danger btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 delete-btn"
-                    data-id="{{ $inscription->id }}" data-bs-toggle="modal"
-                    data-bs-target="#deleteModal{{ $inscription->id }}" title="Supprimer">
-                <i class="fas fa-trash"></i>
-            </button>
-            @endcan
+                {{-- Menu kebab pour actions secondaires --}}
+                <div class="dropdown">
+                    <button type="button"
+                            class="ii-btn ii-btn--ghost"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                            aria-label="Actions supplémentaires"
+                            title="Actions supplémentaires">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end ii-dropdown">
+                        @can('inscriptions.view')
+                            <li>
+                                <a class="dropdown-item" href="{{ route('esbtp.inscriptions.show', $inscription->id) }}">
+                                    <i class="fas fa-eye"></i>Voir les détails
+                                </a>
+                            </li>
+                        @endcan
+                        @can('edit inscriptions')
+                            @if($inscription->status === 'pending' || $inscription->status === 'en_attente')
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('esbtp.inscriptions.edit', $inscription->id) }}">
+                                        <i class="fas fa-edit"></i>Modifier
+                                    </a>
+                                </li>
+                            @endif
+                        @endcan
+                        @if($inscription->status === 'pending' || $inscription->status === 'en_attente')
+                            @can('annuler inscriptions')
+                                <li>
+                                    <button type="button"
+                                            class="dropdown-item"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#ii-modal-annuler"
+                                            data-inscription-id="{{ $inscription->id }}"
+                                            data-student-name="{{ $nomComplet }}">
+                                        <i class="fas fa-times"></i>Annuler l'inscription
+                                    </button>
+                                </li>
+                            @endcan
+                        @endif
+                        @can('delete inscriptions')
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <button type="button"
+                                        class="dropdown-item ii-dropdown-item--danger"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#ii-modal-delete"
+                                        data-inscription-id="{{ $inscription->id }}"
+                                        data-student-name="{{ $nomComplet }}">
+                                    <i class="fas fa-trash"></i>Supprimer
+                                </button>
+                            </li>
+                        @endcan
+                    </ul>
+                </div>
             </div>
             <div class="inscription-actions-spinner" aria-hidden="true">
                 <div class="spinner-border spinner-border-sm text-primary" role="status">

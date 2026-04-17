@@ -93,6 +93,20 @@ class ESBTPInscriptionController extends Controller
         $annee = $request->input("annee");
         $status = $request->input("status", "active");
 
+        // Tri (whitelist pour éviter SQL injection)
+        $allowedSorts = ["created_at", "date_inscription", "status", "filiere_id", "niveau_id", "nom"];
+        $sortInput = (string) $request->input("sort", "");
+        $sort = in_array($sortInput, $allowedSorts, true) ? $sortInput : "created_at";
+
+        $dirInput = strtolower((string) $request->input("dir", "desc"));
+        $dir = in_array($dirInput, ["asc", "desc"], true) ? $dirInput : "desc";
+
+        // Pagination (whitelist pour éviter DoS)
+        $allowedPerPage = [15, 25, 50, 100];
+        $perPage = in_array((int) $request->input("per_page"), $allowedPerPage, true)
+            ? (int) $request->input("per_page")
+            : 15;
+
         // Construire la requête avec les filtres
         $baseQuery = ESBTPInscription::query()->with([
             "etudiant",
@@ -135,7 +149,18 @@ class ESBTPInscriptionController extends Controller
             }
         }
 
-        $perPage = 15;
+        // Appliquer le tri (sauf pour "nom" qui nécessite un join, et si recherche active)
+        if (!$search) {
+            if ($sort === "nom") {
+                $baseQuery
+                    ->leftJoin("esbtp_etudiants", "esbtp_inscriptions.etudiant_id", "=", "esbtp_etudiants.id")
+                    ->orderBy("esbtp_etudiants.nom", $dir)
+                    ->orderBy("esbtp_etudiants.prenoms", $dir)
+                    ->select("esbtp_inscriptions.*");
+            } else {
+                $baseQuery->orderBy($sort, $dir);
+            }
+        }
 
         if ($search) {
             $inscriptions = $this->searchService->search(
@@ -147,7 +172,6 @@ class ESBTPInscriptionController extends Controller
             );
         } else {
             $inscriptions = $baseQuery
-                ->latest()
                 ->paginate($perPage)
                 ->appends($request->query());
         }
@@ -214,6 +238,9 @@ class ESBTPInscriptionController extends Controller
             return response()->json([
                 "html" => view("esbtp.inscriptions.partials.results", [
                     "inscriptions" => $inscriptions,
+                    "sort" => $sort,
+                    "dir" => $dir,
+                    "perPage" => $perPage,
                 ])->render(),
                 "url" => $request->fullUrl(),
             ]);
@@ -233,6 +260,9 @@ class ESBTPInscriptionController extends Controller
                 "status",
                 "stats",
                 "anneeEnCours",
+                "sort",
+                "dir",
+                "perPage",
             ),
         );
     }
