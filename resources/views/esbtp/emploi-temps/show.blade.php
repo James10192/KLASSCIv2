@@ -18,7 +18,7 @@
         padding: 1.75rem 2rem 1.25rem;
         color: #fff;
         margin-bottom: 1.25rem;
-        overflow: hidden;
+        /* Pas d'overflow:hidden — le dropdown du menu kebab doit pouvoir s'etendre */
     }
     .ets-hero::before {
         content: '';
@@ -26,6 +26,15 @@
         inset: 0;
         background: radial-gradient(circle at 80% 20%, rgba(255,255,255,.12), transparent 60%);
         pointer-events: none;
+        border-radius: inherit;
+    }
+    /* Safety: dropdown du kebab toujours au-dessus + aligne sur le droit */
+    .ets-hero-actions .dropdown-menu {
+        z-index: 1060;
+    }
+    .ets-hero-actions .dropdown-menu-end[data-bs-popper] {
+        right: 0;
+        left: auto;
     }
 
     .ets-hero-top {
@@ -680,8 +689,13 @@
                     <a href="{{ route('esbtp.emploi-temps.index') }}" class="ets-btn ets-btn--glass">
                         <i class="fas fa-arrow-left"></i> Retour
                     </a>
+                    @can('create_timetable')
+                    <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id]) }}" class="ets-btn ets-btn--white">
+                        <i class="fas fa-plus"></i> Séance
+                    </a>
+                    @endcan
                     <div class="dropdown">
-                        <button type="button" class="ets-btn ets-btn--glass" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                        <button type="button" class="ets-btn ets-btn--glass" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false" aria-label="Actions">
                             <i class="fas fa-ellipsis-v"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end ets-dropdown-menu">
@@ -712,11 +726,6 @@
                             @endcan
                         </ul>
                     </div>
-                    @can('create_timetable')
-                    <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id]) }}" class="ets-btn ets-btn--white">
-                        <i class="fas fa-plus"></i> Séance
-                    </a>
-                    @endcan
                 </div>
             </div>
 
