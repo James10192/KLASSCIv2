@@ -572,7 +572,13 @@
             <div class="cs-info-card">
                 <div class="cs-info-card-header">
                     <div class="cs-info-card-icon"><i class="fas fa-chalkboard-teacher"></i></div>
-                    <h3 class="cs-info-card-title">Enseignants ({{ $nbEnseignants }})</h3>
+                    <div>
+                        <h3 class="cs-info-card-title">Enseignants ({{ $nbEnseignants }})</h3>
+                        <p style="margin:.15rem 0 0;font-size:.72rem;color:var(--cs-muted);line-height:1.35;">
+                            <i class="fas fa-circle-info" style="color:var(--cs-primary);font-size:.7rem;"></i>
+                            Enseignants ayant tenu au moins une séance dans l'emploi du temps de cette classe (année courante)
+                        </p>
+                    </div>
                 </div>
                 <div class="cs-teachers">
                     @if(!empty($planningMatiere['enseignants']) && $planningMatiere['enseignants']->isNotEmpty())
@@ -587,7 +593,7 @@
                             </a>
                         @endforeach
                     @else
-                        <span style="color:var(--cs-muted);font-size:.85rem;">Aucun enseignant trouvé sur l'emploi du temps.</span>
+                        <span style="color:var(--cs-muted);font-size:.85rem;">Aucun enseignant n'a encore tenu de séance dans l'emploi du temps de cette classe.</span>
                     @endif
                 </div>
             </div>
