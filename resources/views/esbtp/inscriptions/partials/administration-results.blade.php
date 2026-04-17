@@ -1,21 +1,52 @@
-@if($inscriptions->count() > 0)
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead class="bg-light">
+@php
+    $currentSort = request('sort', 'created_at');
+    $currentDir = request('dir', 'desc');
+    $sortLink = function ($column, $label) use ($currentSort, $currentDir) {
+        $nextDir = ($currentSort === $column && $currentDir === 'asc') ? 'desc' : 'asc';
+        $ariaSort = $currentSort !== $column ? 'none' : ($currentDir === 'asc' ? 'ascending' : 'descending');
+        $icon = 'fa-sort';
+        if ($currentSort === $column) {
+            $icon = $currentDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down';
+        }
+        return [
+            'column' => $column,
+            'label' => $label,
+            'nextDir' => $nextDir,
+            'ariaSort' => $ariaSort,
+            'icon' => $icon,
+        ];
+    };
+@endphp
+
+@if($inscriptions->count() === 0)
+    <div class="ii-empty">
+        <div class="ii-empty-icon"><i class="fas fa-inbox"></i></div>
+        <h4>Aucune inscription en attente</h4>
+        <p>Aucune inscription ne correspond aux filtres appliqués.</p>
+    </div>
+@else
+    <div class="ii-table-wrap">
+        <table class="ii-table">
+            <thead>
                 <tr>
                     @can('access_admin')
-                    <th style="width: 40px;">
-                        <input type="checkbox" id="select-all-inscriptions" class="form-check-input">
+                    <th style="width:38px;">
+                        <input type="checkbox" id="select-all-inscriptions" class="form-check-input" aria-label="Tout sélectionner">
                     </th>
                     @endcan
-                    <th>Matricule</th>
-                    <th>Nom complet</th>
-                    <th>Filière</th>
-                    <th>Niveau</th>
+                    <th>Étudiant</th>
+                    <th>Filière · Niveau</th>
                     <th>Classe</th>
-                    <th>Étape</th>
+                    @php $s = $sortLink('workflow_step', 'Étape'); @endphp
+                    <th class="is-sortable" data-sort="{{ $s['column'] }}" data-next-dir="{{ $s['nextDir'] }}" aria-sort="{{ $s['ariaSort'] }}">
+                        {{ $s['label'] }} <i class="fas {{ $s['icon'] }} ii-sort-icon"></i>
+                    </th>
                     <th>Paiement</th>
-                    <th>Actions</th>
+                    @php $s = $sortLink('created_at', 'Date'); @endphp
+                    <th class="is-sortable" data-sort="{{ $s['column'] }}" data-next-dir="{{ $s['nextDir'] }}" aria-sort="{{ $s['ariaSort'] }}">
+                        {{ $s['label'] }} <i class="fas {{ $s['icon'] }} ii-sort-icon"></i>
+                    </th>
+                    <th style="width:130px; text-align:right;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -26,18 +57,9 @@
         </table>
     </div>
 
-    <div class="d-flex justify-content-center mt-4">
-        {{ $inscriptions->appends(request()->query())->links() }}
-    </div>
-@else
-    <div class="text-center py-5">
-        <div class="mb-3">
-            <i class="fas fa-inbox fa-3x text-muted"></i>
+    @if($inscriptions->hasPages())
+        <div class="ii-pagination">
+            {{ $inscriptions->links() }}
         </div>
-        <h4>Aucune inscription trouvée</h4>
-        <p class="text-muted">Aucune inscription en attente ne correspond aux filtres appliqués.</p>
-        <button type="button" class="btn-acasi primary" onclick="resetAdminFilters()">
-            <i class="fas fa-refresh"></i>Réinitialiser les filtres
-        </button>
-    </div>
+    @endif
 @endif
