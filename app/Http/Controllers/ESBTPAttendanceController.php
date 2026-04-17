@@ -1860,6 +1860,19 @@ class ESBTPAttendanceController extends Controller
                 })
                 ->count();
 
+            // Volume horaire prévu pour cette matière et cette période (source: planifications académiques)
+            $semestreFilter = match ($periode) {
+                'semestre1' => 1,
+                'semestre2' => 2,
+                default => null,
+            };
+            $volumeHoraireTotal = (float) ESBTPPlanificationAcademique::query()
+                ->where('filiere_id', $classe->filiere_id)
+                ->where('niveau_etude_id', $classe->niveau_etude_id)
+                ->where('matiere_id', $matiere->id)
+                ->when($semestreFilter !== null, fn ($q) => $q->where('semestre', $semestreFilter))
+                ->sum('volume_horaire_total');
+
             $html = view('esbtp.attendances.partials.manual-hours-tab', [
                 'classe' => $classe,
                 'matiere' => $matiere,
@@ -1868,6 +1881,7 @@ class ESBTPAttendanceController extends Controller
                 'etudiants' => $etudiants,
                 'existing' => $existing,
                 'existingSessionsCount' => $existingSessionsCount,
+                'volumeHoraireTotal' => $volumeHoraireTotal,
             ])->render();
 
             return response()->json([
@@ -1876,6 +1890,7 @@ class ESBTPAttendanceController extends Controller
                 'nbEtudiants' => $etudiants->count(),
                 'nbExisting' => $existing->count(),
                 'existingSessionsCount' => $existingSessionsCount,
+                'volumeHoraireTotal' => $volumeHoraireTotal,
             ]);
         } catch (\Exception $e) {
             \Log::error('Erreur loadManualTab: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);

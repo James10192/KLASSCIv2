@@ -1,4 +1,8 @@
-<div class="amh-panel" data-classe-id="{{ $classe->id }}" data-matiere-id="{{ $matiere->id }}" data-periode="{{ $periode }}" data-annee-id="{{ $anneeUniversitaire->id }}">
+@php
+    $volumeHoraireTotal = $volumeHoraireTotal ?? 0;
+    $fmtHours = fn ($h) => rtrim(rtrim(number_format((float) $h, 2, '.', ''), '0'), '.');
+@endphp
+<div class="amh-panel" data-classe-id="{{ $classe->id }}" data-matiere-id="{{ $matiere->id }}" data-periode="{{ $periode }}" data-annee-id="{{ $anneeUniversitaire->id }}" data-volume-total="{{ $volumeHoraireTotal }}">
     <div class="amh-header">
         <div class="amh-header__titles">
             <div class="amh-header__eyebrow">{{ $classe->name }} · {{ $matiere->name }}</div>
@@ -6,6 +10,11 @@
             <div class="amh-header__meta">
                 Année {{ $anneeUniversitaire->name ?? $anneeUniversitaire->libelle ?? '—' }}
                 · {{ $etudiants->count() }} étudiant{{ $etudiants->count() > 1 ? 's' : '' }}
+                @if($volumeHoraireTotal > 0)
+                    · <span class="amh-chip amh-chip--blue"><i class="fas fa-clock"></i>Volume prévu : {{ $fmtHours($volumeHoraireTotal) }}h</span>
+                @else
+                    · <span class="amh-chip amh-chip--muted"><i class="fas fa-circle-info"></i>Pas de volume horaire défini dans les planifications</span>
+                @endif
                 @if($existing->count() > 0)
                     · <span class="amh-chip amh-chip--blue"><i class="fas fa-database"></i>{{ $existing->count() }} ligne{{ $existing->count() > 1 ? 's' : '' }} sauvegardée{{ $existing->count() > 1 ? 's' : '' }}</span>
                 @endif
@@ -54,6 +63,7 @@
                             <th class="amh-col-hours">Présence (h)</th>
                             <th class="amh-col-hours">Abs. justifiées (h)</th>
                             <th class="amh-col-hours">Abs. non justifiées (h)</th>
+                            <th class="amh-col-total" title="Total saisi = Présence + Absences">Total saisi</th>
                             <th class="amh-col-note">Note</th>
                             <th class="amh-col-actions">Actions</th>
                         </tr>
@@ -113,6 +123,10 @@
                                            value="{{ $origAbsNj }}"
                                            class="amh-input amh-input--abs-nj"
                                            placeholder="0">
+                                </td>
+                                <td class="amh-col-total">
+                                    <span class="amh-row-total" data-row-total>0</span>
+                                    <span class="amh-row-total-unit">h</span>
                                 </td>
                                 <td class="amh-col-note">
                                     <input type="text" maxlength="500"

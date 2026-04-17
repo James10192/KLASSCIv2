@@ -662,8 +662,46 @@
     .amh-table tbody tr:hover { background: #f8fafc; }
     .amh-col-name   { min-width: 200px; }
     .amh-col-hours  { width: 120px; }
+    .amh-col-total  { width: 100px; text-align: right; white-space: nowrap; }
     .amh-col-note   { min-width: 180px; }
-    .amh-col-actions{ width: 60px; text-align: right; }
+    .amh-col-actions{ width: 90px; text-align: right; }
+
+    .amh-row-total {
+        font-weight: 700;
+        font-size: .9rem;
+        color: #0f172a;
+    }
+    .amh-row-total-unit {
+        font-size: .72rem;
+        color: #94a3b8;
+        margin-left: .15rem;
+    }
+    .amh-row[data-total-match="ok"] .amh-row-total {
+        color: #065f46;
+    }
+    .amh-row[data-total-match="ok"] .amh-col-total::after {
+        content: " ✓";
+        color: #10b981;
+        font-size: .75rem;
+    }
+    .amh-row[data-total-match="over"] .amh-row-total {
+        color: #b91c1c;
+    }
+    .amh-row[data-total-match="over"] .amh-col-total::after {
+        content: " ⚠";
+        color: #ef4444;
+        font-size: .75rem;
+    }
+    .amh-row[data-total-match="under"] .amh-row-total {
+        color: #b45309;
+    }
+    .amh-row[data-total-match="under"] .amh-col-total::after {
+        content: " ⚠";
+        color: #f59e0b;
+        font-size: .75rem;
+    }
+
+    .amh-chip--muted { background: #f1f5f9; color: #64748b; }
 
     .amh-etu { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
     .amh-etu__name { font-weight: 600; color: #0f172a; }
@@ -1582,11 +1620,12 @@
                     normalized(absNj) !== normalized(origAbsNj) ||
                     (notes ?? '') !== (origNotes ?? '');
 
-                const isEmpty =
-                    (pres === '' || parseFloat(pres) === 0) &&
-                    (absJ === '' || parseFloat(absJ) === 0) &&
-                    (absNj === '' || parseFloat(absNj) === 0) &&
-                    !notes;
+                const presN  = parseFloat(pres)  || 0;
+                const absJN  = parseFloat(absJ)  || 0;
+                const absNjN = parseFloat(absNj) || 0;
+                const total  = presN + absJN + absNjN;
+
+                const isEmpty = total === 0 && !notes;
 
                 let state;
                 if (hasSavedId) {
@@ -1597,10 +1636,34 @@
 
                 row.dataset.state = state;
 
+                // Total saisi + match/mismatch avec volume prévu
+                const panel = row.closest('.amh-panel');
+                const expected = parseFloat(panel?.dataset.volumeTotal || '0') || 0;
+                const totalEl = row.querySelector('[data-row-total]');
+                if (totalEl) {
+                    totalEl.textContent = this.formatHours(total);
+                    let match = 'na';
+                    if (expected > 0 && !isEmpty) {
+                        const diff = Math.abs(total - expected);
+                        match = diff < 0.001 ? 'ok' : (total > expected ? 'over' : 'under');
+                    }
+                    row.dataset.totalMatch = match;
+                    const title = expected > 0
+                        ? `Volume prévu : ${this.formatHours(expected)}h — saisi : ${this.formatHours(total)}h` + (match === 'over' ? ` (dépasse de ${this.formatHours(total - expected)}h)` : match === 'under' ? ` (manque ${this.formatHours(expected - total)}h)` : '')
+                        : 'Aucun volume horaire prévu défini';
+                    totalEl.parentElement.setAttribute('title', title);
+                }
+
                 const resetBtn = row.querySelector('.amh-reset-btn');
                 if (resetBtn) {
                     resetBtn.disabled = !dirty && !(hasSavedId === false && !isEmpty);
                 }
+            },
+
+            formatHours(h) {
+                if (h === 0) return '0';
+                const s = (Math.round(h * 100) / 100).toString();
+                return s;
             },
 
             resetRow(e) {
@@ -1641,6 +1704,22 @@
             async handleSubmit(e) {
                 e.preventDefault();
                 const form = e.target;
+
+                // Contrôle de cohérence : avertir si des lignes ne matchent pas le volume horaire prévu
+                const panel = form.closest('.amh-panel');
+                const expected = parseFloat(panel?.dataset.volumeTotal || '0') || 0;
+                if (expected > 0) {
+                    const mismatched = Array.from(form.querySelectorAll('.amh-row'))
+                        .filter(r => r.dataset.state !== 'empty' && (r.dataset.totalMatch === 'over' || r.dataset.totalMatch === 'under'));
+                    if (mismatched.length > 0) {
+                        const ok = confirm(
+                            `${mismatched.length} ligne${mismatched.length > 1 ? 's' : ''} ne correspond${mismatched.length > 1 ? 'ent' : ''} pas au volume horaire prévu (${this.formatHours(expected)}h).\n\n` +
+                            `Continuer l'enregistrement ?`
+                        );
+                        if (!ok) return;
+                    }
+                }
+
                 const submitBtn = form.querySelector('#amh-submit');
                 const originalHtml = submitBtn.innerHTML;
                 submitBtn.disabled = true;
