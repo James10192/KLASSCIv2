@@ -3181,6 +3181,21 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                       style="border: 2px solid #dee2e6; border-radius: 8px; resize: none;"></textarea>
                         </div>
                     </div>
+
+                    {{-- Checkbox : Valider directement le paiement --}}
+                    <div style="margin-top: 1.5rem; border: 2px solid #e2e8f0; border-radius: 10px; padding: 1rem; background: #f8fafc;">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="validate_payment" id="payment_validate_immediately" value="1"
+                                   style="width:18px; height:18px; margin-top:.15rem;">
+                            <label class="form-check-label fw-semibold" for="payment_validate_immediately" style="margin-left:.4rem; color:#2d3748;">
+                                <i class="fas fa-bolt me-1" style="color:#0d6efd;"></i>
+                                Valider directement le paiement
+                            </label>
+                            <div class="text-muted" style="margin-left:1.75rem; font-size:.8rem; margin-top:.2rem;">
+                                Si coché, le paiement sera marqué comme validé dès sa création (sans attente de validation ultérieure).
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer" style="background: #f8f9fa; border-radius: 0 0 15px 15px; padding: 1.25rem 2rem; border: none;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="
@@ -3499,33 +3514,50 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 
 <!-- Modal pour souscription à un frais optionnel -->
 <div class="modal fade" id="subscriptionModal" tabindex="-1" aria-labelledby="subscriptionModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="subscriptionModalLabel">
-                    <i class="fas fa-plus-circle me-2"></i>Souscrire l'étudiant à un frais optionnel
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 15px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); color: white; border-radius: 15px 15px 0 0; padding: 1.5rem; border: none;">
+                <h5 class="modal-title fw-bold" id="subscriptionModalLabel">
+                    <i class="fas fa-plus-circle me-2"></i>Souscrire à un frais optionnel
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="subscriptionForm" method="POST" action="{{ route('esbtp.inscriptions.subscribe-optional-fee', $inscription->id) }}">
                 @csrf
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Sélectionnez un frais optionnel pour y souscrire cet étudiant.
+                <div class="modal-body" style="padding: 2rem;">
+                    <!-- Alert information -->
+                    <div style="background: linear-gradient(135deg, #e7f3ff 0%, #f0f8ff 100%); border-left: 4px solid #0d6efd; border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.5rem;">
+                        <div class="d-flex align-items-start gap-3">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #0d6efd, #0a58ca); display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;">
+                                <i class="fas fa-info-circle"></i>
+                            </div>
+                            <div style="flex-grow: 1;">
+                                <div style="color: #084298; font-weight: 500; margin-bottom: 0.25rem;">Souscription à un frais optionnel</div>
+                                <div style="color: #052c65; font-size: 0.9rem;">
+                                    Sélectionnez un frais optionnel pour y souscrire cet étudiant. Vous pouvez également effectuer et valider le paiement immédiatement.
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="row">
+
+                    <!-- Ligne 1 : Frais + Montant -->
+                    <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="optional_category_id" class="form-label">Frais optionnel <span class="text-danger">*</span></label>
-                                <select class="form-select" id="optional_category_id" name="frais_category_id" required>
+                            <label for="optional_category_id" class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
+                                <i class="fas fa-tags me-1" style="color: #0d6efd;"></i>
+                                Frais optionnel <span class="text-danger">*</span>
+                            </label>
+                            <div style="position: relative;">
+                                <i class="fas fa-folder-open" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #0d6efd; z-index: 10;"></i>
+                                <select class="form-select" id="optional_category_id" name="frais_category_id" required
+                                        style="padding-left: 2.75rem; border: 2px solid #dee2e6; border-radius: 8px; font-weight: 500;">
                                     <option value="">Sélectionnez un frais</option>
                                     @if(isset($availableOptionalCategories))
                                         @foreach($availableOptionalCategories as $category)
                                             <option value="{{ $category->id }}"
                                                     data-default-amount="{{ $category->default_amount }}"
                                                     data-options="{{ json_encode($category->options->map(fn($o) => ['id' => $o->id, 'name' => $o->name, 'additional_amount' => (float)$o->additional_amount, 'description' => $o->description])->values()) }}">
-                                                {{ $category->name }} - {{ number_format($category->default_amount, 0, ',', ' ') }} FCFA
+                                                {{ $category->name }} — {{ number_format($category->default_amount, 0, ',', ' ') }} FCFA
                                             </option>
                                         @endforeach
                                     @endif
@@ -3533,29 +3565,88 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="subscription_amount" class="form-label">Montant <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="subscription_amount" name="amount" min="0" step="1" required>
-                                <small class="text-muted" id="subscription_amount_hint"></small>
+                            <label for="subscription_amount" class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
+                                <i class="fas fa-coins me-1" style="color: #0d6efd;"></i>
+                                Montant <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text" style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); border: 2px solid #dee2e6; border-right: none;">
+                                    <i class="fas fa-dollar-sign" style="color: #0d6efd;"></i>
+                                </span>
+                                <input type="number" class="form-control" id="subscription_amount" name="amount" min="0" step="1" required
+                                       style="border: 2px solid #dee2e6; border-left: none; border-right: none; font-weight: 600;">
+                                <span class="input-group-text" style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); border: 2px solid #dee2e6; border-left: none; font-weight: 600;">FCFA</span>
                             </div>
+                            <small class="text-muted" id="subscription_amount_hint"></small>
                         </div>
                     </div>
 
-                    <!-- Zone options dynamique (affichée si la catégorie a des options) -->
+                    <!-- Zone options dynamique -->
                     <div id="subscription_options_zone" class="mb-3" style="display:none;">
-                        <label class="form-label">Option <span class="text-danger">*</span></label>
+                        <label class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
+                            <i class="fas fa-list me-1" style="color: #0d6efd;"></i>
+                            Option <span class="text-danger">*</span>
+                        </label>
                         <div id="subscription_options_list"></div>
                         <small class="text-muted">Le montant se met à jour automatiquement selon l'option choisie.</small>
                     </div>
 
+                    <!-- Notes -->
                     <div class="mb-3">
-                        <label for="subscription_notes" class="form-label">Notes</label>
-                        <textarea class="form-control" id="subscription_notes" name="notes" rows="3" placeholder="Commentaires sur la souscription..."></textarea>
+                        <label for="subscription_notes" class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
+                            <i class="fas fa-comment-dots me-1" style="color: #6c757d;"></i>
+                            Notes
+                        </label>
+                        <textarea class="form-control" id="subscription_notes" name="notes" rows="2"
+                                  placeholder="Commentaires sur la souscription..."
+                                  style="border: 2px solid #dee2e6; border-radius: 8px; resize: none;"></textarea>
+                    </div>
+
+                    <!-- Option : effectuer le paiement immédiatement -->
+                    <div style="border: 2px solid #e2e8f0; border-radius: 10px; padding: 1rem; background: #f8fafc;">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="create_and_pay" id="subscription_create_and_pay" value="1"
+                                   style="width:18px; height:18px; margin-top:.15rem;">
+                            <label class="form-check-label fw-semibold" for="subscription_create_and_pay" style="margin-left:.4rem; color:#2d3748;">
+                                <i class="fas fa-bolt me-1" style="color:#0d6efd;"></i>
+                                Effectuer et valider le paiement immédiatement
+                            </label>
+                            <div class="text-muted" style="margin-left:1.75rem; font-size:.8rem; margin-top:.2rem;">
+                                Crée un paiement du montant ci-dessus et le marque comme validé sur cette souscription.
+                            </div>
+                        </div>
+                        <div id="subscription_payment_fields" class="row g-3 mt-2" style="display:none;">
+                            <div class="col-md-6">
+                                <label for="subscription_mode_paiement" class="form-label fw-semibold" style="color:#2d3748; font-size:.85rem;">
+                                    <i class="fas fa-credit-card me-1" style="color:#0d6efd;"></i>Mode de paiement <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" name="mode_paiement" id="subscription_mode_paiement"
+                                        style="border: 2px solid #dee2e6; border-radius: 8px;">
+                                    <option value="">Sélectionnez</option>
+                                    <option value="especes">Espèces</option>
+                                    <option value="cheque">Chèque</option>
+                                    <option value="virement">Virement</option>
+                                    <option value="mobile_money">Mobile Money</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="subscription_reference" class="form-label fw-semibold" style="color:#2d3748; font-size:.85rem;">
+                                    <i class="fas fa-hashtag me-1" style="color:#6c757d;"></i>Référence du paiement
+                                </label>
+                                <input type="text" class="form-control" name="reference_paiement" id="subscription_reference"
+                                       placeholder="Numéro de chèque, référence virement..."
+                                       style="border: 2px solid #dee2e6; border-radius: 8px;">
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-primary">
+                <div class="modal-footer" style="background: #f8f9fa; border-radius: 0 0 15px 15px; padding: 1.25rem 2rem; border: none;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"
+                            style="padding: 0.65rem 1.5rem; border-radius: 8px; font-weight: 600; border: 2px solid #6c757d;">
+                        <i class="fas fa-times me-2"></i>Annuler
+                    </button>
+                    <button type="submit" class="btn btn-primary"
+                            style="padding: 0.65rem 1.5rem; border-radius: 8px; font-weight: 600; background: linear-gradient(135deg, #0d6efd, #0a58ca); border: none; box-shadow: 0 4px 12px rgba(13,110,253,0.3);">
                         <i class="fas fa-plus me-2"></i>Souscrire l'étudiant
                     </button>
                 </div>
@@ -5116,6 +5207,26 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
         protectFormAgainstDoubleClick('#paymentForm', '#paymentModal');              // Modal associer un paiement
         protectFormAgainstDoubleClick('#validationForm', '#validationModal');        // Modal validation définitive
         protectFormAgainstDoubleClick('#reliquatPaymentForm', '#reliquatPaymentModal'); // Modal paiement reliquat
+        protectFormAgainstDoubleClick('#subscriptionForm', '#subscriptionModal');    // Modal souscription optionnel
+
+        // ========================================
+        // TOGGLE des champs de paiement dans subscriptionModal
+        // (checkbox "Effectuer et valider le paiement immédiatement")
+        // ========================================
+        const subCheckbox = document.getElementById('subscription_create_and_pay');
+        const subPaymentFields = document.getElementById('subscription_payment_fields');
+        const subModeSelect = document.getElementById('subscription_mode_paiement');
+        if (subCheckbox && subPaymentFields && subModeSelect) {
+            subCheckbox.addEventListener('change', function() {
+                subPaymentFields.style.display = this.checked ? 'flex' : 'none';
+                if (this.checked) {
+                    subModeSelect.setAttribute('required', 'required');
+                } else {
+                    subModeSelect.removeAttribute('required');
+                    subModeSelect.value = '';
+                }
+            });
+        }
 
         // ========================================
         // VALIDATION MONTANT PAIEMENT - PAYMENTMODAL
@@ -5157,16 +5268,9 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                 console.log('  - categoryId:', categoryId);
                 console.log('  - window.isSubscribedToCategory:', window.isSubscribedToCategory);
 
-                // ✅ FIX: Bloquer la soumission si l'étudiant n'est PAS souscrit à la catégorie
-                if (!window.isSubscribedToCategory) {
-                    console.log('  ❌ BLOCAGE: Étudiant non souscrit');
-                    e.preventDefault();
-                    const resetFn = $('#paymentForm').data('resetSubmitting');
-                    if (resetFn) resetFn();
-                    alert(`❌ Impossible de soumettre ce paiement.\n\nL'étudiant n'est pas souscrit à la catégorie de frais sélectionnée.\n\nVeuillez d'abord inscrire l'étudiant à cette catégorie de frais dans la gestion des frais.`);
-                    feeCategorySelect.focus();
-                    return false;
-                }
+                // Note : on ne bloque plus la soumission si l'étudiant n'est pas souscrit
+                // car le backend renvoie un message d'erreur lisible (redirect with error)
+                // et bloquer côté JS avec alert() était jugé peu ergonomique (dialog fugace).
 
                 const montantSaisi = parseFloat(montantInput.value) || 0;
                 const montantMax = parseFloat(montantInput.getAttribute('max')) || Infinity;

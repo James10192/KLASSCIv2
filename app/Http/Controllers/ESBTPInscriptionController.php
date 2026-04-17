@@ -93,6 +93,20 @@ class ESBTPInscriptionController extends Controller
         $annee = $request->input("annee");
         $status = $request->input("status", "active");
 
+        // Tri (whitelist pour éviter SQL injection)
+        $allowedSorts = ["created_at", "date_inscription", "status", "filiere_id", "niveau_id", "nom"];
+        $sortInput = (string) $request->input("sort", "");
+        $sort = in_array($sortInput, $allowedSorts, true) ? $sortInput : "created_at";
+
+        $dirInput = strtolower((string) $request->input("dir", "desc"));
+        $dir = in_array($dirInput, ["asc", "desc"], true) ? $dirInput : "desc";
+
+        // Pagination (whitelist pour éviter DoS)
+        $allowedPerPage = [15, 25, 50, 100];
+        $perPage = in_array((int) $request->input("per_page"), $allowedPerPage, true)
+            ? (int) $request->input("per_page")
+            : 15;
+
         // Construire la requête avec les filtres
         $baseQuery = ESBTPInscription::query()->with([
             "etudiant",
@@ -135,7 +149,18 @@ class ESBTPInscriptionController extends Controller
             }
         }
 
-        $perPage = 15;
+        // Appliquer le tri (sauf pour "nom" qui nécessite un join, et si recherche active)
+        if (!$search) {
+            if ($sort === "nom") {
+                $baseQuery
+                    ->leftJoin("esbtp_etudiants", "esbtp_inscriptions.etudiant_id", "=", "esbtp_etudiants.id")
+                    ->orderBy("esbtp_etudiants.nom", $dir)
+                    ->orderBy("esbtp_etudiants.prenoms", $dir)
+                    ->select("esbtp_inscriptions.*");
+            } else {
+                $baseQuery->orderBy($sort, $dir);
+            }
+        }
 
         if ($search) {
             $inscriptions = $this->searchService->search(
@@ -147,7 +172,6 @@ class ESBTPInscriptionController extends Controller
             );
         } else {
             $inscriptions = $baseQuery
-                ->latest()
                 ->paginate($perPage)
                 ->appends($request->query());
         }
@@ -214,8 +238,13 @@ class ESBTPInscriptionController extends Controller
             return response()->json([
                 "html" => view("esbtp.inscriptions.partials.results", [
                     "inscriptions" => $inscriptions,
+                    "sort" => $sort,
+                    "dir" => $dir,
+                    "perPage" => $perPage,
                 ])->render(),
                 "url" => $request->fullUrl(),
+                "stats" => $stats,
+                "total" => $inscriptions->total(),
             ]);
         }
 
@@ -233,6 +262,9 @@ class ESBTPInscriptionController extends Controller
                 "status",
                 "stats",
                 "anneeEnCours",
+                "sort",
+                "dir",
+                "perPage",
             ),
         );
     }
@@ -1124,6 +1156,14 @@ class ESBTPInscriptionController extends Controller
 
             DB::commit();
 
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    "success" => true,
+                    "message" => "Inscription validée avec succès.",
+                    "inscription_id" => $inscription->id,
+                ]);
+            }
+
             // Rediriger vers la fiche étudiant si on vient de etudiants.show
             if ($request->input('redirect_to') === 'etudiant' && $inscription->etudiant_id) {
                 return redirect()
@@ -1136,6 +1176,13 @@ class ESBTPInscriptionController extends Controller
                 ->with("success", "Inscription validée avec succès.");
         } catch (\Exception $e) {
             DB::rollBack();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    "success" => false,
+                    "message" => "Erreur lors de la validation: " . $e->getMessage(),
+                ], 422);
+            }
 
             return redirect()
                 ->back()
@@ -1539,6 +1586,100 @@ class ESBTPInscriptionController extends Controller
     }
 
     /**
+     * Annulation groupee (bulk) d'inscriptions selectionnees.
+     */
+    public function bulkAnnuler(Request $request)
+    {
+        $request->validate([
+            "inscription_ids" => "required|array|min:1",
+            "inscription_ids.*" => "integer|exists:esbtp_inscriptions,id",
+            "motif" => "required|string|min:3|max:500",
+        ]);
+
+        $ids = $request->input("inscription_ids");
+        $motif = $request->input("motif");
+        $userId = Auth::id();
+        $successCount = 0;
+        $errors = [];
+
+        foreach ($ids as $id) {
+            try {
+                $result = $this->inscriptionService->annulerInscription($id, $motif, $userId);
+                if ($result["success"] ?? false) {
+                    $successCount++;
+                } else {
+                    $errors[$id] = $result["message"] ?? "Erreur inconnue";
+                }
+            } catch (\Exception $e) {
+                $errors[$id] = $e->getMessage();
+            }
+        }
+
+        return response()->json([
+            "success" => $successCount > 0,
+            "message" => $successCount . " inscription(s) annulee(s)." . (count($errors) > 0 ? " " . count($errors) . " echec(s)." : ""),
+            "success_count" => $successCount,
+            "error_count" => count($errors),
+            "errors" => $errors,
+            "processed_ids" => $ids,
+        ]);
+    }
+
+    /**
+     * Export CSV des inscriptions selectionnees.
+     */
+    public function bulkExport(Request $request)
+    {
+        $request->validate([
+            "inscription_ids" => "required|array|min:1",
+            "inscription_ids.*" => "integer|exists:esbtp_inscriptions,id",
+        ]);
+
+        $inscriptions = ESBTPInscription::whereIn("id", $request->input("inscription_ids"))
+            ->with(["etudiant", "filiere", "niveau", "classe", "anneeUniversitaire"])
+            ->get();
+
+        $filename = "inscriptions-export-" . now()->format("Y-m-d-His") . ".csv";
+
+        return response()->streamDownload(function () use ($inscriptions) {
+            $out = fopen("php://output", "w");
+            // BOM UTF-8 pour Excel
+            fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($out, [
+                "N° Inscription",
+                "Matricule",
+                "Nom",
+                "Prenoms",
+                "Filiere",
+                "Niveau",
+                "Classe",
+                "Annee",
+                "Statut",
+                "Workflow",
+                "Date inscription",
+            ], ";");
+            foreach ($inscriptions as $ins) {
+                fputcsv($out, [
+                    $ins->numero_inscription ?? "",
+                    $ins->etudiant->matricule ?? "",
+                    $ins->etudiant->nom ?? "",
+                    $ins->etudiant->prenoms ?? "",
+                    $ins->filiere->name ?? "",
+                    $ins->niveau->name ?? "",
+                    $ins->classe->name ?? "",
+                    $ins->anneeUniversitaire->name ?? "",
+                    $ins->status ?? "",
+                    $ins->workflow_step ?? "",
+                    optional($ins->created_at)->format("d/m/Y") ?? "",
+                ], ";");
+            }
+            fclose($out);
+        }, $filename, [
+            "Content-Type" => "text/csv; charset=UTF-8",
+        ]);
+    }
+
+    /**
      * Rafraîchir une ligne d'inscription spécifique (AJAX pour mise à jour partielle)
      */
     public function refreshLigne(ESBTPInscription $inscription)
@@ -1613,10 +1754,38 @@ class ESBTPInscriptionController extends Controller
                 "inscription" => $inscription,
             ])->render();
 
+            // Recalculer stats pour l'annee courante (meme scope que index())
+            $anneeEnCours = ESBTPAnneeUniversitaire::where("is_current", true)->first();
+            $statsQuery = ESBTPInscription::query();
+            if ($anneeEnCours) {
+                $statsQuery->where("annee_universitaire_id", $anneeEnCours->id);
+            }
+            $stats = [
+                "total" => $statsQuery->count(),
+                "actives" => (clone $statsQuery)
+                    ->where("status", "active")
+                    ->where("workflow_step", "etudiant_cree")
+                    ->count(),
+                "en_attente" => (clone $statsQuery)->where("status", "en_attente")->count(),
+                "non_validees" => (clone $statsQuery)
+                    ->where(function ($q) {
+                        $q->where("status", "en_attente")->orWhere(function ($subQ) {
+                            $subQ->where("status", "active")->where(function ($wq) {
+                                $wq->whereIn("workflow_step", ["prospect", "documents_complets", "en_validation"])
+                                    ->orWhereNull("workflow_step");
+                            });
+                        });
+                    })
+                    ->count(),
+                "annulees" => (clone $statsQuery)->where("status", "annulée")->count(),
+                "terminees" => (clone $statsQuery)->where("status", "terminée")->count(),
+            ];
+
             return response()->json([
                 "success" => true,
                 "html" => $html,
                 "inscription_id" => $inscription->id,
+                "stats" => $stats,
             ]);
         } catch (\Exception $e) {
             Log::error("Erreur refreshLigne: " . $e->getMessage(), [

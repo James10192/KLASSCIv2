@@ -924,6 +924,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // Routes pour validation groupée des inscriptions
             Route::post('/inscriptions/bulk-valider', [ESBTPInscriptionController::class, 'bulkValider'])->name('inscriptions.bulk-valider');
+            Route::post('/inscriptions/bulk-annuler', [ESBTPInscriptionController::class, 'bulkAnnuler'])->name('inscriptions.bulk-annuler');
+            Route::post('/inscriptions/bulk-export', [ESBTPInscriptionController::class, 'bulkExport'])->name('inscriptions.bulk-export');
 
             Route::post('/inscriptions/{inscription}/lever-reserve', [ESBTPInscriptionController::class, 'leverReserve'])->name('inscriptions.lever-reserve');
             Route::post('/inscriptions/{inscription}/marquer-sous-reserve', [ESBTPInscriptionController::class, 'marquerSousReserve'])->name('inscriptions.marquer-sous-reserve');

@@ -689,9 +689,36 @@ class ESBTPInscriptionPaiementController extends Controller
                 $request->notes,
             );
 
+            $message = "Souscription au frais optionnel réussie !";
+
+            // Optionnel : créer et valider immédiatement un paiement
+            if ($request->boolean("create_and_pay") && $request->input("mode_paiement")) {
+                $modeMap = [
+                    "especes" => "Espèces",
+                    "cheque" => "Chèque",
+                    "virement" => "Virement bancaire",
+                    "mobile_money" => "Mobile Money",
+                ];
+                $paiement = \App\Models\ESBTPPaiement::create([
+                    "inscription_id" => $inscription->id,
+                    "etudiant_id" => $inscription->etudiant_id,
+                    "annee_universitaire_id" => $inscription->annee_universitaire_id,
+                    "frais_category_id" => $request->frais_category_id,
+                    "montant" => $request->amount,
+                    "mode_paiement" => $modeMap[$request->mode_paiement] ?? $request->mode_paiement,
+                    "reference_paiement" => $request->reference_paiement,
+                    "date_paiement" => now(),
+                    "status" => "validé",
+                    "date_validation" => now(),
+                    "validateur_id" => Auth::id(),
+                    "created_by" => Auth::id(),
+                ]);
+                $message = "Souscription et paiement validé avec succès !";
+            }
+
             return redirect()
                 ->route("esbtp.inscriptions.show", $inscription->id)
-                ->with("success", "Souscription au frais optionnel réussie !");
+                ->with("success", $message);
         } catch (\Exception $e) {
             Log::error(
                 "Erreur lors de la souscription au frais optionnel: " .
@@ -702,7 +729,7 @@ class ESBTPInscriptionPaiementController extends Controller
                 ->back()
                 ->with(
                     "error",
-                    "Erreur lors de la souscription au frais optionnel.",
+                    "Erreur lors de la souscription au frais optionnel: " . $e->getMessage(),
                 );
         }
     }
