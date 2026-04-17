@@ -1675,7 +1675,8 @@ class ESBTPEmploiTempsController extends Controller
     }
 
     /**
-     * Prévisualise l'emploi du temps avant génération PDF
+     * Prévisualise l'emploi du temps en affichant le PDF réel inline
+     * (même rendu que le téléchargement, ouvert dans le viewer natif du navigateur).
      */
     public function previewEmploiTemps($id)
     {
@@ -1688,206 +1689,22 @@ class ESBTPEmploiTempsController extends Controller
                 'annee',
             ])->findOrFail($id);
 
-            // Récupérer la configuration PDF
-            $config = $this->getPDFConfig();
-            $settings = $config; // Utiliser la même structure que les bulletins
+            // Générer le vrai PDF (même pipeline que le téléchargement)
+            $pdfService = app(ESBTPPDFService::class);
+            $pdf = $pdfService->genererEmploiTempsPDF($emploiTemps);
 
-            // Préparer le logo en base64
-            $logoBase64 = $this->prepareLogoBase64($config['school_logo']);
+            $filename = 'apercu_emploi_temps_'.($emploiTemps->classe->name ?? 'classe').'_'.now()->format('Y-m-d').'.pdf';
 
-            // Grouper les séances par jour
-            $seancesParJour = $emploiTemps->getSeancesParJour();
-
-            // Récupérer les heures de début et de fin pour l'affichage
-            $heuresDebut = [];
-            $heuresFin = [];
-            for ($heure = 8; $heure < 18; $heure++) {
-                $heuresDebut[] = sprintf('%02d:00', $heure);
-                $heuresFin[] = sprintf('%02d:00', $heure + 1);
-            }
-
-            // Noms des jours pour l'affichage
-            $joursNoms = [
-                1 => 'Lundi',
-                2 => 'Mardi',
-                3 => 'Mercredi',
-                4 => 'Jeudi',
-                5 => 'Vendredi',
-                6 => 'Samedi',
-            ];
-
-            // Créer les variables $timeSlots et $days pour la vue
-            $timeSlots = $heuresDebut;
-            $days = array_keys($joursNoms);
-
-            // Calcul des statistiques par matière
-            $matiereStats = [];
-            foreach ($emploiTemps->seances as $seance) {
-                $matiereName = $seance->matiere ? $seance->matiere->name : 'Non définie';
-                if (! isset($matiereStats[$matiereName])) {
-                    $matiereStats[$matiereName] = 0;
-                }
-                $matiereStats[$matiereName]++;
-            }
-            $matiereStats = collect($matiereStats)->sortDesc();
-
-            $totalSeances = $emploiTemps->seances->count();
-            $totalMinutes = $emploiTemps->seances->reduce(function ($carry, $seance) {
-                $start = $seance->heure_debut instanceof Carbon
-                    ? $seance->heure_debut->copy()
-                    : ($seance->heure_debut ? Carbon::parse($seance->heure_debut) : null);
-                $end = $seance->heure_fin instanceof Carbon
-                    ? $seance->heure_fin->copy()
-                    : ($seance->heure_fin ? Carbon::parse($seance->heure_fin) : null);
-
-                if ($start && $end) {
-                    if ($end->lessThanOrEqualTo($start)) {
-                        $end = $end->addDay();
-                    }
-
-                    return $carry + $start->diffInMinutes($end);
-                }
-
-                return $carry;
-            }, 0);
-            $totalHours = $totalMinutes > 0 ? $totalMinutes / 60 : 0;
-            $totalHoursFormatted = $totalHours > 0
-                ? rtrim(rtrim(number_format($totalHours, 1, ',', ' '), '0'), ',').' h'
-                : '0 h';
-
-            $uniqueMatieres = $matiereStats->count();
-            $uniqueTeachers = $emploiTemps->seances
-                ->map(function ($seance) {
-                    if ($seance->teacher_id) {
-                        return 'teacher_'.$seance->teacher_id;
-                    }
-                    if (! empty($seance->enseignant)) {
-                        return 'name_'.$seance->enseignant;
-                    }
-
-                    return null;
-                })
-                ->filter()
-                ->unique()
-                ->count();
-
-            $daysCovered = $emploiTemps->seances->pluck('jour')->filter()->unique()->count();
-
-            $sessionTypeLabels = [
-                ESBTPSeanceCours::TYPE_COURSE => 'Cours',
-                ESBTPSeanceCours::TYPE_HOMEWORK => 'Devoir',
-                ESBTPSeanceCours::TYPE_BREAK => 'Récréation',
-                ESBTPSeanceCours::TYPE_LUNCH => 'Pause déjeuner',
-            ];
-
-            $sessionTypeColors = [
-                ESBTPSeanceCours::TYPE_COURSE => ['bg' => '#0453cb', 'text' => '#ffffff'],
-                ESBTPSeanceCours::TYPE_HOMEWORK => ['bg' => '#3ba54f', 'text' => '#ffffff'],
-                ESBTPSeanceCours::TYPE_BREAK => ['bg' => '#f59e0b', 'text' => '#1f2937'],
-                ESBTPSeanceCours::TYPE_LUNCH => ['bg' => '#0ea5e9', 'text' => '#ffffff'],
-                'default' => ['bg' => '#5e91de', 'text' => '#ffffff'],
-            ];
-
-            $sessionTypeSwatches = [];
-            foreach ($emploiTemps->seances as $seance) {
-                $type = $seance->type ?? ESBTPSeanceCours::TYPE_COURSE;
-                if (! isset($sessionTypeSwatches[$type])) {
-                    $background = $seance->color ?: ($sessionTypeColors[$type]['bg'] ?? $sessionTypeColors['default']['bg']);
-                    $sessionTypeSwatches[$type] = [
-                        'bg' => $background,
-                        'text' => $this->calculateTextColor($background, $sessionTypeColors[$type]['text'] ?? '#ffffff'),
-                    ];
-                }
-            }
-            foreach ($sessionTypeLabels as $type => $label) {
-                if (! isset($sessionTypeSwatches[$type])) {
-                    $sessionTypeSwatches[$type] = $sessionTypeColors[$type] ?? $sessionTypeColors['default'];
-                }
-            }
-
-            $sessionTypeStats = $emploiTemps->seances
-                ->groupBy(function ($seance) {
-                    return $seance->type ?? ESBTPSeanceCours::TYPE_COURSE;
-                })
-                ->map
-                ->count()
-                ->toArray();
-
-            $summaryStats = [
-                [
-                    'label' => 'Séances programmées',
-                    'value' => $totalSeances,
-                    'icon' => 'fa-calendar-check',
-                    'description' => 'Total des séances de la semaine',
-                ],
-                [
-                    'label' => 'Volume horaire',
-                    'value' => $totalHoursFormatted,
-                    'icon' => 'fa-hourglass-half',
-                    'description' => 'Durée cumulée des séances',
-                ],
-                [
-                    'label' => 'Matières couvertes',
-                    'value' => $uniqueMatieres,
-                    'icon' => 'fa-book-open',
-                    'description' => 'Nombre de matières différentes',
-                ],
-                [
-                    'label' => 'Intervenants mobilisés',
-                    'value' => $uniqueTeachers,
-                    'icon' => 'fa-user-tie',
-                    'description' => 'Nombre d’enseignants uniques',
-                ],
-            ];
-
-            $periodeAffichage = null;
-            if ($emploiTemps->date_debut && $emploiTemps->date_fin) {
-                $periodeAffichage = Carbon::parse($emploiTemps->date_debut)->locale('fr')->isoFormat('LL')
-                    .' → '
-                    .Carbon::parse($emploiTemps->date_fin)->locale('fr')->isoFormat('LL');
-            } elseif ($emploiTemps->annee && $emploiTemps->annee->name) {
-                $periodeAffichage = $emploiTemps->annee->name;
-            } elseif (! empty($emploiTemps->semestre)) {
-                $periodeAffichage = 'Semestre '.$emploiTemps->semestre;
-            }
-
-            $etablissementInfo = [
-                'nom' => $config['school_name'],
-                'adresse' => $config['school_address'],
-                'telephone' => $config['school_phone'],
-                'email' => $config['school_email'],
-                'ville' => $config['school_city'],
-                'pays' => $config['school_country'],
-                'type' => $config['school_type'],
-            ];
-
-            return view('esbtp.emploi-temps.preview-pdf', [
-                'emploiTemps' => $emploiTemps,
-                'seances' => $emploiTemps->seances,
-                'seancesParJour' => $seancesParJour,
-                'heuresDebut' => $heuresDebut,
-                'heuresFin' => $heuresFin,
-                'joursNoms' => $joursNoms,
-                'timeSlots' => $timeSlots,
-                'days' => $days,
-                'matiereStats' => $matiereStats,
-                'logoBase64' => $logoBase64,
-                'settings' => $settings,
-                'summaryStats' => $summaryStats,
-                'sessionTypeStats' => $sessionTypeStats,
-                'sessionTypeLabels' => $sessionTypeLabels,
-                'sessionTypeColors' => $sessionTypeColors,
-                'sessionTypeSwatches' => $sessionTypeSwatches,
-                'totalHoursFormatted' => $totalHoursFormatted,
-                'totalSeances' => $totalSeances,
-                'daysCovered' => $daysCovered,
-                'periodeAffichage' => $periodeAffichage,
-                'etablissement' => $etablissementInfo,
+            // Afficher inline dans le viewer PDF du navigateur (pas de téléchargement forcé)
+            return response($pdf, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="'.$filename.'"',
             ]);
-
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la prévisualisation de l\'emploi du temps', [
                 'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
                 'emploi_temps_id' => $id,
             ]);
 

@@ -276,14 +276,6 @@
                                 @enderror
                             </div>
 
-                            <div class="form-group">
-                                <label class="form-label">Couleur</label>
-                                <div class="color-picker-wrapper">
-                                    <input type="color" name="color" id="color" class="color-picker"
-                                        value="{{ old('color', $defaultColors['course']) }}">
-                                    <span class="color-label" id="colorLabel"></span>
-                                </div>
-                            </div>
                         </div>
 
                         <div class="form-options">
@@ -1002,11 +994,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('recurrenceDays').style.display = this.checked ? 'block' : 'none';
     });
 
-    // Handle color picker
-    document.getElementById('color').addEventListener('input', function(e) {
-        document.getElementById('colorLabel').textContent = e.target.value;
-    });
-
     // Écouter les changements d'horaires et de jour pour mettre à jour la grille
     const heureDebutInput = document.getElementById('heure_debut');
     const heureFinInput = document.getElementById('heure_fin');
@@ -1091,11 +1078,6 @@ function selectSessionType(type) {
         (type === 'course' || type === 'homework') ? 'block' : 'none';
     document.getElementById('homeworkFields').style.display =
         (type === 'homework') ? 'block' : 'none';
-
-    // Update color picker with default color
-    const selectedColor = seanceData.defaultColors[type];
-    document.getElementById('color').value = selectedColor;
-    document.getElementById('colorLabel').textContent = selectedColor;
 
     // Update required fields
     const teacherField = document.getElementById('teacher_id');

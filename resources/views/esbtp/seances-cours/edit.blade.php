@@ -217,17 +217,6 @@
                                 @enderror
                             </div>
 
-                            <div class="form-group">
-                                <label class="form-label">Couleur</label>
-                                <div class="color-picker-wrapper d-flex align-items-center gap-2">
-                                    <input type="color" name="color" id="color" class="color-picker @error('color') error @enderror"
-                                        value="{{ old('color', $seancesCour->color ?? ($defaultColors[$seancesCour->type] ?? '#2196F3')) }}">
-                                    <span class="color-label" id="colorLabel">{{ old('color', $seancesCour->color ?? ($defaultColors[$seancesCour->type] ?? '#2196F3')) }}</span>
-                                </div>
-                                @error('color')
-                                    <div class="form-error">{{ $message }}</div>
-                                @enderror
-                            </div>
                         </div>
 
                         <div class="form-options mt-3">
@@ -552,7 +541,6 @@
 <script>
 const currentTeacherId = "{{ old('teacher_id', $seancesCour->teacher_id) }}";
 const initialSessionType = "{{ old('type', $seancesCour->type) }}";
-const initialColor = "{{ old('color', $seancesCour->color ?? ($defaultColors[$seancesCour->type] ?? '#2196F3')) }}";
 const seanceDataElement = document.getElementById('seance-data');
 const seanceData = seanceDataElement
     ? {
@@ -601,22 +589,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('recurrenceDays').style.display = this.checked ? 'block' : 'none';
     });
 
-    // Handle color picker
-    document.getElementById('color').addEventListener('input', function(e) {
-        document.getElementById('colorLabel').textContent = e.target.value;
-    });
-
-    // Appliquer immédiatement la bonne couleur à l'affichage
-    const colorInput = document.getElementById('color');
-    const colorLabel = document.getElementById('colorLabel');
-    if (colorInput) {
-        colorInput.value = initialColor;
-        colorLabel.textContent = initialColor;
-        colorInput.addEventListener('change', (event) => {
-            colorLabel.textContent = event.target.value;
-        });
-    }
-
     // Écouter les changements d'horaires et de jour pour mettre à jour la grille
     const heureDebutInput = document.getElementById('heure_debut');
     const heureFinInput = document.getElementById('heure_fin');
@@ -655,7 +627,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const initialType = originalSessionType;
-    selectSessionType(initialType, { skipColorUpdate: true, force: true });
+    selectSessionType(initialType, { force: true });
     updateHomeworkTimingInfo();
 
     // Pré-remplir les enseignants si une matière est déjà sélectionnée
@@ -671,7 +643,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function selectSessionType(type, options = {}) {
-    const { skipColorUpdate = false, force = false } = options;
+    const { force = false } = options;
 
     if (!force && type !== originalSessionType) {
         showTypeChangeWarning(type);
@@ -695,16 +667,6 @@ function selectSessionType(type, options = {}) {
         (type === 'course' || type === 'homework') ? 'block' : 'none';
     document.getElementById('homeworkFields').style.display =
         (type === 'homework') ? 'block' : 'none';
-
-    // Update color picker with default color
-    const colorInput = document.getElementById('color');
-    const colorLabel = document.getElementById('colorLabel');
-    if (!skipColorUpdate && colorInput && defaultColors[type]) {
-        colorInput.value = defaultColors[type];
-    }
-    if (colorLabel && colorInput) {
-        colorLabel.textContent = colorInput.value;
-    }
 
     // Update required fields
     const teacherField = document.getElementById('teacher_id');

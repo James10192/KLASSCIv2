@@ -953,7 +953,6 @@ class ESBTPSeanceCoursController extends Controller
                 'jour' => 'required|integer|min:1|max:7',
                 'heure_debut' => 'required|date_format:H:i',
                 'heure_fin' => 'required|date_format:H:i|after:heure_debut',
-                'color' => 'nullable|string',
                 'is_recurring' => 'boolean',
                 'recurrence_days' => 'nullable|array',
                 'recurrence_days.*' => 'integer|min:1|max:7',
