@@ -25,6 +25,57 @@
     // Helpers
     // ====================================================================
 
+    /**
+     * Modal de confirmation premium (remplace window.confirm bloquant).
+     * Retourne une Promise<boolean>.
+     *
+     * @param {string|object} options - Message simple OU objet {title, message, okLabel, okClass, icon}
+     */
+    function iiConfirm(options) {
+        return new Promise((resolve) => {
+            const modalEl = document.getElementById('ii-modal-confirm');
+            if (!modalEl) {
+                resolve(window.confirm(typeof options === 'string' ? options : options.message));
+                return;
+            }
+
+            const cfg = typeof options === 'string' ? { message: options } : options;
+            const titleEl = modalEl.querySelector('#ii-confirm-title');
+            const bodyEl = modalEl.querySelector('#ii-confirm-body');
+            const iconEl = modalEl.querySelector('#ii-confirm-icon');
+            const okBtn = modalEl.querySelector('#ii-confirm-ok');
+
+            if (titleEl) titleEl.textContent = cfg.title || 'Confirmation';
+            if (bodyEl) bodyEl.innerHTML = cfg.message || 'Êtes-vous sûr ?';
+            if (iconEl) {
+                iconEl.className = 'me-2 fas ' + (cfg.icon || 'fa-circle-question');
+            }
+            okBtn.textContent = cfg.okLabel || 'Confirmer';
+            okBtn.className = 'btn ' + (cfg.okClass || 'btn-primary');
+
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            let resolved = false;
+
+            const onOk = () => {
+                if (resolved) return;
+                resolved = true;
+                modal.hide();
+                resolve(true);
+            };
+            const onHide = () => {
+                if (resolved) return;
+                resolved = true;
+                resolve(false);
+            };
+
+            okBtn.addEventListener('click', onOk, { once: true });
+            modalEl.addEventListener('hide.bs.modal', onHide, { once: true });
+
+            modal.show();
+        });
+    }
+    window.iiConfirm = iiConfirm;
+
     function showToast(message, type = 'success') {
         if (!message) return;
         if (window.toastr && typeof window.toastr[type] === 'function') {
@@ -398,14 +449,20 @@
     // Bulk actions
     // ====================================================================
 
-    window.iiBulkValider = function () {
+    window.iiBulkValider = async function () {
         const ids = Array.from(document.querySelectorAll('.inscription-checkbox:checked')).map((cb) => cb.value);
         if (!ids.length) {
             showToast('Veuillez sélectionner au moins une inscription.', 'warning');
             return;
         }
-        const confirmMsg = `Valider ${ids.length} inscription(s) ?\n\nLe système :\n• Valide les inscriptions avec paiements validés\n• Auto-valide les paiements en attente si nécessaire\n• Envoie les notifications aux étudiants`;
-        if (!confirm(confirmMsg)) return;
+        const ok = await iiConfirm({
+            title: 'Valider la sélection',
+            message: `<p>Valider <strong>${ids.length} inscription(s)</strong> ?</p><ul class="mb-0" style="padding-left:1.1rem;line-height:1.6;font-size:.85rem;"><li>Valide les inscriptions avec paiement validé</li><li>Auto-valide les paiements en attente si nécessaire</li><li>Envoie les notifications aux étudiants</li></ul>`,
+            okLabel: 'Valider',
+            okClass: 'btn-primary',
+            icon: 'fa-check-double',
+        });
+        if (!ok) return;
 
         const formData = new FormData();
         formData.append('_token', CSRF_TOKEN);
@@ -731,12 +788,20 @@
     // Valider button (PUT form submit inline)
     // ====================================================================
 
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', async (e) => {
         const btn = e.target.closest('.valider-btn');
         if (!btn) return;
+        e.preventDefault();
         const id = btn.dataset.id;
         if (!id) return;
-        if (!confirm('Valider cette inscription ?')) return;
+        const ok = await iiConfirm({
+            title: 'Valider l\'inscription',
+            message: 'Confirmer la validation de cette inscription ?',
+            okLabel: 'Valider',
+            okClass: 'btn-primary',
+            icon: 'fa-check-circle',
+        });
+        if (!ok) return;
         const form = document.getElementById(`valider-form-${id}`);
         if (!form) return;
         setRowLoading(id, true);
@@ -784,6 +849,38 @@
     bindSortLinks();
     updateActiveFilterChips();
     updateKpiActiveState();
+
+    // ====================================================================
+    // Dropdown overflow fix — libere l'overflow de la table-wrap
+    // quand un dropdown kebab de la table est ouvert, sinon le menu
+    // est clippe par overflow: hidden / overflow-x: auto.
+    // ====================================================================
+
+    document.addEventListener('show.bs.dropdown', (event) => {
+        const dropdown = event.target.closest('.dropdown');
+        if (!dropdown) return;
+        // N'affecter que les kebabs dans le resultats-card
+        const card = document.querySelector('.ii-results-card');
+        const wrap = document.querySelector('.ii-table-wrap');
+        if (!card || !wrap || !wrap.contains(dropdown)) return;
+        card.classList.add('ii-has-open-dropdown');
+        wrap.classList.add('ii-has-open-dropdown');
+    });
+
+    document.addEventListener('hide.bs.dropdown', (event) => {
+        const dropdown = event.target.closest('.dropdown');
+        if (!dropdown) return;
+        const card = document.querySelector('.ii-results-card');
+        const wrap = document.querySelector('.ii-table-wrap');
+        if (!card || !wrap) return;
+        // Apres un petit delai, retirer la classe (laisse le temps a BS5 de finir l'animation)
+        setTimeout(() => {
+            if (!wrap.querySelector('.dropdown.show')) {
+                card.classList.remove('ii-has-open-dropdown');
+                wrap.classList.remove('ii-has-open-dropdown');
+            }
+        }, 150);
+    });
 
     debugLog('[inscriptions] index.js initialized');
 })();

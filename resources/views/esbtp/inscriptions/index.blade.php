@@ -215,6 +215,9 @@
     box-shadow: 0 1px 3px rgba(15,23,42,.04);
 }
 .ii-table-wrap { overflow-x: auto; }
+/* Quand un dropdown kebab est ouvert : liberer l'overflow pour que le menu ne soit pas coupe */
+.ii-results-card.ii-has-open-dropdown { overflow: visible; }
+.ii-table-wrap.ii-has-open-dropdown { overflow: visible; }
 .ii-table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .ii-table thead th {
     background: var(--ii-surface);
@@ -754,6 +757,25 @@ tr[data-inscription-id] { position: relative; overflow: hidden; }
 @endcan
 
 {{-- MODALS GLOBAUX (data-id dynamique) --}}
+
+{{-- Modal générique de confirmation (Valider + autres actions) --}}
+<div class="modal fade" id="ii-modal-confirm" tabindex="-1" aria-labelledby="iiModalConfirmLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header ii-modal-header">
+                <h5 class="modal-title" id="iiModalConfirmLabel">
+                    <i class="fas fa-circle-question me-2" id="ii-confirm-icon"></i><span id="ii-confirm-title">Confirmation</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body" id="ii-confirm-body">Êtes-vous sûr ?</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="ii-confirm-ok">Confirmer</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 {{-- Modal Annuler une inscription --}}
 <div class="modal fade" id="ii-modal-annuler" tabindex="-1" aria-labelledby="iiModalAnnulerLabel" aria-hidden="true">
